@@ -27,7 +27,9 @@
 
 use std::fmt::Display;
 
-const COMMIT_HASH: &str = env!("COMMIT_HASH");
+use ic_cli::color::Colorize;
+
+const COMMIT_HASH: &str = concat!("#", env!("COMMIT_HASH"));
 
 const COMMIT_DATE: &str = env!("COMMIT_DATE");
 
@@ -56,7 +58,12 @@ fn exe_dir() -> String {
 
 impl Display for VersionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{PKG_NAME} {PKG_VERSION} (#{COMMIT_HASH} {COMMIT_DATE})")?;
+        writeln!(
+            f,
+            "{} {PKG_VERSION} ({} {COMMIT_DATE})",
+            PKG_NAME.green(),
+            COMMIT_HASH.yellow(),
+        )?;
         writeln!(f, "target: {BUILD_TARGET}")?;
         writeln!(f, "install: {}", self.install_dir)?;
         write!(f, "build type: {BUILD_PROFILE}")

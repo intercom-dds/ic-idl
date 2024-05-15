@@ -281,17 +281,32 @@ impl CommandLine {
         let mut lines = vec![];
         let matches: Vec<_> = self.options.values().iter().filter(filter).collect();
 
-        let width = matches
+        // Find the highest number of short options
+        let n_short: usize = matches
             .iter()
-            .map(|v| v.formatted().len())
+            .map(|v| v.tokens.iter().filter(|v| v.len() == 1).count())
             .max()
             .unwrap_or(0);
 
-        let width = width + PAD;
+        let width = matches
+            .iter()
+            .map(|v| {
+                let short = v.tokens.iter().filter(|v| v.len() == 1).count();
+                v.formatted().len() + 4 * short
+            })
+            .max()
+            .unwrap_or(0);
+
         for opt in matches {
+            let current_n_short = opt.tokens.iter().filter(|v| v.len() == 1).count();
+
+            // 4 is the number of characters that separate short options
+            let indent_by = PAD + 4 * (n_short - current_n_short);
+            let width = width + 4 * current_n_short;
+
             let tokens = opt.formatted();
             let desc = opt.desc.clone().unwrap_or_default();
-            let line = format!("{:PAD$}{tokens:width$} {desc}", " ");
+            let line = format!("{:indent_by$}{tokens:width$}{desc}", " ");
             lines.push(line);
         }
         lines

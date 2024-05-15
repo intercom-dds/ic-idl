@@ -60,6 +60,7 @@ struct Opt {
     comment: String,
     kind: Kind,
     required: bool,
+    arg_name: String,
     positional: bool,
 }
 
@@ -70,6 +71,7 @@ impl ToTokens for Opt {
             comment,
             kind,
             required,
+            arg_name,
             ..
         } = self;
 
@@ -77,7 +79,7 @@ impl ToTokens for Opt {
             ::ic_cli::Opt::from([#(#tokens,)*])
                 .desc(#comment)
                 .required(#required)
-                .value(#kind, None)
+                .value(#kind, #arg_name)
         };
         tree.to_tokens(stream);
     }
@@ -152,6 +154,7 @@ fn attr_str(name: &str, attrs: &[Attribute]) -> Option<String> {
 struct OptAttr {
     short: (bool, Option<syn::LitChar>),
     long: (bool, Option<syn::LitStr>),
+    arg_name: Option<syn::LitStr>,
     positional: bool,
     required: bool,
 }
@@ -179,6 +182,8 @@ fn option_attr(attrs: &Vec<Attribute>) -> OptAttr {
                         arg_attr.short = (true, parse_expr(input));
                     } else if value == "long" {
                         arg_attr.long = (true, parse_expr(input));
+                    } else if value == "arg" {
+                        arg_attr.arg_name = parse_expr(input);
                     } else if value == "positional" {
                         arg_attr.positional = true;
                     } else if value == "required" {
@@ -223,9 +228,14 @@ fn handle_option(field: &Field) -> Opt {
         panic!("unsupported type");
     };
 
+    let arg_name = attrs
+        .arg_name
+        .map_or_else(|| "arg".to_string(), |v| v.value());
+
     Opt {
         tokens,
         comment: doc_attr(&field.attrs),
+        arg_name,
         kind,
         required: attrs.required,
         positional: attrs.positional,

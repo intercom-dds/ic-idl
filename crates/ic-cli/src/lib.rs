@@ -40,8 +40,6 @@ use index::IndexMap;
 mod parse;
 pub use parse::{ParseError, ParseResult};
 
-use crate::color::Colorize as _;
-
 const PAD: usize = 3;
 
 #[must_use]
@@ -54,6 +52,7 @@ pub struct CommandLine {
     section: Option<String>,
     hide_flags: bool,
     hide_options: bool,
+    arg_name: Option<String>,
     after_help: Option<String>,
     positionals: bool,
     external: bool,
@@ -71,6 +70,7 @@ impl CommandLine {
             section: None,
             hide_flags: false,
             hide_options: false,
+            arg_name: None,
             after_help: None,
             external: false,
             positionals: false,
@@ -151,6 +151,11 @@ impl CommandLine {
         self
     }
 
+    pub fn arg_name(mut self, name: impl Into<String>) -> Self {
+        self.arg_name = Some(name.into());
+        self
+    }
+
     pub fn after_help(mut self, desc: impl Into<String>) -> Self {
         self.after_help = Some(desc.into());
         self
@@ -216,7 +221,7 @@ impl CommandLine {
             usage = format!("{usage} <options>");
         }
         if self.positionals {
-            usage = format!("{usage} <args>...");
+            usage = format!("{usage} <files>...");
         }
         lines.push(usage);
 
@@ -269,7 +274,7 @@ impl CommandLine {
         self.name.to_string()
     }
 
-    fn format_args<P>(&self, filter: P) -> Vec<String>
+    pub fn format_args<P>(&self, filter: P) -> Vec<String>
     where
         P: FnMut(&&Opt) -> bool + Clone,
     {
@@ -372,9 +377,9 @@ impl Opt {
         self
     }
 
-    pub fn value(mut self, value: Value, name: Option<String>) -> Self {
+    pub fn value(mut self, value: Value, name: impl Into<String>) -> Self {
         self.kind = value;
-        self.value_name = name;
+        self.value_name = Some(name.into());
         self
     }
 

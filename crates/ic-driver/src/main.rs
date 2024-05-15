@@ -28,6 +28,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use ic_cli::color::Colorize;
 use ic_cli::Command;
 use ic_preproc::preprocess;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -35,23 +36,24 @@ use rayon::ThreadPoolBuilder;
 
 mod info;
 
+// TODO: expand Command to return a Vec<(option, description)>
 /// Generic IDL code generator
 #[derive(Command, Default)]
 struct Options {
-    /// Dump the AST in a tree-like format
-    #[option(long)]
-    ast_dump: bool,
-
     /// Only preprocess the files
     #[option(short = 'E', long)]
     preprocessor_only: bool,
 
     /// Add directory to include search paths
-    #[option(short = 'I', long)]
+    #[option(short = 'I', long, arg = "dir")]
     include: Vec<PathBuf>,
 
+    /// Define <def> to <val> (or 1 if <val> is omitted)
+    #[option(short = 'D', long, arg = "def>=<val")]
+    define: Vec<String>,
+
     /// Unstable flags, see `ic-idl -Z help` for details
-    #[option(short = 'Z')]
+    #[option(short = 'Z', arg = "flag")]
     unstable: Vec<String>,
 
     /// Display version information
@@ -69,8 +71,23 @@ macro_rules! error {
     }}
 }
 
-fn unstable_flags(flag: &str) {
+#[derive(Command, Default)]
+struct Unstable {
+    /// Print the AST in a tree-like format
+    #[option(long)]
+    ast_dump: bool,
 
+    /// Dump the AST as JSON
+    #[option(long)]
+    ast_json: bool,
+}
+
+fn unstable_help() {
+    let command = Unstable::command();
+    let flags = command.format_args(|_| true).join("\n");
+    println!("{}", "unstable flags:".yellow());
+    println!("{flags}");
+    println!("\nRun with `{}`", "ic-idl -Z [FLAG] <files>...".green());
 }
 
 fn main() {
@@ -79,6 +96,18 @@ fn main() {
     if options.version {
         println!("{}", info::version_info());
         return;
+    }
+
+    for flag in options.unstable {
+        match flag.as_str() {
+            "help" => {
+                return unstable_help();
+            }
+            _ => {
+                error!("unknown flag -Z{flag}");
+                std::process::exit(1);
+            }
+        }
     }
 
     if options.files.is_empty() {
@@ -95,11 +124,7 @@ fn main() {
         .build_global()
         .unwrap();
 
-    let generated: Result<Vec<_>, _> = options
-        .files
-        .par_iter()
-        .map(|f| preprocess(f))
-        .collect();
+    let generated: Result<Vec<_>, _> = options.files.par_iter().map(|f| preprocess(f)).collect();
 
     let generated = generated.unwrap();
 

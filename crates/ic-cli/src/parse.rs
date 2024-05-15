@@ -107,8 +107,9 @@ where
         let mut had_option = false;
         while let Some(arg) = self.iter.next() {
             // end of options
-            if context.external || arg == "--" {
-                self.collect_remaining(arg);
+            let is_end = arg == "--";
+            if context.external || is_end {
+                self.collect_remaining(arg, !is_end);
             }
             // long option
             else if let Some(option) = arg.strip_prefix("--") {
@@ -226,8 +227,11 @@ where
         current(&mut self.result)
     }
 
-    fn collect_remaining(&mut self, arg: String) {
-        let mut positionals: Vec<String> = vec![arg];
+    fn collect_remaining(&mut self, arg: String, include_arg: bool) {
+        let mut positionals: Vec<String> = vec![];
+        if include_arg {
+            positionals.push(arg);
+        }
         positionals.extend(self.iter.by_ref());
         self.result().positionals.extend(positionals);
     }

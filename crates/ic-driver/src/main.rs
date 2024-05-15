@@ -36,6 +36,18 @@ use rayon::ThreadPoolBuilder;
 
 mod info;
 
+struct PpOptions {
+    preprocessor_only: bool,
+    preprocessor_skip: bool,
+    include: Vec<PathBuf>,
+    define: Vec<String>,
+}
+
+struct ParseOptions {
+    warning: Vec<String>,
+    files: HashSet<PathBuf>,
+}
+
 // TODO: expand Command to return a Vec<(option, description)>
 /// Generic IDL code generator
 #[derive(Command, Default)]
@@ -44,6 +56,22 @@ struct Options {
     #[option(short = 'E', long)]
     preprocessor_only: bool,
 
+    /// Do not preprocess the files
+    #[option(short = 'X', long)]
+    preprocessor_skip: bool,
+
+    /// Do not generate code for included files
+    #[option(short = 'H', long)]
+    no_header_follow: bool,
+
+    /// Output list of files to be generated
+    #[option(short, long)]
+    list: bool,
+
+    /// Empty output directories before emitting code
+    #[option(long)]
+    purge_dirs: bool,
+
     /// Add directory to include search paths
     #[option(short = 'I', long, arg = "dir")]
     include: Vec<PathBuf>,
@@ -51,6 +79,10 @@ struct Options {
     /// Define <def> to <val> (or 1 if <val> is omitted)
     #[option(short = 'D', long, arg = "def>=<val")]
     define: Vec<String>,
+
+    /// Enable specified warning
+    #[option(short = 'W', long, arg = "lint")]
+    warn: Vec<String>,
 
     /// Unstable flags, see `ic-idl -Z help` for details
     #[option(short = 'Z', arg = "flag")]
@@ -67,7 +99,7 @@ struct Options {
 macro_rules! error {
     ($($arg:tt)*) => {{
         use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl: {} {}", "error:".red().bold(), $($arg)*);
+        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
     }}
 }
 

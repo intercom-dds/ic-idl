@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashSet;
-use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
@@ -69,6 +68,7 @@ struct ParseOptions {
 }
 
 #[derive(Command, Default)]
+#[allow(clippy::struct_field_names)]
 struct CodegenOptions {
     /// Generate C++ files
     #[option(long, arg = "dir")]
@@ -258,10 +258,6 @@ fn main() {
         error!("no input files");
         return;
     }
-
-    let threads = std::thread::available_parallelism()
-        .map_or(0, |v| v.get())
-        .min(options.files.len());
 
     let generated: Result<Vec<_>, _> = options
         .files

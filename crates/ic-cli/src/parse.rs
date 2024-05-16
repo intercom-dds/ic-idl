@@ -127,10 +127,10 @@ where
             had_option = true;
         }
 
-        if !had_option {
-            Err(ParseError::Help(context.help()))
-        } else {
+        if had_option {
             Ok(())
+        } else {
+            Err(ParseError::Help(context.help()))
         }
     }
 

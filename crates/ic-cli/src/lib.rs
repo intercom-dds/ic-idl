@@ -115,8 +115,8 @@ impl CommandLine {
         self
     }
 
-    pub fn merge(self, command: CommandLine) -> Self {
-        self.opts(command.options.values().into_iter().cloned())
+    pub fn merge(self, command: &CommandLine) -> Self {
+        self.opts(command.options.values().iter().cloned())
     }
 
     pub fn subcommand(self, command: CommandLine) -> Self {

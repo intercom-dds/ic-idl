@@ -32,8 +32,6 @@ use std::path::{Path, PathBuf};
 use ic_cli::color::Colorize;
 use ic_cli::Command;
 use ic_preproc::preprocess;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rayon::ThreadPoolBuilder;
 
 mod info;
 
@@ -265,14 +263,9 @@ fn main() {
         .map_or(0, |v| v.get())
         .min(options.files.len());
 
-    ThreadPoolBuilder::new()
-        .num_threads(threads)
-        .build_global()
-        .unwrap();
-
     let generated: Result<Vec<_>, _> = options
         .files
-        .par_iter()
+        .iter()
         .map(|f| parse_file(&options, f))
         .collect();
 

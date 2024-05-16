@@ -34,4 +34,3 @@ edition = "2021"
 anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }
 ic-preproc = { path = "../ic-preproc" }
-rayon = "1.10"

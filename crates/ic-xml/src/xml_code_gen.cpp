@@ -489,7 +489,7 @@ void generate_xml_type(std::ostream& stream, intercom::XMLElement&& elem, const 
         auto& include = root.createMemberXMLElement();
         include.setName("include");
 
-        intercom::fs::path name(inc->name);
+        std::filesystem::path name(inc->name);
         name.replace_extension(".xml");
         include.createMemberXMLAttribute().set("file", name);
     }
@@ -503,7 +503,7 @@ void generate_xml_type(std::ostream& stream, intercom::XMLElement&& elem, const 
 }
 
 void code_gen_xml(const parse_result* result) {
-    intercom::fs::path dest = CommandLineOption::xml_target_directory();
+    std::filesystem::path dest = CommandLineOption::xml_target_directory();
 
     Context modules;
     for (auto node : result->tree) {
@@ -512,7 +512,7 @@ void code_gen_xml(const parse_result* result) {
 
     auto& files = modules.files();
     for (auto inc : result->includes) {
-        auto p = intercom::fs::path(inc->file_name).replace_extension(".xml").filename();
+        auto p = std::filesystem::path(inc->file_name).replace_extension(".xml").filename();
         if (CommandLineOption::list_only()) {
             std::cout << p.native() << std::endl;
             continue;

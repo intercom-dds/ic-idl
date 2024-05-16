@@ -484,7 +484,7 @@ int get_bit_size(const ptree* elem) {
     return bit_size;
 }
 
-numeric get_annotation_value(const ptree* ann, intercom::string_view name) {
+numeric get_annotation_value(const ptree* ann, std::string_view name) {
     for (const ptree* p : ann ? ann->members : nullptr) {
         if (name.compare(p->name) == 0) {
             return p->value;

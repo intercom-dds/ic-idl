@@ -223,15 +223,18 @@ INTERCOM_PUBLIC struct ptree* merge_members(struct ptree* node, struct ptree* me
 #ifdef __cplusplus
 }
 
+#  include <algorithm>
+#  include <list>
 #  include <map>
+#  include <memory>
 #  include <mutex>
+#  include <optional>
 #  include <set>
 #  include <sstream>
 #  include <string>
 #  include <vector>
 
-#  include "InterCOM/RefPointer.h"
-#  include "cidl/internal/commandline.h"
+#  include "cidl/commandline.h"
 #  include "cidl/ptree.h"
 
 extern "C" struct parser {
@@ -239,23 +242,23 @@ extern "C" struct parser {
 
     long long enum_counter{0};
     int anonymous_name_count{0};
-    intercom::optional<ptree*> current_under_documentation;
+    std::optional<ptree*> current_under_documentation;
     std::vector<std::vector<ptree*>> context;
     std::vector<ptree*> include_context;
     std::map<std::string, ptree*> type_map;
     std::map<std::string, ptree*> type_dcl_map;
     std::string comment_string;
 
-    std::vector<intercom::RefPointer<ptree>> allocated_nodes;
-    std::vector<intercom::RefPointer<declarator>> allocated_decl;
+    std::vector<std::shared_ptr<ptree>> allocated_nodes;
+    std::vector<std::shared_ptr<declarator>> allocated_decl;
     std::set<std::string> symbol_map;
     std::list<numeric> numeric_map;
 };
 
-namespace intercom {
-namespace cidl {
+namespace intercom::cidl {
+
 inline std::string tolower(std::string res) {
-    transform(res.begin(), res.end(), res.begin(), [](std::string::value_type c) {
+    std::transform(res.begin(), res.end(), res.begin(), [](std::string::value_type c) {
         return static_cast<std::string::value_type>(std::tolower(static_cast<int>(c)));
     });
     return res;
@@ -329,18 +332,18 @@ class ParserMessage {
     }
 
   protected:
-    std::stringstream stream{};
-    const ptree* context_node{nullptr};
+    std::stringstream stream;
+    const ptree* context_node = nullptr;
     int line_number;
 
     const WriterType writer;
     const CommandLineOption::WarningType warning_type;
 };
 
-INTERCOM_PUBLIC extern intercom::RefPointer<::parser> g_state;
+INTERCOM_PUBLIC extern std::shared_ptr<::parser> g_state;
 INTERCOM_PUBLIC extern std::mutex g_parse_mutex;
-}  // namespace cidl
-}  // namespace intercom
+
+}  // namespace intercom::cidl
 
 /// creates error, warning, or nothing depending on commandline user inputs
 void parse_alert(const char* msg, const char* file_name, int line_number, CommandLineOption::WarningType warning_type);

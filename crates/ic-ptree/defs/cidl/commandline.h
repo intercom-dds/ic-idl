@@ -31,13 +31,6 @@
 #include <vector>
 
 #include "cidl/codegen.h"
-#include "icgen/cli/CommandLine.h"
-
-namespace config {
-auto build_commandline() -> intercom::cli::CommandLine;
-
-void parse_options(const intercom::cli::ParseResult& result);
-}  // namespace config
 
 class CommandLineOption {
   public:

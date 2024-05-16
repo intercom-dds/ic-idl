@@ -29,8 +29,7 @@
 
 #include <list>
 
-#include "InterCOM/PlatformConfig.h"
-#include "cidl/idl_parser.h"
+#include "InterCOM/dyn_link.h"
 
 namespace intercom {
 namespace cidl {
@@ -78,12 +77,12 @@ inline bool operator<(const File& lhs, const File& rhs) {
     return lhs.path < rhs.path;
 }
 
-INTERCOM_PUBLIC std::list<File> code_gen_cs(const Config& config, parse_result* result);
-INTERCOM_PUBLIC std::list<File> code_gen_dds_cplpl(const Config& config, parse_result* result);
-INTERCOM_PUBLIC std::list<File> code_gen_java(const Config& config, parse_result* result);
-INTERCOM_PUBLIC std::list<File> code_gen_python(const Config& config, parse_result* result);
-INTERCOM_PUBLIC std::list<File> code_gen_idl(const Config& config, parse_result* result);
-INTERCOM_PUBLIC std::list<File> code_gen_json_schema(const Config& config, parse_result* result);
+// INTERCOM_PUBLIC std::list<File> code_gen_cs(const Config& config, parse_result* result);
+// INTERCOM_PUBLIC std::list<File> code_gen_dds_cplpl(const Config& config, parse_result* result);
+// INTERCOM_PUBLIC std::list<File> code_gen_java(const Config& config, parse_result* result);
+// INTERCOM_PUBLIC std::list<File> code_gen_python(const Config& config, parse_result* result);
+// INTERCOM_PUBLIC std::list<File> code_gen_idl(const Config& config, parse_result* result);
+// INTERCOM_PUBLIC std::list<File> code_gen_json_schema(const Config& config, parse_result* result);
 
 }  // namespace cidl
 }  // namespace intercom

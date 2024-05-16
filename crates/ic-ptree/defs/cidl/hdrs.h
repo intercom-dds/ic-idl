@@ -32,9 +32,10 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <set>
+#include <filesystem>
+#include <string_view>
+#include <vector>
 
-#include "InterCOM/string_view.h"
 #include "cidl/codegen.h"
 #include "cidl/idl_parser.h"
 #include "cidl/symbols.h"
@@ -49,17 +50,18 @@ enum ExtensibilityKind { FINAL_EXTENSIBILITY, EXTENSIBLE_EXTENSIBILITY, MUTABLE_
 ///     [should start a single line comment]
 /// \note returned string doesn't end with newline
 /// \warning not thread safe (std::ctime)
-std::string generate_info_header(const intercom::fs::path& src_file, const std::string& single_line_comment_start = "");
+std::string generate_info_header(const std::filesystem::path& src_file,
+                                 const std::string& single_line_comment_start = "");
 /// generates an info header to append to the start of all generated files
 /// \param src_file name of or path to source file (e.g. .idl file)
 /// \param single_line_comment_start start of every line (e.g. "//" or "#")
 ///     [should start a single line comment]
 /// \note returned string doesn't end with newline
 /// \warning not thread safe (std::ctime)
-std::string generate_info_header(const std::vector<intercom::fs::path>& src_files,
+std::string generate_info_header(const std::vector<std::filesystem::path>& src_files,
                                  const std::string& single_line_comment_start);
 
-std::string trim_include_name(intercom::fs::path name, bool trim_absolute);
+std::string trim_include_name(std::filesystem::path name, bool trim_absolute);
 void code_gen_cs(parse_result* result, std::list<File>* generated = nullptr);
 void code_gen_idl(parse_result* result, std::list<File>* generated = nullptr);
 void code_gen_json(parse_result* result, bool listonly);
@@ -79,7 +81,7 @@ void code_gen_xml(const parse_result* result);
 void transform_rust(parse_result* node);
 void generate_json_type(std::ostream& stream, const ptree* tree);
 void ast_dump(parse_result* result);
-std::string toml_emit_node(intercom::string_view name, const ptree* tree);
+std::string toml_emit_node(std::string_view name, const ptree* tree);
 
 void validate_proto(const ptree* node);
 
@@ -110,7 +112,7 @@ void mreset_l(struct memf* memf, lang_kind_t lang_kind);
 void mreset(struct memf* memf);
 int mempty(struct memf* memf);
 
-void mprintflv(struct memf** memfl, intercom::string_view format, intercom::string_view string);
+void mprintflv(struct memf** memfl, std::string_view format, std::string_view string);
 
 template <typename... Args>
 void mprintf(struct memf* memf, const std::string& format, Args&&... args) {

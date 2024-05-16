@@ -66,7 +66,7 @@ bool is_path_sep(char c) {
 #endif
 }
 
-std::string generate_info_header(const std::vector<intercom::fs::path>& src_files,
+std::string generate_info_header(const std::vector<std::filesystem::path>& src_files,
                                  const std::string& single_line_comment_start) {
     std::stringstream header;
     const std::time_t curr_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -108,11 +108,11 @@ std::string generate_info_header(const std::vector<intercom::fs::path>& src_file
     return header.str();
 }
 
-std::string generate_info_header(const intercom::fs::path& src_file, const std::string& single_line_comment_start) {
-    return generate_info_header(std::vector<intercom::fs::path>{src_file}, single_line_comment_start);
+std::string generate_info_header(const std::filesystem::path& src_file, const std::string& single_line_comment_start) {
+    return generate_info_header(std::vector<std::filesystem::path>{src_file}, single_line_comment_start);
 }
 
-std::string trim_include_name(intercom::fs::path name, bool trim_absolute) {
+std::string trim_include_name(std::filesystem::path name, bool trim_absolute) {
     auto file = name.replace_extension();
     std::string native = name.string();
     if (trim_absolute && (is_path_sep(native[0]) || (native[0] != '\0' && native[1] == ':' && is_path_sep(native[2])) ||
@@ -154,11 +154,11 @@ void incr_indent(struct memf* a_memf, int a_count) {
   Format modifiers:
      '~U' at start: emit only if not found earlier in file.
 */
-void mprintflv(struct memf** memfl, intercom::string_view format, intercom::string_view string) {
+void mprintflv(struct memf** memfl, std::string_view format, std::string_view string) {
     int iii;
     int tick = 0;
     int make_unique = 0;
-    intercom::string_view::const_iterator ppp;
+    std::string_view::const_iterator ppp;
 
     if (format.compare(0, 2, "~U") == 0) {
         string = string.substr(2);
@@ -167,7 +167,7 @@ void mprintflv(struct memf** memfl, intercom::string_view format, intercom::stri
     for (; *memfl; memfl++) {
         struct memf* memf = *memfl;
         if (make_unique && memf->memfile &&
-            intercom::string_view(memf->memfile).find(string) != intercom::string_view::npos) {
+            std::string_view(memf->memfile).find(string) != std::string_view::npos) {
             continue;
         }
 
@@ -351,7 +351,7 @@ bool write_if_changed(const std::string& file_name, const std::string& content) 
     }
     if (file_changed) {
         try {
-            intercom::fs::create_directories(intercom::fs::path(file_name).parent_path());
+            std::filesystem::create_directories(std::filesystem::path(file_name).parent_path());
             std::ofstream output{file_name};
             if (output.is_open()) {
                 output << content;

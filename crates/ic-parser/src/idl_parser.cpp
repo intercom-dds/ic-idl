@@ -891,7 +891,7 @@ namespace {
 void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
     std::set<std::string> input_file_set;
     for (auto& file : input_files) {
-        input_file_set.insert(intercom::fs::canonical(file.first));
+        input_file_set.insert(std::filesystem::canonical(file.first));
     }
     std::function<void(ptree*)> filter = [&](ptree* tree) {
         if (!tree) {
@@ -913,7 +913,7 @@ void suppress_content_from_includes(parse_result& result, const FileList& input_
 void update_include_paths(parse_result& result, const FileList& input_files) {
     std::map<std::string, std::string> path_map;
     for (auto& file : input_files) {
-        path_map.emplace(intercom::fs::canonical(file.first), file.second);
+        path_map.emplace(std::filesystem::canonical(file.first), file.second);
     }
     std::function<void(ptree*)> filter = [&](ptree* tree) {
         if (!tree) {
@@ -1171,13 +1171,13 @@ bool run_preprocessor(const std::string& a_file_name, std::ostream& a_out, std::
     return run_preprocessor(a_file_name, std::vector<std::string>(), a_out, a_error);
 }
 
-static void collect_files_from_directory(const intercom::fs::path& a_base, const intercom::fs::path& a_dir,
+static void collect_files_from_directory(const std::filesystem::path& a_base, const std::filesystem::path& a_dir,
                                          FileList& a_files) {
-    for (const auto& f : intercom::fs::read_dir(a_dir)) {
-        if (intercom::fs::is_directory(f)) {
+    for (const auto& f : std::filesystem::read_dir(a_dir)) {
+        if (std::filesystem::is_directory(f)) {
             collect_files_from_directory(a_base, f, a_files);
         } else if (f.extension() == ".idl" || f.extension() == ".IDL") {
-            a_files.emplace_back(f, intercom::fs::relative(f, a_base));
+            a_files.emplace_back(f, std::filesystem::relative(f, a_base));
         }
     }
 }
@@ -1189,9 +1189,9 @@ parse_result run_parser(const std::vector<std::string>& input_files, const std::
 
     for (auto file : input_files) {
         // try tilde expansion on invalid path
-        if (!intercom::fs::exists(file)) {
+        if (!std::filesystem::exists(file)) {
             std::string expansion_error;
-            std::string expanded_path = intercom::fs::tilde_expand_path(file, expansion_error);
+            std::string expanded_path = std::filesystem::tilde_expand_path(file, expansion_error);
             if (expanded_path.empty()) {
                 parse_result err;
                 err.error_count++;
@@ -1205,16 +1205,16 @@ parse_result run_parser(const std::vector<std::string>& input_files, const std::
             }
             file = expanded_path;
         }
-        if (!intercom::fs::exists(file)) {
+        if (!std::filesystem::exists(file)) {
             parse_result err;
             err.error_count++;
             err.msg = fmt::format("failed to open file \"{}\"\n", file);
             return err;
         }
-        if (intercom::fs::is_directory(file)) {
+        if (std::filesystem::is_directory(file)) {
             collect_files_from_directory(file, file, expanded_files);
         } else {
-            expanded_files.emplace_back(file, intercom::fs::path(file).filename());
+            expanded_files.emplace_back(file, std::filesystem::path(file).filename());
         }
     }
 
@@ -1225,7 +1225,7 @@ parse_result run_parser(const std::vector<std::string>& input_files, const std::
 
         if (!json_input && !xml_input && !CommandLineOption::preprocessor_skip()) {
             std::string pp_err;
-            bool pp_success = intercom::cidl::run_preprocessor(intercom::fs::absolute(file.first).string(), pp_options,
+            bool pp_success = intercom::cidl::run_preprocessor(std::filesystem::absolute(file.first).string(), pp_options,
                                                                ostream, pp_err);
             if (!pp_success) {
                 parse_result err;
@@ -1238,7 +1238,7 @@ parse_result run_parser(const std::vector<std::string>& input_files, const std::
             if (fs) {
                 if (!json_input && !xml_input) {
                     ostream << "#included_as \"" << file.first << "\"" << std::endl;
-                    ostream << "# 1 \"" << intercom::fs::canonical(file.first) << "\"" << std::endl;
+                    ostream << "# 1 \"" << std::filesystem::canonical(file.first) << "\"" << std::endl;
                 }
                 ostream << fs.rdbuf();
                 fs.close();
@@ -1368,7 +1368,7 @@ void JsonParser::run(const std::string& input, const std::string& input_file_nam
     create_include_start(create_identifier(input_file_name.c_str()));
     std::string canonical_file_name;
     try {
-        canonical_file_name = intercom::fs::canonical(input_file_name);
+        canonical_file_name = std::filesystem::canonical(input_file_name);
     } catch (std::exception&) {
         canonical_file_name = input_file_name;
     }

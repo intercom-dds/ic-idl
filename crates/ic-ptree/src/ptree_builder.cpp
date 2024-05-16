@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     must include this legend. (C) 2020 KONGSBERG - All rights reserved */
 
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/ptree_builder.h"
 
 #include <algorithm>
 #include <array>
@@ -1345,9 +1345,9 @@ ptree* create_module_finish(ptree* def, struct position pos_end) {
     return p;
 }
 
-static bool is_scoped_literal(intercom::string_view name, const ptree* node) {
+static bool is_scoped_literal(std::string_view name, const ptree* node) {
     auto pos = name.find("::");
-    if (pos != intercom::string_view::npos) {
+    if (pos != std::string_view::npos) {
         pos += 2;
         size_t next = name.find("::", pos);
         return name.substr(pos, next - pos) == node->name;
@@ -3071,7 +3071,7 @@ void validate_node(ptree* node) {
             if (get_extensibility(*parent) != get_extensibility(node)) {
                 // Hack to skip X-Types 1.1 types
                 auto scoped = idl_scoped_name(node, nullptr);
-                if (!intercom::string_view(scoped).starts_with("intercom::viewer::v1_1")) {
+                if (!std::string_view(scoped).starts_with("intercom::viewer::v1_1")) {
                     ERR.context(node) << "Illegal extensibility on " << (*parent) << " for node " << node
                                       << ": derived types may not differ in extensibility. Parent is "
                                       << get_extensibility(*parent) << ", child is " << get_extensibility(node);
@@ -3131,7 +3131,7 @@ void format_doxy_comments(ptree* tree) {
         for (auto ann : tree->annotations) {
             if (ann->type == annotation_type_doc) {
                 for (auto text : ann->members) {
-                    if (intercom::string_view(text->name) == "text") {
+                    if (std::string_view(text->name) == "text") {
                         text->value.val.str(format_docstring(text->value.val.str().c_str(),
                                                              value<int32_t>(get_annotation_value(ann, "placement"))));
                     }

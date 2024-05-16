@@ -27,10 +27,22 @@
 
 #pragma once
 
-#include "InterCOM/intercom_dcps.h"
+#include <stdexcept>
+
 #include "cidl/constants.h"
 
 namespace intercom {
+
+template <typename T, typename... Args>
+constexpr T* construct_at(T* ptr, Args&&... args) {
+    return ::new (const_cast<void*>(static_cast<const volatile void*>(ptr))) T(std::forward<Args>(args)...);
+}
+
+template <typename T>
+void destroy_at(T* ptr) {
+    ptr->T::~T();
+}
+
 namespace cidl {
 
 struct numeric_storage {
@@ -126,7 +138,7 @@ struct numeric_storage {
         double d;
         int c;
         ::std::string str;
-        const ptree* node;
+        const ptree* node = nullptr;
     } m_ic_union_value;
     ::numeric_kind m_ic_discriminator_value;
     void free_union_();
@@ -853,6 +865,6 @@ struct numeric {
     intercom::cidl::numeric_storage val;
     const intercom::cidl::numeric_storage& operator*() const { return val; }
     const intercom::cidl::numeric_storage* operator->() const { return &val; }
-    numeric_kind kind() const { return val._d(); };
-    bool has_val() const { return kind() != UNDEF_KIND; }
+    [[nodiscard]] numeric_kind kind() const { return val._d(); };
+    [[nodiscard]] bool has_val() const { return kind() != UNDEF_KIND; }
 };

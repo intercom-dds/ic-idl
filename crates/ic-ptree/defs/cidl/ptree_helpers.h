@@ -72,7 +72,7 @@ INTERCOM_PUBLIC std::string default_topic_name(const ptree* node);
 INTERCOM_PUBLIC int somehow_contains_interfaces(const ptree* obj);
 INTERCOM_PUBLIC const ptree* base_type_of(const ptree*);
 INTERCOM_PUBLIC ptree* base_type_of(ptree*);
-INTERCOM_PUBLIC numeric get_annotation_value(const ptree* ann, intercom::string_view name = "value");
+INTERCOM_PUBLIC numeric get_annotation_value(const ptree* ann, std::string_view name = "value");
 INTERCOM_PUBLIC std::string get_root_filename(const ptree* node);
 INTERCOM_PUBLIC const ptree* original_node(const ptree* node);
 INTERCOM_PUBLIC bool is_signed(const ptree* node);

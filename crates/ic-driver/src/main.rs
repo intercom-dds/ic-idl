@@ -92,7 +92,7 @@ struct CodegenOptions {
 
     /// Generate JSON Schema files
     #[option(long, arg = "dir")]
-    json_schema_out: PathBuf,
+    schema_out: PathBuf,
 
     /// Generate TypeScript files
     #[option(long, arg = "dir")]
@@ -178,13 +178,6 @@ struct Options {
     files: HashSet<PathBuf>,
 }
 
-macro_rules! error {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
-    }}
-}
-
 #[derive(Command, Default)]
 struct Unstable {
     /// Print the AST in a tree-like format
@@ -198,6 +191,13 @@ struct Unstable {
     /// Insert IPR header in generated files
     #[option(long, arg = "file")]
     ipr_header: bool,
+}
+
+macro_rules! error {
+    ($($arg:tt)*) => {{
+        use ic_cli::color::Colorize as _;
+        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
+    }}
 }
 
 fn unstable_help() {
@@ -240,19 +240,10 @@ fn main() {
         return;
     }
 
-    for flag in &options.unstable {
-        match flag.as_str() {
-            "help" => {
-                return unstable_help();
-            }
-            _ => {
-                error!("unknown flag -Z{flag}");
-                std::process::exit(1);
-            }
-        }
+    if !options.unstable.is_empty() {
+        unstable_help();
+        return;
     }
-
-    backend_help();
 
     if options.files.is_empty() {
         error!("no input files");

@@ -41,10 +41,10 @@ const position POS{0, 0};
 
 static ptree* parse_any(const intercom::XMLElement&, const char**);
 
-static intercom::string_view tag_name(const intercom::XMLElement& elem) {
-    intercom::string_view name(elem.name());
+static std::string_view tag_name(const intercom::XMLElement& elem) {
+    std::string_view name(elem.name());
     auto pos = name.rfind(':');
-    if (pos != intercom::string_view::npos) {
+    if (pos != std::string_view::npos) {
         return name.substr(pos + 1);
     }
     return name;
@@ -237,11 +237,11 @@ static ptree* parse_include(const intercom::XMLElement& elem) {
         return nullptr;
     }
 
-    if (!intercom::fs::exists(uri)) {
+    if (!std::filesystem::exists(uri)) {
         for (const auto& inc : CommandLineOption::include_directories()) {
-            intercom::fs::path path(inc);
+            std::filesystem::path path(inc);
             path /= uri;
-            if (intercom::fs::exists(inc)) {
+            if (std::filesystem::exists(inc)) {
                 return intercom::cidl::parse_xml_file(uri);
             }
         }
@@ -446,7 +446,7 @@ static ptree* parse_member(const intercom::XMLElement& elem) {
     return member;
 }
 
-static bool apply_filter(intercom::string_view tag, const char** filter) {
+static bool apply_filter(std::string_view tag, const char** filter) {
     if (!filter) {
         return true;
     }
@@ -533,7 +533,7 @@ ptree* intercom::cidl::parse_xml(const std::string& input) {
 
 ptree* intercom::cidl::parse_xml_file(const std::string& uri) {
     try {
-        auto contents = intercom::fs::read_to_string(uri);
+        auto contents = std::filesystem::read_to_string(uri);
         create_include_start(create_identifier(uri.c_str()));
         current_input_file = get_symbol(uri.c_str());
         return create_include_finish(parse_xml(contents));

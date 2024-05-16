@@ -26,7 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::ops::ControlFlow;
+use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
 use ic_cli::Command;
@@ -36,16 +37,99 @@ use rayon::ThreadPoolBuilder;
 
 mod info;
 
+#[derive(Command, Default)]
 struct PpOptions {
+    /// Only preprocess the files
+    #[option(short = 'E', long)]
     preprocessor_only: bool,
+
+    /// Do not preprocess the files
+    #[option(short = 'X', long)]
     preprocessor_skip: bool,
+
+    /// Add directory to include search paths
+    #[option(short = 'I', long, arg = "dir")]
     include: Vec<PathBuf>,
+
+    /// Define <def> to <val> (or 1 if <val> is omitted)
+    #[option(short = 'D', long, arg = "def>=<val")]
     define: Vec<String>,
 }
 
+#[derive(Command, Default)]
 struct ParseOptions {
-    warning: Vec<String>,
+    /// Do not generate code for included files
+    #[option(short = 'H', long)]
+    no_header_follow: bool,
+
+    /// Enable specified warning
+    #[option(short = 'W', long, arg = "lint")]
+    warn: Vec<String>,
+
+    #[option(positional)]
     files: HashSet<PathBuf>,
+}
+
+#[derive(Command, Default)]
+struct CodegenOptions {
+    /// Generate C++ files
+    #[option(long, arg = "dir")]
+    cpp_out: PathBuf,
+
+    /// Generate Rust files
+    #[option(long, arg = "dir")]
+    rust_out: PathBuf,
+
+    /// Generate Protobuf files
+    #[option(long, arg = "dir")]
+    proto_out: PathBuf,
+
+    /// Generate IDL files
+    #[option(long, arg = "dir")]
+    idl_out: PathBuf,
+
+    /// Generate JSON files
+    #[option(long, arg = "dir")]
+    json_out: PathBuf,
+
+    /// Generate JSON Schema files
+    #[option(long, arg = "dir")]
+    json_schema_out: PathBuf,
+
+    /// Generate TypeScript files
+    #[option(long, arg = "dir")]
+    ts_out: PathBuf,
+
+    /// Generate XML schema files
+    #[option(long, arg = "dir")]
+    xml_out: PathBuf,
+}
+
+#[derive(Command, Default)]
+struct GlobalOptions {
+    // #[option(merge)]
+    // preprocessor: PpOptions,
+
+    // #[option(merge)]
+    // parser: ParseOptions,
+
+    // #[option(merge)]
+    // codegen: CodegenOptions,
+    /// Output list of files to be generated
+    #[option(short, long)]
+    list: bool,
+
+    /// Empty output directories before emitting code
+    #[option(long)]
+    purge_dirs: bool,
+
+    /// Display version information
+    #[option(short = 'V', long)]
+    version: bool,
+
+    /// Unstable flags, see `-Z help` for details
+    #[option(short = 'Z', arg = "flag")]
+    unstable: Vec<String>,
 }
 
 // TODO: expand Command to return a Vec<(option, description)>
@@ -68,7 +152,7 @@ struct Options {
     #[option(short, long)]
     list: bool,
 
-    /// Empty output directories before emitting code
+    /// Erase output directories before emitting code
     #[option(long)]
     purge_dirs: bool,
 
@@ -84,7 +168,7 @@ struct Options {
     #[option(short = 'W', long, arg = "lint")]
     warn: Vec<String>,
 
-    /// Unstable flags, see `ic-idl -Z help` for details
+    /// Unstable flags, see `-Z help` for details
     #[option(short = 'Z', arg = "flag")]
     unstable: Vec<String>,
 
@@ -112,14 +196,42 @@ struct Unstable {
     /// Dump the AST as JSON
     #[option(long)]
     ast_json: bool,
+
+    /// Insert IPR header in generated files
+    #[option(long, arg = "file")]
+    ipr_header: bool,
 }
 
 fn unstable_help() {
     let command = Unstable::command();
     let flags = command.format_args(|_| true).join("\n");
-    println!("{}", "unstable flags:".yellow());
+
+    println!("{}", "\nunstable flags:".yellow());
     println!("{flags}");
-    println!("\nRun with `{}`", "ic-idl -Z [FLAG] <files>...".green());
+    println!("\nRun with `{}`\n", "ic-idl -Z [FLAG] <files>...".green());
+    println!(
+        "{} unstable flags may change at any time in backward-incompatible ways",
+        "warning:".yellow(),
+    );
+}
+
+fn backend_help() {
+    let opts = Options::command().help();
+    let command = CodegenOptions::command();
+    let flags = command.format_args(|_| true).join("\n");
+    println!("{opts}");
+    println!("{}", "\nbackends".yellow());
+    println!("{flags}");
+}
+
+fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
+    let input = if options.preprocessor_skip {
+        std::fs::read_to_string(path)?
+    } else {
+        preprocess(path)?
+    };
+
+    Ok(input)
 }
 
 fn main() {
@@ -130,7 +242,7 @@ fn main() {
         return;
     }
 
-    for flag in options.unstable {
+    for flag in &options.unstable {
         match flag.as_str() {
             "help" => {
                 return unstable_help();
@@ -141,6 +253,8 @@ fn main() {
             }
         }
     }
+
+    backend_help();
 
     if options.files.is_empty() {
         error!("no input files");
@@ -156,9 +270,19 @@ fn main() {
         .build_global()
         .unwrap();
 
-    let generated: Result<Vec<_>, _> = options.files.par_iter().map(|f| preprocess(f)).collect();
+    let generated: Result<Vec<_>, _> = options
+        .files
+        .par_iter()
+        .map(|f| parse_file(&options, f))
+        .collect();
 
-    let generated = generated.unwrap();
+    let generated = match generated {
+        Ok(v) => v,
+        Err(e) => {
+            error!("{e}");
+            std::process::exit(1);
+        }
+    };
 
     if options.preprocessor_only {
         println!("{}", generated.join("\n"));

@@ -31,6 +31,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }
 ic-preproc = { path = "../ic-preproc" }
 rayon = "1.10"

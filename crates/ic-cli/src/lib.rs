@@ -115,6 +115,10 @@ impl CommandLine {
         self
     }
 
+    pub fn merge(mut self, command: CommandLine) -> Self {
+        self.opts(command.options.values().into_iter().cloned())
+    }
+
     pub fn subcommand(self, command: CommandLine) -> Self {
         drop(command);
         todo!();
@@ -292,7 +296,7 @@ impl CommandLine {
             .iter()
             .map(|v| {
                 let short = v.tokens.iter().filter(|v| v.len() == 1).count();
-                v.formatted().len() + 4 * short
+                v.formatted().len() // + 4 * short
             })
             .max()
             .unwrap_or(0);

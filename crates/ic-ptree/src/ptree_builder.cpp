@@ -39,9 +39,9 @@
 #include <utility>
 #include <vector>
 
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
+#include "cidl/hdrs.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
@@ -115,15 +115,32 @@ ptree object_type = create_interface_node("Object", UNDEF_KIND);
 
 namespace {
 bool is_numeric_type(const ptree* node) {
-    return node == &boolean_type || node == &int8_type || node == &octet_type || node == &char_type ||
-           node == &wchar_type || node == &short_type || node == &ushort_type || node == &long_type ||
-           node == &ulong_type || node == &longlong_type || node == &ulonglong_type || node == &float_type ||
+    return node == &boolean_type || node == &int8_type || node == &octet_type ||
+           node == &char_type || node == &wchar_type || node == &short_type ||
+           node == &ushort_type || node == &long_type || node == &ulong_type ||
+           node == &longlong_type || node == &ulonglong_type || node == &float_type ||
            node == &double_type || node == &ldouble_type || node == &fixed_type;
 }
 
-const node_kind TYPE_KIND[] = {N_PRIMITIVE, N_NATIVE, N_STRUCT, N_UNION,   N_VALUETYPE, N_INTERFACE,
-                               N_EXCEPTION, N_ENUM,   N_BITSET, N_BITMASK, N_SEQUENCE,  N_MAP,
-                               N_ARRAY,     N_STRING, N_FIXED,  N_ALIAS,   N_UNDEF};
+const node_kind TYPE_KIND[] = {
+    N_PRIMITIVE,
+    N_NATIVE,
+    N_STRUCT,
+    N_UNION,
+    N_VALUETYPE,
+    N_INTERFACE,
+    N_EXCEPTION,
+    N_ENUM,
+    N_BITSET,
+    N_BITMASK,
+    N_SEQUENCE,
+    N_MAP,
+    N_ARRAY,
+    N_STRING,
+    N_FIXED,
+    N_ALIAS,
+    N_UNDEF,
+};
 
 ptree* value_type(const numeric& value) {
     switch (value.kind()) {
@@ -174,8 +191,12 @@ bool is_of_type(const ptree* node, const node_kind kind[]) {
     return false;
 }
 
-ptree* lookup_name(const std::string& name, const std::map<std::string, ptree*>& lookup, const node_kind kind[],
-                   size_t level = g_state->context.size()) {
+ptree* lookup_name(
+    const std::string& name,
+    const std::map<std::string, ptree*>& lookup,
+    const node_kind kind[],
+    size_t level = g_state->context.size()
+) {
     ptree* res = nullptr;
     std::map<std::string, ptree*>::const_iterator it;
     if (name[0] == ':') {
@@ -185,13 +206,18 @@ ptree* lookup_name(const std::string& name, const std::map<std::string, ptree*>&
     } else {
         if (level > 0) {
             for (size_t i = 0; !res && i < g_state->context[level - 1].size(); ++i) {
-                res = lookup_name(lc_scoped_name(g_state->context[level - 1][i]) + "::" + name, lookup, kind,
-                                  level - 1);
+                res = lookup_name(
+                    lc_scoped_name(g_state->context[level - 1][i]) + "::" + name,
+                    lookup,
+                    kind,
+                    level - 1
+                );
             }
             if (res == nullptr) {
                 res = lookup_name(name, lookup, kind, level - 1);
             }
-        } else if ((it = lookup.find("::" + name)) != lookup.end() && is_of_type(it->second, kind)) {
+        } else if ((it = lookup.find("::" + name)) != lookup.end() &&
+                   is_of_type(it->second, kind)) {
             res = it->second;
         }
     }
@@ -215,8 +241,11 @@ T* append_to_list(T* list, T* node) {
     return list;
 }
 
-ptree* create_context_node(node_kind kind, identifier ident,
-                           const std::vector<ptree*>& parents = std::vector<ptree*>()) {
+ptree* create_context_node(
+    node_kind kind,
+    identifier ident,
+    const std::vector<ptree*>& parents = std::vector<ptree*>()
+) {
     ptree* node = create_node(kind, ident);
     node->parents = parents;
     register_node(node);
@@ -296,7 +325,8 @@ std::vector<std::string> split_doc_lines(const char* text, int placement) {
                     non_blank = std::string::npos;
                 }
             }
-            if (non_blank != std::string::npos && (whitespace == std::string::npos || non_blank < whitespace)) {
+            if (non_blank != std::string::npos &&
+                (whitespace == std::string::npos || non_blank < whitespace)) {
                 whitespace = non_blank;
             }
             lines.emplace_back(tmp);
@@ -394,12 +424,13 @@ ptree* create_doc(struct identifier ident, int post_doc) {
 }
 
 ptree* create_node(node_kind kind, identifier ident) {
-    intercom::RefPointer<ptree> p(new ptree);
+    std::shared_ptr<ptree> p(new ptree);
     p->kind = kind;
     if (ident.name) {
         p->name = ident.name;
     }
-    p->super = g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
+    p->super =
+        g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
     p->scope = p->super;
     p->file_name = current_input_file;
     p->pos = p->pos_end = ident.pos;
@@ -414,9 +445,9 @@ ptree* create_node(node_kind kind, identifier ident) {
 }
 
 ptree* duplicate_node(const ptree* node) {
-    intercom::RefPointer<ptree> p(new ptree);
+    std::shared_ptr<ptree> p(new ptree);
     g_state->allocated_nodes.push_back(p);
-    *p.get() = *node;
+    *p = *node;
     return p.get();
 }
 
@@ -492,8 +523,16 @@ static ptree* deep_clone_node(const ptree* node, std::map<const ptree*, ptree*>&
 
     auto scoped_name = lc_scoped_name(p.get());
     node_kind types[] = {
-            N_STRUCT,    N_UNION,  N_ENUM,    N_VALUETYPE,      N_INTERFACE,
-            N_EXCEPTION, N_BITSET, N_BITMASK, N_ANNOTATION_DEF, N_ALIAS,
+        N_STRUCT,
+        N_UNION,
+        N_ENUM,
+        N_VALUETYPE,
+        N_INTERFACE,
+        N_EXCEPTION,
+        N_BITSET,
+        N_BITMASK,
+        N_ANNOTATION_DEF,
+        N_ALIAS,
     };
 
     if (p->flags & OPT_DECLARATION) {
@@ -537,7 +576,9 @@ ptree* create_or_lookup_type(node_kind kind, identifier ident) {
 ptree* create_sub_array_value_type(const ptree* array, size_t depth) {
     declarator sub_array_type_decl;
     sub_array_type_decl.bounds = array->bounds;
-    sub_array_type_decl.bounds.erase(sub_array_type_decl.bounds.begin(), sub_array_type_decl.bounds.begin() + depth);
+    sub_array_type_decl.bounds.erase(
+        sub_array_type_decl.bounds.begin(), sub_array_type_decl.bounds.begin() + depth
+    );
     ptree* sub_arr = create_array_type(&sub_array_type_decl, array->element_type);
     return sub_arr;
 }
@@ -554,8 +595,8 @@ bool can_validate_dimensionality(const ptree* node) {
     }
 }
 
-/// counts #dimentions into all nested types as if they were the same type (except for nested strings)
-/// allows comparison with non normalized default values
+/// counts #dimentions into all nested types as if they were the same type (except for nested
+/// strings) allows comparison with non normalized default values
 size_t transitive_type_dimensions(const ptree* node) {
     node = base_type_of(node);
     for (size_t size = 0U;;) {
@@ -576,13 +617,15 @@ size_t transitive_type_dimensions(const ptree* node) {
 
 bool validate_dimensionality(const numeric& value, const ptree* type) {
     type = base_type_of(type);
-    // type transitive depth [counts dimensions beyond original type e.g. sequence<int8>[2] would be 2d (should be 1d)],
-    // since nested types are not yet defined in value
+    // type transitive depth [counts dimensions beyond original type e.g. sequence<int8>[2] would be
+    // 2d (should be 1d)], since nested types are not yet defined in value
     const size_t dimensions = value.kind() != STRING_KIND ? value_dimensions(value) : 0U;
     // mimics behaviour of value_dimensions(value) [pre update_value_type(value)]
     const size_t expected_dimensions = transitive_type_dimensions(type);
     if (expected_dimensions != dimensions && expected_dimensions != static_cast<size_t>(-1)) {
-        intercom::cidl::ParserMessage err(parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_ERROR);
+        intercom::cidl::ParserMessage err(
+            parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_ERROR
+        );
         err << "Expected " << expected_dimensions << " dimensional container";
         if (dimensions > 0) {
             err << ", but got " << dimensions;
@@ -598,7 +641,8 @@ bool validate_dimensionality(const numeric& value, const ptree* type) {
 }
 
 bool is_ref(const numeric& value) {
-    return value.kind() == PTREE_KIND && value.val.node()->kind == N_CONST && !value.val.node()->name.empty();
+    return value.kind() == PTREE_KIND && value.val.node()->kind == N_CONST &&
+           !value.val.node()->name.empty();
 }
 
 ptree* update_value_type_struct_rec(const ptree* type, ptree* value_elem);
@@ -630,17 +674,20 @@ void update_value_type(numeric& value, const ptree* type) {
         } else if (type->kind == N_MAP) {
             for (ptree* pair : value.val.node()->members) {
                 if (pair->value.kind() != PTREE_KIND || !pair->value.val.node()->members) {
-                    ERR.context(pair) << "Missing key value in map initializer. Expected {key, elem} pair";
+                    ERR.context(pair)
+                        << "Missing key value in map initializer. Expected {key, elem} pair";
                     return;
                 }
                 ptree* key = pair->value.val.node()->members;
                 ptree* elem = key->next;
                 if (!elem) {
-                    ERR.context(pair) << "Missing element value in map initializer. Expected {key, elem} pair";
+                    ERR.context(pair)
+                        << "Missing element value in map initializer. Expected {key, elem} pair";
                     return;
                 }
                 if (elem->next) {
-                    ERR.context(pair) << "Too many values in map initializer. Expected {key, elem} pair";
+                    ERR.context(pair)
+                        << "Too many values in map initializer. Expected {key, elem} pair";
                     return;
                 }
                 key->type = type->key_type;
@@ -659,7 +706,8 @@ void update_value_type(numeric& value, const ptree* type) {
             ptree* value_elem = value.val.node()->members;
             value_elem = update_value_type_struct_rec(type, value_elem);
             if (value_elem != nullptr) {
-                ERR << "Too many values supplied for type \"" << idl_scoped_name(type, nullptr) << "\"";
+                ERR << "Too many values supplied for type \"" << idl_scoped_name(type, nullptr)
+                    << "\"";
             }
         }
     }
@@ -708,9 +756,11 @@ void update_value_type_array_rec(numeric& value, const ptree* array, size_t dept
             sub_arrays++;
         }
         if (sub_arrays != bound) {
-            ERR << "Expected " << bound << " subarray" << (bound > 1U ? "s" : "") << ", but got " << sub_arrays;
+            ERR << "Expected " << bound << " subarray" << (bound > 1U ? "s" : "") << ", but got "
+                << sub_arrays;
             if (value.val.node()->members->value.kind() != PTREE_KIND) {
-                msg << " " << value.val.node()->members->value.kind() << (sub_arrays > 1 ? "s" : "");
+                msg << " " << value.val.node()->members->value.kind()
+                    << (sub_arrays > 1 ? "s" : "");
             }
         }
     } else {  // base element
@@ -807,8 +857,9 @@ bool has_all_type_values(ptree* type, const std::set<int>& values) {
     }
     const auto in_values = [&values](const int& i) { return values.find(i) != values.end(); };
     if (type->kind == N_ENUM) {
-        return std::all_of(begin(type->members), end(type->members),
-                           [&in_values](const ptree* m) { return in_values(integer_value(m->value)); });
+        return std::all_of(begin(type->members), end(type->members), [&in_values](const ptree* m) {
+            return in_values(integer_value(m->value));
+        });
     }
     if (type == &boolean_type) {
         return all_in_range(0, 2, in_values);
@@ -840,8 +891,9 @@ void update_enum_values(ptree* node) {
         for (auto m : node->members) {
             member_vec.push_back(m);
         }
-        std::sort(member_vec.begin(), member_vec.end(),
-                  [](ptree* lhs, ptree* rhs) { return long_long_value(lhs->value) < long_long_value(rhs->value); });
+        std::sort(member_vec.begin(), member_vec.end(), [](ptree* lhs, ptree* rhs) {
+            return long_long_value(lhs->value) < long_long_value(rhs->value);
+        });
         for (size_t i = 1; i < member_vec.size(); ++i) {
             member_vec[i - 1]->next = member_vec[i];
         }
@@ -865,8 +917,9 @@ void update_enum_values(ptree* node) {
         if (string_value(new_value) == string_value(m->value)) {
             m->value = new_value;
         } else {
-            WARN.context(node) << "Illegal value " << string_value(m->value) << " for member " << m->name << " of enum "
-                               << idl_scoped_name(node, nullptr) << ", expected " << string_value(new_value);
+            WARN.context(node) << "Illegal value " << string_value(m->value) << " for member "
+                               << m->name << " of enum " << idl_scoped_name(node, nullptr)
+                               << ", expected " << string_value(new_value);
         }
     }
 }
@@ -895,12 +948,17 @@ void copy_bounds(int*& target, const int* source) {
     }
 }
 
-void get_recursive_members_rec(ptree* original_node, ptree* member_node, std::vector<ptree*>& trace,
-                               std::vector<std::vector<ptree*>>& traces, std::set<ptree*>& visited,
-                               const std::function<bool(ptree* node)>& give_up_trace) {
+void get_recursive_members_rec(
+    ptree* original_node,
+    ptree* member_node,
+    std::vector<ptree*>& trace,
+    std::vector<std::vector<ptree*>>& traces,
+    std::set<ptree*>& visited,
+    const std::function<bool(ptree* node)>& give_up_trace
+) {
     const ptree* base_type = base_type_of(member_node);
-    if (!base_type || base_type->kind == N_ENUM || base_type->kind == N_BITSET || base_type->kind == N_BITMASK ||
-        give_up_trace(member_node)) {
+    if (!base_type || base_type->kind == N_ENUM || base_type->kind == N_BITSET ||
+        base_type->kind == N_BITMASK || give_up_trace(member_node)) {
         return;
     }
     trace.push_back(member_node);
@@ -926,11 +984,13 @@ void get_recursive_members_rec(ptree* original_node, ptree* member_node, std::ve
 
 /// returns vector of traces to nested member of same type as node.
 /// \param give_up_trace(ptree* node) will stop further search into given member node if true.
-///     \verbatim by default it will give up on members marked @external or @shared i.e. it ignores recursion through
-///     pointers \endvarbatim
+///     \verbatim by default it will give up on members marked @external or @shared i.e. it ignores
+///     recursion through pointers \endvarbatim
 inline std::vector<std::vector<ptree*>> get_recursive_members(
-        ptree* node,
-        const std::function<bool(ptree* node)>& give_up_trace = [](const ptree* n) { return is_shared(n) != 0; }) {
+    ptree* node,
+    const std::function<bool(ptree* node)>& give_up_trace = [](const ptree* n
+                                                            ) { return is_shared(n) != 0; }
+) {
     std::vector<std::vector<ptree*>> traces{};
     std::vector<ptree*> trace{};
     std::set<ptree*> visited{};
@@ -1011,11 +1071,13 @@ ptree* append_node(ptree* list, ptree* node) {
     }
 
     // If both last and node are doc annotations, combine them
-    if (annotation_type_doc != nullptr && node->type == annotation_type_doc && last->type == annotation_type_doc &&
-        node->included_from == last->included_from && (node->pos.line - last->pos_end.line) <= 1) {
+    if (annotation_type_doc != nullptr && node->type == annotation_type_doc &&
+        last->type == annotation_type_doc && node->included_from == last->included_from &&
+        (node->pos.line - last->pos_end.line) <= 1) {
         auto placement_lhs = value<int32_t>(get_annotation_value(last, "placement"));
         auto placement_rhs = value<int32_t>(get_annotation_value(node, "placement"));
-        if (placement_lhs == placement_rhs || (placement_lhs == BEGIN_FILE && placement_rhs == BEFORE_DECLARATION)) {
+        if (placement_lhs == placement_rhs ||
+            (placement_lhs == BEGIN_FILE && placement_rhs == BEFORE_DECLARATION)) {
             for (auto member : last->members) {
                 if (member->name == "text") {
                     member->value.val.str() += "\n" + get_annotation_value(node, "text").val.str();
@@ -1049,11 +1111,14 @@ ptree* append_node(ptree* list, ptree* node) {
                 break;
             }
             if (n->type != annotation_type_doc || is_doc_with_placement(n, BEFORE_DECLARATION) ||
-                (!is_doc_with_placement(n, AFTER_DECLARATION) && (node->pos.line - n->pos_end.line) <= 1)) {
+                (!is_doc_with_placement(n, AFTER_DECLARATION) &&
+                 (node->pos.line - n->pos_end.line) <= 1)) {
                 if (i > 1) {
                     node_vec[i - 2]->next = i < node_vec.size() ? node_vec[i] : nullptr;
                 }
-                node_vec.erase(node_vec.begin() + static_cast<decltype(node_vec)::difference_type>(i - 1));
+                node_vec.erase(
+                    node_vec.begin() + static_cast<decltype(node_vec)::difference_type>(i - 1)
+                );
                 n->next = new_annotations;
                 new_annotations = n;
             }
@@ -1096,9 +1161,11 @@ ptree* append_enum_node(ptree* list, ptree* node) {
         }
         ptree* value_ann = enum_node->annotations;
         for (; value_ann; value_ann = value_ann->next) {
-            if (value_ann->type == annotation_type_value || value_ann->type == annotation_type_position) {
+            if (value_ann->type == annotation_type_value ||
+                value_ann->type == annotation_type_position) {
                 if (value_ann->value.kind() == STRING_KIND) {
-                    value_ann->value = *lookup_value(create_identifier(value_ann->value.val.str().c_str()));
+                    value_ann->value =
+                        *lookup_value(create_identifier(value_ann->value.val.str().c_str()));
                 }
                 g_state->enum_counter = long_long_value(value_ann->value);
                 break;
@@ -1123,7 +1190,7 @@ declarator* append_decl(declarator* list, declarator* decl) {
 }
 
 declarator* create_decl(identifier ident, ptree* annotations) {
-    intercom::RefPointer<declarator> decl(new declarator);
+    std::shared_ptr<declarator> decl(new declarator);
     decl->ident = ident;
     decl->annotations = annotations;
     g_state->allocated_decl.push_back(decl);
@@ -1139,14 +1206,16 @@ identifier create_anon_name() {
 int register_node(ptree* p) {
     std::string lc_name = lc_scoped_name(p);
     if (g_state->type_map.find(lc_name) != g_state->type_map.end()) {
-        ERR.context(p) << "duplicate registration of name \"" << idl_scoped_name(p, nullptr) << "\" "
-                       << "(previous on line " << g_state->type_map[lc_name]->pos.line << ")";
+        ERR.context(p) << "duplicate registration of name \"" << idl_scoped_name(p, nullptr)
+                       << "\" " << "(previous on line " << g_state->type_map[lc_name]->pos.line
+                       << ")";
         return false;
     }
     if (g_state->type_dcl_map.find(lc_name) != g_state->type_dcl_map.end() &&
         g_state->type_dcl_map[lc_name]->kind != p->kind) {
-        ERR.context(p) << "inconsistent kind for previously declared type \"" << idl_scoped_name(p, nullptr) << "\" "
-                       << "(previous on line " << g_state->type_dcl_map[lc_name]->pos.line << ")";
+        ERR.context(p) << "inconsistent kind for previously declared type \""
+                       << idl_scoped_name(p, nullptr) << "\" " << "(previous on line "
+                       << g_state->type_dcl_map[lc_name]->pos.line << ")";
         return false;
     }
     g_state->type_map[lc_name] = p;
@@ -1176,8 +1245,8 @@ ptree* lookup_node(identifier ident) {
         const char* plain_name = strrchr(ident.name, ':');
         plain_name = plain_name ? plain_name + 1 : ident.name;
         if (type->name != plain_name) {
-            WARN.context(ident) << "Inconsistent capitalization \"" << ident.name << "\" for type \""
-                                << idl_scoped_name(type, nullptr) << "\"";
+            WARN.context(ident) << "Inconsistent capitalization \"" << ident.name
+                                << "\" for type \"" << idl_scoped_name(type, nullptr) << "\"";
         }
     }
     return type;
@@ -1191,8 +1260,8 @@ ptree* lookup_type(identifier ident) {
         const char* plain_name = strrchr(ident.name, ':');
         plain_name = plain_name ? plain_name + 1 : ident.name;
         if (type->name != plain_name) {
-            WARN.context(ident) << "Inconsistent capitalization \"" << ident.name << "\" for type \""
-                                << idl_scoped_name(type, nullptr) << "\"";
+            WARN.context(ident) << "Inconsistent capitalization \"" << ident.name
+                                << "\" for type \"" << idl_scoped_name(type, nullptr) << "\"";
         }
     }
     return type;
@@ -1291,7 +1360,7 @@ identifier fixed_name(const numeric& bound1, const numeric& bound2) {
 
 void create_include_start(identifier ident) {
     ptree* p = nullptr;
-    identifier new_ident;
+    identifier new_ident{};
     {
         // Remove surrounding brackets
         std::string new_name = ident.name;
@@ -1324,7 +1393,7 @@ ptree* create_include_finish(ptree* def) {
 }
 
 void create_module_start(identifier ident) {
-    static const node_kind module_kind[] = {N_MODULE};
+    const node_kind module_kind[] = {N_MODULE};
     ptree* p = create_node(N_MODULE, ident);
     ptree* prev = try_lookup_node(lc_scoped_name(p).c_str(), module_kind);
     if (!prev) {
@@ -1332,8 +1401,11 @@ void create_module_start(identifier ident) {
     } else if (prev->name != p->name) {
         const std::string scope_name = idl_scoped_name(p, nullptr);
         p->name = prev->name;
-        WARN.context(ident) << fmt::format("module {} was renamed to {} (inconsistent capitalization)", scope_name,
-                                           idl_scoped_name(prev, nullptr));
+        WARN.context(ident) << fmt::format(
+            "module {} was renamed to {} (inconsistent capitalization)",
+            scope_name,
+            idl_scoped_name(prev, nullptr)
+        );
     }
     push_context(p);
 }
@@ -1363,11 +1435,13 @@ const numeric* lookup_value(identifier ident) {
 
         if (base_type_of(p)->kind == N_ENUM && is_scoped_literal(ident.name, p)) {
             ALERT(CommandLineOption::WARNING_PEDANTIC)
-                    << "Scoped enums are an InterCOM extension. " << "Enum literals are registered in the parent scope";
+                << "Scoped enums are an InterCOM extension. "
+                << "Enum literals are registered in the parent scope";
         }
         return n;
     }
-    if (!g_state->context.empty() && g_state->context[g_state->context.size() - 1][0]->kind == N_ANNOTATION) {
+    if (!g_state->context.empty() &&
+        g_state->context[g_state->context.size() - 1][0]->kind == N_ANNOTATION) {
         auto n = new_numeric(PTREE_KIND);
         n->val.str(ident.name);
         return n;
@@ -1397,7 +1471,8 @@ static void validate_const_value_type(identifier ident, const ptree* complex_val
         if (node->kind == N_CONST && node->value->_d() == PTREE_KIND) {
             auto val = node->value->node();
             if (!is_primitive(val) && val->kind != N_STRING && val->kind != N_CONST) {
-                ERR.context(ident) << "Cannot assign " << val << " of type " << val->kind << " to const " << ident.name;
+                ERR.context(ident) << "Cannot assign " << val << " of type " << val->kind
+                                   << " to const " << ident.name;
             }
         }
         validate_const_value_type(ident, node->members);
@@ -1541,8 +1616,9 @@ ptree* create_struct_start(identifier ident, ptree* parent) {
 
     auto type = create_context_node(N_STRUCT, ident, parents);
     if (parent && (parent->flags & OPT_DECLARATION) != 0) {
-        ERR.context(parent) << "Structs can only inherit from previously defined types. Type " << type
-                            << " inherits from " << parent << " which has only been declared";
+        ERR.context(parent) << "Structs can only inherit from previously defined types. Type "
+                            << type << " inherits from " << parent
+                            << " which has only been declared";
     }
     return type;
 }
@@ -1592,10 +1668,13 @@ ptree* create_union_finish(ptree* discriminator, ptree* members, position pos_en
                 }
                 // case:
                 prev_case = c;
-                if (c->value.kind() == STRING_KIND || c->value.kind() == FLOAT_KIND || c->value.kind() == DOUBLE_KIND) {
-                    WARN.context(c) << fmt::format("union case type ({}) differs from union's discriminator type ({})",
-                                                   numeric_kind_str(c->value.kind()),
-                                                   idl_scoped_name(c->type, nullptr));
+                if (c->value.kind() == STRING_KIND || c->value.kind() == FLOAT_KIND ||
+                    c->value.kind() == DOUBLE_KIND) {
+                    WARN.context(c) << fmt::format(
+                        "union case type ({}) differs from union's discriminator type ({})",
+                        numeric_kind_str(c->value.kind()),
+                        idl_scoped_name(c->type, nullptr)
+                    );
                 }
                 if (c->type->kind == N_ENUM && c->value.kind() != PTREE_KIND) {
                     c->value = lookup_member_value(c->value, discriminator->type);
@@ -1603,9 +1682,11 @@ ptree* create_union_finish(ptree* discriminator, ptree* members, position pos_en
                 if (c->value.kind() != PTREE_KIND) {
                     c->value = *expr_convert(&c->value, c->type->value.kind());
                 } else if (base_type_of(c->value.val.node()->type) != base_type_of(c->type)) {
-                    ERR.context(c) << fmt::format("union case type ({}) differs from union's discriminator type ({})",
-                                                  idl_scoped_name(c->value.val.node()->type, nullptr),
-                                                  idl_scoped_name(c->type, nullptr));
+                    ERR.context(c) << fmt::format(
+                        "union case type ({}) differs from union's discriminator type ({})",
+                        idl_scoped_name(c->value.val.node()->type, nullptr),
+                        idl_scoped_name(c->type, nullptr)
+                    );
                 }
 
                 if (c->value.kind() != UNDEF_KIND) {
@@ -1637,8 +1718,9 @@ ptree* create_union_finish(ptree* discriminator, ptree* members, position pos_en
                 for (int i = 0; default_case->value.kind() == UNDEF_KIND; ++i) {
                     if (case_values.find(i) == case_values.end()) {
                         default_case->value.val.l(i);
-                        default_case->value =
-                                *expr_convert(&default_case->value, base_type_of(discriminator->type)->value.kind());
+                        default_case->value = *expr_convert(
+                            &default_case->value, base_type_of(discriminator->type)->value.kind()
+                        );
                     }
                 }
             }
@@ -1744,7 +1826,8 @@ ptree* create_type(declarator* declarators, ptree* type) {
     }
 
     ptree* res = nullptr;
-    ptree* scope = g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
+    ptree* scope =
+        g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
 
     if (type->super == scope && type->next == nullptr) {
         if (type->name[0] == '<') {
@@ -1826,7 +1909,8 @@ ptree* annotate(ptree* node, ptree* annotations) {
                 ptree* type_member = find_member(ann->type, m->name.c_str());
                 if (type_member && type_member->type == &any_type) {
                     node_kind lookup_kinds[] = {N_CONST};
-                    if (m->value.kind() == STRING_KIND && try_lookup_node(m->value.val.str().c_str(), lookup_kinds)) {
+                    if (m->value.kind() == STRING_KIND &&
+                        try_lookup_node(m->value.val.str().c_str(), lookup_kinds)) {
                         m->value = *lookup_value(create_identifier(m->value.val.str().c_str()));
                     } else if (m->value.kind() != PTREE_KIND) {
                         m->value = *expr_convert(&m->value, base_type_of(node)->value.kind());
@@ -1882,15 +1966,16 @@ ptree* annotate(ptree* node, ptree* annotations) {
                         if (string_value(new_value) == string_value(m->value)) {
                             m->value = new_value;
                         } else {
-                            WARN.context(node) << "Illegal value " << string_value(m->value) << " for member "
-                                               << m->name << " of enum " << idl_scoped_name(node, nullptr)
-                                               << ", expected " << string_value(new_value);
+                            WARN.context(node)
+                                << "Illegal value " << string_value(m->value) << " for member "
+                                << m->name << " of enum " << idl_scoped_name(node, nullptr)
+                                << ", expected " << string_value(new_value);
                         }
                     }
                     if (bits < 1 || bits > 32) {
                         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                                << "Bit bound value " << bits << " outside of legal range [1, 32] for "
-                                << idl_scoped_name(node, nullptr);
+                            << "Bit bound value " << bits << " outside of legal range [1, 32] for "
+                            << idl_scoped_name(node, nullptr);
                     }
                 } else if (node->kind == N_BITMASK) {
                     if (bits <= 8) {
@@ -1905,8 +1990,8 @@ ptree* annotate(ptree* node, ptree* annotations) {
                     node->value = node->element_type->value;
                     if (bits < 1 || bits > 64) {
                         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                                << "Bit bound value " << bits << " outside of legal range [1, 64] for "
-                                << idl_scoped_name(node, nullptr);
+                            << "Bit bound value " << bits << " outside of legal range [1, 64] for "
+                            << idl_scoped_name(node, nullptr);
                     }
                     for (auto m : node->members) {
                         int bit_count = 0;
@@ -1916,8 +2001,9 @@ ptree* annotate(ptree* node, ptree* annotations) {
                             v >>= 1;
                         }
                         if (bit_count > bits) {
-                            WARN.context(node) << "Illegal value " << string_value(m->value) << " for member "
-                                               << m->name << " of bitmask " << idl_scoped_name(node, nullptr);
+                            WARN.context(node)
+                                << "Illegal value " << string_value(m->value) << " for member "
+                                << m->name << " of bitmask " << idl_scoped_name(node, nullptr);
                         }
                         m->value = *expr_convert(&m->value, node->element_type->value.kind());
                     }
@@ -1928,7 +2014,7 @@ ptree* annotate(ptree* node, ptree* annotations) {
                     const_cast<ptree*>(ann->value.val.node())->flags |= OPT_SEQUENCE_LENGTH;
                 } else {
                     ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                            << "Unknown length value for sequence repeat annotation";
+                        << "Unknown length value for sequence repeat annotation";
                 }
             }
             if (ann->type == annotation_type_default) {
@@ -1954,7 +2040,8 @@ ptree* annotate(ptree* node, ptree* annotations) {
                 do_add = false;
             }
             // Check for duplicates
-            for (ptree* existing = node->annotations; do_add && existing; existing = existing->next) {
+            for (ptree* existing = node->annotations; do_add && existing;
+                 existing = existing->next) {
                 if (existing == maybe_append) {
                     do_add = false;
                     break;
@@ -1964,7 +2051,8 @@ ptree* annotate(ptree* node, ptree* annotations) {
                 }
                 ptree* m1 = maybe_append->members;
                 ptree* m2 = existing->members;
-                while (m1 && m2 && m1->name == m2->name && string_value(m1->value) == string_value(m2->value)) {
+                while (m1 && m2 && m1->name == m2->name &&
+                       string_value(m1->value) == string_value(m2->value)) {
                     m1 = m1->next;
                     m2 = m2->next;
                 }
@@ -1972,8 +2060,8 @@ ptree* annotate(ptree* node, ptree* annotations) {
                     do_add = false;
                 } else {
                     ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                            << "Duplicate annotation @" << maybe_append->name << " on "
-                            << idl_scoped_name(node, nullptr);
+                        << "Duplicate annotation @" << maybe_append->name << " on "
+                        << idl_scoped_name(node, nullptr);
                 }
             }
             if (do_add) {
@@ -1988,14 +2076,15 @@ ptree* annotate(ptree* node, ptree* annotations) {
             numeric max = get_max_value(node);
             bool lt = min.has_val() && double_value(val) < double_value(min);
             bool gt = max.has_val() && double_value(val) > double_value(max);
-            if (lt || gt) {  // (lt && gt) is not handled correctly, but it causes an error during ptree validation
+            if (lt || gt) {  // (lt && gt) is not handled correctly, but it causes an error during
+                             // ptree validation
                 numeric rpl = gt ? max : min;
                 if (val.has_val()) {
                     std::string from = min.has_val() ? "[" + string_value(min) : "<-inf";
                     std::string to = max.has_val() ? string_value(max) + "]" : "inf>";
-                    WARN.context(node) << idl_scoped_name(node, nullptr) << "'s default value (" << string_value(val)
-                                       << ") out of range " << from << ", " << to << ". Using default value "
-                                       << string_value(rpl);
+                    WARN.context(node) << idl_scoped_name(node, nullptr) << "'s default value ("
+                                       << string_value(val) << ") out of range " << from << ", "
+                                       << to << ". Using default value " << string_value(rpl);
                     val = rpl;
                 } else if (!is_optional(node)) {
                     ptree* param = create_node(N_CONST, create_identifier("value"));
@@ -2079,7 +2168,13 @@ ptree* create_param_dcl(declarator* decl, ptree* type, int kind) {
     return node;
 }
 
-ptree* create_attribute(declarator* decl, ptree* type, declarator* getraises, declarator* setraises, int readonly) {
+ptree* create_attribute(
+    declarator* decl,
+    ptree* type,
+    declarator* getraises,
+    declarator* setraises,
+    int readonly
+) {
     ptree* node = create_node(N_MEMBER, decl->ident);
     register_node(node);
     node->type = type;
@@ -2212,7 +2307,9 @@ ptree* create_annotation_member(declarator* decl, ptree* type, const numeric* de
 
 void create_annotation_start(identifier ident) {
     ptree* node;
-    ptree* type = try_lookup_node((std::string("::intercom::annotations::") + (ident.name + 1)).c_str(), ANY_KIND);
+    ptree* type = try_lookup_node(
+        (std::string("::intercom::annotations::") + (ident.name + 1)).c_str(), ANY_KIND
+    );
     if (!type) {
         type = try_lookup_node(ident.name + 1, ANY_KIND);
     }
@@ -2225,7 +2322,8 @@ void create_annotation_start(identifier ident) {
     } else {
         identifier id = {ident.name + 1, ident.pos};
         node = create_node(N_ANNOTATION, id);
-        ALERT(CommandLineOption::WARNING_UNKNOWN_ANNOTATION) << "unknown annotation \"" << ident.name << "\"";
+        ALERT(CommandLineOption::WARNING_UNKNOWN_ANNOTATION)
+            << "unknown annotation \"" << ident.name << "\"";
     }
     push_context(node);
 }
@@ -2272,10 +2370,12 @@ ptree* create_annotation_finish(ptree* params) {
         node->type = annotation_type_extensibility;
         node->name = node->type->name;
         numeric value;
-        value.val.node(try_lookup_node("intercom::annotations::Extensibility::APPENDABLE", ANY_KIND));
+        value.val.node(try_lookup_node("intercom::annotations::Extensibility::APPENDABLE", ANY_KIND)
+        );
         params = create_annotation_param(create_identifier("value"), &value);
     }
-    node->scope = g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
+    node->scope =
+        g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
     node->super = node->scope;
     ptree* default_value = nullptr;
     ptree* first_value = nullptr;
@@ -2304,7 +2404,8 @@ ptree* create_annotation_finish(ptree* params) {
             if (default_value) {
                 el->name = default_value->name;
             } else {
-                WARN << "anonymous value given to annotation with missing default \"" << node->name << "\"";
+                WARN << "anonymous value given to annotation with missing default \"" << node->name
+                     << "\"";
                 return nullptr;
             }
         }
@@ -2323,7 +2424,8 @@ ptree* create_annotation_finish(ptree* params) {
                 if (it->second->value.kind() == UNDEF_KIND) {
                     arg->value = el->value;
                     arg->type = el->type;
-                } else if (arg->value.kind() == PTREE_KIND && arg->value->node()->type == el->type) {
+                } else if (arg->value.kind() == PTREE_KIND &&
+                           arg->value->node()->type == el->type) {
                     // Do nothing, const value type same as member type
                 } else if (el->type != &any_type) {
                     arg->value = *expr_convert(&arg->value, el->value.kind());
@@ -2332,16 +2434,18 @@ ptree* create_annotation_finish(ptree* params) {
             }
             if (arg->value.kind() == STRING_KIND && is_numeric_type(el->type)) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << "Unknown value \"" << arg->value.val.str() << "\" on annotation \"" << node->name << "\"";
+                    << "Unknown value \"" << arg->value.val.str() << "\" on annotation \""
+                    << node->name << "\"";
             }
             if (arg->value.kind() == UNDEF_KIND) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << "unknown value for argument " << arg->name << " to annotation \"" << node->name << "\"";
+                    << "unknown value for argument " << arg->name << " to annotation \""
+                    << node->name << "\"";
             }
             if (el->type && el->type->kind == N_ENUM && arg->value.kind() != PTREE_KIND) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << "unknown enumeration \"" << string_value(arg->value) << "\" for argument " << arg->name
-                        << " to annotation \"" << node->name << "\"";
+                    << "unknown enumeration \"" << string_value(arg->value) << "\" for argument "
+                    << arg->name << " to annotation \"" << node->name << "\"";
             }
         }
     }
@@ -2433,12 +2537,14 @@ declarator* set_array_bounds(declarator* decl, declarator* bounds) {
 }
 
 inline void validate_annotation_extensibility(const ptree* node) {
-    // @extensibility should not be a random string (i.e. other than "FINAL", "APPENDABLE", "MUTABLE" etc.)
+    // @extensibility should not be a random string (i.e. other than "FINAL", "APPENDABLE",
+    // "MUTABLE" etc.)
     const ptree* extensibility = get_annotation(node, annotation_type_extensibility);
     if (extensibility && extensibility->value.kind() == STRING_KIND) {
         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                << idl_scoped_name(node, nullptr) << " was given invalid input, \""
-                << string_value(extensibility->value) << "\", for annotation @" << annotation_type_extensibility->name;
+            << idl_scoped_name(node, nullptr) << " was given invalid input, \""
+            << string_value(extensibility->value) << "\", for annotation @"
+            << annotation_type_extensibility->name;
     }
 }
 
@@ -2452,19 +2558,19 @@ inline void validate_annotation_bit_bound(const ptree* node) {
         int val = get_bit_bound(node);
         if (max == 0) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " (" << base_type_of(node)->kind
-                    << ") is not a valid type for annotation @" << annotation_type_bit_bound->name;
+                << idl_scoped_name(node, nullptr) << " (" << base_type_of(node)->kind
+                << ") is not a valid type for annotation @" << annotation_type_bit_bound->name;
         } else if (val <= 0) {
-            // val < 0 causes superfluous warning, since using a signed type also causes a type warning, but this is
-            // slightly more informative
+            // val < 0 causes superfluous warning, since using a signed type also causes a type
+            // warning, but this is slightly more informative
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " was constrained to zero or less bits (\"" << val
-                    << "\") by use of @" << annotation_type_bit_bound->name << " annotation";
+                << idl_scoped_name(node, nullptr) << " was constrained to zero or less bits (\""
+                << val << "\") by use of @" << annotation_type_bit_bound->name << " annotation";
         } else if (max < val) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " was constrained to \"" << val
-                    << "\" bits, but its type does not have more than " << max << " bits (bad use of annotation @"
-                    << annotation_type_bit_bound->name << ')';
+                << idl_scoped_name(node, nullptr) << " was constrained to \"" << val
+                << "\" bits, but its type does not have more than " << max
+                << " bits (bad use of annotation @" << annotation_type_bit_bound->name << ')';
         }
     }
 }
@@ -2475,8 +2581,8 @@ inline void validate_annotation_topic(const ptree* node) {
         // @topic should not be used on nested type
         if (is_nested(node)) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " was annotated with @" << annotation_type_topic->name
-                    << ", despite being nested";
+                << idl_scoped_name(node, nullptr) << " was annotated with @"
+                << annotation_type_topic->name << ", despite being nested";
         }
     }
 }
@@ -2486,28 +2592,37 @@ inline void validate_annotation_verbatim(const ptree* node) {
         if (ann->type == annotation_type_verbatim) {
             // @verbatim should use supported language
             const numeric language = get_annotation_value(ann, "language");
-            const std::array<std::string, 8> supported_languages = {"*",    "c",   "c++", "cs",
-                                                                    "java", "idl", "ada", "python"};
-            if (language.kind() != STRING_KIND || std::find(supported_languages.begin(), supported_languages.end(),
-                                                            tolower(language.val.str())) == supported_languages.end()) {
+            const std::array<std::string, 8> supported_languages = {
+                "*", "c", "c++", "cs", "java", "idl", "ada", "python"
+            };
+            if (language.kind() != STRING_KIND || std::find(
+                                                      supported_languages.begin(),
+                                                      supported_languages.end(),
+                                                      tolower(language.val.str())
+                                                  ) == supported_languages.end()) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << idl_scoped_name(node, nullptr) << " is targeting unsupported language, \""
-                        << value<std::string>(language) << "\", with annotation @" << annotation_type_verbatim->name
-                        << "\n\tsupported languages are [ ";
+                    << idl_scoped_name(node, nullptr) << " is targeting unsupported language, \""
+                    << value<std::string>(language) << "\", with annotation @"
+                    << annotation_type_verbatim->name << "\n\tsupported languages are [ ";
                 msg.append(supported_languages.begin(), supported_languages.end()) << " ]";
             }
             // @verbatim should use supported placement
             const numeric placement = get_annotation_value(ann, "placement");
-            const std::array<std::string, 6> supported_placement = {"begin_file",        "before_declaration",
-                                                                    "begin_declaration", "end_declaration",
-                                                                    "after_declaration", "end_file"};
+            const std::array<std::string, 6> supported_placement = {
+                "begin_file",
+                "before_declaration",
+                "begin_declaration",
+                "end_declaration",
+                "after_declaration",
+                "end_file"
+            };
             if (placement.kind() != PTREE_KIND ||
                 idl_scoped_name(placement.val.node()->type, nullptr) !=
-                        std::string("intercom::annotations::verbatim::PlacementKind")) {
+                    std::string("intercom::annotations::verbatim::PlacementKind")) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << idl_scoped_name(node, nullptr) << " is using unsupported placement, \""
-                        << value<std::string>(placement) << "\", with annotation @" << annotation_type_verbatim->name
-                        << "\n\tsupported placements are [ ";
+                    << idl_scoped_name(node, nullptr) << " is using unsupported placement, \""
+                    << value<std::string>(placement) << "\", with annotation @"
+                    << annotation_type_verbatim->name << "\n\tsupported placements are [ ";
                 msg.append(supported_placement.begin(), supported_placement.end()) << " ]";
             }
         }
@@ -2520,12 +2635,16 @@ inline void validate_annotation_try_construct(const ptree* node) {
     if (try_construct) {
         const numeric val = get_annotation_value(try_construct, "value");
         std::string str_val = val.kind() == PTREE_KIND ? val.val.node()->name : "";
-        const std::array<std::string, 3> supported_fail_actions = {"discard", "use_default", "trim"};
-        if (std::find(supported_fail_actions.begin(), supported_fail_actions.end(), tolower(str_val)) ==
-            supported_fail_actions.end()) {
+        const std::array<std::string, 3> supported_fail_actions = {
+            "discard", "use_default", "trim"
+        };
+        if (std::find(
+                supported_fail_actions.begin(), supported_fail_actions.end(), tolower(str_val)
+            ) == supported_fail_actions.end()) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " is using unsupported value, \"" << value<std::string>(val)
-                    << "\", with annotation @" << annotation_type_try_construct->name << "\n\tsupported values are [ ";
+                << idl_scoped_name(node, nullptr) << " is using unsupported value, \""
+                << value<std::string>(val) << "\", with annotation @"
+                << annotation_type_try_construct->name << "\n\tsupported values are [ ";
             msg.append(supported_fail_actions.begin(), supported_fail_actions.end()) << " ]";
         }
     }
@@ -2536,28 +2655,30 @@ inline void validate_annotations_min_max(const ptree* node) {
         if (has_min_value(node) && has_min_value(node->type) &&
             double_value(get_min_value(node)) < double_value(get_min_value(node->type))) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " has min value smaller than min value for type";
+                << idl_scoped_name(node, nullptr)
+                << " has min value smaller than min value for type";
         }
         if (has_max_value(node) && has_max_value(node->type) &&
             double_value(get_max_value(node)) > double_value(get_max_value(node->type))) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " has max value larger than max value for type";
+                << idl_scoped_name(node, nullptr)
+                << " has max value larger than max value for type";
         }
         // Min and max should not be assigned to non-primitive types
         if (node->type->kind != N_ALIAS && node->type->kind != N_PRIMITIVE && has_min_value(node)) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " has min value set on non-primitive type";
+                << idl_scoped_name(node, nullptr) << " has min value set on non-primitive type";
         }
         if (node->type->kind != N_ALIAS && node->type->kind != N_PRIMITIVE && has_max_value(node)) {
             ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                    << idl_scoped_name(node, nullptr) << " has max value set on non-primitive type";
+                << idl_scoped_name(node, nullptr) << " has max value set on non-primitive type";
         }
     }
     // Test that min <= max
     if (has_min_value(node) && has_max_value(node) &&
         double_value(get_min_value(node)) > double_value(get_max_value(node))) {
         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                << node->super << "::" << node << " has min value larger than max value";
+            << node->super << "::" << node << " has min value larger than max value";
     }
 }
 
@@ -2566,11 +2687,12 @@ inline void validate_annotation_default_literal(const ptree* node) {
     if (node->kind == N_ENUM && get_annotation(node, annotation_type_default)) {
         for (auto elem : node->members) {
             if (get_annotation(elem, annotation_type_default_literal)) {
-                numeric num = get_annotation_value(get_annotation(node, annotation_type_default), "value");
+                numeric num =
+                    get_annotation_value(get_annotation(node, annotation_type_default), "value");
                 if (num.kind() != PTREE_KIND || num.val.node() != elem) {
                     ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                            << "Type " << idl_scoped_name(node, nullptr)
-                            << " has inconsistent default value and default_literal for " << elem;
+                        << "Type " << idl_scoped_name(node, nullptr)
+                        << " has inconsistent default value and default_literal for " << elem;
                 }
             }
         }
@@ -2584,7 +2706,7 @@ inline void validate_annotation_default_literal(const ptree* node) {
     }
     if (literal_count > 1) {
         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                << "Type " << idl_scoped_name(node, nullptr) << " has multiple default literals";
+            << "Type " << idl_scoped_name(node, nullptr) << " has multiple default literals";
     }
 }
 
@@ -2592,9 +2714,10 @@ inline void validate_annotation_indirection(ptree* node) {
     if (node->kind == N_STRUCT || node->kind == N_UNION) {
         auto rec_member_traces = get_recursive_members(node);
         if (!rec_member_traces.empty()) {
-            ERR.context(node) << idl_scoped_name(node, nullptr)
-                              << " is recursive (contains non pointer element of same type as itself) because of member"
-                              << (rec_member_traces.size() > 1 ? "s" : "") << ":\n\t";
+            ERR.context(node
+            ) << idl_scoped_name(node, nullptr)
+              << " is recursive (contains non pointer element of same type as itself) because of member"
+              << (rec_member_traces.size() > 1 ? "s" : "") << ":\n\t";
             for (const auto& member_trace : rec_member_traces) {
                 msg << node->name;
                 for (const ptree* member : member_trace) {
@@ -2603,22 +2726,28 @@ inline void validate_annotation_indirection(ptree* node) {
                 }
                 msg << "\n\t";
             }
-            msg << "hint:\n\tannotate a member in " << (rec_member_traces.size() > 1 ? "every " : "the ")
+            msg << "hint:\n\tannotate a member in "
+                << (rec_member_traces.size() > 1 ? "every " : "the ")
                 << "trace with @external or @shared (to turn the member into a pointer)\n\t";
         }
     }
 }
 
 inline void validate_annotation_combinations(const ptree* node) {
-    // sets of annotations that shouldn't exist on the same node (doesn't check underlying alias types)
-    static const std::vector<std::vector<const ptree* const*>> s_mutually_exclusive_annotation_sets = {
+    // sets of annotations that shouldn't exist on the same node (doesn't check underlying alias
+    // types)
+    static const std::vector<std::vector<const ptree* const*>>
+        s_mutually_exclusive_annotation_sets = {
             {&annotation_type_id, &annotation_type_autoid, &annotation_type_hashid},
-            // mutually exclusive with self means only one instance of this annotation is allowed (doesn't catch
-            // identical annotations i.e. 2 x @min(0), but will catch @min(0)  @min(1))
+            // mutually exclusive with self means only one instance of this annotation is allowed
+            // (doesn't catch identical annotations i.e. 2 x @min(0), but will catch @min(0)
+            // @min(1))
             {&annotation_type_optional},
             {&annotation_type_position},
             {&annotation_type_value},
-            {&annotation_type_extensibility, &annotation_type_final, &annotation_type_mutable,
+            {&annotation_type_extensibility,
+             &annotation_type_final,
+             &annotation_type_mutable,
              &annotation_type_appendable},
             {&annotation_type_shared, &annotation_type_external},
             {&annotation_type_must_understand},
@@ -2633,11 +2762,14 @@ inline void validate_annotation_combinations(const ptree* node) {
             {&annotation_type_try_construct},
             // @non_serialized  @key should be an ERR, not just WARN
             {&annotation_type_non_serialized, &annotation_type_key},
-            {&annotation_type_merge, &annotation_type_non_serialized, &annotation_type_ext_no_serializer},
+            {&annotation_type_merge,
+             &annotation_type_non_serialized,
+             &annotation_type_ext_no_serializer},
             {&annotation_type_data_representation},
             {&annotation_type_oneway},
             {&annotation_type_ami},
-            {&annotation_type_ignore_literal_names}};
+            {&annotation_type_ignore_literal_names}
+        };
     const std::set<const ptree*> s_allow_different_duplicates{annotation_type_topic};
 
     std::vector<std::set<const ptree*>> found;
@@ -2651,19 +2783,25 @@ inline void validate_annotation_combinations(const ptree* node) {
                 if (annotation->type == *type) {
                     for (auto conflicting_annotation : found[i]) {
                         const bool duplicate_ann = annotation->type == conflicting_annotation->type;
-                        if (duplicate_ann &&
-                            s_allow_different_duplicates.find(annotation->type) != s_allow_different_duplicates.end()) {
+                        if (duplicate_ann && s_allow_different_duplicates.find(annotation->type) !=
+                                                 s_allow_different_duplicates.end()) {
                             continue;
                         }
-                        if (!duplicate_ann && (is_ignored(annotation) || is_ignored(conflicting_annotation))) {
+                        if (!duplicate_ann &&
+                            (is_ignored(annotation) || is_ignored(conflicting_annotation))) {
                             continue;
                         }
                         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                                << fmt::format("{} was annotated with", idl_scoped_name(node, nullptr))
-                                << (duplicate_ann
-                                            ? fmt::format(" conflicting values for annotation @{}", annotation->name)
-                                            : fmt::format(" incompatible annotations @{} and @{}",
-                                                          conflicting_annotation->name, annotation->name));
+                            << fmt::format("{} was annotated with", idl_scoped_name(node, nullptr))
+                            << (duplicate_ann
+                                    ? fmt::format(
+                                          " conflicting values for annotation @{}", annotation->name
+                                      )
+                                    : fmt::format(
+                                          " incompatible annotations @{} and @{}",
+                                          conflicting_annotation->name,
+                                          annotation->name
+                                      ));
                     }
                     found[i].insert(annotation);
                 }
@@ -2686,7 +2824,11 @@ inline const ptree* skip_wrappers(const ptree* node) {
 
 inline void validate_annotation_types(const ptree* node) {
     enum KindCombinationLogic { EITHER_OR, BOTH_AND };
-    enum DiscriminatorPolicy { CAN_BE_DISCRIMINATOR, SHOULD_BE_DISCRIMINATOR, SHOULD_NOT_BE_DISCRIMINATOR };
+    enum DiscriminatorPolicy {
+        CAN_BE_DISCRIMINATOR,
+        SHOULD_BE_DISCRIMINATOR,
+        SHOULD_NOT_BE_DISCRIMINATOR
+    };
     struct ValidAnnotationContext {
         const ptree* const* annotation;
         const std::vector<node_kind> node_kinds;
@@ -2695,54 +2837,62 @@ inline void validate_annotation_types(const ptree* node) {
         const DiscriminatorPolicy discriminator_policy;
         // whether both node_kinds and parent_kinds must be valid whitelists, or just one of them
         const KindCombinationLogic kind_combination_logic;
-        ValidAnnotationContext(const ptree* const* annotation, std::vector<node_kind> node_kinds,
-                               std::vector<node_kind> parent_kinds, const DiscriminatorPolicy& discriminator_policy,
-                               const KindCombinationLogic& kind_combination_logic = EITHER_OR)
-                : annotation(annotation),
-                  node_kinds(std::move(node_kinds)),
-                  parent_kinds(std::move(parent_kinds)),
-                  discriminator_policy(discriminator_policy),
-                  kind_combination_logic(kind_combination_logic) {}
+        ValidAnnotationContext(
+            const ptree* const* annotation,
+            std::vector<node_kind> node_kinds,
+            std::vector<node_kind> parent_kinds,
+            const DiscriminatorPolicy& discriminator_policy,
+            const KindCombinationLogic& kind_combination_logic = EITHER_OR
+        )
+            : annotation(annotation),
+              node_kinds(std::move(node_kinds)),
+              parent_kinds(std::move(parent_kinds)),
+              discriminator_policy(discriminator_policy),
+              kind_combination_logic(kind_combination_logic) {}
     };
-    static const std::vector<node_kind> s_constructed_types{N_STRUCT, N_UNION,     N_ENUM,      N_BITMASK,
-                                                            N_BITSET, N_INTERFACE, N_PROTOTYPE, N_VALUETYPE};
+    static const std::vector<node_kind> s_constructed_types{
+        N_STRUCT, N_UNION, N_ENUM, N_BITMASK, N_BITSET, N_INTERFACE, N_PROTOTYPE, N_VALUETYPE
+    };
     static const std::vector<node_kind> s_aggregated_types{N_STRUCT, N_UNION};
     // sets of expected kinds/types for a given annotation
     // not a map, since the map can not be indexed before all annotations have been parsed
     static const std::vector<ValidAnnotationContext> s_valid_annotation_contexts{
-            // XTypes 1.3 chapter 7.6.2
-            {&annotation_type_topic, s_aggregated_types, {}, CAN_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.6.2
+        {&annotation_type_topic, s_aggregated_types, {}, CAN_BE_DISCRIMINATOR},
 
-            // XTypes 1.3 chapter 7.3.1.2.2, but extended with N_UNION for parent types
-            {&annotation_type_optional, {}, s_aggregated_types, CAN_BE_DISCRIMINATOR},
-            // XTypes 1.3 chapter 7.3.1.2.2
-            {&annotation_type_must_understand, {}, s_aggregated_types, CAN_BE_DISCRIMINATOR},
-            {&annotation_type_non_serialized, s_constructed_types, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2, but extended with N_UNION for parent types
+        {&annotation_type_optional, {}, s_aggregated_types, CAN_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2
+        {&annotation_type_must_understand, {}, s_aggregated_types, CAN_BE_DISCRIMINATOR},
+        {&annotation_type_non_serialized,
+         s_constructed_types,
+         s_aggregated_types,
+         SHOULD_NOT_BE_DISCRIMINATOR},
 
-            // XTypes 1.3 chapter 7.3.1.2.2
-            {&annotation_type_id, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
-            {&annotation_type_hashid, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
-            {&annotation_type_external, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
-            {&annotation_type_try_construct, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2
+        {&annotation_type_id, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
+        {&annotation_type_hashid, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
+        {&annotation_type_external, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
+        {&annotation_type_try_construct, {}, s_aggregated_types, SHOULD_NOT_BE_DISCRIMINATOR},
 
-            // XTypes 1.3 chapter 7.3.1.2.2
-            {&annotation_type_key, {}, s_aggregated_types, SHOULD_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2
+        {&annotation_type_key, {}, s_aggregated_types, SHOULD_BE_DISCRIMINATOR},
 
-            // XTypes 1.3 chapter 7.3.1.2.2
-            {&annotation_type_extensibility, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
-            {&annotation_type_mutable, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
-            {&annotation_type_appendable, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
-            {&annotation_type_final, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
-            {&annotation_type_nested, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2
+        {&annotation_type_extensibility, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
+        {&annotation_type_mutable, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
+        {&annotation_type_appendable, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
+        {&annotation_type_final, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
+        {&annotation_type_nested, s_constructed_types, {}, CAN_BE_DISCRIMINATOR},
 
-            // XTypes 1.3 chapter 7.3.1.2.2
-            {&annotation_type_position, {}, {N_BITMASK}, CAN_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2
+        {&annotation_type_position, {}, {N_BITMASK}, CAN_BE_DISCRIMINATOR},
 
-            // XTypes 1.3 chapter 7.3.1.2.2
-            {&annotation_type_autoid, {N_MODULE, N_STRUCT, N_UNION}, {}, SHOULD_NOT_BE_DISCRIMINATOR},
+        // XTypes 1.3 chapter 7.3.1.2.2
+        {&annotation_type_autoid, {N_MODULE, N_STRUCT, N_UNION}, {}, SHOULD_NOT_BE_DISCRIMINATOR},
 
-            // should cause ERR
-            {&annotation_type_merge, {N_STRUCT}, {N_STRUCT}, SHOULD_NOT_BE_DISCRIMINATOR, BOTH_AND}
+        // should cause ERR
+        {&annotation_type_merge, {N_STRUCT}, {N_STRUCT}, SHOULD_NOT_BE_DISCRIMINATOR, BOTH_AND}
 
     };
 
@@ -2750,46 +2900,59 @@ inline void validate_annotation_types(const ptree* node) {
     for (const ValidAnnotationContext& valid_context : s_valid_annotation_contexts) {
         for (const ptree* annotation : node->annotations) {
             if (annotation->type == *valid_context.annotation && !is_ignored(annotation)) {
-                bool valid_node = std::any_of(valid_context.node_kinds.begin(), valid_context.node_kinds.end(),
-                                              [&node](const node_kind& k) { return skip_wrappers(node)->kind == k; });
+                bool valid_node = std::any_of(
+                    valid_context.node_kinds.begin(),
+                    valid_context.node_kinds.end(),
+                    [&node](const node_kind& k) { return skip_wrappers(node)->kind == k; }
+                );
 
                 bool valid_parent =
-                        node->kind == N_ALIAS /* does not really have a parent */ ||
-                        (node->super &&
-                         std::any_of(valid_context.parent_kinds.begin(), valid_context.parent_kinds.end(),
-                                     [&node](const node_kind& k) { return skip_wrappers(node->super)->kind == k; }));
+                    node->kind == N_ALIAS /* does not really have a parent */ ||
+                    (node->super && std::any_of(
+                                        valid_context.parent_kinds.begin(),
+                                        valid_context.parent_kinds.end(),
+                                        [&node](const node_kind& k) {
+                                            return skip_wrappers(node->super)->kind == k;
+                                        }
+                                    ));
 
-                if (valid_context.kind_combination_logic == BOTH_AND || (!valid_node && !valid_parent)) {
+                if (valid_context.kind_combination_logic == BOTH_AND ||
+                    (!valid_node && !valid_parent)) {
                     if (!valid_node && !valid_context.node_kinds.empty()) {
                         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                                << idl_scoped_name(node, nullptr) << " was annotated with @"
-                                << (*valid_context.annotation)->name << ", but is not of type [ ";
-                        msg.append(valid_context.node_kinds.begin(), valid_context.node_kinds.end()) << " ]";
+                            << idl_scoped_name(node, nullptr) << " was annotated with @"
+                            << (*valid_context.annotation)->name << ", but is not of type [ ";
+                        msg.append(valid_context.node_kinds.begin(), valid_context.node_kinds.end())
+                            << " ]";
                     }
                     if (!valid_parent && !valid_context.parent_kinds.empty()) {
                         ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                                << idl_scoped_name(node, nullptr) << " was annotated with @"
-                                << (*valid_context.annotation)->name << ", but is not a member of type [ ";
-                        msg.append(valid_context.parent_kinds.begin(), valid_context.parent_kinds.end()) << " ]";
+                            << idl_scoped_name(node, nullptr) << " was annotated with @"
+                            << (*valid_context.annotation)->name
+                            << ", but is not a member of type [ ";
+                        msg.append(
+                            valid_context.parent_kinds.begin(), valid_context.parent_kinds.end()
+                        ) << " ]";
                     }
                 }
                 // check if node is not a discriminator when it should be
                 if (valid_context.discriminator_policy == SHOULD_BE_DISCRIMINATOR && node->super &&
                     node->super->kind == N_UNION) {
                     ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                            << idl_scoped_name(node, nullptr) << " was annotated with @"
-                            << (*valid_context.annotation)->name << ", but is not the UNION's discriminator";
+                        << idl_scoped_name(node, nullptr) << " was annotated with @"
+                        << (*valid_context.annotation)->name
+                        << ", but is not the UNION's discriminator";
                 }
             }
         }
         // check if discriminator has invalid annotation
         if (node->discriminator) {
             for (const ptree* annotation : node->discriminator->annotations) {
-                if (valid_context.discriminator_policy == SHOULD_NOT_BE_DISCRIMINATOR && !is_ignored(annotation) &&
-                    annotation->type == *valid_context.annotation) {
+                if (valid_context.discriminator_policy == SHOULD_NOT_BE_DISCRIMINATOR &&
+                    !is_ignored(annotation) && annotation->type == *valid_context.annotation) {
                     ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                            << idl_scoped_name(node, nullptr) << "'s discriminator was annotated with @"
-                            << annotation->name;
+                        << idl_scoped_name(node, nullptr) << "'s discriminator was annotated with @"
+                        << annotation->name;
                 }
             }
         }
@@ -2816,30 +2979,33 @@ inline void validate_annotation_members(const ptree* node) {
             // validate that value/member is expected
             if (!expected_member) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << idl_scoped_name(node, nullptr) << " got unexpected value \"" << member->name
-                        << "\", for annotation @" << annotation->name;
+                    << idl_scoped_name(node, nullptr) << " got unexpected value \"" << member->name
+                    << "\", for annotation @" << annotation->name;
             }
             // validate that value/member has defined values for all expected & user defined values
             else if (member->value.kind() == UNDEF_KIND) {
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << idl_scoped_name(node, nullptr) << " missing value \"" << member->name
-                        << "\", for annotation @" << annotation->name;
+                    << idl_scoped_name(node, nullptr) << " missing value \"" << member->name
+                    << "\", for annotation @" << annotation->name;
             }
             // validate that value/member has expected type (or similar)
-            else if (expected_member->type && actual_value.kind() != expected_member->type->value.kind() &&
-                     // unlike expr_convert(), this complains on signed to unsigned underflow (e.g. -1 => 255).
-                     // However, @default has its value/member "value" converted by expr_convert() before it gets
-                     // here, so {@default(-1) octet} is fine, but @id(-1) is not
-                     value<std::string>(*expr_convert(const_cast<numeric*>(&member->value),
-                                                      expected_member->type->value.kind())) !=
-                             value<std::string>(actual_value)) {
-                auto str1 = value<std::string>(
-                        *expr_convert(const_cast<numeric*>(&member->value), expected_member->type->value.kind()));
+            else if (expected_member->type &&
+                     actual_value.kind() != expected_member->type->value.kind() &&
+                     // unlike expr_convert(), this complains on signed to unsigned underflow (e.g.
+                     // -1 => 255). However, @default has its value/member "value" converted by
+                     // expr_convert() before it gets here, so {@default(-1) octet} is fine, but
+                     // @id(-1) is not
+                     value<std::string>(*expr_convert(
+                         const_cast<numeric*>(&member->value), expected_member->type->value.kind()
+                     )) != value<std::string>(actual_value)) {
+                auto str1 = value<std::string>(*expr_convert(
+                    const_cast<numeric*>(&member->value), expected_member->type->value.kind()
+                ));
                 auto str2 = value<std::string>(actual_value);
                 ALERT(CommandLineOption::WARNING_ANNOTATION).context(node)
-                        << idl_scoped_name(node, nullptr) << " got type \"" << member->value.kind()
-                        << "\", but expected " << expected_member->type->value.kind() << ", for value \""
-                        << member->name << "\" in annotation @" << annotation->name;
+                    << idl_scoped_name(node, nullptr) << " got type \"" << member->value.kind()
+                    << "\", but expected " << expected_member->type->value.kind()
+                    << ", for value \"" << member->name << "\" in annotation @" << annotation->name;
             }
         }
     }
@@ -2849,7 +3015,8 @@ inline void validate_annotation_members(const ptree* node) {
 void validate_annotations(ptree* node) {
     // Both external and optional is not supported
     if (is_shared(node) && is_optional(node)) {
-        ERR.context(node) << "Member " << node << " cannot be both optional and external in scope " << node->super;
+        ERR.context(node) << "Member " << node << " cannot be both optional and external in scope "
+                          << node->super;
     }
     // Both merge and inheritance is not supported
     if (is_merged(node) && node->super && !base_type_of(node->super)->parents.empty()) {
@@ -2859,7 +3026,9 @@ void validate_annotations(ptree* node) {
     }
     // Both optional and default is not allowed
     if (has_default_value(node) && is_optional(node)) {
-        ERR.context(node) << "Annotating members with both @default and @optional is not allowed on node " << node;
+        ERR.context(node
+        ) << "Annotating members with both @default and @optional is not allowed on node "
+          << node;
     }
     // these functions validate more specific deviations
     validate_annotation_bit_bound(node);
@@ -2878,10 +3047,27 @@ void validate_annotations(ptree* node) {
 }
 
 void validate_node(ptree* node) {
-    node_kind has_members[] = {N_MODULE,    N_INCLUDE,        N_STRUCT,     N_UNION,     N_MEMBER, N_NULL,
-                               N_VALUETYPE, N_INTERFACE,      N_PROTOTYPE,  N_EXCEPTION, N_ENUM,   N_BITSET,
-                               N_BITMASK,   N_ANNOTATION_DEF, N_ANNOTATION, N_UNDEF};
-    node_kind has_subtype[] = {N_SEQUENCE, N_MAP, N_ARRAY, N_STRING, N_FIXED, N_ENUM, N_BITMASK, N_UNDEF};
+    node_kind has_members[] = {
+        N_MODULE,
+        N_INCLUDE,
+        N_STRUCT,
+        N_UNION,
+        N_MEMBER,
+        N_NULL,
+        N_VALUETYPE,
+        N_INTERFACE,
+        N_PROTOTYPE,
+        N_EXCEPTION,
+        N_ENUM,
+        N_BITSET,
+        N_BITMASK,
+        N_ANNOTATION_DEF,
+        N_ANNOTATION,
+        N_UNDEF
+    };
+    node_kind has_subtype[] = {
+        N_SEQUENCE, N_MAP, N_ARRAY, N_STRING, N_FIXED, N_ENUM, N_BITMASK, N_UNDEF
+    };
     node_kind has_type[] = {N_ALIAS, N_CONST, N_MEMBER, N_CASE, N_PROTOTYPE, N_ANNOTATION, N_UNDEF};
     node_kind can_declare[] = {N_STRUCT, N_UNION, N_VALUETYPE, N_INTERFACE, N_CONST, N_UNDEF};
     node_kind is_member[] = {N_MEMBER, N_CASE, N_PROTOTYPE, N_UNDEF};
@@ -2897,24 +3083,30 @@ void validate_node(ptree* node) {
 
         // If node has members, it must be a type with members
         if (node->members && !is_of_type(node, has_members)) {
-            ERR.context(node) << "Unexpected members in node " << node << " with kind " << node->kind;
+            ERR.context(node) << "Unexpected members in node " << node << " with kind "
+                              << node->kind;
         }
 
         // Only nodes with subtype shall have an element type, and they must have one
         if (node->element_type && !is_of_type(node, has_subtype)) {
-            ERR.context(node) << "Unexpected element type in node " << node << " with kind " << node->kind;
+            ERR.context(node) << "Unexpected element type in node " << node << " with kind "
+                              << node->kind;
         } else if (!node->element_type && is_of_type(node, has_subtype)) {
-            ERR.context(node) << "Missing element type in node " << node << " with kind " << node->kind;
+            ERR.context(node) << "Missing element type in node " << node << " with kind "
+                              << node->kind;
         }
 
         // Only declarable nodes can have a declaration
         if ((node->flags & OPT_DECLARATION) && !is_of_type(node, can_declare)) {
-            ERR.context(node) << "Unexpected declaration of " << node << " with kind " << node->kind;
+            ERR.context(node) << "Unexpected declaration of " << node << " with kind "
+                              << node->kind;
         }
 
-        // Warn on use of long double. Not an error since it might still be useful to run e.g. IDL->IDL.
+        // Warn on use of long double. Not an error since it might still be useful to run e.g.
+        // IDL->IDL.
         if (is_of_type(node, is_member) && !is_local(node) &&
-            (base_type_of(node) == &ldouble_type || base_type_of(node->element_type) == &ldouble_type ||
+            (base_type_of(node) == &ldouble_type ||
+             base_type_of(node->element_type) == &ldouble_type ||
              base_type_of(node->key_type) == &ldouble_type)) {
             WARN.context(node) << "Size of long double type of " << node << " in " << node->scope
                                << " is platform dependent and probably not 128 bit";
@@ -2928,19 +3120,21 @@ void validate_node(ptree* node) {
 
             // Declarations points to their definition through type.
             if (!is_of_type(node, has_type) && !(node->flags & OPT_DECLARATION)) {
-                ERR.context(node) << "Unexpected type in node " << node << " with kind " << node->kind;
+                ERR.context(node) << "Unexpected type in node " << node << " with kind "
+                                  << node->kind;
             }
 
             // Type shall never point to a declaration
             if (node->type->flags & OPT_DECLARATION) {
-                ERR.context(node) << "Type " << node->type << " for node " << node << " with kind " << node->kind
-                                  << " only declared, not defined";
+                ERR.context(node) << "Type " << node->type << " for node " << node << " with kind "
+                                  << node->kind << " only declared, not defined";
             }
 
             // Some kinds (such as include and module) cannot be a type
             if (is_of_type(node->type, illegal_types)) {
-                ERR.context(node) << "Type " << node->type << " with kind " << node->type->kind << " for node " << node
-                                  << " with kind " << node->kind << " is not a legal type kind";
+                ERR.context(node) << "Type " << node->type << " with kind " << node->type->kind
+                                  << " for node " << node << " with kind " << node->kind
+                                  << " is not a legal type kind";
             }
         }
         // Prototypes may have a null (return) type, others must have a non-null type
@@ -2981,16 +3175,20 @@ void validate_node(ptree* node) {
                     }
                 }
             }
-            if (has_all_type_values(node->discriminator->type, case_values) && has_default_case(node)) {
-                ERR.context(node) << "Default labels are not allowed when all possible discriminator values are "
-                                     "covered in union "
-                                  << node;
+            if (has_all_type_values(node->discriminator->type, case_values) &&
+                has_default_case(node)) {
+                ERR.context(node
+                ) << "Default labels are not allowed when all possible discriminator values are "
+                     "covered in union "
+                  << node;
             }
 
             // Discirminators may not be annotated with @id or @hashid
             if (get_annotation(node->discriminator, annotation_type_id) ||
                 get_annotation(node->discriminator, annotation_type_hashid)) {
-                ERR.context(node) << "Discriminators cannot be annotated with @id or @hashid for union " << node;
+                ERR.context(node
+                ) << "Discriminators cannot be annotated with @id or @hashid for union "
+                  << node;
             }
         }
 
@@ -3015,7 +3213,8 @@ void validate_node(ptree* node) {
             if (node->kind == N_MAP && !(node->flags & OPT_DECLARATION) &&
                 !is_of_type(base_type_of(node->key_type), valid_map_key)) {
                 ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
-                        << "Complex map key type " << node->key_type << " are not supported by IDL " << node;
+                    << "Complex map key type " << node->key_type << " are not supported by IDL "
+                    << node;
             }
 
             // The intended behavior of mixing extensibility for members is not
@@ -3026,7 +3225,8 @@ void validate_node(ptree* node) {
                 for (auto mem : node->members) {
                     if (is_of_type(mem->type, has_members) && get_extensibility(mem->type) > ext) {
                         ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
-                                << "Type " << node << " has member " << mem << " with different extensibility";
+                            << "Type " << node << " has member " << mem
+                            << " with different extensibility";
                     }
                 }
             }
@@ -3037,8 +3237,8 @@ void validate_node(ptree* node) {
                 if (base->kind != N_PRIMITIVE && node->kind != N_STRING && node->kind != N_ENUM &&
                     node->kind != N_BITMASK) {
                     ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
-                            << "Specifying default values for complex types is an InterCOM extension. Related to node "
-                            << node;
+                        << "Specifying default values for complex types is an InterCOM extension. Related to node "
+                        << node;
                 }
             }
         }
@@ -3069,13 +3269,11 @@ void validate_node(ptree* node) {
 
             // All parents must have the same extensibility
             if (get_extensibility(*parent) != get_extensibility(node)) {
-                // Hack to skip X-Types 1.1 types
-                auto scoped = idl_scoped_name(node, nullptr);
-                if (!std::string_view(scoped).starts_with("intercom::viewer::v1_1")) {
-                    ERR.context(node) << "Illegal extensibility on " << (*parent) << " for node " << node
-                                      << ": derived types may not differ in extensibility. Parent is "
-                                      << get_extensibility(*parent) << ", child is " << get_extensibility(node);
-                }
+                ERR.context(node) << "Illegal extensibility on " << (*parent) << " for node "
+                                  << node
+                                  << ": derived types may not differ in extensibility. Parent is "
+                                  << get_extensibility(*parent) << ", child is "
+                                  << get_extensibility(node);
             }
         }
 
@@ -3083,8 +3281,8 @@ void validate_node(ptree* node) {
         if (!node->parents.empty()) {
             for (auto member : node->members) {
                 if (is_key_member(member)) {
-                    ERR.context(node) << "Derived types may not define any key fields: field " << member << " in node "
-                                      << node;
+                    ERR.context(node) << "Derived types may not define any key fields: field "
+                                      << member << " in node " << node;
                 }
             }
         }
@@ -3100,14 +3298,32 @@ void validate_node(ptree* node) {
 }
 
 void validate_tree(ptree* node) {
-    node_kind tree_types[] = {N_ANNOTATION_DEF, N_MODULE,    N_STRUCT, N_UNION,  N_VALUETYPE,  N_INTERFACE,
-                              N_PROTOTYPE,      N_EXCEPTION, N_ENUM,   N_BITSET, N_BITMASK,    N_CASE,
-                              N_CONST,          N_MEMBER,    N_ALIAS,  N_NULL,   N_ANNOTATION, N_UNDEF};
+    node_kind tree_types[] = {
+        N_ANNOTATION_DEF,
+        N_MODULE,
+        N_STRUCT,
+        N_UNION,
+        N_VALUETYPE,
+        N_INTERFACE,
+        N_PROTOTYPE,
+        N_EXCEPTION,
+        N_ENUM,
+        N_BITSET,
+        N_BITMASK,
+        N_CASE,
+        N_CONST,
+        N_MEMBER,
+        N_ALIAS,
+        N_NULL,
+        N_ANNOTATION,
+        N_UNDEF
+    };
 
     while (node) {
         // Node found in traversal must be one of the valid tree types
         if (!is_of_type(node, tree_types)) {
-            ERR.context(node) << "Unexpected node " << node << " of type " << node->kind << " in tree";
+            ERR.context(node) << "Unexpected node " << node << " of type " << node->kind
+                              << " in tree";
         }
 
         validate_node(node);
@@ -3115,7 +3331,8 @@ void validate_tree(ptree* node) {
         // validate node's original_members that are not in node's members
         for (ptree* original_member : node->original_members) {
             if (is_merged(original_member) &&
-                std::find(begin(node->members), end(node->members), original_member) == end(node->members)) {
+                std::find(begin(node->members), end(node->members), original_member) ==
+                    end(node->members)) {
                 validate_node(original_member);
                 validate_annotations(original_member);
             }
@@ -3132,8 +3349,10 @@ void format_doxy_comments(ptree* tree) {
             if (ann->type == annotation_type_doc) {
                 for (auto text : ann->members) {
                     if (std::string_view(text->name) == "text") {
-                        text->value.val.str(format_docstring(text->value.val.str().c_str(),
-                                                             value<int32_t>(get_annotation_value(ann, "placement"))));
+                        text->value.val.str(format_docstring(
+                            text->value.val.str().c_str(),
+                            value<int32_t>(get_annotation_value(ann, "placement"))
+                        ));
                     }
                 }
             }
@@ -3148,4 +3367,4 @@ ptree* parser::lookup_node(const char* a_name) const {
     return it != type_map.end() ? it->second : nullptr;
 }
 
-intercom::RefPointer<parser> intercom::cidl::g_state;
+std::shared_ptr<parser> intercom::cidl::g_state;

@@ -61,7 +61,8 @@ INTERCOM_PUBLIC uint32_t member_name_hash_id(const std::string& name);
 
 /// \note skips first enum or bitmask scope
 /// \details Cidl understands mod::EnumType::VALUE, but should not use enum scopes in emitted idl.
-/// i.e., mod::VALUE should be emitted instead of mod::EnumType::VALUE. (OMG IDL-4.2 is limited to C's enum paradigm)
+/// i.e., mod::VALUE should be emitted instead of mod::EnumType::VALUE. (OMG IDL-4.2 is limited to
+/// C's enum paradigm)
 INTERCOM_PUBLIC std::string idl_scoped_name(const ptree* node, const ptree* context);
 /// same as idl_scoped_name, but does not skip scopes
 /// \note do not use in idl output

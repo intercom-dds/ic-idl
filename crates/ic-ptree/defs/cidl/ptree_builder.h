@@ -85,7 +85,8 @@ const struct numeric* lookup_value(struct identifier ident);
 
 const struct numeric* create_value_node(const struct numeric* value, struct ptree* members);
 
-struct ptree* create_const_node(struct declarator* decl, struct ptree* type, const struct numeric* value);
+struct ptree*
+create_const_node(struct declarator* decl, struct ptree* type, const struct numeric* value);
 
 struct ptree* create_sequence(struct ptree* element_type, const struct numeric* bound);
 
@@ -119,13 +120,16 @@ struct ptree* create_struct_dcl(struct identifier ident);
 
 struct ptree* create_union_start(struct identifier ident);
 
-struct ptree* create_union_finish(struct ptree* discriminator, struct ptree* members, struct position pos_end);
+struct ptree*
+create_union_finish(struct ptree* discriminator, struct ptree* members, struct position pos_end);
 
 struct ptree* create_union_dcl(struct identifier ident);
 
-struct ptree* create_member(struct declarator* declarators, struct ptree* type, struct ptree* annotations);
+struct ptree*
+create_member(struct declarator* declarators, struct ptree* type, struct ptree* annotations);
 
-struct ptree* create_union_member(struct ptree* value, struct ptree* cases, struct ptree* annotations);
+struct ptree*
+create_union_member(struct ptree* value, struct ptree* cases, struct ptree* annotations);
 
 struct ptree* create_case_label(const struct numeric* value);
 
@@ -159,21 +163,38 @@ struct ptree* annotate_list(struct ptree* node, struct ptree* annotations);
 
 struct ptree* annotate_last(struct ptree* node, struct ptree* annotations);
 
-struct ptree* create_interface_op(struct identifier ident, struct ptree* params, struct ptree* retval,
-                                  struct declarator* raises);
+struct ptree* create_interface_op(
+    struct identifier ident,
+    struct ptree* params,
+    struct ptree* retval,
+    struct declarator* raises
+);
 
 struct ptree* create_param_dcl(struct declarator* decl, struct ptree* type, int kind);
 
-struct ptree* create_attribute(struct declarator* decl, struct ptree* type, struct declarator* getraises,
-                               struct declarator* setraises, int readonly);
+struct ptree* create_attribute(
+    struct declarator* decl,
+    struct ptree* type,
+    struct declarator* getraises,
+    struct declarator* setraises,
+    int readonly
+);
 
-struct ptree* create_map(struct ptree* key_type, struct ptree* element_type, const struct numeric* bound);
+struct ptree*
+create_map(struct ptree* key_type, struct ptree* element_type, const struct numeric* bound);
 
-struct ptree* create_bitset(struct identifier ident, struct ptree* fields, struct ptree* type, struct position pos_end);
+struct ptree* create_bitset(
+    struct identifier ident,
+    struct ptree* fields,
+    struct ptree* type,
+    struct position pos_end
+);
 
-struct ptree* create_bitfield(struct declarator* declarators, const struct numeric* bits, struct ptree* type);
+struct ptree*
+create_bitfield(struct declarator* declarators, const struct numeric* bits, struct ptree* type);
 
-struct ptree* create_bitmask(struct identifier ident, struct ptree* values, struct position pos_end);
+struct ptree*
+create_bitmask(struct identifier ident, struct ptree* values, struct position pos_end);
 
 struct ptree* create_bitmask_value(struct identifier ident, const struct numeric* value);
 
@@ -181,8 +202,11 @@ void create_annotation_dcl_start(struct identifier ident);
 
 struct ptree* create_annotation_dcl_finish(struct ptree* members, struct position pos_end);
 
-struct ptree* create_annotation_member(struct declarator* decl, struct ptree* type,
-                                       const struct numeric* default_value);
+struct ptree* create_annotation_member(
+    struct declarator* decl,
+    struct ptree* type,
+    const struct numeric* default_value
+);
 
 void create_annotation_start(struct identifier ident);
 
@@ -192,15 +216,18 @@ struct ptree* create_annotation_param(struct identifier ident, const struct nume
 
 struct ptree* create_valuetype_dcl(struct identifier ident);
 
-struct ptree* create_valuetype_start(struct identifier ident, struct ptree* parent, struct ptree* interface);
+struct ptree*
+create_valuetype_start(struct identifier ident, struct ptree* parent, struct ptree* interface);
 
 struct ptree* create_valuetype_finish(struct ptree* members, struct position pos_end);
 
-struct ptree* create_valuetype_factory(struct identifier ident, struct ptree* params, struct declarator* raises);
+struct ptree*
+create_valuetype_factory(struct identifier ident, struct ptree* params, struct declarator* raises);
 
 struct ptree* create_valuetype_factory_param(struct declarator* decl, struct ptree* type);
 
-struct ptree* create_valuetype_member(struct declarator* declarators, struct ptree* type, int is_public);
+struct ptree*
+create_valuetype_member(struct declarator* declarators, struct ptree* type, int is_public);
 
 struct declarator* append_array_size(struct declarator* decl, const struct numeric* value);
 
@@ -270,11 +297,16 @@ class ParserMessage {
     using WriterType = void (*)(const char*, const char*, int, CommandLineOption::WarningType);
 
     ParserMessage(WriterType writer, CommandLineOption::WarningType warning)
-            : line_number(current_pos.line), writer(writer), warning_type(warning) {}
+        : line_number(current_pos.line), writer(writer), warning_type(warning) {}
 
     ~ParserMessage() {
         if (context_node) {
-            writer(stream.str().c_str(), context_node->file_name.c_str(), context_node->pos.line, warning_type);
+            writer(
+                stream.str().c_str(),
+                context_node->file_name.c_str(),
+                context_node->pos.line,
+                warning_type
+            );
         } else {
             writer(stream.str().c_str(), current_input_file, line_number, warning_type);
         }
@@ -306,7 +338,9 @@ class ParserMessage {
         return *this;
     }
 
-    ParserMessage& operator<<(struct ptree* val) { return operator<<(static_cast<const struct ptree*>(val)); }
+    ParserMessage& operator<<(struct ptree* val) {
+        return operator<<(static_cast<const struct ptree*>(val));
+    }
 
     ParserMessage& operator<<(const struct ptree* val) {
         if (val) {
@@ -346,19 +380,28 @@ INTERCOM_PUBLIC extern std::mutex g_parse_mutex;
 }  // namespace intercom::cidl
 
 /// creates error, warning, or nothing depending on commandline user inputs
-void parse_alert(const char* msg, const char* file_name, int line_number, CommandLineOption::WarningType warning_type);
+void parse_alert(
+    const char* msg,
+    const char* file_name,
+    int line_number,
+    CommandLineOption::WarningType warning_type
+);
 
 /// creates error, warning, or nothing depending on commandline user inputs
 #  define ALERT(warning_type)                                       \
       intercom::cidl::ParserMessage msg(parse_alert, warning_type); \
       msg
 
-#  define ERR                                                                                         \
-      intercom::cidl::ParserMessage msg(parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_ERROR); \
+#  define ERR                                                         \
+      intercom::cidl::ParserMessage msg(                              \
+          parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_ERROR \
+      );                                                              \
       msg
 
-#  define WARN                                                                                          \
-      intercom::cidl::ParserMessage msg(parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_WARNING); \
+#  define WARN                                                          \
+      intercom::cidl::ParserMessage msg(                                \
+          parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_WARNING \
+      );                                                                \
       msg
 
 #endif

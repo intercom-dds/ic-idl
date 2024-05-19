@@ -70,7 +70,8 @@ struct File {
 
     File(std::string path) : path(std::move(path)) {}
 
-    File(std::string path, std::string&& content) : path(std::move(path)), content(std::move(content)) {}
+    File(std::string path, std::string&& content)
+        : path(std::move(path)), content(std::move(content)) {}
 };
 
 inline bool operator<(const File& lhs, const File& rhs) {

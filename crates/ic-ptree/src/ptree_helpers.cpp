@@ -31,7 +31,7 @@
 #include <cstring>
 
 #include "cidl/constants.h"
-#include "cidl/internal/hdrs.h"
+#include "cidl/hdrs.h"
 #include "cidl/symbols.h"
 #include "utils/StringUtils.h"
 
@@ -52,7 +52,8 @@ struct ptree* base_type_of(ptree* obj) {
 struct numeric get_min_value(const ptree* node, AnnotationGetter get) {
     const ptree* min = get(node, annotation_type_min);
     const ptree* range = get(node, annotation_type_range);
-    // node has @range and @max -> use the annotation deriving from node's closest type, with a preference for @min
+    // node has @range and @max -> use the annotation deriving from node's closest type, with a
+    // preference for @min
     while (node && min && range) {
         node = node->type;
         if (min != get(node, annotation_type_min)) {
@@ -61,7 +62,8 @@ struct numeric get_min_value(const ptree* node, AnnotationGetter get) {
             min = nullptr;
         }
     }
-    struct numeric num = min ? get_annotation_value(min, "value") : get_annotation_value(range, "min");
+    struct numeric num =
+        min ? get_annotation_value(min, "value") : get_annotation_value(range, "min");
     // Suppress zero or negative min values for unsigned types.
     if (num.kind() != UNDEF_KIND && double_value(num) <= 0.0 && is_unsigned(node)) {
         num = num_undef;
@@ -76,7 +78,8 @@ bool has_min_value(const ptree* node, AnnotationGetter get) {
 struct numeric get_max_value(const ptree* node, AnnotationGetter get) {
     const ptree* max = get(node, annotation_type_max);
     const ptree* range = get(node, annotation_type_range);
-    // node has @range and @max -> use the annotation deriving from node's closest type, with a preference for @max
+    // node has @range and @max -> use the annotation deriving from node's closest type, with a
+    // preference for @max
     while (node && max && range) {
         node = node->type;
         if (max != get(node, annotation_type_max)) {
@@ -85,7 +88,8 @@ struct numeric get_max_value(const ptree* node, AnnotationGetter get) {
             max = nullptr;
         }
     }
-    struct numeric num = max ? get_annotation_value(max, "value") : get_annotation_value(range, "max");
+    struct numeric num =
+        max ? get_annotation_value(max, "value") : get_annotation_value(range, "max");
     return num;
 }
 
@@ -178,7 +182,8 @@ const ptree* get_default_case(const ptree* node) {
 const ptree* default_union_member(const ptree* node) {
     for (auto mem : node->members) {
         for (auto cas : mem->members) {
-            if (integer_value(cas->value) == integer_value(get_default_value(node->discriminator))) {
+            if (integer_value(cas->value) ==
+                integer_value(get_default_value(node->discriminator))) {
                 return mem;
             }
         }
@@ -279,7 +284,7 @@ int is_minimumtypecheck(const ptree* node, AnnotationGetter get) {
 }
 
 static bool is_language(const std::string& value, Language lang) {
-    auto lower = StringUtils::toLowerCase(StringUtils::trimString(value));
+    auto lower = string_utils::to_lower_case(string_utils::trim_string(value));
     if (lower == "*") {
         return true;
     }
@@ -328,7 +333,8 @@ int is_primitive(const ptree* node) {
 
 int is_rpc_service(const ptree* node, AnnotationGetter get) {
     return node && node->kind == N_INTERFACE &&
-           (get(node, annotation_type_service) != nullptr || get(node, annotation_type_dds_service) != nullptr);
+           (get(node, annotation_type_service) != nullptr ||
+            get(node, annotation_type_dds_service) != nullptr);
 }
 
 int is_anonymous(const ptree* node) {
@@ -336,12 +342,14 @@ int is_anonymous(const ptree* node) {
 }
 
 int is_ignored(const ptree* ann) {
-    const bool only_one_member = ann->members && !ann->members->next && ann->type->members && !ann->type->members->next;
+    const bool only_one_member =
+        ann->members && !ann->members->next && ann->type->members && !ann->type->members->next;
     const numeric val = base_value_of(get_annotation_value(ann, "value"));
     const numeric type_val = base_value_of(get_annotation_value(ann->type, "value"));
-    // heuristic: annotation can only be deactivated if node only has one, default true, boolean value named "value"
-    return only_one_member && val.kind() == BOOLEAN_KIND && type_val.kind() == BOOLEAN_KIND && type_val.val.b() &&
-           !val.val.b();
+    // heuristic: annotation can only be deactivated if node only has one, default true, boolean
+    // value named "value"
+    return only_one_member && val.kind() == BOOLEAN_KIND && type_val.kind() == BOOLEAN_KIND &&
+           type_val.val.b() && !val.val.b();
 }
 
 std::string default_topic_name(const ptree* node) {
@@ -376,7 +384,9 @@ int get_extensibility(const ptree* node) {
 }
 
 const char* get_extensibility_name(const ptree* node) {
-    static const char* names[] = {"FINAL_EXTENSIBILITY", "EXTENSIBLE_EXTENSIBILITY", "MUTABLE_EXTENSIBILITY"};
+    const std::array<const char*, 3> names = {
+        "FINAL_EXTENSIBILITY", "EXTENSIBLE_EXTENSIBILITY", "MUTABLE_EXTENSIBILITY"
+    };
     return names[get_extensibility(node)];
 }
 
@@ -510,13 +520,14 @@ const ptree* original_node(const ptree* node) {
 bool is_signed(const ptree* node) {
     node = base_type_of(node);
     return node == &int8_type || node == &char_type || node == &wchar_type || node == &short_type ||
-           node == &long_type || node == &ulonglong_type || node == &float_type || node == &double_type ||
-           node == &ldouble_type;
+           node == &long_type || node == &ulonglong_type || node == &float_type ||
+           node == &double_type || node == &ldouble_type;
 }
 
 bool is_unsigned(const ptree* node) {
     node = base_type_of(node);
-    return node == &octet_type || node == &ushort_type || node == &ulong_type || node == &ulonglong_type;
+    return node == &octet_type || node == &ushort_type || node == &ulong_type ||
+           node == &ulonglong_type;
 }
 
 size_t list_len(const ptree* list) {
@@ -540,7 +551,8 @@ size_t type_dimensions(const ptree* node) {
         size = node->bounds.size();
         break;
     case N_SEQUENCE:
-        for (const ptree* element_type = base_type; element_type && element_type->kind == base_type->kind;
+        for (const ptree* element_type = base_type;
+             element_type && element_type->kind == base_type->kind;
              element_type = base_type_of(element_type->element_type)) {
             size++;
         }
@@ -576,8 +588,8 @@ size_t value_len(const ptree* node) {
 }
 
 const ptree* base_value_of(const ptree* node) {
-    while (node && !node->name.empty() && node->kind == N_CONST && node->value.kind() == PTREE_KIND &&
-           node->value.val.node()) {
+    while (node && !node->name.empty() && node->kind == N_CONST &&
+           node->value.kind() == PTREE_KIND && node->value.val.node()) {
         node = node->value.val.node();
     }
     return node;
@@ -633,13 +645,15 @@ int get_bit_size_of_type(const ptree* node) {
         return get_bit_size_of_type(base->element_type);
     }
     if (base->kind == N_PRIMITIVE) {
-        if (base == &boolean_type || base == &char_type || base == &int8_type || base == &octet_type) {
+        if (base == &boolean_type || base == &char_type || base == &int8_type ||
+            base == &octet_type) {
             return 8;
         }
         if (base == &short_type || base == &ushort_type) {
             return 16;
         }
-        if (base == &long_type || base == &ulong_type || base == &float_type || base == &wchar_type) {
+        if (base == &long_type || base == &ulong_type || base == &float_type ||
+            base == &wchar_type) {
             return 32;
         }
         if (base == &longlong_type || base == &ulonglong_type || base == &double_type) {

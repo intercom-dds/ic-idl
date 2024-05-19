@@ -34,16 +34,22 @@
 #include <sstream>
 #include <string>
 
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/keywords.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/commandline.h"
+#include "cidl/keywords.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
+#include "utils/IntegerTypes.h"
 #include "utils/MD5.h"
 
 static const char* get_constant_name(const char* name);
 
 namespace {
-void idl_scoped_name_rec(const ptree* node, const ptree* scope, const ptree* common_parent, std::stringstream& out) {
+void idl_scoped_name_rec(
+    const ptree* node,
+    const ptree* scope,
+    const ptree* common_parent,
+    std::stringstream& out
+) {
     if (node) {
         if (scope != common_parent) {
             idl_scoped_name_rec(scope, scope ? scope->super : nullptr, common_parent, out);
@@ -166,8 +172,8 @@ std::string safe_name(const ptree* node, const std::string& name, Language lang)
         delete[] buf;
     } else if (lang == LANG_CPP) {
         // exceptions inherit from std::runtime_error, which defines a virtual `what` function.
-        if (node->super && node->super->kind == N_EXCEPTION && CommandLineOption::cpp_access_functions() &&
-            node->name == "what") {
+        if (node->super && node->super->kind == N_EXCEPTION &&
+            CommandLineOption::cpp_access_functions() && node->name == "what") {
             res = "what_";
         }
     }
@@ -175,12 +181,15 @@ std::string safe_name(const ptree* node, const std::string& name, Language lang)
 }
 
 static bool is_constant_name(const char* name) {
-    return (name == boolean_type.name || name == octet_type.name || name == int8_type.name || name == char_type.name ||
-            name == wchar_type.name || name == short_type.name || name == ushort_type.name || name == long_type.name ||
-            name == ulong_type.name || name == longlong_type.name || name == ulonglong_type.name ||
-            name == float_type.name || name == double_type.name || name == ldouble_type.name ||
-            name == fixed_type.name || name == unbounded_string_type.name || name == unbounded_wstring_type.name ||
-            name == any_type.name || name == object_type.name);
+    return (
+        name == boolean_type.name || name == octet_type.name || name == int8_type.name ||
+        name == char_type.name || name == wchar_type.name || name == short_type.name ||
+        name == ushort_type.name || name == long_type.name || name == ulong_type.name ||
+        name == longlong_type.name || name == ulonglong_type.name || name == float_type.name ||
+        name == double_type.name || name == ldouble_type.name || name == fixed_type.name ||
+        name == unbounded_string_type.name || name == unbounded_wstring_type.name ||
+        name == any_type.name || name == object_type.name
+    );
 }
 
 static const char* get_constant_name(const char* name) {
@@ -311,7 +320,8 @@ const ptree* common_scope(const ptree* node, const ptree* context) {
     // If node is a child of the namespace of context, use namespace of context as common scope
     // Treat interfaces as namespaces here, since an interface may contain a struct
     const ptree* context_namespace = context->super;
-    while (context_namespace && context_namespace->kind != N_MODULE && context_namespace->kind != N_INTERFACE) {
+    while (context_namespace && context_namespace->kind != N_MODULE &&
+           context_namespace->kind != N_INTERFACE) {
         context_namespace = context_namespace->super;
     }
     if (context_namespace) {
@@ -364,7 +374,8 @@ std::string idl_scoped_name(const ptree* node, const ptree* context) {
         if (node->kind == N_ANNOTATION) {
             return idl_scoped_name_impl(node, node->type->super, context);
         }
-        const bool in_enum = node->super && (node->super->kind == N_ENUM || node->super->kind == N_BITMASK);
+        const bool in_enum =
+            node->super && (node->super->kind == N_ENUM || node->super->kind == N_BITMASK);
         return idl_scoped_name_impl(node, in_enum ? node->super->super : node->super, context);
     }
     return {};

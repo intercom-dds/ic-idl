@@ -35,7 +35,14 @@
 extern "C" {
 #endif
 
-enum PlacementKind { BEGIN_FILE, BEFORE_DECLARATION, BEGIN_DECLARATION, END_DECLARATION, AFTER_DECLARATION, END_FILE };
+enum PlacementKind {
+    BEGIN_FILE,
+    BEFORE_DECLARATION,
+    BEGIN_DECLARATION,
+    END_DECLARATION,
+    AFTER_DECLARATION,
+    END_FILE
+};
 
 enum numeric_kind {
     UNDEF_KIND,
@@ -77,9 +84,9 @@ enum node_kind {
     N_BITSET,     // A bitset type
     N_BITMASK,    // A bitmask type or an enum annotated with @bitset
 
-    N_CASE,       // A case value inside a union
-    N_NULL,       // An explicit null node
-    N_MEMBER,     // A member variable in a module, enum, bitset, bitmask, struct, union or valuetype
+    N_CASE,    // A case value inside a union
+    N_NULL,    // An explicit null node
+    N_MEMBER,  // A member variable in a module, enum, bitset, bitmask, struct, union or valuetype
     N_PROTOTYPE,  // A function prototype inside an interface
 
     N_SEQUENCE,  // A sequence, possibly bounded
@@ -105,8 +112,8 @@ enum ptree_opts {
     OPT_PRIVATE = (1 << 4),
     OPT_DEFAULT = (1 << 5),  //!< default case in union
     OPT_HAS_CHILDREN = (1 << 6),
-    /// enum member with explicit value, != the implicit value e.g. "enum E { V0, V1 = 1, ENUMERATED = 5, V3 };"
-    /// \note also applied to the enum node, if any members have it
+    /// enum member with explicit value, != the implicit value e.g. "enum E { V0, V1 = 1, ENUMERATED
+    /// = 5, V3 };" \note also applied to the enum node, if any members have it
     OPT_ENUMERATED = (1 << 7),
     OPT_EMIT_CODE = (1 << 8),
     OPT_SYSTEM_INCLUDE = (1 << 9),

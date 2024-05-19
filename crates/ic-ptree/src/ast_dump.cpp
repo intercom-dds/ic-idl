@@ -28,7 +28,9 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 
-#include "cidl/internal/hdrs.h"
+#include <iostream>
+
+#include "cidl/hdrs.h"
 #include "cidl/pretty_printer.h"
 
 using namespace intercom::cidl;
@@ -45,7 +47,9 @@ class ScopedPrinter {
 
     ScopedPrinter(ScopedPrinter&) = delete;
 
-    ~ScopedPrinter() { m_out << endl; }
+    ~ScopedPrinter() {
+        m_out << endl;
+    }
 
     template <typename T>
     ScopedPrinter& operator<<(const T& value) {
@@ -53,7 +57,9 @@ class ScopedPrinter {
         return *this;
     }
 
-    std::string str() const { return m_out.str(); }
+    std::string str() const {
+        return m_out.str();
+    }
 
     void indent() {
         auto parent = m_scope;
@@ -83,12 +89,13 @@ static std::string loc(const ptree* node) {
 
 static std::string kind_name(node_kind kind) {
     std::array<const char*, 26> names = {
-            "Undef",     "Include",    "Primitive", "Native",        "ModuleDef",  "StructDef",  "UnionDef",
-            "Valuetype", "Interface",  "Exception", "EnumDef",       "BitsetDef",  "BitmaskDef", "Case",
-            "Null",      "MemberDecl", "Proto",     "Seq",           "Map",        "Array",      "String",
-            "Fixed",     "Alias",      "ConstDef",  "AnnotationDef", "Annotation",
+        "Undef",         "Include",    "Primitive", "Native",     "ModuleDef", "StructDef",
+        "UnionDef",      "Valuetype",  "Interface", "Exception",  "EnumDef",   "BitsetDef",
+        "BitmaskDef",    "Case",       "Null",      "MemberDecl", "Proto",     "Seq",
+        "Map",           "Array",      "String",    "Fixed",      "Alias",     "ConstDef",
+        "AnnotationDef", "Annotation",
     };
-    static_assert(names.size() == node_kind::N_ANNOTATION + 1, "");
+    static_assert(names.size() == node_kind::N_ANNOTATION + 1);
     return names[kind];
 }
 
@@ -116,7 +123,8 @@ static std::string type(const ptree* node, const ptree* scope) {
 }
 
 static bool is_complex_type(const ptree* node) {
-    return node->kind == N_ENUM || node->kind == N_STRUCT || node->kind == N_UNION || node->kind == N_BITMASK;
+    return node->kind == N_ENUM || node->kind == N_STRUCT || node->kind == N_UNION ||
+           node->kind == N_BITMASK;
 }
 
 static void emit_flags(ScopedPrinter& out, const ptree* node) {

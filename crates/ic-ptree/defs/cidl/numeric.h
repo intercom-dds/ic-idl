@@ -35,7 +35,8 @@ namespace intercom {
 
 template <typename T, typename... Args>
 constexpr T* construct_at(T* ptr, Args&&... args) {
-    return ::new (const_cast<void*>(static_cast<const volatile void*>(ptr))) T(std::forward<Args>(args)...);
+    return ::new (const_cast<void*>(static_cast<const volatile void*>(ptr)))
+        T(std::forward<Args>(args)...);
 }
 
 template <typename T>
@@ -55,14 +56,24 @@ struct numeric_storage {
 
     bool operator<(const numeric_storage& a_other) const;
     bool operator==(const numeric_storage& a_other) const;
-    bool operator!=(const numeric_storage& a_other) const { return !(*this == a_other); }
-    bool operator>(const numeric_storage& a_other) const { return a_other < *this; }
-    bool operator<=(const numeric_storage& a_other) const { return !(a_other < *this); }
-    bool operator>=(const numeric_storage& a_other) const { return !(*this < a_other); }
+    bool operator!=(const numeric_storage& a_other) const {
+        return !(*this == a_other);
+    }
+    bool operator>(const numeric_storage& a_other) const {
+        return a_other < *this;
+    }
+    bool operator<=(const numeric_storage& a_other) const {
+        return !(a_other < *this);
+    }
+    bool operator>=(const numeric_storage& a_other) const {
+        return !(*this < a_other);
+    }
 
     friend void swap(numeric_storage& a_first, numeric_storage& a_second) noexcept;
 
-    ::numeric_kind _d() const { return m_ic_discriminator_value; }
+    ::numeric_kind _d() const {
+        return m_ic_discriminator_value;
+    }
     void _d(::numeric_kind discriminator);
 
     int& b();
@@ -863,8 +874,16 @@ inline void numeric_storage::free_union_() {
 struct numeric {
     int base = 10;
     intercom::cidl::numeric_storage val;
-    const intercom::cidl::numeric_storage& operator*() const { return val; }
-    const intercom::cidl::numeric_storage* operator->() const { return &val; }
-    [[nodiscard]] numeric_kind kind() const { return val._d(); };
-    [[nodiscard]] bool has_val() const { return kind() != UNDEF_KIND; }
+    const intercom::cidl::numeric_storage& operator*() const {
+        return val;
+    }
+    const intercom::cidl::numeric_storage* operator->() const {
+        return &val;
+    }
+    [[nodiscard]] numeric_kind kind() const {
+        return val._d();
+    };
+    [[nodiscard]] bool has_val() const {
+        return kind() != UNDEF_KIND;
+    }
 };

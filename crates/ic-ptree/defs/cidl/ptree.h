@@ -59,11 +59,10 @@
  * discriminator: The discriminator of a union
  * members: A list of all members in a module, enum, bitset, bitmask, struct, union or valuetype
  * annotations: All annotations applied to node
- * parents: A NULL-terminated array of parents. Not NULL. (For nodes with no parents, *parents == NULL)
- * getraises: A NULL-terminated array of exceptions. Not NULL.
- * setraises: A NULL-terminated array of exceptions. Not NULL.
- * included_from: Node of include file. NULL for nodes from the main IDL file.
- * bounds: An array of bounds, not NULL. The first value contains the number of bounds.
+ * parents: A NULL-terminated array of parents. Not NULL. (For nodes with no parents, *parents ==
+ * NULL) getraises: A NULL-terminated array of exceptions. Not NULL. setraises: A NULL-terminated
+ * array of exceptions. Not NULL. included_from: Node of include file. NULL for nodes from the main
+ * IDL file. bounds: An array of bounds, not NULL. The first value contains the number of bounds.
  *         For nodes with no bounds, bounds == {0}. For e.g. a string<13>, bounds == {1, 13}
  *         and for long x[3][4], bounds == {2, 3, 4}.
  * flags: A bitmask of flags applied to the node
@@ -98,9 +97,15 @@ struct ptree {
             ++(*this);
             return prev;
         }
-        bool operator==(const iterator& other) const { return node == other.node; }
-        bool operator!=(const iterator& other) const { return node != other.node; }
-        value_type operator*() const { return node; }
+        bool operator==(const iterator& other) const {
+            return node == other.node;
+        }
+        bool operator!=(const iterator& other) const {
+            return node != other.node;
+        }
+        value_type operator*() const {
+            return node;
+        }
 
       private:
         value_type node;
@@ -126,9 +131,15 @@ struct ptree {
             ++(*this);
             return prev;
         }
-        bool operator==(const const_iterator& other) const { return node == other.node; }
-        bool operator!=(const const_iterator& other) const { return node != other.node; }
-        value_type operator*() const { return node; }
+        bool operator==(const const_iterator& other) const {
+            return node == other.node;
+        }
+        bool operator!=(const const_iterator& other) const {
+            return node != other.node;
+        }
+        value_type operator*() const {
+            return node;
+        }
 
       private:
         value_type node;

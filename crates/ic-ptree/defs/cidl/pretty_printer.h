@@ -36,12 +36,11 @@
 #include <string>
 #include <vector>
 
-#include "InterCOM/PlatformConfig.h"
 #include "cidl/ptree.h"
 #include "cidl/symbols.h"
 
-namespace intercom {
-namespace cidl {
+namespace intercom::cidl {
+
 class PrettyPrinter {
   public:
     enum token_kind {
@@ -64,9 +63,13 @@ class PrettyPrinter {
     using tokens = std::list<token>;
 
     struct Context {
-        Context(PrettyPrinter& parent, const ptree* node) : parent(parent) { parent.push(node); }
+        Context(PrettyPrinter& parent, const ptree* node) : parent(parent) {
+            parent.push(node);
+        }
 
-        ~Context() { parent.pop(); }
+        ~Context() {
+            parent.pop();
+        }
 
         PrettyPrinter& parent;
     };
@@ -107,12 +110,18 @@ class PrettyPrinter {
         return *this;
     }
 
-    PrettyPrinter& operator<<(PrettyPrinter& (*pf)(PrettyPrinter&)) { return pf(*this); }
+    PrettyPrinter& operator<<(PrettyPrinter& (*pf)(PrettyPrinter&)) {
+        return pf(*this);
+    }
 
-    PrettyPrinter& operator<<(const std::function<PrettyPrinter&(PrettyPrinter&)>& pf) { return pf(*this); }
+    PrettyPrinter& operator<<(const std::function<PrettyPrinter&(PrettyPrinter&)>& pf) {
+        return pf(*this);
+    }
 
     bool has_text_content() const {
-        return std::any_of(p->values.begin(), p->values.end(), [](token& t) { return !t.text.empty(); });
+        return std::any_of(p->values.begin(), p->values.end(), [](token& t) {
+            return !t.text.empty();
+        });
     }
 
     PrettyPrinter& endl(int count = 1) {
@@ -147,8 +156,11 @@ class PrettyPrinter {
         return *this;
     }
 
-    void get_tab_stops(const tokens::iterator& first, const tokens::iterator& last,
-                       std::vector<unsigned int>& tab_stops) const {
+    void get_tab_stops(
+        const tokens::iterator& first,
+        const tokens::iterator& last,
+        std::vector<unsigned int>& tab_stops
+    ) const {
         tab_stops.clear();
         tab_stops.push_back(0);
         if (first != last) {
@@ -191,7 +203,8 @@ class PrettyPrinter {
                             if (tab_stops.size() <= static_cast<unsigned>(tab)) {
                                 tab_stops.push_back(column);
                                 changed = true;
-                            } else if (column > 0 && static_cast<unsigned>(column) > tab_stops[tab]) {
+                            } else if (column > 0 &&
+                                       static_cast<unsigned>(column) > tab_stops[tab]) {
                                 tab_stops[tab] = column;
                                 changed = true;
                             }
@@ -222,7 +235,11 @@ class PrettyPrinter {
             token& t = *it;
             if (!t.text.empty()) {
                 stream << std::string(
-                        std::accumulate(level_indent.begin(), level_indent.begin() + indent_count + 1U, 0U), ' ');
+                    std::accumulate(
+                        level_indent.begin(), level_indent.begin() + indent_count + 1U, 0U
+                    ),
+                    ' '
+                );
                 if (tab_stops[level].size() > tab && column < tab_stops[level][tab]) {
                     stream << std::string(tab_stops[level][tab] - column, ' ');
                     column = tab_stops[level][tab];
@@ -287,11 +304,17 @@ class PrettyPrinter {
         return stream.str();
     }
 
-    void push(const ptree* context) { p->context.push_back(context); }
+    void push(const ptree* context) {
+        p->context.push_back(context);
+    }
 
-    void pop() { p->context.pop_back(); }
+    void pop() {
+        p->context.pop_back();
+    }
 
-    const ptree* context() { return p->context.empty() ? nullptr : p->context[p->context.size() - 1]; }
+    const ptree* context() {
+        return p->context.empty() ? nullptr : p->context[p->context.size() - 1];
+    }
 
     void add(token_kind kind, const std::string& text) {
         token t = {kind, text};
@@ -313,11 +336,17 @@ class PrettyPrinter {
         return *this;
     }
 
-    bool first_in_block() const { return p->values.empty() || p->values.rbegin()->kind == BLOCK_START; }
+    bool first_in_block() const {
+        return p->values.empty() || p->values.rbegin()->kind == BLOCK_START;
+    }
 
-    void set_indent_size(unsigned int size) { p->indent_size = size; }
+    void set_indent_size(unsigned int size) {
+        p->indent_size = size;
+    }
 
-    bool empty() const { return p->values.empty(); }
+    bool empty() const {
+        return p->values.empty();
+    }
 
   private:
     struct impl {
@@ -338,7 +367,8 @@ inline std::function<PrettyPrinter&(PrettyPrinter&)> begin(const std::string& br
     return [=](PrettyPrinter& out) -> PrettyPrinter& { return out.begin(brace); };
 }
 
-inline std::function<PrettyPrinter&(PrettyPrinter&)> indent_to_column_begin(const std::string& brace) {
+inline std::function<PrettyPrinter&(PrettyPrinter&)> indent_to_column_begin(const std::string& brace
+) {
     return [=](PrettyPrinter& out) -> PrettyPrinter& { return out.indent_to_column_begin(brace); };
 }
 
@@ -405,5 +435,4 @@ inline PrettyPrinter& sp(PrettyPrinter& out) {
     return out;
 }
 
-}  // namespace cidl
-}  // namespace intercom
+}  // namespace intercom::cidl

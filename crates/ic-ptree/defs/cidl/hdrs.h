@@ -50,16 +50,20 @@ enum ExtensibilityKind { FINAL_EXTENSIBILITY, EXTENSIBLE_EXTENSIBILITY, MUTABLE_
 ///     [should start a single line comment]
 /// \note returned string doesn't end with newline
 /// \warning not thread safe (std::ctime)
-std::string generate_info_header(const std::filesystem::path& src_file,
-                                 const std::string& single_line_comment_start = "");
+std::string generate_info_header(
+    const std::filesystem::path& src_file,
+    const std::string& single_line_comment_start = ""
+);
 /// generates an info header to append to the start of all generated files
 /// \param src_file name of or path to source file (e.g. .idl file)
 /// \param single_line_comment_start start of every line (e.g. "//" or "#")
 ///     [should start a single line comment]
 /// \note returned string doesn't end with newline
 /// \warning not thread safe (std::ctime)
-std::string generate_info_header(const std::vector<std::filesystem::path>& src_files,
-                                 const std::string& single_line_comment_start);
+std::string generate_info_header(
+    const std::vector<std::filesystem::path>& src_files,
+    const std::string& single_line_comment_start
+);
 
 std::string trim_include_name(std::filesystem::path name, bool trim_absolute);
 void code_gen_cs(parse_result* result, std::list<File>* generated = nullptr);
@@ -128,14 +132,32 @@ void mprintfl(struct memf** memfl, const std::string& format, Args&&... args) {
     mprintflv(memfl, format, str);
 }
 
-void ada_conv_gen_elem(struct memf* code_file, struct memf* with_file, const ptree* obj, const char* in_tag,
-                       unsigned in_flag, const ptree* actual_object);
+void ada_conv_gen_elem(
+    struct memf* code_file,
+    struct memf* with_file,
+    const ptree* obj,
+    const char* in_tag,
+    unsigned in_flag,
+    const ptree* actual_object
+);
 
-void savememf(struct memf* memf, struct memf* memf2, const char* basedir, const char* filedir, const char* frmt,
-              const char* module);
+void savememf(
+    struct memf* memf,
+    struct memf* memf2,
+    const char* basedir,
+    const char* filedir,
+    const char* frmt,
+    const char* module
+);
 
-File memf_to_file(struct memf* memf, struct memf* memf2, const char* basedir, const char* filedir, const char* frmt,
-                  const char* module);
+File memf_to_file(
+    struct memf* memf,
+    struct memf* memf2,
+    const char* basedir,
+    const char* filedir,
+    const char* frmt,
+    const char* module
+);
 
 void memfcat(struct memf* f1, struct memf* f2);
 void memfcat_str(struct memf* f1, const char* f2);
@@ -154,10 +176,13 @@ bool write_if_changed(const std::string& file_name, const std::string& content);
 
 class MemfIndentScopeLock {
   public:
-    explicit MemfIndentScopeLock(memf* a_memf) : m_memf(a_memf), m_prev_indent_lock(a_memf->extern_lock_indent) {
+    explicit MemfIndentScopeLock(memf* a_memf)
+        : m_memf(a_memf), m_prev_indent_lock(a_memf->extern_lock_indent) {
         m_memf->extern_lock_indent = 1;
     }
-    ~MemfIndentScopeLock() { m_memf->extern_lock_indent = m_prev_indent_lock; }
+    ~MemfIndentScopeLock() {
+        m_memf->extern_lock_indent = m_prev_indent_lock;
+    }
 
   private:
     memf* m_memf;

@@ -27,8 +27,9 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "InterCOM/dyn_link.h"
-#include "InterCOM/string_view.h"
 #include "cidl/ptree.h"
 #include "cidl/symbols.h"
 
@@ -103,9 +104,9 @@ INTERCOM_PUBLIC size_t value_dimensions(const numeric& value);
 
 /// entire path from first \@merge to final non \@merge member
 using MergeTrace = std::vector<const ptree*>;
-/// \notabene every element in every trace derives from ptree->original_members, except for the last element; it derives
-/// from ptree->members. This ensures that the last member will have the correct 'inherited' annotations, as opposed to
-/// the original annotations of the type.
+/// \notabene every element in every trace derives from ptree->original_members, except for the last
+/// element; it derives from ptree->members. This ensures that the last member will have the correct
+/// 'inherited' annotations, as opposed to the original annotations of the type.
 std::vector<MergeTrace> get_merge_traces(const ptree* node);
 
 /// Returns true if node is a doc annotation with specified placement

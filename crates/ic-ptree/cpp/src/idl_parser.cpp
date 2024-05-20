@@ -27,9 +27,6 @@
 
 #include "cidl/idl_parser.h"
 
-#include <cpplight/internal/PreProcessor.h>
-#include <cpplight/internal/ProcessorUtilities.h>
-
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
@@ -47,8 +44,6 @@
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "fmt/core.h"
-#include "fmt/std.h"
 
 extern "C" {
 int scan_string(const char* str);
@@ -218,6 +213,8 @@ const char* numeric_kind_str(numeric_kind kind) {
 }
 
 using namespace intercom::cidl;
+
+using FileList = std::vector<std::pair<std::filesystem::path, std::filesystem::path>>;
 
 static std::map<std::string, ptree**> initialize_builtin_annotation_map() {
     std::map<std::string, ptree**> res;
@@ -1179,31 +1176,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     return out;
 }
 
-bool run_preprocessor(
-    const std::string& a_file_name,
-    const std::vector<std::string>& a_parameters,
-    std::ostream& a_out,
-    std::string& a_error
-) {
-    // Add global parameters and the input file to local parameters
-    std::stringstream err_stream;
-    ProcessorUtilities::StringVector pp_localparams = a_parameters;
-    pp_localparams.emplace_back("-C");
-    pp_localparams.push_back((a_file_name));
-    PreProcessor p;
-    p.setOutStream(a_out);
-    p.setErrorStream(err_stream);
-    bool res = p.configure(pp_localparams) && p.run();
-    if (!res) {
-        a_error = err_stream.str();
-    }
-    return res;
-}
-
-bool run_preprocessor(const std::string& a_file_name, std::ostream& a_out, std::string& a_error) {
-    return run_preprocessor(a_file_name, std::vector<std::string>(), a_out, a_error);
-}
-
 static void collect_files_from_directory(
     const std::filesystem::path& a_base,
     const std::filesystem::path& a_dir,
@@ -1215,96 +1187,6 @@ static void collect_files_from_directory(
             a_files.emplace_back(f, std::filesystem::relative(f, a_base));
         }
     }
-}
-
-parse_result run_parser(
-    const std::vector<std::string>& input_files,
-    const std::vector<std::string>& pp_options,
-    uint32_t flags
-) {
-    std::vector<parse_result> parsed_trees;
-    FileList expanded_files;
-
-    for (auto file : input_files) {
-        if (!std::filesystem::exists(file)) {
-            parse_result err;
-            err.error_count++;
-            err.msg = fmt::format("failed to open file \"{}\"\n", file);
-            return err;
-        }
-
-        if (std::filesystem::is_directory(file)) {
-            collect_files_from_directory(file, file, expanded_files);
-        } else {
-            expanded_files.emplace_back(file, std::filesystem::path(file).filename());
-        }
-    }
-
-    for (auto file : expanded_files) {
-        bool json_input = file.first.extension() == ".json";
-        bool xml_input = file.first.extension() == ".xml";
-        std::stringstream ostream;
-
-        if (!json_input && !xml_input && !CommandLineOption::preprocessor_skip()) {
-            std::string pp_err;
-            bool pp_success = intercom::cidl::run_preprocessor(
-                std::filesystem::absolute(file.first).string(), pp_options, ostream, pp_err
-            );
-            if (!pp_success) {
-                parse_result err;
-                err.error_count++;
-                err.msg =
-                    fmt::format("preprocessing stage on \"{}\" failed: {}\n", file.first, pp_err);
-                return err;
-            }
-        } else {
-            std::ifstream fs(file.first);
-            if (fs) {
-                if (!json_input && !xml_input) {
-                    ostream << "#included_as \"" << file.first << "\"" << std::endl;
-                    ostream << "# 1 \"" << std::filesystem::canonical(file.first) << "\""
-                            << std::endl;
-                }
-                ostream << fs.rdbuf();
-                fs.close();
-            } else {
-                parse_result err;
-                err.error_count++;
-                err.msg = fmt::format("failed to open file \"{}\"\n", file.first);
-                return err;
-            }
-        }
-        // Stop after preprocessing?
-        if ((flags & PREPROCESS_ONLY) == 0) {
-            parse_result* result = nullptr;
-            // TODO(idarcar):
-            // JsonParser json_parser;
-            // XmlParser xml_parser;
-            IdlParser idl_parser;
-            // if (json_input) {
-            // json_parser.run(ostream.str(), file.first);
-            // result = &json_parser.result();
-            // } else if (xml_input) {
-            // xml_parser.run(ostream.str(), file.first);
-            // result = &xml_parser.result();
-            // } else {
-            idl_parser.run(ostream.str());
-            result = &idl_parser.result();
-            // }
-            parsed_trees.push_back(*result);
-        } else {
-            parse_result result;
-            result.msg += ostream.str();
-            parsed_trees.push_back(result);
-        }
-    }
-    auto result = merge_results(parsed_trees);
-    update_include_paths(result, expanded_files);
-    if ((flags & SUPPRESS_CONTENTS_FROM_INCLUDES) != 0) {
-        suppress_content_from_includes(result, expanded_files);
-    }
-    update_ptree_types_after_merge(result);
-    return result;
 }
 
 struct IdlParserImpl {
@@ -1401,7 +1283,7 @@ std::shared_ptr<parser> IdlParser::state() {
 //         canonical_file_name = input_file_name;
 //     }
 //     current_input_file = canonical_file_name.c_str();
-//     g_top_level.next = create_include_finish(parse_json_ptree(input));
+//     g_top_level.next = create_include_finish(parse_json(input));
 //     m_impl->result = get_parse_result();
 //     m_impl->result.state = m_impl->state;
 //     g_state = std::make_shared<parser>();

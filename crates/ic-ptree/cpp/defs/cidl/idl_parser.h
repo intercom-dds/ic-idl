@@ -31,7 +31,6 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
-#include <ostream>
 #include <set>
 #include <string>
 #include <vector>
@@ -40,8 +39,6 @@
 #include "cidl/ptree.h"
 
 namespace intercom::cidl {
-
-using FileList = std::vector<std::pair<std::filesystem::path, std::filesystem::path>>;
 
 struct parse_result {
     parse_result() = default;
@@ -60,47 +57,44 @@ struct XmlParserImpl;
 
 enum class JsonValueFlags { FLAG_ESCAPED = 1, FLAG_NUMERICAL_VALUE = 2 };
 
-INTERCOM_PUBLIC std::string
-json_value(const numeric& value, const ptree* context = nullptr, int flags = 0);
-INTERCOM_PUBLIC std::string json_value(const ptree* value);
-INTERCOM_PUBLIC ptree* parse_json_ptree(const std::string& input);
+INTERCOM_PUBLIC
+std::string json_value(const numeric& value, const ptree* context = nullptr, int flags = 0);
 
-INTERCOM_PUBLIC ptree* parse_xml(const std::string& input);
-INTERCOM_PUBLIC ptree* parse_xml_file(const std::string& uri);
+INTERCOM_PUBLIC
+std::string json_value(const ptree* value);
 
-INTERCOM_PUBLIC parse_result merge_results(std::vector<parse_result>& to_merge);
+INTERCOM_PUBLIC
+ptree* parse_json(const std::string& input);
 
-INTERCOM_PUBLIC bool run_preprocessor(
-    const std::string& a_file_name,
-    const std::vector<std::string>& a_parameters,
-    std::ostream& a_out,
-    std::string& a_error
-);
+INTERCOM_PUBLIC
+ptree* parse_xml(const std::string& input);
 
-INTERCOM_PUBLIC bool
-run_preprocessor(const std::string& a_file_name, std::ostream& a_out, std::string& a_error);
+INTERCOM_PUBLIC
+ptree* parse_xml_file(const std::string& uri);
 
-enum ParserFlagBits : uint32_t { SUPPRESS_CONTENTS_FROM_INCLUDES = 1, PREPROCESS_ONLY = 2 };
+INTERCOM_PUBLIC
+parse_result merge_results(std::vector<parse_result>& to_merge);
 
-INTERCOM_PUBLIC parse_result run_parser(
+INTERCOM_PUBLIC
+parse_result run_parser(
     const std::vector<std::string>& input_files,
     const std::vector<std::string>& pp_options,
     uint32_t flags = 0
 );
 
-class IdlParser {
+class INTERCOM_PUBLIC IdlParser {
   public:
-    INTERCOM_PUBLIC IdlParser();
-    INTERCOM_PUBLIC ~IdlParser();
+    IdlParser();
+    ~IdlParser();
 
-    INTERCOM_PUBLIC const parse_result& result() const;
-    INTERCOM_PUBLIC parse_result& result();
+    const parse_result& result() const;
+    parse_result& result();
 
-    INTERCOM_PUBLIC void run(const std::string& input);
-    INTERCOM_PUBLIC void run(FILE* input);
-    INTERCOM_PUBLIC void run(const std::function<ptree*()>& input);
+    void run(const std::string& input);
+    void run(FILE* input);
+    void run(const std::function<ptree*()>& input);
 
-    INTERCOM_PUBLIC std::shared_ptr<parser> state();
+    std::shared_ptr<parser> state();
 
   private:
     std::unique_ptr<IdlParserImpl> m_impl;

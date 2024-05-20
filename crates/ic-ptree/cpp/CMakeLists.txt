@@ -65,25 +65,6 @@ include_directories(
     ../../../external/utils/defs
 )
 
-add_library(ic_preproc OBJECT
-    ../../ic-preproc/cpplight/src/cpplight.cpp
-    ../../ic-preproc/cpplight/src/Define.cpp
-    ../../ic-preproc/cpplight/src/ErrorParser.cpp
-    ../../ic-preproc/cpplight/src/FileContent.cpp
-    ../../ic-preproc/cpplight/src/FileElement.cpp
-    ../../ic-preproc/cpplight/src/FileProcessor.cpp
-    ../../ic-preproc/cpplight/src/IfBlock.cpp
-    ../../ic-preproc/cpplight/src/Include.cpp
-    ../../ic-preproc/cpplight/src/PreProcessor.cpp
-    ../../ic-preproc/cpplight/src/ProcessorUtilities.cpp
-    ../../ic-preproc/cpplight/src/Undefine.cpp
-    ../../ic-preproc/cpplight/src/Warning.cpp
-)
-
-target_include_directories(ic_preproc PUBLIC
-    ../../ic-preproc/cpplight/defs
-)
-
 add_library(ic_parser OBJECT
     src/idl_parser.cpp
     ${BISON_CidlGrammar_OUTPUTS}
@@ -93,10 +74,6 @@ add_library(ic_parser OBJECT
 target_include_directories(ic_parser PUBLIC
     defs
     ../../../ic-cpp/defs
-)
-
-target_link_libraries(ic_parser PRIVATE
-    ic_preproc
 )
 
 add_library(ic_ptree STATIC

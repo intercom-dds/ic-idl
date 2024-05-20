@@ -88,6 +88,8 @@ add_library(ic_ptree STATIC
     src/symbols.cpp
     src/commandline.cpp
     src/memf.cpp
+
+    src/proto_code_gen.cpp
 )
 
 target_include_directories(ic_ptree PUBLIC defs)

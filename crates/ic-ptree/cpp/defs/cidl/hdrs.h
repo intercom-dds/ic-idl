@@ -61,6 +61,7 @@ void code_gen_python(parse_result* result, std::list<File>* generated = nullptr)
 void code_gen_properties(parse_result* result);
 void code_gen_rust(const parse_result* result);
 void code_gen_proto(const parse_result* result);
+void code_gen_proto(const parse_result* result, const char* destination);
 void code_gen_xml(const parse_result* result);
 void transform_rust(parse_result* node);
 void generate_json_type(std::ostream& stream, const ptree* tree);

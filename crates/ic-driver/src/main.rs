@@ -136,6 +136,9 @@ struct GlobalOptions {
 /// Generic IDL code generator
 #[derive(Command, Default)]
 struct Options {
+    #[option(long)]
+    ast_dump: bool,
+
     /// Only preprocess the files
     #[option(short = 'E', long)]
     preprocessor_only: bool,
@@ -175,6 +178,10 @@ struct Options {
     /// Display version information
     #[option(short = 'V', long)]
     version: bool,
+
+    /// Generate Protobuf files
+    #[option(long, arg = "dir")]
+    proto_out: Option<PathBuf>,
 
     #[option(positional)]
     files: HashSet<PathBuf>,
@@ -280,6 +287,14 @@ fn try_main(options: Options) -> anyhow::Result<()> {
         .collect::<Result<Vec<_>, _>>()?;
 
     let merged = ic_ptree::merge_trees(&parsed);
-    ic_ptree::ast_dump(&merged);
+
+    if options.ast_dump {
+        ic_ptree::ast_dump(&merged);
+    }
+
+    if let Some(dir) = &options.proto_out {
+        ic_ptree::codegen_proto(&merged, dir);
+    }
+
     Ok(())
 }

@@ -48,6 +48,9 @@ ic_parse_result_t* ic_ptree_merge(const ic_parse_result_t** result);
 INTERCOM_PUBLIC
 void ic_ast_dump(const ic_parse_result_t* result);
 
+INTERCOM_PUBLIC
+void ic_codegen_proto(const ic_parse_result_t* result, const char* destination);
+
 #ifdef __cplusplus
 }
 #endif

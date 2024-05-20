@@ -68,7 +68,6 @@ struct CurrentOptionsT : public intercom::cidl::Config {
     std::string ada_target_directory;
     std::string idl_target_directory;
     std::string xml_target_directory;
-    std::string proto_target_directory;
     std::string toml_target_directory;
     std::vector<std::string> input_list;
     std::vector<std::string> include_directories{"."};

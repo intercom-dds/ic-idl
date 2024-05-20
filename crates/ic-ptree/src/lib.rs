@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::ffi::{CString, NulError};
+use std::path::Path;
 
 mod ffi;
 
@@ -61,5 +62,18 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
 pub fn ast_dump(result: &ParseResult) {
     unsafe {
         ffi::ic_ast_dump(result.inner);
+    }
+}
+
+macro_rules! c_str {
+    ($var: tt) => {{
+        std::ffi::CString::new($var.to_string_lossy().as_bytes()).unwrap()
+    }};
+}
+
+pub fn codegen_proto(result: &ParseResult, directory: &Path) {
+    unsafe {
+        let path = c_str!(directory);
+        ffi::ic_codegen_proto(result.inner, path.as_ptr());
     }
 }

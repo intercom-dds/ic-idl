@@ -57,3 +57,8 @@ void ic_ast_dump(const ic_parse_result_t* result) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
     ast_dump(res);
 }
+
+void ic_codegen_proto(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_proto(res, destination);
+}

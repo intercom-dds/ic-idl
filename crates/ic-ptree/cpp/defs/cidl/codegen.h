@@ -58,6 +58,7 @@ struct Config {
     std::string java_package_prefix;
     std::string ada_package_prefix;
     std::string header_subfolder;
+    std::string proto_target_directory;
 };
 
 struct File {

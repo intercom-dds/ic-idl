@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![allow(non_camel_case_types)]
+use std::ffi;
 use std::marker::{PhantomData, PhantomPinned};
 
 #[repr(C)]
@@ -36,8 +37,10 @@ pub struct parse_result {
 }
 
 extern "C" {
-    pub fn ic_parse_idl(input: *const std::ffi::c_char) -> *mut parse_result;
+    pub fn ic_parse_idl(input: *const ffi::c_char) -> *mut parse_result;
     pub fn ic_parse_free(result: *mut parse_result);
     pub fn ic_ptree_merge(result: *const *mut parse_result) -> *mut parse_result;
     pub fn ic_ast_dump(result: *const parse_result);
+
+    pub fn ic_codegen_proto(result: *const parse_result, destination: *const ffi::c_char);
 }

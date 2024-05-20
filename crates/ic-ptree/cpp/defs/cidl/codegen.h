@@ -61,6 +61,8 @@ struct Config {
     std::string proto_target_directory;
     std::string java_target_directory;
     std::string python_target_directory;
+    std::string cs_target_directory;
+    std::string c_target_directory;
 };
 
 struct File {

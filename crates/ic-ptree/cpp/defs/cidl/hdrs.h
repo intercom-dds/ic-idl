@@ -46,7 +46,8 @@ enum ExtensibilityKind {
 };
 
 std::string trim_include_name(std::filesystem::path name, bool trim_absolute);
-void code_gen_cs(parse_result* result, std::list<File>* generated = nullptr);
+void code_gen_cs(const parse_result* result);
+void code_gen_cs(const parse_result* result, const char* destination);
 void code_gen_idl(parse_result* result, std::list<File>* generated = nullptr);
 void code_gen_json(parse_result* result, bool listonly);
 void code_gen_json_schema(parse_result* result, std::list<File>* generated = nullptr);

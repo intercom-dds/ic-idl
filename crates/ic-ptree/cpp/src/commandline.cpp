@@ -56,8 +56,6 @@ struct CurrentOptionsT : public intercom::cidl::Config {
     bool purge_destination_directories = false;
     bool no_typesupport = false;
 
-    std::string cs_target_directory;
-    std::string c_target_directory;
     std::string copyright_notice;
     std::string json_target_directory;
     std::string json_schema_target_directory;

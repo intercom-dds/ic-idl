@@ -33,15 +33,17 @@
 #include <unordered_set>
 #include <vector>
 
-#include "InterCOM/CORBA/String.h"
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/hdrs.h"
+#include "cidl/memf.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "utils/stdprintf.h"
+
+using namespace intercom::cidl;
 
 using ModuleMap = std::map<std::string, std::stringstream*>;
 
@@ -348,10 +350,10 @@ std::string cs_value(const numeric& value, const ptree* module, int level) {
         res << static_cast<unsigned long long>(long_long_value(value)) << "UL";
         break;
     case FLOAT_KIND:
-        res << toString(float_value(value)) << "f";
+        res << to_string(float_value(value)) << "f";
         break;
     case DOUBLE_KIND:
-        res << toString(double_value(value)) << "d";
+        res << to_string(double_value(value)) << "d";
         break;
     case CHAR_KIND:
         if (integer_value(value) < 'A' || integer_value(value) > 'z') {
@@ -1633,7 +1635,7 @@ bool cs_type_is_nullable(const ptree* member) {
     return false;
 }
 
-void code_gen_cs(parse_result* result, std::list<File>* generated) {
+void intercom::cidl::code_gen_cs(const parse_result* result) {
     ModuleMap out;
     const ptree* mapping = lookup_node(create_identifier("INTERCOM_CS_NAME_MAPPING"));
     if (mapping && mapping->value.kind() == PTREE_KIND) {
@@ -1651,15 +1653,13 @@ void code_gen_cs(parse_result* result, std::list<File>* generated) {
     }
     for (auto& it : out) {
         std::string name = it.first;
-        intercom::corba::String_var new_name = name.c_str();
-        name = trim_include_name(new_name.inout(), true);
+        // TODO(idarcar):
+        // intercom::corba::String_var new_name = name.c_str();
+        // name = trim_include_name(new_name.inout(), true);
         memf cs_file;
         memset(&cs_file, 0, sizeof(memf));
         cs_file.do_indent = 1;
         cs_file.lang_kind = C_JAVA_FILE;
-
-        // build info header
-        mprintf(&cs_file, "/*{} */\n\n", generate_info_header(it.first, "\t"));
 
         std::istringstream istream(it.second->str());
         std::string line;
@@ -1667,36 +1667,15 @@ void code_gen_cs(parse_result* result, std::list<File>* generated) {
             mprintf(&cs_file, "{}\n", line.c_str());
         }
 
-        if (generated) {
-            auto file = memf_to_file(
-                &cs_file,
-                nullptr,
-                CommandLineOption::cs_target_directory(),
-                "",
-                "{}.cs",
-                name.c_str()
-            );
-            generated->emplace_back(file);
-        } else {
-            savememf(
-                &cs_file,
-                nullptr,
-                CommandLineOption::cs_target_directory(),
-                "",
-                "{}.cs",
-                name.c_str()
-            );
-        }
+        savememf(
+            &cs_file, nullptr, CommandLineOption::cs_target_directory(), "", "{}.cs", name.c_str()
+        );
         mreset(&cs_file);
         delete it.second;
     }
 }
 
-std::list<File>
-intercom::cidl::code_gen_cs(const intercom::cidl::Config& config, parse_result* result) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    CommandLineOption::get_instance() = config;
-    std::list<File> generated;
-    ::code_gen_cs(result, &generated);
-    return generated;
+void intercom::cidl::code_gen_cs(const parse_result* result, const char* destination) {
+    intercom::cidl::CommandLineOption::get_instance().cs_target_directory = destination;
+    code_gen_cs(result);
 }

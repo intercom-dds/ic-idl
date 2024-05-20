@@ -33,14 +33,21 @@
 #include <deque>
 #include <memory>
 
+#include "InterCOM/version.h"
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/hdrs.h"
+#include "cidl/memf.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
+#include "utils/StringUtils.h"
 #include "utils/stdprintf.h"
+
+#define INTERCOM_PUBLIC_MACRO_NAME "INTERCOM_PUBLIC"
+
+using namespace intercom::cidl;
 
 static void cgcpl_recurs(const ptree* obj);
 
@@ -67,7 +74,7 @@ static memf g_prebd_file;
 static memf* g_all_headers[] = {&g_hd_file, &g_hd_impl_file, &g_hd_json_file, nullptr};
 static memf* g_hd_tbd_files[] = {&g_hd_file, &g_tbd_file, nullptr};
 
-extern void gen_cpp_type_info(struct memf* memf, const ptree* obj, intercom::string_view funcname);
+extern void gen_cpp_type_info(struct memf* memf, const ptree* obj, std::string_view funcname);
 
 static void cpl_prototype_c_def(const ptree* obj);
 
@@ -122,7 +129,7 @@ cpp_array_name_rec(const ptree* obj, const ptree* context, int pos, std::strings
 static std::string
 cplpl_member_type(const ptree* elem, const ptree* context, bool suppress_indirection = false);
 
-std::string cpp_type_name(const ptree* node, const ptree* context) {
+std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* context) {
     if (node == nullptr) {
         return "";
     }
@@ -244,7 +251,7 @@ static std::string cpp_string_view_type_name(const ptree* node) {
         return CommandLineOption::use_wstring() ? "::intercom::wstring_view"
                                                 : "::intercom::u16string_view";
     }
-    return "::intercom::string_view";
+    return "::std::string_view";
 }
 
 static std::string public_member_name(const ptree* elem) {
@@ -372,7 +379,7 @@ static int original_member_count(const ptree* obj) {
     return count;
 }
 
-static int has_name_collision(const ptree* obj, intercom::string_view elem_name) {
+static int has_name_collision(const ptree* obj, std::string_view elem_name) {
     const ptree* elem;
     if (!obj) {
         return 0;
@@ -390,7 +397,7 @@ static int has_name_collision(const ptree* obj, intercom::string_view elem_name)
     return 0;
 }
 
-static std::string cplpl_param_name_force(const ptree* obj, intercom::string_view base_name) {
+static std::string cplpl_param_name_force(const ptree* obj, std::string_view base_name) {
     auto buf = fmt::format("a_{}", base_name);
     if (has_name_collision(obj, buf)) {
         auto new_base = fmt::format("{}_", base_name);
@@ -399,7 +406,7 @@ static std::string cplpl_param_name_force(const ptree* obj, intercom::string_vie
     return buf;
 }
 
-std::string cplpl_param_name(const ptree* obj, intercom::string_view base_name) {
+std::string cplpl_param_name(const ptree* obj, std::string_view base_name) {
     if (member_count(obj) == 0) {
         return {};
     }
@@ -468,10 +475,10 @@ static void emit_const_value(
         }
         break;
     case FLOAT_KIND:
-        mprintf(mfil, " static_cast<float>({})", toString(value.val.f()));
+        mprintf(mfil, " static_cast<float>({})", to_string(value.val.f()));
         break;
     case DOUBLE_KIND:
-        mprintf(mfil, " {}", toString(value.val.d()));
+        mprintf(mfil, " {}", to_string(value.val.d()));
         break;
     case STRING_KIND:
         mprintf(mfil, " \"{}\"", value.val.str());
@@ -632,7 +639,7 @@ static void gen_case_test(
     struct memf* mfil,
     const ptree* obj,
     const ptree* elem,
-    intercom::string_view discr_name = "ic_discriminator_value_"
+    std::string_view discr_name = "ic_discriminator_value_"
 ) {
     bool first = true;
 
@@ -679,7 +686,7 @@ static bool cpl_gen_cases(struct memf* mfil, const ptree* elem, const ptree* sco
 }
 
 static void
-cpl_gen_hash_member(struct memf* memf, intercom::string_view name, const ptree* type, int level) {
+cpl_gen_hash_member(struct memf* memf, std::string_view name, const ptree* type, int level) {
     switch (type->kind) {
     case N_ARRAY: {
         std::string new_name(name);
@@ -811,12 +818,12 @@ static void cpl_gen_hash(const ptree* obj) {
 
 static void cpl_gen_marshal_member(
     int member_index,
-    intercom::string_view name,
-    intercom::string_view expr,
-    intercom::string_view info_name,
+    std::string_view name,
+    std::string_view expr,
+    std::string_view info_name,
     int shared
 ) {
-    if (name.starts_with("void_void_void_dummy_skipped_in_air")) {
+    if (name.compare(0, 35, "void_void_void_dummy_skipped_in_air") == 0) {
         return;
     }
     if (shared) {
@@ -839,7 +846,7 @@ static void cpl_gen_marshal_member(
 static bool emit_range_check_body(
     const ptree* obj,
     const ptree* elem,
-    intercom::string_view element_name,
+    std::string_view element_name,
     std::stringstream& out,
     int level = 0
 ) {
@@ -868,7 +875,7 @@ static bool emit_range_check_body(
         }
         out << "}\n";
     } else if (type->kind == N_PRIMITIVE) {
-        intercom::string_view prefix = "if (Archive::IS_WRITER && (";
+        std::string_view prefix = "if (Archive::IS_WRITER && (";
         if (has_min_value(elem)) {
             out << prefix << " " << element_name << " < "
                 << get_const_value(get_min_value(elem), nullptr);
@@ -887,8 +894,7 @@ static bool emit_range_check_body(
     return has_range_check;
 }
 
-static void
-emit_range_check(const ptree* obj, const ptree* elem, intercom::string_view element_name) {
+static void emit_range_check(const ptree* obj, const ptree* elem, std::string_view element_name) {
     bool has_range_check = false;
     std::stringstream out;
 
@@ -908,8 +914,7 @@ emit_range_check(const ptree* obj, const ptree* elem, intercom::string_view elem
     }
 }
 
-static int
-cpl_gen_marshal_members(const ptree* obj, intercom::string_view info_name, int member_index) {
+static int cpl_gen_marshal_members(const ptree* obj, std::string_view info_name, int member_index) {
     auto param = cplpl_param_name(obj, "value");
 
     if (!obj) {
@@ -1406,8 +1411,8 @@ safe_move(const std::string& parameter_name, bool suppress_indirection, const Me
 static void cpl_gen_member_copy_ctor(
     struct memf* mfil,
     const ptree* obj,
-    intercom::string_view prefix,
-    intercom::string_view delim,
+    std::string_view prefix,
+    std::string_view delim,
     bool suppress_indirection
 ) {
     std::string param;
@@ -1963,7 +1968,7 @@ static void cpl_iostream_def(const ptree* obj) {
     }
 }
 
-static void cpl_union_construct_body(const ptree* obj, intercom::string_view param, bool move) {
+static void cpl_union_construct_body(const ptree* obj, std::string_view param, bool move) {
     mprintf(&g_hd_impl_file, "ic_discriminator_value_ = {}.ic_discriminator_value_;\n", param);
     if (member_count(obj) == 0) {
         return;
@@ -2017,7 +2022,7 @@ static void cpl_union_construct_body(const ptree* obj, intercom::string_view par
 }
 
 static void
-cpl_union_assignment_body(const ptree* obj, intercom::string_view param, bool has_ptr, bool move) {
+cpl_union_assignment_body(const ptree* obj, std::string_view param, bool has_ptr, bool move) {
     if (has_ptr) {
         mprintf(&g_hd_impl_file, "free_union_();\n");
     }
@@ -2752,7 +2757,7 @@ inline void cpl_property_value_constants_def(const ptree* obj) {
     numeric ann_module = get_annotation_value(ann, "namespace");
     std::vector<std::string> prop_namespaces{};
     if (ann_module.kind() == STRING_KIND && !ann_module.val.str().empty()) {
-        prop_namespaces = intercom::cli::detail::split(ann_module.val.str(), "::");
+        string_utils::split_string(prop_namespaces, ann_module.val.str(), "::", true);
     }
 
     for (const auto& prop_namespace : prop_namespaces) {
@@ -3446,12 +3451,8 @@ static void cgcpl_recurs(const ptree* obj) {
     }
 }
 
-static void cpl_saveit(
-    const ptree* tree,
-    const std::string& module,
-    const std::string& source_name,
-    std::list<File>* generated = nullptr
-) {
+static void
+cpl_saveit(const ptree* tree, const std::string& module, const std::string& source_name) {
     auto include_prefix = CommandLineOption::header_subfolder();
     if (!module.empty()) {
         static struct memf pk_file;
@@ -3460,12 +3461,6 @@ static void cpl_saveit(
         if (CommandLineOption::copyright_notice()) {
             mprintf(&pk_file, "{}", CommandLineOption::copyright_notice());
         }
-
-        // build info headers
-        const char* header_format = "/**\n{}\n */\n\n";
-        std::string header = generate_info_header(source_name, " * ");
-        mprintf(&pk_file, header_format, header);
-        mprintf(&g_prebd_file, header_format, header);
 
         mprintf(&pk_file, "#pragma once\n");
 
@@ -3654,72 +3649,50 @@ static void cpl_saveit(
             "#endif\n\n"
         );
 
-        if (generated) {
-            auto pkf = memf_to_file(
-                &pk_file,
-                nullptr,
-                CommandLineOption::c_target_directory(),
-                include_prefix,
-                "{}.{}",
-                module.c_str()
-            );
+        savememf(
+            &g_prebd_file,
+            nullptr,
+            CommandLineOption::c_target_directory(),
+            "",
+            "{}.cpp",
+            cname.c_str()
+        );
+        savememf(
+            &pk_file,
+            nullptr,
+            CommandLineOption::c_target_directory(),
+            include_prefix,
+            "{}.{}",
+            module.c_str()
+        );
 
-            generated->emplace_back(std::move(pkf));
-            auto prebfd = memf_to_file(
-                &g_prebd_file,
-                nullptr,
-                CommandLineOption::c_target_directory(),
-                "",
-                "{}.cpp",
-                cname.c_str()
-            );
-            generated->emplace_back(std::move(prebfd));
-        } else {
-            savememf(
-                &g_prebd_file,
-                nullptr,
-                CommandLineOption::c_target_directory(),
-                "",
-                "{}.cpp",
-                cname.c_str()
-            );
+        if (CommandLineOption::compatibility()) {
+            mreset(&pk_file);
+            mprintf(&pk_file, "#include \"{}.h\"\n", module);
             savememf(
                 &pk_file,
                 nullptr,
                 CommandLineOption::c_target_directory(),
-                include_prefix,
-                "{}.{}",
+                "",
+                "{}Support.h",
                 module.c_str()
             );
-
-            if (CommandLineOption::compatibility()) {
-                mreset(&pk_file);
-                mprintf(&pk_file, "#include \"{}.h\"\n", module);
-                savememf(
-                    &pk_file,
-                    nullptr,
-                    CommandLineOption::c_target_directory(),
-                    "",
-                    "{}Support.h",
-                    module.c_str()
-                );
-                savememf(
-                    &pk_file,
-                    nullptr,
-                    CommandLineOption::c_target_directory(),
-                    "",
-                    "ccpp_{}.h",
-                    module.c_str()
-                );
-                savememf(
-                    &pk_file,
-                    nullptr,
-                    CommandLineOption::c_target_directory(),
-                    "",
-                    "{}Dcps_impl.h",
-                    module.c_str()
-                );
-            }
+            savememf(
+                &pk_file,
+                nullptr,
+                CommandLineOption::c_target_directory(),
+                "",
+                "ccpp_{}.h",
+                module.c_str()
+            );
+            savememf(
+                &pk_file,
+                nullptr,
+                CommandLineOption::c_target_directory(),
+                "",
+                "{}Dcps_impl.h",
+                module.c_str()
+            );
         }
         mreset(&pk_file);
     }
@@ -3736,23 +3709,12 @@ static void cpl_saveit(
     mreset(&g_hd_fmt_file);
 }
 
-void code_gen_dds_cplpl(struct parse_result* result, std::list<File>* generated) {
+void intercom::cidl::code_gen_dds_cplpl(struct parse_result* result) {
     for (auto include : result->includes) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
         std::string file_name = trim_include_name(include->name, true);
         cpl_rpc_service_gen(result->tree, &g_hd_rpc_file, &g_tbd_file, g_current_include);
-        cpl_saveit(result->tree, file_name, include->name, generated);
+        cpl_saveit(result->tree, file_name, include->name);
     }
-}
-
-std::list<File> intercom::cidl::code_gen_dds_cplpl(
-    const intercom::cidl::Config& config,
-    struct parse_result* result
-) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    CommandLineOption::get_instance() = config;
-    std::list<File> generated;
-    ::code_gen_dds_cplpl(result, &generated);
-    return generated;
 }

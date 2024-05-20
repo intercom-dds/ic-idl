@@ -91,8 +91,8 @@ add_library(ic_ptree STATIC
 
     src/proto_code_gen.cpp
     ../../ic-codegen-java/cpp/src/java_code_gen.cpp
-    # ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
-    # ../../ic-codegen-cxx/cpp/src/cpp_rpc_gen.cpp
+    ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
+    ../../ic-codegen-python/cpp/src/python_code_gen.cpp
 )
 
 target_include_directories(ic_ptree PUBLIC defs)

@@ -26,19 +26,21 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <set>
+#include <string_view>
 
 #include "cidl/codegen.h"
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
+#include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/ptree_builder.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -80,10 +82,12 @@ std::string python_base_type(const ptree* obj, const ptree* context, ModuleConte
 std::string python_type_name(const ptree* node, const ptree* context, ModuleContext* module);
 std::string python_class_type(const ptree* node, const ptree* context, ModuleContext* module);
 
+// TOOD(idarcar):
 inline std::string extract_file_name(std::string file_name) {
-    std::replace(file_name.begin(), file_name.end(), '/', '_');
-    intercom::corba::String_var to_trim = file_name.c_str();
-    return trim_include_name(to_trim.inout(), false);
+    return std::filesystem::path(file_name).stem().string();
+    // std::replace(file_name.begin(), file_name.end(), '/', '_');
+    // intercom::corba::String_var to_trim = file_name.c_str();
+    // return trim_include_name(to_trim.inout(), false);
 }
 
 inline std::string module_file_name(const std::string& file_name) {
@@ -157,7 +161,7 @@ void python_emit_docs(const ptree* node, ModuleContext* module) {
         if (ann->type != annotation_type_doc) {
             continue;
         }
-        intercom::string_view input = ann->members->value.val.str();
+        std::string_view input = ann->members->value.val.str();
         if (is_post_doc(ann)) {
             input.remove_prefix(2);
         }
@@ -167,7 +171,7 @@ void python_emit_docs(const ptree* node, ModuleContext* module) {
 
         size_t pos = 0;
         *module << R"(""")" << endl;
-        while ((pos = input.find('\n')) != intercom::string_view::npos) {
+        while ((pos = input.find('\n')) != std::string_view::npos) {
             auto line = input.substr(0, pos);
             input.remove_prefix(pos + 1);
             *module << line << endl;
@@ -2086,8 +2090,7 @@ void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& 
 void code_gen_python_write(
     FileMap& file_map,
     const std::string& name,
-    const std::string& filename,
-    std::list<File>* generated
+    const std::string& filename
 ) {
     if (file_map.find(filename) == file_map.end()) {
         std::cerr << "COULD NOT FIND FILE: " << name << std::endl;
@@ -2104,9 +2107,6 @@ void code_gen_python_write(
             CommandLineOption::python_target_directory()
                 ? std::string(CommandLineOption::python_target_directory()) + "/"
                 : "";
-
-        // build info header
-        std::string header = generate_info_header(module.second->name, "# ");
 
         if (module.first == name) {
             folderpath += extract_file_name(filename);
@@ -2127,7 +2127,6 @@ void code_gen_python_write(
 
             std::string import_string = "from ." + output_name + " import *";
             std::ifstream read_file(init_filepath.c_str());
-            bool empty_file = read_file.peek() == std::ifstream::traits_type::eof();
             bool needs_update = true;
             if (read_file.is_open()) {
                 std::string line;
@@ -2142,40 +2141,21 @@ void code_gen_python_write(
 
             if (needs_update) {
                 std::stringstream data_stream;
-                // TODO rewrite header once per rebuild (instead of once or never)
-                if (empty_file) {
-                    data_stream << header << std::endl << std::endl;
-                }
                 data_stream << "from ." << output_name << " import *" << std::endl;
                 bool found = false;
-                if (generated) {
-                    for (auto f : *generated) {
-                        if (f.path == init_filepath) {
-                            f.content += data_stream.str();
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        generated->emplace_back(File(init_filepath, data_stream.str()));
-                    }
+                std::ofstream init_file;
+                init_file.open(init_filepath.c_str(), std::ios::app);
+                if (init_file.good()) {
+                    init_file << data_stream.str();
+                    init_file.close();
                 } else {
-                    std::ofstream init_file;
-                    init_file.open(init_filepath.c_str(), std::ios::app);
-                    if (init_file.good()) {
-                        init_file << data_stream.str();
-                        init_file.close();
-                    } else {
-                        write_if_changed(init_filepath, data_stream.str());
-                    }
+                    write_if_changed(init_filepath, data_stream.str());
                 }
             }
         }
 
         std::stringstream file;
         ModuleContext* module_ctxt = module.second;
-
-        file << header << std::endl << std::endl;
 
         // import packages before modules
         bool found = false;
@@ -2210,35 +2190,23 @@ void code_gen_python_write(
 
         module_ctxt->pp.print(file);
         file << std::endl;
-        if (generated) {
-            generated->emplace_back(File(folderpath, file.str()));
+
+        if (CommandLineOption::list_only()) {
+            std::cout << file.str() << std::endl;
         } else {
             write_if_changed(folderpath, file.str());
         }
     }
 }
 
-void code_gen_python(parse_result* result, std::list<File>* generated) {
+void intercom::cidl::code_gen_python(const parse_result* result) {
     FileMap module_map;
     for (const auto& obj : result->tree) {
         code_gen_python_rec(obj, nullptr, module_map);
     }
 
-    if (CommandLineOption::list_only()) {
-        generated = new std::list<File>;
-    }
-
     for (const auto& include : result->includes) {
-        code_gen_python_write(
-            module_map, include->name, extract_file_name(include->name), generated
-        );
-    }
-
-    if (CommandLineOption::list_only()) {
-        for (auto const& file : *generated) {
-            std::cout << file.path << std::endl;
-        }
-        delete generated;
+        code_gen_python_write(module_map, include->name, extract_file_name(include->name));
     }
 
     // Clean up
@@ -2249,10 +2217,7 @@ void code_gen_python(parse_result* result, std::list<File>* generated) {
     }
 }
 
-std::list<File> intercom::cidl::code_gen_python(const Config& config, struct parse_result* result) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    CommandLineOption::get_instance() = config;
-    std::list<File> generated;
-    ::code_gen_python(result, &generated);
-    return generated;
+void intercom::cidl::code_gen_python(const parse_result* result, const char* destination) {
+    CommandLineOption::get_instance().python_target_directory = destination;
+    code_gen_python(result);
 }

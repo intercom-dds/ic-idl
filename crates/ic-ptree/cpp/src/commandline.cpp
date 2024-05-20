@@ -62,7 +62,6 @@ struct CurrentOptionsT : public intercom::cidl::Config {
     std::string json_target_directory;
     std::string json_schema_target_directory;
     std::string rust_target_directory;
-    std::string python_target_directory;
     std::string python_global_postfix;
     std::string ada_target_directory;
     std::string idl_target_directory;

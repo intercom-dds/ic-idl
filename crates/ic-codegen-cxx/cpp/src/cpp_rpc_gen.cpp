@@ -25,11 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/idl_rpc_gen.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/commandline.h"
+#include "cidl/hdrs.h"
+#include "cidl/idl_rpc_gen.h"
 #include "cidl/pretty_printer.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 
 using namespace intercom::cidl;

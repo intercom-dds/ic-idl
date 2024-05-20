@@ -29,22 +29,27 @@
 #include <fmt/format.h>
 
 #include <cstring>
+#include <list>
 
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/hdrs.h"
+#include "cidl/memf.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "utils/stdprintf.h"
 
-static struct memf g_hd_file;
+#define JAVANAME_FLAGS_CLASS 1
+#define JAVANAME_FLAGS_PROXY 2
+#define JAVANAME_NO_ARRAY_SUFFIX 4
 
-namespace {
-std::list<File> g_files;
-bool g_emit = true;
-}  // namespace
+static intercom::cidl::memf g_hd_file;
+static std::list<intercom::cidl::File> g_files;
+static bool g_emit = true;
+
+using namespace intercom::cidl;
 
 static void java_savememf(struct memf* memf, const std::string& filedir, const char* frmt) {
     size_t size;
@@ -403,9 +408,9 @@ static std::string javavalue(const numeric& value, int qualified) {
     case ULONGLONG_KIND:
         return fmt::format("{}L", static_cast<long long int>(value.val.ull()));
     case FLOAT_KIND:
-        return fmt::format("(float){}", toString(value.val.f()));
+        return fmt::format("(float){}", to_string(value.val.f()));
     case DOUBLE_KIND:
-        return fmt::format("{}", toString(value.val.d()));
+        return fmt::format("{}", to_string(value.val.d()));
     case CHAR_KIND:
         return fmt::format("'\\u{:04x}'", value.val.c());
     case STRING_KIND:
@@ -841,56 +846,57 @@ static void java_conv_gen_elem(
     }
 }
 
-static void populate_java_type_library(const ptree* obj) {
-    unsigned int i;
-    size_t cdr_size;
-    unsigned char* cdr;
-
-    get_type_library(obj, &cdr, &cdr_size);
-    mprintf(&g_hd_file, "private static final String[] typeDefinition = new String[] {{\n\"");
-    for (i = 0; i < cdr_size; i++) {
-        if (i != 0 && (i % 48) == 0) {
-            mprintf(&g_hd_file, "\"{}\n\"", (i % (64 * 48)) ? " +" : ",");
-        }
-        mprintf(&g_hd_file, "{:x}{:x}", cdr[i] >> 4, cdr[i] & 0xf);
-    }
-    mprintf(&g_hd_file, "\"\n}};\n\n");
-    mprintf(
-        &g_hd_file,
-        "/**\n"
-        " * Get a serialized representation of the type. It is described using a DDS TypeObject as\n"
-        " * defined by the OMG standard for Extensible and Dynamic Topic Types for DDS, version 1.1.\n"
-        " *\n"
-        " * @return a byte array containing a big endian CDR serialization of the DDS TypeObject\n"
-        " */\n"
-    );
-    mprintf(
-        &g_hd_file,
-        "public static byte[] getTypeDefinition() {{\n"
-        "int len = 0;\n"
-        "for (String s : typeDefinition) {{\n"
-        "len += s.length();\n"
-        "}}\n"
-        "int pos = 0;\n"
-        "byte[] data = new byte[len/2];\n"
-        "for (String s : typeDefinition) {{\n"
-        "for (int i = 0; i < s.length(); i += 2, pos++) {{\n"
-        "data[pos] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i+1), 16));\n"
-        "}}\n"
-        "}}\n"
-        "return data;\n"
-        "}}\n\n"
-    );
-
-    std::string name = idl_scoped_name(obj, nullptr);
-    if (name == "com::kongsberg::intercom::jni::KeyedBytes") {
-        name = "DDS::KeyedBytes";
-    }
-    if (name == "com::kongsberg::intercom::jni::KeyedString") {
-        name = "DDS::KeyedString";
-    }
-    mprintf(&g_hd_file, "public static String getTypeName() {{\nreturn \"{}\";\n}}\n", name);
-    free(cdr);
+static void populate_java_type_library(const ptree*) {
+    // TODO: idarcar
+    // unsigned int i;
+    // size_t cdr_size;
+    // unsigned char* cdr;
+    //
+    // get_type_library(obj, &cdr, &cdr_size);
+    // mprintf(&g_hd_file, "private static final String[] typeDefinition = new String[] {{\n\"");
+    // for (i = 0; i < cdr_size; i++) {
+    //     if (i != 0 && (i % 48) == 0) {
+    //         mprintf(&g_hd_file, "\"{}\n\"", (i % (64 * 48)) ? " +" : ",");
+    //     }
+    //     mprintf(&g_hd_file, "{:x}{:x}", cdr[i] >> 4, cdr[i] & 0xf);
+    // }
+    // mprintf(&g_hd_file, "\"\n}};\n\n");
+    // mprintf(
+    //     &g_hd_file,
+    //     "/**\n"
+    //     " * Get a serialized representation of the type. It is described using a DDS TypeObject
+    //     as\n" " * defined by the OMG standard for Extensible and Dynamic Topic Types for DDS,
+    //     version 1.1.\n" " *\n" " * @return a byte array containing a big endian CDR serialization
+    //     of the DDS TypeObject\n" " */\n"
+    // );
+    // mprintf(
+    //     &g_hd_file,
+    //     "public static byte[] getTypeDefinition() {{\n"
+    //     "int len = 0;\n"
+    //     "for (String s : typeDefinition) {{\n"
+    //     "len += s.length();\n"
+    //     "}}\n"
+    //     "int pos = 0;\n"
+    //     "byte[] data = new byte[len/2];\n"
+    //     "for (String s : typeDefinition) {{\n"
+    //     "for (int i = 0; i < s.length(); i += 2, pos++) {{\n"
+    //     "data[pos] = (byte) ((Character.digit(s.charAt(i), 16) << 4) +
+    //     Character.digit(s.charAt(i+1), 16));\n"
+    //     "}}\n"
+    //     "}}\n"
+    //     "return data;\n"
+    //     "}}\n\n"
+    // );
+    //
+    // std::string name = idl_scoped_name(obj, nullptr);
+    // if (name == "com::kongsberg::intercom::jni::KeyedBytes") {
+    //     name = "DDS::KeyedBytes";
+    // }
+    // if (name == "com::kongsberg::intercom::jni::KeyedString") {
+    //     name = "DDS::KeyedString";
+    // }
+    // mprintf(&g_hd_file, "public static String getTypeName() {{\nreturn \"{}\";\n}}\n", name);
+    // free(cdr);
 }
 
 static void
@@ -1285,7 +1291,6 @@ static void prep_file(const ptree* obj, struct memf* file) {
     auto package = javaname(obj->super, ".", 0);
 
     // build info header
-    mprintf(file, "/*{} */\n\n", generate_info_header(obj->file_name, "\t"));
     if (!package.empty()) {
         mprintf(file, "package {};\n", package);
     }
@@ -1607,19 +1612,12 @@ static void cgjava_recurs(const ptree* obj) {
     }
 }
 
-void code_gen_java(struct parse_result* result) {
+void intercom::cidl::code_gen_java(const parse_result* result) {
     g_seen_obj.clear();
     cgjava_recurs(result->tree);
 }
 
-std::list<File> intercom::cidl::code_gen_java(const Config& config, struct parse_result* result) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    CommandLineOption::get_instance() = config;
-    g_seen_obj.clear();
-    g_emit = false;
-    cgjava_recurs(result->tree);
-
-    auto files = std::move(g_files);
-    g_files.clear();
-    return files;
+void intercom::cidl::code_gen_java(const parse_result* result, const char* destination) {
+    intercom::cidl::CommandLineOption::get_instance().java_target_directory = destination;
+    code_gen_java(result);
 }

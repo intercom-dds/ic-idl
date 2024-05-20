@@ -183,6 +183,10 @@ struct Options {
     #[option(long, arg = "dir")]
     proto_out: Option<PathBuf>,
 
+    /// Generate Java files
+    #[option(long, arg = "dir")]
+    java_out: Option<PathBuf>,
+
     #[option(positional)]
     files: HashSet<PathBuf>,
 }
@@ -294,6 +298,10 @@ fn try_main(options: Options) -> anyhow::Result<()> {
 
     if let Some(dir) = &options.proto_out {
         ic_ptree::codegen_proto(&merged, dir);
+    }
+
+    if let Some(dir) = &options.java_out {
+        ic_ptree::codegen_java(&merged, dir);
     }
 
     Ok(())

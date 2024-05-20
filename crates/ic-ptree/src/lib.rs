@@ -77,3 +77,10 @@ pub fn codegen_proto(result: &ParseResult, directory: &Path) {
         ffi::ic_codegen_proto(result.inner, path.as_ptr());
     }
 }
+
+pub fn codegen_java(result: &ParseResult, directory: &Path) {
+    unsafe {
+        let path = c_str!(directory);
+        ffi::ic_codegen_java(result.inner, path.as_ptr());
+    }
+}

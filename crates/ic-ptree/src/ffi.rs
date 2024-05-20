@@ -43,4 +43,5 @@ extern "C" {
     pub fn ic_ast_dump(result: *const parse_result);
 
     pub fn ic_codegen_proto(result: *const parse_result, destination: *const ffi::c_char);
+    pub fn ic_codegen_java(result: *const parse_result, destination: *const ffi::c_char);
 }

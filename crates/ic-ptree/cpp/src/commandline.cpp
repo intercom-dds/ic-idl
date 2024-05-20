@@ -58,7 +58,6 @@ struct CurrentOptionsT : public intercom::cidl::Config {
 
     std::string cs_target_directory;
     std::string c_target_directory;
-    std::string java_target_directory;
     std::string copyright_notice;
     std::string json_target_directory;
     std::string json_schema_target_directory;

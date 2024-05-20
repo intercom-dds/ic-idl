@@ -62,3 +62,8 @@ void ic_codegen_proto(const ic_parse_result_t* result, const char* destination) 
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
     intercom::cidl::code_gen_proto(res, destination);
 }
+
+void ic_codegen_java(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_java(res, destination);
+}

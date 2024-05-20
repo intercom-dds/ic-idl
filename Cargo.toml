@@ -32,11 +32,11 @@ members = [
     "crates/ic-cli-derive",
     "crates/ic-driver",
     "crates/ic-lint",
+    "crates/ic-preproc",
+    "crates/ic-ptree",
     # "crates/ic-driver",
     # "crates/ic-hir",
     # "crates/ic-hir-pretty",
     # "crates/ic-parser",
-    "crates/ic-preproc",
-    "crates/ic-ptree",
 ]
-exclude = ["fuzz"]
+exclude = ["fuzz", "crates/ic-bootstrap"]

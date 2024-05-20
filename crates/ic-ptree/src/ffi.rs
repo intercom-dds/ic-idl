@@ -25,42 +25,19 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::{CString, NulError};
-use std::fmt::{Debug, Display};
+#![allow(non_camel_case_types)]
+use std::marker::{PhantomData, PhantomPinned};
 
-mod ffi;
-
-pub struct ParseResult {
-    inner: *mut ffi::parse_result,
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct parse_result {
+    _unused: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
-impl Drop for ParseResult {
-    fn drop(&mut self) {
-        unsafe {
-            ffi::ic_parse_free(self.inner);
-        }
-    }
-}
-
-pub fn parse_idl(input: &str) -> Result<ParseResult, NulError> {
-    let c_str = CString::new(input)?;
-    let inner = unsafe { ffi::ic_parse_idl(c_str.as_ptr()) };
-    debug_assert!(!inner.is_null());
-
-    Ok(ParseResult { inner })
-}
-
-pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
-    let mut trees: Vec<_> = input.iter().map(|v| v.inner).collect();
-    trees.push(std::ptr::null_mut());
-
-    let inner = unsafe { ffi::ic_ptree_merge(trees.as_mut_ptr()) };
-    debug_assert!(!inner.is_null());
-    ParseResult { inner }
-}
-
-pub fn ast_dump(result: &ParseResult) {
-    unsafe {
-        ffi::ic_ast_dump(result.inner);
-    }
+extern "C" {
+    pub fn ic_parse_idl(input: *const std::ffi::c_char) -> *mut parse_result;
+    pub fn ic_parse_free(result: *mut parse_result);
+    pub fn ic_ptree_merge(result: *const *mut parse_result) -> *mut parse_result;
+    pub fn ic_ast_dump(result: *const parse_result);
 }

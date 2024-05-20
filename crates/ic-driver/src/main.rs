@@ -182,13 +182,17 @@ struct Options {
 
 #[derive(Command, Default)]
 struct Unstable {
-    /// Print the AST in a tree-like format
+    /// Print the HIR in a tree-like format
     #[option(long)]
-    ast_dump: bool,
+    hir_pretty: bool,
+
+    /// Print the ptree in a tree-like format
+    #[option(long)]
+    ptree_dump: bool,
 
     /// Dump the AST as JSON
     #[option(long)]
-    ast_json: bool,
+    ptree_json: bool,
 
     /// Insert IPR header in generated files
     #[option(long, arg = "file")]
@@ -252,25 +256,30 @@ fn main() {
         return;
     }
 
-    let generated: Result<Vec<_>, _> = options
+    if let Err(e) = try_main(options) {
+        error!("{e}");
+        std::process::exit(1);
+    }
+}
+
+fn try_main(options: Options) -> anyhow::Result<()> {
+    let preprocessed = options
         .files
         .iter()
         .map(|f| parse_file(&options, f))
-        .collect();
-
-    let generated = match generated {
-        Ok(v) => v,
-        Err(e) => {
-            error!("{e}");
-            std::process::exit(1);
-        }
-    };
+        .collect::<Result<Vec<_>, _>>()?;
 
     if options.preprocessor_only {
-        println!("{}", generated.join("\n"));
+        println!("{}", preprocessed.join("\n"));
+        return Ok(());
     }
 
-    let parsed: Vec<_> = generated.iter().map(|v| ic_ptree::parse_idl(v)).collect();
+    let parsed = preprocessed
+        .into_iter()
+        .map(|v| ic_ptree::parse_idl(&v))
+        .collect::<Result<Vec<_>, _>>()?;
+
     let merged = ic_ptree::merge_trees(&parsed);
     ic_ptree::ast_dump(&merged);
+    Ok(())
 }

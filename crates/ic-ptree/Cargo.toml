@@ -27,8 +27,9 @@
 
 [package]
 name = "ic-ptree"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
+publish = false
 
 [build-dependencies]
 cmake = "0.1"

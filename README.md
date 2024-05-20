@@ -31,8 +31,21 @@
 
 MSRV is 1.70.
 
+`ic-idl` is bootstrapped. To build a full-fledged version, we first need to
+compile a reduced, Rust-only version of `ic-idl` that is capable of emitting
+simplified type definitions. This will be used to generate types we need for
+the full-fledged version. This process is automated through `cargo-make`.
+
+First, install cargo-make:
+
 ```sh
-cargo run --release
+cargo install --no-default-features --force cargo-make
+```
+
+Then build the full-fledged version through `cargo-make`:
+
+```sh
+cargo make release
 ```
 
 The system's default C/C++ toolchain will be used unless otherwise is

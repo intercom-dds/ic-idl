@@ -3709,7 +3709,7 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
     mreset(&g_hd_fmt_file);
 }
 
-void intercom::cidl::code_gen_dds_cplpl(struct parse_result* result) {
+void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
     for (auto include : result->includes) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
@@ -3717,4 +3717,9 @@ void intercom::cidl::code_gen_dds_cplpl(struct parse_result* result) {
         cpl_rpc_service_gen(result->tree, &g_hd_rpc_file, &g_tbd_file, g_current_include);
         cpl_saveit(result->tree, file_name, include->name);
     }
+}
+
+void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, const char* destination) {
+    CommandLineOption::get_instance().c_target_directory = destination;
+    code_gen_dds_cplpl(result);
 }

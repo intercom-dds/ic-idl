@@ -187,6 +187,14 @@ struct Options {
     #[option(long, arg = "dir")]
     java_out: Option<PathBuf>,
 
+    /// Generate C# files
+    #[option(long, arg = "dir")]
+    csharp_out: Option<PathBuf>,
+
+    /// Generate C++ files
+    #[option(long, arg = "dir")]
+    cpp_out: Option<PathBuf>,
+
     #[option(positional)]
     files: HashSet<PathBuf>,
 }
@@ -302,6 +310,14 @@ fn try_main(options: Options) -> anyhow::Result<()> {
 
     if let Some(dir) = &options.java_out {
         ic_ptree::codegen_java(&merged, dir);
+    }
+
+    if let Some(dir) = &options.csharp_out {
+        ic_ptree::codegen_csharp(&merged, dir);
+    }
+
+    if let Some(dir) = &options.cpp_out {
+        // ic_ptree::codegen_cpp(&merged, dir);
     }
 
     Ok(())

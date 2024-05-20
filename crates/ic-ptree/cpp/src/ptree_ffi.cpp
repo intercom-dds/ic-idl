@@ -67,3 +67,23 @@ void ic_codegen_java(const ic_parse_result_t* result, const char* destination) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
     intercom::cidl::code_gen_java(res, destination);
 }
+
+void ic_codegen_csharp(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_cs(res, destination);
+}
+
+void ic_codegen_cpp(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_dds_cplpl(res, destination);
+}
+
+void ic_codegen_json(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_json(res, destination);
+}
+
+void ic_codegen_json_schema(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_json_schema(res);
+}

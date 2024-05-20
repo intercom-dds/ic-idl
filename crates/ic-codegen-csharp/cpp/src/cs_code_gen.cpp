@@ -618,9 +618,10 @@ void cs_emit_typesupport_methods(const ptree* obj, ModuleMap& out) {
     }
     OUT << "// CDR serialized type DDS::XTypes::TypeDefinition" << std::endl;
     OUT << "private static readonly byte[] m_TypeDefinition = new byte[] {" << std::endl;
-    size_t cdrSize;
-    unsigned char* cdr;
-    get_type_library(obj, &cdr, &cdrSize);
+    // TODO: idarcar
+    size_t cdrSize = 0;
+    unsigned char* cdr = nullptr;
+    // get_type_library(obj, &cdr, &cdrSize);
     for (size_t i = 0; i < cdrSize; i++) {
         if (i != 0) {
             OUT << ", ";

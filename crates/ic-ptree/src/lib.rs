@@ -30,6 +30,7 @@ use std::path::Path;
 
 mod ffi;
 
+#[derive(Debug)]
 pub struct ParseResult {
     inner: *mut ffi::parse_result,
 }
@@ -42,6 +43,12 @@ impl Drop for ParseResult {
     }
 }
 
+/// Parses the given IDL. The parser assumes the input has already been
+/// preprocessed; no preprocessor directives will be expanded or evaluated.
+///
+/// # Error
+///
+/// This function may fail if the input IDL contains a nul byte.
 pub fn parse_idl(input: &str) -> Result<ParseResult, NulError> {
     let c_str = CString::new(input)?;
     let inner = unsafe { ffi::ic_parse_idl(c_str.as_ptr()) };
@@ -50,6 +57,9 @@ pub fn parse_idl(input: &str) -> Result<ParseResult, NulError> {
     Ok(ParseResult { inner })
 }
 
+/// Takes a set of individual parse trees and merges them into one. Once
+/// merged, any duplicate types will be removed, and pointers throughout the
+/// tree will be updated to point to the same types.
 pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
     let mut trees: Vec<_> = input.iter().map(|v| v.inner).collect();
     trees.push(std::ptr::null_mut());
@@ -59,28 +69,25 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
     ParseResult { inner }
 }
 
+/// Dumps the ptree to `stdout` in a tree-like format.
 pub fn ast_dump(result: &ParseResult) {
     unsafe {
         ffi::ic_ast_dump(result.inner);
     }
 }
 
-macro_rules! c_str {
-    ($var: tt) => {{
-        std::ffi::CString::new($var.to_string_lossy().as_bytes()).unwrap()
-    }};
+macro_rules! define_backend {
+    ($fn_name:tt, $ffi_name:tt) => {
+        pub fn $fn_name(result: &ParseResult, directory: &Path) {
+            let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
+            unsafe {
+                ffi::$ffi_name(result.inner, dir.as_ptr());
+            }
+        }
+    };
 }
 
-pub fn codegen_proto(result: &ParseResult, directory: &Path) {
-    unsafe {
-        let path = c_str!(directory);
-        ffi::ic_codegen_proto(result.inner, path.as_ptr());
-    }
-}
-
-pub fn codegen_java(result: &ParseResult, directory: &Path) {
-    unsafe {
-        let path = c_str!(directory);
-        ffi::ic_codegen_java(result.inner, path.as_ptr());
-    }
-}
+define_backend!(codegen_proto, ic_codegen_proto);
+define_backend!(codegen_java, ic_codegen_java);
+define_backend!(codegen_csharp, ic_codegen_csharp);
+define_backend!(codegen_cpp, ic_codegen_cpp);

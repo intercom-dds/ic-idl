@@ -54,6 +54,12 @@ void ic_codegen_proto(const ic_parse_result_t* result, const char* destination);
 INTERCOM_PUBLIC
 void ic_codegen_java(const ic_parse_result_t* result, const char* destination);
 
+INTERCOM_PUBLIC
+void ic_codegen_csharp(const ic_parse_result_t* result, const char* destination);
+
+INTERCOM_PUBLIC
+void ic_codegen_cpp(const ic_parse_result_t* result, const char* destination);
+
 #ifdef __cplusplus
 }
 #endif

@@ -89,7 +89,7 @@ add_library(ic_ptree STATIC
     src/commandline.cpp
     src/memf.cpp
 
-    src/proto_code_gen.cpp
+    ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
     ../../ic-codegen-java/cpp/src/java_code_gen.cpp
     ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
     ../../ic-codegen-python/cpp/src/python_code_gen.cpp

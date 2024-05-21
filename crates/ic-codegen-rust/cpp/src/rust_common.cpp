@@ -30,10 +30,10 @@
 #include <string>
 
 #include "InterCOM/string_view.h"
-#include "cidl/constants.h"
 #include "cidl/commandline.h"
-#include "cidl/ptree_builder.h"
+#include "cidl/constants.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "icgen/template/casing.h"

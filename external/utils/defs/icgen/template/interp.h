@@ -37,13 +37,11 @@ namespace intercom {
 namespace icgen {
 
 struct TemplateError : public std::runtime_error {
-    explicit TemplateError(const std::string& what)
-        : std::runtime_error(what) {}
+    explicit TemplateError(const std::string& what) : std::runtime_error(what) {}
 };
 
 struct ValueError : public TemplateError {
-    explicit ValueError(const std::string& what)
-        : TemplateError(what) {}
+    explicit ValueError(const std::string& what) : TemplateError(what) {}
 };
 
 class CtxError : public TemplateError {
@@ -55,9 +53,7 @@ class CtxError : public TemplateError {
     }
 
   private:
-    CtxError(Token context, const std::string& what)
-        : TemplateError(what)
-        , m_context(context) {}
+    CtxError(Token context, const std::string& what) : TemplateError(what), m_context(context) {}
 
     const Token m_context;
 };
@@ -219,8 +215,7 @@ class Scope {
   public:
     Scope() = default;
 
-    explicit Scope(Scope* parent)
-        : m_parent(parent) {}
+    explicit Scope(Scope* parent) : m_parent(parent) {}
 
     bool is_strict() {
         return contains("strict") && find("strict")->boolean();
@@ -368,8 +363,7 @@ class MemberResolver : public Visitor {
     }
 
   private:
-    explicit MemberResolver(Scope* scope)
-        : m_scope(scope) {}
+    explicit MemberResolver(Scope* scope) : m_scope(scope) {}
 
     void visit(Member* member) override {
         if (m_current) {
@@ -408,8 +402,7 @@ class MemberResolver : public Visitor {
 
 class Evaluator : public Visitor {
   public:
-    explicit Evaluator(Scope* scope)
-        : m_scope(scope) {}
+    explicit Evaluator(Scope* scope) : m_scope(scope) {}
 
     static Value evaluate(Scope* scope, Expr* expr) {
         Evaluator eval(scope);
@@ -443,7 +436,7 @@ class Evaluator : public Visitor {
         expr->lhs->accept(this);
 
         if ((is_true(m_value) && expr->oper == TokenKind::And) ||
-                (!is_true(m_value) && expr->oper == TokenKind::Or)) {
+            (!is_true(m_value) && expr->oper == TokenKind::Or)) {
             expr->rhs->accept(this);
         } else {
             auto temp = m_value;
@@ -513,9 +506,7 @@ class Evaluator : public Visitor {
 
 class Interp : public Visitor {
   public:
-    Interp(Scope* scope, std::ostream& output)
-        : m_scope(scope)
-        , m_stream(output) {}
+    Interp(Scope* scope, std::ostream& output) : m_scope(scope), m_stream(output) {}
 
     void execute(Node* node) {
         node->accept(this);

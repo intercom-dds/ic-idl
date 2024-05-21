@@ -54,14 +54,14 @@ class INTERCOM_PUBLIC XMLReader : public XML {
         //! Destructor
         ~Iterator() noexcept = default;
 
-        //! Tests if the iterator objects on the left side of the operator is not equal to the iterator object on the
-        //! right side
+        //! Tests if the iterator objects on the left side of the operator is not equal to the
+        //! iterator object on the right side
         bool operator!=(const Iterator& rhs) const noexcept;
-        //! Tests if the iterator object on the left side of the operator is equal to the iterator object on the right
-        //! side.
+        //! Tests if the iterator object on the left side of the operator is equal to the iterator
+        //! object on the right side.
         bool operator==(const Iterator& rhs) const noexcept;
-        //! Assign the content of the iterator object on the right side of the operator to iterator object on the left
-        //! side.
+        //! Assign the content of the iterator object on the right side of the operator to iterator
+        //! object on the left side.
         Iterator& operator=(const Iterator& rhs) noexcept;
         //! Returns the designated value
         const XMLElement& operator*() const noexcept;
@@ -95,9 +95,17 @@ class INTERCOM_PUBLIC XMLReader : public XML {
     XMLReader();
 
     //! Constructor taking an %XML file name
-    XMLReader(const std::string& fileName, bool verbose = false, std::ostream& targetStream = std::cout);
+    XMLReader(
+        const std::string& fileName,
+        bool verbose = false,
+        std::ostream& targetStream = std::cout
+    );
     //! Constructor taking a %stringstream
-    XMLReader(const std::stringstream& inputStream, bool verbose = false, std::ostream& targetStream = std::cout);
+    XMLReader(
+        const std::stringstream& inputStream,
+        bool verbose = false,
+        std::ostream& targetStream = std::cout
+    );
     //! Copy constructor
     XMLReader(const XMLReader& rhs);
     //! Move constructor
@@ -125,13 +133,16 @@ class INTERCOM_PUBLIC XMLReader : public XML {
     static Iterator end() noexcept;
     //! Returns an iterator addressing the first %XMLElement for the specified element.
     Iterator begin(const Iterator& iter) const noexcept;
-    //! Returns an iterator that addresses the location succeeding the last %XMLElement for the specified element.
+    //! Returns an iterator that addresses the location succeeding the last %XMLElement for the
+    //! specified element.
     Iterator end(const Iterator& iter) const noexcept;
-    //! Returns an iterator addressing the location of an %XMLElement in the XML-file that has a name equivalent to a
-    //! specified name.
+    //! Returns an iterator addressing the location of an %XMLElement in the XML-file that has a
+    //! name equivalent to a specified name.
     Iterator find(const std::string& elementName, bool caseSensitive) const noexcept;
-    //! Returns an iterator addressing the location of an %XMLElement that has a name equivalent to a specified name.
-    Iterator find(const Iterator& iter, const std::string& elementName, bool caseSensitive) const noexcept;
+    //! Returns an iterator addressing the location of an %XMLElement that has a name equivalent to
+    //! a specified name.
+    Iterator find(const Iterator& iter, const std::string& elementName, bool caseSensitive)
+        const noexcept;
 
     //! Reads the %XML tags and attributes based on the provided file name
     ReadStatus read(const std::string& fileName) noexcept;
@@ -140,8 +151,12 @@ class INTERCOM_PUBLIC XMLReader : public XML {
     ReadStatus read(const std::stringstream& input) noexcept;
 
   private:
-    void printVerbose(const std::string& before, const std::string& info, const std::string& after,
-                      int indent = 0) noexcept;
+    void printVerbose(
+        const std::string& before,
+        const std::string& info,
+        const std::string& after,
+        int indent = 0
+    ) noexcept;
 
     XMLReader::ReadStatus read(XMLReaderFile& xmlFile) noexcept;
 

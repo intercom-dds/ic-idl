@@ -42,15 +42,15 @@ using namespace intercom;
 using std::toupper;
 
 XMLReaderFile::XMLReaderFile(const char* a_file_name) noexcept
-        : m_XmlFile(nullptr),
-          m_EndOfFile(true),
-          m_IOBufferSize(0),
-          m_IOBuffer(nullptr),
-          m_BufferPos(0),
-          m_NextWord(nullptr),
-          m_NextWordPos(XML_MAX_IO_BUFFER_SIZE),
-          m_IsValid(false),
-          m_CurState(STATE_ELEMENT_DATA) {
+    : m_XmlFile(nullptr),
+      m_EndOfFile(true),
+      m_IOBufferSize(0),
+      m_IOBuffer(nullptr),
+      m_BufferPos(0),
+      m_NextWord(nullptr),
+      m_NextWordPos(XML_MAX_IO_BUFFER_SIZE),
+      m_IsValid(false),
+      m_CurState(STATE_ELEMENT_DATA) {
     m_NextWord = static_cast<char*>(malloc(sizeof(char) * XML_MAX_IO_BUFFER_SIZE));
     m_IOBuffer = static_cast<char*>(malloc(sizeof(char) * XML_MAX_IO_BUFFER_SIZE));
     if (a_file_name) {
@@ -68,16 +68,16 @@ XMLReaderFile::XMLReaderFile(const char* a_file_name) noexcept
 }
 
 XMLReaderFile::XMLReaderFile(const std::stringstream& ss) noexcept
-        : m_stream(ss.str()),
-          m_XmlFile(nullptr),
-          m_EndOfFile(true),
-          m_IOBufferSize(0),
-          m_IOBuffer(nullptr),
-          m_BufferPos(0),
-          m_NextWord(nullptr),
-          m_NextWordPos(XML_MAX_IO_BUFFER_SIZE),
-          m_IsValid(false),
-          m_CurState(STATE_ELEMENT_DATA) {
+    : m_stream(ss.str()),
+      m_XmlFile(nullptr),
+      m_EndOfFile(true),
+      m_IOBufferSize(0),
+      m_IOBuffer(nullptr),
+      m_BufferPos(0),
+      m_NextWord(nullptr),
+      m_NextWordPos(XML_MAX_IO_BUFFER_SIZE),
+      m_IsValid(false),
+      m_CurState(STATE_ELEMENT_DATA) {
     m_NextWord = static_cast<char*>(malloc(sizeof(char) * XML_MAX_IO_BUFFER_SIZE));
     m_IOBuffer = static_cast<char*>(malloc(sizeof(char) * XML_MAX_IO_BUFFER_SIZE));
     if (!m_stream.str().empty()) {
@@ -106,7 +106,10 @@ bool XMLReaderFile::isValid() const noexcept {
 }
 
 // ---------------------------------------------------------------------
-const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFile::XMLDataType& data_type) noexcept {
+const char* XMLReaderFile::readNext(
+    XMLReaderFile::XMLState& state,
+    XMLReaderFile::XMLDataType& data_type
+) noexcept {
     state = XMLReaderFile::STATE_ELEMENT_DATA;
     data_type = XMLReaderFile::DATA_TYPE_UNKNOWN;
 
@@ -134,7 +137,9 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                 return m_NextWord;
             }
             if (numChar + m_IOBufferSize >= m_NextWordPos) {
-                m_NextWord = static_cast<char*>(realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize)));
+                m_NextWord = static_cast<char*>(
+                    realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize))
+                );
                 m_NextWordPos = m_NextWordPos + m_IOBufferSize;
             }
         }
@@ -148,7 +153,9 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                 return m_NextWord;
             }
             if (numChar + m_IOBufferSize >= m_NextWordPos) {
-                m_NextWord = static_cast<char*>(realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize)));
+                m_NextWord = static_cast<char*>(
+                    realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize))
+                );
                 m_NextWordPos = m_NextWordPos + m_IOBufferSize;
             }
         }
@@ -168,7 +175,8 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                     }
                     if (numChar + m_IOBufferSize >= m_NextWordPos) {
                         m_NextWord = static_cast<char*>(
-                                realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize)));
+                            realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize))
+                        );
                         m_NextWordPos = m_NextWordPos + m_IOBufferSize;
                     }
                     // Need to add the '-' we lost when reading more
@@ -202,7 +210,8 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                         }
                         if (numChar + m_IOBufferSize >= m_NextWordPos) {
                             m_NextWord = static_cast<char*>(
-                                    realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize)));
+                                realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize))
+                            );
                             m_NextWordPos = m_NextWordPos + m_IOBufferSize;
                         }
                         tmpPos = 0;
@@ -261,7 +270,9 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                     } break;
                     case STATE_ELEMENT_DATA: {
                         m_NextWord[numChar++] = '\0';  // Terminate Data block
-                        data_type = decideDataType(m_NextWord, stringFlag, numberFlag, floatFlag, arrayFlag);
+                        data_type = decideDataType(
+                            m_NextWord, stringFlag, numberFlag, floatFlag, arrayFlag
+                        );
                         m_CurState = state;
                         return m_NextWord;
                     } break;
@@ -409,7 +420,8 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                     m_BufferPos++;
                     state = STATE_ATTRIBUTE_DATA;
                     m_CurState = STATE_NEW_ATTRIBUTE;
-                    data_type = decideDataType(m_NextWord, stringFlag, numberFlag, floatFlag, arrayFlag);
+                    data_type =
+                        decideDataType(m_NextWord, stringFlag, numberFlag, floatFlag, arrayFlag);
                     return m_NextWord;
                 }
             } else {
@@ -449,8 +461,9 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
                     return m_NextWord;
                 }
                 if (numChar + m_IOBufferSize >= m_NextWordPos) {
-                    m_NextWord =
-                            static_cast<char*>(realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize)));
+                    m_NextWord = static_cast<char*>(
+                        realloc(m_NextWord, sizeof(char) * (m_NextWordPos + m_IOBufferSize))
+                    );
                     m_NextWordPos = m_NextWordPos + m_IOBufferSize;
                 }
             }
@@ -499,8 +512,13 @@ const char* XMLReaderFile::readNext(XMLReaderFile::XMLState& state, XMLReaderFil
 }
 
 // ---------------------------------------------------------------------
-XMLReaderFile::XMLDataType XMLReaderFile::decideDataType(char* data, bool string_flag, bool number_flag,
-                                                         bool float_flag, bool array_flag) noexcept {
+XMLReaderFile::XMLDataType XMLReaderFile::decideDataType(
+    char* data,
+    bool string_flag,
+    bool number_flag,
+    bool float_flag,
+    bool array_flag
+) noexcept {
     XMLDataType dataType = DATA_TYPE_UNKNOWN;
     // Decide data type of current data block
     if (string_flag) {

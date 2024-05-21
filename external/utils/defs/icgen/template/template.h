@@ -27,14 +27,14 @@
 
 #pragma once
 
-#include "interp.h"
-#include "parser.h"
-#include "marshal.h"
-
 #include <fstream>
 #include <functional>
 #include <stdexcept>
 #include <unordered_map>
+
+#include "interp.h"
+#include "marshal.h"
+#include "parser.h"
 
 namespace intercom {
 namespace icgen {
@@ -44,9 +44,7 @@ void add_builtins(class Template& tmpl);
 class Template {
   public:
     /// Creates a new template instance with an external scope.
-    explicit Template(Scope* scope)
-        : m_owned(false)
-        , m_scope(scope) {}
+    explicit Template(Scope* scope) : m_owned(false), m_scope(scope) {}
 
     /// Creates a new template instance with its own scope.
     Template() {
@@ -154,7 +152,7 @@ class Template {
         try {
             process(filename, stream);
         } catch (std::exception& e) {
-            throw std::runtime_error(filename+ ":" + e.what());
+            throw std::runtime_error(filename + ":" + e.what());
         }
     }
 
@@ -174,7 +172,7 @@ class Template {
     bool m_owned{true};
     std::unique_ptr<Scope> m_scope{new Scope()};
 };
-} // namespace icgen
-} // namespace intercom
+}  // namespace icgen
+}  // namespace intercom
 
 #include "builtin.h"

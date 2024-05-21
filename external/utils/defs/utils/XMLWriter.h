@@ -72,9 +72,14 @@ class INTERCOM_PUBLIC XMLWriter : public XML {
 
   protected:
     bool writeElement(std::ostream& os, const XMLElement& element, int indent) const noexcept;
-    bool writeOneElement(std::ostream& os, const std::string& name, const std::string& value,
-                         int indent) const noexcept;
-    static bool writeOneAttribute(std::ostream& os, const std::string& name, const std::string& value) noexcept;
+    bool writeOneElement(
+        std::ostream& os,
+        const std::string& name,
+        const std::string& value,
+        int indent
+    ) const noexcept;
+    static bool
+    writeOneAttribute(std::ostream& os, const std::string& name, const std::string& value) noexcept;
 
   private:
     XMLElement* m_Root;

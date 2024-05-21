@@ -63,7 +63,9 @@ class ValueMarshal {
             }
         }
 
-        ~StructValue() { m_marshal.m_value = std::move(m_members); }
+        ~StructValue() {
+            m_marshal.m_value = std::move(m_members);
+        }
 
       private:
         ValueMarshal& m_marshal;
@@ -101,9 +103,11 @@ class ValueMarshal {
     class MapValue {
       public:
         MapValue(ValueMarshal& builder, const TypeInfo*) : m_marshal(builder) {
-            static_assert(std::is_integral<K>::value || std::is_same<K, std::string>::value ||
-                                  std::is_same<K, corba::String_var>::value,
-                          "Only strings and integers as supported as keys in maps");
+            static_assert(
+                std::is_integral<K>::value || std::is_same<K, std::string>::value ||
+                    std::is_same<K, corba::String_var>::value,
+                "Only strings and integers as supported as keys in maps"
+            );
         }
 
         template <typename T>
@@ -126,9 +130,13 @@ class ValueMarshal {
       public:
         explicit StringValue(ValueMarshal& builder, const TypeInfo*) : m_marshal(builder) {}
 
-        void io(const std::string& value) { m_marshal.m_value = value; }
+        void io(const std::string& value) {
+            m_marshal.m_value = value;
+        }
 
-        void io(const corba::String_var& value) { m_marshal.m_value = value.c_str(); }
+        void io(const corba::String_var& value) {
+            m_marshal.m_value = value.c_str();
+        }
 
       private:
         ValueMarshal& m_marshal;
@@ -142,7 +150,8 @@ class ValueMarshal {
 
     template <typename T>
     void primitive_io(const T& value, const TypeInfo* info) {
-        if (info && (info->kind == dcps::xtypes::TK_ENUM || info->kind == dcps::xtypes::TK_BITMASK)) {
+        if (info &&
+            (info->kind == dcps::xtypes::TK_ENUM || info->kind == dcps::xtypes::TK_BITMASK)) {
             std::string res;
             if (enumToString(res, value, info)) {
                 io(res);
@@ -158,9 +167,13 @@ class ValueMarshal {
         ar.io(value, count);
     }
 
-    Value& value() { return m_value; }
+    Value& value() {
+        return m_value;
+    }
 
-    const Value& value() const { return m_value; }
+    const Value& value() const {
+        return m_value;
+    }
 
   private:
     Value m_value;

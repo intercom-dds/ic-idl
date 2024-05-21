@@ -767,7 +767,7 @@ void intercom::cidl::gen_cpp_type_info(
                 //     );
                 //     mprintf(memf, "{}", value);
                 // } else {
-                    mprintf(memf, "nullptr");
+                mprintf(memf, "nullptr");
                 // }
                 mprintf(memf, " }}");
             }

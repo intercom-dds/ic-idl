@@ -50,7 +50,8 @@ using namespace intercom;
  */
 
 // ---------------------------------------------------------------------
-XMLWriter::XMLWriter() noexcept : m_Root(new XMLElement()), m_Indent(2), m_Version("1.0"), m_Encoding("utf-8") {}
+XMLWriter::XMLWriter() noexcept
+    : m_Root(new XMLElement()), m_Indent(2), m_Version("1.0"), m_Encoding("utf-8") {}
 
 // ---------------------------------------------------------------------
 /*!
@@ -58,7 +59,8 @@ XMLWriter::XMLWriter() noexcept : m_Root(new XMLElement()), m_Indent(2), m_Versi
  *
  * Creates an XMLWriter object using the given element as root.
  */
-XMLWriter::XMLWriter(const XMLElement& element) noexcept : m_Root(new XMLElement(element)), m_Indent(2) {}
+XMLWriter::XMLWriter(const XMLElement& element) noexcept
+    : m_Root(new XMLElement(element)), m_Indent(2) {}
 
 // ---------------------------------------------------------------------
 XMLWriter::~XMLWriter() noexcept {
@@ -161,7 +163,8 @@ bool XMLWriter::writeToStream(std::ostream& os) noexcept {
 }
 
 // ---------------------------------------------------------------------
-bool XMLWriter::writeElement(std::ostream& os, const XMLElement& element, int indent) const noexcept {
+bool XMLWriter::writeElement(std::ostream& os, const XMLElement& element, int indent)
+    const noexcept {
     std::string curIndent;
     for (int ii = 0; ii < indent * m_Indent; ii++) {
         curIndent += " ";
@@ -204,8 +207,12 @@ bool XMLWriter::writeElement(std::ostream& os, const XMLElement& element, int in
 }
 
 // ---------------------------------------------------------------------
-bool XMLWriter::writeOneElement(std::ostream& os, const std::string& name, const std::string& value,
-                                int indent) const noexcept {
+bool XMLWriter::writeOneElement(
+    std::ostream& os,
+    const std::string& name,
+    const std::string& value,
+    int indent
+) const noexcept {
     std::string curIndent;
     for (int ii = 0; ii < indent * m_Indent; ii++) {
         curIndent += " ";
@@ -216,7 +223,11 @@ bool XMLWriter::writeOneElement(std::ostream& os, const std::string& name, const
 }
 
 // ---------------------------------------------------------------------
-bool XMLWriter::writeOneAttribute(std::ostream& os, const std::string& name, const std::string& value) noexcept {
+bool XMLWriter::writeOneAttribute(
+    std::ostream& os,
+    const std::string& name,
+    const std::string& value
+) noexcept {
     auto escape_str = [&](const std::string& str) {
         for (const auto& c : str) {
             switch (c) {

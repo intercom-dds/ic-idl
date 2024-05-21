@@ -76,13 +76,20 @@ class XMLReaderFile {
     // Read one section of the XML file.
     const char* readNext(XMLState& state, XMLDataType& dataType) noexcept;
 
-    unsigned long currentLine() const { return m_Line; }
+    unsigned long currentLine() const {
+        return m_Line;
+    }
 
   private:
     bool read() noexcept;
     void replaceXMLEscapeCharacters() noexcept;
-    static XMLDataType decideDataType(char* data, bool stringFlag, bool numberFlag, bool floatFlag,
-                                      bool arrayFlag) noexcept;
+    static XMLDataType decideDataType(
+        char* data,
+        bool stringFlag,
+        bool numberFlag,
+        bool floatFlag,
+        bool arrayFlag
+    ) noexcept;
     static void makeUpper(std::string& oneString) noexcept;
     std::stringstream m_stream;
     FILE* m_XmlFile;

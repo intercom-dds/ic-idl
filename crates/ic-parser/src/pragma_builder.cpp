@@ -116,7 +116,8 @@ bool pragma_finish_impl() {
         }
         node = try_lookup_node(replace_dots.str().c_str(), ANY_KIND);
         if (!node) {
-            WARN << "unknown type \"" << g_pragma_command[1] << "\" for pragma \"" << g_pragma_command[0] << "\"";
+            WARN << "unknown type \"" << g_pragma_command[1] << "\" for pragma \""
+                 << g_pragma_command[0] << "\"";
             if (g_pragma_command[0] != "INTERCOM_DOC") {
                 return false;
             }
@@ -126,15 +127,21 @@ bool pragma_finish_impl() {
     if (g_pragma_command.size() >= 3) {
         member = lookup_member(node, g_pragma_command[2].c_str());
         if (!member) {
-            WARN << "unknown member \"" << g_pragma_command[2] << "\" for pragma \"" << g_pragma_command[0] << "\"";
+            WARN << "unknown member \"" << g_pragma_command[2] << "\" for pragma \""
+                 << g_pragma_command[0] << "\"";
             return false;
         }
     }
     if (g_pragma_command[0] == "DCPS_DATA_TYPE" || g_pragma_command[0] == "INTERCOM_DLL_EXPORT" ||
-        g_pragma_command[0] == "INTERCOM_PACKED_BIT_LITTLE" || g_pragma_command[0] == "INTERCOM_STRING_TERM") {
-        ALERT(CommandLineOption::WARNING_DEPRECATED) << "deprecated syntax \"" << g_pragma_command[0] << "\"";
+        g_pragma_command[0] == "INTERCOM_PACKED_BIT_LITTLE" ||
+        g_pragma_command[0] == "INTERCOM_STRING_TERM") {
+        ALERT(CommandLineOption::WARNING_DEPRECATED)
+            << "deprecated syntax \"" << g_pragma_command[0] << "\"";
     } else if (g_pragma_command[0] == "DCPS_DATA_KEY") {
-        { ALERT(CommandLineOption::WARNING_DEPRECATED) << "deprecated syntax \"" << g_pragma_command[0] << "\""; }
+        {
+            ALERT(CommandLineOption::WARNING_DEPRECATED)
+                << "deprecated syntax \"" << g_pragma_command[0] << "\"";
+        }
         if (!member) {
             WARN << "missing key argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
@@ -184,13 +191,16 @@ bool pragma_finish_impl() {
             return false;
         }
         ptree* param = create_node(N_CONST, create_identifier("value"));
-        param->value.val.us(static_cast<unsigned short>(strtol(g_pragma_command[3].c_str(), nullptr, 0)));
+        param->value.val.us(
+            static_cast<unsigned short>(strtol(g_pragma_command[3].c_str(), nullptr, 0))
+        );
 
         create_annotation_start(create_identifier(annotation.c_str()));
         if (member->type->kind == N_ALIAS || member->type->kind == N_ENUM) {
             member = member->type;
         }
-        if (annotation == "@bit_bound" && member->kind == N_ALIAS && member->type->kind == N_SEQUENCE) {
+        if (annotation == "@bit_bound" && member->kind == N_ALIAS &&
+            member->type->kind == N_SEQUENCE) {
             member = member->type->element_type;
         }
         annotate(member, create_annotation_finish(param));
@@ -207,7 +217,8 @@ bool pragma_finish_impl() {
         annotate(member, create_annotation_finish(param));
     } else if (g_pragma_command[0] == "INTERCOM_REPEAT_COUNT") {
         ptree* repeater;
-        if (!member || g_pragma_command.size() < 4 || !(repeater = lookup_member(node, g_pragma_command[3].c_str()))) {
+        if (!member || g_pragma_command.size() < 4 ||
+            !(repeater = lookup_member(node, g_pragma_command[3].c_str()))) {
             WARN << "missing argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
         }
@@ -217,7 +228,8 @@ bool pragma_finish_impl() {
         create_annotation_start(create_identifier("@ext::repeat_count"));
         annotate(member, create_annotation_finish(param));
     } else {
-        WARN << "unknown pragma \"" << g_pragma_command[0] << "\" for type \"" << g_pragma_command[1] << "\"";
+        WARN << "unknown pragma \"" << g_pragma_command[0] << "\" for type \""
+             << g_pragma_command[1] << "\"";
         return false;
     }
     return true;

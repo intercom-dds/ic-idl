@@ -27,20 +27,23 @@
 
 #pragma once
 
-#include "InterCOM/detail/filesystem.h"
-
 #include <fstream>
 #include <regex>
 #include <stdexcept>
 #include <string>
 
+#include "InterCOM/detail/filesystem.h"
 #include "casing.h"
 #include "interp.h"
 #include "template.h"
 
 namespace StringUtils {
-INTERCOM_PUBLIC bool wildCardMatch(intercom::string_view pattern, intercom::string_view str, bool case_insensitive = false,
-                                   char terminator = '\0');
+INTERCOM_PUBLIC bool wildCardMatch(
+    intercom::string_view pattern,
+    intercom::string_view str,
+    bool case_insensitive = false,
+    char terminator = '\0'
+);
 }
 
 namespace intercom {

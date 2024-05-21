@@ -90,9 +90,15 @@ class INTERCOM_PUBLIC XMLAttribute {
     //! Sets the datatype of this attribute
     void setXMLDataType(const XMLDataType type) noexcept;
     //! Sets the name, value and datatype of this attribute
-    void set(const std::string& name, const std::string& value, const XMLDataType type = XML_DATA_TYPE_STRING) noexcept;
+    void set(
+        const std::string& name,
+        const std::string& value,
+        const XMLDataType type = XML_DATA_TYPE_STRING
+    ) noexcept;
 
-    explicit operator bool() const { return isValid(); }
+    explicit operator bool() const {
+        return isValid();
+    }
 
   protected:
     std::string m_Name;
@@ -143,8 +149,11 @@ class INTERCOM_PUBLIC XMLElement {
     //! Sets the datatype of this element
     void setXMLDataType(const XMLDataType type) noexcept;
     //! Sets the name, value and datatype of this element
-    void set(const std::string& name, const std::string& value,
-             const XMLDataType type = XML_DATA_TYPE_UNKNOWN) noexcept;
+    void set(
+        const std::string& name,
+        const std::string& value,
+        const XMLDataType type = XML_DATA_TYPE_UNKNOWN
+    ) noexcept;
     //! Returns number of member elements
     std::size_t numberOfXMLElements() const noexcept;
     //! Returns a member element identified by specified index
@@ -165,14 +174,18 @@ class INTERCOM_PUBLIC XMLElement {
     XMLAttribute& createMemberXMLAttribute() noexcept;
 
     //! Finds the element matching specified element name
-    const XMLElement& find(const std::string& elementName, bool caseSensitive = true) const noexcept;
+    const XMLElement& find(const std::string& elementName, bool caseSensitive = true)
+        const noexcept;
     //! Returns the parent member element
     const XMLElement& parentXMLElement() const noexcept;
 
-    unsigned long lineNumber() const { return m_Line; }
+    unsigned long lineNumber() const {
+        return m_Line;
+    }
 
   protected:
-    const XMLElement* doFind(const std::string& oneElementName, bool caseSensitive = true) const noexcept;
+    const XMLElement* doFind(const std::string& oneElementName, bool caseSensitive = true)
+        const noexcept;
     std::string m_Name;
     std::string m_Value;
     unsigned long m_Line = 0;
@@ -200,18 +213,25 @@ class INTERCOM_PUBLIC XML {
     //! Converts an %XML element value to long data type
     static bool convertValueToLong(const std::string& source, long& value) noexcept;
     //! Converts an %XML element value to array of double data type
-    static bool convertValueToDoubleArray(const std::string& source, std::vector<double>& value) noexcept;
+    static bool
+    convertValueToDoubleArray(const std::string& source, std::vector<double>& value) noexcept;
     //! Converts an %XML element value to array of long data type
-    static bool convertValueToLongArray(const std::string& source, std::vector<long>& value) noexcept;
+    static bool
+    convertValueToLongArray(const std::string& source, std::vector<long>& value) noexcept;
     //! Converts an %XML element value to array of string data type
-    static bool convertValueToStringArray(const std::string& source, std::vector<std::string>& value) noexcept;
+    static bool
+    convertValueToStringArray(const std::string& source, std::vector<std::string>& value) noexcept;
     //! Converts the provided string to upper case
     static void makeUpper(std::string& oneString) noexcept;
 
   protected:
     static bool checkNumber(intercom::string_view source, bool floatValue) noexcept;
-    static bool getOneSubString(intercom::string_view sourceString, unsigned long& stringIndex,
-                                char*& subString) noexcept;
-    static bool decodeName(const std::string& elementName, std::vector<std::string>& names) noexcept;
+    static bool getOneSubString(
+        intercom::string_view sourceString,
+        unsigned long& stringIndex,
+        char*& subString
+    ) noexcept;
+    static bool
+    decodeName(const std::string& elementName, std::vector<std::string>& names) noexcept;
 };
 }  // namespace intercom

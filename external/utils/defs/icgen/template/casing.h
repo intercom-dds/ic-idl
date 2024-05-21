@@ -28,6 +28,7 @@
 #pragma once
 
 #include <cctype>
+
 #include "InterCOM/string_view.h"
 
 namespace intercom {

@@ -1,7 +1,7 @@
 ---
 Language: Cpp
 BasedOnStyle: Google
-Standard: c++11
+Standard: c++17
 AccessModifierOffset: -2
 ColumnLimit: 100
 IndentWidth: 4

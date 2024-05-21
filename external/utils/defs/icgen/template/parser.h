@@ -86,8 +86,7 @@ class Node {
         Variable
     };
 
-    explicit Node(NodeKind kind)
-        : kind(kind) {}
+    explicit Node(NodeKind kind) : kind(kind) {}
 
     virtual ~Node() = default;
 
@@ -101,8 +100,7 @@ using ExprPtr = std::unique_ptr<Expr>;
 
 class Stmt : public Node {
   public:
-    explicit Stmt(NodeKind kind)
-        : Node(kind) {}
+    explicit Stmt(NodeKind kind) : Node(kind) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -111,8 +109,7 @@ class Stmt : public Node {
 
 class Expr : public Node {
   public:
-    explicit Expr(NodeKind kind)
-        : Node(kind) {}
+    explicit Expr(NodeKind kind) : Node(kind) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -122,9 +119,7 @@ class Expr : public Node {
 /// Represents a variable to be substituted.
 class Variable : public Expr {
   public:
-    explicit Variable(Token var)
-        : Expr(NodeKind::Variable)
-        , name(var) {}
+    explicit Variable(Token var) : Expr(NodeKind::Variable), name(var) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -137,9 +132,7 @@ class Variable : public Expr {
 /// Functions are defined in C++, but can be invoked from the template code.
 class Function : public Expr {
   public:
-    explicit Function(Token func)
-        : Expr(NodeKind::Function)
-        , name(func) {}
+    explicit Function(Token func) : Expr(NodeKind::Function), name(func) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -153,9 +146,7 @@ class Function : public Expr {
 class UnaryExpr : public Expr {
   public:
     UnaryExpr(Token token, std::unique_ptr<Expr> expr)
-        : Expr(NodeKind::Unary)
-        , oper(token)
-        , expr(std::move(expr)) {}
+        : Expr(NodeKind::Unary), oper(token), expr(std::move(expr)) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -168,10 +159,7 @@ class UnaryExpr : public Expr {
 class BinaryExpr : public Expr {
   public:
     BinaryExpr(std::unique_ptr<Expr> lhs, Token token, std::unique_ptr<Expr> rhs)
-        : Expr(NodeKind::Binary)
-        , lhs(std::move(lhs))
-        , oper(token)
-        , rhs(std::move(rhs)) {}
+        : Expr(NodeKind::Binary), lhs(std::move(lhs)), oper(token), rhs(std::move(rhs)) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -185,9 +173,7 @@ class BinaryExpr : public Expr {
 class AssignExpr : public Expr {
   public:
     AssignExpr(Token var, std::unique_ptr<Expr> value)
-        : Expr(NodeKind::Assign)
-        , var(var)
-        , value(std::move(value)) {}
+        : Expr(NodeKind::Assign), var(var), value(std::move(value)) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -200,9 +186,7 @@ class AssignExpr : public Expr {
 /// A string. Only allowed as function parameters.
 class String : public Expr {
   public:
-    explicit String(Token string)
-        : Expr(NodeKind::String)
-        , string(string) {}
+    explicit String(Token string) : Expr(NodeKind::String), string(string) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -214,9 +198,7 @@ class String : public Expr {
 /// Member access into a variable, e.g. `my_var.my_member`
 class Member : public Expr {
   public:
-    explicit Member(Token name)
-        : Expr(NodeKind::Member)
-        , name(name) {}
+    explicit Member(Token name) : Expr(NodeKind::Member), name(name) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -230,8 +212,7 @@ class Member : public Expr {
 class IfStmt : public Stmt {
   public:
     explicit IfStmt(std::unique_ptr<Expr> condition)
-        : Stmt(NodeKind::If)
-        , condition(std::move(condition)) {}
+        : Stmt(NodeKind::If), condition(std::move(condition)) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -246,9 +227,7 @@ class IfStmt : public Stmt {
 class ForStmt : public Stmt {
   public:
     ForStmt(std::unique_ptr<Variable> var, std::unique_ptr<Expr> list)
-        : Stmt(NodeKind::For)
-        , var(std::move(var))
-        , list(std::move(list)) {}
+        : Stmt(NodeKind::For), var(std::move(var)), list(std::move(list)) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -266,9 +245,7 @@ class ForStmt : public Stmt {
 class Text : public Stmt {
   public:
     explicit Text(Token text, bool whitespace)
-        : Stmt(NodeKind::Text)
-        , text(text)
-        , whitespace(whitespace) {}
+        : Stmt(NodeKind::Text), text(text), whitespace(whitespace) {}
 
     void accept(Visitor* visitor) override {
         visitor->visit(this);
@@ -280,8 +257,7 @@ class Text : public Stmt {
 
 class Parser {
   public:
-    explicit Parser(const std::vector<Token>& tokens)
-        : m_tokens(tokens) {}
+    explicit Parser(const std::vector<Token>& tokens) : m_tokens(tokens) {}
 
     const Token& get() const {
         return m_idx < m_tokens.size() ? m_tokens[m_idx] : Eof;
@@ -306,7 +282,7 @@ class Parser {
 
             if (get().kind == TokenKind::Ident) {
                 msg += "identifier '" + std::string(get().view) + '\'';
-            } else if(get().kind == TokenKind::Invalid) {
+            } else if (get().kind == TokenKind::Invalid) {
                 msg += "invalid identifier '" + std::string(get().view) + '\'';
             } else {
                 msg += '\'' + TOKEN_NAMES[size_t(get().kind)] + '\'';
@@ -366,7 +342,7 @@ class Parser {
     /// They can be strings, variables, function calls, or expression groups.
     std::vector<ExprPtr> param_list() {
         std::vector<ExprPtr> params;
-        while(get().kind != TokenKind::RParen && get().kind != TokenKind::Eof) {
+        while (get().kind != TokenKind::RParen && get().kind != TokenKind::Eof) {
             params.emplace_back(expr());
 
             // we allow trailing commas, because why not
@@ -534,7 +510,8 @@ class Parser {
             throw fmt_error("expected statement or expression, found EOF");
         default:
             throw fmt_error(
-                "expected statement or expression, found '" + std::string(get().view) + '\'');
+                "expected statement or expression, found '" + std::string(get().view) + '\''
+            );
         }
     }
 
@@ -556,5 +533,5 @@ class Parser {
     const std::vector<Token>& m_tokens;
 };
 
-} // namespace icgen
-} // namespace intercom
+}  // namespace icgen
+}  // namespace intercom

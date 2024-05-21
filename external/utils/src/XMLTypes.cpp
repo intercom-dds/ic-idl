@@ -55,7 +55,8 @@ const XMLElement XMLElement::m_Invalid = XMLElement();
 const XMLAttribute XMLAttribute::m_Invalid = XMLAttribute();
 
 // ---------------------------------------------------------------------
-XMLAttribute::XMLAttribute(std::string name) noexcept : m_Name(std::move(name)), m_XMLDataType(XML_DATA_TYPE_UNKNOWN) {}
+XMLAttribute::XMLAttribute(std::string name) noexcept
+    : m_Name(std::move(name)), m_XMLDataType(XML_DATA_TYPE_UNKNOWN) {}
 // ---------------------------------------------------------------------
 /*!
  * \param rhs : Right-hand side of the operation
@@ -80,7 +81,8 @@ XMLAttribute& XMLAttribute::operator=(const XMLAttribute& rhs) noexcept {
  * \return True if the compared attributes are equal, false otherwise.
  */
 bool XMLAttribute::operator==(const XMLAttribute& rhs) const noexcept {
-    return (m_XMLDataType == rhs.m_XMLDataType) && (m_Name == rhs.m_Name) && (m_Value == rhs.m_Value);
+    return (m_XMLDataType == rhs.m_XMLDataType) && (m_Name == rhs.m_Name) &&
+           (m_Value == rhs.m_Value);
 }
 
 // ---------------------------------------------------------------------
@@ -157,7 +159,11 @@ void XMLAttribute::setXMLDataType(const XMLDataType type) noexcept {
  * \param value : The value of current object.
  * \param type  : The datatype of current object.
  */
-void XMLAttribute::set(const std::string& name, const std::string& value, const XMLDataType type) noexcept {
+void XMLAttribute::set(
+    const std::string& name,
+    const std::string& value,
+    const XMLDataType type
+) noexcept {
     m_Name = name;
     m_Value = value;
     m_XMLDataType = type;
@@ -170,7 +176,7 @@ void XMLAttribute::set(const std::string& name, const std::string& value, const 
  * \param name : The name of constructed %XMLElement object.
  */
 XMLElement::XMLElement(std::string name) noexcept
-        : m_Name(std::move(name)), m_XMLDataType(XML_DATA_TYPE_UNKNOWN), m_ParentElement(nullptr) {}
+    : m_Name(std::move(name)), m_XMLDataType(XML_DATA_TYPE_UNKNOWN), m_ParentElement(nullptr) {}
 // ---------------------------------------------------------------------
 /*!
  * \param name   : The name of current object.
@@ -178,16 +184,19 @@ XMLElement::XMLElement(std::string name) noexcept
  * \param parent : The parent of current object.
  */
 XMLElement::XMLElement(std::string name, std::string value, XMLElement* parent) noexcept
-        : m_Name(std::move(name)),
-          m_Value(std::move(value)),
-          m_XMLDataType(XML_DATA_TYPE_UNKNOWN),
-          m_ParentElement(parent) {}
+    : m_Name(std::move(name)),
+      m_Value(std::move(value)),
+      m_XMLDataType(XML_DATA_TYPE_UNKNOWN),
+      m_ParentElement(parent) {}
 // ---------------------------------------------------------------------
 /*!
  * \param rhs : Right-hand side of the operation.
  */
 XMLElement::XMLElement(const XMLElement& rhs) noexcept
-        : m_Name(rhs.m_Name), m_Value(rhs.m_Value), m_XMLDataType(rhs.m_XMLDataType), m_ParentElement(nullptr) {
+    : m_Name(rhs.m_Name),
+      m_Value(rhs.m_Value),
+      m_XMLDataType(rhs.m_XMLDataType),
+      m_ParentElement(nullptr) {
     for (auto element : rhs.m_XMLElements) {
         if (element) {
             auto* copy = new XMLElement(*element);
@@ -261,8 +270,9 @@ XMLElement& XMLElement::operator=(const XMLElement& rhs) noexcept {
  * to return true.
  */
 bool XMLElement::operator==(const XMLElement& rhs) const noexcept {
-    if ((m_XMLDataType == rhs.m_XMLDataType) && (m_Name == rhs.m_Name) && (m_Value == rhs.m_Value) &&
-        (m_XMLElements.size() == rhs.m_XMLElements.size()) && (m_XMLAttributes.size() == rhs.m_XMLAttributes.size())) {
+    if ((m_XMLDataType == rhs.m_XMLDataType) && (m_Name == rhs.m_Name) &&
+        (m_Value == rhs.m_Value) && (m_XMLElements.size() == rhs.m_XMLElements.size()) &&
+        (m_XMLAttributes.size() == rhs.m_XMLAttributes.size())) {
         for (std::size_t i = 0; i < m_XMLElements.size(); ++i) {
             if (*m_XMLElements[i] != *rhs.m_XMLElements[i]) {
                 return false;
@@ -357,7 +367,11 @@ void XMLElement::setXMLDataType(const XMLDataType type) noexcept {
  * \param value : The value of current object.
  * \param type  : The datatype of current object.
  */
-void XMLElement::set(const std::string& name, const std::string& value, const XMLDataType type) noexcept {
+void XMLElement::set(
+    const std::string& name,
+    const std::string& value,
+    const XMLDataType type
+) noexcept {
     m_Name = name;
     m_Value = value;
     m_XMLDataType = type;
@@ -463,7 +477,8 @@ XMLAttribute& XMLElement::createMemberXMLAttribute() noexcept {
  * Each name must be separated via a '/' and must reflecting the node
  * structure from the %XML element tree. (Element1/Element2/Element3)
  */
-const XMLElement& XMLElement::find(const std::string& element_name, bool case_sensitive) const noexcept {
+const XMLElement& XMLElement::find(const std::string& element_name, bool case_sensitive)
+    const noexcept {
     std::vector<std::string> names;
     if (XML::decodeName(element_name, names)) {
         const XMLElement* element = this;
@@ -492,7 +507,8 @@ const XMLElement& XMLElement::parentXMLElement() const noexcept {
 }
 
 // ---------------------------------------------------------------------
-const XMLElement* XMLElement::doFind(const std::string& one_element_name, bool case_sensitive) const noexcept {
+const XMLElement* XMLElement::doFind(const std::string& one_element_name, bool case_sensitive)
+    const noexcept {
     const XMLElement* result = nullptr;
     std::string elementName = m_Name;
     std::string searchName = one_element_name;
@@ -608,7 +624,10 @@ bool XML::convertValueToLong(const std::string& source, long& value) noexcept {
  *
  * Legal array element seperators are ' ', ',' or ';'
  */
-bool XML::convertValueToDoubleArray(const std::string& source, std::vector<double>& value) noexcept {
+bool XML::convertValueToDoubleArray(
+    const std::string& source,
+    std::vector<double>& value
+) noexcept {
     bool result = false;
     if (!source.empty()) {
         unsigned long index = 0;
@@ -660,7 +679,10 @@ bool XML::convertValueToLongArray(const std::string& source, std::vector<long>& 
  *
  * Legal array element seperators are ' ', ',' or ';'
  */
-bool XML::convertValueToStringArray(const std::string& source, std::vector<std::string>& value) noexcept {
+bool XML::convertValueToStringArray(
+    const std::string& source,
+    std::vector<std::string>& value
+) noexcept {
     bool result = false;
     if (!source.empty()) {
         unsigned long index = 0;
@@ -727,8 +749,11 @@ bool XML::checkNumber(intercom::string_view source, bool float_value) noexcept {
 }
 
 // ---------------------------------------------------------------------
-bool XML::getOneSubString(intercom::string_view source_string, unsigned long& string_index,
-                          char*& sub_string) noexcept {
+bool XML::getOneSubString(
+    intercom::string_view source_string,
+    unsigned long& string_index,
+    char*& sub_string
+) noexcept {
     unsigned long subStringSize = 100;
     sub_string = static_cast<char*>(malloc(sizeof(char) * subStringSize));
     unsigned long numChar = 0;
@@ -761,7 +786,8 @@ bool XML::getOneSubString(intercom::string_view source_string, unsigned long& st
                 sub_string[numChar++] = source_string[i];
                 if (numChar >= subStringSize) {
                     subStringSize = subStringSize * 2;
-                    sub_string = static_cast<char*>(realloc(sub_string, sizeof(char) * subStringSize));
+                    sub_string =
+                        static_cast<char*>(realloc(sub_string, sizeof(char) * subStringSize));
                 }
             }
         }
@@ -793,7 +819,8 @@ bool XML::decodeName(const std::string& element_name, std::vector<std::string>& 
                     prevPos = slachPos + 1;
                     result = true;
                 }
-                slachPos = static_cast<unsigned long>(element_name.find_first_of('/', slachPos + 1));
+                slachPos =
+                    static_cast<unsigned long>(element_name.find_first_of('/', slachPos + 1));
             }
             if (prevPos < numOfChar - 1) {
                 std::string newString = element_name.substr(prevPos, numOfChar - prevPos);

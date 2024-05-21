@@ -52,7 +52,8 @@ XMLReader::Iterator::Iterator() noexcept : m_XMLElement(nullptr), m_XMLElementIn
  *
  * Construct an iterator object pointing to specified %XML element object.
  */
-XMLReader::Iterator::Iterator(const XMLElement& element) noexcept : m_XMLElement(nullptr), m_XMLElementIndex(0) {
+XMLReader::Iterator::Iterator(const XMLElement& element) noexcept
+    : m_XMLElement(nullptr), m_XMLElementIndex(0) {
     if (element.isValid()) {
         m_XMLElement = const_cast<XMLElement*>(&element);
     }
@@ -164,16 +165,17 @@ const XMLElement* XMLReader::Iterator::element() const noexcept {
 /*!
  * The default constructor creates an invalid object.
  */
-XMLReader::XMLReader() : m_Root(nullptr), m_Valid(false), m_Verbose(false), m_VerboseStream(nullptr) {}
+XMLReader::XMLReader()
+    : m_Root(nullptr), m_Valid(false), m_Verbose(false), m_VerboseStream(nullptr) {}
 /*!
  * Copy constructor.
  */
 XMLReader::XMLReader(const XMLReader& rhs)
-        : m_Root(new XMLElement(*rhs.m_Root)),
-          m_Valid(rhs.m_Valid),
-          m_Verbose(rhs.m_Verbose),
-          m_VerboseStream(rhs.m_VerboseStream),
-          m_FileName(rhs.m_FileName) {}
+    : m_Root(new XMLElement(*rhs.m_Root)),
+      m_Valid(rhs.m_Valid),
+      m_Verbose(rhs.m_Verbose),
+      m_VerboseStream(rhs.m_VerboseStream),
+      m_FileName(rhs.m_FileName) {}
 // ---------------------------------------------------------------------
 /*!
  * \param fileName : An %XML file name.
@@ -193,7 +195,11 @@ XMLReader::XMLReader(const XMLReader& rhs)
  * the indentation of the parsed %XML file.
  */
 XMLReader::XMLReader(const std::string& file_name, bool verbose, std::ostream& target_stream)
-        : m_Root(nullptr), m_Valid(false), m_Verbose(verbose), m_VerboseStream(&target_stream), m_FileName(file_name) {
+    : m_Root(nullptr),
+      m_Valid(false),
+      m_Verbose(verbose),
+      m_VerboseStream(&target_stream),
+      m_FileName(file_name) {
     // Read updates the valid flag
     read(file_name);
 }
@@ -214,8 +220,12 @@ XMLReader::XMLReader(const std::string& file_name, bool verbose, std::ostream& t
  * is used to indicate the hierarchy in the XML, it doesn't necessarily follow
  * the indentation of the parsed %XML file.
  */
-XMLReader::XMLReader(const std::stringstream& input_stream, bool verbose, std::ostream& target_stream)
-        : m_Root(nullptr), m_Valid(false), m_Verbose(verbose), m_VerboseStream(&target_stream) {
+XMLReader::XMLReader(
+    const std::stringstream& input_stream,
+    bool verbose,
+    std::ostream& target_stream
+)
+    : m_Root(nullptr), m_Valid(false), m_Verbose(verbose), m_VerboseStream(&target_stream) {
     // Read updates the valid flag
     read(input_stream);
 }
@@ -245,7 +255,8 @@ bool XMLReader::isValid() const {
 /*!
  * \return The filename passed to this XMLReader)
  *
- * If the returned filename is empty, this XMLReader or the last read-operation was initialized with a stringstream.
+ * If the returned filename is empty, this XMLReader or the last read-operation was initialized with
+ * a stringstream.
  */
 const std::string& XMLReader::getFileName() const {
     return m_FileName;
@@ -347,7 +358,8 @@ XMLReader::Iterator XMLReader::end(const Iterator& iter) const noexcept {
  * structure from the %XML element tree. (Element1/Element2/Element3)
  * The find method starts the search from the root element node.
  */
-XMLReader::Iterator XMLReader::find(const std::string& element_name, bool case_sensitive) const noexcept {
+XMLReader::Iterator XMLReader::find(const std::string& element_name, bool case_sensitive)
+    const noexcept {
     return find(Iterator(*m_Root), element_name, case_sensitive);
 }
 // ---------------------------------------------------------------------
@@ -359,8 +371,11 @@ XMLReader::Iterator XMLReader::find(const std::string& element_name, bool case_s
  *
  * See the method find(elementName) for description.
  */
-XMLReader::Iterator XMLReader::find(const Iterator& iter, const std::string& element_name,
-                                    bool case_sensitive) const noexcept {
+XMLReader::Iterator XMLReader::find(
+    const Iterator& iter,
+    const std::string& element_name,
+    bool case_sensitive
+) const noexcept {
     Iterator result;
     if (m_Valid) {
         std::vector<std::string> names;
@@ -485,7 +500,8 @@ XMLReader::ReadStatus XMLReader::read(XMLReaderFile& xml_file) noexcept {
                     XMLElement* curElement = elements[elements.size() - 1];
                     if (curElement) {
                         if (!curElement->m_XMLAttributes.empty()) {
-                            XMLAttribute* attr = curElement->m_XMLAttributes[curElement->m_XMLAttributes.size() - 1];
+                            XMLAttribute* attr =
+                                curElement->m_XMLAttributes[curElement->m_XMLAttributes.size() - 1];
                             if (attr) {
                                 attr->m_XMLDataType = static_cast<XMLDataType>(dataType);
                                 attr->m_Value = std::string(nextWord);
@@ -493,7 +509,9 @@ XMLReader::ReadStatus XMLReader::read(XMLReaderFile& xml_file) noexcept {
                                 error = true;
                                 reading = false;
                                 if (m_Verbose && m_VerboseStream) {
-                                    printVerbose("\n", "ERROR: 0-attribute to put attribute data in", "\n");
+                                    printVerbose(
+                                        "\n", "ERROR: 0-attribute to put attribute data in", "\n"
+                                    );
                                 }
                                 break;
                             }
@@ -501,7 +519,9 @@ XMLReader::ReadStatus XMLReader::read(XMLReaderFile& xml_file) noexcept {
                             error = true;
                             reading = false;
                             if (m_Verbose && m_VerboseStream) {
-                                printVerbose("\n", "ERROR: No attribute to put attribute data in", "\n");
+                                printVerbose(
+                                    "\n", "ERROR: No attribute to put attribute data in", "\n"
+                                );
                             }
                             break;
                         }
@@ -594,13 +614,17 @@ XMLReader::ReadStatus XMLReader::read(XMLReaderFile& xml_file) noexcept {
         if (m_Verbose && m_VerboseStream) {
             switch (result) {
             case XMLReader::READ_FILE_NOT_FOUND:
-                printVerbose(">\nXMLReader finished parsing, result is: READ_FILE_NOT_FOUND\n", "", "");
+                printVerbose(
+                    ">\nXMLReader finished parsing, result is: READ_FILE_NOT_FOUND\n", "", ""
+                );
                 break;
             case XMLReader::READ_SUCCESS:
                 printVerbose(">\nXMLReader finished parsing, result is: READ_SUCCESS\n", "", "");
                 break;
             case XMLReader::READ_PARSE_ERROR:
-                printVerbose(">\nXMLReader finished parsing, result is: READ_PARSE_ERROR\n", "", "");
+                printVerbose(
+                    ">\nXMLReader finished parsing, result is: READ_PARSE_ERROR\n", "", ""
+                );
                 break;
             default:
                 printVerbose(">\nXMLReader finished parsing, result is: Unknown\n", "", "");
@@ -641,8 +665,12 @@ XMLReader::ReadStatus XMLReader::read(const std::string& file_name) noexcept {
 
 // ---------------------------------------------------------------------
 // Private
-void XMLReader::printVerbose(const std::string& before, const std::string& info, const std::string& after,
-                             int indent) noexcept {
+void XMLReader::printVerbose(
+    const std::string& before,
+    const std::string& info,
+    const std::string& after,
+    int indent
+) noexcept {
     *m_VerboseStream << before;
     for (int i = 0; i < indent; ++i) {
         *m_VerboseStream << " ";

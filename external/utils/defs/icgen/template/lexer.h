@@ -85,9 +85,9 @@ enum class TokenKind {
     Comma,
     Semi,
     String,
-    Eq, // =
-    EqEq, // ==
-    NotEq, // !=
+    Eq,     // =
+    EqEq,   // ==
+    NotEq,  // !=
 
     // Everything outside of code blocks is regarded as text, including
     // whitespace. Will be reproduced in its entirety by the template engine,
@@ -122,11 +122,16 @@ static_assert(
 );
 
 static const std::map<intercom::string_view, TokenKind, kw_comp> KEYWORDS = {
-    {"if", TokenKind::If},     {"else", TokenKind::Else},
-    {"elif", TokenKind::Elif}, {"endif", TokenKind::EndIf},
-    {"and", TokenKind::And},   {"or", TokenKind::Or},
-    {"not", TokenKind::Not},   {"for", TokenKind::For},
-    {"in", TokenKind::In},     {"endfor", TokenKind::EndFor},
+    {"if", TokenKind::If},
+    {"else", TokenKind::Else},
+    {"elif", TokenKind::Elif},
+    {"endif", TokenKind::EndIf},
+    {"and", TokenKind::And},
+    {"or", TokenKind::Or},
+    {"not", TokenKind::Not},
+    {"for", TokenKind::For},
+    {"in", TokenKind::In},
+    {"endfor", TokenKind::EndFor},
 };
 
 struct Position {
@@ -135,9 +140,7 @@ struct Position {
     const size_t index;
 
     constexpr Position(size_t line, size_t col, size_t index)
-        : line(line)
-        , col(col)
-        , index(index) {}
+        : line(line), col(col), index(index) {}
 };
 
 struct Token {
@@ -147,8 +150,14 @@ struct Token {
     size_t col{};
     size_t index{};
 
-    constexpr Token(intercom::string_view view, TokenKind kind, size_t line, size_t col, size_t index)
-            : view(view), kind(kind), line(line), col(col), index(index) {}
+    constexpr Token(
+        intercom::string_view view,
+        TokenKind kind,
+        size_t line,
+        size_t col,
+        size_t index
+    )
+        : view(view), kind(kind), line(line), col(col), index(index) {}
 };
 
 // NOLINTNEXTLINE
@@ -171,8 +180,7 @@ inline constexpr bool operator!=(const Token& lhs, TokenKind kind) {
 /// each token is bound by the lifetime of the input buffer.
 class Lexer {
   public:
-    explicit Lexer(intercom::string_view view)
-        : m_view(view) {}
+    explicit Lexer(intercom::string_view view) : m_view(view) {}
 
     std::vector<Token> scan() {
         while (get() != EOF) {
@@ -189,11 +197,11 @@ class Lexer {
 
   private:
     char get() const {
-        return m_idx < m_view.length() ? m_view[m_idx] : EOF; // NOLINT
+        return m_idx < m_view.length() ? m_view[m_idx] : EOF;  // NOLINT
     }
 
     char peek() const {
-        return (m_idx + 1) < m_view.length() ? m_view[m_idx + 1] : EOF; // NOLINT
+        return (m_idx + 1) < m_view.length() ? m_view[m_idx + 1] : EOF;  // NOLINT
     }
 
     size_t index() const {
@@ -213,8 +221,7 @@ class Lexer {
     }
 
     intercom::string_view slice(size_t start, size_t count = 0) const {
-        return count == 0 ? m_view.substr(start, index() - start)
-                          : m_view.substr(start, count);
+        return count == 0 ? m_view.substr(start, index() - start) : m_view.substr(start, count);
     }
 
     static bool is_ident(char c) {
@@ -285,7 +292,7 @@ class Lexer {
                 advance();
                 return false;
             }
-            if(is_comment() || is_block_start()) {
+            if (is_comment() || is_block_start()) {
                 return false;
             }
             is_ws &= (isspace(get()) != 0);
@@ -309,9 +316,7 @@ class Lexer {
     void scan_comment() {
         if (get() == '#') {
             // single-line comment
-            take_while([&](char) -> bool {
-                return get() != EOF && get() != '\n';
-            });
+            take_while([&](char) -> bool { return get() != EOF && get() != '\n'; });
             advance(1);
         } else {
             // multi-line comment
@@ -323,9 +328,8 @@ class Lexer {
     }
 
     void scan_invalid() {
-        auto view = take_while([&](char c) -> bool {
-            return !isspace(c) && !is_block_end() && c != ')';
-        });
+        auto view =
+            take_while([&](char c) -> bool { return !isspace(c) && !is_block_end() && c != ')'; });
         emplace_token(view, TokenKind::Invalid);
     }
 
@@ -423,7 +427,7 @@ inline char handle_escaped(char c) {
 
 inline std::string escape_str(intercom::string_view input) {
     std::string data;
-    for(size_t i = 0; i < input.length(); i++) {
+    for (size_t i = 0; i < input.length(); i++) {
         if (input[i] == '\\' && (i + 1 < input.length())) {
             data.push_back(handle_escaped(input[i + 1]));
             i++;
@@ -433,5 +437,5 @@ inline std::string escape_str(intercom::string_view input) {
     }
     return data;
 }
-} // namespace icgen
-} // namespace intercom
+}  // namespace icgen
+}  // namespace intercom

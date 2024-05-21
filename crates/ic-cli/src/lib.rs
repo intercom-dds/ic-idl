@@ -295,7 +295,7 @@ impl CommandLine {
         let width = matches
             .iter()
             .map(|v| {
-                let short = v.tokens.iter().filter(|v| v.len() == 1).count();
+                let _short = v.tokens.iter().filter(|v| v.len() == 1).count();
                 v.formatted().len() // + 4 * short
             })
             .max()

@@ -1944,16 +1944,6 @@ void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& 
         // Generate serialise and so on.
         code_gen_python_getter_and_setter(obj->members, module);
 
-        // Generate type
-        std::stringstream stream;
-        generate_json_type(stream, obj);
-        *module << blank_line << "@staticmethod" << endl;
-        *module << "def _response_type():" << tab_group << begin("") << endl << tab_group;
-        *module << R"(return """)" << tab_group << begin("") << endl << tab_group;
-        *module << stream.str() << endl << end("");
-        *module << R"(""")" << endl;
-        *module << end("") << blank_line;
-
         // Generate serialiser
         *module << "def serialize_json(self):" << tab_group << begin("") << endl << tab_group;
         *module << "ret = {" << tab_group << begin("") << endl << tab_group;

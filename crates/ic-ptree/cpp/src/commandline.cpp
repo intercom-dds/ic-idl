@@ -33,16 +33,11 @@
 #include <cstring>
 #include <vector>
 
-#include "InterCOM/version.h"
-#include "cidl/hdrs.h"
-#include "icgen/cli/CommandLine.h"
+#include "utils/StringUtils.h"
 
-namespace cli = intercom::cli;
 using namespace intercom::cidl;
 
 namespace {
-bool g_silent = false;
-
 struct CurrentOptionsT : public intercom::cidl::Config {
     bool version = false;
     bool intercom_build = false;
@@ -81,7 +76,12 @@ struct WarningDetails {
     const char* warningName;
     CommandLineOption::WarningType type;
     const char* documentation;
-} g_AllWarnings[] = {
+};
+}  // namespace
+
+static bool g_silent = false;
+
+static WarningDetails g_all_warnings[] = {
     {"all", CommandLineOption::WARNING_ALL, "Switch for all warnings"},
     {"deprecated",
      CommandLineOption::WARNING_DEPRECATED,
@@ -98,8 +98,8 @@ struct WarningDetails {
     {"error", CommandLineOption::WARNING_ERROR, "Treat warnings like errors"},
 };
 
-CommandLineOption::WarningType find_warning(const char* argv, bool& enable) {
-    for (const auto& current : g_AllWarnings) {
+static CommandLineOption::WarningType find_warning(const char* argv, bool& enable) {
+    for (const auto& current : g_all_warnings) {
         if (strcmp(argv, current.warningName) == 0) {
             enable = true;
             return current.type;
@@ -115,7 +115,7 @@ CommandLineOption::WarningType find_warning(const char* argv, bool& enable) {
     return CommandLineOption::WARNING_NONE;
 }
 
-void update_warning_flags(
+static void update_warning_flags(
     const CommandLineOption::WarningType& type,
     unsigned long& warning_mask = g_CurrentOptions.enabled_warnings,
     bool enable = true
@@ -132,8 +132,8 @@ void update_warning_flags(
     }
 }
 
-void update_warning(const char* argv, bool option_select) {
-    const auto split_argv = intercom::cli::detail::split_at(argv, '=');
+static void update_warning(const char* argv, bool option_select) {
+    const auto split_argv = string_utils::split_at(argv, '=');
     const bool has_target = split_argv.first != split_argv.second;
     bool enable = false;
     CommandLineOption::WarningType type = find_warning(split_argv.first.c_str(), enable);
@@ -161,298 +161,15 @@ void update_warning(const char* argv, bool option_select) {
     }
 }
 
-const char* strptr_or_null(const std::string& value) {
+static const char* strptr_or_null(const std::string& value) {
     if (value.empty()) {
         return nullptr;
     }
     return value.c_str();
 }
-}  // namespace
 
 // Special gloabl to instruct lexer not to emit doxy comments
 extern "C" bool g_ignore_doxy_comments;
-
-namespace config {
-auto build_commandline() -> cli::CommandLine {
-    auto version = cli::detail::replace(INTERCOM_VERSION_S, '_', '.');
-
-    // clang-format off
-    auto cli = cli::CommandLine("cidl")
-        .version(version)
-        .chaining(false)
-        .positionals(true, "files")
-        .opts(
-            // Flags
-            cli::Option("--silent")
-                .desc("Do not issue any CIDL parameter messages")
-                .var(g_silent),
-
-            cli::Option("--cpp11")
-                .desc("Use C++11 support")
-                .callback([&](bool enabled) {
-                    g_CurrentOptions.corba_types = false;
-                    g_CurrentOptions.cpp_gen_cpp11 = enabled;
-                    g_CurrentOptions.cpp_access_functions = enabled;
-                }),
-
-            cli::Option("--no-stream-op")
-                .desc("Do not generate stream output operators in C++")
-                .var(g_CurrentOptions.cpp_no_stream_op),
-
-            cli::Option("--access-functions")
-                .desc("Use access functions instead of direct member access")
-                .var(g_CurrentOptions.cpp_access_functions),
-
-            cli::Option("--ignore-comments")
-                .desc("Do not attempt to parse doxy-like comments to include them in generated code")
-                .var(g_ignore_doxy_comments),
-
-            cli::Option("--vendor-compatibility")
-                .desc("Generate include files compatible with other vendors")
-                .var(g_CurrentOptions.compatibility),
-
-            cli::Option("--typesupport-only")
-                .desc("Only generate typesupport")
-                .var(g_CurrentOptions.generate_typesupport_only),
-
-            cli::Option("--no-typesupport")
-                .desc("Do not generate typesupport")
-                .var(g_CurrentOptions.no_typesupport),
-
-            cli::Option("--ada-no-corba")
-                .desc("Do not use CORBA namespace")
-                .var(g_CurrentOptions.no_corba_dependency),
-
-            cli::Option("--no-rename")
-                .desc("Do not rename generated types")
-                .deprecated("--csharp-no-rename")
-                .var(g_CurrentOptions.no_rename),
-
-            cli::Option("--string-utf8")
-                .desc("Use UTF-8 for string types")
-                .var(g_CurrentOptions.string_encoding_utf8),
-
-            cli::Option("--idl-doxygen")
-                .desc("Output Doxygen-compatible IDL files")
-                .var(g_CurrentOptions.doxy_compatible_output),
-
-            cli::Option("--idl-expand")
-                .desc("Expand @DDSService to topics in IDL files")
-                .var(g_CurrentOptions.expand_idl),
-
-            cli::Option("--idl-legacy")
-                .desc("Attempt to emit IDL that is more friendly for older parsers")
-                .var(g_CurrentOptions.legacy_idl),
-
-            cli::Option("--do-proxies")
-                .hidden(true)
-                .var(g_CurrentOptions.proxies),
-
-            cli::Option("--generate-default-literals")
-                .desc("Generate constants for default values")
-                .var(g_CurrentOptions.generate_default_literals),
-
-            cli::Option("--std-types")
-                .desc("Use types from the standard library instead of CORBA types")
-                .hidden(true)
-                .deprecated(true)
-                .callback(cli::neg(g_CurrentOptions.corba_types)),
-
-            cli::Option("--corba-types")
-                .desc("Use CORBA types instead of types from the standard library")
-                .var(g_CurrentOptions.corba_types),
-
-            cli::Option("--use-wstring")
-                .desc("Use std::wstring for wide-character strings")
-                .var(g_CurrentOptions.use_wstring),
-
-            cli::Option("--use-fmt")
-                .desc("Generate formatting specializations for fmtlib")
-                .var(g_CurrentOptions.use_fmtlib),
-
-            cli::Option("--ast-dump")
-                .hidden(true)
-                .var(g_CurrentOptions.ast_dump),
-
-            cli::Option("--generate-header-timestamp")
-                .desc("Output build timestamp at the top of each generated file")
-                .var(g_CurrentOptions.generate_header_timestamp),
-
-            cli::Option("--purge-destination-directories")
-                .desc("Empties all destination directories before emitting result")
-                .var(g_CurrentOptions.purge_destination_directories),
-
-            cli::Option("-l", "--list")
-                .desc("Output list of files to be generated")
-                .var(g_CurrentOptions.list_only),
-
-            cli::Option("-H", "--no-header-follow")
-                .desc("Do not generate code for included modules")
-                .var(g_CurrentOptions.disable_header_follow),
-
-            cli::Option("-E", "--preprocessor-only")
-                .desc("Run preprocessor only")
-                .var(g_CurrentOptions.pp_preprocess_only),
-
-            cli::Option("-X", "--preprocessor-skip")
-                .desc("Skip preprocessor")
-                .var(g_CurrentOptions.pp_preprocess_skip),
-
-            // Options
-            cli::Option("-D", "--preprocessor-define")
-                .desc("Preprocessor define")
-                .value(cli::MULTIPLE, "def")
-                .multiple(false),
-
-            cli::Option("-I", "--include")
-                .desc("Include directory")
-                .value(cli::MULTIPLE, "dir")
-                .multiple(false)
-                .var(g_CurrentOptions.include_directories),
-
-            cli::Option("-W", "--warning")
-                .desc("Turn on or off individual warnings")
-                .value(cli::MULTIPLE, "warn")
-                .multiple(false)
-                .callback([](const cli::Args& args) {
-                    for (const std::string& warn : args) {
-                        update_warning(warn.c_str(), true);
-                    }
-                }),
-
-            cli::Option("-a", "--ada-destination")
-                .desc("Generate Ada files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.ada_target_directory),
-
-            cli::Option("-j", "--java-destination")
-                .desc("Generate Java files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.java_target_directory),
-
-            cli::Option("-c", "--cpp-destination")
-                .desc("Generate C++ files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.c_target_directory),
-
-            cli::Option("-s", "--csharp-destination")
-                .desc("Generate C# files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.cs_target_directory),
-
-            cli::Option("-i", "--idl-destination")
-                .desc("Generate IDL files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.idl_target_directory),
-
-            cli::Option("-r", "--rust-destination")
-                .desc("Generate Rust files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.rust_target_directory),
-
-            cli::Option("--json-destination")
-                .desc("Generate JSON files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.json_target_directory),
-
-            cli::Option("--json-schema-destination")
-                .desc("Generate JSON Schema files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.json_schema_target_directory),
-
-            // Only for internal use
-            cli::Option("--toml-destination")
-                .hidden(true)
-                .value(cli::SINGLE)
-                .var(g_CurrentOptions.toml_target_directory),
-
-            cli::Option("--xml-destination")
-                .desc("Generate XML files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.xml_target_directory),
-
-            cli::Option("--proto-destination")
-                .desc("Generate Protobuf files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.proto_target_directory),
-
-            cli::Option("--python-destination")
-                .desc("Generate Python files in the specified directory")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.python_target_directory),
-
-            cli::Option("--python-global-postfix")
-                .desc("Specify the postix for global modules")
-                .value(cli::SINGLE, "postfix")
-                .var(g_CurrentOptions.python_global_postfix),
-
-            cli::Option("--java-package-prefix")
-                .desc("Use Java package prefix")
-                .value(cli::SINGLE, "prefix")
-                .var(g_CurrentOptions.java_package_prefix),
-
-            cli::Option("--cpp-header-postfix")
-                .desc("Use postfix for C++ headers")
-                .value(cli::SINGLE, "postfix")
-                .var(g_CurrentOptions.cpp_header_postfix),
-
-            cli::Option("--cpp-file-prefix")
-                .desc("Append file prefix for C++ files")
-                .value(cli::SINGLE, "prefix")
-                .var(g_CurrentOptions.c_file_prefix),
-
-            cli::Option("--dll-export-symbol")
-                .desc("Use dllexp symbol")
-                .value(cli::SINGLE, "symbol")
-                .var(g_CurrentOptions.dll_exp_sym),
-
-            cli::Option("--header-subfolder")
-                .desc("Store header files inside a subfolder instead of with the source files")
-                .value(cli::SINGLE, "dir")
-                .var(g_CurrentOptions.header_subfolder)
-       );
-
-    cli.after_help("To disable a warning, add 'no-' before the warning text (e.g. -Wno-all)");
-    cli.section("warnings");
-
-    for (const auto& warning : g_AllWarnings) {
-        auto name = fmt::format("-W{}", warning.warningName);
-        cli.opts(
-            cli::Option(name)
-                .desc(warning.documentation)
-                .callback([=](const cli::Args&){
-                    update_warning(warning.warningName, true);
-                })
-        );
-    }
-    // clang-format on
-    return cli;
-}
-
-void parse_options(const cli::ParseResult& result) {
-    // Fix special stuff that intercom uses to build internally.
-    // We need to do this first, because command line arguments should override these.
-    if (getenv("INTERCOM_BUILD")) {
-        g_CurrentOptions.intercom_build = true;
-        g_CurrentOptions.use_fmtlib = true;
-        g_CurrentOptions.header_subfolder = "InterCOM";
-        g_CurrentOptions.copyright_notice = copyright_header();
-    }
-    // end fix
-
-    auto includes = g_CurrentOptions.include_directories;
-    for (const auto& inc : includes) {
-        g_CurrentOptions.pp_parameters.push_back("-I" + inc);
-    }
-
-    auto defines = result.get_vec<std::string>("--preprocessor-define");
-    for (const auto& def : defines) {
-        g_CurrentOptions.pp_parameters.push_back("-D" + def);
-    }
-
-    g_CurrentOptions.input_list = result.positionals();
-}
-}  // namespace config
 
 CommandLineOption::ScopeDefaultWarnings::ScopeDefaultWarnings()
     : m_prev_errors(CurrentOptionsT::DEFAULT_ERRORS),
@@ -612,13 +329,13 @@ intercom::cidl::Config& CommandLineOption::get_instance() {
 }
 
 bool CommandLineOption::suppress_warning(WarningType warning) {
-    unsigned long maskValue = 1 << int(warning);
-    return ((g_CurrentOptions.enabled_warnings & maskValue) == 0);
+    unsigned long mask_value = 1 << int(warning);
+    return ((g_CurrentOptions.enabled_warnings & mask_value) == 0);
 }
 
 bool CommandLineOption::suppress_error(WarningType type) {
-    unsigned long maskValue = 1 << int(type);
-    return ((g_CurrentOptions.enabled_errors & maskValue) == 0);
+    unsigned long mask_value = 1 << int(type);
+    return ((g_CurrentOptions.enabled_errors & mask_value) == 0);
 }
 
 bool CommandLineOption::suppress_alert(WarningType type) {

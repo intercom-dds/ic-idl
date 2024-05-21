@@ -25,14 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "cidl/internal/rust_common.h"
+#include "cidl/rust_common.h"
 
 #include <string>
 
 #include "InterCOM/string_view.h"
 #include "cidl/constants.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/commandline.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"

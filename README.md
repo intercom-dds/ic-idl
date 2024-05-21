@@ -27,12 +27,14 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
+Work in progress. Things are scattered all over the place.
+
 ## Building
 
 MSRV is 1.70.
 
 `ic-idl` is bootstrapped. To build a full-fledged version, we first need to
-compile a reduced, Rust-only version of `ic-idl` that is capable of emitting
+compile a reduced, C++-only version of `ic-idl` that is capable of emitting
 simplified type definitions. This will be used to generate types we need for
 the full-fledged version. This process is automated through `cargo-make`.
 

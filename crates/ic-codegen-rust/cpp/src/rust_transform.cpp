@@ -25,11 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <optional>
+
+#include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/ptree_builder.h"
-#include "cidl/internal/rust_common.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
+#include "cidl/rust_common.h"
 #include "cidl/symbols.h"
 
 using namespace intercom::cidl;
@@ -243,7 +245,7 @@ static void modify_typeid(ptree* tree) {
     }
 }
 
-static intercom::optional<std::string> conventionalized(ptree* node) {
+static std::optional<std::string> conventionalized(ptree* node) {
     switch (node->kind) {
     case N_PRIMITIVE:
     case N_SEQUENCE:

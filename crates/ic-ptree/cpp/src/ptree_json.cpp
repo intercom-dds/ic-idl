@@ -25,10 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <optional>
 #include <stdexcept>
 
 #include "InterCOM/cidl_json.h"
-#include "cidl/internal/ptree_builder.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/json.h"
 #include "cidl/symbols.h"
 
@@ -71,7 +72,7 @@ static json::NumericKind json_numeric_kind(enum numeric_kind kind) {
     return static_cast<json::NumericKind>(kind);
 }
 
-static intercom::optional<json::NodeId> serialize(const ptree* node, Serialize& context) {
+static std::optional<json::NodeId> serialize(const ptree* node, Serialize& context) {
     if (!node) {
         return intercom::nullopt;
     }
@@ -104,7 +105,7 @@ static intercom::optional<json::NodeId> serialize(const ptree* node, Serialize& 
     obj.included_from = serialize(node->included_from, context);
     obj.value = json_numeric(node->value, context);
 
-    auto append = [&](const ptree* ty, intercom::optional<json::Type>& out) {
+    auto append = [&](const ptree* ty, std::optional<json::Type>& out) {
         if (ty) {
             json::Type type;
             if (ty->flags & OPT_BUILTIN) {
@@ -213,7 +214,7 @@ static ptree* deserialize(json::NodeId id, Deserialize& context) {
     obj->pos_end.column = static_cast<int>(node.pos_end.column);
     context.alloc.emplace(id, obj);
 
-    auto append = [&](const intercom::optional<json::NodeId>& ty, ptree*& list) {
+    auto append = [&](const std::optional<json::NodeId>& ty, ptree*& list) {
         if (ty) {
             list = append_node(list, deserialize(*ty, context));
         }
@@ -226,7 +227,7 @@ static ptree* deserialize(json::NodeId id, Deserialize& context) {
     append(node.annotations, obj->annotations);
     append(node.included_from, obj->included_from);
 
-    auto builtin = [&](const intercom::optional<json::Type>& ty, ptree*& out) {
+    auto builtin = [&](const std::optional<json::Type>& ty, ptree*& out) {
         if (ty) {
             if (ty->_d() == json::BUILTIN_TYPE) {
                 out = builtin_type(ty->qualified_name());

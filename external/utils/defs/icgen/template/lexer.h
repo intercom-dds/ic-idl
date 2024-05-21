@@ -34,9 +34,8 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
-
-#include "InterCOM/string_view.h"
 
 namespace intercom {
 namespace icgen {
@@ -49,7 +48,7 @@ struct kw_comp {
         }
     };
 
-    bool operator()(intercom::string_view lhs, intercom::string_view rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
         return std::lexicographical_compare(
             lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), case_comp()
         );
@@ -121,7 +120,7 @@ static_assert(
     "token count mismatch"
 );
 
-static const std::map<intercom::string_view, TokenKind, kw_comp> KEYWORDS = {
+static const std::map<std::string_view, TokenKind, kw_comp> KEYWORDS = {
     {"if", TokenKind::If},
     {"else", TokenKind::Else},
     {"elif", TokenKind::Elif},
@@ -144,24 +143,18 @@ struct Position {
 };
 
 struct Token {
-    intercom::string_view view;
+    std::string_view view;
     TokenKind kind;
     size_t line{};
     size_t col{};
     size_t index{};
 
-    constexpr Token(
-        intercom::string_view view,
-        TokenKind kind,
-        size_t line,
-        size_t col,
-        size_t index
-    )
+    constexpr Token(std::string_view view, TokenKind kind, size_t line, size_t col, size_t index)
         : view(view), kind(kind), line(line), col(col), index(index) {}
 };
 
 // NOLINTNEXTLINE
-constexpr static const Token Eof = Token(intercom::string_view(), TokenKind::Eof, 0, 0, 0);
+constexpr static const Token Eof = Token(std::string_view(), TokenKind::Eof, 0, 0, 0);
 
 inline constexpr bool operator==(const Token& lhs, TokenKind kind) {
     return lhs.kind == kind;
@@ -180,7 +173,7 @@ inline constexpr bool operator!=(const Token& lhs, TokenKind kind) {
 /// each token is bound by the lifetime of the input buffer.
 class Lexer {
   public:
-    explicit Lexer(intercom::string_view view) : m_view(view) {}
+    explicit Lexer(std::string_view view) : m_view(view) {}
 
     std::vector<Token> scan() {
         while (get() != EOF) {
@@ -220,7 +213,7 @@ class Lexer {
         return (get() == '#' || get() == '[') && peek() == '#';
     }
 
-    intercom::string_view slice(size_t start, size_t count = 0) const {
+    std::string_view slice(size_t start, size_t count = 0) const {
         return count == 0 ? m_view.substr(start, index() - start) : m_view.substr(start, count);
     }
 
@@ -228,7 +221,7 @@ class Lexer {
         return isalnum(c) || c == '_';
     }
 
-    void emplace_token(intercom::string_view text, TokenKind kind) {
+    void emplace_token(std::string_view text, TokenKind kind) {
         m_tokens.emplace_back(text, kind, m_line, m_col - text.length(), m_idx - text.length());
     }
 
@@ -253,7 +246,7 @@ class Lexer {
         }
     }
 
-    intercom::string_view take_while(const std::function<bool(char)>& predicate) {
+    std::string_view take_while(const std::function<bool(char)>& predicate) {
         auto start = index();
         while (get() != EOF && predicate(get())) {
             advance();
@@ -261,7 +254,7 @@ class Lexer {
         return slice(start);
     }
 
-    intercom::string_view take_until(char c) {
+    std::string_view take_until(char c) {
         auto start = index();
         while (get() != EOF && get() != c) {
             advance();
@@ -393,11 +386,11 @@ class Lexer {
     size_t m_line{1};
     size_t m_col{};
     size_t m_idx{};
-    intercom::string_view m_view;
+    std::string_view m_view;
     std::vector<Token> m_tokens;
 };
 
-inline std::vector<Token> tokenize(intercom::string_view input) {
+inline std::vector<Token> tokenize(std::string_view input) {
     Lexer lexer(input);
     return lexer.scan();
 }
@@ -425,7 +418,7 @@ inline char handle_escaped(char c) {
     }
 }
 
-inline std::string escape_str(intercom::string_view input) {
+inline std::string escape_str(std::string_view input) {
     std::string data;
     for (size_t i = 0; i < input.length(); i++) {
         if (input[i] == '\\' && (i + 1 < input.length())) {

@@ -30,8 +30,8 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "utils/MD5.h"
-#include "utils/ThreadAnnotationAttributes.h"
+#include "utils/md5.h"
+#include "utils/thread_annotation_attributes.h"
 
 namespace {
 const std::array<uint8_t, 64> PADDING = {

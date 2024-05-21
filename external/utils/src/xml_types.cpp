@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "utils/XMLTypes.h"
+#include "utils/xml_types.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -33,8 +33,7 @@
 #include <string>
 #include <vector>
 
-#include "InterCOM/IntegerTypes.h"
-#include "InterCOM/string_view.h"
+#include "InterCOM/integer_types.h"
 #include "utils/string_utils.h"
 
 using namespace intercom;
@@ -718,7 +717,7 @@ void XML::makeUpper(std::string& one_string) noexcept {
 }
 
 // ---------------------------------------------------------------------
-bool XML::checkNumber(intercom::string_view source, bool float_value) noexcept {
+bool XML::checkNumber(std::string_view source, bool float_value) noexcept {
     auto numOfChar = static_cast<unsigned long>(source.length());
     for (unsigned long i = 0; i < numOfChar; i++) {
         switch (source[i]) {
@@ -750,7 +749,7 @@ bool XML::checkNumber(intercom::string_view source, bool float_value) noexcept {
 
 // ---------------------------------------------------------------------
 bool XML::getOneSubString(
-    intercom::string_view source_string,
+    std::string_view source_string,
     unsigned long& string_index,
     char*& sub_string
 ) noexcept {

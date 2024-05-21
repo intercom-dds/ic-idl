@@ -29,6 +29,7 @@
 
 #include <functional>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 #include "parser.h"
@@ -283,7 +284,7 @@ class Scope {
         return false;
     }
 
-    void assign(intercom::string_view var, const Value& value) {
+    void assign(std::string_view var, const Value& value) {
         std::string name(var);
         if (auto ptr = find(name)) {
             *ptr = value;
@@ -521,7 +522,7 @@ class Interp : public Visitor {
         m_scope = parent;
     }
 
-    void write_str(intercom::string_view str) {
+    void write_str(std::string_view str) {
         m_text = !str.empty();
         if (m_text) {
             m_stream << m_indent;
@@ -616,7 +617,7 @@ class Interp : public Visitor {
   protected:
     Scope* m_scope;
     bool m_text = false;
-    string_view m_indent;
+    std::string_view m_indent;
     std::ostream& m_stream;
 };
 

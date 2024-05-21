@@ -25,14 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "utils/XMLReader.h"
+#include "utils/xml_reader.h"
 
 #include <algorithm>
 #include <vector>
 
 #include "InterCOM/string_view.h"
-#include "utils/XMLReaderFile.h"
-#include "utils/XMLTypes.h"
+#include "utils/xml_reader_file.h"
+#include "utils/xml_types.h"
 
 using namespace intercom;
 

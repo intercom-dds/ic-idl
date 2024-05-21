@@ -30,6 +30,7 @@
 #include <fstream>
 #include <functional>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
 
 #include "interp.h"
@@ -123,7 +124,7 @@ class Template {
     }
 
     /// Parses the input and performs the relevant replacements.
-    void process(intercom::string_view input, std::ostream& stream) {
+    void process(std::string_view input, std::ostream& stream) {
         auto tokens = tokenize(input);
         Parser parser(tokens);
         auto ast = parser.parse();

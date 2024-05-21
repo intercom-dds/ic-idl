@@ -38,8 +38,8 @@
 #include "cidl/keywords.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
-#include "utils/IntegerTypes.h"
-#include "utils/MD5.h"
+#include "utils/integer_types.h"
+#include "utils/md5.h"
 
 static const char* get_constant_name(const char* name);
 

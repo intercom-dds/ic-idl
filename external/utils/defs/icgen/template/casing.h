@@ -28,8 +28,7 @@
 #pragma once
 
 #include <cctype>
-
-#include "InterCOM/string_view.h"
+#include <string_view>
 
 namespace intercom {
 namespace icgen {
@@ -59,7 +58,7 @@ class CaseConverter {
         m_delim = delim;
     }
 
-    std::string convert(intercom::string_view input) {
+    std::string convert(std::string_view input) {
         m_first = true;
         to_case(input);
         return std::move(m_result);
@@ -74,7 +73,7 @@ class CaseConverter {
         return std::toupper(c, std::locale());
     }
 
-    void to_snake(intercom::string_view word) {
+    void to_snake(std::string_view word) {
         if (!m_first) {
             m_result += m_delim;
         }
@@ -83,21 +82,21 @@ class CaseConverter {
         }
     }
 
-    void to_camel(intercom::string_view word) {
+    void to_camel(std::string_view word) {
         m_result += m_first ? lower(word[0]) : upper(word[0]);
         for (size_t i = 1; i < word.size(); i++) {
             m_result += lower(word[i]);
         }
     }
 
-    void to_pascal(intercom::string_view word) {
+    void to_pascal(std::string_view word) {
         m_result += upper(word[0]);
         for (size_t i = 1; i < word.size(); i++) {
             m_result += lower(word[i]);
         }
     }
 
-    void write(intercom::string_view word) {
+    void write(std::string_view word) {
         if (word.empty()) {
             return;
         }
@@ -120,7 +119,7 @@ class CaseConverter {
         return c == '_' || c == '-' || isspace(c);
     }
 
-    void to_case(intercom::string_view input) {
+    void to_case(std::string_view input) {
         size_t start = 0;
         bool was_upper = false;
 
@@ -159,25 +158,25 @@ class CaseConverter {
 };
 
 /// Converts the given string to snake_case.
-inline std::string snake_case(intercom::string_view input) {
+inline std::string snake_case(std::string_view input) {
     CaseConverter conv(Case::Snake);
     return conv.convert(input);
 }
 
 /// Converts the given string to camelCase.
-inline std::string camel_case(intercom::string_view input) {
+inline std::string camel_case(std::string_view input) {
     CaseConverter conv(Case::Camel);
     return conv.convert(input);
 }
 
 /// Converts the given string to PascalCase.
-inline std::string pascal_case(intercom::string_view input) {
+inline std::string pascal_case(std::string_view input) {
     CaseConverter conv(Case::Pascal);
     return conv.convert(input);
 }
 
 /// Converts the given string to kebab-case.
-inline std::string kebab_case(intercom::string_view input) {
+inline std::string kebab_case(std::string_view input) {
     CaseConverter conv(Case::Kebab);
     return conv.convert(input);
 }

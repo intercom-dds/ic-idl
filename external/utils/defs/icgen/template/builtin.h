@@ -27,20 +27,21 @@
 
 #pragma once
 
+#include <filesystem>
 #include <fstream>
 #include <regex>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
-#include "InterCOM/detail/filesystem.h"
 #include "casing.h"
 #include "interp.h"
 #include "template.h"
 
 namespace StringUtils {
 INTERCOM_PUBLIC bool wildCardMatch(
-    intercom::string_view pattern,
-    intercom::string_view str,
+    std::string_view pattern,
+    std::string_view str,
     bool case_insensitive = false,
     char terminator = '\0'
 );
@@ -185,7 +186,7 @@ inline std::string time(Scope*, const FunctionData::Args& args) {
 inline std::string include(Scope* scope, const FunctionData::Args& args) {
     std::stringstream stream;
     auto data_dir = scope->find("data_dir");
-    fs::path dir = fs::current_path();
+    std::filesystem::path dir = std::filesystem::current_path();
 
     if (data_dir) {
         dir = data_dir->str();

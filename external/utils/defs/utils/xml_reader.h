@@ -33,7 +33,7 @@
 #include <vector>
 
 #include "InterCOM/dyn_link.h"
-#include "utils/XMLTypes.h"
+#include "xml_types.h"
 
 namespace intercom {
 class XMLReaderFile;

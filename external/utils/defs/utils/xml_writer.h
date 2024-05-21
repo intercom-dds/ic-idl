@@ -31,7 +31,7 @@
 #include <string>
 
 #include "InterCOM/dyn_link.h"
-#include "utils/XMLTypes.h"
+#include "xml_types.h"
 
 namespace intercom {
 //! Writes an %XML file

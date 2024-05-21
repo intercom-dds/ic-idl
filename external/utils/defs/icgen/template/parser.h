@@ -38,6 +38,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -267,7 +268,7 @@ class Parser {
         return (m_idx + 1) < m_tokens.size() ? m_tokens[m_idx + 1] : Eof;
     }
 
-    std::runtime_error fmt_error(intercom::string_view msg) const {
+    std::runtime_error fmt_error(std::string_view msg) const {
         auto token = get();
         if (token == TokenKind::Eof) {
             token = m_tokens.back();

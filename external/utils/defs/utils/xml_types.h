@@ -28,10 +28,10 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "InterCOM/dyn_link.h"
-#include "InterCOM/string_view.h"
 
 namespace intercom {
 class XMLReader;
@@ -225,9 +225,9 @@ class INTERCOM_PUBLIC XML {
     static void makeUpper(std::string& oneString) noexcept;
 
   protected:
-    static bool checkNumber(intercom::string_view source, bool floatValue) noexcept;
+    static bool checkNumber(std::string_view source, bool floatValue) noexcept;
     static bool getOneSubString(
-        intercom::string_view sourceString,
+        std::string_view sourceString,
         unsigned long& stringIndex,
         char*& subString
     ) noexcept;

@@ -1,0 +1,552 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include "utils/StringUtils.h"
+
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <locale>
+#include <sstream>
+#include <string_view>
+
+#include "InterCOM/PlatformConfig.h"
+#define __EXTENSIONS__ 1
+#include <cstring>
+
+namespace {
+bool is_wild(const char* s) {
+    const char* p = s;
+    bool escape = false;
+
+    for (; *p != '\0'; p++) {
+        if (escape) {
+            escape = false;
+        } else {
+            switch (*p) {
+            case '*':
+            case '?':
+            case '[':
+                return true;
+            case '\\':
+                escape = true;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    return false;
+}
+}  // namespace
+
+namespace string_utils {
+
+inline char case_it(char input, bool case_insensitive) {
+    return static_cast<char>(case_insensitive ? tolower(input) : input);
+}
+
+inline bool case_compare(char input, char input2, bool case_insensitive) {
+    return case_it(input, case_insensitive) == case_it(input2, case_insensitive);
+}
+
+bool is_in_range(
+    char a_character,
+    const char* start_range,
+    const char* end_range,
+    bool case_insensitive
+) {
+    a_character = case_it(a_character, case_insensitive);
+    if (*(start_range) == '!') {
+        start_range++;
+        return !is_in_range(a_character, start_range, end_range, case_insensitive);
+    }
+    while (start_range < end_range) {
+        char current = case_it(*(start_range++), case_insensitive);
+        if (*(start_range) != '-') {
+            if (a_character == current) {
+                return true;
+            }
+        } else {
+            start_range++;
+            char range = case_it(*(start_range++), case_insensitive);
+            if (a_character >= current && a_character <= range) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool wild_card_match(
+    std::string_view a_pattern,
+    std::string_view a_string,
+    bool case_insensitive,
+    char terminator
+) {
+    const char* a_string_ptr = a_string.begin();
+    const char* a_pattern_ptr = a_pattern.begin();
+    while (a_string_ptr != a_string.end() && a_pattern_ptr != a_pattern.end() &&
+           a_string_ptr[0] != terminator) {
+        if (*a_string_ptr == '\\') {
+            a_string_ptr++;
+        }
+        switch (a_pattern_ptr[0]) {
+        case '*':
+            if (a_pattern_ptr + 1 == a_pattern.end()) {
+                return true;
+            }
+            if (case_compare(a_pattern_ptr[1], a_string_ptr[0], case_insensitive)) {
+                return wild_card_match(&(a_pattern_ptr[1]), &(a_string_ptr[0]), case_insensitive) ||
+                       wild_card_match(&(a_pattern_ptr[0]), &(a_string_ptr[1]), case_insensitive);
+            }
+            a_string_ptr++;
+            break;
+        case '?':
+            a_pattern_ptr++;
+            a_string_ptr++;
+            break;
+        case '\\':
+            a_pattern_ptr++;
+            if (!case_compare(a_pattern_ptr[0], a_string_ptr[0], case_insensitive)) {
+                return false;
+            }
+            a_pattern_ptr++;
+            a_string_ptr++;
+            break;
+        case '[': {
+            const char* endRange = strchr(a_pattern_ptr, ']');
+            if (endRange == nullptr) {
+                if (a_pattern_ptr[0] != a_string_ptr[0]) {
+                    return false;
+                }
+                a_pattern_ptr++;
+                a_string_ptr++;
+            } else {
+                if (!is_in_range(
+                        a_string_ptr[0], &(a_pattern_ptr[1]), endRange, case_insensitive
+                    )) {
+                    return false;
+                }
+                a_pattern_ptr = endRange + 1;
+                a_string_ptr++;
+            }
+        } break;
+        default:
+            if (!case_compare(a_pattern_ptr[0], a_string_ptr[0], case_insensitive)) {
+                return false;
+            }
+            a_pattern_ptr++;
+            a_string_ptr++;
+            break;
+        }
+    }
+    if (a_string_ptr == a_string.end() && a_pattern_ptr[0] == '*' &&
+        a_pattern_ptr + 1 == a_pattern.end()) {
+        return true;
+    }
+    if (a_string_ptr != a_string.end() ||
+        (a_pattern_ptr != a_pattern.end() && a_pattern_ptr[0] != terminator)) {
+        return false;
+    }
+    return true;
+}
+
+char* strtok_r(char* s1, const char* s2, char** lasts) {
+#if defined(INTERCOM_PLATFORM_WINDOWS) && defined(INTERCOM_COMPILER_MICROSOFT)
+    return ::strtok_s(s1, s2, lasts);
+#elif defined(INTERCOM_PLATFORM_WINDOWS) && defined(INTERCOM_COMPILER_GNUC)
+    // mingw Has no strtok_s or strtok_r, but strtok is supposed to be reentrant
+    return ::strtok(s1, s2);
+#else
+    return ::strtok_r(s1, s2, lasts);
+#endif
+}
+
+void split_string(
+    std::vector<std::string>& result,
+    std::string_view str,
+    const char* delim,
+    bool trim_whitespace
+) {
+    result.clear();
+    if (delim == nullptr || *delim == '\0') {
+        if (!str.empty()) {
+            result.emplace_back(str);
+        }
+        return;
+    }
+    // strtok is destructive, so start by copying input string
+    // intercom::corba::String_var copy(std::string(str).c_str());
+    std::string copy(str);
+    char* strtok_state;
+    char* token = string_utils::strtok_r(&copy[0], delim, &strtok_state);
+    while (token) {
+        if (trim_whitespace) {
+            while (*token == ' ' || *token == '\t') {
+                ++token;
+            }
+            size_t end = strlen(token);
+            while (end > 0 && (token[end - 1] == ' ' || token[end - 1] == '\t')) {
+                --end;
+            }
+            token[end] = '\0';
+        }
+        if (*token != '\0') {
+            result.emplace_back(token);
+        }
+        token = string_utils::strtok_r(nullptr, delim, &strtok_state);
+    }
+}
+
+std::pair<std::string, std::string> split_at(std::string_view str, char delim) {
+    size_t pos = str.find(delim);
+    std::string left(str.substr(0, pos));
+    std::string right(str.substr(pos + 1));
+    return {left, right};
+}
+
+bool string_to_double(std::string_view text, double& value) {
+    bool result = true;  // Assume all will be well.
+    value = 0.0;
+    std::istringstream iss((std::string(text)));
+    iss.imbue(std::locale::classic());  // Force locale
+    iss >> value;
+    if (!(iss.eof()) || iss.bad()) {
+        result = false;
+    }
+    return result;
+}
+
+bool string_to_float(std::string_view text, float& value) {
+    bool result = true;  // Assume all will be well.
+    value = 0.0;
+    std::istringstream iss((std::string(text)));
+    iss.imbue(std::locale::classic());  // Force locale
+    iss >> value;
+    if (!(iss.eof()) || iss.bad()) {
+        result = false;
+    }
+    return result;
+}
+
+bool string_to_double_in_string_sequence(std::string_view text, double& value, int* end_ptr) {
+    bool result = true;  // Assume all will be well.
+    value = 0.0;
+    std::istringstream iss((std::string(text)));
+    iss.imbue(std::locale::classic());  // Force locale
+    iss >> value;
+    if (end_ptr != nullptr) {
+        if (iss.eof(
+            ))  // In VS2010 tellg() may not return -1 at eof so we check the eof flag instead.
+        {
+            *end_ptr = -1;
+        } else {
+            *end_ptr = static_cast<int>(iss.tellg());
+        }
+    }
+    // Note: The failbit flag can be set at eof, specifically check that if
+    // failbit is set that eof bit is NOT set.
+    if ((iss.fail() && !(iss.eof())) || iss.bad()) {
+        result = false;
+    }
+    return result;
+}
+
+bool stringToFloatInStringSequence(std::string_view text, float& value, int* end_ptr) {
+    bool result = true;  // Assume all will be well.
+    value = 0.0;
+    std::istringstream iss((std::string(text)));
+    iss.imbue(std::locale::classic());  // Force locale
+    iss >> value;
+    if (end_ptr != nullptr) {
+        if (iss.eof(
+            ))  // In VS2010 tellg() may not return -1 at eof so we check the eof flag instead.
+        {
+            *end_ptr = -1;
+        } else {
+            *end_ptr = static_cast<int>(iss.tellg());
+        }
+    }
+    // Note: The failbit flag can be set at eof, specifically check that if
+    // failbit is set that eof bit is NOT set.
+    if ((iss.fail() && !(iss.eof())) || iss.bad()) {
+        result = false;
+    }
+    return result;
+}
+
+bool partitionMatch(const std::vector<std::string>& a_pub, const std::vector<std::string>& a_sub) {
+    bool partition_matched = false;
+
+    // see if the writer is in the same partition
+    if (a_sub.empty() && a_pub.empty()) {
+        partition_matched = true;
+    }
+
+    // Non-standard special case: The exact string "*" matches anything, even other wildcards.
+    // The expression "**" can be used to match everything except other wildcard expressions.
+    for (const auto& i : a_pub) {
+        if (i == "*") {
+            partition_matched = true;
+            break;
+        }
+    }
+    for (const auto& i : a_sub) {
+        if (i == "*") {
+            partition_matched = true;
+            break;
+        }
+    }
+
+    if (!partition_matched) {
+        std::vector<std::string> p1;
+        std::vector<std::string> p2;
+
+        if (a_pub.empty()) {
+            p1.emplace_back("");
+        } else {
+            p1 = a_pub;
+        }
+
+        if (a_sub.empty()) {
+            p2.emplace_back("");
+        } else {
+            p2 = a_sub;
+        }
+
+        for (unsigned int a = 0; a < p1.size() && !partition_matched; a++) {
+            if (nullptr == p1[a].c_str())  // Robust check
+            {
+                continue;
+            }
+            bool p1_is_wild = is_wild(p1[a].c_str());
+
+            for (auto& b : p2) {
+                if (nullptr == b.c_str())  // Robust check
+                {
+                    continue;
+                }
+                bool p2_is_wild = is_wild(b.c_str());
+
+                // Spec says two partition names with wildcards don't match
+                if (p1_is_wild && p2_is_wild) {
+                    continue;
+                }
+                if (p1_is_wild && string_utils::wild_card_match(p1[a], b)) {
+                    partition_matched = true;
+                    break;
+                }
+                if (p2_is_wild && string_utils::wild_card_match(b, p1[a])) {
+                    partition_matched = true;
+                    break;
+                }
+                if (p1[a] == b) {
+                    partition_matched = true;
+                    break;
+                }
+            }
+        }
+    }
+    return partition_matched;
+}
+
+// Can't use toupper directly in std::transform because of the downcast warning.
+static char char_toupper(int c) {
+    return static_cast<char>(toupper(c));
+}
+
+std::string to_upper_case(std::string a_str) {
+    std::transform(a_str.begin(), a_str.end(), a_str.begin(), &char_toupper);
+    return a_str;
+}
+
+std::string to_lower_case(std::string a_str) {
+    std::transform(a_str.begin(), a_str.end(), a_str.begin(), [](const char& c) {
+        return static_cast<char>(tolower(static_cast<int>(c)));
+    });
+    return a_str;
+}
+
+std::string trim_string(const std::string& a_str) {
+    std::string::size_type start_pos = a_str.find_first_not_of(' ');
+    if (start_pos == std::string::npos) {
+        return "";
+    }
+
+    std::string::size_type end_pos = a_str.find_last_not_of(' ') - start_pos + 1;
+    return a_str.substr(start_pos, end_pos);
+}
+
+bool compare_ignore_case(const std::string& a_str1, const std::string& a_str2) {
+    return (to_upper_case(a_str1) == to_upper_case(a_str2));
+}
+
+bool to_boolean(const std::string& a_str, const bool& a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    std::string trimed_str = trim_string(a_str);
+
+    if ("true" == trimed_str) {
+        return true;
+    }
+    if ("false" == trimed_str) {
+        return false;
+    } else {
+        return a_default;
+    }
+}
+
+int to_octal(const std::string& a_str, const int& a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    int value = 0;
+    std::istringstream in(a_str);
+    in >> std::oct >> value;
+
+    return value;
+}
+unsigned long to_ulong(const std::string& a_str, const unsigned long& a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    unsigned long value = 0;
+    std::istringstream in(a_str);
+    in >> value;
+
+    return value;
+}
+
+unsigned int to_uint(const std::string& a_str, const unsigned int& a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    unsigned int value = 0;
+    std::istringstream in(a_str);
+    in >> value;
+
+    return value;
+}
+
+int to_int(const std::string& a_str, const int& a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    int value = 0;
+    std::istringstream in(a_str);
+    in >> value;
+
+    return value;
+}
+
+unsigned short to_ushort(const std::string& a_str, unsigned short a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    unsigned short value = 0;
+    std::istringstream in(a_str);
+    in >> value;
+
+    return value;
+}
+
+unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_default) {
+    if (a_str.empty()) {
+        return a_default;
+    }
+
+    std::string value_str = to_upper_case(trim_string(a_str));
+
+    unsigned int multiplier = 1;
+    std::size_t numeric_pos;
+
+    if ((numeric_pos = value_str.find("KB")) != std::string::npos) {
+        multiplier = 1024;
+        value_str = value_str.substr(0, numeric_pos);
+    } else if ((numeric_pos = value_str.find("MB")) != std::string::npos) {
+        multiplier = 1024 * 1024;
+        value_str = value_str.substr(0, numeric_pos);
+    } else if ((numeric_pos = value_str.find("GB")) != std::string::npos) {
+        multiplier = 1024 * 1024 * 1024;
+        value_str = value_str.substr(0, numeric_pos);
+    }
+
+    if (!value_str.empty()) {
+        unsigned int size_value = 0;
+        std::istringstream in(value_str);
+        in >> size_value;
+        size_value *= multiplier;
+        return size_value;
+    }
+
+    return a_default;
+}
+
+std::string to_html_encoding(const std::string& a_src) {
+    std::ostringstream os;
+
+    for (char it : a_src) {
+        auto c = static_cast<unsigned char>(it);
+
+        switch (c) {
+        case '&':
+            os << "&amp;";
+            break;
+        case '<':
+            os << "&lt;";
+            break;
+        case '>':
+            os << "&gt;";
+            break;
+        case '"':
+            os << "&quot;";
+            break;
+        case '\n':
+            os << "<br/>";
+            break;
+        default: {
+            if (c < 32 || c > 127) {
+                os << "&#" << static_cast<unsigned short>(c) << ";";
+            } else {
+                os << c;
+            }
+        }
+        }
+    }
+    return os.str();
+}
+
+}  // namespace string_utils

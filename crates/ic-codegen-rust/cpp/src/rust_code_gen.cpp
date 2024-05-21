@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <map>
 
@@ -1617,7 +1618,7 @@ static void recurse_node(Twine& out, const ptree* node) {
     out(blank_line);
 }
 
-static void save_file(std::stringstream& stream, intercom::fs::path file) {
+static void save_file(std::stringstream& stream, std::filesystem::path file) {
     if (file.empty()) {
         file = CommandLineOption::intercom_build() ? "mod" : "lib";
     }
@@ -1626,13 +1627,13 @@ static void save_file(std::stringstream& stream, intercom::fs::path file) {
     if (CommandLineOption::list_only()) {
         std::cout << file.c_str() << std::endl;
     } else {
-        intercom::fs::path filepath = CommandLineOption::rust_target_directory();
+        std::filesystem::path filepath = CommandLineOption::rust_target_directory();
         filepath /= file;
         write_if_changed(filepath.string(), stream.str());
     }
 }
 
-static void emit_module(const Module& module, const intercom::fs::path& name = "") {
+static void emit_module(const Module& module, const std::filesystem::path& name = "") {
     std::stringstream stream;
     emit_prelude(stream);
 

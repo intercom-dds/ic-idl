@@ -27,7 +27,8 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-Work in progress. Things are scattered all over the place.
+Work in progress. Things are scattered all over the place. Relative paths are
+used everywhere in CMake as a temporary hack to make things work.
 
 ## Building
 

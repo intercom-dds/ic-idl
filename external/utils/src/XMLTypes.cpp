@@ -35,7 +35,7 @@
 
 #include "InterCOM/IntegerTypes.h"
 #include "InterCOM/string_view.h"
-#include "utils/StringUtils.h"
+#include "utils/string_utils.h"
 
 using namespace intercom;
 

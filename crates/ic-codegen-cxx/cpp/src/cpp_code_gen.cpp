@@ -42,7 +42,7 @@
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "utils/StringUtils.h"
+#include "utils/string_utils.h"
 #include "utils/stdprintf.h"
 
 #define INTERCOM_PUBLIC_MACRO_NAME "INTERCOM_PUBLIC"

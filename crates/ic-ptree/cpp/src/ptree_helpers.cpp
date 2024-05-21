@@ -33,7 +33,7 @@
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"
 #include "cidl/symbols.h"
-#include "utils/StringUtils.h"
+#include "utils/string_utils.h"
 
 namespace intercom::cidl {
 

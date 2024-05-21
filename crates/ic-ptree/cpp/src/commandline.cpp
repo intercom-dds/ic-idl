@@ -33,7 +33,7 @@
 #include <cstring>
 #include <vector>
 
-#include "utils/StringUtils.h"
+#include "utils/string_utils.h"
 
 using namespace intercom::cidl;
 

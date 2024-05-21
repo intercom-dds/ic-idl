@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 add_library(utils STATIC
-    src/StringUtils.cpp)
+    src/string_utils.cpp)
    # src/CdrSerializer.cpp
    # src/Checksums.cpp
    # src/Environment.cpp

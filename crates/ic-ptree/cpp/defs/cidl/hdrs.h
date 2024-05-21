@@ -72,6 +72,8 @@ void generate_json_type(std::ostream& stream, const ptree* tree);
 void ast_dump(const parse_result* result);
 std::string toml_emit_node(std::string_view name, const ptree* tree);
 
+void gen_cpp_type_info(struct memf* memf, const ptree* obj, std::string_view funcname);
+
 INTERCOM_PUBLIC std::string cpp_type_name(const ptree* node, const ptree* context);
 
 void get_type_library(const ptree* obj, unsigned char** cdr_typedef, size_t* len);

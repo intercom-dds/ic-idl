@@ -35,4 +35,4 @@ publish = false
 ic-cli = { path = "../ic-cli" }
 ic-ptree = { path = "../ic-ptree" }
 ic-preproc = { path = "../ic-preproc" }
-ic-codegen-protobuf = { path = "../ic-codegen-protobuf" }
+ic-codegen-cxx = { path = "../ic-codegen-cxx" }

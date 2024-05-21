@@ -55,5 +55,5 @@ fn main() {
         .collect();
 
     let merged = ic_ptree::merge_trees(&parsed);
-    ic_ptree::codegen_proto(&merged, &options.cpp_out);
+    ic_ptree::codegen_cpp(&merged, &options.cpp_out);
 }

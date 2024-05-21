@@ -74,8 +74,6 @@ static memf g_prebd_file;
 static memf* g_all_headers[] = {&g_hd_file, &g_hd_impl_file, &g_hd_json_file, nullptr};
 static memf* g_hd_tbd_files[] = {&g_hd_file, &g_tbd_file, nullptr};
 
-extern void gen_cpp_type_info(struct memf* memf, const ptree* obj, std::string_view funcname);
-
 static void cpl_prototype_c_def(const ptree* obj);
 
 static std::string name(const ptree* obj) {
@@ -3714,7 +3712,8 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
         std::string file_name = trim_include_name(include->name, true);
-        cpl_rpc_service_gen(result->tree, &g_hd_rpc_file, &g_tbd_file, g_current_include);
+        // TODO(idarcar);
+        // cpl_rpc_service_gen(result->tree, &g_hd_rpc_file, &g_tbd_file, g_current_include);
         cpl_saveit(result->tree, file_name, include->name);
     }
 }

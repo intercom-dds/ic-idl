@@ -317,7 +317,7 @@ fn try_main(options: Options) -> anyhow::Result<()> {
     }
 
     if let Some(dir) = &options.cpp_out {
-        // ic_ptree::codegen_cpp(&merged, dir);
+        ic_ptree::codegen_cpp(&merged, dir);
     }
 
     Ok(())

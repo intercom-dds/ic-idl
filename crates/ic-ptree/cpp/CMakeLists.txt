@@ -92,9 +92,12 @@ add_library(ic_ptree STATIC
     ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
     ../../ic-codegen-java/cpp/src/java_code_gen.cpp
     ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
+    ../../ic-codegen-cxx/cpp/src/cpp_typeinfo.cpp
     ../../ic-codegen-python/cpp/src/python_code_gen.cpp
     ../../ic-codegen-csharp/cpp/src/cs_code_gen.cpp
 )
+
+target_compile_definitions(ic_ptree PRIVATE CIDL_BOOTSTRAP)
 
 target_include_directories(ic_ptree PUBLIC defs)
 

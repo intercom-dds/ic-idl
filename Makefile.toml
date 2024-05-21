@@ -35,7 +35,6 @@ args = [
     "--path", "crates/ic-bootstrap",
     "--root", "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}",
     "--target-dir", "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}",
-    # "--quiet",
 ]
 
 [tasks.release]

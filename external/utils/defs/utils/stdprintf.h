@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-#include "InterCOM/PlatformConfig.h"
+#include "InterCOM/platform_config.h"
 
 #ifdef INTERCOM_PLATFORM_WINDOWS
 #  define _CRT_NO_VA_START_VALIDATION

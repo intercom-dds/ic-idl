@@ -34,7 +34,7 @@
 #include <sstream>
 #include <string_view>
 
-#include "InterCOM/PlatformConfig.h"
+#include "InterCOM/platform_config.h"
 #define __EXTENSIONS__ 1
 #include <cstring>
 

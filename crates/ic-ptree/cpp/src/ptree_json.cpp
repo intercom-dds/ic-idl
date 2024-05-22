@@ -29,8 +29,8 @@
 #include <stdexcept>
 
 #include "InterCOM/cidl_json.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/json.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/symbols.h"
 
 using namespace intercom::cidl;

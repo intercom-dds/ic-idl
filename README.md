@@ -55,3 +55,25 @@ The system's default C/C++ toolchain will be used unless otherwise is
 specified. This can be overridden by using the `CC` and `CXX` environment
 variables. Custom flags can be specified with `CFLAGS` and `CXXFLAGS`,
 respectively.
+
+### Development
+
+Build a bootstrapped version first:
+
+```sh
+cargo make bootstrap
+```
+
+Once compiled, `cargo` can be invoked as usual, e.g.:
+
+```
+cargo test
+```
+
+For working with C++, a `compile_commands.json` file can be generated with:
+
+```
+cargo make cmake
+```
+
+This will create a `build` directory which contains `compile_commands.json`.

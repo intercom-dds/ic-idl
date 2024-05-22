@@ -77,11 +77,12 @@ static void get_type_flag_name(std::string& flag, const ptree* obj) {
         case FINAL_EXTENSIBILITY:
             add_flag(flag, "intercom::dcps::xtypes::IS_FINAL");
             break;
-        case EXTENSIBLE_EXTENSIBILITY:
-            add_flag(flag, "intercom::dcps::xtypes::IS_APPENDABLE");
-            break;
         case MUTABLE_EXTENSIBILITY:
             add_flag(flag, "intercom::dcps::xtypes::IS_MUTABLE");
+            break;
+        case EXTENSIBLE_EXTENSIBILITY:
+        default:
+            add_flag(flag, "intercom::dcps::xtypes::IS_APPENDABLE");
             break;
         }
         if (is_nested(obj)) {
@@ -292,33 +293,44 @@ static const char* primitive_type_info(const ptree* obj) {
     }
     if (obj == &int8_type) {
         return "::intercom::Int8_type_info";
-    } else if (obj == &octet_type) {
-        return "::intercom::Uint8_type_info";
-    } else if (obj == &char_type) {
-        return "::intercom::Char_type_info";
-    } else if (obj == &wchar_type) {
-        return "::intercom::Char16_type_info";
-    } else if (obj == &short_type) {
-        return "::intercom::Short_type_info";
-    } else if (obj == &ushort_type) {
-        return "::intercom::UShort_type_info";
-    } else if (obj == &long_type) {
-        return "::intercom::Long_type_info";
-    } else if (obj == &ulong_type) {
-        return "::intercom::ULong_type_info";
-    } else if (obj == &longlong_type) {
-        return "::intercom::LongLong_type_info";
-    } else if (obj == &ulonglong_type) {
-        return "::intercom::ULongLong_type_info";
-    } else if (obj == &float_type) {
-        return "::intercom::Float_type_info";
-    } else if (obj == &double_type) {
-        return "::intercom::Double_type_info";
-    } else if (obj == &ldouble_type) {
-        return "::intercom::LongDouble_type_info";
-    } else {
-        return "";
     }
+    if (obj == &octet_type) {
+        return "::intercom::Uint8_type_info";
+    }
+    if (obj == &char_type) {
+        return "::intercom::Char_type_info";
+    }
+    if (obj == &wchar_type) {
+        return "::intercom::Char16_type_info";
+    }
+    if (obj == &short_type) {
+        return "::intercom::Short_type_info";
+    }
+    if (obj == &ushort_type) {
+        return "::intercom::UShort_type_info";
+    }
+    if (obj == &long_type) {
+        return "::intercom::Long_type_info";
+    }
+    if (obj == &ulong_type) {
+        return "::intercom::ULong_type_info";
+    }
+    if (obj == &longlong_type) {
+        return "::intercom::LongLong_type_info";
+    }
+    if (obj == &ulonglong_type) {
+        return "::intercom::ULongLong_type_info";
+    }
+    if (obj == &float_type) {
+        return "::intercom::Float_type_info";
+    }
+    if (obj == &double_type) {
+        return "::intercom::Double_type_info";
+    }
+    if (obj == &ldouble_type) {
+        return "::intercom::LongDouble_type_info";
+    }
+    return "";
 }
 
 static std::string gen_element_type_info(

@@ -32,7 +32,6 @@
 #include <stdio.h>
 #include <cidl/ptree_builder.h>
 
-int idlparse(void);
 int idllex(void);
 int idlerror( const char * s );
 
@@ -819,7 +818,6 @@ name_or_anon:   { $$ = create_anon_name(); }
 #               include <stdio.h>
 
 extern char idltext[];
-extern const char* current_input_file;
 extern struct position current_pos;
 
 static void pedantic_bitmask(const struct ptree* node) {

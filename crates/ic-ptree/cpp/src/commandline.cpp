@@ -148,10 +148,12 @@ static void update_warning(const char* argv, bool option_select) {
         type = has_target ? find_warning(split_argv.second.c_str(), enable_target)
                           : CommandLineOption::WARNING_ALL;
         if (type == CommandLineOption::WARNING_ERROR || !enable_target) {
-            return fmt::print(stderr, "Warning '{}' was given unsupported type after '='\n", argv);
+            fmt::print(stderr, "Warning '{}' was given unsupported type after '='\n", argv);
+            return;
         }
     } else if (has_target) {
-        return fmt::print(stderr, "Warning '{}' had unexpected '='\n", argv);
+        fmt::print(stderr, "Warning '{}' had unexpected '='\n", argv);
+        return;
     }
 
     if (werror) {

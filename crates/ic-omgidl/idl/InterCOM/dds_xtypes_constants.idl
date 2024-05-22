@@ -25,67 +25,67 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef DDS_XTYPES_CONSTANTS
-#define DDS_XTYPES_CONSTANTS 1
+#pragma once
 
-module intercom
-{
-   // xtypes reuses the parameter list serialization from RTPS property
-   // lists. All the built-in magic numbers are specified in dds_wire_curr.idl,
-   // but the generic ones are here since they are needed by the serializers (which are
-   // used by both wire and dcps).
-   typedef unsigned short ParameterId_t;
+module intercom {
+    // xtypes reuses the parameter list serialization from RTPS property
+    // lists. All the built-in magic numbers are specified in dds_wire_curr.idl,
+    // but the generic ones are here since they are needed by the serializers (which are
+    // used by both wire and dcps).
+    typedef unsigned short ParameterId_t;
 
-   const ParameterId_t PID_SENTINEL = 0x0001;
-   const ParameterId_t PID_EXTENDED = 0x3F01;
-   const ParameterId_t PID_LIST_END = 0x3F02;
-   const ParameterId_t PID_IGNORE = 0x3F03;
-   const ParameterId_t PID_FLAG_MUST_UNDERSTAND = 0x4000;
-   const ParameterId_t PID_FLAG_IMPL_EXTENSION = 0x8000;
-   const ParameterId_t PID_PID_MASK = 0x3FFF;
+    const ParameterId_t PID_SENTINEL = 0x0001;
+    const ParameterId_t PID_EXTENDED = 0x3F01;
+    const ParameterId_t PID_LIST_END = 0x3F02;
+    const ParameterId_t PID_IGNORE = 0x3F03;
+    const ParameterId_t PID_FLAG_MUST_UNDERSTAND = 0x4000;
+    const ParameterId_t PID_FLAG_IMPL_EXTENSION = 0x8000;
+    const ParameterId_t PID_PID_MASK = 0x3FFF;
 
-   bitmask SerializerFlags { SERIALIZER_KEY_ONLY = 2,
-                             SERIALIZER_SKIP_MISSING,
-                             SERIALIZER_PRETTY,
-                             SERIALIZER_STRICT,
-                             CDR_LITTLE_ENDIAN,
-                             CDR_BIG_ENDIAN,
-                             CDR_XCDR1,
-                             CDR_XCDR2,
-                             CDR_XCDR_PLAIN,
-                             CDR_XCDR_BUILTIN };
+    bitmask SerializerFlags {
+         SERIALIZER_KEY_ONLY = 2,
+         SERIALIZER_SKIP_MISSING,
+         SERIALIZER_PRETTY,
+         SERIALIZER_STRICT,
+         CDR_LITTLE_ENDIAN,
+         CDR_BIG_ENDIAN,
+         CDR_XCDR1,
+         CDR_XCDR2,
+         CDR_XCDR_PLAIN,
+         CDR_XCDR_BUILTIN
+    };
 
-   // Table 60 in Xtypes 1.3 standard
-   @ext::no_serializer enum EncapsulationSchemeIdentifier {
-      ENC_CDR_BE            = 0x00,
-      ENC_CDR_LE            = 0x01,
-      ENC_PL_CDR_BE         = 0x02,
-      ENC_PL_CDR_LE         = 0x03,
-      ENC_XML               = 0x04,
-      ENC_CDR2_BE           = 0x06,
-      ENC_CDR2_LE           = 0x07,
-      ENC_DELIMITED_CDR2_BE = 0x08,
-      ENC_DELIMITED_CDR2_LE = 0x09,
-      ENC_PL_CDR2_BE        = 0x0a,
-      ENC_PL_CDR2_LE        = 0x0b,
+    // Table 60 in Xtypes 1.3 standard
+    @ext::no_serializer enum EncapsulationSchemeIdentifier {
+        ENC_CDR_BE            = 0x00,
+        ENC_CDR_LE            = 0x01,
+        ENC_PL_CDR_BE         = 0x02,
+        ENC_PL_CDR_LE         = 0x03,
+        ENC_XML               = 0x04,
+        ENC_CDR2_BE           = 0x06,
+        ENC_CDR2_LE           = 0x07,
+        ENC_DELIMITED_CDR2_BE = 0x08,
+        ENC_DELIMITED_CDR2_LE = 0x09,
+        ENC_PL_CDR2_BE        = 0x0a,
+        ENC_PL_CDR2_LE        = 0x0b,
 
-      // Constants defined with wrong values in table 7.4.3.4 of the xtypes 1.3 standard
-      // (formal-20-02-04). Kept for backwards compatibility with InterCOM 3.8-3.11, can
-      // be removed when they are no longer relevant.
-      ENC_CDR2_BE_OLD           = 0x10,
-      ENC_CDR2_LE_OLD           = 0x11,
-      ENC_PL_CDR2_BE_OLD        = 0x12,
-      ENC_PL_CDR2_LE_OLD        = 0x13,
-      ENC_DELIMITED_CDR2_BE_OLD = 0x14,
-      ENC_DELIMITED_CDR2_LE_OLD = 0x15,
+        // Constants defined with wrong values in table 7.4.3.4 of the xtypes 1.3 standard
+        // (formal-20-02-04). Kept for backwards compatibility with InterCOM 3.8-3.11, can
+        // be removed when they are no longer relevant.
+        ENC_CDR2_BE_OLD           = 0x10,
+        ENC_CDR2_LE_OLD           = 0x11,
+        ENC_PL_CDR2_BE_OLD        = 0x12,
+        ENC_PL_CDR2_LE_OLD        = 0x13,
+        ENC_DELIMITED_CDR2_BE_OLD = 0x14,
+        ENC_DELIMITED_CDR2_LE_OLD = 0x15,
 
-      // InterCOM extensions. Simplified version for foreign languages, equivalent
-      // to classic CDR disregarding extensibility annotations on types
-      ENC_PLAIN_CDR_BE      = 0x80,
-      ENC_PLAIN_CDR_LE      = 0x81
-   } ;
+        // InterCOM extensions. Simplified version for foreign languages, equivalent
+        // to classic CDR disregarding extensibility annotations on types
+        ENC_PLAIN_CDR_BE = 0x80,
+        ENC_PLAIN_CDR_LE = 0x81
+    } ;
 
-   const unsigned short ENCAPSULATION_SIZE = 4;
+    const unsigned short ENCAPSULATION_SIZE = 4;
 };
 
 @data_representation( allowed_kinds = XCDR2 )
@@ -94,33 +94,33 @@ module DDS { module XTypes {
     typedef octet TypeKind;
 
     // Primitive TKs
-    const TypeKind TK_NONE       = 0x00;
-    const TypeKind TK_BOOLEAN    = 0x01;
-    const TypeKind TK_BYTE       = 0x02;
-    const TypeKind TK_INT16      = 0x03;
-    const TypeKind TK_INT32      = 0x04;
-    const TypeKind TK_INT64      = 0x05;
-    const TypeKind TK_UINT16     = 0x06;
-    const TypeKind TK_UINT32     = 0x07;
-    const TypeKind TK_UINT64     = 0x08;
-    const TypeKind TK_FLOAT32    = 0x09;
-    const TypeKind TK_FLOAT64    = 0x0A;
-    const TypeKind TK_FLOAT128   = 0x0B;
-    const TypeKind TK_INT8       = 0x0C;
-    const TypeKind TK_UINT8      = 0x0D;
-    const TypeKind TK_CHAR8      = 0x10;
-    const TypeKind TK_CHAR16     = 0x11;
+    const TypeKind TK_NONE     = 0x00;
+    const TypeKind TK_BOOLEAN  = 0x01;
+    const TypeKind TK_BYTE     = 0x02;
+    const TypeKind TK_INT16    = 0x03;
+    const TypeKind TK_INT32    = 0x04;
+    const TypeKind TK_INT64    = 0x05;
+    const TypeKind TK_UINT16   = 0x06;
+    const TypeKind TK_UINT32   = 0x07;
+    const TypeKind TK_UINT64   = 0x08;
+    const TypeKind TK_FLOAT32  = 0x09;
+    const TypeKind TK_FLOAT64  = 0x0A;
+    const TypeKind TK_FLOAT128 = 0x0B;
+    const TypeKind TK_INT8     = 0x0C;
+    const TypeKind TK_UINT8    = 0x0D;
+    const TypeKind TK_CHAR8    = 0x10;
+    const TypeKind TK_CHAR16   = 0x11;
 
     // String TKs
-    const TypeKind TK_STRING8    = 0x20;
-    const TypeKind TK_STRING16   = 0x21;
+    const TypeKind TK_STRING8  = 0x20;
+    const TypeKind TK_STRING16 = 0x21;
 
     // Constructed/Named types
-    const TypeKind TK_ALIAS      = 0x30;
+    const TypeKind TK_ALIAS = 0x30;
 
     // Enumerated TKs
-    const TypeKind TK_ENUM       = 0x40;
-    const TypeKind TK_BITMASK    = 0x41;
+    const TypeKind TK_ENUM    = 0x40;
+    const TypeKind TK_BITMASK = 0x41;
 
     // Structured TKs
     const TypeKind TK_ANNOTATION = 0x50;
@@ -129,32 +129,32 @@ module DDS { module XTypes {
     const TypeKind TK_BITSET     = 0x53;
 
     // Collection TKs
-    const TypeKind TK_SEQUENCE   = 0x60;
-    const TypeKind TK_ARRAY      = 0x61;
-    const TypeKind TK_MAP        = 0x62;
+    const TypeKind TK_SEQUENCE = 0x60;
+    const TypeKind TK_ARRAY    = 0x61;
+    const TypeKind TK_MAP      = 0x62;
     // ---------- TypeKinds (end) -------------------
 
     // ---------- Equivalence Kinds -------------------
     typedef octet EquivalenceKind;
-    const octet EK_MINIMAL   = 0xF1; // 0x1111 0001
-    const octet EK_COMPLETE  = 0xF2; // 0x1111 0010
-    const octet EK_BOTH      = 0xF3; // 0x1111 0011
+    const octet EK_MINIMAL  = 0xF1; // 0x1111 0001
+    const octet EK_COMPLETE = 0xF2; // 0x1111 0010
+    const octet EK_BOTH     = 0xF3; // 0x1111 0011
 
     // ---------- Extra TypeIdentifiers (begin) ------------
     typedef octet TypeIdentiferKind;
-    const octet TI_STRING8_SMALL        = 0x70;
-    const octet TI_STRING8_LARGE        = 0x71;
-    const octet TI_STRING16_SMALL       = 0x72;
-    const octet TI_STRING16_LARGE       = 0x73;
+    const octet TI_STRING8_SMALL  = 0x70;
+    const octet TI_STRING8_LARGE  = 0x71;
+    const octet TI_STRING16_SMALL = 0x72;
+    const octet TI_STRING16_LARGE = 0x73;
 
     const octet TI_PLAIN_SEQUENCE_SMALL = 0x80;
     const octet TI_PLAIN_SEQUENCE_LARGE = 0x81;
 
-    const octet TI_PLAIN_ARRAY_SMALL    = 0x90;
-    const octet TI_PLAIN_ARRAY_LARGE    = 0x91;
+    const octet TI_PLAIN_ARRAY_SMALL = 0x90;
+    const octet TI_PLAIN_ARRAY_LARGE = 0x91;
 
-    const octet TI_PLAIN_MAP_SMALL      = 0xA0;
-    const octet TI_PLAIN_MAP_LARGE      = 0xA1;
+    const octet TI_PLAIN_MAP_SMALL = 0xA0;
+    const octet TI_PLAIN_MAP_LARGE = 0xA1;
 
     const octet TI_STRONGLY_CONNECTED_COMPONENT = 0xB0;
     // ---------- Extra TypeIdentifiers (end) --------------
@@ -197,75 +197,67 @@ module DDS { module XTypes {
     // When not all, the applicable member types are listed
     @bit_bound(16)
     bitmask MemberFlag {
-        @position(0)  TRY_CONSTRUCT1,     // T1 | 00 = INVALID, 01 = DISCARD
-        @position(1)  TRY_CONSTRUCT2,     // T2 | 10 = USE_DEFAULT, 11 = TRIM
-        @position(2)  IS_EXTERNAL,        // X  StructMember, UnionMember,
-	                                  //    CollectionElement
-        @position(3)  IS_OPTIONAL,        // O  StructMember
-        @position(4)  IS_MUST_UNDERSTAND, // M  StructMember
-        @position(5)  IS_KEY,          // K  StructMember, UnionDiscriminator
-        @position(6)  IS_DEFAULT       // D  UnionMember, EnumerationLiteral
+         @position(0) TRY_CONSTRUCT1,     // T1 | 00 = INVALID, 01 = DISCARD
+         @position(1) TRY_CONSTRUCT2,     // T2 | 10 = USE_DEFAULT, 11 = TRIM
+         @position(2) IS_EXTERNAL,        // X  StructMember, UnionMember,
+	                                      //     CollectionElement
+         @position(3) IS_OPTIONAL,        // O  StructMember
+         @position(4) IS_MUST_UNDERSTAND, // M  StructMember
+         @position(5) IS_KEY,             // K  StructMember, UnionDiscriminator
+         @position(6) IS_DEFAULT          // D  UnionMember, EnumerationLiteral
     };
 
     @bit_bound(32)
     bitmask MemberFlagExtended {
-        @position(16) IS_DISCRIMINATOR,
-        @position(17) IS_AIR_DUMMY,
-        @position(18) IS_XRI_SEQUENCE,
-        @position(19) IS_ELEMENT_SIZE,
-        @position(20) HAS_DYNAMIC_ELEMENT_SIZE,
-        @position(21) IS_VENDOR_EXTENSION,
-        @position(22) IS_IMPLICIT_KEY,
-        @position(23) IS_INTEGER_RANGE_VALUE,
-        @position(24) IS_USE_DEFAULT_TRY_CONSTRUCT,
-        @position(25) IS_DISCARD_TRY_CONSTRUCT,
-        @position(26) IS_TRIM_TRY_CONSTRUCT
+         @position(16) IS_DISCRIMINATOR,
+         @position(17) IS_AIR_DUMMY,
+         @position(18) IS_XRI_SEQUENCE,
+         @position(19) IS_ELEMENT_SIZE,
+         @position(20) HAS_DYNAMIC_ELEMENT_SIZE,
+         @position(21) IS_VENDOR_EXTENSION,
+         @position(22) IS_IMPLICIT_KEY,
+         @position(23) IS_INTEGER_RANGE_VALUE,
+         @position(24) IS_USE_DEFAULT_TRY_CONSTRUCT,
+         @position(25) IS_DISCARD_TRY_CONSTRUCT,
+         @position(26) IS_TRIM_TRY_CONSTRUCT
     };
 
-    typedef MemberFlag   CollectionElementFlag;   // T1, T2, X
-    typedef MemberFlag   StructMemberFlag;        // T1, T2, O, M, K, X
-    typedef MemberFlag   UnionMemberFlag;         // T1, T2, D, X
-    typedef MemberFlag   UnionDiscriminatorFlag;  // T1, T2, K
-    typedef MemberFlag   EnumeratedLiteralFlag;   // D
-    typedef MemberFlag   AnnotationParameterFlag; // Unused. No flags apply
-    typedef MemberFlag   AliasMemberFlag;         // Unused. No flags apply
-    typedef MemberFlag   BitflagFlag;             // Unused. No flags apply
-    typedef MemberFlag   BitsetMemberFlag;        // Unused. No flags apply
+    typedef MemberFlag CollectionElementFlag;   // T1, T2, X
+    typedef MemberFlag StructMemberFlag;        // T1, T2, O, M, K, X
+    typedef MemberFlag UnionMemberFlag;         // T1, T2, D, X
+    typedef MemberFlag UnionDiscriminatorFlag;  // T1, T2, K
+    typedef MemberFlag EnumeratedLiteralFlag;   // D
+    typedef MemberFlag AnnotationParameterFlag; // Unused. No flags apply
+    typedef MemberFlag AliasMemberFlag;         // Unused. No flags apply
+    typedef MemberFlag BitflagFlag;             // Unused. No flags apply
+    typedef MemberFlag BitsetMemberFlag;        // Unused. No flags apply
 
     // Mask used to remove the flags that do no affect assignability
     // Selects  T1, T2, O, M, K, D
-    const   unsigned short  MemberFlagMinimalMask = 0x003f;
+    const unsigned short MemberFlagMinimalMask = 0x003f;
 
     // Flags that apply to type declarationa and DO affect assignability
     // Depending on the flag it may not apply to all types
     // When not all, the applicable  types are listed
     @bit_bound(16)
     bitmask TypeFlag {
-        @position(0) IS_FINAL,        // F |
-        @position(1) IS_APPENDABLE,   // A |-  Struct, Union
-        @position(2) IS_MUTABLE,      // M |   (exactly one flag)
-
-        @position(3) IS_NESTED,       // N     Struct, Union
-        @position(4) IS_AUTOID_HASH   // H     Struct
+         @position(0) IS_FINAL,      // F |
+         @position(1) IS_APPENDABLE, // A |-  Struct, Union
+         @position(2) IS_MUTABLE,    // M |    (exactly one flag)
+         @position(3) IS_NESTED,     // N      Struct, Union
+         @position(4) IS_AUTOID_HASH // H      Struct
     };
-    typedef TypeFlag   StructTypeFlag;      // All flags apply
-    typedef TypeFlag   UnionTypeFlag;       // All flags apply
-    typedef TypeFlag   CollectionTypeFlag;  // Unused. No flags apply
-    typedef TypeFlag   AnnotationTypeFlag;  // Unused. No flags apply
-    typedef TypeFlag   AliasTypeFlag;       // Unused. No flags apply
-    typedef TypeFlag   EnumTypeFlag;        // Unused. No flags apply
-    typedef TypeFlag   BitmaskTypeFlag;     // Unused. No flags apply
-    typedef TypeFlag   BitsetTypeFlag;      // Unused. No flags apply
-
-    // Mask used to remove the flags that do no affect assignability
-    const   unsigned short TypeFlagMinimalMask = 0x0007; // Selects  M, A, F
-
-    // Forward declaration
-    union TypeIdentifier;
+    typedef TypeFlag StructTypeFlag;     // All flags apply
+    typedef TypeFlag UnionTypeFlag;      // All flags apply
+    typedef TypeFlag CollectionTypeFlag; // Unused. No flags apply
+    typedef TypeFlag AnnotationTypeFlag; // Unused. No flags apply
+    typedef TypeFlag AliasTypeFlag;      // Unused. No flags apply
+    typedef TypeFlag EnumTypeFlag;       // Unused. No flags apply
+    typedef TypeFlag BitmaskTypeFlag;    // Unused. No flags apply
+    typedef TypeFlag BitsetTypeFlag;     // Unused. No flags apply
 
     // ID of a type member
     typedef unsigned long MemberId;
     const MemberId MEMBER_ID_INVALID = 0x0FFFFFFF;
 };
 };
-#endif

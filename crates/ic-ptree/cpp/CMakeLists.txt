@@ -113,7 +113,8 @@ target_include_directories(ic_ptree SYSTEM PRIVATE
 target_link_libraries(ic_ptree PRIVATE ic_parser)
 
 add_library(ic_utils OBJECT
-    ../../../external/utils/src/string_utils.cpp)
+    ../../../external/utils/src/string_utils.cpp
+)
 
 target_include_directories(ic_utils PUBLIC
     ../../../ic-cpp/defs

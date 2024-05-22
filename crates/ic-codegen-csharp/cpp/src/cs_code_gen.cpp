@@ -47,25 +47,26 @@ using namespace intercom::cidl;
 
 using ModuleMap = std::map<std::string, std::stringstream*>;
 
-void code_gen_cs_rec(const ptree* obj, ModuleMap& out);
+static void code_gen_cs_rec(const ptree* obj, ModuleMap& out);
 
-std::vector<const ptree*> struct_members(const ptree* obj, bool inherited = false);
+static std::vector<const ptree*> struct_members(const ptree* obj, bool inherited = false);
 
-std::string cs_type(const ptree* obj, const ptree* module);
+static std::string cs_type(const ptree* obj, const ptree* module);
 
-std::string cs_value(const numeric& value, const ptree* module, int level);
+static std::string cs_value(const numeric& value, const ptree* module, int level);
 
-std::string cs_value(const ptree* obj, const ptree* type, const ptree* module, int level = 0);
+static std::string
+cs_value(const ptree* obj, const ptree* type, const ptree* module, int level = 0);
 
-std::string cs_init_value(const ptree* obj, const ptree* module);
+static std::string cs_init_value(const ptree* obj, const ptree* module);
 
-std::string cs_qualified_type(const ptree* obj, const ptree* module);
+static std::string cs_qualified_type(const ptree* obj, const ptree* module);
 
-void cs_emit_member_init(const ptree* member, const ptree* obj, ModuleMap& out);
+static void cs_emit_member_init(const ptree* member, const ptree* obj, ModuleMap& out);
 
-bool cs_type_is_nullable(const ptree* member);
+static bool cs_type_is_nullable(const ptree* member);
 
-std::stringstream& module_stream(const ptree* obj, ModuleMap& out) {
+static std::stringstream& module_stream(const ptree* obj, ModuleMap& out) {
     auto name = obj->included_from ? obj->included_from->name : "/Top level/";
     if (out.find(name) == out.end()) {
         auto* stream = new std::stringstream();
@@ -93,7 +94,7 @@ static std::string safe_name(std::string res_str) {
     return res_str;
 }
 
-std::string public_member_name(const ptree* obj, const ptree* member) {
+static std::string public_member_name(const ptree* obj, const ptree* member) {
     auto mapIt = g_name_mapper.find(idl_scoped_name(member, nullptr));
     if (mapIt != g_name_mapper.end()) {
         return mapIt->second;
@@ -170,11 +171,11 @@ std::string public_member_name(const ptree* obj, const ptree* member) {
     return safe_name(res.str());
 }
 
-std::string public_name(const ptree* obj) {
+static std::string public_name(const ptree* obj) {
     return public_member_name(nullptr, obj);
 }
 
-std::string private_member_name(const ptree* obj, const ptree* member) {
+static std::string private_member_name(const ptree* obj, const ptree* member) {
     std::string name = public_member_name(obj, member);
     if (name[0] != static_cast<char>(tolower(name[0])) && !CommandLineOption::no_rename()) {
         name[0] = static_cast<char>(tolower(name[0]));
@@ -184,7 +185,7 @@ std::string private_member_name(const ptree* obj, const ptree* member) {
     return name;
 }
 
-bool is_numeric(const ptree* obj) {
+static bool is_numeric(const ptree* obj) {
     const ptree* type_obj = base_type_of(obj);
 
     return type_obj == &boolean_type || type_obj == &float_type || type_obj == &double_type ||
@@ -193,7 +194,7 @@ bool is_numeric(const ptree* obj) {
            type_obj == &ulong_type || type_obj == &longlong_type || type_obj == &ulonglong_type;
 }
 
-bool has_case_default(const ptree* obj) {
+static bool has_case_default(const ptree* obj) {
     for (auto elem : obj->members) {
         if (elem->kind == N_MEMBER) {
             for (auto cas : elem->members) {
@@ -206,7 +207,7 @@ bool has_case_default(const ptree* obj) {
     return false;
 }
 
-bool is_case_default(const ptree* member, const ptree* obj) {
+static bool is_case_default(const ptree* member, const ptree* obj) {
     for (auto elem : obj->members) {
         for (auto cas : elem->members) {
             if ((cas->flags & OPT_DEFAULT) != 0 && member == elem) {
@@ -217,7 +218,7 @@ bool is_case_default(const ptree* member, const ptree* obj) {
     return false;
 }
 
-std::vector<const ptree*> case_non_default_values(const ptree* obj) {
+static std::vector<const ptree*> case_non_default_values(const ptree* obj) {
     std::vector<const ptree*> res;
     for (auto elem : obj->members) {
         std::vector<const ptree*> cases;
@@ -233,19 +234,19 @@ std::vector<const ptree*> case_non_default_values(const ptree* obj) {
     return res;
 }
 
-bool is_union(const ptree* obj) {
+static bool is_union(const ptree* obj) {
     return obj->kind == N_UNION;
 }
 
-bool has_parent(const ptree* obj) {
+static bool has_parent(const ptree* obj) {
     return !obj->parents.empty();
 }
 
-bool has_children(const ptree* obj) {
+static bool has_children(const ptree* obj) {
     return (obj->flags & OPT_HAS_CHILDREN) != 0;
 }
 
-bool is_simple_struct(const ptree* obj) {
+static bool is_simple_struct(const ptree* obj) {
     if (is_union(obj) || has_parent(obj) || has_children(obj)) {
         return false;
     }
@@ -259,7 +260,7 @@ bool is_simple_struct(const ptree* obj) {
     return true;
 }
 
-std::string
+static std::string
 cs_null_array_init_list(const ptree* type, const ptree* module, unsigned int depth = 0) {
     std::stringstream res;
     auto bounds = type->bounds;
@@ -278,7 +279,7 @@ cs_null_array_init_list(const ptree* type, const ptree* module, unsigned int dep
     return res.str();
 }
 
-std::string cs_array_value(const ptree* array, const ptree* module, int level) {
+static std::string cs_array_value(const ptree* array, const ptree* module, int level) {
     std::stringstream res;
     res << " {";
     for (const ptree* elem : array->members) {
@@ -301,7 +302,7 @@ std::string cs_array_value(const ptree* array, const ptree* module, int level) {
 }
 
 /// \brief \verbatim new instance with given "numeric" value
-std::string cs_value(const numeric& value, const ptree* module, int level) {
+static std::string cs_value(const numeric& value, const ptree* module, int level) {
     std::stringstream res;
     switch (value.kind()) {
     case UNDEF_KIND:
@@ -373,7 +374,7 @@ std::string cs_value(const numeric& value, const ptree* module, int level) {
 }
 
 /// \brief new instance of obj with values defined by obj->value and obj->member(->next)->value
-std::string cs_value(const ptree* obj, const ptree* type, const ptree* module, int level) {
+static std::string cs_value(const ptree* obj, const ptree* type, const ptree* module, int level) {
     std::stringstream res;
     const ptree* type_obj = base_type_of(type);
     const bool derives_from_annotation = obj->super && obj->super->kind == N_ANNOTATION;
@@ -442,7 +443,7 @@ std::string cs_value(const ptree* obj, const ptree* type, const ptree* module, i
 }
 
 /// \brief \verbatim new instance of obj with values defined by obj's default annotation (@default)
-std::string cs_init_value(const ptree* obj, const ptree* module) {
+static std::string cs_init_value(const ptree* obj, const ptree* module) {
     if (is_optional(obj)) {
         return "null";
     }
@@ -515,7 +516,7 @@ std::string cs_init_value(const ptree* obj, const ptree* module) {
     return res.str();
 }
 
-std::string cs_type(const ptree* obj, const ptree* module) {
+static std::string cs_type(const ptree* obj, const ptree* module) {
     std::stringstream res;
     const ptree* type_obj = base_type_of(obj);
     if (type_obj->kind == N_STRING) {
@@ -565,7 +566,7 @@ std::string cs_type(const ptree* obj, const ptree* module) {
     return res.str();
 }
 
-std::string cs_qualified_type(const ptree* obj, const ptree* module) {
+static std::string cs_qualified_type(const ptree* obj, const ptree* module) {
     std::stringstream res;
     const ptree* common_parent = nullptr;
     for (const ptree* p1 = obj; p1 && !common_parent; p1 = p1->super) {
@@ -599,7 +600,7 @@ std::string cs_qualified_type(const ptree* obj, const ptree* module) {
     return res.str();
 }
 
-std::vector<const ptree*> struct_members(const ptree* obj, bool inherited) {
+static std::vector<const ptree*> struct_members(const ptree* obj, bool inherited) {
     std::vector<const ptree*> res;
     if (!obj->parents.empty() && inherited) {
         res = struct_members(obj->parents[0], inherited);
@@ -612,7 +613,7 @@ std::vector<const ptree*> struct_members(const ptree* obj, bool inherited) {
     return res;
 }
 
-void cs_emit_typesupport_methods(const ptree* obj, ModuleMap& out) {
+static void cs_emit_typesupport_methods(const ptree* obj, ModuleMap& out) {
     if (is_nested(obj) || CommandLineOption::intercom_build()) {
         return;
     }
@@ -644,7 +645,7 @@ void cs_emit_typesupport_methods(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 }
 
-void cs_emit_enum(const ptree* obj, ModuleMap& out) {
+static void cs_emit_enum(const ptree* obj, ModuleMap& out) {
     if (is_bitmask(obj)) {
         OUT << "[Flags]" << std::endl;
         OUT << "public enum " << public_name(obj);
@@ -682,7 +683,7 @@ void cs_emit_enum(const ptree* obj, ModuleMap& out) {
     }
 }
 
-std::string cs_member_flags(const ptree* member) {
+static std::string cs_member_flags(const ptree* member) {
     std::vector<std::string> flags;
     if (is_key_member(member)) {
         flags.emplace_back("Intercom.DotNet.MemberFlag.IsKey");
@@ -709,7 +710,7 @@ std::string cs_member_flags(const ptree* member) {
     return res.str();
 }
 
-std::string cs_type_flags(const ptree* member) {
+static std::string cs_type_flags(const ptree* member) {
     int kind = get_extensibility(member);
     switch (kind) {
     case FINAL_EXTENSIBILITY:
@@ -721,7 +722,7 @@ std::string cs_type_flags(const ptree* member) {
     }
 }
 
-void cs_emit_bounds_check(
+static void cs_emit_bounds_check(
     const ptree* member,
     const ptree* obj,
     const std::string& name,
@@ -758,7 +759,7 @@ void cs_emit_bounds_check(
     }
 }
 
-void cs_emit_ctx_write(
+static void cs_emit_ctx_write(
     const ptree* member,
     const ptree* obj,
     const std::string& name,
@@ -903,7 +904,7 @@ void cs_emit_ctx_write(
     }
 }
 
-std::string cs_ctx_read_value(const ptree* member, const ptree* obj) {
+static std::string cs_ctx_read_value(const ptree* member, const ptree* obj) {
     std::stringstream res;
     switch (base_type_of(member)->kind) {
     case N_ARRAY:
@@ -947,7 +948,7 @@ std::string cs_ctx_read_value(const ptree* member, const ptree* obj) {
     return res.str();
 }
 
-void cs_emit_ctx_read(
+static void cs_emit_ctx_read(
     const ptree* member,
     const ptree* obj,
     const std::string& name,
@@ -976,7 +977,7 @@ void cs_emit_ctx_read(
     OUT << "ctx.EndProperty();" << std::endl;
 }
 
-void cs_emit_ctx_read_sequence(
+static void cs_emit_ctx_read_sequence(
     const ptree* member,
     const ptree* obj,
     ModuleMap& out,
@@ -1070,7 +1071,7 @@ void cs_emit_ctx_read_sequence(
     }
 }
 
-void cs_emit_write_method(const ptree* obj, ModuleMap& out) {
+static void cs_emit_write_method(const ptree* obj, ModuleMap& out) {
     int maxMemberId = -1;
     OUT << "public";
     if (!obj->parents.empty()) {
@@ -1121,7 +1122,7 @@ void cs_emit_write_method(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 };
 
-void cs_emit_read_method(const ptree* obj, ModuleMap& out) {
+static void cs_emit_read_method(const ptree* obj, ModuleMap& out) {
     int maxMemberId = -1;
     OUT << "public " << public_name(obj) << "(Intercom.DotNet.IReadContext ctx)";
     OUT << std::endl;
@@ -1175,7 +1176,7 @@ void cs_emit_read_method(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 };
 
-void cs_emit_module(const ptree* obj, ModuleMap& out) {
+static void cs_emit_module(const ptree* obj, ModuleMap& out) {
     OUT << "namespace " << public_name(obj);
     while (obj->members->kind == N_MODULE && !obj->members->next) {
         obj = obj->members;
@@ -1186,7 +1187,7 @@ void cs_emit_module(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 }
 
-bool cs_emit_const(const ptree* obj, ModuleMap& out) {
+static bool cs_emit_const(const ptree* obj, ModuleMap& out) {
     if (obj->flags & OPT_DECLARATION) {
         return false;
     }
@@ -1212,7 +1213,7 @@ bool cs_emit_const(const ptree* obj, ModuleMap& out) {
     return !constantMap.empty();
 }
 
-ModuleMap& cs_emit_range_check(const ptree* obj, const ptree* member, ModuleMap& out) {
+static ModuleMap& cs_emit_range_check(const ptree* obj, const ptree* member, ModuleMap& out) {
     if (has_min_value(member) || has_max_value(member)) {
         if (cs_type_is_nullable(member)) {
             OUT << "if ( value.HasValue )" << std::endl;
@@ -1238,7 +1239,7 @@ ModuleMap& cs_emit_range_check(const ptree* obj, const ptree* member, ModuleMap&
     return out;
 }
 
-void cs_emit_struct(const ptree* obj, ModuleMap& out) {
+static void cs_emit_struct(const ptree* obj, ModuleMap& out) {
     OUT << "public struct " << public_name(obj) << " : Intercom.DotNet.IWriteable" << std::endl;
     OUT << "{" << std::endl;
 
@@ -1273,7 +1274,7 @@ void cs_emit_struct(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 }
 
-void cs_emit_class(const ptree* obj, ModuleMap& out) {
+static void cs_emit_class(const ptree* obj, ModuleMap& out) {
     std::vector<const ptree*> members = struct_members(obj);
     std::vector<const ptree*> allMembers = struct_members(obj, true);
 
@@ -1357,7 +1358,7 @@ void cs_emit_class(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 }
 
-std::string
+static std::string
 cs_case_if_expr(const ptree* obj, const ptree* cases, const std::string& name, bool is_or_test) {
     std::string sep = is_or_test ? " || " : " && ";
     std::string eq = is_or_test ? " == " : " != ";
@@ -1371,7 +1372,7 @@ cs_case_if_expr(const ptree* obj, const ptree* cases, const std::string& name, b
     return res.str();
 }
 
-std::string cs_case_if_expr(
+static std::string cs_case_if_expr(
     const ptree* obj,
     const std::vector<const ptree*>& cases,
     const std::string& name,
@@ -1389,7 +1390,7 @@ std::string cs_case_if_expr(
     return res.str();
 }
 
-void cs_emit_union(const ptree* obj, ModuleMap& out) {
+static void cs_emit_union(const ptree* obj, ModuleMap& out) {
     OUT << "public class " << public_name(obj) << " : Intercom.DotNet.IWriteable" << std::endl;
     OUT << "{" << std::endl;
 
@@ -1566,12 +1567,12 @@ void cs_emit_union(const ptree* obj, ModuleMap& out) {
     OUT << "}" << std::endl;
 }
 
-void cs_emit_member_init(const ptree* member, const ptree* obj, ModuleMap& out) {
+static void cs_emit_member_init(const ptree* member, const ptree* obj, ModuleMap& out) {
     OUT << public_member_name(obj, member) << " = " << cs_init_value(member, obj->super) << ";"
         << std::endl;
 }
 
-void code_gen_cs_rec(const ptree* obj, ModuleMap& out) {
+static void code_gen_cs_rec(const ptree* obj, ModuleMap& out) {
     bool did_emit = cs_emit_const(obj, out);
 
     for (; obj; obj = obj->next) {
@@ -1622,7 +1623,7 @@ void code_gen_cs_rec(const ptree* obj, ModuleMap& out) {
     }
 }
 
-bool cs_type_is_nullable(const ptree* member) {
+static bool cs_type_is_nullable(const ptree* member) {
     if (is_optional(member)) {
         const ptree* type_obj = base_type_of(member);
         if (is_numeric(member) || type_obj->kind == N_ENUM || type_obj->kind == N_BITMASK) {

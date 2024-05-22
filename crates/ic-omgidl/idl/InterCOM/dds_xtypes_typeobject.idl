@@ -25,85 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef DDS_XTYPES_TYPEOBJECT
-#define DDS_XTYPES_TYPEOBJECT 1
+#pragma once
 
 #include <InterCOM/dds_xtypes_constants.idl>
-
-#if 0
-// ===========================================================================
-// Built-in Annotations
-// ===========================================================================
-
-module DDS {
-    @Annotation
-    local interface ID {
-        attribute unsigned long value;
-    };
-
-    @Annotation
-    local interface Optional {
-        attribute boolean value default true;
-    };
-
-    @Annotation
-    local interface Key {
-        attribute boolean value default true;
-    };
-
-    @Annotation
-    local interface BitBound {
-        attribute unsigned short value default 32;
-    };
-
-    @Annotation
-    local interface Value {
-        attribute unsigned long value;
-    };
-
-    @Annotation
-    local interface BitSet {
-    };
-
-    @Annotation
-    local interface Nested {
-        attribute boolean value default true;
-    };
-
-    enum ExtensibilityKind {
-        FINAL_EXTENSIBILITY,
-        EXTENSIBLE_EXTENSIBILITY,
-        MUTABLE_EXTENSIBILITY
-    };
-
-    @Annotation
-    local interface Extensibility {
-        attribute ExtensibilityKind value;
-    };
-
-    @Annotation
-    local interface MustUnderstand {
-        attribute boolean value default true;
-    };
-
-    typedef string<32>  VerbatimLanguage;
-    typedef string<128> VerbatimPlacement;
-
-    @Annotation
-    local interface Verbatim {
-        attribute VerbatimLanguage  language    default "*";
-        attribute VerbatimPlacement placement   default "before-declaration";
-        attribute string            text;
-    };
-
-    @Annotation
-    local interface Shared {
-	    attribute boolean value default true;
-    };
-};  // end module DDS
-#endif
-
-/* dds-xtypes_typeobject.idl */
 
 // The types in this file shall be serialized with XCDR encoding version 2
 @data_representation( allowed_kinds = XCDR2 )
@@ -997,10 +921,10 @@ module DDS { module XTypes {
 
     @extensibility(APPENDABLE) @nested
     struct TypeIdentifierWithDependencies {
-        TypeIdentifierWithSize            typeid_with_size;
+        TypeIdentifierWithSize           typeid_with_size;
         // The total additional types related to minimal_type
         long                             dependent_typeid_count;
-        sequence<TypeIdentifierWithSize>  dependent_typeids;
+        sequence<TypeIdentifierWithSize> dependent_typeids;
     };
     typedef
     sequence<TypeIdentifierWithDependencies> TypeIdentifierWithDependenciesSeq;

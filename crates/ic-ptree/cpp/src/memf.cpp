@@ -32,7 +32,7 @@
 #include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 
-#define MAX_LINE_LENGTH (90000)
+enum { MAX_LINE_LENGTH = 90000 };
 
 #define CMP(str) (strncmp(str, ppp, sizeof(str) - 1) == 0)
 

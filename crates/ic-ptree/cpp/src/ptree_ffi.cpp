@@ -78,6 +78,11 @@ void ic_codegen_cpp(const ic_parse_result_t* result, const char* destination) {
     intercom::cidl::code_gen_dds_cplpl(res, destination);
 }
 
+void ic_codegen_python(const ic_parse_result_t* result, const char* destination) {
+    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    intercom::cidl::code_gen_python(res, destination);
+}
+
 void ic_codegen_json(const ic_parse_result_t* result, const char* destination) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
     intercom::cidl::code_gen_json(res, destination);

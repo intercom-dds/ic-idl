@@ -91,3 +91,4 @@ define_backend!(codegen_proto, ic_codegen_proto);
 define_backend!(codegen_java, ic_codegen_java);
 define_backend!(codegen_csharp, ic_codegen_csharp);
 define_backend!(codegen_cpp, ic_codegen_cpp);
+define_backend!(codegen_python, ic_codegen_python);

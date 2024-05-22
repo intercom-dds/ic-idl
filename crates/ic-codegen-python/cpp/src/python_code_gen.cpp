@@ -121,11 +121,8 @@ std::string python_variable_name(
     return stream.str();
 }
 
-std::string python_type_path(
-    const ptree* node,
-    std::string& path,
-    ModuleContext* module
-) {  // Finds the object path
+// Finds the object path
+std::string python_type_path(const ptree* node, std::string& path, ModuleContext* module) {
     std::string ret;
     if (node->super != nullptr) {
         ret += python_type_path(node->super, path, module);
@@ -735,9 +732,11 @@ void code_gen_python_cdr(const ptree* obj, ModuleContext* module) {
     *module << "@staticmethod" << endl;
     *module << "def cdr_type_definition():" << tab_group << begin("") << endl << tab_group;
     *module << "return bytearray([" << tab_group << begin("") << endl << tab_group;
-    size_t cdr_size;
-    unsigned char* cdr;
-    get_type_library(obj, &cdr, &cdr_size);
+    size_t cdr_size = 0;
+    unsigned char* cdr = nullptr;
+    // TODO(idarcar);
+    // get_type_library(obj, &cdr, &cdr_size);
+
     for (size_t i = 0; i < cdr_size; i++) {
         if (i != 0) {
             *module << ", ";

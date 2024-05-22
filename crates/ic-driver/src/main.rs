@@ -82,6 +82,10 @@ struct CodegenOptions {
     #[option(long, arg = "dir")]
     proto_out: PathBuf,
 
+    /// Generate Python files
+    #[option(long, arg = "dir")]
+    python_out: PathBuf,
+
     /// Generate IDL files
     #[option(long, arg = "dir")]
     idl_out: PathBuf,
@@ -195,6 +199,10 @@ struct Options {
     #[option(long, arg = "dir")]
     cpp_out: Option<PathBuf>,
 
+    /// Generate Python files
+    #[option(long, arg = "dir")]
+    python_out: Option<PathBuf>,
+
     #[option(positional)]
     files: HashSet<PathBuf>,
 }
@@ -304,20 +312,24 @@ fn try_main(options: Options) -> anyhow::Result<()> {
         ic_ptree::ast_dump(&merged);
     }
 
-    if let Some(dir) = &options.proto_out {
-        ic_ptree::codegen_proto(&merged, dir);
-    }
-
-    if let Some(dir) = &options.java_out {
-        ic_ptree::codegen_java(&merged, dir);
-    }
-
     if let Some(dir) = &options.csharp_out {
         ic_ptree::codegen_csharp(&merged, dir);
     }
 
     if let Some(dir) = &options.cpp_out {
         ic_ptree::codegen_cpp(&merged, dir);
+    }
+
+    if let Some(dir) = &options.java_out {
+        ic_ptree::codegen_java(&merged, dir);
+    }
+
+    if let Some(dir) = &options.proto_out {
+        ic_ptree::codegen_proto(&merged, dir);
+    }
+
+    if let Some(dir) = &options.python_out {
+        ic_ptree::codegen_python(&merged, dir);
     }
 
     Ok(())

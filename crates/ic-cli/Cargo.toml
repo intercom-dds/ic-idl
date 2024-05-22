@@ -29,7 +29,9 @@
 name = "ic-cli"
 version = "0.0.0"
 edition = "2021"
-publish = false
+
+publish.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ic-cli-derive = { path = "../ic-cli-derive" }

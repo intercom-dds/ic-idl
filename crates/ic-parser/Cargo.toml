@@ -29,7 +29,9 @@
 name = "ic-preproc"
 version = "0.0.0"
 edition = "2021"
-publish = false
+
+publish.workspace = true
+rust-version.workspace = true
 
 [build-dependencies]
 cmake = "0.1"

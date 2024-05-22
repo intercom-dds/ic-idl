@@ -29,7 +29,9 @@
 name = "ic-cli-derive"
 version = "0.0.0"
 edition = "2021"
-publish = false
+
+publish.workspace = true
+rust-version.workspace = true
 
 [lib]
 proc-macro = true

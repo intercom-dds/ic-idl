@@ -40,3 +40,7 @@ members = [
     # "crates/ic-parser",
 ]
 exclude = ["fuzz", "crates/ic-bootstrap"]
+
+[workspace.package]
+rust-version = "1.70"
+publish = false

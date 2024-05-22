@@ -25,23 +25,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[workspace]
-resolver = "2"
-members = [
-    "crates/ic-cli",
-    "crates/ic-cli-derive",
-    "crates/ic-driver",
-    "crates/ic-emit",
-    "crates/ic-lint",
-    "crates/ic-preproc",
-    "crates/ic-ptree",
-    # "crates/ic-driver",
-    # "crates/ic-hir",
-    # "crates/ic-hir-pretty",
-    # "crates/ic-parser",
-]
-exclude = ["fuzz", "crates/ic-bootstrap"]
+[package]
+name = "ic-emit"
+version = "0.1.0"
+edition = "2021"
 
-[workspace.package]
-rust-version = "1.70"
-publish = false
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]

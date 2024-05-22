@@ -28,13 +28,17 @@
 default:
   image: "alpine:3.19"
   before_script:
-    - apk update
-    - apk add rustup clang cmake mold git ninja-build flex bison libc++ libc++-static musl-dev
+    - apk update --no-check-certificate
+    - apk add --no-check-certificate rustup clang cmake mold git samurai flex bison libc++ libc++-static musl-dev curl
     - rustup-init --profile minimal -y
     - source $HOME/.cargo/env
   tags:
     - linux
     - internet
+
+variables:
+  RUSTUP_USE_CURL: true
+  CARGO_HTTP_CHECK_REVOKE: false
 
 stages:
   - lint

@@ -35,3 +35,6 @@ confidence-threshold = 1.0
 
 [licenses.private]
 ignore = true
+
+[advisories]
+git-fetch-with-cli = true

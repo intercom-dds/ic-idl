@@ -28,17 +28,17 @@
 default:
   image: "alpine:3.19"
   before_script:
-    - apk update --no-check-certificate
-    - apk add --no-check-certificate rustup clang cmake mold git samurai flex bison libc++ libc++-static musl-dev curl
+    - mkdir -p /usr/local/share/ca-certificates
+    - cp /etc/gitlab-runner/certs/ca.crt /usr/local/share/ca-certificates/gitlab-runner.crt
+    - cat /etc/gitlab-runner/certs/ca.crt >> /etc/ssl/certs/ca-certificates.crt
+    - apk update
+    - apk add ca-certificates rustup clang cmake mold git samurai flex bison libc++ libc++-static musl-dev curl
+    - update-ca-certificates
     - rustup-init --profile minimal -y
     - source $HOME/.cargo/env
   tags:
     - linux
     - internet
-
-variables:
-  RUSTUP_USE_CURL: true
-  CARGO_HTTP_CHECK_REVOKE: false
 
 stages:
   - lint

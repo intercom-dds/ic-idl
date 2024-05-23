@@ -25,53 +25,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-default:
-  image: "alpine:3.19"
-  before_script:
-    - mkdir -p /usr/local/share/ca-certificates
-    - cp /etc/gitlab-runner/certs/ca.crt /usr/local/share/ca-certificates/gitlab-runner.crt
-    - cat /etc/gitlab-runner/certs/ca.crt >> /etc/ssl/certs/ca-certificates.crt
-    - apk update
-    - apk add ca-certificates rustup cmake clang mold git gcc g++ samurai flex bison musl-dev
-    - update-ca-certificates
-    - rustup-init --profile minimal -y
-    - source $HOME/.cargo/env
-  tags:
-    - linux
-    - internet
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Unicode-DFS-2016",
+]
+confidence-threshold = 1.0
 
-stages:
-  - lint
-  - build
-
-lint:rustfmt:
-  stage: lint
-  needs: []
-  script:
-    - rustup toolchain install nightly -c rustfmt
-    - cargo +nightly fmt -- --check
-
-lint:clippy:
-  stage: lint
-  needs: []
-  script:
-    - rustup component add clippy
-    - cargo clippy --target x86_64-unknown-linux-musl -- -Dwarnings
-
-lint:license:
-  stage: lint
-  needs: []
-  script:
-    - cargo install --locked cargo-deny
-    - cargo deny check
-
-build:stable:
-  stage: build
-  needs: []
-  script:
-    - rustc --version && cargo --version
-    - cargo install --target x86_64-unknown-linux-musl --path crates/ic-bootstrap --root target --target-dir target
-    - cargo install --target x86_64-unknown-linux-musl --path crates/ic-driver --root install
-  artifacts:
-    paths:
-      - "install/"
+[licenses.private]
+ignore = true

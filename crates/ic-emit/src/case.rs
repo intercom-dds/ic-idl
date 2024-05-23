@@ -45,7 +45,7 @@ impl Converter {
         if !word.is_empty() {
             match self.case {
                 Case::Snake => self.to_snake(word, buffer),
-                Case::Pascal => self.to_pascal(word, buffer),
+                Case::Pascal => Self::to_pascal(word, buffer),
                 Case::Camel => self.to_camel(word, buffer),
             }
         }
@@ -59,7 +59,7 @@ impl Converter {
         *buffer += &word.to_lowercase();
     }
 
-    fn to_pascal(&self, word: &str, buffer: &mut String) {
+    fn to_pascal(word: &str, buffer: &mut String) {
         let mut iter = word.chars();
         if let Some(c) = iter.next() {
             buffer.extend(c.to_uppercase());
@@ -97,7 +97,7 @@ impl Converter {
                 let len = i - start;
 
                 if is_delim(*peek) || (c.is_lowercase() && peek.is_uppercase()) {
-                    self.append(&input[start..start + len + 1], &mut buffer);
+                    self.append(&input[start..=(start + len)], &mut buffer);
                     start = i + 1;
                 } else if was_upper && c.is_uppercase() && peek.is_lowercase() {
                     self.append(&input[start..start + len], &mut buffer);

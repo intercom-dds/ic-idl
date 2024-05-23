@@ -64,7 +64,7 @@ struct ParseOptions {
     warn: Vec<String>,
 
     #[option(positional)]
-    files: HashSet<PathBuf>,
+    _files: HashSet<PathBuf>,
 }
 
 #[derive(Command, Default)]
@@ -246,7 +246,7 @@ fn unstable_help() {
     );
 }
 
-fn backend_help() {
+fn _backend_help() {
     let opts = Options::command().help();
     let command = CodegenOptions::command();
     let flags = command.format_args(|_| true).join("\n");
@@ -283,17 +283,17 @@ fn main() {
         return;
     }
 
-    if let Err(e) = try_main(options) {
+    if let Err(e) = try_main(&options) {
         error!("{e}");
         std::process::exit(1);
     }
 }
 
-fn try_main(options: Options) -> anyhow::Result<()> {
+fn try_main(options: &Options) -> anyhow::Result<()> {
     let preprocessed = options
         .files
         .iter()
-        .map(|f| parse_file(&options, f))
+        .map(|f| parse_file(options, f))
         .collect::<Result<Vec<_>, _>>()?;
 
     if options.preprocessor_only {

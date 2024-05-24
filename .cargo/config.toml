@@ -36,7 +36,7 @@ rustflags = ["-C", "link-args=-fuse-ld=mold"]
 linker = "clang"
 rustflags = [
     "-C", "link-args=-fuse-ld=mold",
-    "-C", "relocation-model=static",
+    "-C", "relocation-model=pic",
     "-C", "target-feature=+crt-static",
     "-C", "link-self-contained=yes",
 ]

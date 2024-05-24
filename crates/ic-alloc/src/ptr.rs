@@ -52,7 +52,6 @@ impl<T: 'static + Clone> Clone for P<T> {
     }
 }
 
-/// Construct a `P<T>` from a `T` value.
 #[allow(non_snake_case)]
 pub fn P<T: 'static>(value: T) -> P<T> {
     P {

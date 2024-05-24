@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-json"
+name = "ic-hir"
 version = "0.0.0"
 edition = "2021"
 

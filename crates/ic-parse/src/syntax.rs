@@ -109,7 +109,7 @@ pub struct AnnotationDef {
 #[derive(Debug)]
 pub struct AnnotationParam {
     pub name: Option<Ident>,
-    pub value: Ident,
+    pub value: Numeric,
 }
 
 #[derive(Debug)]
@@ -214,16 +214,39 @@ pub struct Numeric {
 pub enum NumericKind {
     Boolean,
     Int8,
-    Octet,
-    Short,
-    Ushort,
-    Long,
-    ULong,
-    LongLong,
-    ULongLong,
+    Uint8,
+    Int16,
+    Uint16,
+    Int32,
+    Uint32,
+    Int64,
+    Uint64,
     Float,
     Double,
     Char,
-    Str,
+    String,
     Ident(Symbol),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Op {
+    // Arithmetic operations
+    Add,
+    Sub,
+    Multply,
+    Divide,
+    Modulo,
+
+    // Bitwise operations
+    LShift,
+    RShift,
+    Or,
+    Xor,
+    And,
+}
+
+#[derive(Debug)]
+pub enum Expr {
+    Unary { op: Option<Op>, expr: P<Expr> },
+    Binary { lhs: P<Expr>, op: Op, rhs: P<Expr> },
 }

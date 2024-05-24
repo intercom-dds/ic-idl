@@ -71,6 +71,7 @@ build:stable:
   script:
     - rustc --version && cargo --version
     - cargo install --target x86_64-unknown-linux-musl --path crates/ic-bootstrap --root target --target-dir target
+    - cargo test
     - cargo install --target x86_64-unknown-linux-musl --path crates/ic-driver --root install
   artifacts:
     paths:

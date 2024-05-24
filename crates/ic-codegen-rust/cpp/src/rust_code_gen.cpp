@@ -29,17 +29,16 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <string_view>
 
-#include "InterCOM/detail/filesystem.h"
-#include "InterCOM/string_view.h"
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
+#include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/rust_common.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_helpers.h"
+#include "cidl/rust_common.h"
 #include "cidl/symbols.h"
 
 using namespace intercom::rust;
@@ -354,9 +353,8 @@ static std::string scoped_name(const ptree* node, const ptree*) {
     };
 
     auto full_name = idl_scoped_name(node, nullptr);
-    intercom::string_view view(full_name);
-    if (!CommandLineOption::intercom_build() &&
-        (view.starts_with("types") || view.starts_with("core"))) {
+    if (!CommandLineOption::intercom_build() && strncmp(full_name.c_str(), "types", 5) == 0 ||
+        strncmp(full_name.c_str(), "core", 4) == 0) {
         out("intercom");
     } else {
         out("crate");
@@ -775,10 +773,10 @@ static void emit_docs(Twine& out, const ptree* node) {
         if (ann->type != annotation_type_doc) {
             continue;
         }
-        intercom::string_view input = ann->members->value.val.str();
+        std::string_view input = ann->members->value.val.str();
 
         size_t pos = 0;
-        while ((pos = input.find('\n')) != intercom::string_view::npos) {
+        while ((pos = input.find('\n')) != std::string_view::npos) {
             auto line = input.substr(0, pos);
             input.remove_prefix(pos + 1);
             out << "/// " << line << endl;
@@ -1429,7 +1427,6 @@ static void emit_visitor(Twine& out, const ptree* node) {
 
     out("}\n\n");
 }
-
 
 static void recurse_node(Twine& out, const ptree* node) {
     // Rust does not care about the order of definitions.

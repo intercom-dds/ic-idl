@@ -25,7 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::env;
+
 use cmake::Config;
+
+#[cfg(debug_assertions)]
+const MSVCRT_LIB: &str = "msvcrtd";
+
+#[cfg(not(debug_assertions))]
+const MSVCRT_LIB: &str = "msvcrt";
 
 fn main() {
     let dst = Config::new("cpp")
@@ -35,4 +43,17 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=ic_ptree");
+    emit_link_cxx();
+}
+
+fn emit_link_cxx() {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let flavor = match (target_os.as_str(), target_env.as_str()) {
+        ("linux" | "windows", _) if cfg!(feature = "libcxx") => "c++",
+        ("linux", _) | ("windows", "gnu") => "stdc++",
+        ("windows", _) => MSVCRT_LIB,
+        _ => panic!("unsupported platform"),
+    };
+    println!("cargo:rustc-link-lib={flavor}");
 }

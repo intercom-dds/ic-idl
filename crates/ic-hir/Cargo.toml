@@ -34,3 +34,4 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+ic-hir-derive = { path = "../ic-hir-derive" }

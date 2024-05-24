@@ -25,5 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod case;
-pub mod printer;
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Annotation)]
+pub fn derive(_input: TokenStream) -> TokenStream {
+    TokenStream::default()
+}

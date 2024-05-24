@@ -47,11 +47,6 @@
 namespace intercom {
 namespace icgen {
 
-template <typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
 class Visitor {
   public:
     virtual ~Visitor() = default;
@@ -312,13 +307,13 @@ class Parser {
 
     std::unique_ptr<Variable> parse_ident() {
         auto ident = expect(TokenKind::Ident);
-        return icgen::make_unique<Variable>(ident);
+        return std::make_unique<Variable>(ident);
     }
 
     std::unique_ptr<Member> member() {
         auto ident = expect(TokenKind::Ident);
         expect(TokenKind::Dot);
-        auto expr = icgen::make_unique<Member>(ident);
+        auto expr = std::make_unique<Member>(ident);
 
         if (peek() == TokenKind::Dot) {
             expr->var = member();
@@ -356,7 +351,7 @@ class Parser {
     }
 
     std::unique_ptr<Function> function() {
-        auto func = icgen::make_unique<Function>(take());
+        auto func = std::make_unique<Function>(take());
         expect(TokenKind::LParen);
         func->params = param_list();
         expect(TokenKind::RParen);
@@ -367,7 +362,7 @@ class Parser {
         assert(get().kind == TokenKind::Ident);
         auto var = take();
         expect(TokenKind::Eq);
-        return icgen::make_unique<AssignExpr>(var, expr());
+        return std::make_unique<AssignExpr>(var, expr());
     }
 
     ExprPtr parse_group() {
@@ -386,7 +381,7 @@ class Parser {
         auto lhs = parse_and();
         while (get().kind == TokenKind::Or) {
             auto op = take();
-            lhs = icgen::make_unique<BinaryExpr>(std::move(lhs), op, parse_and());
+            lhs = std::make_unique<BinaryExpr>(std::move(lhs), op, parse_and());
         }
 
         // skip superfluous semicolons
@@ -401,7 +396,7 @@ class Parser {
         auto lhs = parse_eq();
         while (get().kind == TokenKind::And) {
             auto op = take();
-            return icgen::make_unique<BinaryExpr>(std::move(lhs), op, parse_eq());
+            return std::make_unique<BinaryExpr>(std::move(lhs), op, parse_eq());
         }
         return lhs;
     }
@@ -410,7 +405,7 @@ class Parser {
         auto lhs = parse_unary();
         while (get().kind == TokenKind::EqEq || get().kind == TokenKind::NotEq) {
             auto op = take();
-            return icgen::make_unique<BinaryExpr>(std::move(lhs), op, parse_unary());
+            return std::make_unique<BinaryExpr>(std::move(lhs), op, parse_unary());
         }
         return lhs;
     }
@@ -419,14 +414,14 @@ class Parser {
         // only supported unary operator
         if (get().kind == TokenKind::Not) {
             auto op = take();
-            return icgen::make_unique<UnaryExpr>(op, parse_unary());
+            return std::make_unique<UnaryExpr>(op, parse_unary());
         }
         return parse_call();
     }
 
     ExprPtr parse_call() {
         if (get() == TokenKind::String) {
-            return icgen::make_unique<String>(take());
+            return std::make_unique<String>(take());
         }
         if (get() == TokenKind::LParen) {
             return parse_group();
@@ -447,7 +442,7 @@ class Parser {
         // Conditions must either be followed by a block end, or optionally a semicolon.
         block_end();
 
-        auto stmt = icgen::make_unique<IfStmt>(std::move(cond));
+        auto stmt = std::make_unique<IfStmt>(std::move(cond));
         while (get() != TokenKind::Else && get() != TokenKind::Elif && get() != TokenKind::EndIf) {
             stmt->if_body.emplace_back(any());
         }
@@ -479,7 +474,7 @@ class Parser {
 
         auto var = parse_ident();
         expect(TokenKind::In);
-        auto stmt = icgen::make_unique<ForStmt>(std::move(var), parse_call());
+        auto stmt = std::make_unique<ForStmt>(std::move(var), parse_call());
         stmt->enumerator = std::move(enumerator);
         block_end();
 
@@ -493,7 +488,7 @@ class Parser {
     NodePtr parse_text() {
         auto kind = get().kind;
         assert(kind == TokenKind::Text || kind == TokenKind::Whitespace);
-        return icgen::make_unique<Text>(take(), kind == TokenKind::Whitespace);
+        return std::make_unique<Text>(take(), kind == TokenKind::Whitespace);
     }
 
     NodePtr any() {

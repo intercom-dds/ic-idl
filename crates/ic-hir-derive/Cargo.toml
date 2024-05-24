@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-cli-derive"
+name = "ic-hir-derive"
 version = "0.0.0"
 edition = "2021"
 

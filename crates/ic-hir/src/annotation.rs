@@ -25,5 +25,49 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod case;
-pub mod printer;
+use ic_hir_derive::Annotation;
+
+macro_rules! builtin_ann {
+    ($(
+        @annotation $name:tt {
+            $($var:tt: $ty:tt = $val:tt),+ $(,)?
+        }
+    )*) => {
+        $(
+            #[derive(Annotation)]
+            pub struct $name {
+                $($var: $ty,)*
+            }
+
+            impl Default for $name {
+                fn default() -> Self {
+                    Self {
+                        $($var: $val,)*
+                    }
+                }
+            }
+        )*
+    };
+}
+
+builtin_ann! {
+    @annotation Id {
+        value: u32 = 0,
+    }
+
+    @annotation Optional {
+        value: bool = true,
+    }
+
+    @annotation Key {
+        value: bool = true,
+    }
+
+    @annotation Shared {
+        value: bool = true,
+    }
+
+    @annotation MustUnderstand {
+        value: bool = true,
+    }
+}

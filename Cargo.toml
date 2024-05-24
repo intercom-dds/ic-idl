@@ -33,6 +33,8 @@ members = [
     "crates/ic-cli-derive",
     "crates/ic-driver",
     "crates/ic-emit",
+    "crates/ic-hir",
+    "crates/ic-hir-derive",
     "crates/ic-lint",
     "crates/ic-parse",
     "crates/ic-preproc",
@@ -47,3 +49,8 @@ exclude = ["fuzz", "crates/ic-bootstrap"]
 [workspace.package]
 rust-version = "1.70"
 publish = false
+
+[workspace.dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = "2.0"

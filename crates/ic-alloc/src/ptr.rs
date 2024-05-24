@@ -25,5 +25,37 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::ops::{Deref, DerefMut};
+
 #[derive(Debug)]
-pub struct Interner;
+pub struct P<T: ?Sized> {
+    ptr: Box<T>,
+}
+
+impl<T: ?Sized> Deref for P<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.ptr
+    }
+}
+
+impl<T: ?Sized> DerefMut for P<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.ptr
+    }
+}
+
+impl<T: 'static + Clone> Clone for P<T> {
+    fn clone(&self) -> P<T> {
+        P((**self).clone())
+    }
+}
+
+/// Construct a `P<T>` from a `T` value.
+#[allow(non_snake_case)]
+pub fn P<T: 'static>(value: T) -> P<T> {
+    P {
+        ptr: Box::new(value),
+    }
+}

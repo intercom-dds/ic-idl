@@ -26,4 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod arena;
+pub mod inline_vec;
 pub mod interner;
+pub mod ptr;

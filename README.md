@@ -77,3 +77,9 @@ cargo make cmake
 ```
 
 This will create a `build` directory which contains `compile_commands.json`.
+
+Development documentation can be generated with:
+
+```
+cargo doc --document-private-items --no-deps
+```

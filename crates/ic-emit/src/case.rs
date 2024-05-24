@@ -117,6 +117,18 @@ impl Converter {
 /// Whitespace and ASCII punctuation characters are treated as delimiters
 /// between words. Multiple consecutive delimiters will be stripped. For
 /// example, "foo bar...baz" would be converted to "fooBarBaz" in `camelCase`.
+///
+/// In most cases you'll probably want to use [`snake_case`], [`camel_case`], or
+/// [`pascal_case`] instead of this function.
+///
+/// # Example
+///
+/// ```rust
+/// # use ic_emit::case::{convert, Case};
+///
+/// let converted = convert("foo_bar_baz", Case::Pascal);
+/// assert_eq!(converted, "FooBarBaz");
+/// ```
 pub fn convert<A: AsRef<str>>(input: A, case: Case) -> String {
     let state = Converter { first: true, case };
     state.convert(input.as_ref())

@@ -27,6 +27,12 @@
 
 use ic_hir_derive::Annotation;
 
+// TODO: Once we have a working parser in Rust, we can do the following instead:
+//  1. Write the annotations in IDL.
+//  2. Run the parser on the IDL, then through a special backend for generating
+//     annotation definitions. This backend would generate the implementations
+//     for "deserializing" the annotations.
+//  3. Do that through a proc macro, so it gets embedded in the final binary.
 macro_rules! builtin_ann {
     ($(
         @annotation $name:tt {
@@ -36,7 +42,7 @@ macro_rules! builtin_ann {
         $(
             #[derive(Annotation)]
             pub struct $name {
-                $($var: $ty,)*
+                $(pub $var: $ty,)*
             }
 
             impl Default for $name {

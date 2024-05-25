@@ -54,6 +54,7 @@ impl<T> Clone for Id<T> {
 
 impl<T> Copy for Id<T> {}
 
+#[must_use]
 #[derive(Default, Debug)]
 pub struct Arena<T> {
     elements: Vec<T>,
@@ -90,10 +91,12 @@ impl<T> Arena<T> {
         self.elements.get_mut(id.borrow().id)
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.elements.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
     }
@@ -125,6 +128,7 @@ impl<T> IndexMut<Id<T>> for Arena<T> {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Iter<'a, T> {
     iter: Enumerate<slice::Iter<'a, T>>,
@@ -142,6 +146,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct IterMut<'a, T> {
     iter: Enumerate<slice::IterMut<'a, T>>,

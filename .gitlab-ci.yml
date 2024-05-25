@@ -56,7 +56,7 @@ lint:clippy:
   needs: []
   script:
     - rustup component add clippy
-    - cargo clippy -- -Dwarnings # --workspace
+    - cargo clippy --workspace -- -Dwarnings
 
 lint:license:
   stage: lint

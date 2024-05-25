@@ -33,5 +33,8 @@ edition = "2021"
 publish.workspace = true
 rust-version.workspace = true
 
+[lints]
+workspace = true
+
 [build-dependencies]
 cmake = "0.1"

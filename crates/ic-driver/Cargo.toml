@@ -33,6 +33,9 @@ edition = "2021"
 publish.workspace = true
 rust-version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }

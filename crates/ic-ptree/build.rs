@@ -50,7 +50,6 @@ fn emit_link_cxx() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
     let flavor = match (target_os.as_str(), target_env.as_str()) {
-        ("linux" | "windows", _) if cfg!(feature = "libcxx") => "c++",
         ("linux", _) | ("windows", "gnu") => "stdc++",
         ("windows", _) => MSVCRT_LIB,
         _ => panic!("unsupported platform"),

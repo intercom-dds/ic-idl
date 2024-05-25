@@ -41,15 +41,3 @@ rustflags = [
     "-C", "link-args=-fuse-ld=mold",
     "-C", "relocation-model=pic",
 ]
-
-[target.'cfg(all())']
-rustflags = [
-    "-Wclippy::all",
-    "-Wclippy::pedantic",
-    "-Wclippy::cargo",
-    "-Wfuture_incompatible",
-    "-Wnonstandard_style",
-
-    "-Aclippy::struct_excessive_bools",
-    "-Aclippy::module_name_repetitions",
-]

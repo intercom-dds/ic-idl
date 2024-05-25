@@ -65,6 +65,12 @@ lint:license:
     - cargo install --locked cargo-deny
     - cargo deny check
 
+lint:ipr:
+  stage: lint
+  needs: []
+  script:
+    - cargo run --package xtask --bin xtask --target x86_64-unknown-linux-musl -- ipr
+
 build:stable:
   stage: build
   needs: []

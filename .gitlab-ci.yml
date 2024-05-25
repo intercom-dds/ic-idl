@@ -56,7 +56,7 @@ lint:clippy:
   needs: []
   script:
     - rustup component add clippy
-    - cargo clippy --target x86_64-unknown-linux-musl -- -Dwarnings
+    - cargo clippy -- -Dwarnings # --workspace
 
 lint:license:
   stage: lint
@@ -69,16 +69,16 @@ lint:ipr:
   stage: lint
   needs: []
   script:
-    - cargo run --package xtask --bin xtask --target x86_64-unknown-linux-musl -- ipr
+    - cargo xtask ipr
 
 build:stable:
   stage: build
   needs: []
   script:
     - rustc --version && cargo --version
-    - cargo install --target x86_64-unknown-linux-musl --path crates/ic-bootstrap --root target --target-dir target
-    - cargo test --target x86_64-unknown-linux-musl
-    - cargo install --target x86_64-unknown-linux-musl --path crates/ic-driver --root install
+    - cargo install --path crates/ic-bootstrap --root target --target-dir target
+    - cargo test --workspace
+    - cargo install --path crates/ic-driver --root install
   artifacts:
     paths:
       - "install/bin/"

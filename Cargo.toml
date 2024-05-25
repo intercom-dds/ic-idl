@@ -40,7 +40,7 @@ members = [
     "crates/ic-parse",
     "crates/ic-preproc",
     "crates/ic-ptree",
-    "xtask",
+    "crates/xtask",
 ]
 default-members = ["crates/ic-driver"]
 exclude = ["fuzz", "crates/ic-bootstrap"]

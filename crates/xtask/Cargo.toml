@@ -35,4 +35,4 @@ publish.workspace = true
 
 [dependencies]
 regex-lite = "0.1.5"
-ic-cli = { path = "../crates/ic-cli" }
+ic-cli = { path = "../ic-cli" }

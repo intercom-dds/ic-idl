@@ -52,8 +52,6 @@ rustflags = [
     "-Wfuture_incompatible",
     "-Wnonstandard_style",
 
-    "-Aclippy::missing_panics_doc",
-    "-Aclippy::missing_errors_doc",
     "-Aclippy::struct_excessive_bools",
     "-Aclippy::module_name_repetitions",
 ]

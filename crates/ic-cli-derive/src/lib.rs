@@ -332,6 +332,7 @@ fn impl_parse(input: &DeriveInput) -> proc_macro2::TokenStream {
     }
 }
 
+#[allow(clippy::missing_panics_doc)]
 #[proc_macro_derive(Command, attributes(option, command))]
 pub fn derive_cli(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

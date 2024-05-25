@@ -96,7 +96,7 @@ impl CommandLine {
 
     pub fn opt(mut self, option: Opt) -> Self {
         for token in &option.tokens {
-            assert!(
+            debug_assert!(
                 !self.options.contains_key(token),
                 "duplicate registration of option {token}"
             );
@@ -170,6 +170,11 @@ impl CommandLine {
         &self.name
     }
 
+    /// Attempts to parse the command-line arguments.
+    ///
+    /// # Errors
+    ///
+    /// May fail due to syntax errors in the input.
     pub fn try_parse(self) -> Result<ParseResult, ParseError> {
         parse::from_env(&mut self.default_opts())
     }

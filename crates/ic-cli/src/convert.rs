@@ -50,6 +50,12 @@ impl Display for ConvertError {
 }
 
 pub trait Convert: Sized {
+    /// Attempts to convert the input parameters to current type.
+    ///
+    /// # Errors
+    ///
+    /// May fail if conversion is not possible, likely due to syntax errors in
+    /// the input.
     fn from_result(input: &[String]) -> Result<Self>;
 }
 

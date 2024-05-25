@@ -31,9 +31,6 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
-[lints]
-workspace = true
-
 [dependencies]
 ic-cli = { path = "../ic-cli" }
 ic-ptree = { path = "../ic-ptree" }

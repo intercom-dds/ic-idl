@@ -75,7 +75,7 @@ build:stable:
   needs: []
   script:
     - rustc --version && cargo --version
-    - cargo install --path crates/ic-bootstrap --root target --target-dir target
+    - cargo xtask bootstrap
     - cargo test --workspace
     - cargo install --path crates/ic-driver --root install
   artifacts:

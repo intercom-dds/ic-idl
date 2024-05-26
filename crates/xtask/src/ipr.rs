@@ -100,7 +100,7 @@ pub fn check() {
     }
 
     if !missing.is_empty() {
-        println!(
+        eprintln!(
             "{} files {}, {} {}",
             count - missing.len(),
             "ok".green(),

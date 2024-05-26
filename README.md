@@ -71,6 +71,8 @@ cargo doc --document-private-items --no-deps
 
 ## MSRV
 
-MSRV is 1.70. The MSRV may change between minor version updates and is not
-considered a semver-breaking change.
+- MSRV for the compiler is 1.74.
+- MSRV for the Rust serialization library is 1.70.
 
+The MSRV may change between minor version releases and is not considered a
+semver-breaking change.

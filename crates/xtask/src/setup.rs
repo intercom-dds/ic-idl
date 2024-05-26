@@ -35,7 +35,7 @@ const PRE_COMMIT_DST: &str = "hooks/pre-commit";
 /// Install pre-commit Git hooks
 #[derive(ic_cli::Command, Default)]
 #[command = "setup"]
-pub struct Options {}
+pub struct Options;
 
 fn git_root() -> PathBuf {
     let output = Command::new("git")

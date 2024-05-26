@@ -29,10 +29,12 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::process::Command;
 
+use ic_cli::color::Colorize;
+
 /// Check that all files have an IPR header
 #[derive(ic_cli::Command, Default)]
 #[command = "ipr"]
-pub struct Options {}
+pub struct Options;
 
 // Files to exclude from the IPR check.
 // All paths are relative from the root of the Git repository.
@@ -99,7 +101,14 @@ pub fn check() {
     }
 
     if !missing.is_empty() {
+        println!(
+            "{} files {}, {} {}",
+            count - missing.len(),
+            "ok".green(),
+            missing.len(),
+            "failed".red(),
+        );
         std::process::exit(1);
     }
-    println!("{count} files successfully checked");
+    println!("{count} files {}", "ok".green());
 }

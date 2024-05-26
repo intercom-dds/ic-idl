@@ -25,40 +25,36 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::{Category, Command};
+use std::process::Command;
 
-mod bootstrap;
-mod deny;
-mod ipr;
-mod release;
-mod setup;
+/// Check licenses of all dependencies
+#[derive(ic_cli::Command, Default)]
+#[command = "deny"]
+pub struct Options;
 
-/// Polyfill for building and releasing ic-idl
-#[derive(Command, Default)]
-struct Options;
+fn is_installed() -> bool {
+    Command::new("cargo")
+        .args(["deny", "--version"])
+        .output()
+        .is_ok_and(|v| v.status.success())
+}
 
-fn main() {
-    let command = Options::command()
-        .hide_flags(true, true)
-        .category(Category {
-            name: "commands",
-            commands: vec![
-                setup::Options::command(),
-                bootstrap::Options::command(),
-                ipr::Options::command(),
-                deny::Options::command(),
-                release::Options::command(),
-            ],
-        })
-        .parse();
+fn install_deny() {
+    println!("installing cargo-deny");
 
-    let cmd = command.subcommand().unwrap();
-    match cmd.name() {
-        "setup" => setup::install(),
-        "ipr" => ipr::check(),
-        "deny" => deny::check(),
-        "bootstrap" => bootstrap::build(),
-        "release" => release::build(),
-        _ => (),
+    Command::new("cargo")
+        .args(["install", "--locked", "cargo-deny"])
+        .status()
+        .expect("failed to install cargo-deny");
+}
+
+pub fn check() {
+    if !is_installed() {
+        install_deny();
     }
+
+    Command::new("cargo")
+        .args(["deny", "--all-features", "check"])
+        .status()
+        .expect("failed to run cargo-deny");
 }

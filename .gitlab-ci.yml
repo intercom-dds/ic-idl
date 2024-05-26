@@ -62,8 +62,7 @@ lint:license:
   stage: lint
   needs: []
   script:
-    - cargo install --locked cargo-deny
-    - cargo deny check
+    - cargo xtask deny
 
 lint:ipr:
   stage: lint

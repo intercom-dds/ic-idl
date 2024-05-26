@@ -30,11 +30,13 @@ pub enum Case {
     Snake,
     Camel,
     Pascal,
+    Kebab,
 }
 
 struct Converter {
     first: bool,
     case: Case,
+    delim: char,
 }
 
 fn is_delim(c: char) -> bool {
@@ -45,17 +47,17 @@ impl Converter {
     fn append(&mut self, word: &str, buffer: &mut String) {
         if !word.is_empty() {
             match self.case {
-                Case::Snake => self.to_snake(word, buffer),
                 Case::Pascal => Self::to_pascal(word, buffer),
                 Case::Camel => self.to_camel(word, buffer),
+                Case::Snake | Case::Kebab => self.snake_delim(word, buffer),
             }
         }
         self.first = false;
     }
 
-    fn to_snake(&self, word: &str, buffer: &mut String) {
+    fn snake_delim(&self, word: &str, buffer: &mut String) {
         if !self.first {
-            buffer.push('_');
+            buffer.push(self.delim);
         }
         *buffer += &word.to_lowercase();
     }
@@ -131,7 +133,16 @@ impl Converter {
 /// assert_eq!(converted, "FooBarBaz");
 /// ```
 pub fn convert<A: AsRef<str>>(input: A, case: Case) -> String {
-    let state = Converter { first: true, case };
+    let delim = match case {
+        Case::Kebab => '-',
+        _ => '_',
+    };
+
+    let state = Converter {
+        first: true,
+        case,
+        delim,
+    };
     state.convert(input.as_ref())
 }
 
@@ -180,6 +191,21 @@ pub fn pascal_case<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Pascal)
 }
 
+/// Converts the given string to `kebab-case`.See [`convert`] for more
+/// information.
+///
+/// # Example
+///
+/// ```rust
+/// # use ic_emit::case::kebab_case;
+///
+/// let converted = kebab_case("FooBar_baz3");
+/// assert_eq!(converted, "foo-bar-baz3");
+/// ````
+pub fn kebab_case<A: AsRef<str>>(input: A) -> String {
+    convert(input, Case::Kebab)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -209,6 +235,13 @@ mod test {
         assert_eq!(camel_case("suffix__"), "suffix");
         assert_eq!(camel_case("suffix_1_"), "suffix1");
         assert_eq!(camel_case("abc_t_def"), "abcTDef");
+
+        // kebab
+        assert_eq!(snake_case("suffix_t"), "suffix-t");
+        assert_eq!(snake_case("suffix_1"), "suffix-1");
+        assert_eq!(snake_case("suffix__"), "suffix");
+        assert_eq!(snake_case("suffix_1_"), "suffix-1");
+        assert_eq!(snake_case("abc_t_def"), "abc-t-def");
     }
 
     #[test]
@@ -223,5 +256,6 @@ mod test {
         assert_eq!(snake_case("P_Arbitration_AU_PSM"), "p_arbitration_au_psm");
         assert_eq!(pascal_case("P_Arbitration_AU_PSM"), "PArbitrationAuPsm");
         assert_eq!(camel_case("P_Arbitration_AU_PSM"), "pArbitrationAuPsm");
+        assert_eq!(kebab_case("P_Arbitration_AU_PSM"), "p-arbitration-au-psm");
     }
 }

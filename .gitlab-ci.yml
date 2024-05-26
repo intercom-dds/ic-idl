@@ -43,6 +43,7 @@ default:
 stages:
   - lint
   - build
+  - test
 
 lint:rustfmt:
   stage: lint
@@ -76,8 +77,15 @@ build:stable:
   script:
     - rustc --version && cargo --version
     - cargo xtask bootstrap
-    - cargo test --workspace
     - cargo install --path crates/ic-driver --root install
   artifacts:
     paths:
       - "install/bin/"
+
+test:stable:
+  stage: test
+  needs: []
+  script:
+    - cargo test --workspace
+  dependencies:
+    - build:stable

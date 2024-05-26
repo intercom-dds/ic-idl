@@ -46,7 +46,7 @@ const PAD: usize = 3;
 #[derive(Default)]
 pub struct CommandLine {
     name: String,
-    desc: Option<String>,
+    desc: String,
     version: Option<String>,
     options: IndexMap<String, Opt>,
     section: Option<String>,
@@ -64,7 +64,7 @@ impl CommandLine {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
-            desc: None,
+            desc: String::new(),
             version: None,
             options: IndexMap::new(),
             section: None,
@@ -80,7 +80,7 @@ impl CommandLine {
     }
 
     pub fn desc(mut self, desc: impl Into<String>) -> Self {
-        self.desc = Some(desc.into());
+        self.desc = desc.into();
         self
     }
 
@@ -165,8 +165,15 @@ impl CommandLine {
         self
     }
 
+    /// Overrides the name set in `CommandLine::new`.
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = name.into();
+        self
+    }
+
+    /// Returns the name of the application.
     #[must_use]
-    pub fn name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         &self.name
     }
 
@@ -219,8 +226,9 @@ impl CommandLine {
             "{} {version}",
             self.qualified_name('-', false).green()
         ));
-        if let Some(desc) = &self.desc {
-            lines.push(format!("\n{desc}"));
+
+        if !self.desc.is_empty() {
+            lines.push(format!("\n{}", self.desc));
         }
 
         lines.push("\nusage:".yellow());
@@ -272,7 +280,7 @@ impl CommandLine {
             }
             name.push(sep);
         }
-        name.push_str(self.name());
+        name.push_str(&self.name);
         name
     }
 
@@ -339,8 +347,7 @@ impl CommandLine {
 
             let width = width + PAD;
             for cmd in cmds {
-                let desc = cmd.desc.clone().unwrap_or_default();
-                let line = format!("{:PAD$}{:width$} {desc}", " ", cmd.name.green());
+                let line = format!("{:PAD$}{:width$} {}", " ", cmd.name.green(), cmd.desc);
                 lines.push(line);
             }
         }

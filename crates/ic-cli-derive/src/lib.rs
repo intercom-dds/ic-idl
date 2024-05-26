@@ -25,11 +25,16 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_emit::case;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Punct, TokenTree};
 use quote::{quote, ToTokens};
+use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, ExprLit, Field, Meta, Token, Type};
+use syn::{
+    parse_macro_input, Attribute, Data, DataEnum, DataStruct, DeriveInput, ExprLit, Field, Meta,
+    Token, Type,
+};
 
 fn derive_short(input: &Ident, value: &Option<syn::LitChar>) -> char {
     if let Some(value) = value {
@@ -242,27 +247,48 @@ fn handle_option(field: &Field) -> Opt {
     }
 }
 
-fn impl_command(input: &DeriveInput) -> proc_macro2::TokenStream {
-    let doc = doc_attr(&input.attrs);
-    let attr = attr_str("command", &input.attrs);
+fn enum_command(input: &DataEnum, attrs: &Vec<Attribute>) -> proc_macro2::TokenStream {
+    let commands = input.variants.iter().map(|v| {
+        let name = case::kebab(&v.ident.unraw().to_string());
+        let field = v.fields.iter().next().unwrap();
+
+        quote! {
+            #field::command().name(#name)
+        }
+    });
+
+    let name = quote! { env!("CARGO_PKG_NAME") };
+    let version = quote! { env!("CARGO_PKG_VERSION") };
+    let doc = doc_attr(&attrs);
+
+    quote! {
+        ::ic_cli::CommandLine::new(#name)
+            .version(#version)
+            .desc(#doc)
+            .category(
+                ic_cli::Category {
+                    name: "commands",
+                    commands: vec![
+                        #(#commands,)*
+                    ],
+                }
+            )
+    }
+}
+
+fn struct_command(input: &DataStruct, attrs: &Vec<Attribute>) -> proc_macro2::TokenStream {
+    let doc = doc_attr(&attrs);
+    let attr = attr_str("command", &attrs);
     let mut options = vec![];
     let mut positionals = false;
 
-    match input.data {
-        Data::Struct(ref s) => {
-            for field in &s.fields {
-                let option = handle_option(field);
-                if option.positional {
-                    positionals = true;
-                } else {
-                    options.push(option);
-                }
-            }
+    for field in &input.fields {
+        let option = handle_option(field);
+        if option.positional {
+            positionals = true;
+        } else {
+            options.push(option);
         }
-        Data::Enum(ref _s) => {
-            todo!()
-        }
-        Data::Union(_) => panic!("unions are not supported"),
     }
 
     let name = if let Some(name) = attr {
@@ -284,20 +310,35 @@ fn impl_command(input: &DeriveInput) -> proc_macro2::TokenStream {
     }
 }
 
-fn impl_parse(input: &DeriveInput) -> proc_macro2::TokenStream {
-    let mut fields = vec![];
-    match input.data {
-        Data::Struct(ref s) => {
-            for field in &s.fields {
-                fields.push(field);
-            }
-        }
-        Data::Enum(_) => panic!("enums are not supported"),
-        Data::Union(_) => panic!("unions are not supported"),
-    }
+fn enum_parse(input: &DataEnum) -> proc_macro2::TokenStream {
+    let variants = input.variants.iter().map(|v| {
+        let name = case::kebab(&v.ident.unraw().to_string());
+        let variant = v
+            .fields
+            .iter()
+            .next()
+            .expect("Tuple variants must contain exactly one member");
 
+        let ident = &v.ident;
+        let path = &variant.ty;
+
+        quote! {
+            #name => Self::#ident(#path::from_result(&cmd))
+        }
+    });
+
+    quote! {
+        let cmd = result.subcommand().unwrap();
+        match cmd.name() {
+            #(#variants,)*
+            _ => unreachable!(),
+        }
+    }
+}
+
+fn struct_parse(input: &DataStruct) -> proc_macro2::TokenStream {
     let mut stream = proc_macro2::TokenStream::new();
-    for field in fields {
+    for field in &input.fields {
         let ident = field.ident.as_ref().unwrap();
         let attrs = option_attr(&field.attrs);
         let tree = if attrs.positional {
@@ -337,21 +378,13 @@ fn impl_parse(input: &DeriveInput) -> proc_macro2::TokenStream {
 pub fn derive_cli(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let ident = &input.ident;
-    let mut options = vec![];
 
-    match input.data {
-        Data::Struct(ref s) => {
-            for field in &s.fields {
-                let option = handle_option(field);
-                options.push(option);
-            }
-        }
-        Data::Enum(_) => todo!(),
+    let (command, parse) = match &input.data {
+        Data::Struct(v) => (struct_command(v, &input.attrs), struct_parse(v)),
+        Data::Enum(v) => (enum_command(v, &input.attrs), enum_parse(v)),
         Data::Union(_) => panic!("unions are not supported"),
-    }
+    };
 
-    let command = impl_command(&input);
-    let parse = impl_parse(&input);
     let expanded = quote! {
         impl ::ic_cli::Command for #ident {
             fn command() -> ::ic_cli::CommandLine {

@@ -27,7 +27,6 @@
 
 /// Build a release version of ic-idl
 #[derive(ic_cli::Command, Default)]
-#[command = "release"]
 pub struct Options;
 
 pub fn build() {}

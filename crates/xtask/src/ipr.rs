@@ -33,7 +33,6 @@ use ic_cli::color::Colorize;
 
 /// Check that all files have an IPR header
 #[derive(ic_cli::Command, Default)]
-#[command = "ipr"]
 pub struct Options;
 
 // Files to exclude from the IPR check.

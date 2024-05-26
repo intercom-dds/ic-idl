@@ -39,7 +39,7 @@ pub struct ParseResult {
 impl ParseResult {
     fn from(command: &CommandLine) -> Self {
         Self {
-            name: command.name().to_string(),
+            name: command.get_name().to_string(),
             options: command.options.clone(),
             subcommand: None,
             positionals: vec![],

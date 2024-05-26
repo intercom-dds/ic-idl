@@ -29,7 +29,6 @@ use std::process::Command;
 
 /// Bootstrap ic-idl
 #[derive(ic_cli::Command, Default)]
-#[command = "bootstrap"]
 pub struct Options;
 
 pub fn build() {

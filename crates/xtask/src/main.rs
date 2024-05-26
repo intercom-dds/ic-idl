@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::{Category, Command};
+use ic_cli::Command;
 
 mod bootstrap;
 mod deny;
@@ -34,31 +34,24 @@ mod release;
 mod setup;
 
 /// Polyfill for building and releasing ic-idl
-#[derive(Command, Default)]
-struct Options;
+#[derive(Command)]
+enum Commands {
+    Setup(setup::Options),
+    Ipr(ipr::Options),
+    Deny(deny::Options),
+    Bootstrap(bootstrap::Options),
+    Release(release::Options),
+}
 
 fn main() {
-    let command = Options::command()
-        .hide_flags(true, true)
-        .category(Category {
-            name: "commands",
-            commands: vec![
-                setup::Options::command(),
-                bootstrap::Options::command(),
-                ipr::Options::command(),
-                deny::Options::command(),
-                release::Options::command(),
-            ],
-        })
-        .parse();
+    let result = Commands::command().hide_flags(true, true).parse();
+    let cmd = Commands::from_result(&result);
 
-    let cmd = command.subcommand().unwrap();
-    match cmd.name() {
-        "setup" => setup::install(),
-        "ipr" => ipr::check(),
-        "deny" => deny::check(),
-        "bootstrap" => bootstrap::build(),
-        "release" => release::build(),
-        _ => (),
+    match cmd {
+        Commands::Setup(_) => setup::install(),
+        Commands::Bootstrap(_) => bootstrap::build(),
+        Commands::Ipr(_) => ipr::check(),
+        Commands::Release(_) => release::build(),
+        Commands::Deny(_) => deny::check(),
     }
 }

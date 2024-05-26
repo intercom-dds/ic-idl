@@ -29,7 +29,6 @@ use std::process::Command;
 
 /// Check licenses of all dependencies
 #[derive(ic_cli::Command, Default)]
-#[command = "deny"]
 pub struct Options;
 
 fn is_installed() -> bool {

@@ -152,12 +152,12 @@ pub fn convert<A: AsRef<str>>(input: A, case: Case) -> String {
 /// # Example
 ///
 /// ```rust
-/// # use ic_emit::case::snake_case;
+/// # use ic_emit::case::snake;
 ///
-/// let converted = snake_case("FooBarBaz3");
+/// let converted = snake("FooBarBaz3");
 /// assert_eq!(converted, "foo_bar_baz3");
 /// ````
-pub fn snake_case<A: AsRef<str>>(input: A) -> String {
+pub fn snake<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Snake)
 }
 
@@ -167,12 +167,12 @@ pub fn snake_case<A: AsRef<str>>(input: A) -> String {
 /// # Example
 ///
 /// ```rust
-/// # use ic_emit::case::camel_case;
+/// # use ic_emit::case::camel;
 ///
-/// let converted = camel_case("foo_Bar_baz3");
+/// let converted = camel("foo_Bar_baz3");
 /// assert_eq!(converted, "fooBarBaz3");
 /// ````
-pub fn camel_case<A: AsRef<str>>(input: A) -> String {
+pub fn camel<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Camel)
 }
 
@@ -182,12 +182,12 @@ pub fn camel_case<A: AsRef<str>>(input: A) -> String {
 /// # Example
 ///
 /// ```rust
-/// # use ic_emit::case::pascal_case;
+/// # use ic_emit::case::pascal;
 ///
-/// let converted = pascal_case("foo_Bar_baz3");
+/// let converted = pascal("foo_Bar_baz3");
 /// assert_eq!(converted, "FooBarBaz3");
 /// ````
-pub fn pascal_case<A: AsRef<str>>(input: A) -> String {
+pub fn pascal<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Pascal)
 }
 
@@ -197,12 +197,12 @@ pub fn pascal_case<A: AsRef<str>>(input: A) -> String {
 /// # Example
 ///
 /// ```rust
-/// # use ic_emit::case::kebab_case;
+/// # use ic_emit::case::kebab;
 ///
-/// let converted = kebab_case("FooBar_baz3");
+/// let converted = kebab("FooBar_baz3");
 /// assert_eq!(converted, "foo-bar-baz3");
 /// ````
-pub fn kebab_case<A: AsRef<str>>(input: A) -> String {
+pub fn kebab<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Kebab)
 }
 
@@ -213,49 +213,49 @@ mod test {
     #[test]
     fn single_char_suffix_snake() {
         // snake
-        assert_eq!(snake_case("suffix_t"), "suffix_t");
-        assert_eq!(snake_case("suffix_1"), "suffix_1");
-        assert_eq!(snake_case("suffix__"), "suffix");
-        assert_eq!(snake_case("suffix_1_"), "suffix_1");
-        assert_eq!(snake_case("abc_t_def"), "abc_t_def");
-        assert_eq!(snake_case("FooBarBaz"), "foo_bar_baz");
-        assert_eq!(snake_case("Foo1bar"), "foo1bar");
-        assert_eq!(snake_case("foo bar.baz"), "foo_bar_baz");
+        assert_eq!(snake("suffix_t"), "suffix_t");
+        assert_eq!(snake("suffix_1"), "suffix_1");
+        assert_eq!(snake("suffix__"), "suffix");
+        assert_eq!(snake("suffix_1_"), "suffix_1");
+        assert_eq!(snake("abc_t_def"), "abc_t_def");
+        assert_eq!(snake("FooBarBaz"), "foo_bar_baz");
+        assert_eq!(snake("Foo1bar"), "foo1bar");
+        assert_eq!(snake("foo bar.baz"), "foo_bar_baz");
 
         // pascal
-        assert_eq!(pascal_case("suffix_t"), "SuffixT");
-        assert_eq!(pascal_case("suffix_1"), "Suffix1");
-        assert_eq!(pascal_case("suffix__"), "Suffix");
-        assert_eq!(pascal_case("suffix_1_"), "Suffix1");
-        assert_eq!(pascal_case("abc_t_def"), "AbcTDef");
+        assert_eq!(pascal("suffix_t"), "SuffixT");
+        assert_eq!(pascal("suffix_1"), "Suffix1");
+        assert_eq!(pascal("suffix__"), "Suffix");
+        assert_eq!(pascal("suffix_1_"), "Suffix1");
+        assert_eq!(pascal("abc_t_def"), "AbcTDef");
 
         // camel
-        assert_eq!(camel_case("suffix_t"), "suffixT");
-        assert_eq!(camel_case("suffix_1"), "suffix1");
-        assert_eq!(camel_case("suffix__"), "suffix");
-        assert_eq!(camel_case("suffix_1_"), "suffix1");
-        assert_eq!(camel_case("abc_t_def"), "abcTDef");
+        assert_eq!(camel("suffix_t"), "suffixT");
+        assert_eq!(camel("suffix_1"), "suffix1");
+        assert_eq!(camel("suffix__"), "suffix");
+        assert_eq!(camel("suffix_1_"), "suffix1");
+        assert_eq!(camel("abc_t_def"), "abcTDef");
 
         // kebab
-        assert_eq!(snake_case("suffix_t"), "suffix-t");
-        assert_eq!(snake_case("suffix_1"), "suffix-1");
-        assert_eq!(snake_case("suffix__"), "suffix");
-        assert_eq!(snake_case("suffix_1_"), "suffix-1");
-        assert_eq!(snake_case("abc_t_def"), "abc-t-def");
+        assert_eq!(kebab("suffix_t"), "suffix-t");
+        assert_eq!(kebab("suffix_1"), "suffix-1");
+        assert_eq!(kebab("suffix__"), "suffix");
+        assert_eq!(kebab("suffix_1_"), "suffix-1");
+        assert_eq!(kebab("abc_t_def"), "abc-t-def");
     }
 
     #[test]
     fn multiple_upper() {
-        assert_eq!(pascal_case("JSONParser"), "JsonParser");
-        assert_eq!(snake_case("IDLType"), "idl_type");
-        assert_eq!(snake_case("PROTO3Buffer"), "proto3buffer");
+        assert_eq!(pascal("JSONParser"), "JsonParser");
+        assert_eq!(snake("IDLType"), "idl_type");
+        assert_eq!(snake("PROTO3Buffer"), "proto3buffer");
     }
 
     #[test]
     fn single_underscore() {
-        assert_eq!(snake_case("P_Arbitration_AU_PSM"), "p_arbitration_au_psm");
-        assert_eq!(pascal_case("P_Arbitration_AU_PSM"), "PArbitrationAuPsm");
-        assert_eq!(camel_case("P_Arbitration_AU_PSM"), "pArbitrationAuPsm");
-        assert_eq!(kebab_case("P_Arbitration_AU_PSM"), "p-arbitration-au-psm");
+        assert_eq!(snake("P_Arbitration_AU_PSM"), "p_arbitration_au_psm");
+        assert_eq!(pascal("P_Arbitration_AU_PSM"), "PArbitrationAuPsm");
+        assert_eq!(camel("P_Arbitration_AU_PSM"), "pArbitrationAuPsm");
+        assert_eq!(kebab("P_Arbitration_AU_PSM"), "p-arbitration-au-psm");
     }
 }

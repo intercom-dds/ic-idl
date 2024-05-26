@@ -102,3 +102,20 @@ fn test_replaced_char() {
     let parsed = Foo::from_args(args!["--my-opt-var"]);
     assert!(parsed.my_opt_var);
 }
+
+#[test]
+fn test_enum() {
+    #[derive(Default, Command)]
+    struct Foo {
+        #[option(long)]
+        value: bool,
+    }
+
+    #[derive(Command)]
+    enum Command {
+        FooBarBaz(Foo),
+    }
+
+    let Command::FooBarBaz(parsed) = Command::from_args(args!["foo-bar-baz", "--value"]);
+    assert!(parsed.value);
+}

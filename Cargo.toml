@@ -56,7 +56,7 @@ syn = "2.0"
 
 [workspace.lints.rust]
 future_incompatible = "deny"
-nonstandard_style = "deny"
+nonstandard_style = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

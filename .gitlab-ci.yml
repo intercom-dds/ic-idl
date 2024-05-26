@@ -84,8 +84,8 @@ build:stable:
 
 test:stable:
   stage: test
-  needs: []
+  needs:
+    - job: build:stable
+      artifacts: true
   script:
     - cargo test --workspace
-  dependencies:
-    - build:stable

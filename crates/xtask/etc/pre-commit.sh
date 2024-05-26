@@ -40,8 +40,19 @@ run() {
     fi
 }
 
+check_fmt() {
+    git diff --cached --name-only --diff-filter=ACM | \
+        while read file_name; do
+            if [ ${file_name##*.} = "rs" ]; then
+                rustup run nightly rustfmt --check $file_name
+            fi
+        done
+
+    return $?
+}
+
 # Check formatting
-run "code is not properly formatted" cargo +nightly fmt --check
+run "code is not properly formatted" check_fmt
 
 # Check that all files have an IPR header
 run "missing IPR headers" cargo --quiet xtask ipr

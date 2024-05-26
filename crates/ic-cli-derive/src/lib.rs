@@ -249,7 +249,7 @@ fn handle_option(field: &Field) -> Opt {
 
 fn enum_command(input: &DataEnum, attrs: &Vec<Attribute>) -> proc_macro2::TokenStream {
     let commands = input.variants.iter().map(|v| {
-        let name = case::kebab(&v.ident.unraw().to_string());
+        let name = case::kebab(v.ident.unraw().to_string());
         let field = v.fields.iter().next().unwrap();
 
         quote! {
@@ -259,7 +259,7 @@ fn enum_command(input: &DataEnum, attrs: &Vec<Attribute>) -> proc_macro2::TokenS
 
     let name = quote! { env!("CARGO_PKG_NAME") };
     let version = quote! { env!("CARGO_PKG_VERSION") };
-    let doc = doc_attr(&attrs);
+    let doc = doc_attr(attrs);
 
     quote! {
         ::ic_cli::CommandLine::new(#name)
@@ -277,8 +277,8 @@ fn enum_command(input: &DataEnum, attrs: &Vec<Attribute>) -> proc_macro2::TokenS
 }
 
 fn struct_command(input: &DataStruct, attrs: &Vec<Attribute>) -> proc_macro2::TokenStream {
-    let doc = doc_attr(&attrs);
-    let attr = attr_str("command", &attrs);
+    let doc = doc_attr(attrs);
+    let attr = attr_str("command", attrs);
     let mut options = vec![];
     let mut positionals = false;
 
@@ -312,7 +312,7 @@ fn struct_command(input: &DataStruct, attrs: &Vec<Attribute>) -> proc_macro2::To
 
 fn enum_parse(input: &DataEnum) -> proc_macro2::TokenStream {
     let variants = input.variants.iter().map(|v| {
-        let name = case::kebab(&v.ident.unraw().to_string());
+        let name = case::kebab(v.ident.unraw().to_string());
         let variant = v
             .fields
             .iter()

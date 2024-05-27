@@ -25,35 +25,35 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SerializationSupport_h___included
-#  define SerializationSupport_h___included
+#pragma once
 
-#  include <array>
-#  include <cstring>
-#  include <map>
-#  include <memory>
-#  include <set>
-#  include <sstream>
-#  include <stdexcept>
-#  include <string>
-#  include <vector>
+#include <array>
+#include <cstring>
+#include <map>
+#include <memory>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
-#  include "InterCOM/dds_xtypes_constants.h"
-#  include "InterCOM/intercom_dcps.h"
-#  include "InterCOM/member_info.h"
-#  include "InterCOM/platform_config.h"
+#include "InterCOM/dds_xtypes_constants.h"
+#include "InterCOM/intercom_dcps.h"
+#include "InterCOM/member_info.h"
+#include "InterCOM/platform_config.h"
 
-#  ifdef INTERCOM_COMPILER_MICROSOFT
-#    pragma warning(push)
-#    pragma warning(disable : 4127 \
-    )  // Conditional expression is constant in template instantiations
-#    pragma warning(disable : 4512 \
-    )  // Assignment operator cannot be generated for some serialization classes
-#  endif
+#ifdef INTERCOM_COMPILER_MICROSOFT
+#  pragma warning(push)
+#  pragma warning(disable : 4127)  // Conditional expression is constant in template instantiations
+#  pragma warning(disable : 4512 \
+  )  // Assignment operator cannot be generated for some serialization classes
+#endif
 
 namespace intercom {
+
 template <typename T>
 bool enumToString(std::string& res, T value, const TypeInfo* type);
+
 template <typename T>
 bool stringToEnum(T& value, const char* string, const TypeInfo* type);
 
@@ -1087,10 +1087,8 @@ void transform(WRITER& writer, READER& reader, const TypeInfo& type_info);
 }  // namespace dcps
 }  // namespace intercom
 
-#  ifdef INTERCOM_COMPILER_MICROSOFT
-#    pragma warning(pop)
-#  endif
-
+#ifdef INTERCOM_COMPILER_MICROSOFT
+#  pragma warning(pop)
 #endif
 
 #include "detail/serialization.ic"  // IWYU pragma: export

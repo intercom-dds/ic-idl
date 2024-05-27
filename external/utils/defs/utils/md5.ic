@@ -31,7 +31,14 @@
 #include <stdexcept>
 
 #include "utils/md5.h"
-#include "utils/thread_annotation_attributes.h"
+
+#if defined(__clang__)
+#  define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
+#else
+#  define THREAD_ANNOTATION_ATTRIBUTE__(x)
+#endif
+
+#define NO_SANITIZE(x) THREAD_ANNOTATION_ATTRIBUTE__(no_sanitize(x))
 
 namespace {
 const std::array<uint8_t, 64> PADDING = {
@@ -429,3 +436,6 @@ inline MD5Context::MD5Context() {
     memset(buffer.data(), 0, 65);
 }
 }  // namespace intercom
+
+#undef NO_SANITIZE
+#undef THREAD_ANNOTATION_ATTRIBUTE__

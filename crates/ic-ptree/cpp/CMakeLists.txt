@@ -73,7 +73,7 @@ add_library(ic_parser OBJECT
 
 target_include_directories(ic_parser PUBLIC
     defs
-    ../../../sdk/cpp/defs
+    ../../../library/cpp/defs
 )
 
 add_library(ic_ptree STATIC
@@ -102,7 +102,7 @@ target_compile_definitions(ic_ptree PRIVATE CIDL_BOOTSTRAP)
 target_include_directories(ic_ptree PUBLIC defs)
 
 target_include_directories(ic_ptree PRIVATE
-    ../../../sdk/cpp/defs
+    ../../../library/cpp/defs
     ../../../external/utils/defs
 )
 
@@ -117,7 +117,7 @@ add_library(ic_utils OBJECT
 )
 
 target_include_directories(ic_utils PUBLIC
-    ../../../sdk/cpp/defs
+    ../../../library/cpp/defs
 )
 
 target_link_libraries(ic_ptree PRIVATE ic_utils)

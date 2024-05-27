@@ -1,0 +1,361 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include <allocator>
+
+#include "InterCOM/buffer.h"
+
+namespace intercom {
+namespace dcps {
+
+inline Buffer::Buffer()
+    : m_read_pointer(nullptr),
+      m_write_pointer(nullptr),
+      m_pointer(nullptr),
+      m_length(0),
+      m_owned(true),
+      m_writeable(true) {}
+
+inline Buffer::Buffer(size_t a_length)
+    : m_read_pointer(nullptr),
+      m_write_pointer(nullptr),
+      m_pointer(nullptr),
+      m_length(0),
+      m_owned(true),
+      m_writeable(true) {
+    allocate(a_length);
+}
+
+inline Buffer::Buffer(Octet* pointer, size_t a_length)
+    : m_read_pointer(nullptr),
+      m_write_pointer(nullptr),
+      m_pointer(nullptr),
+      m_length(0),
+      m_owned(false),
+      m_writeable(false) {
+    set_buffer(pointer, a_length);
+}
+
+inline Buffer::Buffer(const Octet* pointer, size_t a_length)
+    : m_read_pointer(nullptr),
+      m_write_pointer(nullptr),
+      m_pointer(nullptr),
+      m_length(0),
+      m_owned(false),
+      m_writeable(false) {
+    set_buffer(pointer, a_length);
+}
+
+inline Buffer::Buffer(Buffer&& a_other) noexcept
+    : m_read_pointer(a_other.m_read_pointer),
+      m_write_pointer(a_other.m_write_pointer),
+      m_pointer(a_other.m_pointer),
+      m_length(a_other.m_length),
+      m_owned(a_other.m_owned),
+      m_writeable(a_other.m_writeable) {
+    // re-initialize the moved-from instance so it's left in a valid state
+    a_other.m_read_pointer = nullptr;
+    a_other.m_write_pointer = nullptr;
+    a_other.m_pointer = nullptr;
+    a_other.m_length = 0;
+}
+
+inline Buffer::~Buffer() {
+    free_buffer();
+}
+
+inline bool Buffer::operator==(const Buffer& a_other) const {
+    if (m_pointer == a_other.m_pointer) {
+        return true;
+    }
+    if (m_pointer == nullptr || a_other.m_pointer == nullptr) {
+        return false;
+    }
+    return (readable_length() == a_other.readable_length()) &&
+           (memcmp(m_pointer, a_other.m_pointer, readable_length()) == 0);
+}
+
+inline bool Buffer::operator!=(const Buffer& a_other) const {
+    return !operator==(a_other);
+}
+
+inline void Buffer::set_buffer(Octet* pointer, size_t a_length) {
+    free_buffer();
+    m_pointer = pointer;
+    m_write_pointer = m_pointer + a_length;
+    m_read_pointer = m_pointer;
+    m_length = static_cast<ULong>(a_length);
+    m_owned = false;
+    m_writeable = true;
+}
+
+inline void Buffer::set_buffer(const Octet* pointer, size_t a_length) {
+    free_buffer();
+    m_pointer = const_cast<Octet*>(pointer);
+    m_length = static_cast<ULong>(a_length);
+    m_write_pointer = m_pointer + a_length;
+    m_read_pointer = m_pointer;
+    m_owned = false;
+    m_writeable = false;
+}
+
+inline void Buffer::reset() {
+    set_read(nullptr);
+    set_write(nullptr);
+}
+
+inline void Buffer::reset() const {
+    set_read(nullptr);
+}
+
+inline void Buffer::set_read(const Octet* newPosition) const {
+    m_read_pointer = newPosition ? newPosition : m_pointer;
+}
+
+inline void Buffer::advance_read(size_t bytes) const {
+    if (bytes > unread_bytes()) {
+        throw std::runtime_error("Attempted to read past the end of the buffer");
+    }
+    m_read_pointer += m_read_pointer ? bytes : 0;
+}
+
+inline ULong Buffer::read_index(ULong index) const {
+    auto rval = ULong(m_read_pointer - m_pointer);
+    m_read_pointer = m_pointer + index;
+    return rval;
+}
+
+inline ULong Buffer::read_index() const {
+    return ULong(m_read_pointer - m_pointer);
+}
+
+inline void Buffer::set_write(Octet* newPosition) {
+    if (!m_writeable) {
+        throw std::runtime_error("Cannot advance the write-pointer of a non-writeable buffer");
+    }
+    m_write_pointer = newPosition ? newPosition : m_pointer;
+}
+
+inline void Buffer::advance_write(size_t bytes) {
+    if (!m_writeable) {
+        throw std::runtime_error("Cannot advance the write-pointer of a non-writeable buffer");
+    }
+    m_write_pointer += m_write_pointer ? bytes : 0;
+}
+
+inline ULong Buffer::write_index(size_t index) {
+    auto rval = ULong(m_write_pointer - m_pointer);
+    m_write_pointer = m_pointer + index;
+    return rval;
+}
+
+inline ULong Buffer::write_index() const {
+    return ULong(m_write_pointer - m_pointer);
+}
+
+inline void Buffer::reserve_write(size_t bytes) {
+    if (!m_writeable) {
+        throw std::runtime_error("Cannot advance the write-pointer of a non-writeable buffer");
+    }
+    size_t totalLength = bytes + (m_write_pointer - m_pointer);
+    if (totalLength > m_length) {
+        if (!m_owned) {
+            throw std::runtime_error("The amount cannot be reserved, data not owned");
+        }
+        allocate(static_cast<ULong>(totalLength));
+    }
+}
+
+inline const Octet* Buffer::end_pointer() const {
+    return m_pointer + m_length;
+}
+
+inline const Octet* Buffer::start_pointer() const {
+    return m_pointer;
+}
+
+inline const Octet* Buffer::data() const {
+    return m_pointer;
+}
+
+inline Octet* Buffer::pointer(ULong index) {
+    return &(m_pointer[index]);
+}
+
+inline const Octet* Buffer::pointer(ULong index) const {
+    return &(m_pointer[index]);
+}
+
+inline ULong Buffer::length() const {
+    return m_length;
+}
+
+inline ULong Buffer::readable_length() const {
+    return ULong(m_write_pointer - m_pointer);
+}
+
+inline ULong Buffer::unread_bytes() const {
+    return ULong(m_write_pointer > m_read_pointer ? m_write_pointer - m_read_pointer : 0);
+}
+
+inline ULong Buffer::writable_bytes() const {
+    return ULong(m_pointer + m_length - m_write_pointer);
+}
+
+inline bool Buffer::empty() const {
+    return m_write_pointer == m_pointer;
+}
+
+inline bool Buffer::owned() const {
+    return m_owned;
+}
+
+inline intercom::span<const Octet> Buffer::span() const {
+    return intercom::span<const Octet>(m_read_pointer, readable_length());
+}
+
+inline intercom::span<const Octet> Buffer::subspan(size_t pos, size_t length) const {
+    return intercom::span<const Octet>(m_read_pointer + pos, length);
+}
+
+inline bool Buffer::writeable() const {
+    return m_writeable;
+}
+
+inline void Buffer::write(intercom::span<const Octet> a_data) {
+    write(a_data.data(), static_cast<ULong>(a_data.size()));
+}
+
+inline void Buffer::write(const Buffer& a_data) {
+    ULong length = a_data.unread_bytes();
+    if (length != 0) {
+        reserve_write(length);
+        memcpy(m_write_pointer, a_data.m_read_pointer, length);
+        advance_write(length);
+        a_data.advance_read(length);
+    }
+}
+
+inline void Buffer::write(const Octet* a_data, size_t a_length) {
+    if (a_length > 0) {
+        reserve_write(a_length);
+        memcpy(m_write_pointer, a_data, a_length);
+        advance_write(a_length);
+    }
+}
+
+inline void Buffer::read(Octet* a_destination, size_t a_length) const {
+    memcpy(a_destination, m_read_pointer, a_length);
+    advance_read(a_length);
+}
+
+inline void Buffer::duplicate(const Buffer& a_data) {
+    if (a_data.readable_length() == 0) {
+        reset();
+    } else {
+        if (!m_writeable || !m_pointer) {
+            allocate(a_data.readable_length());
+        }
+        reset();
+        write(a_data.start_pointer(), a_data.readable_length());
+    }
+}
+
+inline Octet* Buffer::get_buffer(bool orphan) {
+    Octet* ret = m_pointer;
+    if (orphan) {
+        if (m_owned) {
+            m_owned = false;
+        } else {
+            ret = nullptr;
+        }
+    }
+    return ret;
+}
+
+inline Octet Buffer::at(ULong index) const {
+    if (index >= readable_length()) {
+        throw std::runtime_error("index out of range");
+    }
+    return m_pointer[index];
+}
+
+inline Buffer::const_iterator Buffer::begin() const {
+    return start_pointer();
+}
+
+inline Buffer::const_iterator Buffer::end() const {
+    return start_pointer() + readable_length();
+}
+
+inline void Buffer::allocate(size_t a_new_length) {
+    std::allocator<uint8_t> allocator;
+    if (a_new_length == 0) {
+        // Do nothing
+    } else if (m_pointer == nullptr || !m_owned) {
+        m_pointer = allocator.allocate(a_new_length);
+        m_length = static_cast<ULong>(a_new_length);
+        m_owned = true;
+        m_writeable = true;
+        m_write_pointer = m_pointer;
+        m_read_pointer = m_pointer;
+    } else if (m_length < a_new_length) {
+        ULong min_length = (m_length * 3) / 2;
+        min_length = (min_length < 64) ? 64 : min_length;
+        if (a_new_length < min_length) {
+            a_new_length = min_length;
+        }
+
+        size_t m_write_pointer_index = m_write_pointer - m_pointer;
+        size_t m_read_pointer_index = m_read_pointer - m_pointer;
+        auto* new_pointer = allocator.allocate(a_new_length);
+        size_t to_copy = m_write_pointer_index < m_length ? m_write_pointer_index + 1 : m_length;
+        memcpy(new_pointer, m_pointer, to_copy);
+        free_buffer();
+        m_pointer = new_pointer;
+        m_length = static_cast<ULong>(a_new_length);
+        m_write_pointer = m_pointer + m_write_pointer_index;
+        m_read_pointer = m_pointer + m_read_pointer_index;
+    }
+}
+
+inline void Buffer::free_buffer() {
+    std::allocator<uint8_t> allocator;
+    if (m_owned) {
+        allocator.deallocate(m_pointer, m_length);
+        m_pointer = nullptr;
+        m_length = 0;
+    } else {
+        m_pointer = nullptr;
+        m_length = 0;
+    }
+    m_read_pointer = nullptr;
+    m_write_pointer = nullptr;
+}
+
+}  // namespace dcps
+}  // namespace intercom

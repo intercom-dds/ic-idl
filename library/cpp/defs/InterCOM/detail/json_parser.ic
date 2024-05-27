@@ -1,0 +1,1733 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+
+#include "InterCOM/dds_xtypes_constants.h"
+#include "InterCOM/json_parser.h"
+#include "InterCOM/member_info.h"
+
+namespace intercom {
+namespace detail {
+template <typename T>
+inline JsonNode json_error(const T& node, const char* str) {
+    JsonData data(str, strlen(str), 0, node.line());
+    return {JSON_PARSE_ERROR, data};
+}
+
+template <typename T>
+inline Char32 read_hex(T& reader) {
+    Char32 code = 0;
+    for (int i = 0; i < 4; ++i) {
+        int c = reader.getc();
+        if (c >= '0' && c <= '9') {
+            code = (code << 4) + (c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            code = (code << 4) + (c - 'a') + 10;
+        } else if (c >= 'A' && c <= 'F') {
+            code = (code << 4) + (c - 'A') + 10;
+        } else {
+            return UNICODE_INVALID;
+        }
+    }
+    return code;
+}
+
+inline char hex_character(int value) {
+    if (value >= 0 && value < 10) {
+        return static_cast<char>('0' + value);
+    }
+    if (value < 16) {
+        return static_cast<char>('a' + value - 10);
+    }
+    return '0';
+}
+
+template <typename T>
+inline Char32 read_unicode(T& reader) {
+    Char32 code = 0;
+    int c = reader.getc();
+    if (c == '\\') {
+        c = reader.getc();
+        if (c == 'u') {
+            code = read_hex(reader);
+            if ((code & ~0x7FF) == 0xD800) {  // Surrogate pair
+                if (reader.getc() == '\\' && reader.getc() == 'u') {
+                    Char16 pair[2];
+                    pair[0] = static_cast<UShort>(code);
+                    pair[1] = static_cast<UShort>(read_hex(reader));
+                    readCharCode<UTF16>(code, pair);
+                } else {
+                    code = UNICODE_INVALID;
+                }
+            }
+        } else {
+            switch (c) {
+            case '\\':
+                code = '\\';
+                break;
+            case '"':
+                code = '"';
+                break;
+            case '/':
+                code = '/';
+                break;
+            case 'b':
+                code = '\b';
+                break;
+            case 'f':
+                code = '\f';
+                break;
+            case 'n':
+                code = '\n';
+                break;
+            case 'r':
+                code = '\r';
+                break;
+            case 't':
+                code = '\t';
+                break;
+            default:
+                code = UNICODE_INVALID;
+                break;
+            }
+        }
+    } else {
+        int extra_bytes = 0;
+        if ((c & 0x80) == 0) {
+            extra_bytes = 0;
+            // code_min = 0x20;
+            code = static_cast<Char32>(c);
+        } else if ((c & 0xE0) == 0xC0) {
+            extra_bytes = 1;
+            // code_min = 0x80;
+            code = static_cast<Char32>(c & 0x1F);
+        } else if ((c & 0xF0) == 0xE0) {
+            extra_bytes = 2;
+            // code_min = 0x800;
+            code = static_cast<Char32>(c & 0x0F);
+        } else if ((c & 0xF8) == 0xF0) {
+            extra_bytes = 3;
+            // code_min = 0x10000;
+            code = static_cast<Char32>(c & 0x07);
+        } else if ((c & 0xC0) == 0x80) {
+            while ((reader.peek() & 0xC0) == 0x80) {
+                reader.getc();
+            }
+            code = UNICODE_INVALID;
+        }
+        for (int i = 1; i <= extra_bytes; ++i) {
+            c = reader.getc();
+            if ((c & 0xC0) == 0x80) {
+                code = (code << 6) + static_cast<Char32>(c & 0x3F);
+            } else {
+                code = UNICODE_INVALID;
+                break;
+            }
+        }
+        if (!isLegalUnicode(code) || code < 0x20) {
+            code = UNICODE_INVALID;
+        }
+    }
+    return code;
+}
+
+const char JSON_BEGIN_ARRAY = '[';
+
+const char JSON_END_ARRAY = ']';
+
+const char JSON_BEGIN_OBJECT = '{';
+
+const char JSON_END_OBJECT = '}';
+
+const char JSON_QUOTE = '"';
+
+const char JSON_COLON = ':';
+
+const char JSON_COMMA = ',';
+
+const char JSON_TAB = '\t';
+
+const char JSON_NEWLINE = '\n';
+
+const char JSON_CR = '\r';
+
+const char JSON_SPACE = ' ';
+
+template <typename T>
+inline void json_consume_ws(T& data) {
+    while (true) {
+        int c = data.peek();
+        switch (c) {
+        case JSON_TAB:
+        case JSON_NEWLINE:
+        case JSON_CR:
+        case JSON_SPACE:
+            data.getc();
+            break;
+        default:
+            return;
+        }
+    }
+}
+
+template <typename T>
+inline bool json_consume_separator(T& data, char sep) {
+    json_consume_ws(data);
+    if (data.getc() != sep) {
+        return false;
+    }
+    json_consume_ws(data);
+    return true;
+}
+
+template <typename T>
+JsonNode json_consume_string(T& data);
+
+template <typename T>
+JsonNode json_consume_array(T& data, int level);
+
+template <typename T>
+JsonNode json_consume_object(T& data, int level);
+
+template <typename T>
+JsonNode json_consume_true(T& data);
+
+template <typename T>
+JsonNode json_consume_false(T& data);
+
+template <typename T>
+JsonNode json_consume_null(T& data);
+
+template <typename T>
+JsonNode json_consume_number(T& data);
+
+template <typename T>
+inline JsonNode json_parse(T& data, int level = 0) {
+    JsonNode res;
+    if (level < 1024) {
+        json_consume_ws(data);
+        switch (data.peek()) {
+        case JSON_QUOTE:
+            res = json_consume_string(data);
+            break;
+        case JSON_BEGIN_ARRAY:
+            res = json_consume_array(data, level);
+            break;
+        case JSON_BEGIN_OBJECT:
+            res = json_consume_object(data, level);
+            break;
+        case 'f':
+            res = json_consume_false(data);
+            break;
+        case 't':
+            res = json_consume_true(data);
+            break;
+        case 'n':
+            res = json_consume_null(data);
+            break;
+        default:
+            res = json_consume_number(data);
+            break;
+        }
+    } else {
+        res = json_error(data, "Nesting too deep");
+    }
+    return res;
+}
+
+inline bool is_numeric(int c) {
+    return c >= '0' && c <= '9';
+}
+
+template <typename T>
+inline JsonNode json_consume_number(T& data) {
+    typename T::state_type start_pos = data.current();
+    bool has_frac = false;
+    int c = data.getc();
+    if (c == '-') {
+        c = data.getc();
+    }
+    if (c == '0') {
+        c = data.peek();
+    } else {
+        if (c >= '1' && c <= '9') {
+            c = data.peek();
+        } else {
+            return json_error(start_pos, "Malformed number, no integer digit");
+        }
+        while (is_numeric(c)) {
+            data.getc();
+            c = data.peek();
+        }
+    }
+    if (c == '.') {
+        has_frac = true;
+        data.getc();
+        c = data.getc();
+        if (is_numeric(c)) {
+            c = data.peek();
+        } else {
+            return json_error(start_pos, "Malformed number, no number in fraction");
+        }
+        while (is_numeric(c)) {
+            data.getc();
+            c = data.peek();
+        }
+    }
+    if (c == 'e' || c == 'E') {
+        has_frac = true;
+        data.getc();
+        c = data.getc();
+        if (c == '+' || c == '-') {
+            c = data.getc();
+        }
+        if (is_numeric(c)) {
+            c = data.peek();
+        } else {
+            return json_error(start_pos, "Malformed number, missing exponential after e");
+        }
+        while (is_numeric(c)) {
+            data.getc();
+            c = data.peek();
+        }
+    }
+    return {has_frac ? JSON_FLOAT : JSON_INTEGER, data.fromState(start_pos)};
+}
+
+template <typename T>
+inline JsonNode json_consume_null(T& data) {
+    if (data.getc() == 'n' && data.getc() == 'u' && data.getc() == 'l' && data.getc() == 'l') {
+        return {JSON_NULL, "null"};
+    }
+    return json_error(data, "Expected null value");
+}
+
+template <typename T>
+inline JsonNode json_consume_true(T& data) {
+    if (data.getc() == 't' && data.getc() == 'r' && data.getc() == 'u' && data.getc() == 'e') {
+        return {JSON_BOOL, "true"};
+    }
+    return json_error(data, "Expected true value");
+}
+
+template <typename T>
+inline JsonNode json_consume_false(T& data) {
+    if (data.getc() == 'f' && data.getc() == 'a' && data.getc() == 'l' && data.getc() == 's' &&
+        data.getc() == 'e') {
+        return {JSON_BOOL, "false"};
+    }
+    return json_error(data, "Expected false value");
+}
+
+template <typename T>
+inline JsonNode json_consume_object(T& data, int level) {
+    data.getc();
+    json_consume_ws(data);
+    typename T::state_type start_pos = data.current();
+    typename T::state_type end_pos = data.current();
+    size_t element_count = 0;
+    if (data.peek() != JSON_END_OBJECT) {
+        for (;;) {
+            {
+                JsonNode key = json_parse(data, level + 1);
+                if (key.get_type() != JSON_STRING) {
+                    return json_error(start_pos, "JSON object expected string key");
+                }
+                if (key.get_type() == JSON_PARSE_ERROR) {
+                    return key;
+                }
+            }
+            if (!json_consume_separator(data, JSON_COLON)) {
+                return json_error(start_pos, "Expected JSON_COLON separator");
+            }
+            {
+                JsonNode value = json_parse(data, level + 1);
+                if (value.get_type() == JSON_PARSE_ERROR) {
+                    return value;
+                }
+            }
+            ++element_count;
+            end_pos = data.current();
+            json_consume_ws(data);
+            int c = data.getc();
+            if (c == JSON_END_OBJECT) {
+                break;
+            }
+            if (c != JSON_COMMA) {
+                return json_error(start_pos, "Expected JSON_COMMA separator or end of object");
+            }
+        }
+    } else {
+        data.getc();
+    }
+    return {JSON_OBJECT, end_pos.fromState(start_pos), element_count};
+}
+
+template <typename T>
+inline JsonNode json_consume_array(T& data, int level) {
+    data.getc();
+    json_consume_ws(data);
+    typename T::state_type start_pos = data.current();
+    typename T::state_type end_pos = data.current();
+    size_t element_count = 0;
+    if (data.peek() != JSON_END_ARRAY) {
+        for (;;) {
+            {
+                JsonNode value = json_parse(data, level + 1);
+                if (value.get_type() == JSON_PARSE_ERROR) {
+                    return value;
+                }
+            }
+            end_pos = data.current();
+            ++element_count;
+            json_consume_ws(data);
+            int c = data.getc();
+            if (c == JSON_END_ARRAY) {
+                break;
+            }
+            if (c != JSON_COMMA) {
+                return json_error(start_pos, "Expected JSON_COMMA separator or end of object");
+            }
+        }
+    } else {
+        data.getc();
+    }
+    return {JSON_ARRAY, end_pos.fromState(start_pos), element_count};
+}
+
+template <typename T>
+inline JsonNode json_consume_string(T& data) {
+    data.getc();
+    typename T::state_type start_pos = data.current();
+    while (data.peek() != JSON_QUOTE) {
+        Char32 code = read_unicode(data);
+        if (code == UNICODE_INVALID) {
+            return json_error(start_pos, "Illegal value in string");
+        }
+    }
+    auto res = JsonNode(JSON_STRING, data.fromState(start_pos));
+    data.getc();
+    return res;
+}
+
+inline bool
+string_to_double_in_string_sequence(intercom::string_view text, double& value, int* end_ptr) {
+    bool result = true;  // Assume all will be well.
+    value = 0.0;
+    std::istringstream iss((std::string(text)));
+    iss.imbue(std::locale::classic());  // Force locale
+    iss >> value;
+    if (end_ptr != nullptr) {
+        if (iss.eof(
+            ))  // In VS2010 tellg() may not return -1 at eof so we check the eof flag instead.
+        {
+            *end_ptr = -1;
+        } else {
+            *end_ptr = static_cast<int>(iss.tellg());
+        }
+    }
+    // Note: The failbit flag can be set at eof, specifically check that if
+    // failbit is set that eof bit is NOT set.
+    if ((iss.fail() && !(iss.eof())) || iss.bad()) {
+        result = false;
+    }
+    return result;
+}
+
+inline std::string stdprintf(const char* format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    auto len = std::vsnprintf(nullptr, 0, format, ap);
+    va_end(ap);
+    if (len < 0) {
+        throw std::runtime_error("Invalid format string passed to vsnprintf");
+    }
+    std::vector<char> vec(len + 1);
+    va_start(ap, format);
+    std::vsnprintf(vec.data(), len + 1, format, ap);
+    va_end(ap);
+    return vec.data();
+}
+}  // namespace detail
+
+inline Char32 JsonData::read_unicode() {
+    return detail::read_unicode(*this);
+}
+
+inline JsonNode JsonNode::from_data(intercom::string_view str) {
+    JsonData data(str.data(), str.length());
+    return detail::json_parse(data);
+}
+
+inline JsonNode JsonNode::from_data(JsonData& data) {
+    return detail::json_parse(data);
+}
+
+inline JsonNode JsonNode::from_data(JsonStream& data) {
+    return detail::json_parse(data);
+}
+
+inline bool JsonNode::get_array(std::vector<JsonNode>& value) const {
+    if (m_type == JSON_ARRAY) {
+        JsonData data(m_data);
+        if (m_value_count > 0) {
+            value.push_back(detail::json_parse(data));
+        }
+        for (size_t i = 1; i < m_value_count; ++i) {
+            detail::json_consume_separator(data, detail::JSON_COMMA);
+            value.push_back(detail::json_parse(data));
+        }
+        return true;
+    }
+    if (m_type == JSON_OBJECT) {
+        JsonData data(m_data);
+        for (size_t i = 0; i < m_value_count; ++i) {
+            if (i != 0) {
+                detail::json_consume_separator(data, detail::JSON_COMMA);
+            }
+            value.push_back(detail::json_parse(data));
+            detail::json_consume_separator(data, detail::JSON_COLON);
+            value.push_back(detail::json_parse(data));
+        }
+        return true;
+    }
+    return false;
+}
+
+inline bool JsonNode::get_object(std::map<std::string, JsonNode>& value) const {
+    if (m_type == JSON_OBJECT) {
+        JsonData data(m_data);
+        for (size_t i = 0; i < m_value_count; ++i) {
+            if (i != 0) {
+                detail::json_consume_separator(data, detail::JSON_COMMA);
+            }
+            JsonNode key = detail::json_parse(data);
+            detail::json_consume_separator(data, detail::JSON_COLON);
+            JsonNode valueNode = detail::json_parse(data);
+            std::string keyString;
+            if (key.get_string(keyString)) {
+                value[keyString] = valueNode;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+inline bool JsonNode::get_object(std::vector<std::pair<JsonNode, JsonNode>>& value) const {
+    if (m_type == JSON_OBJECT) {
+        JsonData data(m_data);
+        for (size_t i = 0; i < m_value_count; ++i) {
+            if (i != 0) {
+                detail::json_consume_separator(data, detail::JSON_COMMA);
+            }
+            JsonNode key = detail::json_parse(data);
+            detail::json_consume_separator(data, detail::JSON_COLON);
+            JsonNode valueNode = detail::json_parse(data);
+            value.emplace_back(key, valueNode);
+        }
+        return true;
+    }
+    return false;
+}
+
+inline bool JsonNode::get_object_as_vector(std::vector<JsonNode>& value) const {
+    if (m_type == JSON_OBJECT) {
+        JsonData data(m_data);
+        for (size_t i = 0; i < m_value_count; ++i) {
+            if (i != 0) {
+                detail::json_consume_separator(data, detail::JSON_COMMA);
+            }
+            JsonNode key = detail::json_parse(data);
+            detail::json_consume_separator(data, detail::JSON_COLON);
+            JsonNode valueNode = detail::json_parse(data);
+            value.push_back(key);
+            value.push_back(valueNode);
+        }
+        return true;
+    }
+    return false;
+}
+
+inline bool JsonNode::get_bool(bool& value) const {
+    if (m_type != JSON_BOOL) {
+        return false;
+    }
+    value = m_type == JSON_BOOL && m_data.length() == 4;
+    return true;
+}
+
+inline bool JsonNode::get_number(Double& value) const {
+    if (m_type != JSON_INTEGER && m_type != JSON_FLOAT) {
+        return false;
+    }
+    return detail::string_to_double_in_string_sequence(m_data.str(), value, nullptr);
+}
+
+inline JsonWriter::JsonWriter(
+    std::ostream& out,
+    SerializerFlags flags,
+    int indent_step,
+    int indent_level
+)
+    : m_out(out), m_flags(flags), m_indentStep(indent_step), m_indentLevel(indent_level) {}
+
+inline JsonWriter::JsonWriter(std::ostream& out, bool pretty, int indent_step, int indent_level)
+    : m_out(out),
+      m_flags(pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{}),
+      m_indentStep(indent_step),
+      m_indentLevel(indent_level) {}
+
+inline void JsonWriter::reset(int indent_level) {
+    m_indentLevel = indent_level;
+    m_needComma = false;
+}
+
+inline void JsonWriter::startObject() {
+    maybeComma();
+    put('{');
+    newline();
+    ++m_indentLevel;
+    m_needComma = false;
+}
+
+inline void JsonWriter::endObject() {
+    --m_indentLevel;
+    if (m_needComma) {
+        newline();
+    }
+    put('}');
+    m_needComma = true;
+}
+
+inline void JsonWriter::startArray() {
+    maybeComma();
+    put('[');
+    newline();
+    ++m_indentLevel;
+    m_needComma = false;
+}
+
+inline void JsonWriter::endArray() {
+    --m_indentLevel;
+    if (m_needComma) {
+        newline();
+    }
+    put(']');
+    m_needComma = true;
+}
+
+inline std::ostream& JsonWriter::stream() {
+    return m_type_stack[m_level].tmp_out ? *m_type_stack[m_level].tmp_out : m_out;
+}
+
+inline void JsonWriter::write(bool value) {
+    maybeComma();
+    if (value) {
+        put('t');
+        put('r');
+        put('u');
+        put('e');
+    } else {
+        put('f');
+        put('a');
+        put('l');
+        put('s');
+        put('e');
+    }
+    m_needComma = true;
+}
+
+inline void JsonWriter::writeNull() {
+    maybeComma();
+    put('n');
+    put('u');
+    put('l');
+    put('l');
+    m_needComma = true;
+}
+
+#define NUM_WRITER(type, format)                                                    \
+    inline void JsonWriter::write(type value) {                                     \
+        maybeComma();                                                               \
+        if (std::isnan(value) || std::isinf(value)) {                               \
+            writeNull();                                                            \
+        } else {                                                                    \
+            auto formatted = detail::stdprintf(format, static_cast<double>(value)); \
+            for (auto c : formatted) put(c);                                        \
+            m_needComma = true;                                                     \
+        }                                                                           \
+    }
+
+NUM_WRITER(Float, "%.7e");
+
+NUM_WRITER(Double, "%.16e");
+
+inline void JsonWriter::writeString(const std::string& value) {
+    maybeComma();
+    put('"');
+    const char* str = value.c_str();
+    while (*str) {
+        Char32 code = 0;
+        str += readCharCode<UTF8>(code, str);
+        char buf[4];
+        int len = writeCharCode<DEFAULT_ENCODING>(buf, code);
+        if (len == 1) {
+            putEscaped(buf[0]);
+        } else {
+            for (int i = 0; i < len; ++i) {
+                put(buf[i]);
+            }
+        }
+    }
+    put('"');
+    m_needComma = true;
+}
+
+inline void JsonWriter::writeString(const std::u16string& value) {
+    maybeComma();
+    put('"');
+    const char16_t* str = value.c_str();
+    while (*str) {
+        Char32 code = 0;
+        str += readCharCode(code, str);
+        char buf[4];
+        int len = writeCharCode<UTF8>(buf, code);
+        if (len == 1) {
+            putEscaped(buf[0]);
+        } else {
+            for (int i = 0; i < len; ++i) {
+                put(buf[i]);
+            }
+        }
+    }
+    put('"');
+    m_needComma = true;
+}
+
+inline void JsonWriter::writeString(const std::wstring& value) {
+    maybeComma();
+    put('"');
+    const wchar_t* str = value.c_str();
+    while (*str) {
+        Char32 code = 0;
+        str += readCharCode(code, str);
+        char buf[4];
+        int len = writeCharCode<UTF8>(buf, code);
+        if (len == 1) {
+            putEscaped(buf[0]);
+        } else {
+            for (int i = 0; i < len; ++i) {
+                put(buf[i]);
+            }
+        }
+    }
+    put('"');
+    m_needComma = true;
+}
+
+inline void JsonWriter::write(LongDouble value) {
+    write(static_cast<double>(value));
+}
+
+inline void JsonWriter::write(unsigned char value) {
+    writeUnsigned(value);
+}
+
+inline void JsonWriter::write(char value) {
+    std::string str;
+    str.resize(1);
+    str[0] = value;
+    writeString(str);
+}
+
+inline void JsonWriter::write(UShort value) {
+    writeUnsigned(value);
+}
+
+inline void JsonWriter::write(Short value) {
+    writeInteger(value);
+}
+
+inline void JsonWriter::write(ULong value) {
+    writeUnsigned(value);
+}
+
+inline void JsonWriter::write(Long value) {
+    writeInteger(value);
+}
+
+inline void JsonWriter::write(ULongLong value) {
+    writeUnsigned(value);
+}
+
+inline void JsonWriter::write(LongLong value) {
+    writeInteger(value);
+}
+
+inline void JsonWriter::write(const JsonNode& node) {
+    switch (node.get_type()) {
+    case JSON_FLOAT: {
+        Double value;
+        if (node.get_number(value)) {
+            write(value);
+        }
+        break;
+    }
+    case JSON_INTEGER: {
+        LongLong value;
+        if (node.get_integer(value)) {
+            write(value);
+        }
+        break;
+    }
+    case JSON_STRING: {
+        std::string value;
+        if (node.get_string(value)) {
+            writeString(value);
+        }
+        break;
+    }
+    case JSON_ARRAY: {
+        std::vector<JsonNode> nodes;
+        if (node.get_array(nodes)) {
+            startArray();
+            {
+                for (auto& n : nodes) {
+                    write(n);
+                }
+            }
+            endArray();
+        }
+        break;
+    }
+    case JSON_OBJECT: {
+        std::vector<JsonNode> nodes;
+        std::string keyString;
+        if (node.get_object_as_vector(nodes)) {
+            startObject();
+            for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+                if (it->get_string(keyString)) {
+                    writeKey(keyString);
+                    ++it;
+                    if (it != nodes.end()) {
+                        write(*it);
+                    }
+                }
+            }
+        }
+        endObject();
+        break;
+    }
+    case JSON_BOOL: {
+        bool value;
+        if (node.get_bool(value)) {
+            write(value);
+        }
+        break;
+    }
+    case JSON_NULL:
+        writeNull();
+        break;
+    case JSON_PARSE_ERROR:
+        break;
+    }
+}
+
+inline bool JsonWriter::isPretty() const {
+    return (m_flags & SERIALIZER_PRETTY) != 0;
+}
+
+inline void JsonWriter::setPretty(bool pretty) {
+    if (pretty) {
+        m_flags |= SERIALIZER_PRETTY;
+    } else {
+        m_flags &= ~SERIALIZER_PRETTY;
+    }
+}
+
+inline bool JsonWriter::is_key() const {
+    const Stack& stack = m_type_stack[m_level];
+    return stack.is_object && (stack.pos % 2) == 0;
+}
+
+inline void JsonWriter::maybeComma() {
+    Stack& stack = m_type_stack[m_level];
+    if (m_needComma) {
+        if (is_key()) {
+            put(':');
+            if (isPretty()) {
+                put(' ');
+            }
+        } else {
+            put(',');
+            newline();
+        }
+        stack.pos++;
+        m_needComma = false;
+        if (is_key()) {
+            newline();
+        }
+    } else if (m_level > 0 && stack.pos == 0 &&
+               (stack.info.kind == dcps::xtypes::TK_STRUCTURE ||
+                stack.info.kind == dcps::xtypes::TK_UNION ||
+                stack.info.kind == dcps::xtypes::TK_MAP ||
+                stack.info.kind == dcps::xtypes::TK_ARRAY ||
+                stack.info.kind == dcps::xtypes::TK_SEQUENCE)) {
+        newline();
+    }
+}
+
+inline void JsonWriter::newline() {
+    if (isPretty() && !m_is_new_line) {
+        put('\n');
+        m_is_new_line = true;
+    }
+}
+
+inline void JsonWriter::putEscaped(char c) {
+    switch (c) {
+    case '\\':
+        put('\\');
+        put('\\');
+        break;
+    case '"':
+        put('\\');
+        put('"');
+        break;
+    case '\b':
+        put('\\');
+        put('b');
+        break;
+    case '\f':
+        put('\\');
+        put('f');
+        break;
+    case '\n':
+        put('\\');
+        put('n');
+        break;
+    case '\r':
+        put('\\');
+        put('r');
+        break;
+    case '\t':
+        put('\\');
+        put('t');
+        break;
+    default:
+        if (c < 0x20) {
+            put('\\');
+            put('u');
+            put('0');
+            put('0');
+            put(detail::hex_character(c >> 4));
+            put(detail::hex_character(c & 0xf));
+        } else {
+            put(c);
+        }
+    }
+}
+
+inline void JsonWriter::put(char c) {
+    if (isPretty() && m_is_new_line) {  // Indent line before writing character
+        for (ULong i = 0; i < m_indentLevel * m_indentStep; ++i) {
+            stream().put(' ');
+        }
+        m_is_new_line = false;
+    }
+    stream().put(c);
+}
+
+inline void JsonWriter::begin_type(const TypeInfo& a_info) {
+    if (m_level + 1 >= dcps::cts::MAX_NESTED_DEPTH) {
+        throw std::runtime_error("Cannot serialize type, nesting too deep");
+    }
+    maybeComma();
+    bool is_object = false;
+    switch (a_info.kind) {
+    case dcps::xtypes::TK_STRUCTURE:
+    case dcps::xtypes::TK_UNION:
+        if (a_info.name != intercom::string_view("intercom::JsonValue")) {
+            startObject();
+        }
+        is_object = true;
+        break;
+    case dcps::xtypes::TK_MAP:
+        startObject();
+        is_object = true;
+        break;
+    case dcps::xtypes::TK_SEQUENCE:
+    case dcps::xtypes::TK_ARRAY:
+        startArray();
+        break;
+    default:
+        break;
+    }
+    ++m_level;
+    m_type_stack[m_level].info = a_info;
+    m_type_stack[m_level].is_object = is_object;
+    m_type_stack[m_level].pos = 0;
+    if (m_type_stack[m_level - 1].tmp_out || a_info.kind == dcps::xtypes::TK_UNION) {
+        m_type_stack[m_level].tmp_out.reset(new std::stringstream());
+        m_type_stack[m_level].tmp_is_new_line = m_is_new_line;
+    }
+}
+
+inline void JsonWriter::end_type() {
+    auto& stack = m_type_stack[m_level];
+    --m_level;
+    if (stack.tmp_out) {
+        stream() << stack.tmp_out->str();
+        stack.tmp_out.reset();
+    }
+
+    switch (stack.info.kind) {
+    case dcps::xtypes::TK_STRUCTURE:
+    case dcps::xtypes::TK_UNION:
+        if (stack.info.name != intercom::string_view("intercom::JsonValue")) {
+            endObject();
+        }
+        break;
+    case dcps::xtypes::TK_MAP:
+        endObject();
+        break;
+    case dcps::xtypes::TK_SEQUENCE:
+    case dcps::xtypes::TK_ARRAY:
+        endArray();
+        break;
+    default:
+        break;
+    }
+    if (m_level == 0) {
+        newline();
+    }
+}
+
+inline ULong JsonWriter::type_level() {
+    return m_level;
+}
+
+inline bool JsonWriter::is_relevant(const MemberInfo&) {
+    return true;
+}
+
+inline bool JsonWriter::begin_member(const MemberInfo& a_member) {
+    if (m_type_stack[m_level].info.kind == dcps::xtypes::TK_UNION) {
+        if (a_member.name == intercom::string_view("_d")) {
+            if (m_type_stack[m_level].info.name != intercom::string_view("intercom::JsonValue")) {
+                writeKey("$discriminator");
+            } else {
+                m_type_stack[m_level].pos++;
+            }
+        } else {
+            if (a_member.case_labels && a_member.case_labels[0] == 1) {
+                m_type_stack[m_level].tmp_out.reset(new std::stringstream());
+                m_needComma = false;
+                m_type_stack[m_level].pos = 0;
+                m_is_new_line = m_type_stack[m_level].tmp_is_new_line;
+            }
+            if (m_type_stack[m_level].info.name != intercom::string_view("intercom::JsonValue")) {
+                writeKey(a_member.name);
+            } else {
+                m_type_stack[m_level].pos++;
+            }
+        }
+    } else {
+        writeKey(a_member.name);
+    }
+    return true;
+}
+
+inline bool JsonWriter::begin_optional_member(const MemberInfo& a_member, bool a_present) {
+    return a_present && begin_member(a_member);
+}
+
+inline void JsonWriter::end_member() {}
+
+inline void JsonWriter::write_length(ULong) {}
+
+inline void JsonWriter::write(const corba::EightBitString_var& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const corba::Utf8String_var& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const corba::Utf16String_var& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const corba::Utf32String_var& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const std::string& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const std::wstring& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const std::u16string& a_value) {
+    writeString(a_value);
+}
+
+inline void JsonWriter::write(const Boolean* a_values, ULong a_count, const TypeInfo&) {
+    maybeComma();
+    if (is_key() && a_count == 1) {
+        put('"');
+        write(a_values[0]);
+        put('"');
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            write(a_values[i]);
+        }
+    }
+}
+
+inline void JsonWriter::write(const Int8* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const UInt8* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const Int16* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const UInt16* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const Int32* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const UInt32* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const Int64* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const UInt64* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        write_integer(a_values[i], a_info);
+    }
+}
+
+inline void JsonWriter::write(const Float32* a_values, ULong a_count, const TypeInfo&) {
+    maybeComma();
+    if (is_key() && a_count == 1) {
+        put('"');
+        write(a_values[0]);
+        put('"');
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            write(a_values[i]);
+        }
+    }
+}
+
+inline void JsonWriter::write(const Float64* a_values, ULong a_count, const TypeInfo&) {
+    maybeComma();
+    if (is_key() && a_count == 1) {
+        put('"');
+        write(a_values[0]);
+        put('"');
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            write(a_values[i]);
+        }
+    }
+}
+
+inline void JsonWriter::write(const Float128* a_values, ULong a_count, const TypeInfo&) {
+    maybeComma();
+    if (is_key() && a_count == 1) {
+        put('"');
+        write(a_values[0]);
+        put('"');
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            write(a_values[i]);
+        }
+    }
+}
+
+inline void JsonWriter::write(const Char8* a_values, ULong a_count, const TypeInfo&) {
+    corba::Utf8String_var str;
+    str.reserve(1);
+    for (ULong i = 0; i < a_count; ++i) {
+        str[0] = a_values[i];
+        write(str);
+    }
+}
+
+inline void JsonWriter::write(const Char16* a_values, ULong a_count, const TypeInfo&) {
+    corba::Utf16String_var str;
+    str.reserve(1);
+    for (ULong i = 0; i < a_count; ++i) {
+        str[0] = a_values[i];
+        write(str);
+    }
+}
+
+inline void JsonWriter::write(const Char32* a_values, ULong a_count, const TypeInfo&) {
+    corba::Utf16String_var str;
+    str.reserve(1);
+    for (ULong i = 0; i < a_count; ++i) {
+        str[0] = static_cast<corba::Utf16String_var::value_type>(a_values[i]);
+        write(str);
+    }
+}
+
+template <typename T>
+inline void JsonWriter::write_integer(T& a_value, const TypeInfo& a_info) {
+    if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
+        a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
+        std::string str;
+        if (enumToString(str, a_value, &a_info)) {
+            if (m_type_stack[m_level].info.name != nullptr &&
+                m_type_stack[m_level].info.name == intercom::string_view("intercom::JsonValue") &&
+                str == "JSON_VALUE_NULL") {
+                writeNull();
+            } else {
+                writeString(str);
+            }
+            return;
+        }
+    }
+    maybeComma();
+    if (is_key()) {
+        put('"');
+        write(a_value);
+        put('"');
+    } else {
+        write(a_value);
+    }
+}
+
+inline SerializerFlags JsonWriter::flags() const {
+    return m_flags;
+}
+
+inline void JsonReader::begin_type(const TypeInfo& a_info) {
+    if (m_level >= dcps::cts::MAX_NESTED_DEPTH - 1) {
+        throw std::runtime_error("Cannot deserialize type, nesting too deep");
+    }
+    JsonNode current = m_type_stack[m_level].current;
+    ++m_level;
+    m_type_stack[m_level].info = a_info;
+    switch (a_info.kind) {
+    case dcps::xtypes::TK_STRUCTURE:
+        current.get_object(m_type_stack[m_level].current_map);
+        break;
+    case dcps::xtypes::TK_UNION:
+        if (a_info.name != intercom::string_view("intercom::JsonValue")) {
+            current.get_object(m_type_stack[m_level].current_map);
+        } else {
+            switch (current.get_type()) {
+            case JSON_FLOAT:
+                m_type_stack[m_level].current_map["float_value"] = current;
+                break;
+            case JSON_INTEGER:
+                m_type_stack[m_level].current_map["integer_value"] = current;
+                break;
+            case JSON_STRING:
+                m_type_stack[m_level].current_map["string_value"] = current;
+                break;
+            case JSON_ARRAY:
+                m_type_stack[m_level].current_map["array_value"] = current;
+                break;
+            case JSON_OBJECT:
+                m_type_stack[m_level].current_map["object_value"] = current;
+                break;
+            case JSON_BOOL:
+                m_type_stack[m_level].current_map["bool_value"] = current;
+                break;
+            case JSON_NULL:
+                m_type_stack[m_level].current_string = "JSON_VALUE_NULL";
+                m_type_stack[m_level].current_map["_d"] =
+                    JsonNode(JSON_STRING, m_type_stack[m_level].current_string);
+                break;
+            case JSON_PARSE_ERROR:
+                throw std::runtime_error("Cannot deserialize type, no valid data");
+            }
+        }
+        break;
+    case dcps::xtypes::TK_SEQUENCE:
+        if (current.get_type() != JSON_ARRAY) {
+            // Expecting an array, interpret current non-array element as a vector with
+            // length 1. This allows one-element sequences to be represented
+            // as X instead of [ X ], which the DDS JSON standard allows in
+            // some places.
+            m_type_stack[m_level].current_vec.resize(1);
+            m_type_stack[m_level].count = 0;
+            m_type_stack[m_level].current = m_type_stack[m_level].current_vec[0] = current;
+        } else {
+            current.get_array(m_type_stack[m_level].current_vec);
+            m_type_stack[m_level].count = 0;
+            if (!m_type_stack[m_level].current_vec.empty()) {
+                m_type_stack[m_level].current = m_type_stack[m_level].current_vec[0];
+            }
+        }
+        break;
+    case dcps::xtypes::TK_MAP:
+        if (current.get_type() == JSON_OBJECT) {
+            current.get_object_as_vector(m_type_stack[m_level].current_vec);
+        } else {
+            current.get_array(m_type_stack[m_level].current_vec);
+        }
+        m_type_stack[m_level].count = 0;
+        if (!m_type_stack[m_level].current_vec.empty()) {
+            m_type_stack[m_level].current = m_type_stack[m_level].current_vec[0];
+        }
+        break;
+    case dcps::xtypes::TK_ARRAY:
+        current.get_array(m_type_stack[m_level].current_vec);
+        m_type_stack[m_level].count = 0;
+        if (!m_type_stack[m_level].current_vec.empty()) {
+            m_type_stack[m_level].current = m_type_stack[m_level].current_vec[0];
+        }
+        break;
+    default:
+        m_type_stack[m_level].current = current;
+        break;
+    }
+}
+
+inline void JsonReader::end_type() {
+    auto& stack = m_type_stack[m_level];
+    if ((m_flags & SERIALIZER_STRICT) != 0 &&
+        stack.current_map.size() > stack.consumed_keys.size()) {
+        std::stringstream missing;
+        for (auto& value : stack.current_map) {
+            if (stack.consumed_keys.find(value.first) == stack.consumed_keys.end()) {
+                missing << value.first << " ";
+            }
+        }
+        throw std::runtime_error("The following object values were not parsed: " + missing.str());
+    }
+    m_type_stack[m_level--] = {};
+    m_type_stack[m_level].next_value();
+}
+
+inline ULong JsonReader::type_level() {
+    return m_level;
+}
+
+inline bool JsonReader::find_member(const MemberInfo& a_member) {
+    auto& stack = m_type_stack[m_level];
+    auto it = stack.current_map.find(a_member.name);
+
+    // For unions, lookup both "_d" and "$discriminator" for explicit discriminator.
+    // If not found, see if the only key in the map matches a known member, and if so
+    // add its case value as an implicit discriminator.
+    if (it == stack.current_map.end() && stack.info.kind == dcps::xtypes::TK_UNION &&
+        a_member.name == intercom::string_view("_d")) {
+        it = stack.current_map.find("$discriminator");
+        if (it == stack.current_map.end() && stack.current_map.size() == 1) {
+            auto key = stack.current_map.begin()->first;
+            for (ULong i = 0; i < stack.info.member_count; ++i) {
+                if (stack.info.members[i].name == key && stack.info.members[i].case_labels) {
+                    stack.current_string = std::to_string(stack.info.members[i].case_labels[1]);
+                    stack.current = JsonNode(JSON_INTEGER, stack.current_string);
+                    return true;
+                }
+            }
+        }
+    }
+    if (it != stack.current_map.end()) {
+        if ((m_flags & SERIALIZER_STRICT) != 0) {
+            stack.consumed_keys.insert(it->first);
+        }
+        stack.current = it->second;
+        return true;
+    }
+
+    if ((m_flags & SERIALIZER_STRICT) != 0) {
+        throw std::runtime_error("Key '" + std::string(a_member.name) + "' not found");
+    }
+
+    return false;
+}
+
+inline bool JsonReader::can_skip_type() {
+    return false;
+}
+
+inline ULong JsonReader::read_length() {
+    Stack& stack = m_type_stack[m_level];
+    if (stack.info.kind == dcps::xtypes::TK_MAP) {
+        return static_cast<ULong>(stack.current_vec.size() / 2);
+    }
+    return static_cast<ULong>(stack.current_vec.size());
+}
+
+inline void JsonReader::read(corba::EightBitString_var& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(corba::Utf8String_var& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(corba::Utf16String_var& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(corba::Utf32String_var& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(std::string& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(std::wstring& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(std::u16string& a_value) {
+    if (!m_type_stack[m_level].current.get_string(a_value)) {
+        throw std::runtime_error("Cannot deserialize type, failed to read string");
+    }
+    m_type_stack[m_level].next_value();
+}
+
+inline void JsonReader::read(Boolean* a_values, ULong a_count, const TypeInfo&) {
+    for (ULong i = 0; i < a_count; ++i) {
+        if (!m_type_stack[m_level].current.get_bool(a_values[i])) {
+            std::string str;
+            int64_t int_val;
+            if (m_type_stack[m_level].current.get_string(str)) {
+                if (str == "true") {
+                    a_values[i] = true;
+                } else if (str == "false") {
+                    a_values[i] = false;
+                } else {
+                    throw std::runtime_error(
+                        "Cannot deserialize type, failed to read boolean from string"
+                    );
+                }
+            } else if (m_type_stack[m_level].current.get_integer(int_val)) {
+                if (int_val == 1) {
+                    a_values[i] = true;
+                } else if (int_val == 0) {
+                    a_values[i] = false;
+                } else {
+                    throw std::runtime_error(
+                        "Cannot deserialize type, failed to read boolean from integer"
+                    );
+                }
+            } else {
+                throw std::runtime_error("Cannot deserialize type, failed to read boolean");
+            }
+        }
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Int8* a_values, ULong a_count, const TypeInfo& a_info) {
+    if (m_type_stack[m_level].current.get_type() == JSON_STRING &&
+        (m_type_stack[m_level].info.kind == dcps::xtypes::TK_SEQUENCE ||
+         m_type_stack[m_level].info.kind == dcps::xtypes::TK_ARRAY) &&
+        (m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_BYTE ||
+         m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_INT8)) {
+        corba::String_var val;
+        m_type_stack[m_level].current.get_string(val);
+        if (val.size() != a_count) {
+            throw std::runtime_error("Unexpected string length for byte array");
+        }
+        memcpy(a_values, val.in(), a_count);
+        m_type_stack[m_level].next_value();
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            read_integer(a_values[i], a_info);
+            m_type_stack[m_level].next_value();
+        }
+    }
+}
+
+inline void JsonReader::read(UInt8* a_values, ULong a_count, const TypeInfo& a_info) {
+    if (m_type_stack[m_level].current.get_type() == JSON_STRING &&
+        (m_type_stack[m_level].info.kind == dcps::xtypes::TK_SEQUENCE ||
+         m_type_stack[m_level].info.kind == dcps::xtypes::TK_ARRAY) &&
+        (m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_BYTE ||
+         m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_UINT8)) {
+        corba::String_var val;
+        m_type_stack[m_level].current.get_string(val);
+        if (val.size() != a_count) {
+            throw std::runtime_error("Unexpected string length for byte array");
+        }
+        memcpy(a_values, val.in(), a_count);
+        m_type_stack[m_level].next_value();
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            read_integer(a_values[i], a_info);
+            m_type_stack[m_level].next_value();
+        }
+    }
+}
+
+inline void JsonReader::read(Int16* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(UInt16* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Int32* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(UInt32* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Int64* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(UInt64* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Float32* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        double x;
+        if (!m_type_stack[m_level].current.get_number(x) && !read_from_string(x, a_info)) {
+            throw std::runtime_error("Cannot deserialize type, failed to read float");
+        }
+        a_values[i] = static_cast<Float32>(x);
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Float64* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        if (!m_type_stack[m_level].current.get_number(a_values[i]) &&
+            !read_from_string(a_values[i], a_info)) {
+            throw std::runtime_error("Cannot deserialize type, failed to read float");
+        }
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Float128* a_values, ULong a_count, const TypeInfo& a_info) {
+    for (ULong i = 0; i < a_count; ++i) {
+        double x;
+        if (!m_type_stack[m_level].current.get_number(x) && !read_from_string(x, a_info)) {
+            throw std::runtime_error("Cannot deserialize type, failed to read float");
+        }
+        a_values[i] = x;
+        m_type_stack[m_level].next_value();
+    }
+}
+
+inline void JsonReader::read(Char8* a_values, ULong a_count, const TypeInfo&) {
+    for (ULong i = 0; i < a_count; ++i) {
+        corba::Utf8String_var str;
+        read(str);
+        a_values[i] = str[0];
+    }
+}
+
+inline void JsonReader::read(Char16* a_values, ULong a_count, const TypeInfo&) {
+    for (ULong i = 0; i < a_count; ++i) {
+        corba::Utf16String_var str;
+        read(str);
+        a_values[i] = str[0];
+    }
+}
+
+inline void JsonReader::read(Char32* a_values, ULong a_count, const TypeInfo&) {
+    for (ULong i = 0; i < a_count; ++i) {
+        corba::Utf32String_var str;
+        read(str);
+        a_values[i] = str[0];
+    }
+}
+
+template <typename T>
+inline bool JsonReader::read_from_string(T& a_value, const TypeInfo&) {
+    JsonNode current_node = m_type_stack[m_level].current;
+    if (current_node.get_type() == JSON_STRING) {
+        std::string str;
+        try {
+            if (current_node.get_string(str)) {
+                // Lookup const value
+                auto it = m_const_map.find(str);
+                if (it != m_const_map.end()) {
+                    JsonReader reader(it->second);
+                    dcps::cts::GenericUnmarshal(reader).io(a_value);
+                    return true;
+                }
+                // Attempt to parse string as integer
+                JsonReader reader(str.c_str(), static_cast<ULong>(str.size()));
+                reader.m_const_map = m_const_map;
+                dcps::cts::GenericUnmarshal(reader).io(a_value);
+                return true;
+            }
+        } catch (...) {
+        }
+    }
+    return false;
+}
+
+template <typename T>
+inline void JsonReader::read_integer(T& a_value, const TypeInfo& a_info) {
+    JsonNode current_node = m_type_stack[m_level].current;
+    if (current_node.get_integer(a_value)) {
+        return;
+    }
+    if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
+        a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
+        corba::String_var str;
+        ULongLong uval;
+        if (current_node.get_string(str) && stringToEnum(uval, str.c_str(), &a_info)) {
+            a_value = static_cast<T>(uval);
+            return;
+        }
+        throw std::runtime_error("Unknown enumeration value in json unmarshal");
+    }
+    if (read_from_string(a_value, a_info)) {
+        return;
+    }
+    throw std::runtime_error("Failed to read integer value");
+}
+
+inline JsonReader::JsonReader(intercom::string_view a_text, SerializerFlags a_flags)
+    : JsonReader(a_text.data(), static_cast<ULong>(a_text.length()), a_flags) {}
+
+inline JsonReader::JsonReader(const char* a_text, ULong a_length, SerializerFlags a_flags)
+    : m_data(new JsonData(a_text, a_length)), m_flags(a_flags) {
+    m_type_stack[0].current = JsonNode::from_data(*m_data);
+    m_type_stack[0].info = Null_type_info;
+    if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
+        throw std::runtime_error("Invalid JSON data supplied to JsonReader");
+    }
+}
+
+inline JsonReader::JsonReader(std::istream& a_stream, SerializerFlags a_flags)
+    : m_stream(new JsonStream(a_stream)), m_flags(a_flags) {
+    m_type_stack[0].current = JsonNode::from_data(*m_stream);
+    m_type_stack[0].info = Null_type_info;
+    if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
+        throw std::runtime_error("Invalid JSON data supplied to JsonReader");
+    }
+}
+
+inline JsonReader::JsonReader(const JsonNode& a_node, SerializerFlags a_flags) : m_flags(a_flags) {
+    m_type_stack[0].current = a_node;
+    m_type_stack[0].info = Null_type_info;
+    if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
+        throw std::runtime_error("Invalid JSON data supplied to JsonReader");
+    }
+}
+
+inline void JsonReader::end_member() {}
+
+inline SerializerFlags JsonReader::flags() const {
+    return m_flags;
+}
+
+inline void JsonReader::add_const_value(const std::string& a_name, const JsonNode& a_value) {
+    m_const_map[a_name] = a_value;
+}
+
+inline void JsonReader::Stack::next_value() {
+    if (count + 1 < current_vec.size()) {
+        current = current_vec[++count];
+    } else {
+        current = JsonNode();
+    }
+}
+}  // namespace intercom

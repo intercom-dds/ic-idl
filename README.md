@@ -32,12 +32,14 @@ used everywhere in CMake as a temporary hack to make things work.
 
 ## Building
 
-`ic-idl` is bootstrapped. To build a full-fledged version, we first need to
-compile a reduced, C++-only version of `ic-idl` that is capable of emitting
-simplified type definitions which will be used in the full-fledged version.
-This process is automated through the `xtask` application.
+Building `ic-idl` requires a C++17 toolchain and a Rust 1.70+ toolchain.
 
-To build a full release:
+`ic-idl` is bootstrapped. To build a full-fledged version, we first need to
+compile a reduced, C++-only version that is capable of emitting simplified type
+definitions which will be used in the full-fledged version.
+
+The bootstrap process is automated through the `xtask` application. To build a
+full release:
 
 ```sh
 cargo xtask release
@@ -65,13 +67,13 @@ cargo test --workspace
 Development documentation can be generated with:
 
 ```
-cargo doc --document-private-items --no-deps
+cargo doc --document-private-items --no-deps --workspace
 ```
 
 ## MSRV
 
 - MSRV for the compiler is 1.74.
-- MSRV for the Rust serialization library is 1.70.
+- MSRV for the serialization library is 1.70.
 
 The MSRV may change between minor version releases and is not considered a
 semver-breaking change.

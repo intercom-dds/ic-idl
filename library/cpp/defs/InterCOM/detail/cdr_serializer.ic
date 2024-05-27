@@ -1,0 +1,1045 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#ifndef INTERCOM_CDRSERIALIZER_IC
+#define INTERCOM_CDRSERIALIZER_IC
+
+#include <cassert>
+#include <cstring>
+#include <stdexcept>
+
+#include "InterCOM/buffer.h"
+#include "InterCOM/cdr_serializer.h"
+#include "InterCOM/dds_xtypes_constants.h"
+#include "InterCOM/serialization.h"
+
+#ifdef INTERCOM_COMPILER_MICROSOFT
+#  pragma warning(push)
+#  pragma warning(disable : 4702)  // Unreachable code
+#endif
+
+namespace intercom {
+namespace dcps {
+namespace cts {
+
+inline SerializerFlags encodingForEncapsulation(EncapsulationSchemeIdentifier a_scheme) {
+    switch (a_scheme) {
+    case ENC_CDR_BE:
+    case ENC_PL_CDR_BE:
+        return CDR_BIG_ENDIAN | CDR_XCDR1;
+    case ENC_CDR_LE:
+    case ENC_PL_CDR_LE:
+        return CDR_LITTLE_ENDIAN | CDR_XCDR1;
+    case ENC_CDR2_BE:
+    case ENC_PL_CDR2_BE:
+    case ENC_DELIMITED_CDR2_BE:
+    case ENC_CDR2_BE_OLD:
+    case ENC_PL_CDR2_BE_OLD:
+    case ENC_DELIMITED_CDR2_BE_OLD:
+        return CDR_BIG_ENDIAN | CDR_XCDR2;
+    case ENC_CDR2_LE:
+    case ENC_PL_CDR2_LE:
+    case ENC_DELIMITED_CDR2_LE:
+    case ENC_CDR2_LE_OLD:
+    case ENC_PL_CDR2_LE_OLD:
+    case ENC_DELIMITED_CDR2_LE_OLD:
+        return CDR_LITTLE_ENDIAN | CDR_XCDR2;
+    case ENC_PLAIN_CDR_BE:
+        return CDR_BIG_ENDIAN | CDR_XCDR_PLAIN;
+    case ENC_PLAIN_CDR_LE:
+        return CDR_LITTLE_ENDIAN | CDR_XCDR_PLAIN;
+    default:
+        throw std::runtime_error("Invalid encoding scheme, cannot deserialize sample");
+    }
+}
+
+inline void readEncapsulation(
+    intercom::span<const Octet> a_data,
+    SerializerFlags& a_encoding,
+    ULong& a_data_length
+) {
+    if (a_data.size() < 4) {
+        throw std::runtime_error("Buffer too short in readEncapsulation");
+    }
+    auto scheme = static_cast<EncapsulationSchemeIdentifier>(a_data[1]);
+    ULong padding = a_data[3] & 3U;
+    if (a_data.size() < 4 + padding) {
+        throw std::runtime_error("Buffer too short for padding in readEncapsulation");
+    }
+    a_encoding = encodingForEncapsulation(scheme);
+    a_data_length = static_cast<ULong>(a_data.size()) - 4 - padding;
+}
+
+inline void
+writeEncapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info) {
+    EncapsulationSchemeIdentifier scheme;
+    if (a_encoding & CDR_XCDR2) {
+        if (a_type_info.flags & xtypes::IS_MUTABLE) {
+            scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_PL_CDR2_LE : ENC_PL_CDR2_BE;
+        } else if (a_type_info.flags & xtypes::IS_APPENDABLE) {
+            scheme =
+                (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_DELIMITED_CDR2_LE : ENC_DELIMITED_CDR2_BE;
+        } else  // final
+        {
+            scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_CDR2_LE : ENC_CDR2_BE;
+        }
+    } else if (a_encoding & CDR_XCDR_PLAIN) {
+        scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_PLAIN_CDR_LE : ENC_PLAIN_CDR_BE;
+    } else {
+        if (a_type_info.flags & xtypes::IS_MUTABLE) {
+            scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_PL_CDR_LE : ENC_PL_CDR_BE;
+        } else  // final
+        {
+            scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_CDR_LE : ENC_CDR_BE;
+        }
+    }
+    a_buffer.reserve_write(4);
+    a_buffer.m_write_pointer[0] = 0;
+    a_buffer.m_write_pointer[1] = static_cast<Octet>(scheme);
+    a_buffer.m_write_pointer[2] = 0;
+    a_buffer.m_write_pointer[3] = 0;
+    a_buffer.advance_write(4);
+}
+
+inline bool has_xcdr2_dheader(const TypeInfo* a_type_info) {
+    if (!a_type_info) {
+        return false;
+    }
+    switch (a_type_info->kind) {
+    case xtypes::TK_STRUCTURE:
+    case xtypes::TK_UNION:
+        return (a_type_info->flags & (xtypes::IS_APPENDABLE | xtypes::IS_MUTABLE)) != 0;
+    case xtypes::TK_SEQUENCE:
+    case xtypes::TK_ARRAY:
+        return a_type_info->element_type->kind >= xtypes::TK_STRING8;
+    case xtypes::TK_MAP:
+        return a_type_info->element_type->kind >= xtypes::TK_STRING8 ||
+               a_type_info->key_type->kind >= xtypes::TK_STRING8;
+    default:
+        return false;
+    }
+}
+
+inline ULong get_xcdr2_dheader_lc(const TypeInfo* a_type_info) {
+    switch (a_type_info->kind) {
+    case xtypes::TK_SEQUENCE:
+        if (a_type_info->element_type->kind == xtypes::TK_CHAR8 ||
+            a_type_info->element_type->kind == xtypes::TK_INT8 ||
+            a_type_info->element_type->kind == xtypes::TK_UINT8 ||
+            a_type_info->element_type->kind == xtypes::TK_BYTE) {
+            return 5;
+        } else if (a_type_info->element_type->kind == xtypes::TK_INT32 ||
+                   a_type_info->element_type->kind == xtypes::TK_UINT32 ||
+                   a_type_info->element_type->kind == xtypes::TK_FLOAT32) {
+            return 6;
+        } else if (a_type_info->element_type->kind == xtypes::TK_INT64 ||
+                   a_type_info->element_type->kind == xtypes::TK_UINT64 ||
+                   a_type_info->element_type->kind == xtypes::TK_FLOAT64) {
+            return 7;
+        }
+        break;
+    case xtypes::TK_STRING8:
+        return 5;
+    default:
+        break;
+    }
+    return has_xcdr2_dheader(a_type_info) ? 5 : 4;
+}
+
+template <>
+inline void CdrWriter::reserve<UInt8>(ULong a_count) {
+    ULong totalLength = a_count + m_buffer.write_index();
+    if (totalLength > m_buffer.length()) {
+        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    }
+}
+
+template <>
+inline void CdrWriter::reserve<UShort>(ULong a_count) {
+    ULong to_pad = (m_buffer.write_index() - align_base()) & 1u;
+    ULong totalLength = a_count * sizeof(UShort) + to_pad + m_buffer.write_index();
+    if (totalLength > m_buffer.length()) {
+        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    }
+    if (to_pad) {
+        *m_buffer.m_write_pointer++ = '\0';
+    }
+}
+
+template <>
+inline void CdrWriter::reserve<ULong>(ULong a_count) {
+    ULong to_pad =
+        (sizeof(ULong) - (m_buffer.write_index() - align_base()) % sizeof(ULong)) % sizeof(ULong);
+    ULong totalLength = a_count * sizeof(ULong) + to_pad + m_buffer.write_index();
+    if (totalLength > m_buffer.length()) {
+        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    }
+    for (size_t i = 0; i < to_pad; i++) {
+        *m_buffer.m_write_pointer++ = '\0';
+    }
+}
+
+template <>
+inline void CdrWriter::reserve<ULongLong>(ULong a_count) {
+    const ULong align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    ULong to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
+    ULong totalLength = a_count * sizeof(ULongLong) + to_pad + m_buffer.write_index();
+    if (totalLength > m_buffer.length()) {
+        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    }
+    for (size_t i = 0; i < to_pad; i++) {
+        *m_buffer.m_write_pointer++ = '\0';
+    }
+}
+
+template <>
+inline void CdrWriter::reserve<LongDouble>(ULong a_count) {
+    const ULong align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    ULong to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
+    ULong totalLength = a_count * 16 + to_pad + m_buffer.write_index();
+    if (totalLength > m_buffer.length()) {
+        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    }
+    for (size_t i = 0; i < to_pad; i++) {
+        *m_buffer.m_write_pointer++ = '\0';
+    }
+}
+
+inline ULong CdrWriter::align_base() const {
+    return m_type_stack[m_level].align_base;
+}
+
+template <typename T>
+void CdrWriter::write_value(Octet* buf, T value) {
+    using value_type = typename unsigned_type_of<T>::type;
+    const char* bytes = reinterpret_cast<const char*>(&value);
+    if (flags() & CDR_BIG_ENDIAN) {
+        put_uint<BigEndian, value_type>(buf, *reinterpret_cast<const value_type*>(bytes));
+    } else {
+        put_uint<LittleEndian, value_type>(buf, *reinterpret_cast<const value_type*>(bytes));
+    }
+}
+
+template <typename T>
+void CdrWriter::write_values(const T* a_values, ULong a_count) {
+    using value_type = typename unsigned_type_of<T>::type;
+    reserve<value_type>(a_count);
+    const char* bytes = reinterpret_cast<const char*>(a_values);
+    Octet* ptr = m_buffer.m_write_pointer;
+    if (flags() & CDR_BIG_ENDIAN) {
+        for (ULong i = 0; i < a_count; ++i) {
+            put_uint<BigEndian, value_type>(ptr, *reinterpret_cast<const value_type*>(bytes));
+            bytes += sizeof(T);
+            ptr += sizeof(T);
+        }
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            put_uint<LittleEndian, value_type>(ptr, *reinterpret_cast<const value_type*>(bytes));
+            bytes += sizeof(T);
+            ptr += sizeof(T);
+        }
+    }
+    m_buffer.m_write_pointer = ptr;
+}
+
+inline void CdrWriter::begin_type(const TypeInfo& a_type_info) {
+    if (m_level + 1 >= MAX_NESTED_DEPTH) {
+        throw std::runtime_error("Cannot serialize type, nesting too deep");
+    }
+    TypeStackElement& element = m_type_stack[m_level + 1];
+    if ((flags() & CDR_XCDR2) != 0 && has_xcdr2_dheader(&a_type_info)) {
+        reserve<ULong>(1);
+        m_buffer.m_write_pointer += sizeof(ULong);
+    }
+    element.type_base = m_buffer.write_index();
+    element.align_base = align_base();
+    element.type_info = &a_type_info;
+    element.member_info = nullptr;
+    ++m_level;
+}
+
+inline void CdrWriter::end_type() {
+    TypeStackElement& element = m_type_stack[m_level];
+    if ((flags() & CDR_XCDR2) != 0 && has_xcdr2_dheader(element.type_info)) {
+        ULong offset = element.type_base - sizeof(ULong);
+        write_value<ULong>(m_buffer.pointer(offset), m_buffer.write_index() - element.type_base);
+    }
+    if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
+        (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        reserve<ULong>(1);
+        UShort pid =
+            (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
+        write_value(m_buffer.m_write_pointer, pid);
+        write_value(m_buffer.m_write_pointer + 2, static_cast<UShort>(0));
+        m_buffer.m_write_pointer += sizeof(ULong);
+    }
+    --m_level;
+}
+
+inline bool CdrWriter::begin_member(const MemberInfo& a_member_info) {
+    TypeStackElement& element = m_type_stack[m_level];
+    element.member_info = &a_member_info;
+
+    if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
+        ((element.type_info->flags & xtypes::IS_MUTABLE) != 0 ||
+         (a_member_info.flags & xtypes::IS_OPTIONAL) != 0)) {
+        reserve<ULong>(1);
+        m_buffer.m_write_pointer += sizeof(ULong);
+        m_type_stack[m_level].align_base = m_buffer.write_index();
+    } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        begin_mutable_member_v2();
+    }
+    return true;
+}
+
+inline bool CdrWriter::begin_optional_member(const MemberInfo& a_member_info, bool a_present) {
+    TypeStackElement& element = m_type_stack[m_level];
+    if (!a_present && (element.type_info->flags & xtypes::IS_MUTABLE) != 0 &&
+        (flags() & CDR_XCDR_PLAIN) == 0) {
+        return false;
+    }
+    if ((flags() & CDR_XCDR_PLAIN) != 0 ||
+        ((flags() & CDR_XCDR2) != 0 && (m_type_stack[m_level].type_info->flags &
+                                        (xtypes::IS_FINAL | xtypes::IS_APPENDABLE)) != 0)) {
+        m_buffer.reserve_write(1);
+        write_value(m_buffer.m_write_pointer++, a_present);
+    }
+    return begin_member(a_member_info);
+}
+
+inline void CdrWriter::end_member() {
+    TypeStackElement& element = m_type_stack[m_level];
+    if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
+        ((element.type_info->flags & xtypes::IS_MUTABLE) != 0 ||
+         (element.member_info->flags & xtypes::IS_OPTIONAL) != 0)) {
+        end_mutable_member_v1();
+    } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        end_mutable_member_v2();
+    }
+    element.align_base = m_type_stack[m_level - 1].align_base;
+    element.member_info = nullptr;
+}
+
+inline void CdrWriter::write_length(ULong a_length) {
+    reserve<ULong>(1);
+    write_value(m_buffer.m_write_pointer, a_length);
+    m_buffer.m_write_pointer += sizeof(ULong);
+}
+
+inline void CdrWriter::write(const corba::EightBitString_var& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    if (size > 0) {
+        write_length(size + 1);
+        write_values(a_value.in(), size + 1);
+    } else {
+        write_length(0);
+    }
+}
+
+inline void CdrWriter::write(const corba::Utf8String_var& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    if (size > 0) {
+        write_length(size + 1);
+        write_values(a_value.in(), size + 1);
+    } else {
+        write_length(0);
+    }
+}
+
+inline void CdrWriter::write(const corba::Utf16String_var& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    write_length(size * sizeof(UInt16));
+    if (size > 0) {
+        write_values(a_value.in(), size);
+    }
+}
+
+inline void CdrWriter::write(const corba::Utf32String_var& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    write_length(size * sizeof(UInt32));
+    if (size > 0) {
+        write_values(a_value.in(), size);
+    }
+}
+
+inline void CdrWriter::write(const std::string& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    if (size > 0) {
+        write_length(size + 1);
+        write_values(a_value.c_str(), size + 1);
+    } else {
+        write_length(0);
+    }
+}
+
+inline void CdrWriter::write(const std::u16string& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    write_length(size * sizeof(UInt16));
+    reserve<UShort>(size);
+    for (ULong i = 0; i < size; ++i) {
+        write_value(m_buffer.m_write_pointer, static_cast<UShort>(a_value[i]));
+        m_buffer.m_write_pointer += sizeof(UShort);
+    }
+}
+
+inline void CdrWriter::write(const std::wstring& a_value) {
+    auto size = static_cast<ULong>(a_value.size());
+    write_length(size * sizeof(UInt16));
+    reserve<UShort>(size);
+    for (ULong i = 0; i < size; ++i) {
+        write_value(m_buffer.m_write_pointer, static_cast<UShort>(a_value[i]));
+        m_buffer.m_write_pointer += sizeof(UShort);
+    }
+}
+
+inline SerializerFlags CdrWriter::flags() const {
+    return m_flags;
+}
+
+inline ULong CdrWriter::type_level() {
+    return m_level;
+}
+
+inline bool CdrWriter::is_relevant(const MemberInfo&) {
+    return true;
+}
+
+inline CdrReader::CdrReader(const Buffer& a_out, SerializerFlags a_flags)
+    : m_buffer(a_out), m_flags(a_flags), m_level(0) {
+    if ((m_flags & (CDR_BIG_ENDIAN | CDR_LITTLE_ENDIAN)) == 0) {
+        m_flags |= (m_flags & 1) ? CDR_LITTLE_ENDIAN : CDR_BIG_ENDIAN;
+    }
+    if ((m_flags & (CDR_XCDR1 | CDR_XCDR2 | CDR_XCDR_PLAIN | CDR_XCDR_BUILTIN)) == 0) {
+        m_flags |= CDR_XCDR1;
+    }
+    m_type_stack[0].length_delimited = false;
+    m_type_stack[0].align_base = m_buffer.read_index();
+    m_type_stack[0].type_base = m_buffer.read_index();
+    m_type_stack[0].type_length = m_buffer.unread_bytes();
+    m_type_stack[0].member_base = m_buffer.read_index();
+    m_type_stack[0].member_length = m_buffer.unread_bytes();
+    m_type_stack[0].type_info = nullptr;
+}
+
+inline CdrReader::CdrReader(const CdrReader& a_other, SerializerFlags a_flags)
+    : CdrReader(a_other.m_buffer, a_flags) {}
+
+template <>
+inline void CdrReader::reserve<UInt8>(ULong a_count) {
+    if (m_buffer.read_index() + a_count > available_bytes()) {
+        throw std::runtime_error("Attempting to read past end of available data");
+    }
+}
+
+template <>
+inline void CdrReader::reserve<UShort>(ULong a_count) {
+    ULong to_pad = (m_buffer.read_index() - align_base()) & 1u;
+    if (m_buffer.read_index() + to_pad + sizeof(UShort) * a_count > available_bytes()) {
+        throw std::runtime_error("Attempting to read past end of available data");
+    }
+    m_buffer.advance_read(to_pad);
+}
+
+template <>
+inline void CdrReader::reserve<ULong>(ULong a_count) {
+    const ULong align_size = sizeof(ULong);
+    ULong to_pad = (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
+    if (m_buffer.read_index() + to_pad + sizeof(ULong) * a_count > available_bytes()) {
+        throw std::runtime_error("Attempting to read past end of available data");
+    }
+    m_buffer.advance_read(to_pad);
+}
+
+template <>
+inline void CdrReader::reserve<ULongLong>(ULong a_count) {
+    const ULong align_size = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    ULong to_pad = (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
+    if (m_buffer.read_index() + to_pad + sizeof(ULongLong) * a_count > available_bytes()) {
+        throw std::runtime_error("Attempting to read past end of available data");
+    }
+    m_buffer.advance_read(to_pad);
+}
+
+template <>
+inline void CdrReader::reserve<LongDouble>(ULong a_count) {
+    const ULong align_size = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    ULong to_pad = (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
+    if (m_buffer.read_index() + to_pad + 16 * a_count > available_bytes()) {
+        throw std::runtime_error("Attempting to read past end of available data");
+    }
+    m_buffer.advance_read(to_pad);
+}
+
+inline ULong CdrReader::available_bytes() const {
+    const TypeStackElement& element = m_type_stack[m_level];
+    const auto bytes = element.member_base + element.member_length;
+    return std::min(bytes, m_buffer.readable_length());
+}
+
+inline ULong CdrReader::align_base() const {
+    return m_type_stack[m_level].align_base;
+}
+
+template <typename T>
+void CdrReader::read_value(const Octet* buf, T& value) {
+    using value_type = typename unsigned_type_of<T>::type;
+    char* bytes = reinterpret_cast<char*>(&value);
+    if (flags() & CDR_BIG_ENDIAN) {
+        get_uint<BigEndian, value_type>(buf, *reinterpret_cast<value_type*>(bytes));
+    } else {
+        get_uint<LittleEndian, value_type>(buf, *reinterpret_cast<value_type*>(bytes));
+    }
+}
+
+template <typename T>
+void CdrReader::read_values(T* a_values, ULong a_count) {
+    using value_type = typename unsigned_type_of<T>::type;
+    reserve<value_type>(a_count);
+    char* bytes = reinterpret_cast<char*>(a_values);
+    const Octet* ptr = m_buffer.m_read_pointer;
+    if (flags() & CDR_BIG_ENDIAN) {
+        for (ULong i = 0; i < a_count; ++i) {
+            get_uint<BigEndian, value_type>(ptr, *reinterpret_cast<value_type*>(bytes));
+            bytes += sizeof(T);
+            ptr += sizeof(T);
+        }
+    } else {
+        for (ULong i = 0; i < a_count; ++i) {
+            get_uint<LittleEndian, value_type>(ptr, *reinterpret_cast<value_type*>(bytes));
+            bytes += sizeof(T);
+            ptr += sizeof(T);
+        }
+    }
+    m_buffer.m_read_pointer = ptr;
+}
+
+inline void CdrReader::begin_type(const TypeInfo& a_info) {
+    if (m_level + 2 >= MAX_NESTED_DEPTH) {
+        throw std::runtime_error("Cannot deserialize type, nesting too deep");
+    }
+    TypeStackElement& parent = m_type_stack[m_level];
+    TypeStackElement& element = m_type_stack[m_level + 1];
+    element.length_delimited = false;
+    element.type_length = parent.member_length;
+    if ((flags() & CDR_XCDR_PLAIN) == 0 && parent.type_info &&
+        (parent.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        // If parent is mutable, trust type length
+        element.length_delimited = true;
+    }
+    if ((flags() & CDR_XCDR2) != 0 && has_xcdr2_dheader(&a_info)) {
+        // Length prefix, type starts after length value
+        element.length_delimited = true;
+        element.type_length = read_length();
+    } else if ((flags() & CDR_XCDR_PLAIN) == 0 && (a_info.flags & xtypes::IS_MUTABLE) != 0) {
+        // Mutable type, header starts at four byte alignment
+        reserve<ULong>(0);
+    }
+    element.type_base = m_buffer.read_index();
+    if (element.type_length + element.type_base > parent.member_base + parent.member_length) {
+        element.type_length = parent.member_base + parent.member_length - element.type_base;
+    }
+    element.align_base = parent.align_base;
+    element.member_base = element.type_base;
+    element.member_length = element.type_length;
+    element.type_info = &a_info;
+    ++m_level;
+}
+
+inline void CdrReader::end_type() {
+    TypeStackElement& element = m_type_stack[m_level];
+    if (element.length_delimited) {
+        m_buffer.read_index(element.type_base + element.type_length);
+    } else if ((flags() & CDR_XCDR_PLAIN) == 0 &&
+               (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        if (element.member_base != element.type_base ||
+            element.member_length != element.type_length) {
+            m_buffer.read_index(element.member_base + element.member_length);
+            element.member_length = element.type_length;
+            element.member_base = element.type_base;
+            element.align_base = m_type_stack[m_level - 1].align_base;
+        }
+        xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+        UShort sentinel =
+            (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
+        while (curr != sentinel && available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+            ULong curr_flag;
+            ULong length;
+            read_param_header_v1(curr, curr_flag, length);
+            m_buffer.advance_read(length);
+        }
+    }
+    --m_level;
+}
+
+inline bool CdrReader::can_skip_type() {
+    return m_type_stack[m_level].length_delimited;
+}
+
+inline bool CdrReader::find_member(const MemberInfo& a_member) {
+    TypeStackElement& element = m_type_stack[m_level];
+    if (element.member_base != element.type_base || element.member_length != element.type_length) {
+        m_buffer.read_index(element.member_base + element.member_length);
+        element.member_length = element.type_length;
+        element.member_base = element.type_base;
+        element.align_base = m_type_stack[m_level - 1].align_base;
+    }
+
+    if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
+        (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        return begin_mutable_member_v1(a_member);
+    } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        return begin_mutable_member_v2(a_member);
+    } else if ((a_member.flags & xtypes::IS_OPTIONAL) != 0) {
+        return begin_optional_member(a_member);
+    }
+    return available_bytes() > m_buffer.read_index();
+}
+
+inline SerializerFlags CdrReader::flags() const {
+    return m_flags;
+}
+
+inline ULong CdrReader::read_length() {
+    ULong len = 0;
+    reserve<ULong>(0);
+    if (available_bytes() > m_buffer.read_index()) {
+        ULong unread_bytes = available_bytes() - m_buffer.read_index();
+        if (unread_bytes < sizeof(ULong)) {
+            throw std::runtime_error("Index out of bounds in CdrReader::read_length");
+        }
+        read_value(m_buffer.m_read_pointer, len);
+        m_buffer.m_read_pointer += sizeof(ULong);
+        if (len > m_buffer.unread_bytes()) {
+            // Sanity check, shortest possible element size is one byte
+            throw std::runtime_error("Invalid length in CdrReader");
+        }
+    }
+    return len;
+}
+
+inline void CdrReader::read(corba::EightBitString_var& a_value) {
+    ULong len = read_length();
+    if (len > 0) {
+        --len;
+        a_value.reserve(len);
+        if (len > 0) {
+            read_values(&a_value[0], len);
+        }
+        m_buffer.m_read_pointer++;
+    } else {
+        a_value.clear();
+    }
+}
+
+inline void CdrReader::read(corba::Utf8String_var& a_value) {
+    ULong len = read_length();
+    if (len > 0) {
+        --len;
+        a_value.reserve(len);
+        if (len > 0) {
+            read_values(&a_value[0], len);
+        }
+        m_buffer.m_read_pointer++;
+    } else {
+        a_value.clear();
+    }
+}
+
+inline void CdrReader::read(corba::Utf16String_var& a_value) {
+    ULong len = read_length() / sizeof(UInt16);
+    if (len > 0) {
+        a_value.reserve(len);
+        if (len > 0) {
+            read_values(&a_value[0], len);
+        }
+    } else {
+        a_value.clear();
+    }
+}
+
+inline void CdrReader::read(corba::Utf32String_var& a_value) {
+    ULong len = read_length() / sizeof(UInt32);
+    if (len > 0) {
+        a_value.reserve(len);
+        if (len > 0) {
+            read_values(&a_value[0], len);
+        }
+    } else {
+        a_value.clear();
+    }
+}
+
+inline void CdrReader::read(std::string& a_value) {
+    ULong len = read_length();
+    if (len > 0) {
+        --len;
+        a_value.resize(len);
+        if (len > 0) {
+            read_values(&a_value[0], len);
+        }
+        m_buffer.m_read_pointer++;
+    } else {
+        a_value.clear();
+    }
+}
+
+inline void CdrReader::read(std::wstring& a_value) {
+    ULong len = read_length() / sizeof(UInt16);
+    if (len > 0) {
+        reserve<UShort>(len);
+        a_value.resize(len);
+        for (ULong i = 0; i < len; ++i) {
+            UShort char_value;
+            read_value(m_buffer.m_read_pointer, char_value);
+            a_value[i] = static_cast<std::wstring::value_type>(char_value);
+            m_buffer.m_read_pointer += sizeof(UShort);
+        }
+    } else {
+        a_value.clear();
+    }
+}
+
+inline void CdrReader::read(std::u16string& a_value) {
+    ULong len = read_length() / sizeof(UInt16);
+    if (len > 0) {
+        reserve<UShort>(len);
+        a_value.resize(len);
+        for (ULong i = 0; i < len; ++i) {
+            UShort char_value;
+            read_value(m_buffer.m_read_pointer, char_value);
+            a_value[i] = static_cast<std::u16string::value_type>(char_value);
+            m_buffer.m_read_pointer += sizeof(UShort);
+        }
+    } else {
+        a_value.clear();
+    }
+}
+
+inline ULong CdrReader::type_level() {
+    return m_level;
+}
+
+inline void CdrReader::end_member() {}
+
+inline CdrWriter::CdrWriter(Buffer& a_out, SerializerFlags a_flags)
+    : m_buffer(a_out), m_flags(a_flags), m_level(0) {
+    if ((m_flags & (CDR_BIG_ENDIAN | CDR_LITTLE_ENDIAN)) == 0) {
+        m_flags |= (m_flags & 1) ? CDR_LITTLE_ENDIAN : CDR_BIG_ENDIAN;
+    }
+    if ((m_flags & (CDR_XCDR1 | CDR_XCDR2 | CDR_XCDR_PLAIN | CDR_XCDR_BUILTIN)) == 0) {
+        m_flags |= CDR_XCDR1;
+    }
+    m_type_stack[0].type_base = m_buffer.write_index();
+    m_type_stack[0].align_base = m_buffer.write_index();
+    m_type_stack[0].type_info = nullptr;
+    m_type_stack[0].member_info = nullptr;
+}
+
+inline void CdrWriter::end_mutable_member_v1() {
+    TypeStackElement& element = m_type_stack[m_level];
+    if ((flags() & CDR_XCDR_BUILTIN) != 0) {
+        reserve<ULong>(0);
+    }
+    ULong written = m_buffer.write_index() - element.align_base;
+    if ((element.member_info->id != PID_LIST_END && element.member_info->id >= PID_EXTENDED) ||
+        written > 0xFFFF) {
+        reserve<ULong>(2);
+        Octet* head = m_buffer.pointer(element.align_base - sizeof(ULong));
+        memmove(head + 3 * sizeof(ULong), head + sizeof(ULong), written);
+        m_buffer.m_write_pointer += 2 * sizeof(ULong);
+
+        UShort pid = PID_EXTENDED;
+        UShort length = 2 * sizeof(ULong);
+        if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
+            pid |= PID_FLAG_MUST_UNDERSTAND;
+        }
+        if (element.member_info->flags & xtypes::IS_VENDOR_EXTENSION) {
+            pid |= PID_FLAG_IMPL_EXTENSION;
+        }
+        write_value(head, pid);
+        write_value(head + 2, length);
+        write_value(head + 4, element.member_info->id);
+        write_value(head + 8, written);
+    } else {
+        Octet* head = m_buffer.pointer(element.align_base - sizeof(ULong));
+        auto pid = static_cast<UShort>(element.member_info->id);
+        auto length = static_cast<UShort>(written);
+        if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
+            pid |= PID_FLAG_MUST_UNDERSTAND;
+        }
+        if (element.member_info->flags & xtypes::IS_VENDOR_EXTENSION) {
+            pid |= PID_FLAG_IMPL_EXTENSION;
+        }
+        write_value(head, pid);
+        write_value(head + 2, length);
+    }
+    element.align_base = m_type_stack[m_level - 1].align_base;
+}
+
+inline void CdrWriter::begin_mutable_member_v2() {
+    TypeStackElement& element = m_type_stack[m_level];
+    reserve<ULong>(2);
+    ULong lc = get_xcdr2_dheader_lc(element.member_info->type);
+    m_buffer.m_write_pointer += sizeof(ULong);
+    if (lc == 4) {
+        m_buffer.m_write_pointer += sizeof(ULong);
+    }
+    element.align_base = m_buffer.write_index();
+}
+
+inline void CdrWriter::end_mutable_member_v2() {
+    TypeStackElement& element = m_type_stack[m_level];
+    ULong lc = get_xcdr2_dheader_lc(element.member_info->type);
+    ULong element_header = 0;
+    if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
+        element_header |= (1 << 31);
+    }
+    element_header |= element.member_info->id & 0x0fffffff;
+    if (lc == 4) {
+        // Eight bytes reserved for header
+        ULong written = m_buffer.write_index() - element.align_base;
+        if (written == 1 || written == 2 || written == 4 || written == 8) {
+            memmove(
+                m_buffer.pointer(element.align_base - sizeof(ULong)),
+                m_buffer.pointer(element.align_base),
+                written
+            );
+            m_buffer.write_index(m_buffer.write_index() - sizeof(ULong));
+            switch (written) {
+            case 1:
+                element_header |= (0 << 28);
+                break;
+            case 2:
+                element_header |= (1 << 28);
+                break;
+            case 4:
+                element_header |= (2 << 28);
+                break;
+            case 8:
+                element_header |= (3 << 28);
+                break;
+            }
+            write_value(m_buffer.pointer(element.align_base - 2 * sizeof(ULong)), element_header);
+        } else {
+            element_header |= (lc << 28);
+            write_value(m_buffer.pointer(element.align_base - 2 * sizeof(ULong)), element_header);
+            write_value(m_buffer.pointer(element.align_base - sizeof(ULong)), written);
+        }
+    } else {
+        element_header |= (lc << 28);
+        write_value(m_buffer.pointer(element.align_base - sizeof(ULong)), element_header);
+    }
+    element.align_base = m_type_stack[m_level - 1].align_base;
+}
+
+inline bool CdrReader::begin_mutable_member_v1(const MemberInfo& a_member) {
+    TypeStackElement& element = m_type_stack[m_level];
+    UShort sentinel =
+        (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
+    ULong search_start = m_buffer.read_index();
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+        while (curr != sentinel && available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+            if (attempt == 1 && m_buffer.read_index() > search_start) {
+                return false;
+            }
+            ULong curr_flag;
+            ULong length;
+            read_param_header_v1(curr, curr_flag, length);
+            if (curr == a_member.id && length > 0 &&
+                (curr_flag & xtypes::IS_VENDOR_EXTENSION) ==
+                    (a_member.flags & xtypes::IS_VENDOR_EXTENSION)) {
+                element.member_base = m_buffer.read_index();
+                element.align_base = m_buffer.read_index();
+                element.member_length = length;
+                return true;
+            }
+            m_buffer.advance_read(length);
+        }
+        if (attempt == 0) {
+            m_buffer.read_index(element.type_base);
+        }
+    }
+    return false;
+}
+
+inline bool CdrReader::begin_mutable_member_v2(const MemberInfo& a_member) {
+    TypeStackElement& element = m_type_stack[m_level];
+    ULong search_start = m_buffer.read_index();
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        while (available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+            if (attempt == 1 && m_buffer.read_index() > search_start) {
+                return false;
+            }
+            xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+            ULong curr_flag;
+            ULong length;
+            read_param_header_v2(curr, curr_flag, length);
+            if (curr == a_member.id && length > 0) {
+                element.member_base = m_buffer.read_index();
+                element.align_base = m_buffer.read_index();
+                element.member_length = length;
+                return true;
+            }
+            m_buffer.advance_read(length);
+        }
+        if (attempt == 0) {
+            m_buffer.read_index(element.type_base);
+        }
+    }
+    return false;
+}
+
+inline bool CdrReader::begin_optional_member(const MemberInfo& a_member) {
+    TypeStackElement& element = m_type_stack[m_level];
+    if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0) {
+        if (available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+            xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+            ULong curr_flag;
+            ULong length;
+            read_param_header_v1(curr, curr_flag, length);
+            if (curr == a_member.id && length > 0) {
+                element.member_base = m_buffer.read_index();
+                element.align_base = m_buffer.read_index();
+                element.member_length = length;
+                return true;
+            }
+        }
+    } else {
+        if (available_bytes() > m_buffer.read_index()) {
+            bool has_value;
+            read_values(&has_value, 1);
+            return has_value;
+        }
+    }
+    return false;
+}
+
+inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, ULong& flag, ULong& length) {
+    reserve<ULong>(1);
+    UShort header[2];
+    read_values(header, 2);
+    flag = 0;
+    flag |= (header[0] & PID_FLAG_MUST_UNDERSTAND) ? xtypes::IS_MUST_UNDERSTAND
+                                                   : xtypes::MemberFlagBits{};
+    flag |= (header[0] & PID_FLAG_IMPL_EXTENSION) ? xtypes::IS_VENDOR_EXTENSION
+                                                  : xtypes::MemberFlagExtendedBits{};
+    if ((header[0] & PID_PID_MASK) == PID_EXTENDED) {
+        ULong extended[2];
+        read_values(extended, 2);
+        id = extended[0] & 0xFFFFFFF;  // Upper 4 bits are reserved for future use
+        length = extended[1];
+        if (header[1] > 2 * sizeof(ULong)) {
+            reserve<UInt8>(header[1] - 2 * sizeof(ULong));
+            m_buffer.advance_read(header[1] - 2 * sizeof(ULong));
+        }
+    } else {
+        id = header[0] & PID_PID_MASK;
+        length = header[1];
+    }
+    if (length > available_bytes() || m_buffer.read_index() + length > available_bytes()) {
+        throw std::runtime_error("Parameter length too long in CdrReader::read_param_header_v1");
+    }
+}
+
+inline void CdrReader::read_param_header_v2(xtypes::MemberId& id, ULong& flag, ULong& length) {
+    read_values(&id, 1);
+    flag = 0;
+    flag |= (id & (1 << 31)) ? xtypes::IS_MUST_UNDERSTAND : 0;
+    ULong lc = (id >> 28) & 0x7;
+    id &= 0x0fffffff;
+    switch (lc) {
+    case 0:
+        length = 1;
+        break;
+    case 1:
+        length = 2;
+        break;
+    case 2:
+        length = 4;
+        break;
+    case 3:
+        length = 8;
+        break;
+    case 4:
+        length = read_length();
+        break;
+    case 5:
+        reserve<ULong>(1);
+        length = read_length() + sizeof(ULong);
+        m_buffer.m_read_pointer -= sizeof(ULong);
+        break;
+    case 6:
+        reserve<ULong>(1);
+        length = 4 * read_length() + sizeof(ULong);
+        m_buffer.m_read_pointer -= sizeof(ULong);
+        break;
+    case 7:
+        reserve<ULong>(1);
+        length = 8 * read_length() + sizeof(ULong);
+        m_buffer.m_read_pointer -= sizeof(ULong);
+        break;
+    }
+    if (length > available_bytes() || m_buffer.read_index() + length > available_bytes()) {
+        throw std::runtime_error("Parameter length too long in CdrReader::read_param_header_v2");
+    }
+}
+
+}  // namespace cts
+}  // namespace dcps
+
+inline void transform_cdr(
+    dcps::Buffer& a_out,
+    SerializerFlags a_out_encoding,
+    dcps::Buffer& a_in,
+    SerializerFlags a_in_encoding,
+    const TypeInfo& a_type_info
+) {
+    dcps::cts::CdrWriter writer(a_out, a_out_encoding);
+    dcps::cts::CdrReader reader(a_in, a_in_encoding);
+    if ((a_in_encoding & SERIALIZER_KEY_ONLY) && (a_out_encoding & SERIALIZER_KEY_ONLY)) {
+        dcps::cts::KeyOnlyWriter<dcps::cts::CdrWriter> key_only_writer(writer);
+        dcps::cts::KeyOnlyReader<dcps::cts::CdrReader> key_only_reader(reader);
+        dcps::cts::transform(key_only_writer, key_only_reader, a_type_info);
+    } else if (a_in_encoding & SERIALIZER_KEY_ONLY) {
+        dcps::cts::KeyOnlyReader<dcps::cts::CdrReader> key_only_reader(reader);
+        dcps::cts::transform(writer, key_only_reader, a_type_info);
+    } else if (a_out_encoding & SERIALIZER_KEY_ONLY) {
+        dcps::cts::KeyOnlyWriter<dcps::cts::CdrWriter> key_only_writer(writer);
+        dcps::cts::transform(key_only_writer, reader, a_type_info);
+    } else {
+        dcps::cts::transform(writer, reader, a_type_info);
+    }
+}
+
+}  // namespace intercom
+
+#ifdef INTERCOM_COMPILER_MICROSOFT
+#  pragma warning(pop)
+#endif
+
+#endif

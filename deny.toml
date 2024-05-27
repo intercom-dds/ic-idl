@@ -35,6 +35,7 @@ allow = [
     "Unicode-DFS-2016",
 ]
 confidence-threshold = 1.0
+unused-allowed-license = "allow"
 
 [licenses.private]
 ignore = true

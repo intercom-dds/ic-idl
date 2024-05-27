@@ -62,7 +62,11 @@ add_compile_definitions(
 
 include_directories(
     ../../../external/fmt/defs
-    ../../../external/utils/defs
+)
+
+add_subdirectory(
+    ../../../external/utils
+    ${CMAKE_CURRENT_BINARY_DIR}/utils
 )
 
 add_library(ic_parser OBJECT
@@ -103,24 +107,16 @@ target_include_directories(ic_ptree PUBLIC defs)
 
 target_include_directories(ic_ptree PRIVATE
     ../../../library/cpp/defs
-    ../../../external/utils/defs
 )
 
 target_include_directories(ic_ptree SYSTEM PRIVATE
     ../../../external/fmt/defs
 )
 
-target_link_libraries(ic_ptree PRIVATE ic_parser)
-
-add_library(ic_utils OBJECT
-    ../../../external/utils/src/string_utils.cpp
+target_link_libraries(ic_ptree PRIVATE
+    ic_parser
+    ic_utils
 )
-
-target_include_directories(ic_utils PUBLIC
-    ../../../library/cpp/defs
-)
-
-target_link_libraries(ic_ptree PRIVATE ic_utils)
 
 install(
     TARGETS ic_ptree

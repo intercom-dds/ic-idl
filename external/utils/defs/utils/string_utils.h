@@ -250,3 +250,5 @@ INTERCOM_PUBLIC
 std::string to_html_encoding(const std::string& a_src);
 
 }  // namespace string_utils
+
+#include "string_utils.ic"

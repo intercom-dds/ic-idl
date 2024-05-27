@@ -25,43 +25,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_library(utils STATIC
-    src/string_utils.cpp)
-   # src/CdrSerializer.cpp
-   # src/Checksums.cpp
-   # src/Environment.cpp
-   # src/Exception.cpp
-   # src/EventQueue.cpp
-   # src/filesystem.cpp
-   # src/Global.cpp
-   # src/GlobalHandleMap.cpp
-   # src/Guid.cpp
-   # src/HumanReadable.cpp
-   # src/IcomCondition.cpp
-   # src/JsonParser.cpp
-   # src/LogBuilder.cpp
-   # src/Logger.cpp
-   # src/LoggerFile.cpp
-   # src/LoggerPrint.cpp
-   # src/LogStack.cpp
-   # src/MemoryMappedFile.cpp
-   # src/Mutex.cpp
-   # src/ProcessProperties.cpp
-   # src/Properties.cpp
-   # src/ReferableEntity.cpp
-   # src/Registration.cpp
-   # src/ShmRingBuffer.cpp
-   # src/SocketTools.cpp
-   # src/StateObject.cpp
-   # src/String.cpp
-   # src/StringUtils.cpp
-   # src/Thread.cpp
-   # src/Time.cpp
-   # src/Toml.cpp
-   # src/Util.cpp
-   # src/XMLReader.cpp
-   # src/XMLReaderFile.cpp
-   # src/XMLTypes.cpp
-   # src/XMLWriter.cpp
-   # src/ipc.cpp
-   # ${TARGET_HEADERS} )
+add_library(ic_utils INTERFACE)
+
+target_include_directories(ic_utils INTERFACE defs)

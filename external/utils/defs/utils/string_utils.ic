@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "utils/string_utils.h"
+#pragma once
 
 #include <algorithm>
 #include <cctype>
@@ -35,11 +35,13 @@
 #include <string_view>
 
 #include "InterCOM/platform_config.h"
+#include "string_utils.h"
 #define __EXTENSIONS__ 1
 #include <cstring>
 
-namespace {
-bool is_wild(const char* s) {
+namespace string_utils {
+namespace detail {
+inline bool is_wild(const char* s) {
     const char* p = s;
     bool escape = false;
 
@@ -63,9 +65,6 @@ bool is_wild(const char* s) {
 
     return false;
 }
-}  // namespace
-
-namespace string_utils {
 
 inline char case_it(char input, bool case_insensitive) {
     return static_cast<char>(case_insensitive ? tolower(input) : input);
@@ -75,26 +74,26 @@ inline bool case_compare(char input, char input2, bool case_insensitive) {
     return case_it(input, case_insensitive) == case_it(input2, case_insensitive);
 }
 
-bool is_in_range(
+inline bool is_in_range(
     char a_character,
     const char* start_range,
     const char* end_range,
     bool case_insensitive
 ) {
-    a_character = case_it(a_character, case_insensitive);
+    a_character = detail::case_it(a_character, case_insensitive);
     if (*(start_range) == '!') {
         start_range++;
         return !is_in_range(a_character, start_range, end_range, case_insensitive);
     }
     while (start_range < end_range) {
-        char current = case_it(*(start_range++), case_insensitive);
+        char current = detail::case_it(*(start_range++), case_insensitive);
         if (*(start_range) != '-') {
             if (a_character == current) {
                 return true;
             }
         } else {
             start_range++;
-            char range = case_it(*(start_range++), case_insensitive);
+            char range = detail::case_it(*(start_range++), case_insensitive);
             if (a_character >= current && a_character <= range) {
                 return true;
             }
@@ -102,8 +101,9 @@ bool is_in_range(
     }
     return false;
 }
+}  // namespace detail
 
-bool wild_card_match(
+inline bool wild_card_match(
     std::string_view a_pattern,
     std::string_view a_string,
     bool case_insensitive,
@@ -121,7 +121,7 @@ bool wild_card_match(
             if (a_pattern_ptr + 1 == a_pattern.end()) {
                 return true;
             }
-            if (case_compare(a_pattern_ptr[1], a_string_ptr[0], case_insensitive)) {
+            if (detail::case_compare(a_pattern_ptr[1], a_string_ptr[0], case_insensitive)) {
                 return wild_card_match(&(a_pattern_ptr[1]), &(a_string_ptr[0]), case_insensitive) ||
                        wild_card_match(&(a_pattern_ptr[0]), &(a_string_ptr[1]), case_insensitive);
             }
@@ -133,7 +133,7 @@ bool wild_card_match(
             break;
         case '\\':
             a_pattern_ptr++;
-            if (!case_compare(a_pattern_ptr[0], a_string_ptr[0], case_insensitive)) {
+            if (!detail::case_compare(a_pattern_ptr[0], a_string_ptr[0], case_insensitive)) {
                 return false;
             }
             a_pattern_ptr++;
@@ -148,7 +148,7 @@ bool wild_card_match(
                 a_pattern_ptr++;
                 a_string_ptr++;
             } else {
-                if (!is_in_range(
+                if (!detail::is_in_range(
                         a_string_ptr[0], &(a_pattern_ptr[1]), endRange, case_insensitive
                     )) {
                     return false;
@@ -158,7 +158,7 @@ bool wild_card_match(
             }
         } break;
         default:
-            if (!case_compare(a_pattern_ptr[0], a_string_ptr[0], case_insensitive)) {
+            if (!detail::case_compare(a_pattern_ptr[0], a_string_ptr[0], case_insensitive)) {
                 return false;
             }
             a_pattern_ptr++;
@@ -177,7 +177,7 @@ bool wild_card_match(
     return true;
 }
 
-char* strtok_r(char* s1, const char* s2, char** lasts) {
+inline char* strtok_r(char* s1, const char* s2, char** lasts) {
 #if defined(INTERCOM_PLATFORM_WINDOWS) && defined(INTERCOM_COMPILER_MICROSOFT)
     return ::strtok_s(s1, s2, lasts);
 #elif defined(INTERCOM_PLATFORM_WINDOWS) && defined(INTERCOM_COMPILER_GNUC)
@@ -188,7 +188,7 @@ char* strtok_r(char* s1, const char* s2, char** lasts) {
 #endif
 }
 
-void split_string(
+inline void split_string(
     std::vector<std::string>& result,
     std::string_view str,
     const char* delim,
@@ -224,14 +224,14 @@ void split_string(
     }
 }
 
-std::pair<std::string, std::string> split_at(std::string_view str, char delim) {
+inline std::pair<std::string, std::string> split_at(std::string_view str, char delim) {
     size_t pos = str.find(delim);
     std::string left(str.substr(0, pos));
     std::string right(str.substr(pos + 1));
     return {left, right};
 }
 
-bool string_to_double(std::string_view text, double& value) {
+inline bool string_to_double(std::string_view text, double& value) {
     bool result = true;  // Assume all will be well.
     value = 0.0;
     std::istringstream iss((std::string(text)));
@@ -243,7 +243,7 @@ bool string_to_double(std::string_view text, double& value) {
     return result;
 }
 
-bool string_to_float(std::string_view text, float& value) {
+inline bool string_to_float(std::string_view text, float& value) {
     bool result = true;  // Assume all will be well.
     value = 0.0;
     std::istringstream iss((std::string(text)));
@@ -255,7 +255,8 @@ bool string_to_float(std::string_view text, float& value) {
     return result;
 }
 
-bool string_to_double_in_string_sequence(std::string_view text, double& value, int* end_ptr) {
+inline bool
+string_to_double_in_string_sequence(std::string_view text, double& value, int* end_ptr) {
     bool result = true;  // Assume all will be well.
     value = 0.0;
     std::istringstream iss((std::string(text)));
@@ -278,7 +279,7 @@ bool string_to_double_in_string_sequence(std::string_view text, double& value, i
     return result;
 }
 
-bool stringToFloatInStringSequence(std::string_view text, float& value, int* end_ptr) {
+inline bool stringToFloatInStringSequence(std::string_view text, float& value, int* end_ptr) {
     bool result = true;  // Assume all will be well.
     value = 0.0;
     std::istringstream iss((std::string(text)));
@@ -301,7 +302,8 @@ bool stringToFloatInStringSequence(std::string_view text, float& value, int* end
     return result;
 }
 
-bool partitionMatch(const std::vector<std::string>& a_pub, const std::vector<std::string>& a_sub) {
+inline bool
+partitionMatch(const std::vector<std::string>& a_pub, const std::vector<std::string>& a_sub) {
     bool partition_matched = false;
 
     // see if the writer is in the same partition
@@ -345,14 +347,14 @@ bool partitionMatch(const std::vector<std::string>& a_pub, const std::vector<std
             {
                 continue;
             }
-            bool p1_is_wild = is_wild(p1[a].c_str());
+            bool p1_is_wild = detail::is_wild(p1[a].c_str());
 
             for (auto& b : p2) {
                 if (nullptr == b.c_str())  // Robust check
                 {
                     continue;
                 }
-                bool p2_is_wild = is_wild(b.c_str());
+                bool p2_is_wild = detail::is_wild(b.c_str());
 
                 // Spec says two partition names with wildcards don't match
                 if (p1_is_wild && p2_is_wild) {
@@ -381,19 +383,19 @@ static char char_toupper(int c) {
     return static_cast<char>(toupper(c));
 }
 
-std::string to_upper_case(std::string a_str) {
+inline std::string to_upper_case(std::string a_str) {
     std::transform(a_str.begin(), a_str.end(), a_str.begin(), &char_toupper);
     return a_str;
 }
 
-std::string to_lower_case(std::string a_str) {
+inline std::string to_lower_case(std::string a_str) {
     std::transform(a_str.begin(), a_str.end(), a_str.begin(), [](const char& c) {
         return static_cast<char>(tolower(static_cast<int>(c)));
     });
     return a_str;
 }
 
-std::string trim_string(const std::string& a_str) {
+inline std::string trim_string(const std::string& a_str) {
     std::string::size_type start_pos = a_str.find_first_not_of(' ');
     if (start_pos == std::string::npos) {
         return "";
@@ -403,11 +405,11 @@ std::string trim_string(const std::string& a_str) {
     return a_str.substr(start_pos, end_pos);
 }
 
-bool compare_ignore_case(const std::string& a_str1, const std::string& a_str2) {
+inline bool compare_ignore_case(const std::string& a_str1, const std::string& a_str2) {
     return (to_upper_case(a_str1) == to_upper_case(a_str2));
 }
 
-bool to_boolean(const std::string& a_str, const bool& a_default) {
+inline bool to_boolean(const std::string& a_str, const bool& a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -424,7 +426,7 @@ bool to_boolean(const std::string& a_str, const bool& a_default) {
     }
 }
 
-int to_octal(const std::string& a_str, const int& a_default) {
+inline int to_octal(const std::string& a_str, const int& a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -435,7 +437,8 @@ int to_octal(const std::string& a_str, const int& a_default) {
 
     return value;
 }
-unsigned long to_ulong(const std::string& a_str, const unsigned long& a_default) {
+
+inline unsigned long to_ulong(const std::string& a_str, const unsigned long& a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -447,7 +450,7 @@ unsigned long to_ulong(const std::string& a_str, const unsigned long& a_default)
     return value;
 }
 
-unsigned int to_uint(const std::string& a_str, const unsigned int& a_default) {
+inline unsigned int to_uint(const std::string& a_str, const unsigned int& a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -459,7 +462,7 @@ unsigned int to_uint(const std::string& a_str, const unsigned int& a_default) {
     return value;
 }
 
-int to_int(const std::string& a_str, const int& a_default) {
+inline int to_int(const std::string& a_str, const int& a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -471,7 +474,7 @@ int to_int(const std::string& a_str, const int& a_default) {
     return value;
 }
 
-unsigned short to_ushort(const std::string& a_str, unsigned short a_default) {
+inline unsigned short to_ushort(const std::string& a_str, unsigned short a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -483,7 +486,7 @@ unsigned short to_ushort(const std::string& a_str, unsigned short a_default) {
     return value;
 }
 
-unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_default) {
+inline unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_default) {
     if (a_str.empty()) {
         return a_default;
     }
@@ -515,7 +518,7 @@ unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_defa
     return a_default;
 }
 
-std::string to_html_encoding(const std::string& a_src) {
+inline std::string to_html_encoding(const std::string& a_src) {
     std::ostringstream os;
 
     for (char it : a_src) {

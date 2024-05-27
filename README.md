@@ -34,9 +34,8 @@ used everywhere in CMake as a temporary hack to make things work.
 
 `ic-idl` is bootstrapped. To build a full-fledged version, we first need to
 compile a reduced, C++-only version of `ic-idl` that is capable of emitting
-simplified type definitions. This will be used to generate types we need for
-the full-fledged version. This process is automated through the `xtask`
-application.
+simplified type definitions which will be used in the full-fledged version.
+This process is automated through the `xtask` application.
 
 To build a full release:
 

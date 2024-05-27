@@ -38,6 +38,18 @@ ic_parse_result_t* ic_parse_idl(const char* input) {
     return reinterpret_cast<ic_parse_result_t*>(result);
 }
 
+uint32_t ic_warning_count(const ic_parse_result_t* result) {
+    return reinterpret_cast<const intercom::cidl::parse_result*>(result)->warning_count;
+}
+
+uint32_t ic_error_count(const ic_parse_result_t* result) {
+    return reinterpret_cast<const intercom::cidl::parse_result*>(result)->error_count;
+}
+
+const char* ic_parse_error(const ic_parse_result_t* result) {
+    return reinterpret_cast<const intercom::cidl::parse_result*>(result)->msg.c_str();
+}
+
 void ic_parse_free(ic_parse_result_t* result) {
     delete reinterpret_cast<intercom::cidl::parse_result*>(result);
 }

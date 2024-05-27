@@ -233,6 +233,13 @@ macro_rules! error {
     }}
 }
 
+macro_rules! warn {
+    ($($arg:tt)*) => {{
+        use ic_cli::color::Colorize as _;
+        eprintln!("ic-idl: {} {}", "warning:".yellow().bold(), format!($($arg)*));
+    }}
+}
+
 fn unstable_help() {
     let command = Unstable::command();
     let flags = command.format_args(|_| true).join("\n");
@@ -330,6 +337,10 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
 
     if let Some(dir) = &options.python_out {
         ic_ptree::codegen_python(&merged, dir);
+    }
+
+    if let Some(msg) = merged.diagnostics() {
+        warn!("{msg}");
     }
 
     Ok(())

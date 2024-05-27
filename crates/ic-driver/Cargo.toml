@@ -41,3 +41,4 @@ anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree = { path = "../ic-ptree" }
+ic-parse = { path = "../ic-parse" }

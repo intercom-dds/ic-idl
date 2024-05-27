@@ -614,22 +614,18 @@ std::stringstream& msgout() {
 }  // namespace
 
 void do_parse_error(const char* msg, const char* file_name, int line_number) {
-    msgout() << "error: " << msg << " near line "
-             << line_number - 1;  // -1 is statistically more accurate
+    msgout() << msg << " near line " << line_number - 1;  // -1 is statistically more accurate
     if (file_name) {
         msgout() << " in " << file_name;
     }
-    msgout() << std::endl;
     ++g_parse_result.error_count;
 }
 
 void do_parse_warning(const char* msg, const char* file_name, int line_number) {
-    msgout() << "warning: " << msg << " near line "
-             << line_number - 1;  // -1 is statistically more accurate
+    msgout() << msg << " near line " << line_number - 1;  // -1 is statistically more accurate
     if (file_name) {
         msgout() << " in " << file_name;
     }
-    msgout() << std::endl;
     ++g_parse_result.warning_count;
 }
 

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::{CString, NulError};
+use std::ffi::{CStr, CString, NulError};
 use std::path::Path;
 
 mod ffi;
@@ -36,10 +36,50 @@ pub struct ParseResult {
     inner: *mut ffi::parse_result,
 }
 
+impl ParseResult {
+    #[must_use]
+    pub fn warning_count(&self) -> usize {
+        unsafe { ffi::ic_warning_count(self.inner) as usize }
+    }
+
+    #[must_use]
+    pub fn error_count(&self) -> usize {
+        unsafe { ffi::ic_error_count(self.inner) as usize }
+    }
+
+    #[must_use]
+    pub fn diagnostics(&self) -> Option<String> {
+        let c_str = unsafe { CStr::from_ptr(ffi::ic_parse_error(self.inner)) };
+        let owned = c_str.to_str().map(ToString::to_string).ok()?;
+        if owned.is_empty() {
+            None
+        } else {
+            Some(owned)
+        }
+    }
+}
+
 impl Drop for ParseResult {
     fn drop(&mut self) {
         unsafe {
             ffi::ic_parse_free(self.inner);
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Error {
+    Syntax(String),
+    NulError(NulError),
+}
+
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Syntax(v) => v.fmt(f),
+            Error::NulError(v) => v.fmt(f),
         }
     }
 }
@@ -49,13 +89,20 @@ impl Drop for ParseResult {
 ///
 /// # Errors
 ///
-/// This function may fail if the input IDL contains a nul byte.
-pub fn parse_idl(input: &str) -> Result<ParseResult, NulError> {
-    let c_str = CString::new(input)?;
+/// This function may fail if the input IDL contains a nul byte, or if the
+/// input contained invalid IDL.
+pub fn parse_idl(input: &str) -> Result<ParseResult, Error> {
+    let c_str = CString::new(input).map_err(Error::NulError)?;
     let inner = unsafe { ffi::ic_parse_idl(c_str.as_ptr()) };
     debug_assert!(!inner.is_null());
 
-    Ok(ParseResult { inner })
+    let result = ParseResult { inner };
+    if result.error_count() > 0 {
+        let msg = result.diagnostics().unwrap_or_default();
+        Err(Error::Syntax(msg))
+    } else {
+        Ok(result)
+    }
 }
 
 /// Takes a set of individual parse trees and merges them into one. Once

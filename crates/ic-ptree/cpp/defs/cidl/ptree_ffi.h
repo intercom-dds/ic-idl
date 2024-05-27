@@ -40,6 +40,15 @@ INTERCOM_PUBLIC
 ic_parse_result_t* ic_parse_idl(const char* input);
 
 INTERCOM_PUBLIC
+uint32_t ic_warning_count(const ic_parse_result_t* result);
+
+INTERCOM_PUBLIC
+uint32_t ic_error_count(const ic_parse_result_t* result);
+
+INTERCOM_PUBLIC
+const char* ic_parse_error(const ic_parse_result_t* result);
+
+INTERCOM_PUBLIC
 void ic_parse_free(ic_parse_result_t* result);
 
 INTERCOM_PUBLIC

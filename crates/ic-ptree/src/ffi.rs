@@ -41,6 +41,9 @@ extern "C" {
     pub fn ic_parse_free(result: *mut parse_result);
     pub fn ic_ptree_merge(result: *const *mut parse_result) -> *mut parse_result;
     pub fn ic_ast_dump(result: *const parse_result);
+    pub fn ic_warning_count(result: *const parse_result) -> u32;
+    pub fn ic_error_count(result: *const parse_result) -> u32;
+    pub fn ic_parse_error(result: *const parse_result) -> *const ffi::c_char;
 
     pub fn ic_codegen_cpp(result: *const parse_result, destination: *const ffi::c_char);
     pub fn ic_codegen_csharp(result: *const parse_result, destination: *const ffi::c_char);

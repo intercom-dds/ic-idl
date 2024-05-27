@@ -37,7 +37,5 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+chumsky = "0.9.3"
 ic-alloc = { path = "../ic-alloc" }
-
-[build-dependencies]
-cmake = "0.1"

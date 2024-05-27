@@ -46,7 +46,7 @@ default-members = ["crates/ic-driver"]
 exclude = ["fuzz", "crates/ic-bootstrap"]
 
 [workspace.package]
-rust-version = "1.70"
+rust-version = "1.74"
 publish = false
 
 [workspace.dependencies]
@@ -66,3 +66,4 @@ cargo = { level = "warn", priority = -1 }
 # Disable some annoying style lints
 module_name_repetitions = "allow"
 struct_excessive_bools = "allow"
+ignored_unit_patterns = "allow"

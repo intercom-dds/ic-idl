@@ -296,6 +296,22 @@ fn main() {
     }
 }
 
+#[cfg(feature = "hir")]
+fn try_main(options: &Options) -> anyhow::Result<()> {
+    // For the time being, lexing and parsing happens in two separate stages as
+    // it makes it easier to debug the lexer. This can be changed later so we
+    // instead lazily scan the input as we parse. That should in theory be
+    // faster as we (1) avoid the heap allocation of each token, and (2) we can
+    // error out earlier.
+    let input = options.files.iter().next().unwrap();
+    let input = std::fs::read_to_string(input)?;
+    let tokens = ic_parse::lexer::scan(&input).unwrap();
+    println!("{tokens:#?}");
+
+    Ok(())
+}
+
+#[cfg(not(feature = "hir"))]
 fn try_main(options: &Options) -> anyhow::Result<()> {
     let preprocessed = options
         .files
@@ -342,6 +358,8 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     if let Some(msg) = merged.diagnostics() {
         warn!("{msg}");
     }
+
+    // ic_parse::syntax::dummy();
 
     Ok(())
 }

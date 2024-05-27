@@ -40,4 +40,4 @@ workspace = true
 ic-cli-derive = { path = "../ic-cli-derive" }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Console"] }
+windows = { version = "0.56", features = ["Win32_Foundation", "Win32_System_Console"] }

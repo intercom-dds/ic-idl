@@ -40,5 +40,10 @@ workspace = true
 anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }
 ic-preproc = { path = "../ic-preproc" }
-ic-ptree = { path = "../ic-ptree" }
-ic-parse = { path = "../ic-parse" }
+ic-parse = { path = "../ic-parse", optional = true }
+ic-ptree = { path = "../ic-ptree", optional = true }
+
+[features]
+default = ["ptree"]
+ptree = ["dep:ic-ptree"]
+hir = ["dep:ic-parse"]

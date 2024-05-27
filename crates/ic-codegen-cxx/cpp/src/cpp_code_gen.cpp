@@ -3244,9 +3244,7 @@ static void cpl_interface_c_def(const ptree* obj) {
         }
         mprintf(&g_hd_file, "}};\n\n");
         if (is_shared(obj)) {
-            mprintf(
-                &g_hd_file, "using {}PTr = intercom::RefPointer< {} >;\n\n", name(obj), name(obj)
-            );
+            mprintf(&g_hd_file, "using {}Ptr = std::shared_ptr<{}>;\n\n", name(obj), name(obj));
         }
     }
 }

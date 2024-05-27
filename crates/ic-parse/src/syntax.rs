@@ -48,7 +48,7 @@ pub struct Ident {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Span {
     pub index: u32,
     pub len: u32,
@@ -56,14 +56,12 @@ pub struct Span {
 
 pub type AnnotationVec = InlineVec<AnnotationAppl>;
 
-// TODO: template this, then use that for struct members, etc? Since we need to
-// store the same information anyway.
 #[derive(Debug)]
-pub struct Item {
+pub struct Item<K> {
     pub ident: Ident,
     pub span: Span,
     pub annotations: AnnotationVec,
-    pub kind: ItemKind,
+    pub kind: K,
 }
 
 #[derive(Debug)]
@@ -96,30 +94,60 @@ pub enum DeclKind {
 
 #[derive(Debug)]
 pub enum Type {
-    Array,
-    Sequence,
+    /// Array of another type, e.g. `int32 value[3]`.
+    /// Only the type is included; the name of the member is omitted.
+    Array(P<Type>),
+
+    /// Sequence of another type, e.g. `sequence<string>`.
+    Sequence(P<Type>),
+
+    /// (key, value) pair of types, e.g. `map<string, string>`.
+    Map(P<Type>, P<Type>),
+
+    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
     Path(Ident),
 }
 
+/// A definition of an annotation, e.g. `@annotation foo {};`.
 #[derive(Debug)]
 pub struct AnnotationDef {
-    pub fields: InlineVec<()>,
+    pub fields: InlineVec<AnnotationField>,
 }
 
+/// The items that can be placed inside a definition of an annotation.
+#[derive(Debug)]
+pub enum AnnotationField {
+    Enum(P<Item<EnumDef>>),
+    Bitmask(P<Item<BitmaskDef>>),
+    Const(P<Item<ConstDef>>),
+    Field(P<Field>),
+}
+
+/// A parameter inside an applied annotation, e.g. `value=true` in
+/// `@optional(value=true)`.
 #[derive(Debug)]
 pub struct AnnotationParam {
+    /// Name of the parameter if one was specified.
+    /// May be omitted for annotations with only a single,  non-default member.
     pub name: Option<Ident>,
-    pub value: Numeric,
+
+    /// Span of the entire parameter.
+    pub span: Span,
+
+    /// The specified value of the parameter.
+    pub value: Expr,
 }
 
 #[derive(Debug)]
 pub struct AnnotationAppl {
+    pub ident: Ident,
+    pub span: Span,
     pub params: InlineVec<AnnotationParam>,
 }
 
 #[derive(Debug)]
 pub struct ModuleDef {
-    pub defs: InlineVec<Item>,
+    pub defs: InlineVec<Item<ItemKind>>,
 }
 
 #[derive(Debug)]
@@ -171,11 +199,20 @@ pub struct Bitfield {
 #[derive(Debug)]
 pub struct Enumerator {
     pub annotations: InlineVec<AnnotationAppl>,
+    pub name: Ident,
+
+    /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
+    /// The `@value` annotation will *not* populate this field.
+    pub value: Option<Expr>,
 }
 
 #[derive(Debug)]
 pub struct UnionDef {
+    /// The discriminator component of the union.
     pub disc: Discriminator,
+
+    /// All variants of the union. The case labels that map to each variant can
+    /// be found in `UnionField`.
     pub fields: InlineVec<UnionField>,
 }
 
@@ -188,19 +225,23 @@ pub struct Discriminator {
 #[derive(Debug)]
 pub struct UnionField {
     pub annotations: InlineVec<AnnotationAppl>,
+
+    /// Case labels that map to this variant.
     pub labels: InlineVec<Label>,
+
     pub field: Field,
 }
 
 #[derive(Debug)]
 pub enum Label {
     Case { value: Ident },
+    Null,
     Default,
 }
 
 #[derive(Debug)]
 pub struct ConstDef {
-    pub value: Numeric,
+    pub value: Expr,
     pub annotations: InlineVec<AnnotationAppl>,
 }
 
@@ -212,24 +253,22 @@ pub struct Numeric {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NumericKind {
-    Boolean,
-    Int8,
-    Uint8,
-    Int16,
-    Uint16,
-    Int32,
-    Uint32,
-    Int64,
-    Uint64,
+    Bool(bool),
+    Int,
     Float,
-    Double,
-    Char,
-    String,
+    Char(char),
+    String(Symbol),
     Ident(Symbol),
 }
 
+#[derive(Debug)]
+pub struct Op {
+    pub span: Span,
+    pub kind: OpKind,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Op {
+pub enum OpKind {
     // Arithmetic operations
     Add,
     Sub,
@@ -247,6 +286,44 @@ pub enum Op {
 
 #[derive(Debug)]
 pub enum Expr {
-    Unary { op: Option<Op>, expr: P<Expr> },
+    Numeric(Numeric),
+    Unary { op: Op, expr: P<Expr> },
     Binary { lhs: P<Expr>, op: Op, rhs: P<Expr> },
+}
+
+pub fn dummy() {
+    let defs = Item {
+        ident: Ident {
+            name: Symbol,
+            span: Span::default(),
+        },
+        span: Span::default(),
+        annotations: vec![],
+        kind: ItemKind::Module(P(ModuleDef {
+            defs: vec![Item {
+                ident: Ident {
+                    name: Symbol,
+                    span: Span::default(),
+                },
+                span: Span::default(),
+                annotations: vec![AnnotationAppl {
+                    ident: Ident {
+                        name: Symbol,
+                        span: Span::default(),
+                    },
+                    span: Span::default(),
+                    params: vec![],
+                }],
+                kind: ItemKind::Const(P(ConstDef {
+                    value: Expr::Numeric(Numeric {
+                        kind: NumericKind::Bool(true),
+                        span: Span::default(),
+                    }),
+                    annotations: vec![],
+                })),
+            }],
+        })),
+    };
+
+    println!("{defs:#?}");
 }

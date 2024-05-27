@@ -64,6 +64,12 @@ Once compiled, `cargo` can be invoked as usual, e.g.:
 cargo test --workspace
 ```
 
+To use the experimental new parser, you must enable the `hir` feature:
+
+```
+cargo run --features hir --no-default-features
+```
+
 Development documentation can be generated with:
 
 ```

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// The support naming conventions.
+/// The supported naming conventions.
 pub enum Case {
     Snake,
     Camel,
@@ -121,8 +121,8 @@ impl Converter {
 /// between words. Multiple consecutive delimiters will be stripped. For
 /// example, "foo bar...baz" would be converted to "fooBarBaz" in `camelCase`.
 ///
-/// In most cases you'll probably want to use [`snake_case`], [`camel_case`], or
-/// [`pascal_case`] instead of this function.
+/// In most cases you'll probably want to use [`snake`], [`camel`], [`pascal`],
+/// or [`kebab`] instead of this function.
 ///
 /// # Example
 ///
@@ -161,7 +161,7 @@ pub fn snake<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Snake)
 }
 
-/// Converts the given string to `camelCase`.See [`convert`] for more
+/// Converts the given string to `camelCase`. See [`convert`] for more
 /// information.
 ///
 /// # Example
@@ -176,7 +176,7 @@ pub fn camel<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Camel)
 }
 
-/// Converts the given string to `PascalCase`.See [`convert`] for more
+/// Converts the given string to `PascalCase`. See [`convert`] for more
 /// information.
 ///
 /// # Example
@@ -191,7 +191,7 @@ pub fn pascal<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Pascal)
 }
 
-/// Converts the given string to `kebab-case`.See [`convert`] for more
+/// Converts the given string to `kebab-case`. See [`convert`] for more
 /// information.
 ///
 /// # Example

@@ -32,7 +32,7 @@ used everywhere in CMake as a temporary hack to make things work.
 
 ## Building
 
-Building `ic-idl` requires a C++17 toolchain and a Rust 1.70+ toolchain.
+Building `ic-idl` requires a C++17 toolchain and a Rust 1.74+ toolchain.
 
 `ic-idl` is bootstrapped. To build a full-fledged version, we first need to
 compile a reduced, C++-only version that is capable of emitting simplified type

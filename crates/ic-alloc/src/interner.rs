@@ -25,5 +25,90 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use crate::arena::{Arena, Id};
+use crate::ptr::P;
+
+/// A cached entry in the interner.
 #[derive(Debug)]
-pub struct Interner;
+pub struct CachedStr {
+    hash: u64,
+    string: P<str>,
+}
+
+impl CachedStr {
+    fn new(string: P<str>) -> Self {
+        let mut hasher = DefaultHasher::new();
+        string.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        Self { hash, string }
+    }
+}
+
+impl Hash for CachedStr {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
+}
+
+/// An ID of a string in the [`Interner`].
+/// An immutable reference to the string can be acquired with
+/// [`Interner::get`].
+pub type SymbolId = Id<CachedStr>;
+
+/// String interner that stores at most one copy of each unique string.
+/// Deletion is not supported; all strings are deallocated simulatenously when
+/// the interner is dropped.
+///
+/// Interned strings may not be mutated in any way.
+#[must_use]
+#[derive(Debug, Default)]
+pub struct Interner {
+    arena: Arena<CachedStr>,
+    cache: HashMap<u64, SymbolId>,
+}
+
+impl Interner {
+    pub fn new() -> Self {
+        Self::with_capacity(64)
+    }
+
+    pub fn with_capacity(len: usize) -> Self {
+        Self {
+            arena: Arena::with_capacity(len),
+            cache: HashMap::with_capacity(len),
+        }
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.arena.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.arena.is_empty()
+    }
+
+    #[must_use]
+    pub fn get(&self, id: SymbolId) -> Option<&str> {
+        self.arena.get(id).map(|v| v.string.as_ref())
+    }
+
+    pub fn insert(&mut self, str: P<str>) -> SymbolId {
+        let cached = CachedStr::new(str);
+
+        match self.cache.entry(cached.hash) {
+            Entry::Occupied(v) => *v.get(),
+            Entry::Vacant(v) => {
+                let id = self.arena.alloc(cached);
+                v.insert(id);
+                id
+            }
+        }
+    }
+}

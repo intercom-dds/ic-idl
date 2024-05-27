@@ -25,9 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-#[derive(Debug)]
 pub struct P<T: ?Sized> {
     ptr: Box<T>,
 }
@@ -49,6 +49,12 @@ impl<T: ?Sized> DerefMut for P<T> {
 impl<T: 'static + Clone> Clone for P<T> {
     fn clone(&self) -> P<T> {
         P((**self).clone())
+    }
+}
+
+impl<T: Debug + ?Sized> Debug for P<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Ptr").field(&self.ptr).finish()
     }
 }
 

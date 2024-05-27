@@ -25,4 +25,59 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type InlineStr = String;
+use std::rc::Rc;
+
+const INLINE_SIZE: usize = 30;
+
+const _: () = assert!(std::mem::size_of::<InlineStr>() == 32);
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct InlineStr(Storage);
+
+impl InlineStr {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        match &self.0 {
+            Storage::Inline { len, .. } => *len == 0,
+            Storage::Ref(v) => v.is_empty(),
+        }
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        match &self.0 {
+            Storage::Inline { len, .. } => usize::from(*len),
+            Storage::Ref(v) => v.len(),
+        }
+    }
+}
+
+impl From<String> for InlineStr {
+    // If the string is already heap allocated, we can just continue using that
+    // instead of trying to inline it.
+    fn from(value: String) -> Self {
+        Self(Storage::Ref(Rc::from(value)))
+    }
+}
+
+// We explicitly check the length before casting it to `u8`
+#[allow(clippy::cast_possible_truncation)]
+impl<'a> From<&'a str> for InlineStr {
+    fn from(value: &'a str) -> Self {
+        if value.len() <= INLINE_SIZE {
+            Self(Storage::Inline {
+                len: value.len() as u8,
+                buffer: [0; INLINE_SIZE],
+            })
+        } else {
+            Self(Storage::Ref(Rc::from(value)))
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Storage {
+    Inline { len: u8, buffer: [u8; INLINE_SIZE] },
+    Ref(Rc<str>),
+}

@@ -31,7 +31,9 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::slice;
 
+#[must_use]
 #[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 pub struct Id<T> {
     id: usize,
     _marker: PhantomData<fn() -> T>,
@@ -55,7 +57,7 @@ impl<T> Clone for Id<T> {
 impl<T> Copy for Id<T> {}
 
 #[must_use]
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Arena<T> {
     elements: Vec<T>,
 }
@@ -111,6 +113,12 @@ impl<T> Arena<T> {
         IterMut {
             iter: self.elements.iter_mut().enumerate(),
         }
+    }
+}
+
+impl<T> Default for Arena<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

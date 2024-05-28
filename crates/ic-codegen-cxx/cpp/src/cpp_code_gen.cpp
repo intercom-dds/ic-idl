@@ -42,7 +42,6 @@
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "utils/stdprintf.h"
 #include "utils/string_utils.h"
 
 #define INTERCOM_PUBLIC_MACRO_NAME "INTERCOM_PUBLIC"
@@ -473,10 +472,10 @@ static void emit_const_value(
         }
         break;
     case FLOAT_KIND:
-        mprintf(mfil, " static_cast<float>({})", to_string(value.val.f()));
+        mprintf(mfil, " static_cast<float>({:.7f})", value.val.f());
         break;
     case DOUBLE_KIND:
-        mprintf(mfil, " {}", to_string(value.val.d()));
+        mprintf(mfil, " {:.16f}", value.val.d());
         break;
     case STRING_KIND:
         mprintf(mfil, " \"{}\"", value.val.str());

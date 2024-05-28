@@ -31,8 +31,6 @@
 #include <string_view>
 #include <vector>
 
-#include "InterCOM/dyn_link.h"
-
 /// Contains internal string utilities
 namespace string_utils {
 
@@ -50,7 +48,6 @@ namespace string_utils {
 /// @param case_insensitive If true, comparision is case insensitive.
 /// @param terminator Char that marks end of str (not the pattern) - in addition to '\0'.
 /// @return true if str matches pattern, false otherwise.
-INTERCOM_PUBLIC
 bool wild_card_match(
     std::string_view pattern,
     std::string_view str,
@@ -62,7 +59,6 @@ bool wild_card_match(
 ///
 /// This methods maps to the correct method on different platforms.
 /// See 'man strtok_r for further information.
-INTERCOM_PUBLIC
 char* strtok_r(char* s1, const char* s2, char** lasts);
 
 /// Split a string like strtok, returning result as a sequence of non-empty substrings.
@@ -72,7 +68,6 @@ char* strtok_r(char* s1, const char* s2, char** lasts);
 /// \param delim A set of zero or more delimiters
 /// \param trim_whitespace If true, remove whitespace (isblank()) from start and end of all returned
 /// substrings
-INTERCOM_PUBLIC
 void split_string(
     std::vector<std::string>& result,
     std::string_view str,
@@ -80,7 +75,6 @@ void split_string(
     bool trim_whitespace
 );
 
-INTERCOM_PUBLIC
 std::pair<std::string, std::string> split_at(std::string_view str, char delim);
 
 /// Takes a string and attempts to parse a double from it.
@@ -92,7 +86,6 @@ std::pair<std::string, std::string> split_at(std::string_view str, char delim);
 /// @param text The input text.
 /// @param value Reference to the resulting value.
 /// @return true if it has successfully parsed the entire text.
-INTERCOM_PUBLIC
 bool string_to_double(std::string_view text, double& value);
 
 /// Takes a string, which may include one or more numbers and attempts to parse a double from it.
@@ -106,8 +99,11 @@ bool string_to_double(std::string_view text, double& value);
 /// @param endPtr A pointer to an int which holds the position of the next character after the
 /// numerical value. If eof or failure the value will be -1.
 /// @return true If it parses the entire text OR a substring of that text.
-INTERCOM_PUBLIC bool
-string_to_double_in_string_sequence(std::string_view text, double& value, int* end_ptr = nullptr);
+bool string_to_double_in_string_sequence(
+    std::string_view text,
+    double& value,
+    int* end_ptr = nullptr
+);
 
 /// Takes a string and attempts to parse a float from it.
 /// This function forces the locale to be "classic", meaning the text 3.14 will be parsed
@@ -116,7 +112,6 @@ string_to_double_in_string_sequence(std::string_view text, double& value, int* e
 /// @param text The input text.
 /// @param value Reference to the resulting value.
 /// @return true if it has successfully parsed the entire text.
-INTERCOM_PUBLIC
 bool string_to_float(std::string_view text, float& value);
 
 /// Takes a string, which may include one or more numbers and attempts to parse a float from it.
@@ -130,7 +125,6 @@ bool string_to_float(std::string_view text, float& value);
 /// @param endPtr A pointer to an int which holds the position of the next character after the
 /// numerical value. If eof or failure the value will be -1.
 /// @return true If it parses the entire text OR a substring of that text.
-INTERCOM_PUBLIC
 bool string_to_float_in_string_sequence(
     std::string_view text,
     float& value,
@@ -141,28 +135,24 @@ bool string_to_float_in_string_sequence(
 ///
 /// @param a_str The input string
 /// @return A copy of the input string with all lower case characters converted to upper case
-INTERCOM_PUBLIC
 std::string to_upper_case(std::string a_str);
 
 /// Converts the input string to lower case.
 ///
 /// @param a_str The input string
 /// @return A copy of the input string with all upper case characters converted to lower case
-INTERCOM_PUBLIC
 std::string to_lower_case(std::string a_str);
 
 /// Removes all leading and trailing whitespaces from the input string
 ///
 /// @param a_str The input string
 /// @return A copy of the input string with all leading and trailing whitespace trimmed
-INTERCOM_PUBLIC
 std::string trim_string(const std::string& a_str);
 
 /// Removes all leading and trailing whitespaces from the input string
 ///
 /// @param a_str The input string
 /// @return A copy of the input string with all leading and trailing whitespace trimmed
-INTERCOM_PUBLIC
 bool compare_ignore_case(const std::string& a_str1, const std::string& a_str2);
 
 /// Converts the input string to a boolean value
@@ -171,7 +161,6 @@ bool compare_ignore_case(const std::string& a_str1, const std::string& a_str2);
 /// @param a_default Default value to be returned if a_str is not recognized as representing a bool
 /// @return true if a_str is the string "true", false if a_str is the string "false", a_default
 /// otherwise
-INTERCOM_PUBLIC
 bool to_boolean(const std::string& a_str, const bool& a_default = false);
 
 /// Converts the input string to a base 8 integer
@@ -180,7 +169,6 @@ bool to_boolean(const std::string& a_str, const bool& a_default = false);
 /// @param a_default Default value to be returned if a_str is not recognized as representing a base
 /// 8 integer
 /// @return an integer parsed from a_str if a_str is a base 8 integer, a_default otherwise
-INTERCOM_PUBLIC
 int to_octal(const std::string& a_str, const int& a_default = 0);
 
 /// Converts the input string to an unsigned long integer
@@ -190,7 +178,6 @@ int to_octal(const std::string& a_str, const int& a_default = 0);
 /// unsigned long integer
 /// @return an unsigned long integer parsed from a_str if a_str is an unsigned long integer,
 /// a_default otherwise
-INTERCOM_PUBLIC
 unsigned long to_ulong(const std::string& a_str, const unsigned long& a_default = 0);
 
 /// Converts the input string to an unsigned integer
@@ -200,7 +187,6 @@ unsigned long to_ulong(const std::string& a_str, const unsigned long& a_default 
 /// unsigned integer
 /// @return an unsigned integer parsed from a_str if a_str is an unsigned integer, a_default
 /// otherwise
-INTERCOM_PUBLIC
 unsigned int to_uint(const std::string& a_str, const unsigned int& a_default = 0);
 
 /// Converts the input string to a signed integer
@@ -209,7 +195,6 @@ unsigned int to_uint(const std::string& a_str, const unsigned int& a_default = 0
 /// @param a_default Default value to be returned if a_str is not recognized as representing a
 /// signed integer
 /// @return a signed integer parsed from a_str if a_str is a signed integer, a_default otherwise
-INTERCOM_PUBLIC
 int to_int(const std::string& a_str, const int& a_default = 0);
 
 /// Converts the input string to an unsigned short integer
@@ -219,7 +204,6 @@ int to_int(const std::string& a_str, const int& a_default = 0);
 /// unsigned short integer
 /// @return an unsigned short integer parsed from a_str if a_str is an unsigned short integer,
 /// a_default otherwise
-INTERCOM_PUBLIC
 unsigned short to_ushort(const std::string& a_str);
 
 /// Converts the input string to an unsigned integer representing a buffersize.
@@ -237,7 +221,6 @@ unsigned short to_ushort(const std::string& a_str);
 /// buffer size
 /// @return an unsigned integer parsed from a_str if a_str represents a valid buffer size, a_default
 /// otherwise.
-INTERCOM_PUBLIC
 unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_default = 0);
 
 /// Converts the input string to a string formatted for display in html.
@@ -246,7 +229,6 @@ unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_defa
 ///
 /// @param a_src Input string.
 /// @return An html representation of a_src.
-INTERCOM_PUBLIC
 std::string to_html_encoding(const std::string& a_src);
 
 }  // namespace string_utils

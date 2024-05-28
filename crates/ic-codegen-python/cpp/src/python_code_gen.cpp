@@ -744,9 +744,7 @@ void code_gen_python_cdr(const ptree* obj, ModuleContext* module) {
                 *module << endl;
             }
         }
-        char buf[16];
-        snprintf(buf, sizeof(buf), "0x%02x", cdr[i]);
-        *module << buf;
+        *module << fmt::format("'0x{:02x}'", cdr[i]);
     }
     *module << endl << end("") << "])" << endl << end("");
 

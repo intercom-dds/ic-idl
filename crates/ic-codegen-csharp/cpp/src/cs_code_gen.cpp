@@ -41,7 +41,6 @@
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "utils/stdprintf.h"
 
 using namespace intercom::cidl;
 
@@ -351,10 +350,10 @@ static std::string cs_value(const numeric& value, const ptree* module, int level
         res << static_cast<unsigned long long>(long_long_value(value)) << "UL";
         break;
     case FLOAT_KIND:
-        res << to_string(float_value(value)) << "f";
+        res << fmt::format("{:.7f}d", float_value(value));
         break;
     case DOUBLE_KIND:
-        res << to_string(double_value(value)) << "d";
+        res << fmt::format("{:.16f}d", double_value(value));
         break;
     case CHAR_KIND:
         if (integer_value(value) < 'A' || integer_value(value) > 'z') {
@@ -630,9 +629,7 @@ static void cs_emit_typesupport_methods(const ptree* obj, ModuleMap& out) {
                 OUT << std::endl;
             }
         }
-        char buf[16];
-        snprintf(buf, sizeof(buf), "0x%02x", cdr[i]);
-        OUT << buf;
+        OUT << fmt::format("'0x{:02x}'", cdr[i]);
     }
     OUT << std::endl << "};" << std::endl;
 

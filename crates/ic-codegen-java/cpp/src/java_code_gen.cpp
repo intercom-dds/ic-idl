@@ -39,7 +39,6 @@
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "utils/stdprintf.h"
 
 #define JAVANAME_FLAGS_CLASS 1
 #define JAVANAME_FLAGS_PROXY 2
@@ -408,9 +407,9 @@ static std::string javavalue(const numeric& value, int qualified) {
     case ULONGLONG_KIND:
         return fmt::format("{}L", static_cast<long long int>(value.val.ull()));
     case FLOAT_KIND:
-        return fmt::format("(float){}", to_string(value.val.f()));
+        return fmt::format("(float){}", fmt::format("{:.7f}", value.val.f()));
     case DOUBLE_KIND:
-        return fmt::format("{}", to_string(value.val.d()));
+        return fmt::format("{}", fmt::format("{:.16f}", value.val.d()));
     case CHAR_KIND:
         return fmt::format("'\\u{:04x}'", value.val.c());
     case STRING_KIND:

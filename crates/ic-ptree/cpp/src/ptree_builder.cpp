@@ -3233,8 +3233,8 @@ void validate_node(ptree* node) {
             // Only primitive members can have @default annotations
             if (node->kind == N_MEMBER && has_default_value(node)) {
                 auto base = base_type_of(node);
-                if (base->kind != N_PRIMITIVE && node->kind != N_STRING && node->kind != N_ENUM &&
-                    node->kind != N_BITMASK) {
+                if (base->kind != N_PRIMITIVE && base->kind != N_STRING && base->kind != N_ENUM &&
+                    base->kind != N_BITMASK) {
                     ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
                         << "Specifying default values for complex types is an InterCOM extension. Related to node "
                         << node;

@@ -42,10 +42,7 @@ struct CurrentOptionsT : public intercom::cidl::Config {
     bool intercom_build = false;
     bool do_suppress_deprecated = false;
     bool use_fmtlib = false;
-    bool generate_header_timestamp = false;
     bool use_wstring = false;
-    bool ast_dump = false;
-    bool purge_destination_directories = false;
     bool no_typesupport = false;
 
     std::string copyright_notice;
@@ -232,20 +229,11 @@ bool CommandLineOption::use_fmtlib() {
 bool CommandLineOption::no_typesupport() {
     return g_CurrentOptions.no_typesupport;
 }
-bool CommandLineOption::generate_header_timestamp() {
-    return g_CurrentOptions.generate_header_timestamp;
-}
 bool CommandLineOption::corba_types() {
     return g_CurrentOptions.corba_types;
 }
 bool CommandLineOption::use_wstring() {
     return g_CurrentOptions.use_wstring;
-}
-bool CommandLineOption::ast_dump() {
-    return g_CurrentOptions.ast_dump;
-}
-bool CommandLineOption::purge_destination_directories() {
-    return g_CurrentOptions.purge_destination_directories;
 }
 const char* CommandLineOption::cpp_header_postfix() {
     return strptr_or_null(g_CurrentOptions.cpp_header_postfix);

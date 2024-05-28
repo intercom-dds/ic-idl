@@ -46,48 +46,46 @@ enum ExtensibilityKind {
 };
 
 std::string trim_include_name(std::filesystem::path name, bool trim_absolute);
-void code_gen_cs(const parse_result* result);
-void code_gen_cs(const parse_result* result, const char* destination);
-void code_gen_idl(parse_result* result, std::list<File>* generated = nullptr);
-void code_gen_json(const parse_result* result, bool listonly);
-void code_gen_json_schema(const parse_result* result);
-void code_gen_dds_cplpl(const parse_result* result);
-void code_gen_dds_cplpl(const parse_result* result, const char* destination);
-void code_gen_ada_types(struct parse_result* head);
-void code_gen_ada_interfaces(struct parse_result* head);
-void code_gen_ada_proxies(parse_result* head);
-void code_gen_ada_cdr(struct parse_result* head);
-void code_gen_java(const parse_result* result);
-void code_gen_java(const parse_result* result, const char* destination);
-void code_gen_java_proxies(struct parse_result* head);
-void code_gen_python(const parse_result* result);
-void code_gen_python(const parse_result* result, const char* destination);
-void code_gen_properties(parse_result* result);
-void code_gen_rust(const parse_result* result);
-void code_gen_proto(const parse_result* result);
-void code_gen_proto(const parse_result* result, const char* destination);
-void code_gen_xml(const parse_result* result);
-void transform_rust(parse_result* node);
-void generate_json_type(std::ostream& stream, const ptree* tree);
-void ast_dump(const parse_result* result);
-std::string toml_emit_node(std::string_view name, const ptree* tree);
 
-void gen_cpp_type_info(struct memf* memf, const ptree* obj, std::string_view funcname);
+void ast_dump(const parse_result* result);
+
+void code_gen_cs(const parse_result* result);
+
+void code_gen_cs(const parse_result* result, const char* destination);
+
+void code_gen_json(const parse_result* result, bool listonly);
+
+void code_gen_json_schema(const parse_result* result);
+
+void code_gen_dds_cplpl(const parse_result* result);
+
+void code_gen_dds_cplpl(const parse_result* result, const char* destination);
+
+void code_gen_java(const parse_result* result);
+
+void code_gen_java(const parse_result* result, const char* destination);
+
+void code_gen_python(const parse_result* result);
+
+void code_gen_python(const parse_result* result, const char* destination);
+
+void code_gen_rust(const parse_result* result);
+
+void code_gen_proto(const parse_result* result);
+
+void code_gen_proto(const parse_result* result, const char* destination);
+
+void code_gen_xml(const parse_result* result);
+
+void generate_json_type(std::ostream& stream, const ptree* tree);
 
 std::string cpp_type_name(const ptree* node, const ptree* context);
+
+void gen_cpp_type_info(struct memf* memf, const ptree* obj, std::string_view funcname);
 
 void get_type_library(const ptree* obj, unsigned char** cdr_typedef, size_t* len);
 
 std::string get_type_id(const ptree* obj);
-
-void ada_conv_gen_elem(
-    struct memf* code_file,
-    struct memf* with_file,
-    const ptree* obj,
-    const char* in_tag,
-    unsigned in_flag,
-    const ptree* actual_object
-);
 
 using PtreeSeq = std::vector<const ptree*>;
 using PtreeSeqSeq = std::vector<PtreeSeq>;

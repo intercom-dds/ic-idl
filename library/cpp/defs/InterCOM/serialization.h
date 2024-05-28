@@ -1083,6 +1083,7 @@ void transform(WRITER& writer, READER& reader);
 
 template <typename WRITER, typename READER>
 void transform(WRITER& writer, READER& reader, const TypeInfo& type_info);
+
 }  // namespace cts
 }  // namespace dcps
 }  // namespace intercom

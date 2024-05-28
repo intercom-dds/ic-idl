@@ -30,8 +30,6 @@
 #include <vector>
 
 #include "InterCOM/integer_types.h"
-#include "InterCOM/intercom_dcps.h"
-#include "InterCOM/platform_config.h"
 #include "InterCOM/span.h"
 
 namespace intercom {
@@ -55,6 +53,12 @@ class Buffer {
 
     ///
     Buffer(Buffer&&) noexcept;
+
+    ///
+    Buffer& operator=(const Buffer&) = delete;
+
+    ///
+    Buffer(Buffer&) = delete;
 
     ///
     ~Buffer();
@@ -225,9 +229,6 @@ class Buffer {
                    ///< reallocated/freed safely
 
     bool m_writeable;  ///< flag indicating if the buffer can be written to
-
-    Buffer& operator=(const Buffer&);  ///< = delete
-    Buffer(Buffer&);                   ///< = delete
 };
 
 }  // namespace dcps

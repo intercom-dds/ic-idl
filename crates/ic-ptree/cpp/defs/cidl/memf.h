@@ -83,15 +83,6 @@ void savememf(
     const char* module
 );
 
-File memf_to_file(
-    struct memf* memf,
-    struct memf* memf2,
-    const char* basedir,
-    const char* filedir,
-    const char* frmt,
-    const char* module
-);
-
 void memfcat(struct memf* f1, struct memf* f2);
 void memfcat_str(struct memf* f1, const char* f2);
 

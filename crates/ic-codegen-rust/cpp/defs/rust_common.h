@@ -46,5 +46,7 @@ std::string member_name(const ptree* node);
 
 std::string seri_name(const ptree* node);
 
+void transform_rust(parse_result* node);
+
 };  // namespace rust
 };  // namespace intercom

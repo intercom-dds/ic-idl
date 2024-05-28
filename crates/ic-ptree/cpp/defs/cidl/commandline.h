@@ -76,11 +76,8 @@ class CommandLineOption {
     static bool legacy_idl();
     static bool generate_default_literals();
     static bool use_fmtlib();
-    static bool generate_header_timestamp();
     static bool corba_types();
     static bool use_wstring();
-    static bool ast_dump();
-    static bool purge_destination_directories();
     static bool no_typesupport();
 
     static const char* cpp_header_postfix();

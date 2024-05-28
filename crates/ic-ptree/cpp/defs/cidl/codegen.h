@@ -46,7 +46,6 @@ struct Config {
     bool legacy_idl = false;
     bool generate_default_literals = false;
     bool cpp_no_stream_op = false;
-    bool no_defs = false;
 
     std::string cpp_header_postfix = "h";
     std::string c_file_prefix;
@@ -60,29 +59,5 @@ struct Config {
     std::string cs_target_directory;
     std::string c_target_directory;
 };
-
-struct File {
-    /// Path of the file to be generated.
-    std::string path;
-
-    /// Contents of the file.
-    std::string content;
-
-    File(std::string path) : path(std::move(path)) {}
-
-    File(std::string path, std::string&& content)
-        : path(std::move(path)), content(std::move(content)) {}
-};
-
-inline bool operator<(const File& lhs, const File& rhs) {
-    return lhs.path < rhs.path;
-}
-
-// INTERCOM_PUBLIC std::list<File> code_gen_cs(const Config& config, parse_result* result);
-// INTERCOM_PUBLIC std::list<File> code_gen_dds_cplpl(const Config& config, parse_result* result);
-// INTERCOM_PUBLIC std::list<File> code_gen_java(const Config& config, parse_result* result);
-// INTERCOM_PUBLIC std::list<File> code_gen_python(const Config& config, parse_result* result);
-// INTERCOM_PUBLIC std::list<File> code_gen_idl(const Config& config, parse_result* result);
-// INTERCOM_PUBLIC std::list<File> code_gen_json_schema(const Config& config, parse_result* result);
 
 }  // namespace intercom::cidl

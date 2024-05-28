@@ -287,33 +287,4 @@ void savememf(
     }
 }
 
-File memf_to_file(
-    struct memf* memf,
-    struct memf*,
-    const char* basedir,
-    const char* filedir,
-    const char* frmt,
-    const char* module
-) {
-    size_t size;
-    std::string filename;
-    std::string fullfilename;
-
-    if (module) {
-        filename = fmt::format(fmt::runtime(frmt), module, CommandLineOption::cpp_header_postfix());
-    } else {
-        filename = fmt::format(fmt::runtime(frmt), filedir);
-    }
-    size = memf->memp - memf->memfile;
-
-    if (filedir && *filedir && basedir && *basedir) {
-        fullfilename = fmt::format("{}/{}/{}", basedir, filedir, filename);
-    } else if (basedir && *basedir) {
-        fullfilename = fmt::format("{}/{}", basedir, filename);
-    } else {
-        fullfilename = filename;
-    }
-    return {fullfilename, std::string(memf->memfile, size)};
-}
-
 }  // namespace intercom::cidl

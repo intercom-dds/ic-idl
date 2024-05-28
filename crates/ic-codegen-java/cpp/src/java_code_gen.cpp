@@ -45,8 +45,6 @@
 #define JAVANAME_NO_ARRAY_SUFFIX 4
 
 static intercom::cidl::memf g_hd_file;
-static std::list<intercom::cidl::File> g_files;
-static bool g_emit = true;
 
 using namespace intercom::cidl;
 
@@ -58,13 +56,10 @@ static void java_savememf(struct memf* memf, const std::string& filedir, const c
 
     if (CommandLineOption::list_only()) {
         fmt::print("{}\n", filename);
-    } else if (g_emit) {
+    } else {
         std::stringstream content;
         content.write(memf->memfile, static_cast<std::streamsize>(size));
         write_if_changed(fullfilename, content.str());
-    } else {
-        auto out_file = memf_to_file(memf, nullptr, nullptr, filedir.c_str(), frmt, nullptr);
-        g_files.emplace_back(std::move(out_file));
     }
 }
 

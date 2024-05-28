@@ -34,6 +34,8 @@
 
 namespace intercom {
 
+// NOLINTBEGIN(hicpp-explicit-conversions, readability-identifier-naming)
+
 constexpr const std::size_t dynamic_extent = std::size_t(-1);
 
 template <typename T>
@@ -176,5 +178,7 @@ template <typename T, typename U>
 inline bool operator>=(const span<T>& lhs, const span<U>& rhs) {
     return !(lhs < rhs);
 }
+
+// NOLINTEND(hicpp-explicit-conversions, readability-identifier-naming)
 
 }  // namespace intercom

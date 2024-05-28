@@ -39,11 +39,8 @@ using namespace intercom::cidl;
 
 namespace {
 struct CurrentOptionsT : public intercom::cidl::Config {
-    bool version = false;
     bool intercom_build = false;
     bool do_suppress_deprecated = false;
-    bool pp_preprocess_only = false;
-    bool pp_preprocess_skip = false;
     bool use_fmtlib = false;
     bool generate_header_timestamp = false;
     bool use_wstring = false;
@@ -187,20 +184,8 @@ CommandLineOption::ScopeDefaultWarnings::~ScopeDefaultWarnings() {
 void CommandLineOption::set_warning(const CommandLineOption::WarningType& type, bool enable) {
     update_warning_flags(type, g_CurrentOptions.enabled_warnings, enable);
 }
-bool CommandLineOption::version() {
-    return g_CurrentOptions.version;
-}
 bool CommandLineOption::intercom_build() {
     return g_CurrentOptions.intercom_build;
-}
-bool CommandLineOption::preprocessor_only() {
-    return g_CurrentOptions.pp_preprocess_only;
-}
-bool CommandLineOption::preprocessor_skip() {
-    return g_CurrentOptions.pp_preprocess_skip;
-}
-bool CommandLineOption::disable_header_follow() {
-    return g_CurrentOptions.disable_header_follow;
 }
 bool CommandLineOption::generate_typesupport_only() {
     return g_CurrentOptions.generate_typesupport_only;

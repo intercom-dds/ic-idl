@@ -32,7 +32,6 @@
 namespace intercom::cidl {
 
 struct Config {
-    bool disable_header_follow = false;
     bool generate_typesupport_only = false;
     bool corba_types = false;
     bool no_rename = false;

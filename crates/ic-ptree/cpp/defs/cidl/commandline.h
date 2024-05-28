@@ -61,11 +61,7 @@ class CommandLineOption {
 
     static void set_warning(const WarningType& type, bool enable);
 
-    static bool version();
     static bool intercom_build();
-    static bool preprocessor_only();
-    static bool preprocessor_skip();
-    static bool disable_header_follow();
     static bool generate_typesupport_only();
     static bool list_only();
     static bool no_rename();

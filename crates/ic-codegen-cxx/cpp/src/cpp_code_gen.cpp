@@ -284,7 +284,9 @@ static void dll_export(struct memf* memf, const ptree* obj) {
 
 static void includeit(struct memf* memf, const ptree* source) {
     const char* include_prefix = CommandLineOption::header_subfolder();
-    std::string name = trim_include_name(source->name, !CommandLineOption::disable_header_follow());
+
+    // TODO(idarcar); this used to check for disable_header_follow -- is that necessary?
+    std::string name = trim_include_name(source->name, true);
     bool system_inc = (source->flags & OPT_SYSTEM_INCLUDE) != 0;
 
     if (include_prefix && !system_inc) {

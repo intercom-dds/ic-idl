@@ -29,8 +29,6 @@
 
 #include <stdint.h>
 
-#include "InterCOM/dyn_link.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -160,7 +158,7 @@ extern enum node_kind ANY_KIND[];
 
 extern int ZERO_BOUNDS;
 
-INTERCOM_PUBLIC extern struct numeric num_undef;
+extern struct numeric num_undef;
 
 const struct numeric* expr_convert(const struct numeric* value, enum numeric_kind kind);
 
@@ -176,91 +174,91 @@ extern struct position current_pos;
 
 extern const char* current_input_file;
 
-INTERCOM_PUBLIC extern struct ptree boolean_type;
-INTERCOM_PUBLIC extern struct ptree int8_type;
-INTERCOM_PUBLIC extern struct ptree octet_type;
-INTERCOM_PUBLIC extern struct ptree char_type;
-INTERCOM_PUBLIC extern struct ptree wchar_type;
-INTERCOM_PUBLIC extern struct ptree short_type;
-INTERCOM_PUBLIC extern struct ptree ushort_type;
-INTERCOM_PUBLIC extern struct ptree long_type;
-INTERCOM_PUBLIC extern struct ptree ulong_type;
-INTERCOM_PUBLIC extern struct ptree longlong_type;
-INTERCOM_PUBLIC extern struct ptree ulonglong_type;
-INTERCOM_PUBLIC extern struct ptree float_type;
-INTERCOM_PUBLIC extern struct ptree double_type;
-INTERCOM_PUBLIC extern struct ptree ldouble_type;
-INTERCOM_PUBLIC extern struct ptree fixed_type;
-INTERCOM_PUBLIC extern struct ptree unbounded_string_type;
-INTERCOM_PUBLIC extern struct ptree unbounded_wstring_type;
-INTERCOM_PUBLIC extern struct ptree any_type;
-INTERCOM_PUBLIC extern struct ptree object_type;
+extern struct ptree boolean_type;
+extern struct ptree int8_type;
+extern struct ptree octet_type;
+extern struct ptree char_type;
+extern struct ptree wchar_type;
+extern struct ptree short_type;
+extern struct ptree ushort_type;
+extern struct ptree long_type;
+extern struct ptree ulong_type;
+extern struct ptree longlong_type;
+extern struct ptree ulonglong_type;
+extern struct ptree float_type;
+extern struct ptree double_type;
+extern struct ptree ldouble_type;
+extern struct ptree fixed_type;
+extern struct ptree unbounded_string_type;
+extern struct ptree unbounded_wstring_type;
+extern struct ptree any_type;
+extern struct ptree object_type;
 
-INTERCOM_PUBLIC extern struct ptree* annotation_type_id;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_autoid;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_optional;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_position;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_value;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_empty;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_extensibility;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_final;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_mutable;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_appendable;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_shared;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_key;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_must_understand;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_default;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_default_literal;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_range;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_min;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_max;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_unit;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_bit_bound;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_external;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_nested;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_verbatim;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_service;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_topic;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_dds_service;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_dds_request_topic;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_dds_reply_topic;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_oneway;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ami;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_bitset_old;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_bit_bound_old;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_must_understand_old;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_minimum_type_check_old;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_hashid;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_default_nested;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ignore_literal_names;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_try_construct;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_non_serialized;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_data_representation;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_doc;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_merge;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_const;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_static;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_derive;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_rename;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_builder;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_doc;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_minimum_type_check;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_suppress;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_no_constructor;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_no_serializer;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_listener;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_length_bit_bound;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_value_offset;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_length_value_offset;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_repeat_count;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_vmf_xri;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_vmf_decimal;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_string_constants;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_jaus_presence_vector;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_jaus_integer;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_jaus_integer_function;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_ext_protobuf_type;
-INTERCOM_PUBLIC extern struct ptree* annotation_type_jaus;
+extern struct ptree* annotation_type_id;
+extern struct ptree* annotation_type_autoid;
+extern struct ptree* annotation_type_optional;
+extern struct ptree* annotation_type_position;
+extern struct ptree* annotation_type_value;
+extern struct ptree* annotation_type_empty;
+extern struct ptree* annotation_type_extensibility;
+extern struct ptree* annotation_type_final;
+extern struct ptree* annotation_type_mutable;
+extern struct ptree* annotation_type_appendable;
+extern struct ptree* annotation_type_shared;
+extern struct ptree* annotation_type_key;
+extern struct ptree* annotation_type_must_understand;
+extern struct ptree* annotation_type_default;
+extern struct ptree* annotation_type_default_literal;
+extern struct ptree* annotation_type_range;
+extern struct ptree* annotation_type_min;
+extern struct ptree* annotation_type_max;
+extern struct ptree* annotation_type_unit;
+extern struct ptree* annotation_type_bit_bound;
+extern struct ptree* annotation_type_external;
+extern struct ptree* annotation_type_nested;
+extern struct ptree* annotation_type_verbatim;
+extern struct ptree* annotation_type_service;
+extern struct ptree* annotation_type_topic;
+extern struct ptree* annotation_type_dds_service;
+extern struct ptree* annotation_type_dds_request_topic;
+extern struct ptree* annotation_type_dds_reply_topic;
+extern struct ptree* annotation_type_oneway;
+extern struct ptree* annotation_type_ami;
+extern struct ptree* annotation_type_bitset_old;
+extern struct ptree* annotation_type_bit_bound_old;
+extern struct ptree* annotation_type_must_understand_old;
+extern struct ptree* annotation_type_minimum_type_check_old;
+extern struct ptree* annotation_type_hashid;
+extern struct ptree* annotation_type_default_nested;
+extern struct ptree* annotation_type_ignore_literal_names;
+extern struct ptree* annotation_type_try_construct;
+extern struct ptree* annotation_type_non_serialized;
+extern struct ptree* annotation_type_data_representation;
+extern struct ptree* annotation_type_doc;
+extern struct ptree* annotation_type_merge;
+extern struct ptree* annotation_type_const;
+extern struct ptree* annotation_type_static;
+extern struct ptree* annotation_type_derive;
+extern struct ptree* annotation_type_ext_rename;
+extern struct ptree* annotation_type_ext_builder;
+extern struct ptree* annotation_type_ext_doc;
+extern struct ptree* annotation_type_ext_minimum_type_check;
+extern struct ptree* annotation_type_ext_suppress;
+extern struct ptree* annotation_type_ext_no_constructor;
+extern struct ptree* annotation_type_ext_no_serializer;
+extern struct ptree* annotation_type_ext_listener;
+extern struct ptree* annotation_type_ext_length_bit_bound;
+extern struct ptree* annotation_type_ext_value_offset;
+extern struct ptree* annotation_type_ext_length_value_offset;
+extern struct ptree* annotation_type_ext_repeat_count;
+extern struct ptree* annotation_type_ext_vmf_xri;
+extern struct ptree* annotation_type_ext_vmf_decimal;
+extern struct ptree* annotation_type_ext_string_constants;
+extern struct ptree* annotation_type_ext_jaus_presence_vector;
+extern struct ptree* annotation_type_ext_jaus_integer;
+extern struct ptree* annotation_type_ext_jaus_integer_function;
+extern struct ptree* annotation_type_ext_protobuf_type;
+extern struct ptree* annotation_type_jaus;
 
 #ifdef __cplusplus
 };  // extern C
@@ -269,12 +267,12 @@ INTERCOM_PUBLIC extern struct ptree* annotation_type_jaus;
 
 #  include "cidl/numeric.h"
 
-INTERCOM_PUBLIC int integer_value(const numeric& v);
-INTERCOM_PUBLIC unsigned long unsigned_value(const numeric& v);
-INTERCOM_PUBLIC long long long_long_value(const numeric& v);
-INTERCOM_PUBLIC float float_value(const numeric& v);
-INTERCOM_PUBLIC double double_value(const numeric& v);
-INTERCOM_PUBLIC std::string string_value(const numeric& v);
+int integer_value(const numeric& v);
+unsigned long unsigned_value(const numeric& v);
+long long long_long_value(const numeric& v);
+float float_value(const numeric& v);
+double double_value(const numeric& v);
+std::string string_value(const numeric& v);
 
 #  ifdef INTERCOM_FMTLIB
 #    include <fmt/ostream.h>

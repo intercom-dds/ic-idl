@@ -535,16 +535,19 @@ struct Serializer<Archive, std::vector<bool>::reference> {
     }
 };
 
-template <>
-struct Serializer<dcps::cts::GenericMarshal, std::shared_ptr<intercom::dcps::DynamicData>> {
-    INTERCOM_PUBLIC void
-    operator()(dcps::cts::GenericMarshal& a, const std::shared_ptr<intercom::dcps::DynamicData>& value, const TypeInfo*);
-};
-template <>
-struct Serializer<dcps::cts::GenericUnmarshal, std::shared_ptr<intercom::dcps::DynamicData>> {
-    INTERCOM_PUBLIC void
-    operator()(dcps::cts::GenericUnmarshal& a, const std::shared_ptr<intercom::dcps::DynamicData>& value, const TypeInfo*);
-};
+// TODO(idarcar):
+// template <>
+// struct Serializer<dcps::cts::GenericMarshal, std::shared_ptr<intercom::dcps::DynamicData>> {
+//     INTERCOM_PUBLIC void
+//     operator()(dcps::cts::GenericMarshal& a, const std::shared_ptr<intercom::dcps::DynamicData>&
+//     value, const TypeInfo*);
+// };
+// template <>
+// struct Serializer<dcps::cts::GenericUnmarshal, std::shared_ptr<intercom::dcps::DynamicData>> {
+//     INTERCOM_PUBLIC void
+//     operator()(dcps::cts::GenericUnmarshal& a, const
+//     std::shared_ptr<intercom::dcps::DynamicData>& value, const TypeInfo*);
+// };
 
 CTS_DEFINE_PRIMITIVE_TYPE(intercom::Boolean);
 CTS_DEFINE_PRIMITIVE_TYPE(intercom::Char);

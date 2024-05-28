@@ -29,7 +29,6 @@
 
 #include <vector>
 
-#include "InterCOM/dyn_link.h"
 #include "InterCOM/integer_types.h"
 #include "InterCOM/intercom_dcps.h"
 #include "InterCOM/platform_config.h"
@@ -77,10 +76,10 @@ class Buffer {
     /// Allocate memory for the buffer.
     /// \param a_new_length the number of bytes the new buffer should at least contain.
     /// If the buffer already contains that many bytes, the buffer is not reallocated.
-    INTERCOM_PUBLIC void allocate(size_t a_new_length);
+    void allocate(size_t a_new_length);
 
     /// Deallocate the buffer
-    INTERCOM_PUBLIC void free_buffer();
+    void free_buffer();
 
     /// Reset the buffer setting both write and read pointers to start
     void reset();

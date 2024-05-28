@@ -39,7 +39,6 @@
 #  include <vector>
 
 #  include "InterCOM/CORBA.h"
-#  include "InterCOM/dyn_link.h"
 
 #  ifdef _MSC_VER
 #    pragma warning(push)
@@ -102,7 +101,7 @@ struct JsonData {
         return {str_, pos_, prev.pos_, prev.line_};
     }
 
-    INTERCOM_PUBLIC Char32 read_unicode();
+    Char32 read_unicode();
 
   private:
     const char* str_;
@@ -165,7 +164,7 @@ struct JsonStream {
     size_t line_;
 };
 
-class INTERCOM_PUBLIC JsonNode {
+class JsonNode {
   public:
     JsonNode() : m_type(JSON_NULL), m_data(nullptr, 0), m_value_count(0) {}
 
@@ -286,7 +285,7 @@ class INTERCOM_PUBLIC JsonNode {
     size_t m_value_count;
 };
 
-class INTERCOM_PUBLIC JsonReader : public dcps::cts::GenericReader {
+class JsonReader : public dcps::cts::GenericReader {
   public:
     explicit JsonReader(intercom::string_view a_text, SerializerFlags a_flags = 0);
 
@@ -383,7 +382,7 @@ class INTERCOM_PUBLIC JsonReader : public dcps::cts::GenericReader {
     Stack m_type_stack[dcps::cts::MAX_NESTED_DEPTH];
 };
 
-class INTERCOM_PUBLIC JsonWriter : public dcps::cts::GenericWriter {
+class JsonWriter : public dcps::cts::GenericWriter {
   public:
     explicit JsonWriter(
         std::ostream& out,

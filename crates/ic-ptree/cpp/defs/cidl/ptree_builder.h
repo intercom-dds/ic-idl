@@ -245,7 +245,7 @@ struct ptree* create_node(enum node_kind kind, struct identifier ident);
 
 struct ptree* create_doc(struct identifier ident, int post_comment);
 
-INTERCOM_PUBLIC struct ptree* merge_members(struct ptree* node, struct ptree* members);
+struct ptree* merge_members(struct ptree* node, struct ptree* members);
 
 #ifdef __cplusplus
 }
@@ -374,8 +374,8 @@ class ParserMessage {
     const CommandLineOption::WarningType warning_type;
 };
 
-INTERCOM_PUBLIC extern std::shared_ptr<::parser> g_state;
-INTERCOM_PUBLIC extern std::mutex g_parse_mutex;
+extern std::shared_ptr<::parser> g_state;
+extern std::mutex g_parse_mutex;
 
 }  // namespace intercom::cidl
 

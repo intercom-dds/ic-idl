@@ -29,8 +29,6 @@
 
 #include <string>
 
-#include "InterCOM/dyn_link.h"
-
 namespace intercom::cidl {
 
 struct Config {

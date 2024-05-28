@@ -64,7 +64,7 @@ struct unsigned_type_of;
 
 const ULong MAX_NESTED_DEPTH = 64;
 
-class INTERCOM_PUBLIC GenericWriter {
+class GenericWriter {
   public:
     virtual ~GenericWriter() = default;
     virtual SerializerFlags flags() const = 0;
@@ -101,7 +101,7 @@ class INTERCOM_PUBLIC GenericWriter {
     virtual void write(const Char32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
 };
 
-class INTERCOM_PUBLIC GenericReader {
+class GenericReader {
   public:
     virtual ~GenericReader() = default;
     virtual SerializerFlags flags() const = 0;

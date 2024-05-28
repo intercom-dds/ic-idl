@@ -27,7 +27,6 @@
 
 #pragma once
 
-#include "InterCOM/dyn_link.h"
 #include "stdint.h"
 
 #ifdef __cplusplus
@@ -36,40 +35,28 @@ extern "C" {
 
 struct ic_parse_result_t;
 
-INTERCOM_PUBLIC
 ic_parse_result_t* ic_parse_idl(const char* input);
 
-INTERCOM_PUBLIC
 uint32_t ic_warning_count(const ic_parse_result_t* result);
 
-INTERCOM_PUBLIC
 uint32_t ic_error_count(const ic_parse_result_t* result);
 
-INTERCOM_PUBLIC
 const char* ic_parse_error(const ic_parse_result_t* result);
 
-INTERCOM_PUBLIC
 void ic_parse_free(ic_parse_result_t* result);
 
-INTERCOM_PUBLIC
 ic_parse_result_t* ic_ptree_merge(const ic_parse_result_t** result);
 
-INTERCOM_PUBLIC
 void ic_ast_dump(const ic_parse_result_t* result);
 
-INTERCOM_PUBLIC
 void ic_codegen_proto(const ic_parse_result_t* result, const char* destination);
 
-INTERCOM_PUBLIC
 void ic_codegen_java(const ic_parse_result_t* result, const char* destination);
 
-INTERCOM_PUBLIC
 void ic_codegen_csharp(const ic_parse_result_t* result, const char* destination);
 
-INTERCOM_PUBLIC
 void ic_codegen_cpp(const ic_parse_result_t* result, const char* destination);
 
-INTERCOM_PUBLIC
 void ic_codegen_python(const ic_parse_result_t* result, const char* destination);
 
 #ifdef __cplusplus

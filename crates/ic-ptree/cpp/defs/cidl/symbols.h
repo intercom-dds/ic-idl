@@ -45,31 +45,33 @@ enum Language {
     LANG_NONE,
 };
 
-INTERCOM_PUBLIC std::string safe_name(const ptree* node, const std::string& name, Language lang);
-INTERCOM_PUBLIC std::string cpp_name(const ptree* node);
-INTERCOM_PUBLIC std::string java_name(const ptree* node);
-INTERCOM_PUBLIC std::string ada_name(const ptree* node);
-INTERCOM_PUBLIC std::string cs_name(const ptree* node);
-INTERCOM_PUBLIC std::string python_name(const ptree* node);
-INTERCOM_PUBLIC std::string idl_name(const ptree* node);
-INTERCOM_PUBLIC std::string rust_name(const ptree*);
-INTERCOM_PUBLIC std::string proto_name(const ptree*);
+std::string safe_name(const ptree* node, const std::string& name, Language lang);
+std::string cpp_name(const ptree* node);
+std::string java_name(const ptree* node);
+std::string ada_name(const ptree* node);
+std::string cs_name(const ptree* node);
+std::string python_name(const ptree* node);
+std::string idl_name(const ptree* node);
+std::string rust_name(const ptree*);
+std::string proto_name(const ptree*);
 
-INTERCOM_PUBLIC const ptree* common_scope(const ptree* node, const ptree* context);
-INTERCOM_PUBLIC const ptree* namespace_of(const ptree* node);
-INTERCOM_PUBLIC std::string module_name(const ptree* node);
+const ptree* common_scope(const ptree* node, const ptree* context);
+const ptree* namespace_of(const ptree* node);
+std::string module_name(const ptree* node);
 
-INTERCOM_PUBLIC uint32_t member_name_hash_id(const std::string& name);
+uint32_t member_name_hash_id(const std::string& name);
 
 /// \note skips first enum or bitmask scope
 /// \details Cidl understands mod::EnumType::VALUE, but should not use enum scopes in emitted idl.
 /// i.e., mod::VALUE should be emitted instead of mod::EnumType::VALUE. (OMG IDL-4.2 is limited to
 /// C's enum paradigm)
-INTERCOM_PUBLIC std::string idl_scoped_name(const ptree* node, const ptree* context);
+std::string idl_scoped_name(const ptree* node, const ptree* context);
+
 /// same as idl_scoped_name, but does not skip scopes
 /// \note do not use in idl output
-INTERCOM_PUBLIC std::string idl_internal_scoped_name(const ptree* node, const ptree* context);
+std::string idl_internal_scoped_name(const ptree* node, const ptree* context);
+
 /// \note do not use in idl output
-INTERCOM_PUBLIC std::string lc_scoped_name(const ptree* p);
+std::string lc_scoped_name(const ptree* p);
 
 }  // namespace intercom::cidl

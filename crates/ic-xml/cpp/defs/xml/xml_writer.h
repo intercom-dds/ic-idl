@@ -30,12 +30,11 @@
 #include <ostream>
 #include <string>
 
-#include "InterCOM/dyn_link.h"
 #include "xml_types.h"
 
 namespace intercom {
 //! Writes an %XML file
-class INTERCOM_PUBLIC XMLWriter : public XML {
+class XMLWriter : public XML {
   public:
     //! Default Constructor
     XMLWriter() noexcept;

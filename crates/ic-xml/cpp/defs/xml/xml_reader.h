@@ -32,16 +32,15 @@
 #include <string>
 #include <vector>
 
-#include "InterCOM/dyn_link.h"
 #include "xml_types.h"
 
 namespace intercom {
 class XMLReaderFile;
 //! Reads an %XML file
-class INTERCOM_PUBLIC XMLReader : public XML {
+class XMLReader : public XML {
   public:
     // A type that provides a iterator that can read any element from the xml structure.
-    class INTERCOM_PUBLIC Iterator {
+    class Iterator {
         friend class XMLReader;
 
       public:

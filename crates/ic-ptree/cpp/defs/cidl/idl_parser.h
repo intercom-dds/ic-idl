@@ -35,7 +35,6 @@
 #include <string>
 #include <vector>
 
-#include "InterCOM/dyn_link.h"
 #include "cidl/ptree.h"
 
 namespace intercom::cidl {
@@ -57,32 +56,25 @@ struct XmlParserImpl;
 
 enum class JsonValueFlags { FLAG_ESCAPED = 1, FLAG_NUMERICAL_VALUE = 2 };
 
-INTERCOM_PUBLIC
 std::string json_value(const numeric& value, const ptree* context = nullptr, int flags = 0);
 
-INTERCOM_PUBLIC
 std::string json_value(const ptree* value);
 
-INTERCOM_PUBLIC
 ptree* parse_json(const std::string& input);
 
-INTERCOM_PUBLIC
 ptree* parse_xml(const std::string& input);
 
-INTERCOM_PUBLIC
 ptree* parse_xml_file(const std::string& uri);
 
-INTERCOM_PUBLIC
 parse_result merge_results(std::vector<parse_result>& to_merge);
 
-INTERCOM_PUBLIC
 parse_result run_parser(
     const std::vector<std::string>& input_files,
     const std::vector<std::string>& pp_options,
     uint32_t flags = 0
 );
 
-class INTERCOM_PUBLIC IdlParser {
+class IdlParser {
   public:
     IdlParser();
     ~IdlParser();
@@ -103,18 +95,16 @@ class INTERCOM_PUBLIC IdlParser {
 // TODO(idarcar);
 // class JsonParser {
 //   public:
-//     INTERCOM_PUBLIC JsonParser();
-//     INTERCOM_PUBLIC ~JsonParser();
+//     JsonParser();
+//     ~JsonParser();
 //
-//     INTERCOM_PUBLIC const parse_result& result() const;
-//     INTERCOM_PUBLIC parse_result& result();
+//     const parse_result& result() const;
+//     parse_result& result();
 //
-//     INTERCOM_PUBLIC void
-//     run(const std::string& input, const std::string& input_file_name = "<stdin>");
-//     INTERCOM_PUBLIC void run(std::istream& input, const std::string& input_file_name =
-//     "<stdin>");
+//     void run(const std::string& input, const std::string& input_file_name = "<stdin>");
+//     void run(std::istream& input, const std::string& input_file_name = "<stdin>");
 //
-//     INTERCOM_PUBLIC std::shared_ptr<parser> state();
+//     std::shared_ptr<parser> state();
 //
 //   private:
 //     std::unique_ptr<JsonParserImpl> m_impl;
@@ -122,15 +112,14 @@ class INTERCOM_PUBLIC IdlParser {
 //
 // class XmlParser {
 //   public:
-//     INTERCOM_PUBLIC XmlParser();
-//     INTERCOM_PUBLIC ~XmlParser();
+//     XmlParser();
+//     ~XmlParser();
 //
-//     INTERCOM_PUBLIC const parse_result& result() const;
-//     INTERCOM_PUBLIC parse_result& result();
+//     const parse_result& result() const;
+//     parse_result& result();
 //
-//     INTERCOM_PUBLIC void
-//     run(const std::string& input, const std::string& input_file_name = "<stdin>");
-//     INTERCOM_PUBLIC std::shared_ptr<parser> state();
+//     void run(const std::string& input, const std::string& input_file_name = "<stdin>");
+//     std::shared_ptr<parser> state();
 //
 //   private:
 //     std::unique_ptr<XmlParserImpl> m_impl;

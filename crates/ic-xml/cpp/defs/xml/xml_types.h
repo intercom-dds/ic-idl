@@ -31,8 +31,6 @@
 #include <string_view>
 #include <vector>
 
-#include "InterCOM/dyn_link.h"
-
 namespace intercom {
 class XMLReader;
 class XMLElement;
@@ -52,7 +50,7 @@ enum XMLDataType {
 };
 
 // XML attribute class
-class INTERCOM_PUBLIC XMLAttribute {
+class XMLAttribute {
     friend class XMLReader;
     friend class XMLElement;
 
@@ -108,7 +106,7 @@ class INTERCOM_PUBLIC XMLAttribute {
 };
 
 // XML element class
-class INTERCOM_PUBLIC XMLElement {
+class XMLElement {
     friend class XMLReader;
 
   public:
@@ -197,7 +195,7 @@ class INTERCOM_PUBLIC XMLElement {
 };
 
 // XML Generic class
-class INTERCOM_PUBLIC XML {
+class XML {
     friend class XMLElement;
 
   public:

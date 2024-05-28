@@ -29,7 +29,6 @@
 
 #include "InterCOM/buffer.h"
 #include "InterCOM/dds_xtypes_constants.h"
-#include "InterCOM/dyn_link.h"
 #include "InterCOM/serialization.h"
 #include "InterCOM/span.h"
 
@@ -61,7 +60,7 @@ void readEncapsulation(
 
 void writeEncapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info);
 
-class INTERCOM_PUBLIC CdrWriter : public GenericWriter {
+class CdrWriter : public GenericWriter {
   public:
     CdrWriter(Buffer& a_out, SerializerFlags a_flags);
 
@@ -188,7 +187,7 @@ class INTERCOM_PUBLIC CdrWriter : public GenericWriter {
     ULong m_level;
 };
 
-class INTERCOM_PUBLIC CdrReader : public GenericReader {
+class CdrReader : public GenericReader {
   public:
     CdrReader(const Buffer& a_out, SerializerFlags a_flags);
 
@@ -362,7 +361,7 @@ unmarshal_cdr(intercom::span<const Octet> a_data, SerializerFlags a_encoding, T&
     unmarshal_cdr(buffer, a_encoding, a_value);
 }
 
-INTERCOM_PUBLIC void transform_cdr(
+void transform_cdr(
     dcps::Buffer& a_out,
     SerializerFlags a_out_encoding,
     dcps::Buffer& a_in,

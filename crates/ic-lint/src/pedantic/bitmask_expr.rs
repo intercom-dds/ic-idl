@@ -25,21 +25,25 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(dead_code, unused)]
+use ic_parse::syntax;
+use ic_parse::visit::Visitor;
 
-use ic_parse::syntax::Definition;
+/// Lint that checks for bitmasks where a flag was given a value using an
+/// assignment expression instead of an annotation.
+pub struct BitmaskFlagExpr;
 
-mod pedantic;
-mod annotation;
-
-/// Traverses the AST and produces diagnostics for all enabled lints.
-///
-/// Lints that operate on the AST are mostly syntactic. Other lints that
-/// require more in-depth semantic analysis is typically done on the HIR with
-/// [`lint_hir`].
-pub fn lint_syntax(_: &[Definition]) {
-    // const LINTS:
+impl<'a> Visitor<'a> for BitmaskFlagExpr {
+    fn visit_bitmask_bit(&mut self, flag: &'a syntax::Bit) {
+        if flag.value.is_some() {
+            // TODO: we should use the span of the expression
+            let span = flag.name.span;
+            eprintln!(
+                "{}:{}: assignment operator on bitmask flags is an InterCOM extension",
+                span.index,
+                span.index + span.len,
+            );
+            eprintln!(" = help: use the `@position` annotation instead");
+            eprintln!(" = note: warning produced by -Wpedantic");
+        }
+    }
 }
-
-/// Set of lints that operates on the HIR.
-pub fn lint_hir() {}

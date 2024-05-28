@@ -25,21 +25,22 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(dead_code, unused)]
+use ic_parse::syntax;
+use ic_parse::visit::Visitor;
 
-use ic_parse::syntax::Definition;
-
-mod pedantic;
-mod annotation;
-
-/// Traverses the AST and produces diagnostics for all enabled lints.
+/// For annotations that have multiple non-default parameters, require that all
+/// arguments in the applied annotation are named. Single-parameter annotations
+/// are unambiguous, thus not checked by this lint.
 ///
-/// Lints that operate on the AST are mostly syntactic. Other lints that
-/// require more in-depth semantic analysis is typically done on the HIR with
-/// [`lint_hir`].
-pub fn lint_syntax(_: &[Definition]) {
-    // const LINTS:
-}
-
-/// Set of lints that operates on the HIR.
-pub fn lint_hir() {}
+/// # Example
+///
+/// The following annotation will trigger a diagnostic:
+///
+/// ```idl
+/// struct MyStruct {
+///     @range(0, 10) int32 value;
+/// };
+/// ```
+///
+/// The annotation should be rewritten as `@range(min=0, max=10)`.
+pub struct UnnamedArgs;

@@ -25,21 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(dead_code, unused)]
+use ic_parse::syntax;
+use ic_parse::visit::Visitor;
 
-use ic_parse::syntax::Definition;
-
-mod pedantic;
-mod annotation;
-
-/// Traverses the AST and produces diagnostics for all enabled lints.
-///
-/// Lints that operate on the AST are mostly syntactic. Other lints that
-/// require more in-depth semantic analysis is typically done on the HIR with
-/// [`lint_hir`].
-pub fn lint_syntax(_: &[Definition]) {
-    // const LINTS:
-}
-
-/// Set of lints that operates on the HIR.
-pub fn lint_hir() {}
+/// Checks that value of the `@bit_bound` annotation is within range of the
+/// underlying type
+pub struct BitBound;

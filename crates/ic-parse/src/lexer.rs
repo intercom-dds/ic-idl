@@ -28,17 +28,19 @@
 #[cfg(test)]
 mod tests;
 
-use std::fmt;
-
 use chumsky::prelude::*;
 use chumsky::text::{Character, TextParser};
-use chumsky::Error;
+use chumsky::{Error, Parser as _};
 
 // use crate::syntax::Span;
 
 type Span = std::ops::Range<usize>;
 
-pub trait Parser<T> = chumsky::Parser<char, T, Error = Simple<char>> + Clone;
+// Workaround until trait aliases are stabilized
+pub trait Lexer<T>: chumsky::Parser<char, T, Error = Simple<char>> + Clone {}
+
+// Blanket impl because we really just want an alias
+impl<T, U: chumsky::Parser<char, T, Error = Simple<char>> + Clone> Lexer<T> for U {}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token {
@@ -97,33 +99,10 @@ pub enum Token {
     // Identifiers
     Ctrl(char),
     Ident(String),
+
+    // TODO: remove
     AnnAppl(String),
     Literal(Literal),
-}
-
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Token::Annotation => write!(f, "annotation"),
-            Token::Struct => write!(f, "struct"),
-            Token::Union => write!(f, "union"),
-            Token::Enum => write!(f, "enum"),
-            Token::Bitmask => write!(f, "bitmask"),
-            Token::Const => write!(f, "const"),
-            Token::Module => write!(f, "module"),
-            Token::Typedef => write!(f, "typedef"),
-            Token::Interface => write!(f, "interface"),
-            Token::Valuetype => write!(f, "valuetype"),
-            Token::Switch => write!(f, "switch"),
-            Token::Case => write!(f, "case"),
-            Token::Default => write!(f, "default"),
-            Token::Null => write!(f, "null"),
-            Token::Ctrl(v) => write!(f, "`{v}`"),
-            Token::Ident(v) | Token::AnnAppl(v) => write!(f, "{v}"),
-            Token::Literal(v) => write!(f, "{v:?}"),
-            _ => write!(f, "{self:?}"),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -131,12 +110,6 @@ pub enum Number {
     // Signed(isize),
     Unsigned(usize),
     // Float(f64),
-}
-
-impl fmt::Display for Number {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -147,7 +120,7 @@ pub enum Literal {
     Integer(Number),
 }
 
-fn separator() -> impl Parser<()> {
+fn separator() -> impl Lexer<()> {
     choice((
         end(),
         filter(|c: &char| c.is_ascii_punctuation() || c.is_whitespace()).ignored(),
@@ -155,7 +128,7 @@ fn separator() -> impl Parser<()> {
 }
 
 /// Handles case-insensitive keywords.
-fn keyword(kw: &'static str) -> impl Parser<()> {
+fn keyword(kw: &'static str) -> impl Lexer<()> {
     text::ident().try_map(move |s: String, span| {
         s.eq_ignore_ascii_case(kw)
             .then_some(())
@@ -203,7 +176,7 @@ fn idl_keyword(ident: String) -> Token {
     }
 }
 
-fn ident() -> impl Parser<Token> {
+fn ident() -> impl Lexer<Token> {
     choice((
         just('_')
             .ignore_then(text::ident())
@@ -220,7 +193,7 @@ fn ident() -> impl Parser<Token> {
     ))
 }
 
-fn integer_lit() -> impl Parser<Number> {
+fn integer_lit() -> impl Lexer<Number> {
     let hex = just("0x")
         .ignore_then(text::int(16))
         .map(|v: String| usize::from_str_radix(&v, 16).unwrap())
@@ -240,22 +213,22 @@ fn integer_lit() -> impl Parser<Number> {
         .then_ignore(separator())
 }
 
-fn bool_lit() -> impl Parser<bool> {
+fn bool_lit() -> impl Lexer<bool> {
     keyword("true")
         .to(true)
         .or(keyword("false").to(false))
-        .then_ignore(separator())
+        // .then_ignore(separator())
         .labelled("boolean")
 }
 
-fn char_lit() -> impl Parser<char> {
+fn char_lit() -> impl Lexer<char> {
     just('\'')
         .ignore_then(filter(|v: &char| v.is_ascii()))
         .then_ignore(just('\''))
         .labelled("character")
 }
 
-fn string_lit() -> impl Parser<String> {
+fn string_lit() -> impl Lexer<String> {
     just('"')
         .ignore_then(none_of('"').repeated())
         .then_ignore(just('"'))
@@ -263,7 +236,7 @@ fn string_lit() -> impl Parser<String> {
         .labelled("string")
 }
 
-fn literal() -> impl Parser<Literal> {
+fn literal() -> impl Lexer<Literal> {
     choice((
         bool_lit().map(Literal::Boolean),
         char_lit().map(Literal::Char),
@@ -272,7 +245,7 @@ fn literal() -> impl Parser<Literal> {
     ))
 }
 
-fn comment() -> impl Parser<String> {
+fn comment() -> impl Lexer<String> {
     let line = just("//")
         .ignore_then(take_until(text::newline()))
         .padded()
@@ -288,14 +261,14 @@ fn comment() -> impl Parser<String> {
     line.or(block).labelled("comment")
 }
 
-fn token() -> impl Parser<Token> {
+fn token() -> impl Lexer<Token> {
     let ctrl = one_of("()[]{}<>;,+-/*=").map(Token::Ctrl);
     let lit = literal().map(Token::Literal);
     choice((ctrl, lit, ident()))
 }
 
 #[must_use]
-pub fn lexer() -> impl Parser<Vec<(Token, Span)>> {
+pub fn lexer() -> impl Lexer<Vec<(Token, Span)>> {
     let token = token()
         .map_with_span(|t, span| (t, span))
         .padded_by(comment().repeated())

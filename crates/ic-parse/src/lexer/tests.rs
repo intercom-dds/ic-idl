@@ -177,3 +177,10 @@ fn partial_ident() {
     );
     assert_eq!(token().parse("inout").unwrap(), Token::Inout);
 }
+
+#[test]
+fn const_dcl() {
+    let tokens = scan("const boolean FOO = true;").unwrap();
+    assert_eq!(tokens.len(), 6);
+    assert_eq!(tokens.last().unwrap().0, Token::Ctrl(';'));
+}

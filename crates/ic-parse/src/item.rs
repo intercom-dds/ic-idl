@@ -56,14 +56,14 @@ pub struct Span {
 
 pub type AnnotationVec = InlineVec<AnnotationAppl>;
 
-pub type Definition = Item<ItemKind>;
-
+// TODO: template this, then use that for struct members, etc? Since we need to
+// store the same information anyway.
 #[derive(Debug)]
-pub struct Item<K> {
+pub struct Item {
     pub ident: Ident,
     pub span: Span,
     pub annotations: AnnotationVec,
-    pub kind: K,
+    pub kind: ItemKind,
 }
 
 #[derive(Debug)]
@@ -96,60 +96,30 @@ pub enum DeclKind {
 
 #[derive(Debug)]
 pub enum Type {
-    /// Array of another type, e.g. `int32 value[3]`.
-    /// Only the type is included; the name of the member is omitted.
-    Array(P<Type>),
-
-    /// Sequence of another type, e.g. `sequence<string>`.
-    Sequence(P<Type>),
-
-    /// (key, value) pair of types, e.g. `map<string, string>`.
-    Map(P<Type>, P<Type>),
-
-    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
+    Array,
+    Sequence,
     Path(Ident),
 }
 
-/// A definition of an annotation, e.g. `@annotation foo {};`.
 #[derive(Debug)]
 pub struct AnnotationDef {
-    pub fields: InlineVec<AnnotationField>,
+    pub fields: InlineVec<()>,
 }
 
-/// The items that can be placed inside a definition of an annotation.
-#[derive(Debug)]
-pub enum AnnotationField {
-    Enum(P<Item<EnumDef>>),
-    Bitmask(P<Item<BitmaskDef>>),
-    Const(P<Item<ConstDef>>),
-    Field(P<Field>),
-}
-
-/// A parameter inside an applied annotation, e.g. `value=true` in
-/// `@optional(value=true)`.
 #[derive(Debug)]
 pub struct AnnotationParam {
-    /// Name of the parameter if one was specified.
-    /// May be omitted for annotations with only a single,  non-default member.
     pub name: Option<Ident>,
-
-    /// Span of the entire parameter.
-    pub span: Span,
-
-    /// The specified value of the parameter.
     pub value: Expr,
 }
 
 #[derive(Debug)]
 pub struct AnnotationAppl {
-    pub ident: Ident,
-    pub span: Span,
     pub params: InlineVec<AnnotationParam>,
 }
 
 #[derive(Debug)]
 pub struct ModuleDef {
-    pub defs: InlineVec<Item<ItemKind>>,
+    pub defs: InlineVec<Item>,
 }
 
 #[derive(Debug)]
@@ -308,14 +278,7 @@ pub fn dummy() {
                     span: Span::default(),
                 },
                 span: Span::default(),
-                annotations: vec![AnnotationAppl {
-                    ident: Ident {
-                        name: Symbol,
-                        span: Span::default(),
-                    },
-                    span: Span::default(),
-                    params: vec![],
-                }],
+                annotations: vec![],
                 kind: ItemKind::Const(P(ConstDef {
                     value: Expr::Numeric(Numeric {
                         kind: NumericKind::Bool(true),

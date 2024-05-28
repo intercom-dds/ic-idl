@@ -25,9 +25,32 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, dead_code)]
+use crate::syntax::*;
 
-pub mod lexer;
-pub mod parser;
-pub mod syntax;
-pub mod visit;
+pub trait Visitor<'a> {
+    fn visit_definition(&mut self, def: &'a Definition) {}
+
+    fn visit_module(&mut self, def: &'a ModuleDef) {}
+
+    fn visit_struct(&mut self, def: &'a StructDef) {}
+
+    fn visit_struct_field(&mut self, def: &'a Field) {}
+
+    fn visit_union(&mut self, def: &'a UnionDef) {}
+
+    fn visit_enum(&mut self, def: &'a EnumDef) {}
+
+    fn visit_enum_variant(&mut self, def: &'a Enumerator) {}
+}
+
+pub trait Visit {
+    fn visit<'a, V: Visitor<'a>>(self, visitor: &mut V);
+}
+
+impl<T: Visit> Visit for Option<T> {
+    fn visit<'a, V: Visitor<'a>>(self, visitor: &mut V) {
+        if let Some(v) = self {
+            v.visit(visitor);
+        }
+    }
+}

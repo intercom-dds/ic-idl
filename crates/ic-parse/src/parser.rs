@@ -25,9 +25,34 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, dead_code)]
+#[cfg(test)]
+mod tests;
 
-pub mod lexer;
-pub mod parser;
-pub mod syntax;
-pub mod visit;
+use anyhow::Result;
+use chumsky::prelude::*;
+use chumsky::text::{Character, TextParser};
+use chumsky::{Error, Parser as _, Stream};
+
+use crate::lexer::Token;
+use crate::syntax::Definition;
+
+// Workaround until trait aliases are stabilized
+pub trait Parser<T>: chumsky::Parser<char, T, Error = Simple<char>> + Clone {}
+
+// Blanket impl because we really just want an alias
+impl<T, U: chumsky::Parser<char, T, Error = Simple<char>> + Clone> Parser<T> for U {}
+
+/// Creates a parser that lazily constructs an AST as it gets fed tokens.
+pub fn parse() -> Result<Vec<Definition>> {
+    Ok(vec![])
+}
+
+/// Constructs an AST from the given tokens.
+pub fn from_tokens(_tokens: &[Token]) -> Result<Vec<Definition>> {
+    // let ast = parser::specification().parse(stream);
+    Ok(vec![])
+}
+
+// fn specification() -> impl Parser<Vec<Definition>> {
+//     todo!()
+// }

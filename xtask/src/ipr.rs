@@ -37,7 +37,7 @@ pub struct Options;
 
 // Files to exclude from the IPR check.
 // All paths are relative from the root of the Git repository.
-const WHITELIST: &[&str] = &[".json$", "^external/fmt/"];
+const WHITELIST: &[&str] = &[".json$", "^external/fmt/", "Cargo.lock"];
 
 fn git_root() -> PathBuf {
     let output = Command::new("git")

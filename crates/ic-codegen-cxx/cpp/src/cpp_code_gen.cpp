@@ -198,8 +198,6 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
             }
             if (is_wstring(node)) {
                 out << "W";
-            } else if (CommandLineOption::string_encoding_utf8()) {
-                out << "Utf8";
             }
             out << "String_var";
             if (!node->bounds.empty()) {

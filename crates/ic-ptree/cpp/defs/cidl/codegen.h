@@ -36,7 +36,6 @@ struct Config {
     bool corba_types = false;
     bool no_rename = false;
     bool list_only = false;
-    bool string_encoding_utf8 = false;
     bool proxies = false;
     bool compatibility = false;
     bool no_corba_dependency = false;

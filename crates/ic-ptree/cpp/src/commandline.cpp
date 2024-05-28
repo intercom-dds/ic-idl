@@ -196,9 +196,6 @@ bool CommandLineOption::list_only() {
 bool CommandLineOption::no_rename() {
     return g_CurrentOptions.no_rename;
 }
-bool CommandLineOption::string_encoding_utf8() {
-    return g_CurrentOptions.string_encoding_utf8;
-}
 bool CommandLineOption::proxies() {
     return g_CurrentOptions.proxies;
 }

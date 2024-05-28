@@ -65,7 +65,6 @@ class CommandLineOption {
     static bool generate_typesupport_only();
     static bool list_only();
     static bool no_rename();
-    static bool string_encoding_utf8();
     static bool proxies();
     static bool compatibility();
     static bool no_corba_dependency();

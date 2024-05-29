@@ -40,10 +40,16 @@ workspace = true
 anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }
 ic-preproc = { path = "../ic-preproc" }
-ic-parse = { path = "../ic-parse", optional = true }
 ic-ptree = { path = "../ic-ptree", optional = true }
 
+# HIR-related deps
+ic-hir = { path = "../ic-hir", optional = true }
+ic-lint = { path = "../ic-lint", optional = true }
+ic-parse = { path = "../ic-parse", optional = true }
+
+intercom-cts.workspace = true
+
 [features]
-default = ["ptree"]
+default = ["hir"]
 ptree = ["dep:ic-ptree"]
-hir = ["dep:ic-parse"]
+hir = ["dep:ic-parse", "dep:ic-lint"]

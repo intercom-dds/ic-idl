@@ -117,6 +117,7 @@ dependencies = [
  "ic-parse",
  "ic-preproc",
  "ic-ptree",
+ "intercom-cts",
 ]
 
 [[package]]
@@ -147,6 +148,22 @@ name = "ic-ptree"
 version = "0.0.0"
 dependencies = [
  "cmake",
+]
+
+[[package]]
+name = "intercom-cts"
+version = "0.1.0"
+dependencies = [
+ "intercom-derive",
+]
+
+[[package]]
+name = "intercom-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

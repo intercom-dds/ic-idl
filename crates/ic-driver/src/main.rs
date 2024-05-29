@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(unused)]
+
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -65,6 +67,18 @@ struct ParseOptions {
 
     #[option(positional)]
     _files: HashSet<PathBuf>,
+}
+
+intercom_cts::bitmask! {
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    pub Warnings: u32 {
+        DEPRECATED = 1 << 0,
+        ANNOTATION = 1 << 1,
+        UNKNOWN_ANNOTATION = 1 << 2,
+        PEDANTIC = 1 << 3,
+        ERROR = 1 << 4,
+        HELP = 1 << 5,
+    }
 }
 
 #[derive(Command, Default)]
@@ -299,10 +313,10 @@ fn main() {
 #[cfg(feature = "hir")]
 fn try_main(options: &Options) -> anyhow::Result<()> {
     // For the time being, lexing and parsing happens in two separate stages as
-    // it makes it easier to debug the lexer. This can be changed later so we
+    // debugging them separately is easier. This can be changed later so we
     // instead lazily scan the input as we parse. That should in theory be
-    // faster as we (1) avoid the heap allocation of each token, and (2) we can
-    // error out earlier.
+    // faster as we (1) avoid collecting the tokens in an intermediate
+    // container, and (2) we can error out earlier.
     let input = options.files.iter().next().unwrap();
     let input = std::fs::read_to_string(input)?;
     let tokens = ic_parse::lexer::scan(&input).unwrap();

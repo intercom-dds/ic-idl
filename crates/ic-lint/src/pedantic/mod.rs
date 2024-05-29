@@ -27,6 +27,5 @@
 
 //! Collection of lints that are guarded behind the `-Wpedantic` flag.
 
-pub mod bitmask_expr;
-pub mod enum_expr;
+pub mod assign_expr;
 pub mod lowercase_bool;

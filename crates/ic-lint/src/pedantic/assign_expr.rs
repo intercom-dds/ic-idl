@@ -28,11 +28,11 @@
 use ic_parse::syntax;
 use ic_parse::visit::Visitor;
 
-/// Lint that checks for bitmasks where a flag was given a value using an
-/// assignment expression instead of an annotation.
-pub struct BitmaskFlagExpr;
+/// Lint that checks for enumerators and bitmask flags where a field was
+/// assigned a value using an assignment expression instead of an annotation.
+pub struct AssignExpr;
 
-impl<'a> Visitor<'a> for BitmaskFlagExpr {
+impl<'a> Visitor<'a> for AssignExpr {
     fn visit_bitmask_bit(&mut self, flag: &'a syntax::Bit) {
         if flag.value.is_some() {
             // TODO: we should use the span of the expression
@@ -45,5 +45,54 @@ impl<'a> Visitor<'a> for BitmaskFlagExpr {
             eprintln!(" = help: use the `@position` annotation instead");
             eprintln!(" = note: warning produced by -Wpedantic");
         }
+    }
+
+    fn visit_enum_variant(&mut self, variant: &'a syntax::Enumerator) {
+        if variant.value.is_some() {
+            let span = variant.name.span;
+            eprintln!(
+                "{}:{}: assignment operator on enumerators is an InterCOM extension",
+                span.index,
+                span.index + span.len,
+            );
+            eprintln!(" = help: use the `@value` annotation instead");
+            eprintln!(" = note: warning produced by -Wpedantic");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ic_parse::syntax::*;
+
+    use super::*;
+
+    #[test]
+    fn omitted_value() {
+        let variant = Enumerator {
+            annotations: vec![],
+            name: Ident {
+                name: Symbol,
+                span: Span::default(),
+            },
+            value: None,
+        };
+        AssignExpr.visit_enum_variant(&variant);
+    }
+
+    #[test]
+    fn value_expr() {
+        let variant = Enumerator {
+            annotations: vec![],
+            name: Ident {
+                name: Symbol,
+                span: Span::default(),
+            },
+            value: Some(Expr::Numeric(Numeric {
+                kind: NumericKind::Int,
+                span: Span::default(),
+            })),
+        };
+        AssignExpr.visit_enum_variant(&variant);
     }
 }

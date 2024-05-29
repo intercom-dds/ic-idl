@@ -101,18 +101,6 @@ version = "0.1.0"
 [[package]]
 name = "ic-hir"
 version = "0.0.0"
-dependencies = [
- "ic-hir-derive",
-]
-
-[[package]]
-name = "ic-hir-derive"
-version = "0.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "ic-hir-pretty"

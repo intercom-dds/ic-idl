@@ -34,7 +34,6 @@ members = [
     "crates/ic-driver",
     "crates/ic-emit",
     "crates/ic-hir",
-    "crates/ic-hir-derive",
     "crates/ic-hir-pretty",
     "crates/ic-lint",
     "crates/ic-parse",

@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef INTERCOM_CDRSERIALIZER_IC
-#define INTERCOM_CDRSERIALIZER_IC
+#pragma once
 
 #include <cassert>
 #include <cstring>
@@ -1040,6 +1039,4 @@ inline void transform_cdr(
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(pop)
-#endif
-
 #endif

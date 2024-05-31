@@ -262,33 +262,3 @@ pub enum Expr {
     Unary { op: Op, expr: P<Expr> },
     Binary { lhs: P<Expr>, op: Op, rhs: P<Expr> },
 }
-
-pub fn dummy() {
-    let defs = Item {
-        ident: Ident {
-            name: Symbol,
-            span: Span::default(),
-        },
-        span: Span::default(),
-        annotations: vec![],
-        kind: ItemKind::Module(P(ModuleDef {
-            defs: vec![Item {
-                ident: Ident {
-                    name: Symbol,
-                    span: Span::default(),
-                },
-                span: Span::default(),
-                annotations: vec![],
-                kind: ItemKind::Const(P(ConstDef {
-                    value: Expr::Numeric(Numeric {
-                        kind: NumericKind::Bool(true),
-                        span: Span::default(),
-                    }),
-                    annotations: vec![],
-                })),
-            }],
-        })),
-    };
-
-    println!("{defs:#?}");
-}

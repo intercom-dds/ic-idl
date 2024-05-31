@@ -29,6 +29,7 @@
 name = "intercom-cts"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies.intercom-derive]
 path = "../intercom-derive"

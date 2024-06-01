@@ -55,9 +55,14 @@ macro_rules! tokens {
 
 #[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"//[^@][^\r\n]*")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
+#[logos(subpattern ident = r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
 pub enum Kind {
-    #[token("annotation")]
+    #[token("any")]
+    Any,
+
+    #[token("@annotation")]
     Annotation,
 
     #[token("module")]
@@ -78,14 +83,26 @@ pub enum Kind {
     #[token("bitfield")]
     Bitfield,
 
+    #[token("enum")]
+    Enum,
+
     #[token("exception")]
     Exception,
+
+    #[token("typedef")]
+    Typedef,
+
+    #[token("native")]
+    Native,
 
     #[token("union")]
     Union,
 
     #[token("switch")]
     Switch,
+
+    #[token("case")]
+    Case,
 
     #[token("default")]
     Default,
@@ -153,6 +170,39 @@ pub enum Kind {
     #[token("]")]
     RBracket,
 
+    #[token("<<")]
+    LShift,
+
+    #[token(">>")]
+    RShift,
+
+    #[token("&")]
+    BitAnd,
+
+    #[token("|")]
+    BitOr,
+
+    #[token("^")]
+    BitXor,
+
+    #[token("+")]
+    Plus,
+
+    #[token("-")]
+    Minus,
+
+    #[token("~")]
+    Tilde,
+
+    #[token("*")]
+    Star,
+
+    #[token("/")]
+    Slash,
+
+    #[token("%")]
+    Modulo,
+
     #[regex("true|TRUE")]
     True,
 
@@ -162,7 +212,7 @@ pub enum Kind {
     #[regex("0[1-9]+")]
     Octal,
 
-    #[regex("[1-9][0-9]*")]
+    #[regex("0|([1-9][0-9]*)")]
     Decimal,
 
     #[regex("0[xX][a-fA-F0-9]+")]
@@ -172,16 +222,24 @@ pub enum Kind {
     Float,
 
     /// String literal. Handles escaped quotes.
-    #[regex(r#""(?:[^"]|\\")*""#)]
+    #[regex(r#"L?"(?:[^"]|\\")*""#)]
     String,
 
+    /// Applied annotation made up of a valid UAX#31 identifier
+    #[regex(r#"(@|//@)(?&ident)"#)]
+    AnnotationAppl,
+
     /// A valid UAX#31 identifier.
-    #[regex(r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
+    #[regex("(?&ident)")]
     Ident,
 
     /// Any single UTF-8 character surrounded by single quotes.
-    #[regex(r"'(?:\\.|[^\\'])?'", to_char)]
+    #[regex(r"L?'(?:\\.|[^\\'])?'", to_char)]
     Char(Option<char>),
+
+    // Preserve documentation comments
+    #[regex(r"//[/!][^\r\n]*", priority = 7)]
+    Comment,
 
     /// Fallback for invalid tokens
     Invalid,
@@ -192,36 +250,62 @@ impl fmt::Display for Kind {
         match self {
             Kind::Annotation => write!(f, "annotation"),
             Kind::Struct => write!(f, "struct"),
-            // Kind::Enum => write!(f, "enum"),
+            Kind::Enum => write!(f, "enum"),
             Kind::Bitmask => write!(f, "bitmask"),
             Kind::Exception => write!(f, "exception"),
             Kind::Const => write!(f, "const"),
             Kind::Module => write!(f, "module"),
+            Kind::Ident => write!(f, "identifier"),
+            Kind::Case => write!(f, "case label"),
+            Kind::Default => write!(f, "default label"),
+            Kind::Any => write!(f, "any"),
+            Kind::Bitset => write!(f, "bitset"),
+            Kind::Bitfield => write!(f, "bitfield"),
+            Kind::Typedef => write!(f, "typedef"),
+            Kind::Native => write!(f, "native"),
+            Kind::Union => write!(f, "union"),
+            Kind::Switch => write!(f, "switch"),
+            Kind::Null => write!(f, "null"),
+            Kind::Local => write!(f, "local"),
+            Kind::Interface => write!(f, "interface"),
+            Kind::Raises => write!(f, "raises"),
+            Kind::GetRaises => write!(f, "getraises"),
+            Kind::SetRaises => write!(f, "setraises"),
+            Kind::Attribute => write!(f, "attribute"),
+            Kind::ReadOnly => write!(f, "read-only"),
+            Kind::Float => write!(f, "floating-point number"),
+            Kind::String => write!(f, "string"),
+            Kind::AnnotationAppl => write!(f, "applied annotation"),
+            Kind::In => write!(f, "in"),
+            Kind::Out => write!(f, "out"),
+            Kind::InOut => write!(f, "inout"),
+            Kind::Colon => write!(f, "`:`"),
+            Kind::Eq => write!(f, "`=`"),
             Kind::Semi => write!(f, "`;`"),
-            // Kind::Typedef => write!(f, "typedef"),
-            // Kind::Union => write!(f, "union"),
-            // Kind::Switch => write!(f, "switch"),
-            // Kind::Case => write!(f, "case"),
-            // Kind::Default => write!(f, "default"),
-            // Kind::Null => write!(f, "null"),
-            // Kind::Local => write!(f, "local"),
-            // Kind::Interface => write!(f, "interface"),
-            // Kind::In => write!(f, "in"),
-            // Kind::Out => write!(f, "out"),
-            // Kind::Inout => write!(f, "inout"),
-            // Kind::Raises => write!(f, "raises"),
-            // Kind::GetRaises => write!(f, "getraises"),
-            // Kind::SetRaises => write!(f, "setraises"),
-            // Kind::Attribute => write!(f, "attribute"),
-            // Kind::ReadOnly => write!(f, "readonly"),
-            // Kind::Valuetype => write!(f, "valuetype"),
-            // Kind::Public => write!(f, "public"),
-            // Kind::Private => write!(f, "private"),
-            // Kind::Bitset => write!(f, "bitset"),
-            // Kind::Bitfield => write!(f, "bitfield"),
-            // Kind::Sequence => write!(f, "sequence"),
-            // Kind::Map => write!(f, "map"),
-            _ => write!(f, "unknown"),
+            Kind::Comma => write!(f, "`,`"),
+            Kind::LBrace => write!(f, "`{{`"),
+            Kind::RBrace => write!(f, "`}}`"),
+            Kind::LParen => write!(f, "`(`"),
+            Kind::RParen => write!(f, "`)`"),
+            Kind::LBracket => write!(f, "`[`"),
+            Kind::RBracket => write!(f, "`]`"),
+            Kind::LShift => write!(f, "`<<`"),
+            Kind::RShift => write!(f, "`>>`"),
+            Kind::True => write!(f, "`TRUE`"),
+            Kind::False => write!(f, "`FALSE`"),
+            Kind::BitAnd => write!(f, "`&`"),
+            Kind::BitOr => write!(f, "`|`"),
+            Kind::BitXor => write!(f, "`^`"),
+            Kind::Plus => write!(f, "`+`"),
+            Kind::Minus => write!(f, "`-`"),
+            Kind::Tilde => write!(f, "`~`"),
+            Kind::Star => write!(f, "`*`"),
+            Kind::Slash => write!(f, "`/`"),
+            Kind::Modulo => write!(f, "`%`"),
+            Kind::Char(v) => write!(f, "'{}'", v.unwrap_or_default()),
+            Kind::Octal | Kind::Decimal | Kind::Hex => write!(f, "number"),
+            Kind::Comment => write!(f, "comment"),
+            Kind::Invalid => write!(f, "invalid identifier"),
         }
     }
 }

@@ -40,3 +40,18 @@ The output of the parser is not guaranteed to be valid IDL, neither
 syntactically nor semantically. The parser follows a relaxed version of the IDL
 grammar for the sake of ease of parsing, and instead relies on traversing the
 AST afterwards to detect deviations and syntax errors.
+
+## Building blocks
+
+The following building blocks are supported:
+
+ - Core Data Types
+ - Any
+ - Interfaces - Basic
+ - Interfaces - Full
+ - Value Types
+ - Extended Data Types
+ - Anonymous Types
+ - Annotations
+
+ In addition, it includes the extensions defined in the DDS-RPC specification.

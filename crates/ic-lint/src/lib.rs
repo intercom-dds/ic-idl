@@ -31,6 +31,7 @@ use ic_parse::syntax::Definition;
 
 mod annotation;
 mod pedantic;
+mod semantic;
 mod syntax;
 
 /// Traverses the AST and produces diagnostics for all enabled lints.

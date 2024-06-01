@@ -40,10 +40,12 @@ use ic_alloc::inline_vec::InlineVec;
 use ic_alloc::interner::SymbolId;
 use ic_alloc::ptr::P;
 
+#[must_use]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Symbol;
 
 impl Symbol {
+    #[must_use]
     pub fn as_str(&self) -> &str {
         todo!()
     }
@@ -106,7 +108,19 @@ pub enum ItemKind {
     Bitmask(P<BitmaskDef>),
     Bitset(P<BitsetDef>),
     Const(P<ConstDef>),
-    Decl(P<Decl>),
+    Typedef(P<Typedef>),
+    Decl(Decl),
+}
+
+impl Item<ItemKind> {
+    pub fn decl(name: Ident, kind: DeclKind) -> Self {
+        Self {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Decl(Decl { kind }),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -181,9 +195,35 @@ pub struct ModuleDef {
     pub defs: InlineVec<Item<ItemKind>>,
 }
 
+impl ModuleDef {
+    pub fn new(name: Ident, defs: InlineVec<Definition>) -> Definition {
+        let body = Self { defs };
+
+        Definition {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Module(P(body)),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct StructDef {
     pub members: InlineVec<Field>,
+}
+
+impl StructDef {
+    pub fn new(name: Ident) -> Definition {
+        let body = StructDef { members: vec![] };
+
+        Definition {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Struct(P(body)),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -196,11 +236,6 @@ pub struct Field {
 #[derive(Debug)]
 pub struct ExceptDef {
     pub members: InlineVec<Field>,
-}
-
-#[derive(Debug)]
-pub struct EnumDef {
-    pub fields: InlineVec<Enumerator>,
 }
 
 #[derive(Debug)]
@@ -232,6 +267,26 @@ pub struct Bitfield {
 }
 
 #[derive(Debug)]
+pub struct EnumDef {
+    pub fields: InlineVec<Enumerator>,
+}
+
+impl EnumDef {
+    pub fn new(name: Ident, enumerators: InlineVec<Enumerator>) -> Definition {
+        let body = P(Self {
+            fields: enumerators,
+        });
+
+        Definition {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Enum(body),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Enumerator {
     pub annotations: InlineVec<AnnotationAppl>,
     pub name: Ident,
@@ -239,6 +294,16 @@ pub struct Enumerator {
     /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
     /// The `@value` annotation will *not* populate this field.
     pub value: Option<Expr>,
+}
+
+impl Enumerator {
+    pub fn new(span: Span) -> Self {
+        Self {
+            annotations: vec![],
+            name: Ident { name: Symbol, span },
+            value: None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -249,6 +314,25 @@ pub struct UnionDef {
     /// All variants of the union. The case labels that map to each variant can
     /// be found in `UnionField`.
     pub fields: InlineVec<UnionField>,
+}
+
+impl UnionDef {
+    pub fn new(name: Ident, fields: InlineVec<UnionField>) -> Definition {
+        let body = Self {
+            disc: Discriminator {
+                annotations: vec![],
+                ty: Type::Path(Ident::default()),
+            },
+            fields,
+        };
+
+        Definition {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Union(P(body)),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -278,6 +362,48 @@ pub enum Label {
 pub struct ConstDef {
     pub value: Expr,
     pub annotations: InlineVec<AnnotationAppl>,
+}
+
+impl ConstDef {
+    pub fn new(name: Ident, ty: Type) -> Definition {
+        Definition {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Const(P(Self {
+                value: Expr::Numeric(Numeric {
+                    kind: NumericKind::Bool,
+                    span: Span::default(),
+                }),
+                annotations: vec![],
+            })),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Typedef {
+    /// The underlying type of the typedef.
+    pub ty: Ident,
+
+    /// Annotations that are applied to the underlying type.
+    pub annotations: InlineVec<AnnotationAppl>,
+}
+
+impl Typedef {
+    pub fn new(name: Ident, ty: Ident) -> Definition {
+        let body = Self {
+            ty,
+            annotations: vec![],
+        };
+
+        Definition {
+            name,
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Typedef(P(body)),
+        }
+    }
 }
 
 #[derive(Debug)]

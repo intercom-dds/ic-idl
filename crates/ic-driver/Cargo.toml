@@ -51,6 +51,6 @@ ic-parse = { path = "../ic-parse", optional = true }
 intercom-cts.workspace = true
 
 [features]
-default = ["hir"]
+default = ["ptree"]
 ptree = ["dep:ic-ptree"]
 hir = ["dep:ic-parse", "dep:ic-lint"]

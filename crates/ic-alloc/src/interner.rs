@@ -30,17 +30,16 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::arena::{Arena, Id};
-use crate::ptr::P;
 
 /// A cached entry in the interner.
 #[derive(Debug)]
 pub struct CachedStr {
     hash: u64,
-    string: P<str>,
+    string: Box<str>,
 }
 
 impl CachedStr {
-    fn new(string: P<str>) -> Self {
+    fn new(string: Box<str>) -> Self {
         let mut hasher = DefaultHasher::new();
         string.hash(&mut hasher);
         let hash = hasher.finish();
@@ -99,8 +98,11 @@ impl Interner {
         self.arena.get(id).map(|v| v.string.as_ref())
     }
 
-    pub fn insert(&mut self, str: P<str>) -> SymbolId {
-        let cached = CachedStr::new(str);
+    pub fn insert<I>(&mut self, str: I) -> SymbolId
+    where
+        I: Into<Box<str>>,
+    {
+        let cached = CachedStr::new(str.into());
 
         match self.cache.entry(cached.hash) {
             Entry::Occupied(v) => *v.get(),
@@ -110,5 +112,30 @@ impl Interner {
                 id
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duplicate() {
+        let str = "foobar";
+        let mut interner = Interner::new();
+
+        let id = interner.insert(str);
+        let id2 = interner.insert(str);
+        assert_eq!(id, id2);
+        assert_eq!(interner.len(), 1);
+    }
+
+    #[test]
+    fn get_str() {
+        let str = "foobar";
+        let mut interner = Interner::new();
+        let id = interner.insert(str);
+
+        assert_eq!(interner.get(id).unwrap(), str);
     }
 }

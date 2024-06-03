@@ -64,3 +64,14 @@ pub fn P<T: 'static>(value: T) -> P<T> {
         ptr: Box::new(value),
     }
 }
+
+impl<T> From<T> for P<T>
+where
+    Box<T>: From<T>,
+{
+    fn from(value: T) -> Self {
+        P {
+            ptr: Box::from(value),
+        }
+    }
+}

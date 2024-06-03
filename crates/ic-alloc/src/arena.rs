@@ -36,7 +36,7 @@ use intercom_cts::encode::{FieldSerializer, Serializer};
 use intercom_cts::{Marshal, Unmarshal};
 
 #[must_use]
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Eq, Hash)]
 #[repr(transparent)]
 pub struct Id<T> {
     id: usize,
@@ -49,6 +49,12 @@ impl<T> Id<T> {
             id,
             _marker: PhantomData,
         }
+    }
+}
+
+impl<T> PartialEq for Id<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
     }
 }
 

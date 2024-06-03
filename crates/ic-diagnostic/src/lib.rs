@@ -24,3 +24,115 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#![allow(clippy::needless_pass_by_value, unused, dead_code)]
+
+use std::fmt::Write;
+use std::ops::Range;
+
+/// Different ways a diagnostic can be formatted.
+pub enum Style {
+    /// Single-line diagnostics that only include the location of the lint and
+    /// its message. Suitable for logging.
+    Short,
+
+    /// Pretty-printed, multi-line output that highlights the span of the lint.
+    /// Includes hints and notes if they were specified.
+    Pretty,
+}
+
+pub enum Color {
+    Red,
+    Yellow,
+    Blue,
+}
+
+/// A single diagnostic intended to display lints about a particular item.
+#[must_use]
+pub struct Diag {
+    msg: String,
+    note: Option<String>,
+}
+
+impl Diag {
+    pub fn new() -> Self {
+        Self {
+            msg: String::new(),
+            note: None,
+        }
+    }
+
+    /// The main diagnostic message that should give a fairly short, concise
+    /// description of what went wrong. Longer error messages can be added to
+    /// the end of the output with [`with_note`].
+    pub fn message<S: ToString>(mut self, msg: S) -> Self {
+        self.msg = msg.to_string();
+        self
+    }
+
+    /// A label is a message that will highlight the specified span of the
+    /// source code and attach a a message to it.
+    pub fn label(mut self, label: Label) -> Self {
+        self
+    }
+
+    /// An optional description that will be displayed below the diagnostic.
+    /// This can be used to give a longer, more descriptive reason of what
+    /// triggered the diagnostic.
+    pub fn description<T, S>(mut self, _title: S, note: S) -> Self
+    where
+        T: ToString,
+        S: ToString,
+    {
+        self.note = Some(note.to_string());
+        self
+    }
+}
+
+// One label => text + line to span
+#[must_use]
+pub struct Label {
+    span: Range<usize>,
+    msg: Option<String>,
+    color: Option<Color>,
+}
+
+impl Label {
+    pub fn new(span: Range<usize>) -> Self {
+        Self {
+            span,
+            msg: None,
+            color: None,
+        }
+    }
+
+    pub fn message<S: ToString>(mut self, msg: S) -> Self {
+        self.msg = Some(msg.to_string());
+        self
+    }
+
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = Some(color);
+        self
+    }
+}
+
+/// Creates an error diagnostic that highlights the given span.
+pub fn error_span<S: ToString>(msg: S, label: Label) -> Diag {
+    Diag::new().message(msg).label(label.color(Color::Red))
+}
+
+/// Creates a warning diagnostic that highlights the given span.
+pub fn warn_span<S: ToString>(msg: S, label: Label) -> Diag {
+    Diag::new().message(msg).label(label.color(Color::Yellow))
+}
+
+struct Formatter {}
+
+impl Formatter {}
+
+// TODO: include file name and input here? so we're agnostic of SourceMap
+// TODO: there may be multiple files, though...
+pub fn emit_diagnostic<W: Write>(_w: &mut W, _lint: &Diag) {
+    let mut _fmt = Formatter {};
+}

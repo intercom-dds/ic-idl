@@ -51,7 +51,24 @@ The following building blocks are supported:
  - Interfaces - Full
  - Value Types
  - Extended Data Types
- - Anonymous Types
+ - Anonymous Types^[1]^
  - Annotations
 
  In addition, it includes the extensions defined in the DDS-RPC specification.
+
+^[1]^ Anonymous structs, unions and enumerators are not supported.
+
+### Extensions
+
+The parser supports the following extensions to the IDL grammar:
+
+ - Scoped enums.
+ - Default values for complex types, through annotations or constants.
+ - Values of enumerators and bitmask flags can be assigned using an assignment
+   expression.
+ - Complex types may be used as keys in maps.
+ - Lowercase boolean literals (i.e. `true`, `false`) are accepted.
+
+While the parser will always accept the extensions, `ic-lint` has an optional
+set of pedantic lints that can trigger a warning or error if these extensions
+are used.

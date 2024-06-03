@@ -51,11 +51,7 @@ impl ParseResult {
     pub fn diagnostics(&self) -> Option<String> {
         let c_str = unsafe { CStr::from_ptr(ffi::ic_parse_error(self.inner)) };
         let owned = c_str.to_str().map(ToString::to_string).ok()?;
-        if owned.is_empty() {
-            None
-        } else {
-            Some(owned)
-        }
+        if owned.is_empty() { None } else { Some(owned) }
     }
 }
 

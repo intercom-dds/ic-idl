@@ -142,4 +142,6 @@ macro_rules! impl_primitive {
     };
 }
 
-impl_primitive![u8, i8, u16, i16, u32, i32, u64, i64, i128, u128, isize, usize, f32, f64];
+impl_primitive![
+    u8, i8, u16, i16, u32, i32, u64, i64, i128, u128, isize, usize, f32, f64
+];

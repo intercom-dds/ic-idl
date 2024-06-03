@@ -40,16 +40,7 @@ use ic_alloc::inline_vec::InlineVec;
 use ic_alloc::interner::SymbolId;
 use ic_alloc::ptr::P;
 
-#[must_use]
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Symbol;
-
-impl Symbol {
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        todo!()
-    }
-}
+pub type Symbol = SymbolId;
 
 #[derive(Debug)]
 pub struct Document {
@@ -138,19 +129,44 @@ pub enum DeclKind {
 }
 
 #[derive(Debug)]
+pub struct Path {
+    pub leading_colons: Option<Span>,
+    pub segments: InlineVec<Ident>,
+}
+
+impl Path {
+    pub fn new(segments: InlineVec<Ident>) -> Self {
+        Self {
+            leading_colons: None,
+            segments,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum Type {
     /// Array of another type, e.g. `int32 value[3]`.
     /// Only the type is included; the name of the member is omitted.
-    Array(P<Type>),
+    Array { ty: Path, bound: InlineVec<usize> },
 
     /// Sequence of another type, e.g. `sequence<string>`.
-    Sequence(P<Type>),
+    Sequence { ty: P<Type>, bound: Option<usize> },
+
+    /// A possibly bounded string.
+    String { wide: bool, bound: Option<usize> },
 
     /// (key, value) pair of types, e.g. `map<string, string>`.
-    Map(P<Type>, P<Type>),
+    Map {
+        key: P<Type>,
+        value: P<Type>,
+        bound: Option<usize>,
+    },
+
+    /// Fixed-point type, e.g. `fixed<4, 2>`.
+    Fixed { total: usize, fractional: usize },
 
     /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
-    Path(Ident),
+    Path(Path),
 }
 
 /// A definition of an annotation, e.g. `@annotation foo {};`.
@@ -214,8 +230,8 @@ pub struct StructDef {
 }
 
 impl StructDef {
-    pub fn new(name: Ident) -> Definition {
-        let body = StructDef { members: vec![] };
+    pub fn new(name: Ident, members: InlineVec<Field>) -> Definition {
+        let body = StructDef { members };
 
         Definition {
             name,
@@ -228,7 +244,7 @@ impl StructDef {
 
 #[derive(Debug)]
 pub struct Field {
-    pub name: Ident,
+    pub names: InlineVec<Ident>,
     pub span: Span,
     pub ty: Type,
 }
@@ -297,10 +313,10 @@ pub struct Enumerator {
 }
 
 impl Enumerator {
-    pub fn new(span: Span) -> Self {
+    pub fn new(name: Ident, span: Span) -> Self {
         Self {
             annotations: vec![],
-            name: Ident { name: Symbol, span },
+            name,
             value: None,
         }
     }
@@ -321,7 +337,10 @@ impl UnionDef {
         let body = Self {
             disc: Discriminator {
                 annotations: vec![],
-                ty: Type::Path(Ident::default()),
+                ty: Type::Path(Path {
+                    leading_colons: None,
+                    segments: vec![],
+                }),
             },
             fields,
         };
@@ -353,7 +372,7 @@ pub struct UnionField {
 
 #[derive(Debug)]
 pub enum Label {
-    Case { value: Ident },
+    Case { ident: Path },
     Null,
     Default,
 }

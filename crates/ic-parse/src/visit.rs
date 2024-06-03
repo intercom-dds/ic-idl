@@ -53,7 +53,9 @@ pub trait Visitor<'a> {
 
     fn visit_struct_field(&mut self, def: &'a Field) {
         self.visit_type(&def.ty);
-        self.visit_ident(&def.name);
+        for name in &def.names {
+            self.visit_ident(name);
+        }
     }
 
     fn visit_union(&mut self, def: &'a UnionDef) {

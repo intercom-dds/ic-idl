@@ -36,8 +36,8 @@ use ic_alloc::ptr::P;
 
 use crate::lexer::{Kind, Token};
 use crate::syntax::{
-    ConstDef, DeclKind, Definition, EnumDef, Enumerator, Ident, Item, ItemKind, ModuleDef, Span,
-    StructDef, Type, Typedef, UnionDef,
+    ConstDef, DeclKind, Definition, EnumDef, Enumerator, Field, Ident, Item, ItemKind, Label,
+    ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
 };
 
 // Workaround until trait aliases are stabilized
@@ -46,12 +46,18 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {
 // Blanket impl because we really just want an alias
 impl<T, U: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone> IdlParser<T> for U {}
 
-fn ident() -> impl IdlParser<Kind> {
-    just(Kind::Ident).labelled("identifier")
+fn ident() -> impl IdlParser<Ident> {
+    let ident = select! { Kind::Ident(v) => v };
+    ident
+        .map(|name| Ident {
+            name,
+            span: Span::default(),
+        })
+        .labelled("identifier")
 }
 
-fn ty() -> impl IdlParser<Kind> {
-    just(Kind::Ident).labelled("type")
+fn ty() -> impl IdlParser<Ident> {
+    ident().labelled("type")
 }
 
 fn integer_literal() -> impl IdlParser<Kind> {
@@ -67,7 +73,7 @@ fn character_literal() -> impl IdlParser<Kind> {
 }
 
 fn string_literal() -> impl IdlParser<Kind> {
-    just(Kind::String)
+    just(Kind::StringLit)
 }
 
 // Rule 1
@@ -95,16 +101,21 @@ fn module_dcl<'a>(
         .labelled("module definition")
         .then_ignore(just(Kind::Semi));
 
-    module_def.map(|v| ModuleDef::new(Ident::default(), v.1))
+    module_def.map(|v| ModuleDef::new(v.0, v.1))
 }
 
 // Rule 4
-fn scoped_name() -> impl IdlParser<()> {
-    let inner = just([Kind::Colon, Kind::Colon]).then(ident());
-    choice((
-        ident().then(inner.clone().repeated()).ignored(),
-        inner.clone().then(inner.repeated()).ignored(),
-    ))
+// TODO: should probably return Type?
+fn scoped_name() -> impl IdlParser<Path> {
+    // let inner = just([Kind::Colon, Kind::Colon]).then(ident());
+    // let path = choice((
+    //     ident().then(inner.clone().repeated()),
+    //     inner.clone().then(inner.repeated()),
+    // ));
+    ident().map(|v| Path {
+        leading_colons: None,
+        segments: vec![v],
+    })
 }
 
 // Rule 5
@@ -113,18 +124,16 @@ fn const_dcl() -> impl IdlParser<Definition> {
         .ignore_then(const_type())
         .then(ident())
         .then_ignore(just(Kind::Eq))
-        .then(const_expr())
+        .then(ident()) // TODO: const_expr
         .then_ignore(just(Kind::Semi))
         .labelled("const declaration");
 
-    def.map(|_| ConstDef::new(Ident::default(), Type::Path(Ident::default())))
+    def.map(|((ty, name), _)| ConstDef::new(name, ty))
 }
 
 // Rule 6
-fn const_type() -> impl IdlParser<()> {
-    scoped_name().ignored()
-    // choice((scoped_name().ignored(), just(Kind::Decimal).ignored()))
-    // scoped_name().or(just(Kind::Decimal)).ignored()
+fn const_type() -> impl IdlParser<Type> {
+    choice((template_type_spec(), scoped_name().map(|v| Type::Path(v))))
 }
 
 // Rule 7, 8, 9, 10, 11, 12 and 13
@@ -144,7 +153,7 @@ fn const_expr() -> impl IdlParser<()> {
         let product = atom
             .clone()
             .then(op.then(atom).repeated())
-            .foldl(|_, _| Kind::Ident);
+            .foldl(|_, _| Kind::Decimal);
 
         // Addition and subtraction have equal precedence
         let add = just(Kind::Plus);
@@ -154,7 +163,7 @@ fn const_expr() -> impl IdlParser<()> {
         let sum = product
             .clone()
             .then(op.then(product).repeated())
-            .foldl(|_, _| Kind::Ident);
+            .foldl(|_, _| Kind::Decimal);
 
         // Bitwise shift operations have equal precedence
         let lshift = just(Kind::LShift);
@@ -164,7 +173,7 @@ fn const_expr() -> impl IdlParser<()> {
         let shifted = sum
             .clone()
             .then(op.then(sum).repeated())
-            .foldl(|_, _| Kind::Ident);
+            .foldl(|_, _| Kind::Decimal);
 
         shifted
     })
@@ -217,20 +226,97 @@ fn type_dcl() -> impl IdlParser<Definition> {
 }
 
 // Rule 21
-fn type_spec() -> impl IdlParser<()> {
-    simple_type_spec().ignored()
+fn type_spec() -> impl IdlParser<Type> {
+    choice((simple_type_spec(), template_type_spec()))
 }
 
 // Rule 22
-fn simple_type_spec() -> impl IdlParser<()> {
-    scoped_name()
+fn simple_type_spec() -> impl IdlParser<Type> {
+    choice((base_type_spec(), scoped_name().map(|v| Type::Path(v))))
 }
 
 // Rule 23
-fn base_type_spec() -> impl IdlParser<()> {
+fn base_type_spec() -> impl IdlParser<Type> {
     // We do not treat primitive types as keywords for the sole reason that it
     // serves no purpose other than further complicating the grammar.
-    ident().ignored()
+    ty().map(|v| {
+        Type::Path(Path {
+            leading_colons: None,
+            segments: vec![v],
+        })
+    })
+}
+
+// Rule 38 with the rule 197 extension
+fn template_type_spec() -> impl IdlParser<Type> {
+    recursive(|state| {
+        choice((
+            string_type(),
+            wide_string_type(),
+            fixed_pt_type(),
+            sequence_type(state.clone()),
+            map_type(state),
+        ))
+    })
+}
+
+// Rule 39
+fn sequence_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + 'a {
+    // let bound = positive_int_const().or_not();
+
+    let seq = just(Kind::Sequence)
+        .then(just(Kind::Less))
+        .ignore_then(state);
+    // .then_ignore(just(Kind::Comma))
+    // .then(bound)
+
+    seq.map(|elem| Type::Sequence {
+        ty: P(elem),
+        bound: None,
+    })
+}
+
+// Rule 40
+fn string_type() -> impl IdlParser<Type> {
+    // let bound = positive_int_const().or_not();
+    // just(Kind::String).then(bound).ignored()
+    just(Kind::String).map(|v| Type::String {
+        wide: false,
+        bound: None,
+    })
+}
+
+// Rule 41
+fn wide_string_type() -> impl IdlParser<Type> {
+    // let bound = positive_int_const().or_not();
+    // just(Kind::WString).then(bound).ignored()
+    just(Kind::WString).map(|v| Type::String {
+        wide: true,
+        bound: None,
+    })
+}
+
+// Rule 42
+fn fixed_pt_type() -> impl IdlParser<Type> {
+    let def = just(Kind::Fixed)
+        .then_ignore(just(Kind::Less))
+        .ignore_then(positive_int_const())
+        .then_ignore(just(Kind::Comma))
+        .then(positive_int_const())
+        .then_ignore(just(Kind::Greater));
+
+    def.map(|(tot, frac)| Type::Fixed {
+        total: 0,
+        fractional: 0,
+    })
+}
+
+// Rule 43
+fn fixed_pt_const_type() -> impl IdlParser<Type> {
+    just(Kind::Fixed).map(|v| Type::Fixed {
+        total: 0,
+        fractional: 0,
+    })
 }
 
 // Rule 44
@@ -263,26 +349,31 @@ fn struct_def() -> impl IdlParser<Definition> {
         .then(struct_def)
         .then_ignore(just(Kind::Semi));
 
-    def.map(|_| StructDef::new(Ident::default()))
+    def.map(|v| StructDef::new(v.1.0.0, v.1.1))
 }
 
 // Rule 47
-fn member() -> impl IdlParser<()> {
-    type_spec()
+fn member() -> impl IdlParser<Field> {
+    let field = type_spec()
         .then(declarators())
         .then_ignore(just(Kind::Semi))
-        .labelled("struct member")
-        .ignored()
+        .labelled("struct member");
+
+    field.map(|(ty, names)| Field {
+        names,
+        span: Span::default(),
+        ty,
+    })
 }
 
 // Rule 48
 fn struct_forward_dcl() -> impl IdlParser<Definition> {
     let decl = just(Kind::Struct)
-        .then(ident())
+        .ignore_then(ident())
         .labelled("struct declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map(|_| Item::decl(Ident::default(), DeclKind::Struct))
+    decl.map(|name| Item::decl(name, DeclKind::Struct))
 }
 
 // Rule 49
@@ -305,11 +396,11 @@ fn union_def() -> impl IdlParser<Definition> {
         .then(body)
         .then_ignore(just(Kind::Semi));
 
-    def.map(|_| UnionDef::new(Ident::default(), vec![]))
+    def.map(|v| UnionDef::new(v.0.0, vec![]))
 }
 
 // Rule 51
-fn switch_type_spec() -> impl IdlParser<()> {
+fn switch_type_spec() -> impl IdlParser<Path> {
     scoped_name()
 }
 
@@ -331,29 +422,34 @@ fn case() -> impl IdlParser<()> {
 }
 
 // Rule 54
-fn case_label() -> impl IdlParser<()> {
-    let case = just(Kind::Case).ignore_then(just(Kind::Ident));
-    let default = just(Kind::Default);
+fn case_label() -> impl IdlParser<Label> {
+    let case = just(Kind::Case)
+        .ignore_then(scoped_name())
+        .map(|ident| Label::Case { ident })
+        .labelled("case label");
 
-    choice((case, default))
-        .then_ignore(just(Kind::Colon))
-        .ignored()
-        .labelled("case label")
+    let default = just(Kind::Default)
+        .map(|_| Label::Default)
+        .labelled("default label");
+
+    let null = just(Kind::Null).map(|_| Label::Null).labelled("null label");
+
+    choice((case, default, null))
 }
 
 // Rule 55
-fn element_spec() -> impl IdlParser<()> {
-    type_spec().then(declarator()).ignored()
+fn element_spec() -> impl IdlParser<(Type, Ident)> {
+    type_spec().then(declarator())
 }
 
 // Rule 56
 fn union_forward_dcl() -> impl IdlParser<Definition> {
     let decl = just(Kind::Union)
-        .then(ident())
+        .ignore_then(ident())
         .labelled("union declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map(|_| Item::decl(Ident::default(), DeclKind::Union))
+    decl.map(|name| Item::decl(name, DeclKind::Union))
 }
 
 // Rule 57
@@ -369,7 +465,7 @@ fn enum_dcl() -> impl IdlParser<Definition> {
         .labelled("enum")
         .then_ignore(just(Kind::Semi));
 
-    def.map(|(_, fields)| EnumDef::new(Ident::default(), fields))
+    def.map(|(name, fields)| EnumDef::new(name, fields))
 }
 
 // Rule 58
@@ -379,31 +475,34 @@ fn enumerator() -> impl IdlParser<Enumerator> {
 
     ident()
         .then(value)
-        .map(|v| Enumerator::new(Span::default()))
+        .map(|(name, _)| Enumerator::new(name, Span::default()))
         .labelled("enumerator")
 }
 
 // Rule 59
-fn array_declarator() -> impl IdlParser<()> {
+fn array_declarator() -> impl IdlParser<Type> {
     let bounds = fixed_array_size().repeated().at_least(1);
-    ident().then(bounds).ignored()
+    ident().then(bounds).map(|(name, bound)| Type::Array {
+        ty: Path::new(vec![name]),
+        bound: vec![],
+    })
 }
 
 // Rule 60
-fn fixed_array_size() -> impl IdlParser<()> {
-    just([Kind::LBracket, Kind::Decimal, Kind::RBracket]).ignored()
+fn fixed_array_size() -> impl IdlParser<Kind> {
+    just([Kind::LBracket, Kind::Decimal, Kind::RBracket]).map(|v| v[1])
 }
 
 // Rule 61
 fn native_dcl() -> impl IdlParser<Definition> {
     just(Kind::Native)
         .ignore_then(simple_declarator())
-        .map(|v| Item::decl(Ident::default(), DeclKind::Native))
+        .map(|name| Item::decl(name, DeclKind::Native))
 }
 
 // Rule 62
-fn simple_declarator() -> impl IdlParser<()> {
-    ident().ignored()
+fn simple_declarator() -> impl IdlParser<Ident> {
+    ident()
 }
 
 // Rule 63
@@ -416,37 +515,64 @@ fn typedef_dcl() -> impl IdlParser<Definition> {
 }
 
 // Rule 64
-fn type_declarator() -> impl IdlParser<()> {
+fn type_declarator() -> impl IdlParser<(Type, Vec<Type>)> {
     let ty = choice((
         simple_type_spec(),
-        // template_type_spec(),
-        constr_type_dcl().ignored(),
+        template_type_spec(),
+        // constr_type_dcl().ignored(),
     ));
 
-    ty.then(any_declarators()).ignored()
+    ty.then(any_declarators())
 }
 
 // Rule 65
-fn any_declarators() -> impl IdlParser<()> {
-    any_declarator().repeated().at_least(1).ignored()
+fn any_declarators() -> impl IdlParser<Vec<Type>> {
+    any_declarator().repeated().at_least(1)
 }
 
 // Rule 66
-fn any_declarator() -> impl IdlParser<()> {
-    simple_declarator().or(array_declarator())
+// no -- this should be the name of the typedef, not the actual type.. so just ident(?)
+fn any_declarator() -> impl IdlParser<Type> {
+    let decl = simple_declarator().map(|v| {
+        Type::Path(Path {
+            leading_colons: None,
+            segments: vec![v],
+        })
+    });
+
+    choice((decl, array_declarator()))
 }
 
 // Rule 67
-fn declarators() -> impl IdlParser<()> {
-    declarator()
-        .separated_by(just(Kind::Comma))
-        .at_least(1)
-        .ignored()
+fn declarators() -> impl IdlParser<Vec<Ident>> {
+    declarator().separated_by(just(Kind::Comma)).at_least(1)
 }
 
 // Rule 68
-fn declarator() -> impl IdlParser<()> {
+fn declarator() -> impl IdlParser<Ident> {
     simple_declarator()
+}
+
+// Rule 199
+fn map_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + 'a {
+    let key = state.clone();
+    let value = state;
+    // let bound = positive_int_const().or_not();
+
+    let def = just(Kind::Map)
+        .ignore_then(just(Kind::Less))
+        .ignore_then(key)
+        .then_ignore(just(Kind::Comma))
+        .then(value)
+        // .then_ignore(just(Kind::Comma))
+        // .then(bound)
+        .then_ignore(just(Kind::Greater));
+
+    def.map(|(key, value)| Type::Map {
+        key: P(key),
+        value: P(value),
+        bound: None,
+    })
 }
 
 // Rule 219
@@ -458,7 +584,9 @@ fn annotation_dcl() -> impl IdlParser<()> {
 
 // Rule 220
 fn annotation_header() -> impl IdlParser<Kind> {
-    just(Kind::Annotation).ignore_then(ident())
+    just(Kind::Annotation)
+        .ignore_then(ident())
+        .map(|v| Kind::AnnotationAppl)
 }
 
 // Rule 221
@@ -487,7 +615,7 @@ fn annotation_member() -> impl IdlParser<()> {
 fn annotation_member_type() -> impl IdlParser<()> {
     // `scoped_name` is omitted because it's already included in `const_type`.
     // This is a flaw in the official IDL grammar.
-    choice((const_type(), any_const_type()))
+    choice((const_type().ignored(), any_const_type()))
 }
 
 // Rule 224

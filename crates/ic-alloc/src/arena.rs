@@ -36,8 +36,9 @@ use intercom_cts::encode::{FieldSerializer, Serializer};
 use intercom_cts::{Marshal, Unmarshal};
 
 #[must_use]
-#[derive(Debug, Eq, Hash)]
+#[derive(Debug, Hash)]
 #[repr(transparent)]
+#[derive(Default)] // TODO: remove
 pub struct Id<T> {
     id: usize,
     _marker: PhantomData<fn() -> T>,
@@ -57,6 +58,8 @@ impl<T> PartialEq for Id<T> {
         self.id.eq(&other.id)
     }
 }
+
+impl<T> Eq for Id<T> {}
 
 impl<T> Clone for Id<T> {
     fn clone(&self) -> Self {

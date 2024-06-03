@@ -98,10 +98,10 @@ fn test_char_lit() {
 #[test]
 fn test_string_lit() {
     let input = r#""foo 'bar' baz""#;
-    assert_eq!(single(input), Kind::String);
+    assert_eq!(single(input), Kind::StringLit);
 
     let input = r#""howdy 🤠""#;
-    assert_eq!(single(input), Kind::String);
+    assert_eq!(single(input), Kind::StringLit);
 
     assert_eq!(single("\"foo"), Kind::Invalid);
 
@@ -115,7 +115,7 @@ fn test_string_lit() {
 fn escaped_string_lit() {
     let input = scan(r#""foo \"bar\" baz""#);
     assert_eq!(input.len(), 1);
-    assert_eq!(input[0].kind, Kind::String);
+    assert_eq!(input[0].kind, Kind::StringLit);
 }
 
 // #[test]

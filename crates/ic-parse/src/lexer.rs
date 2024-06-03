@@ -33,6 +33,7 @@ use std::fmt;
 use chumsky::chain::Chain;
 use chumsky::Stream;
 use ic_alloc::inline_str::InlineStr;
+use ic_alloc::interner::{Interner, SymbolId};
 use logos::{Lexer, Logos, Source};
 
 macro_rules! tokens {
@@ -58,6 +59,7 @@ macro_rules! tokens {
 #[logos(skip r"//[^@][^\r\n]*")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
 #[logos(subpattern ident = r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
+#[logos(extras = Context)]
 pub enum Kind {
     #[token("any")]
     Any,
@@ -94,6 +96,9 @@ pub enum Kind {
 
     #[token("native")]
     Native,
+
+    #[token("fixed")]
+    Fixed,
 
     #[token("union")]
     Union,
@@ -140,6 +145,18 @@ pub enum Kind {
     #[token("inout")]
     InOut,
 
+    #[token("map")]
+    Map,
+
+    #[token("sequence")]
+    Sequence,
+
+    #[token("string")]
+    String,
+
+    #[token("wstring")]
+    WString,
+
     #[token(",")]
     Comma,
 
@@ -169,6 +186,12 @@ pub enum Kind {
 
     #[token("]")]
     RBracket,
+
+    #[token("<")]
+    Less,
+
+    #[token(">")]
+    Greater,
 
     #[token("<<")]
     LShift,
@@ -223,15 +246,15 @@ pub enum Kind {
 
     /// String literal. Handles escaped quotes.
     #[regex(r#"L?"(?:[^"]|\\")*""#)]
-    String,
+    StringLit,
 
     /// Applied annotation made up of a valid UAX#31 identifier
     #[regex(r#"(@|//@)(?&ident)"#)]
     AnnotationAppl,
 
     /// A valid UAX#31 identifier.
-    #[regex("(?&ident)")]
-    Ident,
+    #[regex("(?&ident)", to_interned)]
+    Ident(SymbolId),
 
     /// Any single UTF-8 character surrounded by single quotes.
     #[regex(r"L?'(?:\\.|[^\\'])?'", to_char)]
@@ -255,7 +278,7 @@ impl fmt::Display for Kind {
             Kind::Exception => write!(f, "exception"),
             Kind::Const => write!(f, "const"),
             Kind::Module => write!(f, "module"),
-            Kind::Ident => write!(f, "identifier"),
+            Kind::Ident(_) => write!(f, "identifier"),
             Kind::Case => write!(f, "case label"),
             Kind::Default => write!(f, "default label"),
             Kind::Any => write!(f, "any"),
@@ -263,6 +286,7 @@ impl fmt::Display for Kind {
             Kind::Bitfield => write!(f, "bitfield"),
             Kind::Typedef => write!(f, "typedef"),
             Kind::Native => write!(f, "native"),
+            Kind::Fixed => write!(f, "fixed"),
             Kind::Union => write!(f, "union"),
             Kind::Switch => write!(f, "switch"),
             Kind::Null => write!(f, "null"),
@@ -274,15 +298,21 @@ impl fmt::Display for Kind {
             Kind::Attribute => write!(f, "attribute"),
             Kind::ReadOnly => write!(f, "read-only"),
             Kind::Float => write!(f, "floating-point number"),
-            Kind::String => write!(f, "string"),
+            Kind::StringLit => write!(f, "string"),
             Kind::AnnotationAppl => write!(f, "applied annotation"),
             Kind::In => write!(f, "in"),
             Kind::Out => write!(f, "out"),
             Kind::InOut => write!(f, "inout"),
+            Kind::Sequence => write!(f, "sequence"),
+            Kind::String => write!(f, "string"),
+            Kind::WString => write!(f, "wstring"),
+            Kind::Map => write!(f, "map"),
             Kind::Colon => write!(f, "`:`"),
             Kind::Eq => write!(f, "`=`"),
             Kind::Semi => write!(f, "`;`"),
             Kind::Comma => write!(f, "`,`"),
+            Kind::Less => write!(f, "`<`"),
+            Kind::Greater => write!(f, "`>`"),
             Kind::LBrace => write!(f, "`{{`"),
             Kind::RBrace => write!(f, "`}}`"),
             Kind::LParen => write!(f, "`(`"),
@@ -310,6 +340,12 @@ impl fmt::Display for Kind {
     }
 }
 
+/// Context used by the lexer to store additional information.
+#[derive(Default)]
+pub struct Context {
+    interner: Interner,
+}
+
 // Empty character literals are permitted during parsing and instead gets
 // checked later during the linting stage.
 fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
@@ -328,7 +364,12 @@ fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
     }
 }
 
-/// file from which it was read.
+// Stores a lexed slice in the string interner.
+fn to_interned(lex: &mut Lexer<Kind>) -> SymbolId {
+    let slice = lex.slice();
+    lex.extras.interner.insert(slice)
+}
+
 pub type Span = std::ops::Range<usize>;
 
 /// A lexed token. Contains the span of the token and its kind.
@@ -336,6 +377,17 @@ pub type Span = std::ops::Range<usize>;
 pub struct Token {
     pub span: Span,
     pub kind: Kind,
+}
+
+pub struct IdlLexer<'a> {
+    iter: Lexer<'a, Kind>,
+}
+
+impl IdlLexer<'_> {
+    /// Consumes the lexer and returns the inner state.
+    pub fn take(self) -> Interner {
+        self.iter.extras.interner
+    }
 }
 
 /// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
@@ -350,7 +402,7 @@ pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind,
 
 /// Constructs an iterator that lazily lexes the input.
 ///
-/// Lexing is infallible: any invalid tokens or characters will be mapped to an
+/// Lexing is infallible: any invalid tokens or characters will be mapped to a
 /// `Kind::Invalid` token.
 pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
     // If push comes to shove, we create an invalid token that spans from the

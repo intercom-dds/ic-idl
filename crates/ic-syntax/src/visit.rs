@@ -111,7 +111,7 @@ pub trait Visitor<'a> {
 
     fn visit_exception(&mut self, def: &'a ExceptDef) {}
 
-    fn visit_numeric(&mut self, num: &'a Literal) {}
+    fn visit_literal(&mut self, num: &'a Literal) {}
 
     fn visit_bitmask(&mut self, bitmask: &'a BitmaskDef) {
         for ann in &bitmask.annotations {

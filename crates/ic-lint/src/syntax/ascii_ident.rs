@@ -31,35 +31,33 @@ use ic_syntax::Definition;
 
 use crate::{Category, Lint};
 
-/// Verifies that enums, unions and valuetypes have at least one member, and
-/// all modules have at least one definition.
-///
-/// Support for empty structs and exceptions is an extension defined in the
-/// `DDS-RPC` standard, thus not covered by this lint.
-pub struct EmptyTypes;
+/// Verifies that all identifies are made up of alphanumeric ASCII characters.
+pub struct AsciiIdent<'a>(&'a str);
 
-impl Lint for EmptyTypes {
+impl<'a, 'b> Visitor<'a> for AsciiIdent<'b> {
+    fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
+        let str = &self.0[ident.span.start..ident.span.end];
+        let invalid = str.chars().any(|v| !v.is_ascii_alphanumeric() && v != '_');
+
+        if invalid {
+            panic!("identifiers must be alphanumeric");
+        }
+    }
+}
+
+impl Lint for AsciiIdent<'_> {
     fn new() -> Box<dyn Lint>
     where
         Self: Sized,
     {
-        Box::new(EmptyTypes)
+        Box::new(AsciiIdent(""))
     }
 
     fn category(&self) -> crate::Category {
-        Category::Pedantic
+        Category::Syntax
     }
 
     fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag> {
         vec![]
     }
-}
-
-/// Verifies that enums, unions and valuetypes have at least one member, and
-/// all modules have at least one definition.
-///
-/// Support for empty structs and exceptions is an extension defined in the
-/// `DDS-RPC` standard, thus not covered by this lint.
-pub fn empty_types() -> Box<dyn Lint> {
-    Box::new(EmptyTypes)
 }

@@ -276,11 +276,8 @@ fn template_type_spec() -> impl IdlParser<Type> {
 // Rule 39
 fn sequence_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + 'a {
     // let bound = positive_int_const().or_not();
-
-    let seq = just(Kind::Sequence)
-        .then(just(Kind::Less))
-        .ignore_then(state)
-        .then_ignore(just(Kind::Greater));
+    let inner = state.delimited_by(just(Kind::Less), just(Kind::Greater));
+    let seq = just(Kind::Sequence).ignore_then(inner);
     // .then_ignore(just(Kind::Comma))
     // .then(bound)
 
@@ -568,15 +565,12 @@ fn map_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl IdlParse
     let key = state.clone();
     let value = state;
     // let bound = positive_int_const().or_not();
+    let inner = key.then_ignore(just(Kind::Comma)).then(value);
 
-    let def = just(Kind::Map)
-        .ignore_then(just(Kind::Less))
-        .ignore_then(key)
-        .then_ignore(just(Kind::Comma))
-        .then(value)
-        // .then_ignore(just(Kind::Comma))
-        // .then(bound)
-        .then_ignore(just(Kind::Greater));
+    let def =
+        just(Kind::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
+    // .then_ignore(just(Kind::Comma))
+    // .then(bound)
 
     def.map(|(key, value)| Type::Map {
         key: P(key),

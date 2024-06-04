@@ -25,5 +25,33 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_diagnostic::Diag;
+use ic_syntax::visit::Visitor;
+use ic_syntax::Definition;
+
+use crate::{Category, Lint};
+
 /// Checks for attempts to divide by zero or modulo by zero.
 pub struct ByZero;
+
+impl Lint for ByZero {
+    fn new() -> Box<dyn Lint>
+    where
+        Self: Sized,
+    {
+        Box::new(Self)
+    }
+
+    fn category(&self) -> crate::Category {
+        Category::Syntax
+    }
+
+    fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag> {
+        vec![]
+    }
+}
+
+/// Checks for attempts to divide by zero or modulo by zero.
+pub fn by_zero() -> Box<dyn Lint> {
+    Box::new(ByZero)
+}

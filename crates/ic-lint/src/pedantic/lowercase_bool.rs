@@ -32,7 +32,7 @@ use ic_syntax::visit::Visitor;
 pub struct LowercaseBool<'a>(&'a str);
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_numeric(&mut self, num: &'a ic_syntax::Literal) {
+    fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
         if let ic_syntax::LitKind::Bool = &num.kind {
             let range = num.span.start..num.span.start;
             if let Some(span) = self.0.get(range) {
@@ -63,14 +63,14 @@ mod tests {
             span: Span::default(),
         };
         let mut lint = LowercaseBool("true");
-        lint.visit_numeric(&ident);
+        lint.visit_literal(&ident);
 
         let ident = Literal {
             kind: LitKind::Bool,
             span: Span::default(),
         };
         let mut lint = LowercaseBool("false");
-        lint.visit_numeric(&ident);
+        lint.visit_literal(&ident);
     }
 
     #[test]
@@ -81,13 +81,13 @@ mod tests {
             span: Span::default(),
         };
         let mut lint = LowercaseBool("TRUE");
-        lint.visit_numeric(&num);
+        lint.visit_literal(&num);
 
         let num = Literal {
             kind: LitKind::Bool,
             span: Span::default(),
         };
         let mut lint = LowercaseBool("FALSE");
-        lint.visit_numeric(&num);
+        lint.visit_literal(&num);
     }
 }

@@ -28,7 +28,7 @@
 use ic_syntax::visit::Visitor;
 
 /// Lint that checks for enumerators and bitmask flags where a field was
-/// assigned a value using an assignment expression instead of an annotation.
+/// assigned a value using an assignment operator instead of an annotation.
 pub struct AssignExpr;
 
 impl<'a> Visitor<'a> for AssignExpr {

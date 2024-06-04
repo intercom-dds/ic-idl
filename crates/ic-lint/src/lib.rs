@@ -27,6 +27,7 @@
 
 #![allow(dead_code, unused)]
 
+use ic_diagnostic::Diag;
 use ic_syntax::Definition;
 
 mod annotation;
@@ -34,13 +35,66 @@ mod pedantic;
 mod semantic;
 mod syntax;
 
+macro_rules! lints {
+    ($($lint:ty),* $(,)?) => {
+        type LintFn = fn() -> Box<dyn Lint>;
+
+        const LINTS: &[LintFn] = &[
+            $(<$lint>::new,)*
+        ];
+    };
+}
+
+lints! {
+    semantic::div_by_zero::ByZero,
+    syntax::ascii_ident::AsciiIdent,
+    syntax::empty::EmptyTypes,
+}
+
+/// The supported lint categories.
+#[derive(Copy, Clone, Debug)]
+pub enum Category {
+    /// Annotation-related lints
+    Annotation,
+
+    /// Deprecated language items
+    Deprecated,
+
+    /// Lint for language extensions
+    Pedantic,
+
+    // Syntax errors or other things that should always be hard errors
+    Syntax,
+}
+
+pub trait Lint {
+    /// Constructs a new instance of the lint.
+    fn new() -> Box<dyn Lint>
+    where
+        Self: Sized;
+
+    /// Category of the lint.
+    fn category(&self) -> Category;
+
+    /// Runs the lint on the given AST.
+    ///
+    /// A lint should never fail in a way that prevents further traversal. Any
+    /// potential errors should be gracefully ignored.
+    fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag>;
+}
+
 /// Traverses the AST and produces diagnostics for all enabled lints.
 ///
 /// Lints that operate on the AST are mostly syntactic. Other lints that
 /// require more in-depth semantic analysis is typically done on the HIR with
 /// [`lint_hir`].
-pub fn lint_syntax(_: &[Definition]) {
-    // const LINTS:
+pub fn lint_syntax(tree: &[Definition]) {
+    let mut diagnostics = vec![];
+
+    for lint in LINTS {
+        let pass = lint().check(tree);
+        diagnostics.extend(pass.into_iter());
+    }
 }
 
 /// Set of lints that operates on the HIR.

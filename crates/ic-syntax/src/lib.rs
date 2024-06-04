@@ -480,7 +480,7 @@ pub struct Op {
     /// Span of the token.
     pub span: Span,
 
-    /// The token type.
+    /// The operation kind.
     pub kind: OpKind,
 }
 

@@ -25,16 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::syntax;
-use ic_parse::visit::Visitor;
+use ic_syntax::visit::Visitor;
 
 /// Lint that checks for uses of lowercase `true` or `false`, neither of which
 /// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
 pub struct LowercaseBool<'a>(&'a str);
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_numeric(&mut self, num: &'a syntax::Literal) {
-        if let syntax::LitKind::Bool = &num.kind {
+    fn visit_numeric(&mut self, num: &'a ic_syntax::Literal) {
+        if let ic_syntax::LitKind::Bool = &num.kind {
             let range = num.span.start..num.span.start;
             if let Some(span) = self.0.get(range) {
                 if span.chars().any(char::is_lowercase) {
@@ -53,21 +52,21 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
 
 #[cfg(test)]
 mod tests {
-    use ic_parse::syntax::Span;
+    use ic_parse::*;
 
     use super::*;
 
     #[test]
     fn lowercase_lit() {
-        let ident = syntax::Literal {
-            kind: syntax::LitKind::Bool,
+        let ident = Literal {
+            kind: LitKind::Bool,
             span: Span::default(),
         };
         let mut lint = LowercaseBool("true");
         lint.visit_numeric(&ident);
 
-        let ident = syntax::Literal {
-            kind: syntax::LitKind::Bool,
+        let ident = Literal {
+            kind: LitKind::Bool,
             span: Span::default(),
         };
         let mut lint = LowercaseBool("false");
@@ -77,15 +76,15 @@ mod tests {
     #[test]
     fn uppercase_lit() {
         // complies with the standard so no warning produced
-        let num = syntax::Literal {
-            kind: syntax::LitKind::Bool,
+        let num = Literal {
+            kind: LitKind::Bool,
             span: Span::default(),
         };
         let mut lint = LowercaseBool("TRUE");
         lint.visit_numeric(&num);
 
-        let num = syntax::Literal {
-            kind: syntax::LitKind::Bool,
+        let num = Literal {
+            kind: LitKind::Bool,
             span: Span::default(),
         };
         let mut lint = LowercaseBool("FALSE");

@@ -25,8 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[allow(clippy::wildcard_imports)]
-use crate::syntax::*;
+#![allow(unused, dead_code)]
+
+use crate::{
+    AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef,
+    BitsetDef, ConstDef, Decl, Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Field,
+    Ident, ItemKind, Label, Literal, ModuleDef, StructDef, Type, Typedef, UnionDef, UnionField,
+};
 
 pub trait Visitor<'a> {
     fn visit_definition(&mut self, def: &'a Definition) {

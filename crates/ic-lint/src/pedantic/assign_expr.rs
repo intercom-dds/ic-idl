@@ -25,15 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::syntax;
-use ic_parse::visit::Visitor;
+use ic_syntax::visit::Visitor;
 
 /// Lint that checks for enumerators and bitmask flags where a field was
 /// assigned a value using an assignment expression instead of an annotation.
 pub struct AssignExpr;
 
 impl<'a> Visitor<'a> for AssignExpr {
-    fn visit_bitmask_bit(&mut self, flag: &'a syntax::Bit) {
+    fn visit_bitmask_bit(&mut self, flag: &'a ic_syntax::Bit) {
         if flag.value.is_some() {
             // TODO: we should use the span of the expression
             let span = &flag.name.span;
@@ -47,7 +46,7 @@ impl<'a> Visitor<'a> for AssignExpr {
         }
     }
 
-    fn visit_enum_variant(&mut self, variant: &'a syntax::Enumerator) {
+    fn visit_enum_variant(&mut self, variant: &'a ic_syntax::Enumerator) {
         if variant.value.is_some() {
             let span = &variant.name.span;
             eprintln!(
@@ -63,7 +62,7 @@ impl<'a> Visitor<'a> for AssignExpr {
 
 #[cfg(test)]
 mod tests {
-    use ic_parse::syntax::*;
+    use ic_parse::*;
 
     use super::*;
 

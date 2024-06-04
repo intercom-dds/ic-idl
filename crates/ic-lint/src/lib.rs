@@ -27,7 +27,7 @@
 
 #![allow(dead_code, unused)]
 
-use ic_parse::syntax::Definition;
+use ic_syntax::Definition;
 
 mod annotation;
 mod pedantic;

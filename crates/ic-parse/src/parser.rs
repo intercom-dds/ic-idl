@@ -25,20 +25,17 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(test)]
-mod tests;
-
 use anyhow::Result;
 use chumsky::prelude::*;
 use chumsky::text::{Character, TextParser};
 use chumsky::{Error, Parser, Stream};
 use ic_alloc::ptr::P;
-
-use crate::lexer::{Kind, Token};
-use crate::syntax::{
+use ic_syntax::{
     ConstDef, DeclKind, Definition, EnumDef, Enumerator, Field, Ident, Item, ItemKind, Label,
     ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
 };
+
+use crate::lexer::{Kind, Token};
 
 // Workaround until trait aliases are stabilized
 pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {}

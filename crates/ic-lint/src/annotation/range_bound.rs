@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::syntax;
-use ic_parse::visit::Visitor;
+use ic_syntax::visit::Visitor;
 
 /// Checks that `@min`, `@max`, and `@range` all have bounds that are within
 /// range of the underlying type.

@@ -26,20 +26,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-parse"
-version = "0.0.0"
+name = "ic-syntax"
+version = "0.1.0"
 edition = "2021"
-
-publish.workspace = true
 rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ic-alloc = { path = "../ic-alloc" }
 
 [lints]
 workspace = true
-
-[dependencies]
-anyhow = "1.0.86"
-chumsky = { version = "0.9.3", default-features = false }
-logos = "0.14.0"
-
-ic-alloc = { path = "../ic-alloc" }
-ic-syntax = { path = "../ic-syntax" }

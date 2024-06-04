@@ -30,19 +30,17 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_alloc::interner::Interner;
+use ic_syntax::Definition;
 use lexer::{Kind, Span, Token};
-use syntax::Definition;
 
 pub mod lexer;
 pub mod parser;
 pub mod source;
-pub mod syntax;
-pub mod visit;
 
 #[derive(Debug)]
 pub struct ParseResult {
     interner: Interner,
-    pub tree: Vec<syntax::Definition>,
+    pub tree: Vec<Definition>,
 }
 
 #[derive(Clone, Debug)]
@@ -94,22 +92,9 @@ impl<I, S> From<SimpleReason<I, S>> for Reason<I, S> {
 /// # Panics
 pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
     let mut tokens = lexer::stream(input);
-    {
-        let all: Vec<_> = tokens.fetch_tokens().collect();
-        dbg!(&all);
-    }
+    let ast = parser::specification().parse(tokens);
 
-    let ast = parser::specification().parse(tokens).unwrap();
-    dbg!(ast);
     todo!()
-    // if let Some(ast) = ast {
-    //     Ok(ParseResult {
-    //         interner: Interner::default(),
-    //         tree: ast,
-    //     })
-    // } else {
-    //     Err(anyhow::anyhow!("parse error"))
-    // }
 }
 
 /// Constructs an AST from the given token iterator.

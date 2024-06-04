@@ -27,7 +27,7 @@
 
 //! Syntax tree for IDL.
 //!
-//! This module provides the types used in the syntax tree produced by the IDL
+//! This crate provides the types used in the syntax tree produced by the IDL
 //! parser. The syntax tree closely resembles the source code, but some things
 //! -- such as whitespace and `//` comments -- are omitted.
 //!
@@ -35,6 +35,9 @@
 //! Each item's lifetime is bound by the lifetime of the [`Interner`].
 //!
 //! [`Interner`]: ../../ic_alloc/interner/index.html
+
+/// Defines visitors for all AST nodes.
+pub mod visit;
 
 use ic_alloc::inline_vec::InlineVec;
 use ic_alloc::interner::SymbolId;
@@ -344,7 +347,7 @@ pub struct Enumerator {
 }
 
 impl Enumerator {
-    pub fn new(name: Ident, span: Span) -> Self {
+    pub fn new(name: Ident, _span: Span) -> Self {
         Self {
             annotations: vec![],
             name,
@@ -415,7 +418,7 @@ pub struct ConstDef {
 }
 
 impl ConstDef {
-    pub fn new(name: Ident, ty: Type, span: Span) -> Definition {
+    pub fn new(name: Ident, _ty: Type, span: Span) -> Definition {
         Definition {
             name,
             span,

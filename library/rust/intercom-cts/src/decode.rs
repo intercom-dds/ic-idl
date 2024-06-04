@@ -1087,3 +1087,17 @@ where
         Ok(())
     }
 }
+
+impl<T> Unmarshal for std::ops::Range<T>
+where
+    T: Unmarshal,
+{
+    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    where
+        D: Deserializer,
+    {
+        let mut state = archive.decode_struct("Range<T>")?;
+        state.decode_field(0, "start", &mut self.start)?;
+        state.decode_field(1, "end", &mut self.end)
+    }
+}

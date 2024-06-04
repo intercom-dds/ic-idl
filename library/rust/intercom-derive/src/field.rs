@@ -115,7 +115,7 @@ impl ToTokens for Marshal<StructMember> {
         let member_field = &self.0.member;
 
         let expanded = quote! {
-            ::intercom::cts::encode::FieldSerializer::encode_field(
+            ::intercom_cts::encode::FieldSerializer::encode_field(
                 &mut state,
                 #member_id,
                 #member_name,
@@ -147,7 +147,7 @@ impl ToTokens for Unmarshal<StructMember> {
         let member_field = &self.0.member;
 
         let expanded = quote! {
-            ::intercom::cts::decode::FieldDeserializer::decode_field(
+            ::intercom_cts::decode::FieldDeserializer::decode_field(
                 &mut state,
                 #member_id,
                 #member_name,

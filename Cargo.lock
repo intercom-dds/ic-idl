@@ -181,6 +181,7 @@ name = "ic-syntax"
 version = "0.1.0"
 dependencies = [
  "ic-alloc",
+ "intercom-cts",
 ]
 
 [[package]]

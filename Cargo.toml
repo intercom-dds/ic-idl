@@ -39,7 +39,8 @@ members = [
     "crates/ic-lint",
     "crates/ic-parse",
     "crates/ic-preproc",
-    "crates/ic-ptree", "crates/ic-syntax",
+    "crates/ic-ptree",
+    "crates/ic-syntax",
     "xtask",
 ]
 default-members = ["crates/ic-driver"]

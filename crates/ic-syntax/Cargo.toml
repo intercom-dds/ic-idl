@@ -35,5 +35,7 @@ publish.workspace = true
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
 
+intercom-cts.workspace = true
+
 [lints]
 workspace = true

@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(non_local_definitions)]
+
 //! Syntax tree for IDL.
 //!
 //! This crate provides the types used in the syntax tree produced by the IDL
@@ -42,6 +44,7 @@ pub mod visit;
 use ic_alloc::inline_vec::InlineVec;
 use ic_alloc::interner::SymbolId;
 use ic_alloc::ptr::P;
+use intercom_cts::{Marshal, Unmarshal};
 
 pub type Symbol = SymbolId;
 
@@ -60,7 +63,7 @@ pub struct Document {
     pub definitions: InlineVec<Definition>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Marshal, Unmarshal)]
 pub struct Ident {
     /// The acutal identifier.
     pub name: Symbol,
@@ -138,12 +141,12 @@ pub enum ItemKind {
     Decl(Decl),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Marshal, Unmarshal)]
 pub struct Decl {
     pub kind: DeclKind,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
 pub enum DeclKind {
     Struct,
     Union,
@@ -152,7 +155,7 @@ pub enum DeclKind {
     Valuetype,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Marshal, Unmarshal)]
 pub struct Path {
     pub leading_colons: Option<Span>,
     pub segments: InlineVec<Ident>,
@@ -304,15 +307,14 @@ pub struct Bit {
     pub value: Option<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Marshal, Unmarshal)]
 pub struct BitsetDef {
-    pub annotations: InlineVec<AnnotationAppl>,
     pub fields: InlineVec<Bitfield>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Marshal, Unmarshal)]
 pub struct Bitfield {
-    pub annotations: InlineVec<AnnotationAppl>,
+    // pub annotations: InlineVec<AnnotationAppl>,
     pub size: Ident,
 }
 
@@ -459,13 +461,13 @@ impl Typedef {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Marshal, Unmarshal)]
 pub struct Literal {
     pub kind: LitKind,
     pub span: Span,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
 pub enum LitKind {
     Bool,
     Int,
@@ -475,7 +477,7 @@ pub enum LitKind {
     Ident,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Marshal, Unmarshal)]
 pub struct Op {
     /// Span of the token.
     pub span: Span,
@@ -484,7 +486,7 @@ pub struct Op {
     pub kind: OpKind,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
 pub enum OpKind {
     // Arithmetic operations
     Add,
@@ -503,6 +505,7 @@ pub enum OpKind {
 }
 
 #[derive(Debug)]
+// #[derive(Debug, Marshal, Unmarshal)]
 pub enum Expr {
     /// A single literal like `1` or `"foo"`
     Lit(Literal),
@@ -515,4 +518,13 @@ pub enum Expr {
 
     /// Initializer list for complex types, e.g. `{1, 2, {3}}`
     InitList(Vec<Expr>),
+}
+
+impl Default for Expr {
+    fn default() -> Self {
+        Self::Lit(Literal {
+            kind: LitKind::Bool,
+            span: Span::default(),
+        })
+    }
 }

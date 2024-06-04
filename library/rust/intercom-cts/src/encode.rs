@@ -1082,3 +1082,18 @@ where
         state.end()
     }
 }
+
+impl<T> Marshal for std::ops::Range<T>
+where
+    T: Marshal,
+{
+    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = archive.encode_struct("Range<T>")?;
+        state.encode_field(0, "start", &self.start)?;
+        state.encode_field(1, "end", &self.end)?;
+        state.end()
+    }
+}

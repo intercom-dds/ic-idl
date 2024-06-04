@@ -51,12 +51,12 @@ The following building blocks are supported:
  - Interfaces - Full
  - Value Types
  - Extended Data Types
- - Anonymous Types^[1]^
+ - Anonymous Types<sup>[1]</sup>
  - Annotations
 
  In addition, it includes the extensions defined in the DDS-RPC specification.
 
-^[1]^ Anonymous structs, unions and enumerators are not supported.
+<sup>[1]</sup> Anonymous structs, unions and enumerators are not supported.
 
 ### Extensions
 

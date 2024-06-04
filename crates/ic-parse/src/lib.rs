@@ -31,6 +31,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_alloc::interner::Interner;
 use lexer::{Kind, Span, Token};
+use syntax::Definition;
 
 pub mod lexer;
 pub mod parser;
@@ -111,34 +112,17 @@ pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
     // }
 }
 
-// Constructs an AST from the given tokens.
-//
-// # Errors
-// pub fn from_tokens(input: &str, tokens: &[Token]) -> anyhow::Result<Vec<syntax::Definition>> {
-//     let len = input.len();
-//     let stream = Stream::from_iter(len..len + 1, tokens.iter());
-//     from_stream(stream)
-// }
+/// Constructs an AST from the given token iterator.
+pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Simple<Kind>>>
+where
+    I: IntoIterator<Item = Token>,
+{
+    let tokens = iter.into_iter();
+    let stream = Stream::from_iter(Span::default(), tokens.map(move |tok| (tok.kind, tok.span)));
+    let ast = parser::specification().parse(stream)?;
 
-// Constructs an AST from the token stream.
-//
-// # Errors
-// pub fn from_stream<'a, K, S, I>(
-//     _tokens: Stream<'a, K, S, I>,
-// ) -> anyhow::Result<Vec<syntax::Definition>>
-// where
-//     S: chumsky::Span + 'a,
-//     I: Iterator<Item = (Kind, Span)> + 'a,
-// {
-//     Ok(vec![])
-// }
-
-// Constructs an AST from the given token iterator.
-// pub fn from_iter<I>(iter: I) -> Result<Vec<Definition>>
-// where
-//     I: IntoIterator<Item = Token>,
-// {
-//     let tokens = iter.into_iter();
-//     // let ast = parser::specification().parse(stream);
-//     Ok(vec![])
-// }
+    Ok(ParseResult {
+        interner: Interner::default(),
+        tree: ast,
+    })
+}

@@ -36,11 +36,11 @@ impl<'a> Visitor<'a> for AssignExpr {
     fn visit_bitmask_bit(&mut self, flag: &'a syntax::Bit) {
         if flag.value.is_some() {
             // TODO: we should use the span of the expression
-            let span = flag.name.span;
+            let span = &flag.name.span;
             eprintln!(
                 "{}:{}: assignment operator on bitmask flags is an InterCOM extension",
-                span.index,
-                span.index + span.len,
+                span.start,
+                span.end - span.start,
             );
             eprintln!(" = help: use the `@position` annotation instead");
             eprintln!(" = note: warning produced by -Wpedantic");
@@ -49,11 +49,11 @@ impl<'a> Visitor<'a> for AssignExpr {
 
     fn visit_enum_variant(&mut self, variant: &'a syntax::Enumerator) {
         if variant.value.is_some() {
-            let span = variant.name.span;
+            let span = &variant.name.span;
             eprintln!(
                 "{}:{}: assignment operator on enumerators is an InterCOM extension",
-                span.index,
-                span.index + span.len,
+                span.start,
+                span.end - span.start,
             );
             eprintln!(" = help: use the `@value` annotation instead");
             eprintln!(" = note: warning produced by -Wpedantic");
@@ -72,7 +72,7 @@ mod tests {
         let variant = Enumerator {
             annotations: vec![],
             name: Ident {
-                name: Symbol,
+                name: Symbol::default(),
                 span: Span::default(),
             },
             value: None,
@@ -85,11 +85,11 @@ mod tests {
         let variant = Enumerator {
             annotations: vec![],
             name: Ident {
-                name: Symbol,
+                name: Symbol::default(),
                 span: Span::default(),
             },
-            value: Some(Expr::Numeric(Numeric {
-                kind: NumericKind::Int,
+            value: Some(Expr::Lit(Literal {
+                kind: LitKind::Int,
                 span: Span::default(),
             })),
         };

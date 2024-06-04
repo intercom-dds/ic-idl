@@ -157,90 +157,119 @@ pub enum Kind {
     #[token("wstring")]
     WString,
 
+    /// `,`
     #[token(",")]
     Comma,
 
+    /// `:`
     #[token(":")]
     Colon,
 
+    /// `:`
     #[token(";")]
     Semi,
 
+    /// `=`
     #[token("=")]
     Eq,
 
+    /// `{`
     #[token("{")]
     LBrace,
 
+    /// `}`
     #[token("}")]
     RBrace,
 
+    /// `(`
     #[token("(")]
     LParen,
 
+    /// `)`
     #[token(")")]
     RParen,
 
+    /// `[`
     #[token("[")]
     LBracket,
 
+    /// `]`
     #[token("]")]
     RBracket,
 
+    /// `<`
     #[token("<")]
     Less,
 
+    /// `>`
     #[token(">")]
     Greater,
 
+    /// `<<`
     #[token("<<")]
     LShift,
 
+    /// `>>`
     #[token(">>")]
     RShift,
 
+    /// `&`
     #[token("&")]
     BitAnd,
 
+    /// `|`
     #[token("|")]
     BitOr,
 
+    /// `^`
     #[token("^")]
     BitXor,
 
+    /// `+`
     #[token("+")]
     Plus,
 
+    /// `-`
     #[token("-")]
     Minus,
 
+    /// `~`
     #[token("~")]
     Tilde,
 
+    /// `*`
     #[token("*")]
     Star,
 
+    /// `/`
     #[token("/")]
     Slash,
 
+    /// `%`
     #[token("%")]
     Modulo,
 
+    /// `true`
     #[regex("true|TRUE")]
     True,
 
+    /// `false`
     #[regex("false|FALSE")]
     False,
 
+    /// Octal number, e.g. `0123`.
     #[regex("0[1-9]+")]
     Octal,
 
+    /// Decimal number.
     #[regex("0|([1-9][0-9]*)")]
     Decimal,
 
+    /// Hexadecimal number.
     #[regex("0[xX][a-fA-F0-9]+")]
     Hex,
 
+    /// Fpoating-point literal
     #[regex(r"(?&digits)(?:[eE](?&digits)|\.(?&digits)(?:[eE](?&digits))?)")]
     Float,
 
@@ -340,12 +369,6 @@ impl fmt::Display for Kind {
     }
 }
 
-/// Context used by the lexer to store additional information.
-#[derive(Default)]
-pub struct Context {
-    interner: Interner,
-}
-
 // Empty character literals are permitted during parsing and instead gets
 // checked later during the linting stage.
 fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
@@ -370,6 +393,13 @@ fn to_interned(lex: &mut Lexer<Kind>) -> SymbolId {
     lex.extras.interner.insert(slice)
 }
 
+/// Context used by the lexer to store additional information.
+#[derive(Default)]
+pub struct Context {
+    interner: Interner,
+}
+
+/// Byte offset to a token.
 pub type Span = std::ops::Range<usize>;
 
 /// A lexed token. Contains the span of the token and its kind.
@@ -379,24 +409,17 @@ pub struct Token {
     pub kind: Kind,
 }
 
-pub struct IdlLexer<'a> {
-    iter: Lexer<'a, Kind>,
-}
-
-impl IdlLexer<'_> {
-    /// Consumes the lexer and returns the inner state.
-    pub fn take(self) -> Interner {
-        self.iter.extras.interner
-    }
-}
-
 /// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
 /// backtracking and some other required features.
 #[must_use]
 #[allow(clippy::range_plus_one)]
 pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
+    // Remove trailing whitespace so we can correctly scope errors about
+    // missing semicolons at the end of the file.
+    let input = input.trim_end();
     let lexer = lexer(input);
     let len = input.len();
+
     Stream::from_iter(len..len + 1, lexer.map(move |tok| (tok.kind, tok.span)))
 }
 

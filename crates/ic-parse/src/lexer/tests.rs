@@ -35,21 +35,21 @@ fn single(input: &str) -> Kind {
 fn test_bool_lit() {
     assert_eq!(single("true"), Kind::True);
     assert_eq!(single("false"), Kind::False);
-    assert_eq!(single("fals"), Kind::Ident);
-    assert_eq!(single("tru"), Kind::Ident);
+    assert!(matches!(single("fals"), Kind::Ident(_)));
+    assert!(matches!(single("tru"), Kind::Ident(_)));
 }
 
 // Check that e.g. "truest" evaluates to `Ident("truest")` and not
 // `(True, Ident("st"))`
 #[test]
 fn partial_ident() {
-    assert_eq!(single("truest"), Kind::Ident);
-    assert_eq!(single("untrue"), Kind::Ident);
-    assert_eq!(single("falsely"), Kind::Ident);
-    assert_eq!(single("input"), Kind::Ident);
-    assert_eq!(single("output"), Kind::Ident);
-    assert_eq!(single("in1"), Kind::Ident);
-    assert_eq!(single("out1"), Kind::Ident);
+    assert!(matches!(single("truest"), Kind::Ident(_)));
+    assert!(matches!(single("untrue"), Kind::Ident(_)));
+    assert!(matches!(single("falsely"), Kind::Ident(_)));
+    assert!(matches!(single("input"), Kind::Ident(_)));
+    assert!(matches!(single("output"), Kind::Ident(_)));
+    assert!(matches!(single("in1"), Kind::Ident(_)));
+    assert!(matches!(single("out1"), Kind::Ident(_)));
     assert_eq!(single("inout"), Kind::InOut);
 }
 
@@ -85,13 +85,13 @@ fn test_char_lit() {
     assert_eq!(single("'0'"), Kind::Char(Some('0')));
     assert_eq!(single("';'"), Kind::Char(Some(';')));
     assert_eq!(single("'a"), Kind::Invalid);
-    assert_eq!(single("a"), Kind::Ident);
+    assert!(matches!(single("a"), Kind::Ident(_)));
     assert_eq!(single("''"), Kind::Char(None));
     assert_eq!(single(r"'\''"), Kind::Char(Some('\'')));
 
     let tokens = scan("a'");
     assert_eq!(tokens.len(), 2);
-    assert_eq!(tokens[0].kind, Kind::Ident);
+    assert!(matches!(tokens[0].kind, Kind::Ident(_)));
     assert_eq!(tokens[1].kind, Kind::Invalid);
 }
 
@@ -107,7 +107,7 @@ fn test_string_lit() {
 
     let tokens = scan("foo\"");
     assert_eq!(tokens.len(), 2);
-    assert_eq!(tokens[0].kind, Kind::Ident);
+    assert!(matches!(tokens[0].kind, Kind::Ident(_)));
     assert_eq!(tokens[1].kind, Kind::Invalid);
 }
 
@@ -144,7 +144,7 @@ fn invalid_token() {
 
     let tokens = scan("foo?bar");
     assert_eq!(tokens.len(), 3);
-    assert_eq!(tokens[0].kind, Kind::Ident);
+    assert!(matches!(tokens[0].kind, Kind::Ident(_)));
     assert_eq!(tokens[1].kind, Kind::Invalid);
-    assert_eq!(tokens[2].kind, Kind::Ident);
+    assert!(matches!(tokens[2].kind, Kind::Ident(_)));
 }

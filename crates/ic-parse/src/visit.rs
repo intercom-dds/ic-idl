@@ -29,7 +29,23 @@
 use crate::syntax::*;
 
 pub trait Visitor<'a> {
-    fn visit_definition(&mut self, def: &'a Definition) {}
+    fn visit_definition(&mut self, def: &'a Definition) {
+        self.visit_ident(&def.name);
+
+        match &def.kind {
+            ItemKind::Annotation(v) => todo!(),
+            ItemKind::Module(v) => self.visit_module(v),
+            ItemKind::Struct(v) => self.visit_struct(v),
+            ItemKind::Union(v) => self.visit_union(v),
+            ItemKind::Enum(v) => self.visit_enum(v),
+            ItemKind::Exception(v) => self.visit_exception(v),
+            ItemKind::Bitmask(v) => self.visit_bitmask(v),
+            ItemKind::Bitset(v) => self.visit_bitset(v),
+            ItemKind::Const(v) => self.visit_const(v),
+            ItemKind::Typedef(v) => self.visit_typedef(v),
+            ItemKind::Decl(v) => self.visit_decl(v),
+        }
+    }
 
     fn visit_annotation_def(&mut self, def: &'a AnnotationDef) {}
 
@@ -88,7 +104,9 @@ pub trait Visitor<'a> {
         self.visit_ident(&def.name);
     }
 
-    fn visit_numeric(&mut self, num: &'a Numeric) {}
+    fn visit_exception(&mut self, def: &'a ExceptDef) {}
+
+    fn visit_numeric(&mut self, num: &'a Literal) {}
 
     fn visit_bitmask(&mut self, bitmask: &'a BitmaskDef) {
         for ann in &bitmask.annotations {
@@ -100,6 +118,20 @@ pub trait Visitor<'a> {
     }
 
     fn visit_bitmask_bit(&mut self, bit: &'a Bit) {}
+
+    fn visit_bitset(&mut self, bitset: &'a BitsetDef) {
+        for bit in &bitset.fields {
+            self.visit_bitfield(bit);
+        }
+    }
+
+    fn visit_bitfield(&mut self, _bitset: &'a Bitfield) {}
+
+    fn visit_const(&mut self, def: &'a ConstDef) {}
+
+    fn visit_typedef(&mut self, def: &'a Typedef) {}
+
+    fn visit_decl(&mut self, decl: &'a Decl) {}
 
     fn visit_ident(&mut self, ident: &'a Ident) {}
 

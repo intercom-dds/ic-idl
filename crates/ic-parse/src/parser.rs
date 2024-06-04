@@ -49,10 +49,7 @@ impl<T, U: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone> IdlParser<T> 
 fn ident() -> impl IdlParser<Ident> {
     let ident = select! { Kind::Ident(v) => v };
     ident
-        .map(|name| Ident {
-            name,
-            span: Span::default(),
-        })
+        .map_with_span(|name, span| Ident { name, span })
         .labelled("identifier")
 }
 
@@ -84,6 +81,9 @@ pub fn specification() -> impl IdlParser<Vec<Definition>> {
 
 // Rule 2 with the rule 218 extension
 fn definition() -> impl IdlParser<Definition> {
+    // Semicolons are not checked here. This is a PEG parser, so it picks the
+    // first rule that matches. To prevent "struct Foo {};" from matching with
+    // `struct_forward_dcl`, we need to include terminator in the rule.
     recursive(|defs| choice((module_dcl(defs), const_dcl(), type_dcl())))
 }
 
@@ -101,7 +101,7 @@ fn module_dcl<'a>(
         .labelled("module definition")
         .then_ignore(just(Kind::Semi));
 
-    module_def.map(|v| ModuleDef::new(v.0, v.1))
+    module_def.map_with_span(|v, span| ModuleDef::new(v.0, v.1, span))
 }
 
 // Rule 4
@@ -124,11 +124,27 @@ fn const_dcl() -> impl IdlParser<Definition> {
         .ignore_then(const_type())
         .then(ident())
         .then_ignore(just(Kind::Eq))
-        .then(ident()) // TODO: const_expr
+        .then(complex_const_expr())
         .then_ignore(just(Kind::Semi))
         .labelled("const declaration");
 
-    def.map(|((ty, name), _)| ConstDef::new(name, ty))
+    def.map_with_span(|((ty, name), _), span| ConstDef::new(name, ty, span))
+}
+
+// InterCOM extension for complex constants
+fn complex_const_expr() -> impl IdlParser<()> {
+    recursive(|state| {
+        // let basic = const_expr().ignored();
+        let basic = ident().ignored();
+        let params = state.separated_by(just(Kind::Comma));
+        let complex = just(Kind::LBrace)
+            .ignore_then(params)
+            .then_ignore(just(Kind::RBrace))
+            .ignored();
+
+        choice((basic, complex))
+    })
+    .ignored()
 }
 
 // Rule 6
@@ -266,7 +282,8 @@ fn sequence_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl Idl
 
     let seq = just(Kind::Sequence)
         .then(just(Kind::Less))
-        .ignore_then(state);
+        .ignore_then(state)
+        .then_ignore(just(Kind::Greater));
     // .then_ignore(just(Kind::Comma))
     // .then(bound)
 
@@ -349,7 +366,7 @@ fn struct_def() -> impl IdlParser<Definition> {
         .then(struct_def)
         .then_ignore(just(Kind::Semi));
 
-    def.map(|v| StructDef::new(v.1.0.0, v.1.1))
+    def.map_with_span(|v, span| StructDef::new(v.1.0.0, v.1.1, None, span))
 }
 
 // Rule 47
@@ -359,11 +376,7 @@ fn member() -> impl IdlParser<Field> {
         .then_ignore(just(Kind::Semi))
         .labelled("struct member");
 
-    field.map(|(ty, names)| Field {
-        names,
-        span: Span::default(),
-        ty,
-    })
+    field.map(|(ty, names)| Field { names, ty })
 }
 
 // Rule 48
@@ -373,7 +386,7 @@ fn struct_forward_dcl() -> impl IdlParser<Definition> {
         .labelled("struct declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map(|name| Item::decl(name, DeclKind::Struct))
+    decl.map_with_span(|name, span| Item::decl(name, DeclKind::Struct, span))
 }
 
 // Rule 49
@@ -396,7 +409,7 @@ fn union_def() -> impl IdlParser<Definition> {
         .then(body)
         .then_ignore(just(Kind::Semi));
 
-    def.map(|v| UnionDef::new(v.0.0, vec![]))
+    def.map_with_span(|v, span| UnionDef::new(v.0.0, vec![], span))
 }
 
 // Rule 51
@@ -449,7 +462,7 @@ fn union_forward_dcl() -> impl IdlParser<Definition> {
         .labelled("union declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map(|name| Item::decl(name, DeclKind::Union))
+    decl.map_with_span(|name, span| Item::decl(name, DeclKind::Union, span))
 }
 
 // Rule 57
@@ -465,7 +478,7 @@ fn enum_dcl() -> impl IdlParser<Definition> {
         .labelled("enum")
         .then_ignore(just(Kind::Semi));
 
-    def.map(|(name, fields)| EnumDef::new(name, fields))
+    def.map_with_span(|(name, fields), span| EnumDef::new(name, fields, span))
 }
 
 // Rule 58
@@ -475,7 +488,7 @@ fn enumerator() -> impl IdlParser<Enumerator> {
 
     ident()
         .then(value)
-        .map(|(name, _)| Enumerator::new(name, Span::default()))
+        .map_with_span(|(name, _), span| Enumerator::new(name, span))
         .labelled("enumerator")
 }
 
@@ -497,7 +510,7 @@ fn fixed_array_size() -> impl IdlParser<Kind> {
 fn native_dcl() -> impl IdlParser<Definition> {
     just(Kind::Native)
         .ignore_then(simple_declarator())
-        .map(|name| Item::decl(name, DeclKind::Native))
+        .map_with_span(|name, span| Item::decl(name, DeclKind::Native, span))
 }
 
 // Rule 62
@@ -511,7 +524,7 @@ fn typedef_dcl() -> impl IdlParser<Definition> {
         .ignore_then(type_declarator())
         .then_ignore(just(Kind::Semi));
 
-    def.map(|v| Typedef::new(Ident::default(), Ident::default()))
+    def.map_with_span(|(ty, decls), span| Typedef::new(Ident::default(), ty, span))
 }
 
 // Rule 64
@@ -613,8 +626,7 @@ fn annotation_member() -> impl IdlParser<()> {
 
 // Rule 223
 fn annotation_member_type() -> impl IdlParser<()> {
-    // `scoped_name` is omitted because it's already included in `const_type`.
-    // This is a flaw in the official IDL grammar.
+    // `scoped_name` is omitted because it's already included in `const_type`
     choice((const_type().ignored(), any_const_type()))
 }
 

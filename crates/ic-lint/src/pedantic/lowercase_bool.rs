@@ -33,15 +33,15 @@ use ic_parse::visit::Visitor;
 pub struct LowercaseBool<'a>(&'a str);
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_numeric(&mut self, num: &'a syntax::Numeric) {
-        if let syntax::NumericKind::Bool = &num.kind {
-            let range = (num.span.index as usize)..(num.span.index + num.span.len) as usize;
+    fn visit_numeric(&mut self, num: &'a syntax::Literal) {
+        if let syntax::LitKind::Bool = &num.kind {
+            let range = num.span.start..num.span.start;
             if let Some(span) = self.0.get(range) {
                 if span.chars().any(char::is_lowercase) {
                     eprintln!(
                         "{}:{}: boolean literals must be written in uppercase",
-                        num.span.index,
-                        num.span.index + num.span.len,
+                        num.span.start,
+                        num.span.end + num.span.start,
                     );
                     eprintln!(" = help: lowercase literals are an InterCOM extension");
                     eprintln!(" = note: warning produced by -Wpedantic");
@@ -59,16 +59,16 @@ mod tests {
 
     #[test]
     fn lowercase_lit() {
-        let ident = syntax::Numeric {
-            kind: syntax::NumericKind::Bool,
-            span: Span { index: 0, len: 4 },
+        let ident = syntax::Literal {
+            kind: syntax::LitKind::Bool,
+            span: Span::default(),
         };
         let mut lint = LowercaseBool("true");
         lint.visit_numeric(&ident);
 
-        let ident = syntax::Numeric {
-            kind: syntax::NumericKind::Bool,
-            span: Span { index: 0, len: 5 },
+        let ident = syntax::Literal {
+            kind: syntax::LitKind::Bool,
+            span: Span::default(),
         };
         let mut lint = LowercaseBool("false");
         lint.visit_numeric(&ident);
@@ -77,16 +77,16 @@ mod tests {
     #[test]
     fn uppercase_lit() {
         // complies with the standard so no warning produced
-        let num = syntax::Numeric {
-            kind: syntax::NumericKind::Bool,
-            span: Span { index: 0, len: 4 },
+        let num = syntax::Literal {
+            kind: syntax::LitKind::Bool,
+            span: Span::default(),
         };
         let mut lint = LowercaseBool("TRUE");
         lint.visit_numeric(&num);
 
-        let num = syntax::Numeric {
-            kind: syntax::NumericKind::Bool,
-            span: Span { index: 0, len: 5 },
+        let num = syntax::Literal {
+            kind: syntax::LitKind::Bool,
+            span: Span::default(),
         };
         let mut lint = LowercaseBool("FALSE");
         lint.visit_numeric(&num);

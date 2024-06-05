@@ -31,11 +31,10 @@ use ic_syntax::Definition;
 
 use crate::{Category, Lint};
 
-/// Verifies that enums, unions and valuetypes have at least one member, and
-/// all modules have at least one definition.
+/// Verifies that enums, unions and valuetypes have at least one member.
 ///
-/// Support for empty structs and exceptions is an extension defined in the
-/// `DDS-RPC` standard, thus not covered by this lint.
+/// Support for empty structs is an extension defined in the `DDS-RPC`
+/// standard, thus not covered by this lint.
 pub struct EmptyTypes;
 
 impl Lint for EmptyTypes {

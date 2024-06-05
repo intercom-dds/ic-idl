@@ -31,6 +31,7 @@ use ic_alloc::arena::Arena;
 use ic_alloc::interner::Interner;
 
 // mod annotation;
+pub mod keywords;
 pub mod visit;
 
 // TODO: some id that identifies the source file this belongs to

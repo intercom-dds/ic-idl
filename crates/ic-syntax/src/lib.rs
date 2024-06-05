@@ -107,6 +107,11 @@ impl Item<ItemKind> {
             kind: ItemKind::Decl(Decl { kind }),
         }
     }
+
+    pub fn with_span(mut self, span: Span) -> Self {
+        self.span = span;
+        self
+    }
 }
 
 #[must_use]
@@ -180,7 +185,17 @@ impl Path {
 
 #[must_use]
 #[derive(Debug)]
+pub struct Fixed {
+    pub total: usize,
+    pub fractional: usize,
+}
+
+#[must_use]
+#[derive(Debug)]
 pub enum Type {
+    /// The `any` type.
+    Any { span: Span },
+
     /// Array of another type, e.g. `int32 value[3]`.
     /// Only the type is included; the name of the member is omitted.
     Array { ty: Path, bound: InlineVec<usize> },
@@ -198,8 +213,8 @@ pub enum Type {
         bound: Option<usize>,
     },
 
-    /// Fixed-point type, e.g. `fixed<4, 2>`.
-    Fixed { total: usize, fractional: usize },
+    /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
+    Fixed { span: Span, bounds: Option<Fixed> },
 
     /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
     Path(Path),
@@ -306,6 +321,17 @@ pub struct Field {
 #[derive(Debug)]
 pub struct ExceptDef {
     pub members: InlineVec<Field>,
+}
+
+impl ExceptDef {
+    pub fn new(name: Ident, members: InlineVec<Field>, span: Span) -> Definition {
+        Definition {
+            name,
+            span,
+            annotations: vec![],
+            kind: ItemKind::Exception(P(ExceptDef { members })),
+        }
+    }
 }
 
 #[must_use]

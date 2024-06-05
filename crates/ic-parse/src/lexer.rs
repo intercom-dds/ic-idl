@@ -136,6 +136,9 @@ pub enum Kind {
     #[token("readonly")]
     ReadOnly,
 
+    #[token("oneway")]
+    Oneway,
+
     #[token("in")]
     In,
 
@@ -164,6 +167,10 @@ pub enum Kind {
     /// `:`
     #[token(":")]
     Colon,
+
+    /// `::`
+    #[token("::")]
+    DColon,
 
     /// `:`
     #[token(";")]
@@ -325,7 +332,8 @@ impl fmt::Display for Kind {
             Kind::GetRaises => write!(f, "getraises"),
             Kind::SetRaises => write!(f, "setraises"),
             Kind::Attribute => write!(f, "attribute"),
-            Kind::ReadOnly => write!(f, "read-only"),
+            Kind::ReadOnly => write!(f, "readonly"),
+            Kind::Oneway => write!(f, "oneway"),
             Kind::Float => write!(f, "floating-point number"),
             Kind::StringLit => write!(f, "string literal"),
             Kind::AnnotationAppl => write!(f, "applied annotation"),
@@ -337,6 +345,7 @@ impl fmt::Display for Kind {
             Kind::WString => write!(f, "wstring"),
             Kind::Map => write!(f, "map"),
             Kind::Colon => write!(f, "`:`"),
+            Kind::DColon => write!(f, "`::`"),
             Kind::Eq => write!(f, "`=`"),
             Kind::Semi => write!(f, "`;`"),
             Kind::Comma => write!(f, "`,`"),
@@ -442,4 +451,18 @@ pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
 #[must_use]
 pub fn scan(input: &str) -> Vec<Token> {
     lexer(input).collect()
+}
+
+pub fn to_string(input: &str) -> String {
+    let mut lexer = Kind::lexer(input).spanned();
+    let mut str = String::new();
+
+    while let Some((tok, span)) = lexer.next() {
+        if let Kind::Ident(id) = tok.unwrap() {
+            str += lexer.extras.interner.get(id).unwrap();
+        } else {
+            str += &format!("{tok:?}");
+        }
+    }
+    str
 }

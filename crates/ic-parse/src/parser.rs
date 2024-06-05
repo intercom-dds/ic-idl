@@ -31,8 +31,8 @@ use chumsky::text::{Character, TextParser};
 use chumsky::{Error, Parser, Stream};
 use ic_alloc::ptr::P;
 use ic_syntax::{
-    ConstDef, DeclKind, Definition, EnumDef, Enumerator, Field, Ident, Item, ItemKind, Label,
-    ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
+    ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed, Ident, Item,
+    ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
 };
 
 use crate::lexer::{Kind, Token};
@@ -76,12 +76,20 @@ pub fn specification() -> impl IdlParser<Vec<Definition>> {
     definition().repeated().then_ignore(end())
 }
 
-// Rule 2 with the rule 218 extension
+// Rule 2 with the rule 71 and 218 extensions
 fn definition() -> impl IdlParser<Definition> {
     // Semicolons are not checked here. This is a PEG parser, so it picks the
     // first rule that matches. To prevent "struct Foo {};" from matching with
     // `struct_forward_dcl`, we need to include terminator in the rule.
-    recursive(|defs| choice((module_dcl(defs), const_dcl(), type_dcl())))
+    recursive(|defs| {
+        choice((
+            module_dcl(defs),
+            const_dcl(),
+            type_dcl(),
+            except_dcl(),
+            interface_dcl(),
+        ))
+    })
 }
 
 // Rule 3
@@ -104,14 +112,15 @@ fn module_dcl(
 // Rule 4
 // TODO: should probably return Type?
 fn scoped_name() -> impl IdlParser<Path> {
-    // let inner = just([Kind::Colon, Kind::Colon]).then(ident());
-    // let path = choice((
-    //     ident().then(inner.clone().repeated()),
-    //     inner.clone().then(inner.repeated()),
-    // ));
-    ident().map(|v| Path {
+    let inner = just(Kind::DColon).ignore_then(ident());
+    let path = choice((
+        ident().then(inner.clone().repeated()),
+        inner.clone().then(inner.repeated()),
+    ));
+
+    path.map(|v| Path {
         leading_colons: None,
-        segments: vec![v],
+        segments: vec![],
     })
 }
 
@@ -183,8 +192,7 @@ fn const_expr() -> impl IdlParser<()> {
         let rshift = just(Kind::RShift);
         let op = choice((lshift, rshift));
 
-        sum
-            .clone()
+        sum.clone()
             .then(op.then(sum).repeated())
             .foldl(|_, _| Kind::Decimal)
     })
@@ -241,21 +249,17 @@ fn type_spec() -> impl IdlParser<Type> {
     choice((simple_type_spec(), template_type_spec()))
 }
 
-// Rule 22
+// Rule 22 + 23
 fn simple_type_spec() -> impl IdlParser<Type> {
     choice((base_type_spec(), scoped_name().map(Type::Path)))
 }
 
-// Rule 23
+// Rule 23 with the rule 69 extension
 fn base_type_spec() -> impl IdlParser<Type> {
-    // We do not treat primitive types as keywords for the sole reason that it
-    // serves no purpose other than further complicating the grammar.
-    ty().map(|v| {
-        Type::Path(Path {
-            leading_colons: None,
-            segments: vec![v],
-        })
-    })
+    // Minor deviation: we do not treat primitive types as keywords for the
+    // sole reason that it serves no purpose other than further complicating
+    // the grammar.
+    choice((any_type(), scoped_name().map(Type::Path)))
 }
 
 // Rule 38 with the rule 197 extension
@@ -314,18 +318,18 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
         .then(positive_int_const())
         .then_ignore(just(Kind::Greater));
 
-    def.map(|(tot, frac)| Type::Fixed {
-        total: 0,
-        fractional: 0,
+    def.map_with_span(|(tot, frac), span| Type::Fixed {
+        span,
+        bounds: Some(Fixed {
+            total: 0,
+            fractional: 0,
+        }),
     })
 }
 
 // Rule 43
 fn fixed_pt_const_type() -> impl IdlParser<Type> {
-    just(Kind::Fixed).map(|v| Type::Fixed {
-        total: 0,
-        fractional: 0,
-    })
+    just(Kind::Fixed).map_with_span(|_, span| Type::Fixed { span, bounds: None })
 }
 
 // Rule 44
@@ -557,6 +561,251 @@ fn declarators() -> impl IdlParser<Vec<Ident>> {
 fn declarator() -> impl IdlParser<Ident> {
     simple_declarator()
 }
+
+// Rule 70
+fn any_type() -> impl IdlParser<Type> {
+    just(Kind::Any).map_with_span(|_, span| Type::Any { span })
+}
+
+// Rule 72
+fn except_dcl() -> impl IdlParser<Definition> {
+    let body = member()
+        .repeated()
+        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+
+    just(Kind::Exception)
+        .ignore_then(ident())
+        .then(body)
+        .map_with_span(|(i, mem), span| ExceptDef::new(i, mem, span))
+}
+
+// Rule 73
+fn interface_dcl() -> impl IdlParser<Definition> {
+    choice((interface_def(), interface_forward_dcl()))
+}
+
+// Rule 74
+fn interface_def() -> impl IdlParser<Definition> {
+    let body = interface_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+    let def = interface_header().then(body).then_ignore(just(Kind::Semi));
+    // TODO
+    def.map_with_span(|(_, _), span| ModuleDef::new(Ident::default(), vec![], span))
+}
+
+// Rule 75
+fn interface_forward_dcl() -> impl IdlParser<Definition> {
+    let def = interface_kind()
+        .ignore_then(ident())
+        .then_ignore(just(Kind::Semi));
+    // TODO:
+    def.map_with_span(|ident, span| ModuleDef::new(ident, vec![], span))
+}
+
+// Rule 76
+fn interface_header() -> impl IdlParser<()> {
+    interface_kind()
+        .then(ident())
+        .then(interface_inheritance_spec().or_not())
+        .ignored()
+}
+
+// Rule 77 with the rule 121 extension
+fn interface_kind() -> impl IdlParser<(Option<Kind>, Kind)> {
+    // TODO: propagate `local` to def
+    just(Kind::Local).or_not().then(just(Kind::Interface))
+}
+
+// Rule 78
+fn interface_inheritance_spec() -> impl IdlParser<Vec<Path>> {
+    just(Kind::Colon).ignore_then(interface_name().separated_by(just(Kind::Comma)))
+}
+
+// Rule 79
+fn interface_name() -> impl IdlParser<Path> {
+    scoped_name()
+}
+
+// Rule 80
+fn interface_body() -> impl IdlParser<Vec<()>> {
+    export().repeated()
+}
+
+// Rule 81 with the rule 97 extension
+fn export() -> impl IdlParser<()> {
+    choice((
+        op_dcl(),
+        attr_dcl(),
+        type_dcl().ignored(),
+        const_dcl().ignored(),
+        except_dcl().ignored(),
+    ))
+}
+
+// Rule 82
+fn op_dcl() -> impl IdlParser<()> {
+    let params = parameter_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
+
+    op_type_spec()
+        .then(ident())
+        .then(params)
+        .then(raises_expr().or_not())
+        .ignore_then(just(Kind::Semi))
+        .ignored()
+}
+
+// Rule 83
+fn op_type_spec() -> impl IdlParser<Type> {
+    // Minor deviation: we do not treat `void` as a keyword, so we only use
+    // `type_spec` here.
+    type_spec()
+}
+
+// Rule 84
+fn parameter_dcls() -> impl IdlParser<()> {
+    // TODO: make sure this works even with 0 params
+    param_dcl().separated_by(just(Kind::Comma)).ignored()
+}
+
+// Rule 85
+fn param_dcl() -> impl IdlParser<()> {
+    param_attribute()
+        .then(type_spec())
+        .then(simple_declarator())
+        .ignored()
+}
+
+// Rule 86
+fn param_attribute() -> impl IdlParser<Kind> {
+    one_of([Kind::In, Kind::Out, Kind::InOut])
+}
+
+// Rule 87
+fn raises_expr() -> impl IdlParser<()> {
+    let exceptions = scoped_name()
+        .separated_by(just(Kind::Comma))
+        .at_least(1)
+        .delimited_by(just(Kind::LParen), just(Kind::RParen));
+
+    just(Kind::Raises).then(exceptions).ignored()
+}
+
+// Rule 88
+fn attr_dcl() -> impl IdlParser<()> {
+    choice((readonly_attr_spec(), attr_spec()))
+}
+
+// Rule 89
+fn readonly_attr_spec() -> impl IdlParser<()> {
+    just(Kind::ReadOnly)
+        .ignore_then(just(Kind::Attribute))
+        .then_ignore(type_spec())
+        .then(readonly_attr_declarator())
+        .then_ignore(just(Kind::Semi))
+        .ignored()
+}
+
+// Rule 90
+fn readonly_attr_declarator() -> impl IdlParser<()> {
+    choice((
+        simple_declarator().then(raises_expr()).ignored(),
+        simple_declarator()
+            .separated_by(just(Kind::Comma))
+            .at_least(1)
+            .ignored(),
+    ))
+}
+
+// Rule 91
+fn attr_spec() -> impl IdlParser<()> {
+    just(Kind::Attribute)
+        .ignore_then(type_spec())
+        .then(attr_declarator())
+        .ignored()
+}
+
+// Rule 92
+fn attr_declarator() -> impl IdlParser<()> {
+    choice((
+        simple_declarator().then(attr_raises_expr()).ignored(),
+        simple_declarator()
+            .separated_by(just(Kind::Comma))
+            .at_least(1)
+            .ignored(),
+    ))
+}
+
+// Rule 93
+fn attr_raises_expr() -> impl IdlParser<()> {
+    choice((
+        get_excep_expr().then(set_excep_expr().or_not()).ignored(),
+        set_excep_expr(),
+    ))
+}
+
+// Rule 94
+fn get_excep_expr() -> impl IdlParser<()> {
+    just(Kind::GetRaises)
+        .ignore_then(exception_list())
+        .ignored()
+}
+
+// Rule 95
+fn set_excep_expr() -> impl IdlParser<()> {
+    just(Kind::SetRaises)
+        .ignore_then(exception_list())
+        .ignored()
+}
+
+// Rule 96
+fn exception_list() -> impl IdlParser<()> {
+    scoped_name()
+        .separated_by(just(Kind::Comma))
+        .at_least(1)
+        .delimited_by(just(Kind::LParen), just(Kind::RParen))
+        .ignored()
+}
+
+// Rule 119
+fn op_oneway_dcl() -> impl IdlParser<()> {
+    let params = in_parameter_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
+
+    just(Kind::Oneway)
+        .ignore_then(ty())
+        .then(ident())
+        .then(params)
+        .ignored()
+}
+
+// Rule 120
+fn in_parameter_dcls() -> impl IdlParser<()> {
+    // TODO: remove at_least? might be supported in cidl
+    in_param_dcl()
+        .separated_by(just(Kind::Comma))
+        .at_least(1)
+        .ignored()
+}
+
+// Rule 121
+fn in_param_dcl() -> impl IdlParser<()> {
+    // TODO: optional in here as well?
+    just(Kind::In)
+        .then(type_spec())
+        .then(simple_declarator())
+        .ignored()
+}
+
+// Rule 122
+// TODO: do we need this?? it's CORBA specific and I don't tjhink CIDL supports it
+// fn op_with_context() -> impl IdlParser<()> {
+//     choice((op_dcl(), op_oneway_dcl()))
+//         .then(context_expr())
+//         .ignored()
+// }
+
+// Rule 123
+// fn context_expr() -> impl IdlParser<()> {
+//     just(Kind::Context)
+// }
 
 // Rule 199
 fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {

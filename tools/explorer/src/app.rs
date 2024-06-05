@@ -25,35 +25,42 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::process::Command;
+use ic_parse::lexer::Token;
+use yew::prelude::*;
 
-/// Check licenses of all dependencies
-#[derive(ic_cli::Command, Default)]
-pub struct Options;
+#[derive(Default)]
+pub struct App {}
 
-fn is_installed() -> bool {
-    Command::new("cargo")
-        .args(["deny", "--version"])
-        .output()
-        .is_ok_and(|v| v.status.success())
+impl App {
+    pub fn lex(&self) -> String {
+        // ic_parse::lexer::to_string("foo bar baz")
+    }
 }
 
-fn install_deny() {
-    println!("installing cargo-deny");
-
-    Command::new("cargo")
-        .args(["install", "--locked", "cargo-deny"])
-        .status()
-        .expect("failed to install cargo-deny");
+pub enum Data {
+    Token,
+    Ast,
+    Hir,
 }
 
-pub fn check() {
-    if !is_installed() {
-        install_deny();
+impl Component for App {
+    type Message = Data;
+    type Properties = ();
+
+    fn create(ctx: &Context<Self>) -> Self {
+        Self::default()
     }
 
-    Command::new("cargo")
-        .args(["deny", "--all-features", "check"])
-        .status()
-        .expect("failed to run cargo-deny");
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        // let on_change = ctx.link().callback(|_| Data::Token);
+        // let on_click = ctx.link().callback(|_| Data::Ast);
+
+        html! {
+            <main>
+                <div>
+                    <span>{self.lex()}</span>
+                </div>
+            </main>
+        }
+    }
 }

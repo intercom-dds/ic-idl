@@ -25,8 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// Build a release version of ic-idl
-#[derive(ic_cli::Command, Default)]
-pub struct Options;
+mod app;
 
-pub fn build() {}
+use app::App;
+
+fn main() {
+    yew::Renderer::<App>::new().render();
+}

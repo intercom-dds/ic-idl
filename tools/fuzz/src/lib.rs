@@ -24,24 +24,3 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-use std::process::Command;
-
-/// Bootstrap ic-idl
-#[derive(ic_cli::Command, Default)]
-pub struct Options;
-
-pub fn build() {
-    let status = Command::new("cargo")
-        .args([
-            "install",
-            "--path",
-            "crates/ic-bootstrap",
-            "--root",
-            "target",
-        ])
-        .status()
-        .unwrap();
-
-    assert!(status.success());
-}

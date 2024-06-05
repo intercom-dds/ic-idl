@@ -25,37 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
+#![no_main]
 
-const PRE_COMMIT_SRC: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/etc/pre-commit.sh");
+use libfuzzer_sys::fuzz_target;
 
-const PRE_COMMIT_DST: &str = "hooks/pre-commit";
-
-/// Install pre-commit Git hooks
-#[derive(ic_cli::Command, Default)]
-pub struct Options;
-
-fn git_root() -> PathBuf {
-    let output = Command::new("git")
-        .args(["rev-parse", "--git-common-dir"])
-        .output()
-        .unwrap();
-
-    PathBuf::from(std::str::from_utf8(&output.stdout).unwrap().trim())
-}
-
-pub fn install() {
-    let root = git_root();
-    let dst = Path::new(&root).join(PRE_COMMIT_DST);
-
-    if dst.exists() {
-        eprintln!("error: pre-commit hook already exists. refusing to overwrite.");
-        std::process::exit(1);
+fuzz_target!(|data: &[u8]| {
+    if let Ok(str) = std::str::from_utf8(data) {
+        let _ = ic_parse::lexer::scan(str);
     }
-
-    match std::fs::copy(PRE_COMMIT_SRC, dst) {
-        Ok(_) => println!("pre-commit hook succesfully installed"),
-        Err(e) => eprintln!("error: failed to install pre-commit hook: {e}"),
-    }
-}
+});

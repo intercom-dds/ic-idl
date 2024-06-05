@@ -36,7 +36,7 @@ use intercom_cts::encode::{FieldSerializer, Serializer};
 use intercom_cts::{Marshal, Unmarshal};
 
 #[must_use]
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 #[repr(transparent)]
 #[derive(Default)] // TODO: remove
 pub struct Id<T> {
@@ -56,6 +56,12 @@ impl<T> Id<T> {
 impl<T> PartialEq for Id<T> {
     fn eq(&self, other: &Self) -> bool {
         self.id.eq(&other.id)
+    }
+}
+
+impl<T> std::hash::Hash for Id<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_usize(self.id);
     }
 }
 

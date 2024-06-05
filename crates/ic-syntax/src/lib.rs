@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![allow(non_local_definitions)]
+#![allow(clippy::new_ret_no_self)]
 
 //! Syntax tree for IDL.
 //!
@@ -54,6 +55,7 @@ pub type AnnotationVec = InlineVec<AnnotationAppl>;
 
 pub type Definition = Item<ItemKind>;
 
+#[must_use]
 #[derive(Debug)]
 pub struct Document {
     /// Name of the file
@@ -63,6 +65,7 @@ pub struct Document {
     pub definitions: InlineVec<Definition>,
 }
 
+#[must_use]
 #[derive(Default, Debug, Marshal, Unmarshal)]
 pub struct Ident {
     /// The acutal identifier.
@@ -72,6 +75,7 @@ pub struct Ident {
     pub span: Span,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Item<K> {
     /// Name and span of the item.
@@ -105,6 +109,7 @@ impl Item<ItemKind> {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub enum ItemKind {
     /// A definition of an annotation
@@ -141,11 +146,13 @@ pub enum ItemKind {
     Decl(Decl),
 }
 
+#[must_use]
 #[derive(Debug, Marshal, Unmarshal)]
 pub struct Decl {
     pub kind: DeclKind,
 }
 
+#[must_use]
 #[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
 pub enum DeclKind {
     Struct,
@@ -155,6 +162,7 @@ pub enum DeclKind {
     Valuetype,
 }
 
+#[must_use]
 #[derive(Debug, Marshal, Unmarshal)]
 pub struct Path {
     pub leading_colons: Option<Span>,
@@ -170,6 +178,7 @@ impl Path {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub enum Type {
     /// Array of another type, e.g. `int32 value[3]`.
@@ -197,12 +206,14 @@ pub enum Type {
 }
 
 /// A definition of an annotation, e.g. `@annotation foo {};`.
+#[must_use]
 #[derive(Debug)]
 pub struct AnnotationDef {
     pub params: InlineVec<AnnotationField>,
 }
 
 /// The items that can be placed inside a definition of an annotation.
+#[must_use]
 #[derive(Debug)]
 pub enum AnnotationField {
     Enum(P<Item<EnumDef>>),
@@ -213,6 +224,7 @@ pub enum AnnotationField {
 
 /// A parameter inside an applied annotation, e.g. `value=true` in
 /// `@optional(value=true)`.
+#[must_use]
 #[derive(Debug)]
 pub struct AnnotationArg {
     /// Name of the parameter if one was specified.
@@ -226,6 +238,7 @@ pub struct AnnotationArg {
     pub value: Expr,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct AnnotationAppl {
     pub name: Ident,
@@ -233,6 +246,7 @@ pub struct AnnotationAppl {
     pub args: InlineVec<AnnotationArg>,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct ModuleDef {
     pub defs: InlineVec<Item<ItemKind>>,
@@ -251,6 +265,7 @@ impl ModuleDef {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct StructDef {
     pub members: InlineVec<Field>,
@@ -280,23 +295,27 @@ impl StructDef {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Field {
     pub names: InlineVec<Ident>,
     pub ty: Type,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct ExceptDef {
     pub members: InlineVec<Field>,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct BitmaskDef {
     pub annotations: InlineVec<AnnotationAppl>,
     pub bits: InlineVec<Bit>,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Bit {
     pub name: Ident,
@@ -307,17 +326,20 @@ pub struct Bit {
     pub value: Option<Expr>,
 }
 
+#[must_use]
 #[derive(Debug, Marshal, Unmarshal)]
 pub struct BitsetDef {
     pub fields: InlineVec<Bitfield>,
 }
 
+#[must_use]
 #[derive(Debug, Default, Marshal, Unmarshal)]
 pub struct Bitfield {
     // pub annotations: InlineVec<AnnotationAppl>,
     pub size: Ident,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct EnumDef {
     pub fields: InlineVec<Enumerator>,
@@ -338,6 +360,7 @@ impl EnumDef {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Enumerator {
     pub annotations: InlineVec<AnnotationAppl>,
@@ -358,6 +381,7 @@ impl Enumerator {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct UnionDef {
     /// The discriminator component of the union.
@@ -390,12 +414,14 @@ impl UnionDef {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Discriminator {
     pub annotations: InlineVec<AnnotationAppl>,
     pub ty: Type,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct UnionField {
     pub annotations: InlineVec<AnnotationAppl>,
@@ -406,6 +432,7 @@ pub struct UnionField {
     pub field: Field,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub enum Label {
     Case { ident: Path },
@@ -413,6 +440,7 @@ pub enum Label {
     Default,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct ConstDef {
     pub value: Expr,
@@ -420,7 +448,9 @@ pub struct ConstDef {
 }
 
 impl ConstDef {
-    pub fn new(name: Ident, _ty: Type, span: Span) -> Definition {
+    pub fn new(name: Ident, ty: Type, span: Span) -> Definition {
+        drop(ty);
+
         Definition {
             name,
             span,
@@ -436,6 +466,7 @@ impl ConstDef {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Typedef {
     /// The underlying type of the typedef.
@@ -461,12 +492,14 @@ impl Typedef {
     }
 }
 
+#[must_use]
 #[derive(Debug, Marshal, Unmarshal)]
 pub struct Literal {
     pub kind: LitKind,
     pub span: Span,
 }
 
+#[must_use]
 #[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
 pub enum LitKind {
     Bool,
@@ -477,6 +510,7 @@ pub enum LitKind {
     Ident,
 }
 
+#[must_use]
 #[derive(Debug, Marshal, Unmarshal)]
 pub struct Op {
     /// Span of the token.
@@ -486,6 +520,7 @@ pub struct Op {
     pub kind: OpKind,
 }
 
+#[must_use]
 #[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
 pub enum OpKind {
     // Arithmetic operations
@@ -504,6 +539,7 @@ pub enum OpKind {
     Not,
 }
 
+#[must_use]
 #[derive(Debug)]
 pub enum Expr {
     /// A single literal like `1` or `"foo"`

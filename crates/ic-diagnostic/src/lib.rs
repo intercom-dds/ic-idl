@@ -49,6 +49,7 @@ pub enum Color {
 
 /// A single diagnostic intended to display lints about a particular item.
 #[must_use]
+#[derive(Default)]
 pub struct Diag {
     msg: String,
     note: Option<String>,
@@ -133,6 +134,4 @@ impl Formatter {}
 
 // TODO: include file name and input here? so we're agnostic of SourceMap
 // TODO: there may be multiple files, though...
-pub fn emit_diagnostic<W: Write>(_w: &mut W, _lint: &Diag) {
-    let mut _fmt = Formatter {};
-}
+pub fn emit_diagnostic<W: Write>(_w: &mut W, _lint: &Diag) {}

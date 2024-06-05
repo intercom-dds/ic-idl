@@ -85,9 +85,9 @@ fn definition() -> impl IdlParser<Definition> {
 }
 
 // Rule 3
-fn module_dcl<'a>(
-    state: Recursive<'a, Kind, Definition, Simple<Kind>>,
-) -> impl IdlParser<Definition> + 'a {
+fn module_dcl(
+    state: Recursive<'_, Kind, Definition, Simple<Kind>>,
+) -> impl IdlParser<Definition> + '_ {
     let items = state
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -146,7 +146,7 @@ fn complex_const_expr() -> impl IdlParser<()> {
 
 // Rule 6
 fn const_type() -> impl IdlParser<Type> {
-    choice((template_type_spec(), scoped_name().map(|v| Type::Path(v))))
+    choice((template_type_spec(), scoped_name().map(Type::Path)))
 }
 
 // Rule 7, 8, 9, 10, 11, 12 and 13
@@ -183,12 +183,10 @@ fn const_expr() -> impl IdlParser<()> {
         let rshift = just(Kind::RShift);
         let op = choice((lshift, rshift));
 
-        let shifted = sum
+        sum
             .clone()
             .then(op.then(sum).repeated())
-            .foldl(|_, _| Kind::Decimal);
-
-        shifted
+            .foldl(|_, _| Kind::Decimal)
     })
     .ignored()
 }
@@ -245,7 +243,7 @@ fn type_spec() -> impl IdlParser<Type> {
 
 // Rule 22
 fn simple_type_spec() -> impl IdlParser<Type> {
-    choice((base_type_spec(), scoped_name().map(|v| Type::Path(v))))
+    choice((base_type_spec(), scoped_name().map(Type::Path)))
 }
 
 // Rule 23
@@ -274,7 +272,7 @@ fn template_type_spec() -> impl IdlParser<Type> {
 }
 
 // Rule 39
-fn sequence_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + 'a {
+fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
     // let bound = positive_int_const().or_not();
     let inner = state.delimited_by(just(Kind::Less), just(Kind::Greater));
     let seq = just(Kind::Sequence).ignore_then(inner);
@@ -561,7 +559,7 @@ fn declarator() -> impl IdlParser<Ident> {
 }
 
 // Rule 199
-fn map_type<'a>(state: Recursive<'a, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + 'a {
+fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
     let key = state.clone();
     let value = state;
     // let bound = positive_int_const().or_not();

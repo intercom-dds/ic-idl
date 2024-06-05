@@ -38,10 +38,7 @@ impl<'a, 'b> Visitor<'a> for AsciiIdent<'b> {
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
         let str = &self.0[ident.span.start..ident.span.end];
         let invalid = str.chars().any(|v| !v.is_ascii_alphanumeric() && v != '_');
-
-        if invalid {
-            panic!("identifiers must be alphanumeric");
-        }
+        assert!(!invalid, "identifiers must be alphanumeric");
     }
 }
 

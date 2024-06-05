@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![allow(dead_code, unused)]
+#![allow(clippy::new_ret_no_self)]
 
 use ic_diagnostic::Diag;
 use ic_syntax::Definition;

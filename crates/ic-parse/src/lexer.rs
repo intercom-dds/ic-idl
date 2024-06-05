@@ -327,7 +327,7 @@ impl fmt::Display for Kind {
             Kind::Attribute => write!(f, "attribute"),
             Kind::ReadOnly => write!(f, "read-only"),
             Kind::Float => write!(f, "floating-point number"),
-            Kind::StringLit => write!(f, "string"),
+            Kind::StringLit => write!(f, "string literal"),
             Kind::AnnotationAppl => write!(f, "applied annotation"),
             Kind::In => write!(f, "in"),
             Kind::Out => write!(f, "out"),

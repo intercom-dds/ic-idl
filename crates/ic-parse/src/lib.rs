@@ -105,6 +105,8 @@ pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
 }
 
 /// Constructs an AST from the given token iterator.
+///
+/// # Errors
 pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Simple<Kind>>>
 where
     I: IntoIterator<Item = Token>,

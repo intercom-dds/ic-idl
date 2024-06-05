@@ -31,8 +31,8 @@ use chumsky::text::{Character, TextParser};
 use chumsky::{Error, Parser, Stream};
 use ic_alloc::ptr::P;
 use ic_syntax::{
-    ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed, Ident, Item,
-    ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
+    AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed,
+    Ident, Item, ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
 };
 
 use crate::lexer::{Kind, Token};
@@ -88,6 +88,7 @@ fn definition() -> impl IdlParser<Definition> {
             type_dcl(),
             except_dcl(),
             interface_dcl(),
+            annotation_dcl(),
         ))
     })
 }
@@ -827,39 +828,39 @@ fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Ty
 }
 
 // Rule 219
-fn annotation_dcl() -> impl IdlParser<()> {
-    annotation_header()
-        .then(annotation_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace)))
-        .ignored()
+fn annotation_dcl() -> impl IdlParser<Definition> {
+    let params = annotation_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+    let def = annotation_header()
+        .then(params)
+        .then_ignore(just(Kind::Semi));
+
+    def.map_with_span(|(i, params), span| AnnotationDef::new(i, vec![], span))
 }
 
 // Rule 220
-fn annotation_header() -> impl IdlParser<Kind> {
-    just(Kind::Annotation)
-        .ignore_then(ident())
-        .map(|v| Kind::AnnotationAppl)
+fn annotation_header() -> impl IdlParser<Ident> {
+    just(Kind::Annotation).ignore_then(ident())
 }
 
 // Rule 221
-fn annotation_body() -> impl IdlParser<()> {
-    // TODO
-    annotation_member()
+fn annotation_body() -> impl IdlParser<Vec<()>> {
+    let defs = choice((
+        annotation_member(),
+        enum_dcl().ignored(),
+        const_dcl().ignored(),
+        typedef_dcl().ignored(),
+    ));
+    defs.repeated()
 }
 
 // Rule 222
 fn annotation_member() -> impl IdlParser<()> {
     let param = annotation_member_type().then(simple_declarator());
-    let body = choice((
-        param
-            .clone()
-            .then_ignore(just(Kind::Default))
-            .then(ident())
-            .ignored(),
-        param.ignored(),
-    ));
+    let default = just(Kind::Default).then(ident()).ignored();
+    let body = param.then(default.or_not()).ignored();
 
     // TODO: custom delimited_by-like function for semicolons
-    body.then(just(Kind::Semi)).repeated().ignored()
+    body.then(just(Kind::Semi)).ignored()
 }
 
 // Rule 223

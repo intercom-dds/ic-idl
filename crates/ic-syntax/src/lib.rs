@@ -227,6 +227,19 @@ pub struct AnnotationDef {
     pub params: InlineVec<AnnotationField>,
 }
 
+impl AnnotationDef {
+    pub fn new(name: Ident, params: InlineVec<AnnotationField>, span: Span) -> Definition {
+        let body = Self { params };
+
+        Definition {
+            name,
+            span,
+            annotations: vec![],
+            kind: ItemKind::Annotation(P(body)),
+        }
+    }
+}
+
 /// The items that can be placed inside a definition of an annotation.
 #[must_use]
 #[derive(Debug)]

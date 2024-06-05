@@ -54,8 +54,6 @@ The following building blocks are supported:
  - Anonymous Types<sup>[1]</sup>
  - Annotations
 
- In addition, it includes the extensions defined in the DDS-RPC specification.
-
 <sup>[1]</sup> Anonymous structs, unions and enumerators are not supported.
 
 ### Extensions

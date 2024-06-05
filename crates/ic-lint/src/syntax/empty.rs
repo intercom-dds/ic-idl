@@ -33,8 +33,8 @@ use crate::{Category, Lint};
 
 /// Verifies that enums, unions and valuetypes have at least one member.
 ///
-/// Support for empty structs is an extension defined in the `DDS-RPC`
-/// standard, thus not covered by this lint.
+/// Support for empty structs is allowed in the extended data-types building
+/// block.
 pub struct EmptyTypes;
 
 impl Lint for EmptyTypes {

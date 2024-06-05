@@ -31,7 +31,7 @@ use ic_syntax::Definition;
 
 use crate::{Category, Lint};
 
-/// Verifies that all identifies are made up of alphanumeric ASCII characters.
+/// Verifies that all identifiers are made up of alphanumeric ASCII characters.
 pub struct AsciiIdent<'a>(&'a str);
 
 impl<'a, 'b> Visitor<'a> for AsciiIdent<'b> {

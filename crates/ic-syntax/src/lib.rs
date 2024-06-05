@@ -505,7 +505,6 @@ pub enum OpKind {
 }
 
 #[derive(Debug)]
-// #[derive(Debug, Marshal, Unmarshal)]
 pub enum Expr {
     /// A single literal like `1` or `"foo"`
     Lit(Literal),
@@ -518,13 +517,4 @@ pub enum Expr {
 
     /// Initializer list for complex types, e.g. `{1, 2, {3}}`
     InitList(Vec<Expr>),
-}
-
-impl Default for Expr {
-    fn default() -> Self {
-        Self::Lit(Literal {
-            kind: LitKind::Bool,
-            span: Span::default(),
-        })
-    }
 }

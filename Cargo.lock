@@ -122,10 +122,11 @@ version = "0.0.0"
 [[package]]
 name = "ic-hir"
 version = "0.0.0"
-
-[[package]]
-name = "ic-hir-pretty"
-version = "0.0.0"
+dependencies = [
+ "ic-alloc",
+ "ic-syntax",
+ "intercom-cts",
+]
 
 [[package]]
 name = "ic-idl"

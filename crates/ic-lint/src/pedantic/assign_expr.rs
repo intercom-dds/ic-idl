@@ -62,7 +62,7 @@ impl<'a> Visitor<'a> for AssignExpr {
 
 #[cfg(test)]
 mod tests {
-    use ic_parse::*;
+    use ic_syntax::*;
 
     use super::*;
 

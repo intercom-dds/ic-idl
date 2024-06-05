@@ -52,7 +52,7 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
 
 #[cfg(test)]
 mod tests {
-    use ic_parse::*;
+    use ic_syntax::*;
 
     use super::*;
 

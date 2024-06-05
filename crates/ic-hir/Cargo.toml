@@ -37,3 +37,6 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+ic-alloc = { path = "../ic-alloc" }
+ic-syntax = { path = "../ic-syntax" }
+intercom-cts.workspace = true

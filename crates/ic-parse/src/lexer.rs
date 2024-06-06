@@ -212,14 +212,6 @@ pub enum Kind {
     #[token(">")]
     Greater,
 
-    /// `<<`
-    #[token("<<")]
-    LShift,
-
-    /// `>>`
-    #[token(">>")]
-    RShift,
-
     /// `&`
     #[token("&")]
     BitAnd,
@@ -357,8 +349,6 @@ impl fmt::Display for Kind {
             Kind::RParen => write!(f, "`)`"),
             Kind::LBracket => write!(f, "`[`"),
             Kind::RBracket => write!(f, "`]`"),
-            Kind::LShift => write!(f, "`<<`"),
-            Kind::RShift => write!(f, "`>>`"),
             Kind::True => write!(f, "`TRUE`"),
             Kind::False => write!(f, "`FALSE`"),
             Kind::BitAnd => write!(f, "`&`"),
@@ -451,18 +441,4 @@ pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
 #[must_use]
 pub fn scan(input: &str) -> Vec<Token> {
     lexer(input).collect()
-}
-
-pub fn to_string(input: &str) -> String {
-    let mut lexer = Kind::lexer(input).spanned();
-    let mut str = String::new();
-
-    while let Some((tok, span)) = lexer.next() {
-        if let Kind::Ident(id) = tok.unwrap() {
-            str += lexer.extras.interner.get(id).unwrap();
-        } else {
-            str += &format!("{tok:?}");
-        }
-    }
-    str
 }

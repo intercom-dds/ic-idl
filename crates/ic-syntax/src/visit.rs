@@ -49,6 +49,8 @@ pub trait Visitor<'a> {
             ItemKind::Const(v) => self.visit_const(v),
             ItemKind::Typedef(v) => self.visit_typedef(v),
             ItemKind::Decl(v) => self.visit_decl(v),
+            ItemKind::Interface(_) => todo!(),
+            ItemKind::Valuetype(_) => todo!(),
         }
     }
 

@@ -147,6 +147,12 @@ pub enum ItemKind {
     /// Typedef definition
     Typedef(P<Typedef>),
 
+    /// Interface definition
+    Interface(P<InterfaceDef>),
+
+    /// Valuetype definition
+    Valuetype(P<ValuetypeDef>),
+
     /// A forward declaration
     Decl(Decl),
 }
@@ -532,6 +538,90 @@ impl Typedef {
 }
 
 #[must_use]
+#[derive(Debug)]
+pub struct InterfaceDef {
+    pub local: Option<Span>,
+    pub definitions: InlineVec<()>,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub enum InterfaceMember {
+    /// An interface attribute.
+    Attribute(Attribute),
+
+    /// Function definition.
+    Prototype(Prototype),
+
+    /// Type definition nested inside the interface.
+    Definition(Definition),
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct Attribute {
+    /// Name of the attribute.
+    pub name: Ident,
+
+    /// The type of the attribute.
+    pub ty: Type,
+
+    /// Indicates whether this attribute was marked as `readonly`, and if
+    /// so, the span of the keyword.
+    pub readonly: Option<Span>,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct Prototype {
+    pub name: Ident,
+    pub params: InlineVec<Param>,
+    pub raises: InlineVec<Path>,
+    pub oneway: Option<Span>,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub enum ParamKind {
+    /// Explicitly marked as `in`
+    In,
+
+    /// Explicitly marked as `out`
+    Out,
+
+    /// Explicitly marked as `inout`
+    InOut,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct Param {
+    /// Name of the parameter.
+    pub name: Ident,
+
+    /// Type of the parameter.
+    pub ty: Type,
+
+    /// Specifies whether this is an `in`, `out`, or `inout` parameter.
+    pub kind: Option<ParamKind>,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct ValuetypeDef {
+    pub members: InlineVec<ValueMember>,
+    pub prototypes: InlineVec<Prototype>,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub struct ValueMember {
+    pub name: Ident,
+    pub ty: Type,
+    pub public: Option<Span>,
+}
+
+#[must_use]
 #[derive(Debug, Marshal, Unmarshal)]
 pub struct Literal {
     pub kind: LitKind,
@@ -591,5 +681,5 @@ pub enum Expr {
     Binary { lhs: P<Expr>, op: Op, rhs: P<Expr> },
 
     /// Initializer list for complex types, e.g. `{1, 2, {3}}`
-    InitList(Vec<Expr>),
+    InitList(InlineVec<Expr>),
 }

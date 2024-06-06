@@ -70,6 +70,14 @@ fn string_literal() -> impl IdlParser<Kind> {
     just(Kind::StringLit)
 }
 
+fn lshift() -> impl IdlParser<[Kind; 2]> {
+    just([Kind::Less, Kind::Less]).labelled("<<")
+}
+
+fn rshift() -> impl IdlParser<[Kind; 2]> {
+    just([Kind::Greater, Kind::Greater]).labelled(">>")
+}
+
 // Rule 1
 #[must_use]
 pub fn specification() -> impl IdlParser<Vec<Definition>> {
@@ -189,8 +197,8 @@ fn const_expr() -> impl IdlParser<()> {
             .foldl(|_, _| Kind::Decimal);
 
         // Bitwise shift operations have equal precedence
-        let lshift = just(Kind::LShift);
-        let rshift = just(Kind::RShift);
+        let lshift = lshift();
+        let rshift = rshift();
         let op = choice((lshift, rshift));
 
         sum.clone()

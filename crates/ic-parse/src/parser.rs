@@ -32,8 +32,8 @@ use chumsky::{Error, Parser, Stream};
 use ic_alloc::ptr::P;
 use ic_syntax::{
     AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed,
-    Ident, Item, ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
-    ValuetypeDef,
+    Ident, InterfaceDef, Item, ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef,
+    UnionDef, ValuetypeDef,
 };
 
 use crate::lexer::{Kind, Token};
@@ -601,8 +601,10 @@ fn interface_dcl() -> impl IdlParser<Definition> {
 fn interface_def() -> impl IdlParser<Definition> {
     let body = interface_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
     let def = interface_header().then(body).then_ignore(just(Kind::Semi));
-    // TODO
-    def.map_with_span(|(_, _), span| ModuleDef::new(Ident::default(), vec![], span))
+
+    def.map_with_span(|(((((local, kind), name), inherits), _)), span| {
+        InterfaceDef::new(name, local, inherits, vec![], span)
+    })
 }
 
 // Rule 75
@@ -615,17 +617,20 @@ fn interface_forward_dcl() -> impl IdlParser<Definition> {
 }
 
 // Rule 76
-fn interface_header() -> impl IdlParser<()> {
-    interface_kind()
-        .then(ident())
-        .then(interface_inheritance_spec().or_not())
-        .ignored()
+fn interface_header() -> impl IdlParser<(((Option<Span>, Kind), Ident), Vec<Path>)> {
+    interface_kind().then(ident()).then(
+        interface_inheritance_spec()
+            .or_not()
+            .map(|v| v.unwrap_or_default()),
+    )
 }
 
 // Rule 77 with the rule 121 extension
-fn interface_kind() -> impl IdlParser<(Option<Kind>, Kind)> {
-    // TODO: propagate `local` to def
-    just(Kind::Local).or_not().then(just(Kind::Interface))
+fn interface_kind() -> impl IdlParser<(Option<Span>, Kind)> {
+    just(Kind::Local)
+        .map_with_span(|_, span| span)
+        .or_not()
+        .then(just(Kind::Interface))
 }
 
 // Rule 78

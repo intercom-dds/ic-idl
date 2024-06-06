@@ -540,8 +540,32 @@ impl Typedef {
 #[must_use]
 #[derive(Debug)]
 pub struct InterfaceDef {
+    pub prototypes: InlineVec<Prototype>,
+    pub inherits: InlineVec<Path>,
     pub local: Option<Span>,
-    pub definitions: InlineVec<()>,
+}
+
+impl InterfaceDef {
+    pub fn new(
+        name: Ident,
+        local: Option<Span>,
+        inherits: InlineVec<Path>,
+        prototypes: InlineVec<Prototype>,
+        span: Span,
+    ) -> Definition {
+        let body = InterfaceDef {
+            local,
+            prototypes,
+            inherits,
+        };
+
+        Definition {
+            name,
+            span,
+            annotations: vec![],
+            kind: ItemKind::Interface(P(body)),
+        }
+    }
 }
 
 #[must_use]

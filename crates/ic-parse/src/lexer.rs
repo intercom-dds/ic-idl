@@ -115,6 +115,21 @@ pub enum Kind {
     #[token("null")]
     Null,
 
+    #[token("valuetype")]
+    Valuetype,
+
+    #[token("public")]
+    Public,
+
+    #[token("private")]
+    Private,
+
+    #[token("supports")]
+    Supports,
+
+    #[token("factory")]
+    Factory,
+
     #[token("local")]
     Local,
 
@@ -318,6 +333,11 @@ impl fmt::Display for Kind {
             Kind::Union => write!(f, "union"),
             Kind::Switch => write!(f, "switch"),
             Kind::Null => write!(f, "null"),
+            Kind::Valuetype => write!(f, "valuetype"),
+            Kind::Public => write!(f, "public"),
+            Kind::Private => write!(f, "private"),
+            Kind::Supports => write!(f, "supports"),
+            Kind::Factory => write!(f, "factory"),
             Kind::Local => write!(f, "local"),
             Kind::Interface => write!(f, "interface"),
             Kind::Raises => write!(f, "raises"),

@@ -611,6 +611,29 @@ pub struct Param {
 pub struct ValuetypeDef {
     pub members: InlineVec<ValueMember>,
     pub prototypes: InlineVec<Prototype>,
+    pub inherits: Vec<Path>,
+}
+
+impl ValuetypeDef {
+    pub fn new(
+        name: Ident,
+        members: InlineVec<ValueMember>,
+        inherits: Vec<Path>,
+        span: Span,
+    ) -> Definition {
+        let body = ValuetypeDef {
+            members,
+            inherits,
+            prototypes: vec![],
+        };
+
+        Definition {
+            name,
+            span,
+            annotations: vec![],
+            kind: ItemKind::Valuetype(P(body)),
+        }
+    }
 }
 
 #[must_use]

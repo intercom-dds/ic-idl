@@ -33,6 +33,7 @@ use ic_alloc::ptr::P;
 use ic_syntax::{
     AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed,
     Ident, Item, ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
+    ValuetypeDef,
 };
 
 use crate::lexer::{Kind, Token};
@@ -90,14 +91,20 @@ fn definition() -> impl IdlParser<Definition> {
     // first rule that matches. To prevent "struct Foo {};" from matching with
     // `struct_forward_dcl`, we need to include terminator in the rule.
     recursive(|defs| {
-        choice((
+        let def = choice((
             module_dcl(defs),
             const_dcl(),
             type_dcl(),
             except_dcl(),
             interface_dcl(),
             annotation_dcl(),
-        ))
+            value_dcl(),
+        ));
+
+        // If an error occurred, skip all tokens until the next semicolon then
+        // continue from there. We won't be able to create a full AST, but we
+        // can address other syntax errors we encounter.
+        def.recover_with(skip_then_retry_until([Kind::Semi]))
     })
 }
 
@@ -606,8 +613,8 @@ fn interface_forward_dcl() -> impl IdlParser<Definition> {
     let def = interface_kind()
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
-    // TODO:
-    def.map_with_span(|ident, span| ModuleDef::new(ident, vec![], span))
+
+    def.map_with_span(|ident, span| Definition::decl(ident, DeclKind::Interface, span))
 }
 
 // Rule 76
@@ -774,6 +781,97 @@ fn exception_list() -> impl IdlParser<()> {
         .ignored()
 }
 
+// Rule 99
+fn value_dcl() -> impl IdlParser<Definition> {
+    choice((value_forward_dcl(), value_def()))
+}
+
+// Rule 100
+fn value_def() -> impl IdlParser<Definition> {
+    let body = value_element()
+        .repeated()
+        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+
+    let def = value_header().then(body).then_ignore(just(Kind::Semi));
+    def.map_with_span(|v, span| ValuetypeDef::new(Ident::default(), vec![], vec![], span))
+}
+
+// Rule 101
+fn value_header() -> impl IdlParser<()> {
+    value_kind()
+        .ignore_then(ident())
+        .then(value_inheritance_spec().or_not())
+        .ignored()
+}
+
+// Rule 102
+fn value_kind() -> impl IdlParser<Kind> {
+    just(Kind::Valuetype)
+}
+
+// Rule 103
+fn value_inheritance_spec() -> impl IdlParser<()> {
+    // let supports = just(Kind::)
+    let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
+    let supports = just(Kind::Supports).ignore_then(interface_name()).or_not();
+
+    inherit.then(supports).ignored()
+}
+
+// Rule 104
+fn value_name() -> impl IdlParser<Path> {
+    scoped_name()
+}
+
+// Rule 105
+fn value_element() -> impl IdlParser<()> {
+    choice((export(), state_member(), init_dcl()))
+}
+
+// Rule 106
+fn state_member() -> impl IdlParser<()> {
+    one_of([Kind::Public, Kind::Private])
+        .then(type_spec())
+        .then(declarators())
+        .then_ignore(just(Kind::Semi))
+        .ignored()
+}
+
+// Rule 107
+fn init_dcl() -> impl IdlParser<()> {
+    let params = init_param_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
+    let raises = raises_expr().or_not();
+
+    just(Kind::Factory)
+        .ignore_then(ident())
+        .then(params)
+        .then(raises)
+        .then_ignore(just(Kind::Semi))
+        .ignored()
+}
+
+// Rule 108
+fn init_param_dcls() -> impl IdlParser<()> {
+    init_param_dcl().separated_by(just(Kind::Comma)).ignored()
+}
+
+// Rule 109
+fn init_param_dcl() -> impl IdlParser<()> {
+    just(Kind::In)
+        .ignore_then(type_spec())
+        .then(simple_declarator())
+        .ignored()
+}
+
+// Rule 110
+fn value_forward_dcl() -> impl IdlParser<Definition> {
+    let def = value_kind()
+        .ignore_then(ident())
+        .then_ignore(just(Kind::Semi));
+
+    def.map_with_span(|name, span| Definition::decl(name, DeclKind::Valuetype, span))
+}
+
 // Rule 119
 fn op_oneway_dcl() -> impl IdlParser<()> {
     let params = in_parameter_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
@@ -802,19 +900,6 @@ fn in_param_dcl() -> impl IdlParser<()> {
         .then(simple_declarator())
         .ignored()
 }
-
-// Rule 122
-// TODO: do we need this?? it's CORBA specific and I don't tjhink CIDL supports it
-// fn op_with_context() -> impl IdlParser<()> {
-//     choice((op_dcl(), op_oneway_dcl()))
-//         .then(context_expr())
-//         .ignored()
-// }
-
-// Rule 123
-// fn context_expr() -> impl IdlParser<()> {
-//     just(Kind::Context)
-// }
 
 // Rule 199
 fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {

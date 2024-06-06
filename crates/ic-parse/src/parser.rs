@@ -128,15 +128,12 @@ fn module_dcl(
 // Rule 4
 // TODO: should probably return Type?
 fn scoped_name() -> impl IdlParser<Path> {
-    let inner = just(Kind::DColon).ignore_then(ident());
-    let path = choice((
-        ident().then(inner.clone().repeated()),
-        inner.clone().then(inner.repeated()),
-    ));
+    let leading = just(Kind::DColon).map_with_span(|_, span| span).or_not();
+    let path = leading.then(ident().separated_by(just(Kind::DColon)).at_least(1));
 
-    path.map(|v| Path {
-        leading_colons: None,
-        segments: vec![],
+    path.map(|(leading_colons, segments)| Path {
+        leading_colons,
+        segments,
     })
 }
 
@@ -793,15 +790,17 @@ fn value_def() -> impl IdlParser<Definition> {
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
     let def = value_header().then(body).then_ignore(just(Kind::Semi));
-    def.map_with_span(|v, span| ValuetypeDef::new(Ident::default(), vec![], vec![], span))
+
+    def.map_with_span(|((ident, (inherits, supports)), _), span| {
+        ValuetypeDef::new(ident, vec![], inherits, supports, span)
+    })
 }
 
 // Rule 101
-fn value_header() -> impl IdlParser<()> {
+fn value_header() -> impl IdlParser<(Ident, (Option<Path>, Option<Path>))> {
     value_kind()
         .ignore_then(ident())
-        .then(value_inheritance_spec().or_not())
-        .ignored()
+        .then(value_inheritance_spec())
 }
 
 // Rule 102
@@ -810,12 +809,10 @@ fn value_kind() -> impl IdlParser<Kind> {
 }
 
 // Rule 103
-fn value_inheritance_spec() -> impl IdlParser<()> {
-    // let supports = just(Kind::)
+fn value_inheritance_spec() -> impl IdlParser<(Option<Path>, Option<Path>)> {
     let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
     let supports = just(Kind::Supports).ignore_then(interface_name()).or_not();
-
-    inherit.then(supports).ignored()
+    inherit.then(supports)
 }
 
 // Rule 104

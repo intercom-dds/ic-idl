@@ -25,6 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Utility functions for converting identifiers to different capitalizations
+//! and naming conventions.
+
 /// The supported naming conventions.
 pub enum Case {
     Snake,
@@ -128,7 +131,7 @@ impl Converter {
 ///
 /// ```rust
 /// # use ic_emit::case::{convert, Case};
-///
+/// #
 /// let converted = convert("foo_bar_baz", Case::Pascal);
 /// assert_eq!(converted, "FooBarBaz");
 /// ```
@@ -153,7 +156,7 @@ pub fn convert<A: AsRef<str>>(input: A, case: Case) -> String {
 ///
 /// ```rust
 /// # use ic_emit::case::snake;
-///
+/// #
 /// let converted = snake("FooBarBaz3");
 /// assert_eq!(converted, "foo_bar_baz3");
 /// ````
@@ -168,7 +171,7 @@ pub fn snake<A: AsRef<str>>(input: A) -> String {
 ///
 /// ```rust
 /// # use ic_emit::case::camel;
-///
+/// #
 /// let converted = camel("foo_Bar_baz3");
 /// assert_eq!(converted, "fooBarBaz3");
 /// ````
@@ -183,7 +186,7 @@ pub fn camel<A: AsRef<str>>(input: A) -> String {
 ///
 /// ```rust
 /// # use ic_emit::case::pascal;
-///
+/// #
 /// let converted = pascal("foo_Bar_baz3");
 /// assert_eq!(converted, "FooBarBaz3");
 /// ````
@@ -198,7 +201,7 @@ pub fn pascal<A: AsRef<str>>(input: A) -> String {
 ///
 /// ```rust
 /// # use ic_emit::case::kebab;
-///
+/// #
 /// let converted = kebab("FooBar_baz3");
 /// assert_eq!(converted, "foo-bar-baz3");
 /// ````

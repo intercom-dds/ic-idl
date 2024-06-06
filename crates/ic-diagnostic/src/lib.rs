@@ -28,7 +28,7 @@
 #![allow(clippy::needless_pass_by_value, unused, dead_code)]
 
 //! # ic-diagnostic
-//! 
+//!
 //! Machinery for crafting diagnostics, mapping them to source files, and
 //! pretty-printing them.
 

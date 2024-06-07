@@ -31,9 +31,9 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_alloc::ptr::P;
 use ic_syntax::{
-    AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed,
-    Ident, InterfaceDef, Item, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
-    ValuetypeDef,
+    AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Expr, Field,
+    Fixed, Ident, InterfaceDef, Item, Label, LitKind, Literal, ModuleDef, Op, OpKind, Path, Span,
+    StructDef, Type, Typedef, UnionDef, ValuetypeDef,
 };
 
 use crate::lexer::Kind;
@@ -71,16 +71,22 @@ fn string_literal() -> impl IdlParser<Kind> {
     just(Kind::StringLit)
 }
 
-fn lshift() -> impl IdlParser<Span> {
+fn lshift() -> impl IdlParser<Op> {
     just([Kind::Less, Kind::Less])
         .labelled("<<")
-        .map_with_span(|_, span| span)
+        .map_with_span(|_, span| Op {
+            span,
+            kind: OpKind::LShift,
+        })
 }
 
-fn rshift() -> impl IdlParser<Span> {
+fn rshift() -> impl IdlParser<Op> {
     just([Kind::Greater, Kind::Greater])
         .labelled(">>")
-        .map_with_span(|_, span| span)
+        .map_with_span(|_, span| Op {
+            span,
+            kind: OpKind::RShift,
+        })
 }
 
 // Rule 1
@@ -178,57 +184,92 @@ fn const_type() -> impl IdlParser<Type> {
 //
 // Due to the recursive nature of expressions, these are implemented in a
 // single function to avoid propagating the state everywhere.
-fn const_expr() -> impl IdlParser<()> {
+fn const_expr() -> impl IdlParser<Expr> {
     recursive(|primary| {
         // Rule 16
-        let nested = primary
-            .delimited_by(just(Kind::LParen), just(Kind::RParen))
-            .ignored();
+        let nested = primary.delimited_by(just(Kind::LParen), just(Kind::RParen));
 
-        let expr = choice((scoped_name().ignored(), literal().ignored(), nested));
+        let lit = literal().map_with_span(|v, span| {
+            Expr::Lit(Literal {
+                kind: LitKind::Int,
+                span,
+            })
+        });
+        let scoped = scoped_name().map(|v| Expr::Path(v));
+        let expr = choice((scoped, lit, nested));
 
         // Rule 14: Unary expressions
-        let expr = unary_operator().or_not().then(expr).ignored();
+        let expr = unary_operator().or_not().then(expr).map(to_unary);
 
         // Rule 13: Multiplication, division and modulus all have the same precedence
-        let expr = binary_op(expr, one_of([Kind::Star, Kind::Slash, Kind::Modulo]));
+        let expr = binary_op(
+            expr,
+            choice((
+                operator(Kind::Star, OpKind::Multiply),
+                operator(Kind::Slash, OpKind::Divide),
+                operator(Kind::Modulo, OpKind::Modulo),
+            )),
+        );
 
         // Rule 12: Addition and subtraction have equal precedence
-        let expr = binary_op(expr, one_of([Kind::Plus, Kind::Minus]));
+        let expr = binary_op(
+            expr,
+            choice((
+                operator(Kind::Plus, OpKind::Add),
+                operator(Kind::Minus, OpKind::Sub),
+            )),
+        );
 
         // Rule 11: Bitwise shift operations have equal precedence
         let expr = binary_op(expr, choice((lshift(), rshift())));
 
         // Rule 10: Bitwise AND
-        let expr = binary_op(expr, just(Kind::BitAnd));
+        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::Add));
 
         // Rule 9: Bitwise XOR
-        let expr = binary_op(expr, just(Kind::BitXor));
+        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::Xor));
 
         // Rule 8: Bitwise OR
-        binary_op(expr, just(Kind::BitOr))
+        binary_op(expr, operator(Kind::BitOr, OpKind::Or))
     })
 }
 
-fn binary_op<'a, T, Op, Res>(expr: T, op: Op) -> impl IdlParser<()> + 'a
+fn to_unary((op, expr): (Option<Op>, Expr)) -> Expr {
+    if let Some(op) = op {
+        Expr::Unary { op, expr: P(expr) }
+    } else {
+        expr
+    }
+}
+
+fn operator(from: Kind, to: OpKind) -> impl IdlParser<Op> {
+    just(from).map_with_span(move |_, span| Op { span, kind: to })
+}
+
+fn binary_op<'a, T, Oper>(expr: T, op: Oper) -> impl IdlParser<Expr> + 'a
 where
-    T: IdlParser<()> + 'a,
-    Op: IdlParser<Res> + 'a,
-    Res: 'a,
+    T: IdlParser<Expr> + 'a,
+    Oper: IdlParser<Op> + 'a,
 {
-    let expr = expr.map_with_span(|e, s| (e, s)).boxed();
+    let expr = expr.boxed();
 
     expr.clone()
         .then(op.then(expr).repeated())
-        .foldl(|_, v| ((), v.1.1))
-        .map(|(e, _)| e)
-        .ignored()
+        .foldl(|lhs, (op, rhs)| Expr::Binary {
+            lhs: P(lhs),
+            op,
+            rhs: P(rhs),
+        })
         .boxed()
 }
 
 // Rule 15
-fn unary_operator() -> impl IdlParser<Kind> {
-    one_of([Kind::Minus, Kind::Plus, Kind::Tilde])
+fn unary_operator() -> impl IdlParser<Op> {
+    choice((
+        operator(Kind::Minus, OpKind::Sub),
+        operator(Kind::Plus, OpKind::Add),
+        operator(Kind::Tilde, OpKind::Not),
+    ))
 }
 
 // Rule 17
@@ -497,7 +538,7 @@ fn enumerator() -> impl IdlParser<Enumerator> {
 
     ident()
         .then(value)
-        .map_with_span(|(name, _), span| Enumerator::new(name, span))
+        .map_with_span(|(name, value), span| Enumerator::new(name, value, span))
         .labelled("enumerator")
 }
 

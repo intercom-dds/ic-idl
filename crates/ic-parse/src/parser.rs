@@ -31,9 +31,9 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_alloc::ptr::P;
 use ic_syntax::{
-    AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Expr, Field,
-    Fixed, Ident, InterfaceDef, Item, Label, LitKind, Literal, ModuleDef, Op, OpKind, Path, Span,
-    StructDef, Type, Typedef, UnionDef, ValuetypeDef,
+    AnnotationDef, ConstDef, DeclKind, Declarator, Definition, EnumDef, Enumerator, ExceptDef,
+    Expr, Field, Fixed, Ident, InterfaceDef, Item, Label, LitKind, Literal, ModuleDef, Op, OpKind,
+    Path, Span, StructDef, Type, Typedef, UnionDef, ValuetypeDef,
 };
 
 use crate::lexer::Kind;
@@ -431,7 +431,7 @@ fn struct_forward_dcl() -> impl IdlParser<Definition> {
         .labelled("struct declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|name, span| Item::decl(name, DeclKind::Struct, span))
+    decl.map_with_span(|name, span| Item::decl(Declarator::Simple(name), DeclKind::Struct, span))
 }
 
 // Rule 49
@@ -496,7 +496,7 @@ fn case_label() -> impl IdlParser<Label> {
 }
 
 // Rule 55
-fn element_spec() -> impl IdlParser<(Type, Type)> {
+fn element_spec() -> impl IdlParser<(Type, Declarator)> {
     type_spec().then(declarator())
 }
 
@@ -507,7 +507,7 @@ fn union_forward_dcl() -> impl IdlParser<Definition> {
         .labelled("union declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|name, span| Item::decl(name, DeclKind::Union, span))
+    decl.map_with_span(|name, span| Item::decl(Declarator::Simple(name), DeclKind::Union, span))
 }
 
 // Rule 57
@@ -538,17 +538,16 @@ fn enumerator() -> impl IdlParser<Enumerator> {
 }
 
 // Rule 59
-fn array_declarator() -> impl IdlParser<Type> {
+fn array_declarator() -> impl IdlParser<Declarator> {
     let bounds = fixed_array_size().repeated().at_least(1);
-    ident().then(bounds).map(|(name, _)| Type::Array {
-        ty: Path::new(vec![name]),
-        bound: vec![],
-    })
+    ident()
+        .then(bounds)
+        .map(|(ident, bounds)| Declarator::Array { ident, bounds })
 }
 
 // Rule 60
-fn fixed_array_size() -> impl IdlParser<Kind> {
-    just([Kind::LBracket, Kind::Decimal, Kind::RBracket]).map(|v| v[1])
+fn fixed_array_size() -> impl IdlParser<Expr> {
+    positive_int_const().delimited_by(just(Kind::LBracket), just(Kind::RBracket))
 }
 
 // Rule 61
@@ -559,8 +558,8 @@ fn native_dcl() -> impl IdlParser<Definition> {
 }
 
 // Rule 62
-fn simple_declarator() -> impl IdlParser<Ident> {
-    ident()
+fn simple_declarator() -> impl IdlParser<Declarator> {
+    ident().map(Declarator::Simple)
 }
 
 // Rule 63
@@ -573,7 +572,7 @@ fn typedef_dcl() -> impl IdlParser<Definition> {
 }
 
 // Rule 64
-fn type_declarator() -> impl IdlParser<(Type, Vec<Type>)> {
+fn type_declarator() -> impl IdlParser<(Type, Vec<Declarator>)> {
     let ty = choice((
         simple_type_spec(),
         template_type_spec(),
@@ -584,32 +583,23 @@ fn type_declarator() -> impl IdlParser<(Type, Vec<Type>)> {
 }
 
 // Rule 65
-fn any_declarators() -> impl IdlParser<Vec<Type>> {
+fn any_declarators() -> impl IdlParser<Vec<Declarator>> {
     any_declarator().repeated().at_least(1)
 }
 
 // Rule 66
-// no -- this should be the name of the typedef, not the actual type.. so just ident(?)
-fn any_declarator() -> impl IdlParser<Type> {
-    let decl = simple_declarator().map(|v| Type::Path(Path::from(v)));
-    choice((array_declarator(), decl))
+fn any_declarator() -> impl IdlParser<Declarator> {
+    choice((array_declarator(), simple_declarator()))
 }
 
 // Rule 67
-fn declarators() -> impl IdlParser<Vec<Type>> {
+fn declarators() -> impl IdlParser<Vec<Declarator>> {
     declarator().separated_by(just(Kind::Comma)).at_least(1)
 }
 
 // Rule 68 with the rule 217 extension
-fn declarator() -> impl IdlParser<Type> {
-    let ident = simple_declarator().map(|i| {
-        Type::Path(Path {
-            leading_colons: None,
-            segments: vec![i],
-        })
-    });
-
-    choice((array_declarator(), ident))
+fn declarator() -> impl IdlParser<Declarator> {
+    choice((array_declarator(), simple_declarator()))
 }
 
 // Rule 70
@@ -650,7 +640,9 @@ fn interface_forward_dcl() -> impl IdlParser<Definition> {
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|ident, span| Definition::decl(ident, DeclKind::Interface, span))
+    def.map_with_span(|ident, span| {
+        Definition::decl(Declarator::Simple(ident), DeclKind::Interface, span)
+    })
 }
 
 // Rule 76
@@ -909,7 +901,9 @@ fn value_forward_dcl() -> impl IdlParser<Definition> {
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|name, span| Definition::decl(name, DeclKind::Valuetype, span))
+    def.map_with_span(|name, span| {
+        Definition::decl(Declarator::Simple(name), DeclKind::Valuetype, span)
+    })
 }
 
 // Rule 119

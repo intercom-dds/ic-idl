@@ -82,6 +82,7 @@ pub struct Ident {
 #[derive(Debug)]
 pub struct Item<K> {
     /// Name and span of the item.
+    // TODO: store Declarator instead?
     pub name: Ident,
 
     /// Span of the entire item, from start to end. For example, given the
@@ -102,9 +103,12 @@ pub struct Item<K> {
 }
 
 impl Item<ItemKind> {
-    pub fn decl(name: Ident, kind: DeclKind, span: Span) -> Self {
+    pub fn decl(name: Declarator, kind: DeclKind, span: Span) -> Self {
         Self {
-            name,
+            name: match name {
+                Declarator::Simple(v) => v,
+                Declarator::Array { ident, .. } => ident,
+            },
             span,
             annotations: vec![],
             kind: ItemKind::Decl(Decl { kind }),
@@ -226,10 +230,6 @@ pub enum Declarator {
 pub enum Type {
     /// The `any` type.
     Any { span: Span },
-
-    /// Array of another type, e.g. `int32 value[3]`.
-    /// Only the type is included; the name of the member is omitted.
-    Array { ty: Path, bound: InlineVec<Expr> },
 
     /// Sequence of another type, e.g. `sequence<string>`.
     Sequence { ty: P<Type>, bound: Option<Expr> },
@@ -357,7 +357,7 @@ impl StructDef {
 #[must_use]
 #[derive(Debug)]
 pub struct Field {
-    pub names: InlineVec<Type>,
+    pub names: InlineVec<Declarator>,
     pub ty: Type,
 }
 

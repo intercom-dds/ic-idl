@@ -89,6 +89,11 @@ fn rshift() -> impl IdlParser<Op> {
         })
 }
 
+// Handles bounds for collections types
+fn bound() -> impl IdlParser<Option<Expr>> {
+    just(Kind::Comma).ignore_then(positive_int_const()).or_not()
+}
+
 // Rule 1
 #[must_use]
 pub fn specification() -> impl IdlParser<Vec<Definition>> {
@@ -195,7 +200,7 @@ fn const_expr() -> impl IdlParser<Expr> {
                 span,
             })
         });
-        let scoped = scoped_name().map(|v| Expr::Path(v));
+        let scoped = scoped_name().map(Expr::Path);
         let expr = choice((scoped, lit, nested));
 
         // Rule 14: Unary expressions
@@ -289,8 +294,8 @@ fn boolean_literal() -> impl IdlParser<Kind> {
 }
 
 // Rule 19
-fn positive_int_const() -> impl IdlParser<()> {
-    const_expr().ignored()
+fn positive_int_const() -> impl IdlParser<Expr> {
+    const_expr()
 }
 
 // Rule 20
@@ -331,36 +336,26 @@ fn template_type_spec() -> impl IdlParser<Type> {
 
 // Rule 39
 fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
-    // let bound = positive_int_const().or_not();
-    let inner = state.delimited_by(just(Kind::Less), just(Kind::Greater));
-    let seq = just(Kind::Sequence).ignore_then(inner);
-    // .then_ignore(just(Kind::Comma))
-    // .then(bound)
+    let inner = state
+        .then(bound())
+        .delimited_by(just(Kind::Less), just(Kind::Greater));
 
-    seq.map(|elem| Type::Sequence {
-        ty: P(elem),
-        bound: None,
-    })
+    let seq = just(Kind::Sequence).ignore_then(inner);
+    seq.map(|(elem, bound)| Type::Sequence { ty: P(elem), bound })
 }
 
 // Rule 40
 fn string_type() -> impl IdlParser<Type> {
-    // let bound = positive_int_const().or_not();
-    // just(Kind::String).then(bound).ignored()
-    just(Kind::String).map(|_| Type::String {
-        wide: false,
-        bound: None,
-    })
+    just(Kind::String)
+        .then(bound())
+        .map(|(_, bound)| Type::String { wide: false, bound })
 }
 
 // Rule 41
 fn wide_string_type() -> impl IdlParser<Type> {
-    // let bound = positive_int_const().or_not();
-    // just(Kind::WString).then(bound).ignored()
-    just(Kind::WString).map(|_| Type::String {
-        wide: true,
-        bound: None,
-    })
+    just(Kind::WString)
+        .then(bound())
+        .map(|(_, bound)| Type::String { wide: true, bound })
 }
 
 // Rule 42
@@ -372,11 +367,11 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
         .then(positive_int_const())
         .then_ignore(just(Kind::Greater));
 
-    def.map_with_span(|(_, _), span| Type::Fixed {
+    def.map_with_span(|(tot, frac), span| Type::Fixed {
         span,
         bounds: Some(Fixed {
-            total: 0,
-            fractional: 0,
+            total: tot,
+            fractional: frac,
         }),
     })
 }
@@ -949,18 +944,15 @@ fn in_param_dcl() -> impl IdlParser<()> {
 fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
     let key = state.clone();
     let value = state;
-    // let bound = positive_int_const().or_not();
-    let inner = key.then_ignore(just(Kind::Comma)).then(value);
+    let inner = key.then_ignore(just(Kind::Comma)).then(value).then(bound());
 
     let def =
         just(Kind::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
-    // .then_ignore(just(Kind::Comma))
-    // .then(bound)
 
-    def.map(|(key, value)| Type::Map {
+    def.map(|((key, value), bound)| Type::Map {
         key: P(key),
         value: P(value),
-        bound: None,
+        bound,
     })
 }
 

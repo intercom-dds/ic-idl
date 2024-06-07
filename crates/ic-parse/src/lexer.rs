@@ -34,6 +34,7 @@ use chumsky::Stream;
 use ic_alloc::interner::{Interner, SymbolId};
 use logos::{Lexer, Logos};
 
+/// All tokens recognized by the lexer.
 #[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[logos(skip r"[ \t\n\f]+")]
 #[logos(skip r"//[^@][^\r\n]*")]
@@ -243,11 +244,11 @@ pub enum Kind {
     #[token("%")]
     Modulo,
 
-    /// `true`
+    /// `TRUE`
     #[regex("true|TRUE")]
     True,
 
-    /// `false`
+    /// `FALSE`
     #[regex("false|FALSE")]
     False,
 

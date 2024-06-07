@@ -195,8 +195,8 @@ impl Path {
 #[must_use]
 #[derive(Debug)]
 pub struct Fixed {
-    pub total: usize,
-    pub fractional: usize,
+    pub total: Expr,
+    pub fractional: Expr,
 }
 
 #[must_use]
@@ -207,19 +207,19 @@ pub enum Type {
 
     /// Array of another type, e.g. `int32 value[3]`.
     /// Only the type is included; the name of the member is omitted.
-    Array { ty: Path, bound: InlineVec<usize> },
+    Array { ty: Path, bound: InlineVec<Expr> },
 
     /// Sequence of another type, e.g. `sequence<string>`.
-    Sequence { ty: P<Type>, bound: Option<usize> },
+    Sequence { ty: P<Type>, bound: Option<Expr> },
 
     /// A possibly bounded string.
-    String { wide: bool, bound: Option<usize> },
+    String { wide: bool, bound: Option<Expr> },
 
     /// (key, value) pair of types, e.g. `map<string, string>`.
     Map {
         key: P<Type>,
         value: P<Type>,
-        bound: Option<usize>,
+        bound: Option<Expr>,
     },
 
     /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
@@ -420,11 +420,11 @@ pub struct Enumerator {
 }
 
 impl Enumerator {
-    pub fn new(name: Ident, _span: Span) -> Self {
+    pub fn new(name: Ident, value: Option<Expr>, _span: Span) -> Self {
         Self {
             annotations: vec![],
             name,
-            value: None,
+            value,
         }
     }
 }
@@ -689,7 +689,6 @@ pub enum LitKind {
     Float,
     Char,
     String,
-    Ident,
 }
 
 #[must_use]
@@ -726,6 +725,9 @@ pub enum OpKind {
 pub enum Expr {
     /// A single literal like `1` or `"foo"`
     Lit(Literal),
+
+    /// A possibly scoped identifier like `foo` or `::foo::bar`
+    Path(Path),
 
     /// `-a` or `a`
     Unary { op: Op, expr: P<Expr> },

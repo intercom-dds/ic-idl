@@ -81,8 +81,9 @@ use ic_syntax::Definition;
 use lexer::{Kind, Span, Token};
 
 pub mod lexer;
-pub mod parser;
 pub mod source;
+
+mod parser;
 
 #[derive(Debug)]
 pub struct ParseResult {

@@ -71,12 +71,16 @@ fn string_literal() -> impl IdlParser<Kind> {
     just(Kind::StringLit)
 }
 
-fn lshift() -> impl IdlParser<[Kind; 2]> {
-    just([Kind::Less, Kind::Less]).labelled("<<")
+fn lshift() -> impl IdlParser<Span> {
+    just([Kind::Less, Kind::Less])
+        .labelled("<<")
+        .map_with_span(|_, span| span)
 }
 
-fn rshift() -> impl IdlParser<[Kind; 2]> {
-    just([Kind::Greater, Kind::Greater]).labelled(">>")
+fn rshift() -> impl IdlParser<Span> {
+    just([Kind::Greater, Kind::Greater])
+        .labelled(">>")
+        .map_with_span(|_, span| span)
 }
 
 // Rule 1
@@ -153,8 +157,7 @@ fn const_dcl() -> impl IdlParser<Definition> {
 // InterCOM extension for complex constants
 fn complex_const_expr() -> impl IdlParser<()> {
     recursive(|state| {
-        // let basic = const_expr().ignored();
-        let basic = ident().ignored();
+        let basic = const_expr().ignored();
         let params = state.separated_by(just(Kind::Comma));
         let complex = just(Kind::LBrace)
             .ignore_then(params)
@@ -171,64 +174,61 @@ fn const_type() -> impl IdlParser<Type> {
     choice((template_type_spec(), scoped_name().map(Type::Path)))
 }
 
-// Rule 7, 8, 9, 10, 11, 12 and 13
+// Rule 7-14, 16
+//
+// Due to the recursive nature of expressions, these are implemented in a
+// single function to avoid propagating the state everywhere.
 fn const_expr() -> impl IdlParser<()> {
-    // The parser is constructed "bottom up" so we start off with the
-    // operations that have the lowest precedence.
-    recursive(|expr| {
-        let val = just(Kind::Decimal).labelled("value");
-        let atom = val.or(expr);
+    recursive(|primary| {
+        // Rule 16
+        let nested = primary
+            .delimited_by(just(Kind::LParen), just(Kind::RParen))
+            .ignored();
 
-        // Multiplication, division and modulus all have the same precedence
-        let mult = just(Kind::Star);
-        let div = just(Kind::Slash);
-        let modulus = just(Kind::Modulo);
-        let op = choice((mult, div, modulus));
+        let expr = choice((scoped_name().ignored(), literal().ignored(), nested));
 
-        let product = atom
-            .clone()
-            .then(op.then(atom).repeated())
-            .foldl(|_, _| Kind::Decimal);
+        // Rule 14: Unary expressions
+        let expr = unary_operator().or_not().then(expr).ignored();
 
-        // Addition and subtraction have equal precedence
-        let add = just(Kind::Plus);
-        let subtract = just(Kind::Minus);
-        let op = choice((add, subtract));
+        // Rule 13: Multiplication, division and modulus all have the same precedence
+        let expr = binary_op(expr, one_of([Kind::Star, Kind::Slash, Kind::Modulo]));
 
-        let sum = product
-            .clone()
-            .then(op.then(product).repeated())
-            .foldl(|_, _| Kind::Decimal);
+        // Rule 12: Addition and subtraction have equal precedence
+        let expr = binary_op(expr, one_of([Kind::Plus, Kind::Minus]));
 
-        // Bitwise shift operations have equal precedence
-        let lshift = lshift();
-        let rshift = rshift();
-        let op = choice((lshift, rshift));
+        // Rule 11: Bitwise shift operations have equal precedence
+        let expr = binary_op(expr, choice((lshift(), rshift())));
 
-        sum.clone()
-            .then(op.then(sum).repeated())
-            .foldl(|_, _| Kind::Decimal)
+        // Rule 10: Bitwise AND
+        let expr = binary_op(expr, just(Kind::BitAnd));
+
+        // Rule 9: Bitwise XOR
+        let expr = binary_op(expr, just(Kind::BitXor));
+
+        // Rule 8: Bitwise OR
+        binary_op(expr, just(Kind::BitOr))
     })
-    .ignored()
 }
 
-// Rule 14
-fn unary_expr() -> impl IdlParser<()> {
-    primary_expr()
+fn binary_op<'a, T, Op, Res>(expr: T, op: Op) -> impl IdlParser<()> + 'a
+where
+    T: IdlParser<()> + 'a,
+    Op: IdlParser<Res> + 'a,
+    Res: 'a,
+{
+    let expr = expr.map_with_span(|e, s| (e, s)).boxed();
+
+    expr.clone()
+        .then(op.then(expr).repeated())
+        .foldl(|_, v| ((), v.1.1))
+        .map(|(e, _)| e)
+        .ignored()
+        .boxed()
 }
 
 // Rule 15
 fn unary_operator() -> impl IdlParser<Kind> {
     one_of([Kind::Minus, Kind::Plus, Kind::Tilde])
-}
-
-// Rule 16
-fn primary_expr() -> impl IdlParser<()> {
-    let nested = const_expr()
-        .delimited_by(just(Kind::LParen), just(Kind::RParen))
-        .ignored();
-
-    choice((scoped_name().ignored(), literal().ignored(), nested))
 }
 
 // Rule 17

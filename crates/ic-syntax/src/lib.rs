@@ -183,6 +183,15 @@ pub struct Path {
     pub segments: InlineVec<Ident>,
 }
 
+impl From<Ident> for Path {
+    fn from(value: Ident) -> Self {
+        Self {
+            leading_colons: None,
+            segments: vec![value],
+        }
+    }
+}
+
 impl Path {
     pub fn new(segments: InlineVec<Ident>) -> Self {
         Self {
@@ -197,6 +206,19 @@ impl Path {
 pub struct Fixed {
     pub total: Expr,
     pub fractional: Expr,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub enum Declarator {
+    /// A single, non-qualified identifier.
+    Simple(Ident),
+
+    /// An array declarator, e.g. `value[3][4][5]`.
+    Array {
+        ident: Ident,
+        bounds: InlineVec<Expr>,
+    },
 }
 
 #[must_use]
@@ -335,7 +357,7 @@ impl StructDef {
 #[must_use]
 #[derive(Debug)]
 pub struct Field {
-    pub names: InlineVec<Ident>,
+    pub names: InlineVec<Type>,
     pub ty: Type,
 }
 

@@ -496,7 +496,7 @@ fn case_label() -> impl IdlParser<Label> {
 }
 
 // Rule 55
-fn element_spec() -> impl IdlParser<(Type, Ident)> {
+fn element_spec() -> impl IdlParser<(Type, Type)> {
     type_spec().then(declarator())
 }
 
@@ -591,24 +591,25 @@ fn any_declarators() -> impl IdlParser<Vec<Type>> {
 // Rule 66
 // no -- this should be the name of the typedef, not the actual type.. so just ident(?)
 fn any_declarator() -> impl IdlParser<Type> {
-    let decl = simple_declarator().map(|v| {
-        Type::Path(Path {
-            leading_colons: None,
-            segments: vec![v],
-        })
-    });
-
-    choice((decl, array_declarator()))
+    let decl = simple_declarator().map(|v| Type::Path(Path::from(v)));
+    choice((array_declarator(), decl))
 }
 
 // Rule 67
-fn declarators() -> impl IdlParser<Vec<Ident>> {
+fn declarators() -> impl IdlParser<Vec<Type>> {
     declarator().separated_by(just(Kind::Comma)).at_least(1)
 }
 
-// Rule 68
-fn declarator() -> impl IdlParser<Ident> {
-    simple_declarator()
+// Rule 68 with the rule 217 extension
+fn declarator() -> impl IdlParser<Type> {
+    let ident = simple_declarator().map(|i| {
+        Type::Path(Path {
+            leading_colons: None,
+            segments: vec![i],
+        })
+    });
+
+    choice((array_declarator(), ident))
 }
 
 // Rule 70

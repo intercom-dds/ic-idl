@@ -30,7 +30,8 @@
 use crate::{
     AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef,
     BitsetDef, ConstDef, Decl, Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Field,
-    Ident, ItemKind, Label, Literal, ModuleDef, StructDef, Type, Typedef, UnionDef, UnionField,
+    Ident, InterfaceDef, ItemKind, Label, Literal, ModuleDef, Prototype, StructDef, Type, Typedef,
+    UnionDef, UnionField, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -38,7 +39,7 @@ pub trait Visitor<'a> {
         self.visit_ident(&def.name);
 
         match &def.kind {
-            ItemKind::Annotation(v) => todo!(),
+            ItemKind::Annotation(v) => self.visit_annotation_def(v),
             ItemKind::Module(v) => self.visit_module(v),
             ItemKind::Struct(v) => self.visit_struct(v),
             ItemKind::Union(v) => self.visit_union(v),
@@ -49,8 +50,8 @@ pub trait Visitor<'a> {
             ItemKind::Const(v) => self.visit_const(v),
             ItemKind::Typedef(v) => self.visit_typedef(v),
             ItemKind::Decl(v) => self.visit_decl(v),
-            ItemKind::Interface(_) => todo!(),
-            ItemKind::Valuetype(_) => todo!(),
+            ItemKind::Interface(v) => self.visit_interface(v),
+            ItemKind::Valuetype(v) => self.visit_valuetype(v),
         }
     }
 
@@ -77,7 +78,7 @@ pub trait Visitor<'a> {
     fn visit_struct_field(&mut self, def: &'a Field) {
         self.visit_type(&def.ty);
         for name in &def.names {
-            self.visit_ident(name);
+            // self.visit_ident(name);
         }
     }
 
@@ -112,6 +113,20 @@ pub trait Visitor<'a> {
     }
 
     fn visit_exception(&mut self, def: &'a ExceptDef) {}
+
+    fn visit_interface(&mut self, def: &'a InterfaceDef) {
+        for proto in &def.prototypes {
+            self.visit_prototype(proto);
+        }
+    }
+
+    fn visit_valuetype(&mut self, def: &'a ValuetypeDef) {
+        for proto in &def.prototypes {
+            self.visit_prototype(proto);
+        }
+    }
+
+    fn visit_prototype(&mut self, def: &'a Prototype) {}
 
     fn visit_literal(&mut self, num: &'a Literal) {}
 

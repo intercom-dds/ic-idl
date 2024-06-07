@@ -30,29 +30,9 @@ mod tests;
 
 use std::fmt;
 
-use chumsky::chain::Chain;
 use chumsky::Stream;
-use ic_alloc::inline_str::InlineStr;
 use ic_alloc::interner::{Interner, SymbolId};
-use logos::{Lexer, Logos, Source};
-
-macro_rules! tokens {
-    ($(
-        $(#[$meta:meta])*
-        $var:ident $(= $func:ident($val:expr))?,
-    )*) => {
-        #[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-        #[logos(skip r"[ \t\n\f]+")]
-        #[logos(subpattern digits = "[0-9][_0-9]*")]
-        pub enum Kind {
-            $(
-                $(#[$meta])*
-                $(#[$func($val)])*
-                $var,
-            )*
-        }
-    };
-}
+use logos::{Lexer, Logos};
 
 #[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[logos(skip r"[ \t\n\f]+")]

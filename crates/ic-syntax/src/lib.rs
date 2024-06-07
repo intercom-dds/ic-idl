@@ -42,6 +42,9 @@
 /// Defines visitors for all AST nodes.
 pub mod visit;
 
+/// Helper functions for handling the AST.
+pub mod util;
+
 use ic_alloc::inline_vec::InlineVec;
 use ic_alloc::interner::SymbolId;
 use ic_alloc::ptr::P;
@@ -554,9 +557,9 @@ impl InterfaceDef {
         span: Span,
     ) -> Definition {
         let body = InterfaceDef {
-            local,
             prototypes,
             inherits,
+            local,
         };
 
         Definition {

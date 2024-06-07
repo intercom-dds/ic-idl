@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, dead_code)]
-
 //! # ic-parse
 //!
 //! An IDL 4.2-compliant parser.
@@ -88,7 +86,7 @@ pub mod source;
 
 #[derive(Debug)]
 pub struct ParseResult {
-    interner: Interner,
+    pub interner: Interner,
     pub tree: Vec<Definition>,
 }
 
@@ -140,7 +138,7 @@ impl<I, S> From<SimpleReason<I, S>> for Reason<I, S> {
 ///
 /// # Panics
 pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
-    let mut tokens = lexer::stream(input);
+    let tokens = lexer::stream(input);
     let ast = parser::specification().parse(tokens);
 
     if let Ok(tree) = ast {

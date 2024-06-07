@@ -25,18 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use anyhow::Result;
+#![allow(unused)]
+
 use chumsky::prelude::*;
-use chumsky::text::{Character, TextParser};
-use chumsky::{Error, Parser, Stream};
+use chumsky::Parser;
 use ic_alloc::ptr::P;
 use ic_syntax::{
     AnnotationDef, ConstDef, DeclKind, Definition, EnumDef, Enumerator, ExceptDef, Field, Fixed,
-    Ident, InterfaceDef, Item, ItemKind, Label, ModuleDef, Path, Span, StructDef, Type, Typedef,
-    UnionDef, ValuetypeDef,
+    Ident, InterfaceDef, Item, Label, ModuleDef, Path, Span, StructDef, Type, Typedef, UnionDef,
+    ValuetypeDef,
 };
 
-use crate::lexer::{Kind, Token};
+use crate::lexer::Kind;
 
 // Workaround until trait aliases are stabilized
 pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {}
@@ -306,7 +306,7 @@ fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlPars
 fn string_type() -> impl IdlParser<Type> {
     // let bound = positive_int_const().or_not();
     // just(Kind::String).then(bound).ignored()
-    just(Kind::String).map(|v| Type::String {
+    just(Kind::String).map(|_| Type::String {
         wide: false,
         bound: None,
     })
@@ -316,7 +316,7 @@ fn string_type() -> impl IdlParser<Type> {
 fn wide_string_type() -> impl IdlParser<Type> {
     // let bound = positive_int_const().or_not();
     // just(Kind::WString).then(bound).ignored()
-    just(Kind::WString).map(|v| Type::String {
+    just(Kind::WString).map(|_| Type::String {
         wide: true,
         bound: None,
     })
@@ -331,7 +331,7 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
         .then(positive_int_const())
         .then_ignore(just(Kind::Greater));
 
-    def.map_with_span(|(tot, frac), span| Type::Fixed {
+    def.map_with_span(|(_, _), span| Type::Fixed {
         span,
         bounds: Some(Fixed {
             total: 0,
@@ -504,7 +504,7 @@ fn enumerator() -> impl IdlParser<Enumerator> {
 // Rule 59
 fn array_declarator() -> impl IdlParser<Type> {
     let bounds = fixed_array_size().repeated().at_least(1);
-    ident().then(bounds).map(|(name, bound)| Type::Array {
+    ident().then(bounds).map(|(name, _)| Type::Array {
         ty: Path::new(vec![name]),
         bound: vec![],
     })
@@ -533,7 +533,7 @@ fn typedef_dcl() -> impl IdlParser<Definition> {
         .ignore_then(type_declarator())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ty, decls), span| Typedef::new(Ident::default(), ty, span))
+    def.map_with_span(|(ty, _), span| Typedef::new(Ident::default(), ty, span))
 }
 
 // Rule 64
@@ -602,7 +602,7 @@ fn interface_def() -> impl IdlParser<Definition> {
     let body = interface_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
     let def = interface_header().then(body).then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(((((local, kind), name), inherits), _)), span| {
+    def.map_with_span(|((((local, _), name), inherits), _), span| {
         InterfaceDef::new(name, local, inherits, vec![], span)
     })
 }
@@ -621,7 +621,7 @@ fn interface_header() -> impl IdlParser<(((Option<Span>, Kind), Ident), Vec<Path
     interface_kind().then(ident()).then(
         interface_inheritance_spec()
             .or_not()
-            .map(|v| v.unwrap_or_default()),
+            .map(Option::unwrap_or_default),
     )
 }
 
@@ -656,6 +656,7 @@ fn export() -> impl IdlParser<()> {
         type_dcl().ignored(),
         const_dcl().ignored(),
         except_dcl().ignored(),
+        op_oneway_dcl().ignored(),
     ))
 }
 
@@ -929,7 +930,7 @@ fn annotation_dcl() -> impl IdlParser<Definition> {
         .then(params)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(i, params), span| AnnotationDef::new(i, vec![], span))
+    def.map_with_span(|(i, _), span| AnnotationDef::new(i, vec![], span))
 }
 
 // Rule 220

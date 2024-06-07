@@ -30,8 +30,8 @@ use ic_alloc::arena::Arena;
 use crate::lexer::Span;
 
 pub struct FileSpan<'a> {
-    file: Arena<&'a str>,
-    span: Span,
+    pub file: Arena<&'a str>,
+    pub span: Span,
 }
 
 pub struct SourceMap {}

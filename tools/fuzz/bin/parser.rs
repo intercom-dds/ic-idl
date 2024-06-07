@@ -30,5 +30,5 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &str| {
-    let _ = ic_parse::lexer::scan(data);
+    let _ = ic_parse::from_str(data);
 });

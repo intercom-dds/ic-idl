@@ -71,7 +71,7 @@ pub struct Document {
 #[must_use]
 #[derive(Default, Debug, Marshal, Unmarshal)]
 pub struct Ident {
-    /// The acutal identifier.
+    /// The actual identifier.
     pub name: Symbol,
 
     /// Span of the symbol.

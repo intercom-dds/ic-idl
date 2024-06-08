@@ -1,0 +1,110 @@
+---
+source: crates/ic-parse/tests/lexer_snapshot.rs
+expression: tokens
+---
+[
+    Token {
+        span: 644..645,
+        kind: Colon,
+    },
+    Token {
+        span: 646..648,
+        kind: DColon,
+    },
+    Token {
+        span: 649..650,
+        kind: Eq,
+    },
+    Token {
+        span: 651..652,
+        kind: Semi,
+    },
+    Token {
+        span: 653..654,
+        kind: Comma,
+    },
+    Token {
+        span: 655..656,
+        kind: Less,
+    },
+    Token {
+        span: 657..658,
+        kind: Greater,
+    },
+    Token {
+        span: 659..660,
+        kind: LBrace,
+    },
+    Token {
+        span: 661..662,
+        kind: RBrace,
+    },
+    Token {
+        span: 663..664,
+        kind: Less,
+    },
+    Token {
+        span: 664..665,
+        kind: Less,
+    },
+    Token {
+        span: 666..667,
+        kind: Greater,
+    },
+    Token {
+        span: 667..668,
+        kind: Greater,
+    },
+    Token {
+        span: 669..670,
+        kind: BitAnd,
+    },
+    Token {
+        span: 671..672,
+        kind: BitOr,
+    },
+    Token {
+        span: 673..674,
+        kind: BitXor,
+    },
+    Token {
+        span: 675..676,
+        kind: Plus,
+    },
+    Token {
+        span: 677..678,
+        kind: Minus,
+    },
+    Token {
+        span: 679..680,
+        kind: Tilde,
+    },
+    Token {
+        span: 681..682,
+        kind: Star,
+    },
+    Token {
+        span: 683..684,
+        kind: Slash,
+    },
+    Token {
+        span: 685..686,
+        kind: Modulo,
+    },
+    Token {
+        span: 687..688,
+        kind: LParen,
+    },
+    Token {
+        span: 689..690,
+        kind: RParen,
+    },
+    Token {
+        span: 691..692,
+        kind: LBracket,
+    },
+    Token {
+        span: 693..694,
+        kind: RBracket,
+    },
+]

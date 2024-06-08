@@ -1,0 +1,34 @@
+---
+source: crates/ic-parse/tests/lexer_snapshot.rs
+expression: tokens
+---
+[
+    Token {
+        span: 644..652,
+        kind: StringLit,
+    },
+    Token {
+        span: 653..666,
+        kind: StringLit,
+    },
+    Token {
+        span: 667..672,
+        kind: StringLit,
+    },
+    Token {
+        span: 673..693,
+        kind: StringLit,
+    },
+    Token {
+        span: 694..698,
+        kind: StringLit,
+    },
+    Token {
+        span: 699..708,
+        kind: StringLit,
+    },
+    Token {
+        span: 709..711,
+        kind: StringLit,
+    },
+]

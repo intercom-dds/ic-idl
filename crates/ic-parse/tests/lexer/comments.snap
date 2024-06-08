@@ -1,0 +1,112 @@
+---
+source: crates/ic-parse/tests/lexer_snapshot.rs
+expression: tokens
+---
+[
+    Token {
+        span: 644..658,
+        kind: Comment(
+            0,
+        ),
+    },
+    Token {
+        span: 659..676,
+        kind: Comment(
+            1,
+        ),
+    },
+    Token {
+        span: 677..706,
+        kind: Comment(
+            2,
+        ),
+    },
+    Token {
+        span: 708..709,
+        kind: Slash,
+    },
+    Token {
+        span: 709..710,
+        kind: Star,
+    },
+    Token {
+        span: 710..711,
+        kind: Star,
+    },
+    Token {
+        span: 712..715,
+        kind: Ident(
+            3,
+        ),
+    },
+    Token {
+        span: 716..719,
+        kind: Ident(
+            4,
+        ),
+    },
+    Token {
+        span: 720..721,
+        kind: Star,
+    },
+    Token {
+        span: 721..722,
+        kind: Slash,
+    },
+    Token {
+        span: 724..725,
+        kind: Slash,
+    },
+    Token {
+        span: 725..726,
+        kind: Star,
+    },
+    Token {
+        span: 726..727,
+        kind: Star,
+    },
+    Token {
+        span: 728..731,
+        kind: Ident(
+            3,
+        ),
+    },
+    Token {
+        span: 733..734,
+        kind: Star,
+    },
+    Token {
+        span: 735..738,
+        kind: Ident(
+            4,
+        ),
+    },
+    Token {
+        span: 740..741,
+        kind: Star,
+    },
+    Token {
+        span: 742..745,
+        kind: Ident(
+            5,
+        ),
+    },
+    Token {
+        span: 747..748,
+        kind: Star,
+    },
+    Token {
+        span: 749..752,
+        kind: Ident(
+            3,
+        ),
+    },
+    Token {
+        span: 754..755,
+        kind: Star,
+    },
+    Token {
+        span: 755..756,
+        kind: Slash,
+    },
+]

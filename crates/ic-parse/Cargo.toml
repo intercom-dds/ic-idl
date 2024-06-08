@@ -43,3 +43,6 @@ logos = "0.14.0"
 
 ic-alloc = { path = "../ic-alloc" }
 ic-syntax = { path = "../ic-syntax" }
+
+[dev-dependencies]
+insta = "1.39.0"

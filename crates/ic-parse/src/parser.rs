@@ -158,11 +158,11 @@ fn const_dcl() -> impl IdlParser<Definition> {
         .ignore_then(const_type())
         .then(ident())
         .then_ignore(just(Kind::Eq))
-        .then(complex_const_expr())
+        .then(const_expr())
         .then_ignore(just(Kind::Semi))
         .labelled("const declaration");
 
-    def.map_with_span(|((ty, name), _), span| ConstDef::new(name, ty, span))
+    def.map_with_span(|((ty, name), val), span| ConstDef::new(name, ty, val, span))
 }
 
 // InterCOM extension for complex constants

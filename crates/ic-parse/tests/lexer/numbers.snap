@@ -1,0 +1,58 @@
+---
+source: crates/ic-parse/tests/lexer_snapshot.rs
+expression: tokens
+---
+[
+    Token {
+        span: 644..645,
+        kind: Decimal,
+    },
+    Token {
+        span: 646..649,
+        kind: Decimal,
+    },
+    Token {
+        span: 650..653,
+        kind: Decimal,
+    },
+    Token {
+        span: 654..657,
+        kind: Decimal,
+    },
+    Token {
+        span: 658..662,
+        kind: Octal,
+    },
+    Token {
+        span: 663..668,
+        kind: Hex,
+    },
+    Token {
+        span: 669..673,
+        kind: Hex,
+    },
+    Token {
+        span: 674..682,
+        kind: Hex,
+    },
+    Token {
+        span: 683..692,
+        kind: Float,
+    },
+    Token {
+        span: 693..698,
+        kind: Float,
+    },
+    Token {
+        span: 699..706,
+        kind: Float,
+    },
+    Token {
+        span: 707..708,
+        kind: Invalid,
+    },
+    Token {
+        span: 708..712,
+        kind: Float,
+    },
+]

@@ -36,7 +36,7 @@ use logos::{Lexer, Logos};
 
 /// All tokens recognized by the lexer.
 #[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"[ \t\r\n\f]+")]
 #[logos(skip r"//[^@][^\r\n]*")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
 #[logos(subpattern ident = r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
@@ -257,7 +257,7 @@ pub enum Kind {
     Octal,
 
     /// Decimal number.
-    #[regex("0|([1-9][0-9]*)")]
+    #[regex(r#"(?:0|[1-9]\d*)"#)]
     Decimal,
 
     /// Hexadecimal number.
@@ -285,8 +285,8 @@ pub enum Kind {
     Char(Option<char>),
 
     // Preserve documentation comments
-    #[regex(r"//[/!][^\r\n]*", priority = 7)]
-    Comment,
+    #[regex(r"//[/!][^\r\n]*", to_interned, priority = 7)]
+    Comment(SymbolId),
 
     /// Fallback for invalid tokens
     Invalid,
@@ -363,7 +363,7 @@ impl fmt::Display for Kind {
             Kind::Modulo => write!(f, "`%`"),
             Kind::Char(v) => write!(f, "'{}'", v.unwrap_or_default()),
             Kind::Octal | Kind::Decimal | Kind::Hex => write!(f, "number"),
-            Kind::Comment => write!(f, "comment"),
+            Kind::Comment(_) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
         }
     }

@@ -1,0 +1,72 @@
+---
+source: crates/ic-parse/tests/lexer_snapshot.rs
+expression: tokens
+---
+[
+    Token {
+        span: 644..647,
+        kind: Char(
+            Some(
+                '0',
+            ),
+        ),
+    },
+    Token {
+        span: 648..651,
+        kind: Char(
+            Some(
+                'a',
+            ),
+        ),
+    },
+    Token {
+        span: 652..655,
+        kind: Char(
+            Some(
+                'b',
+            ),
+        ),
+    },
+    Token {
+        span: 656..659,
+        kind: Char(
+            Some(
+                'z',
+            ),
+        ),
+    },
+    Token {
+        span: 660..663,
+        kind: Char(
+            Some(
+                '_',
+            ),
+        ),
+    },
+    Token {
+        span: 664..666,
+        kind: Char(
+            None,
+        ),
+    },
+    Token {
+        span: 667..671,
+        kind: Char(
+            Some(
+                '\'',
+            ),
+        ),
+    },
+    Token {
+        span: 672..673,
+        kind: Invalid,
+    },
+    Token {
+        span: 673..677,
+        kind: Invalid,
+    },
+    Token {
+        span: 677..678,
+        kind: Invalid,
+    },
+]

@@ -1,0 +1,290 @@
+---
+source: crates/ic-parse/tests/lexer_snapshot.rs
+expression: tokens
+---
+[
+    Token {
+        span: 634..637,
+        kind: Any,
+    },
+    Token {
+        span: 638..647,
+        kind: Attribute,
+    },
+    Token {
+        span: 648..656,
+        kind: Bitfield,
+    },
+    Token {
+        span: 657..664,
+        kind: Bitmask,
+    },
+    Token {
+        span: 665..671,
+        kind: Bitset,
+    },
+    Token {
+        span: 672..679,
+        kind: Ident(
+            0,
+        ),
+    },
+    Token {
+        span: 680..684,
+        kind: Case,
+    },
+    Token {
+        span: 685..689,
+        kind: Ident(
+            1,
+        ),
+    },
+    Token {
+        span: 690..695,
+        kind: Const,
+    },
+    Token {
+        span: 696..703,
+        kind: Default,
+    },
+    Token {
+        span: 704..710,
+        kind: Ident(
+            2,
+        ),
+    },
+    Token {
+        span: 711..720,
+        kind: Exception,
+    },
+    Token {
+        span: 721..725,
+        kind: Enum,
+    },
+    Token {
+        span: 726..733,
+        kind: Factory,
+    },
+    Token {
+        span: 734..739,
+        kind: False,
+    },
+    Token {
+        span: 740..745,
+        kind: False,
+    },
+    Token {
+        span: 746..752,
+        kind: Ident(
+            3,
+        ),
+    },
+    Token {
+        span: 753..758,
+        kind: Fixed,
+    },
+    Token {
+        span: 759..764,
+        kind: Ident(
+            4,
+        ),
+    },
+    Token {
+        span: 765..774,
+        kind: GetRaises,
+    },
+    Token {
+        span: 775..777,
+        kind: In,
+    },
+    Token {
+        span: 778..783,
+        kind: InOut,
+    },
+    Token {
+        span: 784..793,
+        kind: Interface,
+    },
+    Token {
+        span: 794..799,
+        kind: Local,
+    },
+    Token {
+        span: 800..804,
+        kind: Ident(
+            5,
+        ),
+    },
+    Token {
+        span: 805..808,
+        kind: Map,
+    },
+    Token {
+        span: 809..815,
+        kind: Module,
+    },
+    Token {
+        span: 816..822,
+        kind: Native,
+    },
+    Token {
+        span: 823..829,
+        kind: Ident(
+            6,
+        ),
+    },
+    Token {
+        span: 830..835,
+        kind: Ident(
+            7,
+        ),
+    },
+    Token {
+        span: 836..842,
+        kind: Oneway,
+    },
+    Token {
+        span: 843..846,
+        kind: Out,
+    },
+    Token {
+        span: 847..854,
+        kind: Private,
+    },
+    Token {
+        span: 855..861,
+        kind: Public,
+    },
+    Token {
+        span: 862..868,
+        kind: Raises,
+    },
+    Token {
+        span: 869..877,
+        kind: ReadOnly,
+    },
+    Token {
+        span: 878..887,
+        kind: SetRaises,
+    },
+    Token {
+        span: 888..896,
+        kind: Sequence,
+    },
+    Token {
+        span: 897..902,
+        kind: Ident(
+            8,
+        ),
+    },
+    Token {
+        span: 903..909,
+        kind: String,
+    },
+    Token {
+        span: 910..916,
+        kind: Struct,
+    },
+    Token {
+        span: 917..925,
+        kind: Supports,
+    },
+    Token {
+        span: 926..932,
+        kind: Switch,
+    },
+    Token {
+        span: 933..937,
+        kind: True,
+    },
+    Token {
+        span: 938..942,
+        kind: True,
+    },
+    Token {
+        span: 943..950,
+        kind: Typedef,
+    },
+    Token {
+        span: 951..959,
+        kind: Ident(
+            9,
+        ),
+    },
+    Token {
+        span: 960..965,
+        kind: Union,
+    },
+    Token {
+        span: 966..975,
+        kind: Valuetype,
+    },
+    Token {
+        span: 976..980,
+        kind: Ident(
+            10,
+        ),
+    },
+    Token {
+        span: 981..986,
+        kind: Ident(
+            11,
+        ),
+    },
+    Token {
+        span: 987..994,
+        kind: WString,
+    },
+    Token {
+        span: 995..999,
+        kind: Ident(
+            12,
+        ),
+    },
+    Token {
+        span: 1000..1005,
+        kind: Ident(
+            13,
+        ),
+    },
+    Token {
+        span: 1006..1011,
+        kind: Ident(
+            14,
+        ),
+    },
+    Token {
+        span: 1012..1017,
+        kind: Ident(
+            15,
+        ),
+    },
+    Token {
+        span: 1018..1023,
+        kind: Ident(
+            16,
+        ),
+    },
+    Token {
+        span: 1024..1030,
+        kind: Ident(
+            17,
+        ),
+    },
+    Token {
+        span: 1031..1037,
+        kind: Ident(
+            18,
+        ),
+    },
+    Token {
+        span: 1038..1044,
+        kind: Ident(
+            19,
+        ),
+    },
+    Token {
+        span: 1045..1056,
+        kind: Annotation,
+    },
+]

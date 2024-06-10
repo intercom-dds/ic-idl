@@ -197,7 +197,7 @@ fn const_type() -> impl IdlParser<Type> {
 fn const_expr() -> impl IdlParser<Expr> {
     recursive(|primary| {
         // Rule 16
-        let nested = primary.delimited_by(just(Kind::LParen), just(Kind::RParen));
+        let nested = primary.parenthesized();
 
         let lit = literal().map_with_span(|v, span| {
             Expr::Lit(Literal {
@@ -379,20 +379,20 @@ fn wide_string_type() -> impl IdlParser<Type> {
 
 // Rule 42
 fn fixed_pt_type() -> impl IdlParser<Type> {
-    let def = just(Kind::Fixed)
-        .then_ignore(just(Kind::Less))
-        .ignore_then(positive_int_const())
+    let body = positive_int_const()
         .then_ignore(just(Kind::Comma))
         .then(positive_int_const())
-        .then_ignore(just(Kind::Greater));
+        .delimited_by(just(Kind::Less), just(Kind::Greater));
 
-    def.map_with_span(|(tot, frac), span| Type::Fixed {
-        span,
-        bounds: Some(Fixed {
-            total: tot,
-            fractional: frac,
-        }),
-    })
+    just(Kind::Fixed)
+        .ignore_then(body)
+        .map_with_span(|(tot, frac), span| Type::Fixed {
+            span,
+            bounds: Some(Fixed {
+                total: tot,
+                fractional: frac,
+            }),
+        })
 }
 
 // Rule 43
@@ -462,7 +462,7 @@ fn union_dcl() -> impl IdlParser<Definition> {
 fn union_def() -> impl IdlParser<Definition> {
     // `switch(foo)`
     let disc = just(Kind::Switch)
-        .ignore_then(switch_type_spec().delimited_by(just(Kind::LParen), just(Kind::RParen)))
+        .ignore_then(switch_type_spec().parenthesized())
         .map(|path| Discriminator {
             annotations: vec![],
             ty: Type::Path(path),
@@ -605,12 +605,9 @@ fn typedef_dcl() -> impl IdlParser<Definition> {
 
 // Rule 64
 fn type_declarator() -> impl IdlParser<(Type, Vec<Declarator>)> {
-    let ty = choice((
-        simple_type_spec(),
-        template_type_spec(),
-        // constr_type_dcl().ignored(),
-    ));
-
+    // `constr_type_dcl` is deliberately omitted as anonymous structs, unions,
+    // enums and bitmasks are not supported.
+    let ty = choice((simple_type_spec(), template_type_spec()));
     ty.then(any_declarators())
 }
 
@@ -723,7 +720,7 @@ fn export() -> impl IdlParser<()> {
 
 // Rule 82
 fn op_dcl() -> impl IdlParser<()> {
-    let params = parameter_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
+    let params = parameter_dcls().parenthesized();
 
     op_type_spec()
         .then(ident())
@@ -764,7 +761,7 @@ fn raises_expr() -> impl IdlParser<()> {
     let exceptions = scoped_name()
         .separated_by(just(Kind::Comma))
         .at_least(1)
-        .delimited_by(just(Kind::LParen), just(Kind::RParen));
+        .parenthesized();
 
     just(Kind::Raises).then(exceptions).ignored()
 }
@@ -841,7 +838,7 @@ fn exception_list() -> impl IdlParser<()> {
     scoped_name()
         .separated_by(just(Kind::Comma))
         .at_least(1)
-        .delimited_by(just(Kind::LParen), just(Kind::RParen))
+        .parenthesized()
         .ignored()
 }
 
@@ -903,7 +900,7 @@ fn state_member() -> impl IdlParser<()> {
 
 // Rule 107
 fn init_dcl() -> impl IdlParser<()> {
-    let params = init_param_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
+    let params = init_param_dcls().parenthesized();
     let raises = raises_expr().or_not();
 
     just(Kind::Factory)
@@ -940,7 +937,7 @@ fn value_forward_dcl() -> impl IdlParser<Definition> {
 
 // Rule 119
 fn op_oneway_dcl() -> impl IdlParser<()> {
-    let params = in_parameter_dcls().delimited_by(just(Kind::LParen), just(Kind::RParen));
+    let params = in_parameter_dcls().parenthesized();
 
     just(Kind::Oneway)
         .ignore_then(ty())
@@ -951,16 +948,11 @@ fn op_oneway_dcl() -> impl IdlParser<()> {
 
 // Rule 120
 fn in_parameter_dcls() -> impl IdlParser<()> {
-    // TODO: remove at_least? might be supported in cidl
-    in_param_dcl()
-        .separated_by(just(Kind::Comma))
-        .at_least(1)
-        .ignored()
+    in_param_dcl().separated_by(just(Kind::Comma)).ignored()
 }
 
 // Rule 121
 fn in_param_dcl() -> impl IdlParser<()> {
-    // TODO: optional in here as well?
     just(Kind::In)
         .then(type_spec())
         .then(simple_declarator())
@@ -1103,8 +1095,7 @@ fn any_const_type() -> impl IdlParser<()> {
 fn annotation_appl() -> impl IdlParser<()> {
     choice((
         just(Kind::AnnotationAppl)
-            // TODO: custom function that handles this since it's repeated often
-            .then(annotation_appl_params().delimited_by(just(Kind::LParen), just(Kind::RParen)))
+            .then(annotation_appl_params().parenthesized())
             .ignored(),
         just(Kind::AnnotationAppl).ignored(),
     ))

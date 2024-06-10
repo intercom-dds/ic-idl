@@ -115,6 +115,7 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     match ast {
         Ok(v) => {
             dbg!(&v.tree);
+            dbg!(ic_lint::lint_syntax(&v.tree));
         }
         Err(e) => {
             // TODO: emit summary of errors + warnings

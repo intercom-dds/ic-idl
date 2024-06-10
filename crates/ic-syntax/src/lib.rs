@@ -52,6 +52,7 @@ use intercom_cts::{Marshal, Unmarshal};
 
 pub type Symbol = SymbolId;
 
+/// Byte offset in the source file.
 pub type Span = std::ops::Range<usize>;
 
 pub type AnnotationVec = InlineVec<AnnotationAppl>;
@@ -514,22 +515,19 @@ pub enum Label {
 #[derive(Debug)]
 pub struct ConstDef {
     pub value: Expr,
+    pub ty: Type,
     pub annotations: InlineVec<AnnotationAppl>,
 }
 
 impl ConstDef {
-    pub fn new(name: Ident, ty: Type, span: Span) -> Definition {
-        drop(ty);
-
+    pub fn new(name: Ident, ty: Type, value: Expr, span: Span) -> Definition {
         Definition {
             name,
             span,
             annotations: vec![],
             kind: ItemKind::Const(P(Self {
-                value: Expr::Lit(Literal {
-                    kind: LitKind::Bool,
-                    span: Span::default(),
-                }),
+                value,
+                ty,
                 annotations: vec![],
             })),
         }
@@ -724,7 +722,7 @@ pub struct Op {
 }
 
 #[must_use]
-#[derive(Copy, Clone, Debug, Marshal, Unmarshal)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Marshal, Unmarshal)]
 pub enum OpKind {
     // Arithmetic operations
     Add,

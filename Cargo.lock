@@ -142,6 +142,7 @@ name = "ic-hir"
 version = "0.0.0"
 dependencies = [
  "ic-alloc",
+ "ic-macros",
  "ic-syntax",
  "intercom-cts",
 ]
@@ -168,6 +169,15 @@ dependencies = [
  "ic-diagnostic",
  "ic-hir",
  "ic-syntax",
+]
+
+[[package]]
+name = "ic-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

@@ -308,7 +308,7 @@ fn type_spec() -> impl IdlParser<Type> {
     choice((simple_type_spec(), template_type_spec()))
 }
 
-// Rule 22 + 23
+// Rule 22
 fn simple_type_spec() -> impl IdlParser<Type> {
     choice((base_type_spec(), scoped_name().map(Type::Path)))
 }
@@ -469,8 +469,6 @@ fn switch_body() -> impl IdlParser<()> {
 
 // Rule 53
 fn case() -> impl IdlParser<()> {
-    // TODO: or should we just accept whatever the validate it later?
-    // E.g. multiple values with no case labels.
     case_label()
         .repeated()
         .at_least(1)

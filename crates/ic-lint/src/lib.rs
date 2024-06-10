@@ -84,18 +84,25 @@ pub trait Lint {
     fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag>;
 }
 
+#[derive(Debug)]
+pub struct Report {
+    pub diagnostics: Vec<Diag>,
+}
+
 /// Traverses the AST and produces diagnostics for all enabled lints.
 ///
 /// Lints that operate on the AST are mostly syntactic. Other lints that
 /// require more in-depth semantic analysis is typically done on the HIR with
 /// [`lint_hir`].
-pub fn lint_syntax(tree: &[Definition]) {
+pub fn lint_syntax(tree: &[Definition]) -> Report {
     let mut diagnostics = vec![];
 
     for lint in LINTS {
         let pass = lint().check(tree);
         diagnostics.extend(pass.into_iter());
     }
+
+    Report { diagnostics }
 }
 
 /// Set of lints that operates on the HIR.

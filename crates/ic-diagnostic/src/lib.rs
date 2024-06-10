@@ -54,7 +54,7 @@ pub enum Color {
 
 /// A single diagnostic intended to display lints about a particular item.
 #[must_use]
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Diag {
     msg: String,
     note: Option<String>,

@@ -30,9 +30,16 @@
 
 /// The supported naming conventions.
 pub enum Case {
+    /// `snake_case`
     Snake,
+
+    /// `camelCase`
     Camel,
+
+    /// `PascalCase`
     Pascal,
+
+    /// `kebab-case`
     Kebab,
 }
 

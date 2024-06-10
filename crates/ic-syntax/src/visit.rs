@@ -29,9 +29,9 @@
 
 use crate::{
     AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef,
-    BitsetDef, ConstDef, Decl, Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Field,
-    Ident, InterfaceDef, ItemKind, Label, Literal, ModuleDef, Prototype, StructDef, Type, Typedef,
-    UnionDef, UnionField, ValuetypeDef,
+    BitsetDef, ConstDef, Decl, Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
+    Field, Ident, InterfaceDef, ItemKind, Label, Literal, ModuleDef, Prototype, StructDef, Type,
+    Typedef, UnionDef, UnionField, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -158,6 +158,8 @@ pub trait Visitor<'a> {
     fn visit_ident(&mut self, ident: &'a Ident) {}
 
     fn visit_type(&mut self, ident: &'a Type) {}
+
+    fn visit_expr(&mut self, expr: &'a Expr) {}
 }
 
 pub trait Visit {

@@ -36,6 +36,7 @@ members = [
     "crates/ic-emit",
     "crates/ic-hir",
     "crates/ic-lint",
+    "crates/ic-macros",
     "crates/ic-parse",
     "crates/ic-preproc",
     "crates/ic-ptree",

@@ -155,6 +155,10 @@ pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
 /// Constructs an AST from the given token iterator.
 ///
 /// # Errors
+///
+/// If the given input contains IDL that is not syntactically valid, a
+/// non-exhausitve list of parse errors will be returned that contains the
+/// cause of each error and its span.
 pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Simple<Kind>>>
 where
     I: IntoIterator<Item = Token>,

@@ -31,4 +31,5 @@ pub mod arena;
 pub mod inline_str;
 pub mod inline_vec;
 pub mod interner;
+pub mod md5;
 pub mod ptr;

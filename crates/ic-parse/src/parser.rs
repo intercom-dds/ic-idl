@@ -295,7 +295,7 @@ fn literal() -> impl IdlParser<Kind> {
 
 // Rule 18
 fn boolean_literal() -> impl IdlParser<Kind> {
-    just(Kind::True).or(just(Kind::False))
+    one_of([Kind::True, Kind::False])
 }
 
 // Rule 19
@@ -345,9 +345,18 @@ fn template_type_spec() -> impl IdlParser<Type> {
     })
 }
 
+// Not standard, but we need this rule here since `type_spec` is recursive.
+// Without it, `sequence_type` will call `type_spec` without propagating the
+// recursive state and we'll end up with a stack overflow.
+fn sequence_element_type(
+    state: Recursive<'_, Kind, Type, Simple<Kind>>,
+) -> impl IdlParser<Type> + '_ {
+    choice((state, simple_type_spec()))
+}
+
 // Rule 39
 fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
-    let inner = state
+    let inner = sequence_element_type(state)
         .then(bound())
         .delimited_by(just(Kind::Less), just(Kind::Greater));
 
@@ -362,8 +371,8 @@ fn string_type() -> impl IdlParser<Type> {
         .or_not();
 
     just(Kind::String)
-        .then(bound)
-        .map(|(_, bound)| Type::String { wide: false, bound })
+        .ignore_then(bound)
+        .map(|bound| Type::String { wide: false, bound })
 }
 
 // Rule 41
@@ -373,8 +382,8 @@ fn wide_string_type() -> impl IdlParser<Type> {
         .or_not();
 
     just(Kind::WString)
-        .then(bound)
-        .map(|(_, bound)| Type::String { wide: true, bound })
+        .ignore_then(bound)
+        .map(|bound| Type::String { wide: true, bound })
 }
 
 // Rule 42
@@ -714,7 +723,7 @@ fn export() -> impl IdlParser<()> {
         type_dcl().ignored(),
         const_dcl().ignored(),
         except_dcl().ignored(),
-        op_oneway_dcl().ignored(),
+        op_oneway_dcl(),
     ))
 }
 
@@ -739,7 +748,6 @@ fn op_type_spec() -> impl IdlParser<Type> {
 
 // Rule 84
 fn parameter_dcls() -> impl IdlParser<()> {
-    // TODO: make sure this works even with 0 params
     param_dcl().separated_by(just(Kind::Comma)).ignored()
 }
 
@@ -1075,8 +1083,6 @@ fn annotation_member() -> impl IdlParser<()> {
     let param = annotation_member_type().then(simple_declarator());
     let default = just(Kind::Default).then(ident()).ignored();
     let body = param.then(default.or_not()).ignored();
-
-    // TODO: custom delimited_by-like function for semicolons
     body.then(just(Kind::Semi)).ignored()
 }
 

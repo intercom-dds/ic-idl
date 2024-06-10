@@ -78,6 +78,8 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_alloc::interner::Interner;
+use ic_cli::color::Colorize;
+use ic_diagnostic::{error_span, Label};
 use ic_syntax::{Item, Span};
 use lexer::{Kind, Token};
 
@@ -142,14 +144,67 @@ impl<I, S> From<SimpleReason<I, S>> for Reason<I, S> {
 pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
     let tokens = lexer::stream(input);
     let (ast, errs) = parser::specification().parse_recovery(tokens);
+    dbg!(errs.len());
 
-    if let Ok(tree) = ast {
+    let diagnostics: Vec<_> = errs
+        .into_iter()
+        .map(|v| v.map(|c| c.to_string()))
+        .map(|e| {
+            match e.reason() {
+                SimpleReason::Unclosed { span, delimiter } => error_span(
+                    format!("unclosed delimiter {delimiter}"),
+                    Label::new((*span).into()).message("unclosed delimiter here"),
+                ),
+                SimpleReason::Unexpected => error_span(
+                    format!(
+                        "{}, expected {}",
+                        if e.found().is_some() {
+                            format!("unexpected {}", e.found().unwrap().red())
+                        } else {
+                            "unexpected end of input".to_string()
+                        },
+                        // if e.label().is_some() {
+                        //     e.label().unwrap().to_string()
+                        // }
+                        if e.expected().len() == 0 {
+                            "definition".to_string()
+                        } else {
+                            e.expected()
+                                .map(|expected| match expected {
+                                    Some(expected) => expected.to_string().cyan().bold(),
+                                    None => "end of input".to_string(),
+                                })
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        }
+                    ),
+                    Label::new(e.span().into()).message(format!(
+                        "unexpected {}",
+                        e.found()
+                            .map(ToString::to_string)
+                            .unwrap_or("end of input".to_string()),
+                    )),
+                ),
+                SimpleReason::Custom(msg) => {
+                    error_span(msg, Label::new(e.span().into()).message("unexpected token"))
+                }
+            }
+        })
+        .collect();
+
+    for diag in &diagnostics {
+        let mut buf = String::new();
+        ic_diagnostic::emit_diagnostic(&mut buf, input, diag)?;
+        eprintln!("{buf}");
+    }
+
+    if let Some(ast) = ast {
         Ok(ParseResult {
-            tree,
             interner: Interner::default(),
+            tree: ast,
         })
     } else {
-        Err(anyhow::anyhow!("parsing failed"))
+        Err(anyhow::anyhow!("parse error"))
     }
 }
 

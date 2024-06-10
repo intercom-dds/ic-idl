@@ -59,7 +59,7 @@ impl Charset {
     fn unicode() -> Self {
         Self {
             up_right: "┌",
-            down_right: "└─",
+            down_right: "└──",
             vertical: "│",
             vertical_dx: "·",
             highlight: "^",
@@ -103,11 +103,12 @@ fn line_span(input: &str, offset: usize) -> Range<usize> {
         .map_or(0, |v| v.0 + 1);
 
     let end = input
+        .trim_end()
         .bytes()
         .skip(offset)
         .enumerate()
         .find(|(_, v)| *v == b'\n')
-        .map_or(input.len(), |v| v.0);
+        .map_or(input.len().saturating_sub(1), |v| v.0);
 
     Range { start, end }
 }
@@ -152,7 +153,7 @@ impl<'a> Formatter<'a> {
 
     fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
         // Determine the necessary indentation based on length of the linenu
-        let line_number = 100_usize;
+        let line_number = line_number(self.source, diag.labels.first().map_or(0, |v| v.span.start));
         let indent = line_number.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
@@ -174,7 +175,8 @@ impl<'a> Formatter<'a> {
         )?;
 
         // Embed the origin of the diagnostic
-        writeln!(f, " {}", self.source)?;
+        let range = line_span(self.source, diag.labels.first().map_or(0, |v| v.span.start));
+        writeln!(f, " {}", &self.source[range])?;
 
         // Draw all labels
         self.emit_labels(f, &indent, &diag.labels)?;

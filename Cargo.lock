@@ -187,6 +187,8 @@ dependencies = [
  "anyhow",
  "chumsky",
  "ic-alloc",
+ "ic-cli",
+ "ic-diagnostic",
  "ic-syntax",
  "insta",
  "logos",

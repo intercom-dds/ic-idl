@@ -386,6 +386,22 @@ pub struct BitmaskDef {
     pub bits: InlineVec<Bit>,
 }
 
+impl BitmaskDef {
+    pub fn new(name: Ident, flags: InlineVec<Bit>, span: Span) -> Definition {
+        let body = P(Self {
+            annotations: vec![],
+            bits: flags,
+        });
+
+        Definition {
+            name,
+            span,
+            annotations: vec![],
+            kind: ItemKind::Bitmask(body),
+        }
+    }
+}
+
 #[must_use]
 #[derive(Debug)]
 pub struct Bit {
@@ -395,19 +411,45 @@ pub struct Bit {
     /// An explicit value, e.g. `bitmask Foo { VALUE = 1 };`
     /// The `@position` annotation will *not* populate this field.
     pub value: Option<Expr>,
+    pub span: Span,
 }
 
 #[must_use]
-#[derive(Debug, Marshal, Unmarshal)]
+#[derive(Debug)]
 pub struct BitsetDef {
+    pub parent: Option<Path>,
     pub fields: InlineVec<Bitfield>,
 }
 
+impl BitsetDef {
+    pub fn new(
+        name: Ident,
+        parent: Option<Path>,
+        bitfields: InlineVec<Bitfield>,
+        span: Span,
+    ) -> Definition {
+        let body = P(Self {
+            parent,
+            fields: bitfields,
+        });
+
+        Definition {
+            name,
+            span,
+            annotations: vec![],
+            kind: ItemKind::Bitset(body),
+        }
+    }
+}
+
 #[must_use]
-#[derive(Debug, Default, Marshal, Unmarshal)]
+#[derive(Debug)]
 pub struct Bitfield {
-    // pub annotations: InlineVec<AnnotationAppl>,
-    pub size: Ident,
+    pub annotations: InlineVec<AnnotationAppl>,
+    pub name: Ident,
+    pub ty: Option<Ident>,
+    pub size: Expr,
+    pub span: Span,
 }
 
 #[must_use]
@@ -464,17 +506,13 @@ pub struct UnionDef {
 }
 
 impl UnionDef {
-    pub fn new(name: Ident, fields: InlineVec<UnionField>, span: Span) -> Definition {
-        let body = Self {
-            disc: Discriminator {
-                annotations: vec![],
-                ty: Type::Path(Path {
-                    leading_colons: None,
-                    segments: vec![],
-                }),
-            },
-            fields,
-        };
+    pub fn new(
+        name: Ident,
+        disc: Discriminator,
+        fields: InlineVec<UnionField>,
+        span: Span,
+    ) -> Definition {
+        let body = Self { disc, fields };
 
         Definition {
             name,
@@ -500,14 +538,20 @@ pub struct UnionField {
     /// Case labels that map to this variant.
     pub labels: InlineVec<Label>,
 
-    pub field: Field,
+    pub field: UnionElement,
+}
+
+#[must_use]
+#[derive(Debug)]
+pub enum UnionElement {
+    Member { ty: Type, decl: Declarator },
+    Null { span: Span },
 }
 
 #[must_use]
 #[derive(Debug)]
 pub enum Label {
-    Case { ident: Path },
-    Null,
+    Case { expr: Expr },
     Default,
 }
 

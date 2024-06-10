@@ -66,6 +66,7 @@
 //!  - Lowercase boolean literals (i.e. `true`, `false`) are accepted.
 //!  - Empty prototypes are allowed.
 //!  - The `in` keyword may be omitted for in-parameters in prototypes.
+//!  - A `null` keyword that lets you define "empty" union members.
 //!
 //! While the parser will always accept the extensions, [`ic-lint`] has an
 //! optional set of pedantic lints that can trigger a warning or error if these

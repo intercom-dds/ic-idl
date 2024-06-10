@@ -31,15 +31,20 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_alloc::ptr::P;
 use ic_syntax::{
-    AnnotationDef, ConstDef, DeclKind, Declarator, Definition, EnumDef, Enumerator, ExceptDef,
-    Expr, Field, Fixed, Ident, InterfaceDef, Item, Label, LitKind, Literal, ModuleDef, Op, OpKind,
-    Path, Span, StructDef, Type, Typedef, UnionDef, ValuetypeDef,
+    AnnotationDef, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, DeclKind, Declarator,
+    Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Fixed, Ident,
+    InterfaceDef, Item, Label, LitKind, Literal, ModuleDef, Op, OpKind, Path, Span, StructDef,
+    Type, Typedef, UnionDef, UnionElement, UnionField, ValuetypeDef,
 };
 
 use crate::lexer::Kind;
 
 // Workaround until trait aliases are stabilized
-pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {}
+pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {
+    fn parenthesized(self) -> impl IdlParser<T> {
+        self.delimited_by(just(Kind::LParen), just(Kind::RParen))
+    }
+}
 
 // Blanket impl because we really just want an alias
 impl<T, U: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone> IdlParser<T> for U {}
@@ -300,10 +305,16 @@ fn positive_int_const() -> impl IdlParser<Expr> {
 
 // Rule 20
 fn type_dcl() -> impl IdlParser<Definition> {
-    choice((constr_type_dcl(), typedef_dcl(), native_dcl()))
+    choice((
+        constr_type_dcl(),
+        typedef_dcl(),
+        native_dcl(),
+        bitset_dcl(),
+        bitmask_dcl(),
+    ))
 }
 
-// Rule 21
+// Rule 21 with the rule 216 extension
 fn type_spec() -> impl IdlParser<Type> {
     choice((simple_type_spec(), template_type_spec()))
 }
@@ -346,15 +357,23 @@ fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlPars
 
 // Rule 40
 fn string_type() -> impl IdlParser<Type> {
+    let bound = positive_int_const()
+        .delimited_by(just(Kind::Less), just(Kind::Greater))
+        .or_not();
+
     just(Kind::String)
-        .then(bound())
+        .then(bound)
         .map(|(_, bound)| Type::String { wide: false, bound })
 }
 
 // Rule 41
 fn wide_string_type() -> impl IdlParser<Type> {
+    let bound = positive_int_const()
+        .delimited_by(just(Kind::Less), just(Kind::Greater))
+        .or_not();
+
     just(Kind::WString)
-        .then(bound())
+        .then(bound)
         .map(|(_, bound)| Type::String { wide: true, bound })
 }
 
@@ -443,7 +462,11 @@ fn union_dcl() -> impl IdlParser<Definition> {
 fn union_def() -> impl IdlParser<Definition> {
     // `switch(foo)`
     let disc = just(Kind::Switch)
-        .ignore_then(switch_type_spec().delimited_by(just(Kind::LParen), just(Kind::RParen)));
+        .ignore_then(switch_type_spec().delimited_by(just(Kind::LParen), just(Kind::RParen)))
+        .map(|path| Discriminator {
+            annotations: vec![],
+            ty: Type::Path(path),
+        });
 
     // Case labels + members
     let body = switch_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -454,7 +477,7 @@ fn union_def() -> impl IdlParser<Definition> {
         .then(body)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|v, span| UnionDef::new(v.0.0, vec![], span))
+    def.map_with_span(|((ident, disc), cases), span| UnionDef::new(ident, disc, cases, span))
 }
 
 // Rule 51
@@ -463,39 +486,50 @@ fn switch_type_spec() -> impl IdlParser<Path> {
 }
 
 // Rule 52
-fn switch_body() -> impl IdlParser<()> {
-    case().repeated().ignored()
+fn switch_body() -> impl IdlParser<Vec<UnionField>> {
+    case().repeated()
 }
 
 // Rule 53
-fn case() -> impl IdlParser<()> {
-    case_label()
-        .repeated()
-        .at_least(1)
-        .then(element_spec())
-        .then_ignore(just(Kind::Semi))
-        .ignored()
+fn case() -> impl IdlParser<UnionField> {
+    let def = case_label().repeated().at_least(1).then(element_spec());
+
+    def.map(|(labels, field)| UnionField {
+        annotations: vec![],
+        labels,
+        field,
+    })
 }
 
 // Rule 54
 fn case_label() -> impl IdlParser<Label> {
     let case = just(Kind::Case)
-        .ignore_then(scoped_name())
-        .map(|ident| Label::Case { ident })
-        .labelled("case label");
+        .ignore_then(const_expr())
+        .map(|expr| Label::Case { expr })
+        .labelled("case label")
+        .then_ignore(just(Kind::Colon));
 
     let default = just(Kind::Default)
         .map(|_| Label::Default)
-        .labelled("default label");
+        .labelled("default label")
+        .then_ignore(just(Kind::Colon));
 
-    let null = just(Kind::Null).map(|_| Label::Null).labelled("null label");
-
-    choice((case, default, null))
+    choice((case, default))
 }
 
 // Rule 55
-fn element_spec() -> impl IdlParser<(Type, Declarator)> {
-    type_spec().then(declarator())
+fn element_spec() -> impl IdlParser<UnionElement> {
+    // InterCOM extension that lets you define an "empty" member.
+    let null = just(Kind::Null)
+        .then_ignore(just(Kind::Semi))
+        .map_with_span(|_, span| UnionElement::Null { span });
+
+    let ty = type_spec()
+        .then(declarator())
+        .then_ignore(just(Kind::Semi))
+        .map(|(ty, decl)| UnionElement::Member { ty, decl });
+
+    choice((ty, null))
 }
 
 // Rule 56
@@ -946,6 +980,75 @@ fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Ty
         key: P(key),
         value: P(value),
         bound,
+    })
+}
+
+// Rule 200
+fn bitset_dcl() -> impl IdlParser<Definition> {
+    let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
+
+    let body = bitfield()
+        .repeated()
+        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+
+    let def = just(Kind::Bitset)
+        .ignore_then(ident())
+        .then(inherit)
+        .then(body)
+        .then_ignore(just(Kind::Semi));
+
+    def.map_with_span(|((ident, parent), fields), span| BitsetDef::new(ident, parent, fields, span))
+}
+
+// Rule 201
+fn bitfield() -> impl IdlParser<Bitfield> {
+    let def = bitfield_spec().then(ident()).then_ignore(just(Kind::Semi));
+    def.map_with_span(|((size, ty), name), span| Bitfield {
+        annotations: vec![],
+        name,
+        ty,
+        size,
+        span,
+    })
+}
+
+// Rule 202
+fn bitfield_spec() -> impl IdlParser<(Expr, Option<Ident>)> {
+    just(Kind::Bitfield).ignore_then(
+        positive_int_const()
+            .then(just(Kind::Comma).ignore_then(destination_type()).or_not())
+            .delimited_by(just(Kind::Less), just(Kind::Greater)),
+    )
+}
+
+// Rule 203
+fn destination_type() -> impl IdlParser<Ident> {
+    // TOOD: primitive types only
+    ident()
+}
+
+// Rule 204
+fn bitmask_dcl() -> impl IdlParser<Definition> {
+    let body = bit_value()
+        .separated_by(just(Kind::Comma))
+        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+
+    let def = just(Kind::Bitmask)
+        .ignore_then(ident())
+        .then(body)
+        .then_ignore(just(Kind::Semi));
+
+    def.map_with_span(|(name, flags), span| BitmaskDef::new(name, flags, span))
+}
+
+// Rule 205
+fn bit_value() -> impl IdlParser<Bit> {
+    let def = ident().then(just(Kind::Eq).ignore_then(const_expr()).or_not());
+    def.map_with_span(|(name, value), span| Bit {
+        name,
+        annotations: vec![],
+        value,
+        span,
     })
 }
 

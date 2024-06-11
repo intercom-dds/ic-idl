@@ -29,29 +29,27 @@
 
 use crate::{
     AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef,
-    BitsetDef, ConstDef, Decl, Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Ident, InterfaceDef, ItemKind, Label, Literal, ModuleDef, Prototype, StructDef, Type,
-    Typedef, UnionDef, UnionField, ValuetypeDef,
+    BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Ident,
+    InterfaceDef, Item, ItemKind, Label, Literal, ModuleDef, Prototype, StructDef, Type, Typedef,
+    UnionDef, UnionField, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
-    fn visit_definition(&mut self, def: &'a Definition) {
-        self.visit_ident(&def.name);
-
-        match &def.kind {
-            ItemKind::Annotation(v) => self.visit_annotation_def(v),
-            ItemKind::Module(v) => self.visit_module(v),
-            ItemKind::Struct(v) => self.visit_struct(v),
-            ItemKind::Union(v) => self.visit_union(v),
-            ItemKind::Enum(v) => self.visit_enum(v),
-            ItemKind::Exception(v) => self.visit_exception(v),
-            ItemKind::Bitmask(v) => self.visit_bitmask(v),
-            ItemKind::Bitset(v) => self.visit_bitset(v),
-            ItemKind::Const(v) => self.visit_const(v),
-            ItemKind::Typedef(v) => self.visit_typedef(v),
-            ItemKind::Decl(v) => self.visit_decl(v),
-            ItemKind::Interface(v) => self.visit_interface(v),
-            ItemKind::Valuetype(v) => self.visit_valuetype(v),
+    fn visit_item(&mut self, item: &'a Item) {
+        match &item {
+            Item::AnnotationValue(v) => self.visit_annotation_def(v),
+            Item::ModuleValue(v) => self.visit_module(v),
+            Item::StructValue(v) => self.visit_struct(v),
+            Item::UnionValue(v) => self.visit_union(v),
+            Item::EnumValue(v) => self.visit_enum(v),
+            Item::ExceptionValue(v) => self.visit_exception(v),
+            Item::BitmaskValue(v) => self.visit_bitmask(v),
+            Item::BitsetValue(v) => self.visit_bitset(v),
+            Item::ConstValue(v) => self.visit_const(v),
+            Item::TypedefValue(v) => self.visit_typedef(v),
+            Item::DeclValue(v) => self.visit_decl(v),
+            Item::InterfaceValue(v) => self.visit_interface(v),
+            Item::ValuetypeValue(v) => self.visit_valuetype(v),
         }
     }
 
@@ -64,8 +62,8 @@ pub trait Visitor<'a> {
     fn visit_annotation_arg(&mut self, def: &'a AnnotationArg) {}
 
     fn visit_module(&mut self, module: &'a ModuleDef) {
-        for def in &module.defs {
-            self.visit_definition(def);
+        for def in &module.definitions {
+            self.visit_item(def);
         }
     }
 

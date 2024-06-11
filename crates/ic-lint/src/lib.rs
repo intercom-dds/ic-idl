@@ -29,7 +29,7 @@
 #![allow(clippy::new_ret_no_self)]
 
 use ic_diagnostic::Diag;
-use ic_syntax::Definition;
+use ic_syntax::Item;
 
 mod annotation;
 mod pedantic;
@@ -81,7 +81,7 @@ pub trait Lint {
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
-    fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag>;
+    fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag>;
 }
 
 #[derive(Debug)]
@@ -94,7 +94,7 @@ pub struct Report {
 /// Lints that operate on the AST are mostly syntactic. Other lints that
 /// require more in-depth semantic analysis is typically done on the HIR with
 /// [`lint_hir`].
-pub fn lint_syntax(tree: &[Definition]) -> Report {
+pub fn lint_syntax(tree: &[Item]) -> Report {
     let mut diagnostics = vec![];
 
     for lint in LINTS {

@@ -78,8 +78,9 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_alloc::interner::Interner;
-use ic_syntax::Definition;
-use lexer::{Kind, Span, Token};
+use ic_cli::color::Colorize;
+use ic_syntax::{Item, Span};
+use lexer::{Kind, Token};
 
 pub mod lexer;
 pub mod source;
@@ -89,7 +90,7 @@ mod parser;
 #[derive(Debug)]
 pub struct ParseResult {
     pub interner: Interner,
-    pub tree: Vec<Definition>,
+    pub tree: Vec<Item>,
 }
 
 #[derive(Clone, Debug)]

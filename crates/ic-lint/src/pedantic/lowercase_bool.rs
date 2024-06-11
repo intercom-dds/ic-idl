@@ -33,8 +33,8 @@ pub struct LowercaseBool<'a>(&'a str);
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
     fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
-        if let ic_syntax::LitKind::Bool = &num.kind {
-            let range = num.span.start..num.span.start;
+        if let ic_syntax::LitKind::LitBool = &num.kind {
+            let range = num.span.start as usize..num.span.start as usize;
             if let Some(span) = self.0.get(range) {
                 if span.chars().any(char::is_lowercase) {
                     eprintln!(

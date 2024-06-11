@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Diag;
 use ic_syntax::visit::Visitor;
-use ic_syntax::Definition;
+use ic_syntax::Item;
 
 use crate::{Category, Lint};
 
@@ -36,7 +36,7 @@ pub struct AsciiIdent<'a>(&'a str);
 
 impl<'a, 'b> Visitor<'a> for AsciiIdent<'b> {
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
-        let str = &self.0[ident.span.start..ident.span.end];
+        let str = &self.0[ident.span.start as usize..ident.span.end as usize];
         let invalid = str.chars().any(|v| !v.is_ascii_alphanumeric() && v != '_');
         assert!(!invalid, "identifiers must be alphanumeric");
     }
@@ -54,7 +54,7 @@ impl Lint for AsciiIdent<'_> {
         Category::Syntax
     }
 
-    fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag> {
+    fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
         vec![]
     }
 }

@@ -36,13 +36,13 @@ use std::rc::Rc;
 use ic_alloc::arena::{Arena, Id};
 use ic_alloc::interner::{Interner, SymbolId};
 use ic_macros::EnumIter;
-use ic_syntax::{Definition, Expr, Ident, Span};
+use ic_syntax::{Expr, Ident, Item, Span};
 
 // mod annotation;
 pub mod keywords;
 pub mod visit;
 
-mod downcast;
+// mod downcast;
 
 // TODO: some id that identifies the source file this belongs to
 pub type NodeId = ic_alloc::arena::Id<Type>;
@@ -229,7 +229,8 @@ pub enum Scope {
 
 impl Typedef {
     pub fn name(&self) -> &str {
-        self.state.str(self.ident.name)
+        todo!()
+        // self.state.str(self.ident.name)
     }
 
     pub fn ty(&self) -> &Type {

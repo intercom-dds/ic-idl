@@ -35,6 +35,14 @@ union Item;
 
 union Expr;
 
+struct EnumDef;
+
+struct BitmaskDef;
+
+struct ConstDef;
+
+struct Field;
+
 @nested
 struct Span {
     /// Byte offset to the start of the span.
@@ -59,9 +67,18 @@ struct Path {
     sequence<Ident> segments;
 };
 
+enum LitKind {
+    LIT_BOOL,
+    LIT_INT,
+    LIT_FLOAT,
+    LIT_CHAR,
+    LIT_STRING
+};
+
 @nested
 struct Literal {
     Span span;
+    LitKind kind;
 };
 
 enum OpKind {
@@ -74,7 +91,7 @@ enum OpKind {
 
     // Bitwise operations
     OP_LSHIFT,
-    OP_RShift,
+    OP_RSHIFT,
     OP_OR,
     OP_XOR,
     OP_AND,
@@ -93,7 +110,7 @@ struct Op {
 @nested
 struct Unary {
     Op op;
-    @external Expr expr;
+    Expr expr;
 };
 
 enum ExprKind {
@@ -115,9 +132,9 @@ enum ExprKind {
 
 @nested
 struct Binary {
-    @external Expr lhs;
+    Expr lhs;
     Op op;
-    @external Expr rhs;
+    Expr rhs;
 };
 
 @nested
@@ -127,9 +144,9 @@ case EXPR_LITERAL:
 case EXPR_PATH:
     Path path;
 case EXPR_UNARY:
-    Unary unary;
+    @external Unary unary;
 case EXPR_BINARY:
-    Binary binary;
+    @external Binary binary;
 case EXPR_INIT_LIST:
     sequence<Expr> init_list;
 };
@@ -151,7 +168,7 @@ struct ArrayDeclarator {
 @nested
 union Declarator switch(DeclaratorKind) {
 case DECLARATOR_SIMPLE:
-    Ident ident;
+    Ident simple;
 case DECLARATOR_ARRAY:
     ArrayDeclarator array;
 };
@@ -199,9 +216,28 @@ struct Stmt {
     sequence<AnnotationAppl> annotations;
 };
 
+enum AnnotationFieldKind {
+    FIELD_ENUM,
+    FIELD_BITMASK,
+    FIELD_CONST,
+    FIELD_ARG
+};
+
+@nested
+union AnnotationField switch(AnnotationFieldKind) {
+case FIELD_ENUM:
+    @external EnumDef _enum;
+case FIELD_BITMASK:
+    @external BitmaskDef _bitmask;
+case FIELD_CONST:
+    @external ConstDef _const;
+case FIELD_ARG:
+    @external Field arg;
+};
+
 @nested
 struct AnnotationDef : Stmt {
-    // sequence<AnnotationField> params;
+    sequence<AnnotationField> params;
 };
 
 @nested
@@ -212,7 +248,7 @@ struct ModuleDef : Stmt {
 @nested
 struct Field {
     sequence<Declarator> names;
-    @external Type ty;
+    Type ty;
 };
 
 @nested
@@ -224,8 +260,11 @@ struct StructDef : Stmt {
 @nested
 struct Discriminator {
     sequence<AnnotationAppl> annotations;
-    @external Type ty;
+    Type ty;
 };
+
+@nested
+struct Empty {};
 
 enum UnionCaseLabel {
     LABEL_CASE,
@@ -235,9 +274,9 @@ enum UnionCaseLabel {
 @nested
 union Label switch(UnionCaseLabel) {
 case LABEL_CASE:
-    Expr expr;
+    Expr _case;
 case LABEL_DEFAULT:
-    null;
+    Empty _default;
 };
 
 enum UnionElementKind {
@@ -259,9 +298,9 @@ struct UnionNull {
 @nested
 union UnionElement switch(UnionElementKind) {
 case ELEMENT_MEMBER:
-    Expr expr;
+    UnionMember member;
 case ELEMENT_NULL:
-    null;
+    UnionNull _null;
 };
 
 @nested
@@ -287,7 +326,7 @@ struct UnionDef : Stmt {
 @nested
 struct ConstDef : Stmt {
     Expr value;
-    @external Type ty;
+    Type ty;
 };
 
 @nested
@@ -303,7 +342,6 @@ struct Enumerator {
 @nested
 struct EnumDef : Stmt {
     sequence<Enumerator> fields;
-    @optional Expr value;
 };
 
 @nested
@@ -317,7 +355,7 @@ struct Typedef : Stmt {
     sequence<Declarator> decl;
 
     /// The underlying type of the typedef.
-    @external Type ty;
+    Type ty;
 };
 
 @nested
@@ -337,6 +375,7 @@ struct Bitfield : Stmt {
 
 @nested
 struct BitsetDef : Stmt {
+    @optional Path parent;
     sequence<Bitfield> fields;
 };
 
@@ -346,7 +385,7 @@ struct Attribute {
     Ident name;
 
     /// The type of the attribute.
-    @external Type ty;
+    Type ty;
 
     /// Indicates whether this attribute was marked as `readonly`, and if
     /// so, the span of the keyword.
@@ -370,7 +409,7 @@ struct Param {
     Ident name;
 
     /// Type of the parameter.
-    @external Type ty;
+    Type ty;
 
     /// Specifies whether this is an `in`, `out`, or `inout` parameter.
     @optional ParamKind kind;
@@ -394,7 +433,7 @@ struct InterfaceDef : Stmt {
 @nested
 struct ValueMember {
     Ident name;
-    @external Type ty;
+    Type ty;
     @optional Span _public;
 };
 
@@ -547,23 +586,23 @@ enum TypeKind {
 union Type switch(TypeKind) {
 case TYPE_ANY:
     /// The `any` type.
-    AnyType any_type;
+    AnyType _any;
 
 case TYPE_SEQUENCE:
     /// Sequence of another type, e.g. `sequence<string>`.
-    SequenceType sequence_type;
+    SequenceType _sequence;
 
 case TYPE_STRING:
     /// A possibly bounded string.
-    StringType string_type;
+    StringType _string;
 
 case TYPE_MAP:
     /// (key, value) pair of types, e.g. `map<string, string>`.
-    MapType map_type;
+    MapType _map;
 
 case TYPE_FIXED:
     /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
-    FixedType fixed_type;
+    FixedType _fixed;
 
 case TYPE_PATH:
     /// A possibly qualified identifier of a type, e.g. `foo::Bar`.

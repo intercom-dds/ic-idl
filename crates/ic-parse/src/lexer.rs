@@ -35,7 +35,7 @@ use ic_alloc::interner::{Interner, SymbolId};
 use logos::{Lexer, Logos};
 
 /// All tokens recognized by the lexer.
-#[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Logos, Clone, Debug, PartialEq, Eq, Hash)]
 #[logos(skip r"[ \t\r\n\f]+")]
 #[logos(skip r"//[^@][^\r\n]*")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
@@ -277,8 +277,8 @@ pub enum Kind {
     AnnotationAppl,
 
     /// A valid UAX#31 identifier.
-    #[regex("(?&ident)", to_interned)]
-    Ident(SymbolId),
+    #[regex("(?&ident)", to_owned)]
+    Ident(String),
 
     /// Any single UTF-8 character surrounded by single quotes.
     #[regex(r"L?'(?:\\.|[^\\'])?'", to_char)]
@@ -391,6 +391,10 @@ fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
 fn to_interned(lex: &mut Lexer<Kind>) -> SymbolId {
     let slice = lex.slice();
     lex.extras.interner.insert(slice)
+}
+
+fn to_owned(lex: &mut Lexer<Kind>) -> String {
+    lex.slice().to_string()
 }
 
 /// Context used by the lexer to store additional information.

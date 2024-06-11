@@ -29,12 +29,12 @@
 
 use chumsky::prelude::*;
 use chumsky::Parser;
-use ic_alloc::ptr::P;
 use ic_syntax::{
-    AnnotationDef, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, DeclKind, Declarator,
-    Definition, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Fixed, Ident,
-    InterfaceDef, Item, Label, LitKind, Literal, ModuleDef, Op, OpKind, Path, Span, StructDef,
-    Type, Typedef, UnionDef, UnionElement, UnionField, ValuetypeDef,
+    AnnotationDef, AnyType, ArrayDeclarator, Binary, Bit, Bitfield, BitmaskDef, BitsetDef,
+    ConstDef, DeclKind, Declarator, Discriminator, Empty, EnumDef, Enumerator, ExceptDef, Expr,
+    Field, Fixed, FixedType, Ident, InterfaceDef, Item, Label, LitKind, Literal, MapType,
+    ModuleDef, Op, OpKind, Path, SequenceType, Span, StringType, StructDef, Type, Typedef, Unary,
+    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
 };
 
 use crate::lexer::Kind;
@@ -52,7 +52,10 @@ impl<T, U: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone> IdlParser<T> 
 fn ident() -> impl IdlParser<Ident> {
     let ident = select! { Kind::Ident(v) => v };
     ident
-        .map_with_span(|name, span| Ident { name, span })
+        .map_with_span(|name, span: std::ops::Range<usize>| Ident {
+            name,
+            span: span.into(),
+        })
         .labelled("identifier")
 }
 
@@ -77,20 +80,20 @@ fn string_literal() -> impl IdlParser<Kind> {
 }
 
 fn lshift() -> impl IdlParser<Op> {
-    just([Kind::Less, Kind::Less])
-        .labelled("<<")
-        .map_with_span(|_, span| Op {
-            span,
-            kind: OpKind::LShift,
-        })
+    just([Kind::Less, Kind::Less]).labelled("<<").map_with_span(
+        |_, span: std::ops::Range<usize>| Op {
+            span: span.into(),
+            kind: OpKind::OpLshift,
+        },
+    )
 }
 
 fn rshift() -> impl IdlParser<Op> {
     just([Kind::Greater, Kind::Greater])
         .labelled(">>")
-        .map_with_span(|_, span| Op {
-            span,
-            kind: OpKind::RShift,
+        .map_with_span(|_, span: std::ops::Range<usize>| Op {
+            span: span.into(),
+            kind: OpKind::OpRshift,
         })
 }
 
@@ -101,12 +104,12 @@ fn bound() -> impl IdlParser<Option<Expr>> {
 
 // Rule 1
 #[must_use]
-pub fn specification() -> impl IdlParser<Vec<Definition>> {
+pub fn specification() -> impl IdlParser<Vec<Item>> {
     definition().repeated().then_ignore(end())
 }
 
 // Rule 2 with the rule 71 and 218 extensions
-fn definition() -> impl IdlParser<Definition> {
+fn definition() -> impl IdlParser<Item> {
     // Semicolons are not checked here. This is a PEG parser, so it picks the
     // first rule that matches. To prevent "struct Foo {};" from matching with
     // `struct_forward_dcl`, we need to include terminator in the rule.
@@ -129,9 +132,7 @@ fn definition() -> impl IdlParser<Definition> {
 }
 
 // Rule 3
-fn module_dcl(
-    state: Recursive<'_, Kind, Definition, Simple<Kind>>,
-) -> impl IdlParser<Definition> + '_ {
+fn module_dcl(state: Recursive<'_, Kind, Item, Simple<Kind>>) -> impl IdlParser<Item> + '_ {
     let items = state
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -142,7 +143,7 @@ fn module_dcl(
         .labelled("module definition")
         .then_ignore(just(Kind::Semi));
 
-    module_def.map_with_span(|v, span| ModuleDef::new(v.0, v.1, span))
+    module_def.map_with_span(|v, span| Item::def_module(v.0, v.1, span))
 }
 
 // Rule 4
@@ -152,13 +153,13 @@ fn scoped_name() -> impl IdlParser<Path> {
     let path = leading.then(ident().separated_by(just(Kind::DColon)).at_least(1));
 
     path.map(|(leading_colons, segments)| Path {
-        leading_colons,
+        leading_colons: leading_colons.map(|v| v.into()),
         segments,
     })
 }
 
 // Rule 5
-fn const_dcl() -> impl IdlParser<Definition> {
+fn const_dcl() -> impl IdlParser<Item> {
     let def = just(Kind::Const)
         .ignore_then(const_type())
         .then(ident())
@@ -167,7 +168,7 @@ fn const_dcl() -> impl IdlParser<Definition> {
         .then_ignore(just(Kind::Semi))
         .labelled("const declaration");
 
-    def.map_with_span(|((ty, name), val), span| ConstDef::new(name, ty, val, span))
+    def.map_with_span(|((ty, name), val), span| Item::def_const(name, ty, val, span))
 }
 
 // InterCOM extension for complex constants
@@ -200,9 +201,9 @@ fn const_expr() -> impl IdlParser<Expr> {
         let nested = primary.parenthesized();
 
         let lit = literal().map_with_span(|v, span| {
-            Expr::Lit(Literal {
-                kind: LitKind::Int,
-                span,
+            Expr::Literal(Literal {
+                kind: LitKind::LitInt,
+                span: span.into(),
             })
         });
         let scoped = scoped_name().map(Expr::Path);
@@ -215,9 +216,9 @@ fn const_expr() -> impl IdlParser<Expr> {
         let expr = binary_op(
             expr,
             choice((
-                operator(Kind::Star, OpKind::Multiply),
-                operator(Kind::Slash, OpKind::Divide),
-                operator(Kind::Modulo, OpKind::Modulo),
+                operator(Kind::Star, OpKind::OpMultiply),
+                operator(Kind::Slash, OpKind::OpDivide),
+                operator(Kind::Modulo, OpKind::OpModulo),
             )),
         );
 
@@ -225,8 +226,8 @@ fn const_expr() -> impl IdlParser<Expr> {
         let expr = binary_op(
             expr,
             choice((
-                operator(Kind::Plus, OpKind::Add),
-                operator(Kind::Minus, OpKind::Sub),
+                operator(Kind::Plus, OpKind::OpAdd),
+                operator(Kind::Minus, OpKind::OpSub),
             )),
         );
 
@@ -234,26 +235,29 @@ fn const_expr() -> impl IdlParser<Expr> {
         let expr = binary_op(expr, choice((lshift(), rshift())));
 
         // Rule 10: Bitwise AND
-        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::Add));
+        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::OpAnd));
 
         // Rule 9: Bitwise XOR
-        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::Xor));
+        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::OpXor));
 
         // Rule 8: Bitwise OR
-        binary_op(expr, operator(Kind::BitOr, OpKind::Or))
+        binary_op(expr, operator(Kind::BitOr, OpKind::OpOr))
     })
 }
 
 fn to_unary((op, expr): (Option<Op>, Expr)) -> Expr {
     if let Some(op) = op {
-        Expr::Unary { op, expr: P(expr) }
+        Expr::Unary(Box::new(Unary { op, expr }))
     } else {
         expr
     }
 }
 
 fn operator(from: Kind, to: OpKind) -> impl IdlParser<Op> {
-    just(from).map_with_span(move |_, span| Op { span, kind: to })
+    just(from).map_with_span(move |_, span: std::ops::Range<usize>| Op {
+        span: span.into(),
+        kind: to,
+    })
 }
 
 fn binary_op<'a, T, Oper>(expr: T, op: Oper) -> impl IdlParser<Expr> + 'a
@@ -265,20 +269,16 @@ where
 
     expr.clone()
         .then(op.then(expr).repeated())
-        .foldl(|lhs, (op, rhs)| Expr::Binary {
-            lhs: P(lhs),
-            op,
-            rhs: P(rhs),
-        })
+        .foldl(|lhs, (op, rhs)| Expr::Binary(Box::new(Binary { lhs, op, rhs })))
         .boxed()
 }
 
 // Rule 15
 fn unary_operator() -> impl IdlParser<Op> {
     choice((
-        operator(Kind::Minus, OpKind::Sub),
-        operator(Kind::Plus, OpKind::Add),
-        operator(Kind::Tilde, OpKind::Not),
+        operator(Kind::Minus, OpKind::OpSub),
+        operator(Kind::Plus, OpKind::OpAdd),
+        operator(Kind::Tilde, OpKind::OpNot),
     ))
 }
 
@@ -304,7 +304,7 @@ fn positive_int_const() -> impl IdlParser<Expr> {
 }
 
 // Rule 20
-fn type_dcl() -> impl IdlParser<Definition> {
+fn type_dcl() -> impl IdlParser<Item> {
     choice((
         constr_type_dcl(),
         typedef_dcl(),
@@ -361,10 +361,12 @@ fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlPars
         .delimited_by(just(Kind::Less), just(Kind::Greater));
 
     let seq = just(Kind::Sequence).ignore_then(inner);
-    seq.map_with_span(|(elem, bound), span| Type::Sequence {
-        ty: P(elem),
-        bound,
-        span,
+    seq.map_with_span(|(elem, bound), span| {
+        Type::Sequence(SequenceType {
+            ty: Box::new(elem),
+            bound,
+            span: span.into(),
+        })
     })
 }
 
@@ -376,10 +378,12 @@ fn string_type() -> impl IdlParser<Type> {
 
     just(Kind::String)
         .ignore_then(bound)
-        .map_with_span(|bound, span| Type::String {
-            wide: false,
-            bound,
-            span,
+        .map_with_span(|bound, span| {
+            Type::String_(StringType {
+                wide: false,
+                bound,
+                span: span.into(),
+            })
         })
 }
 
@@ -391,10 +395,12 @@ fn wide_string_type() -> impl IdlParser<Type> {
 
     just(Kind::WString)
         .ignore_then(bound)
-        .map_with_span(|bound, span| Type::String {
-            wide: true,
-            bound,
-            span,
+        .map_with_span(|bound, span| {
+            Type::String_(StringType {
+                wide: true,
+                bound,
+                span: span.into(),
+            })
         })
 }
 
@@ -407,32 +413,39 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
 
     just(Kind::Fixed)
         .ignore_then(body)
-        .map_with_span(|(tot, frac), span| Type::Fixed {
-            span,
-            bounds: Some(Fixed {
-                total: tot,
-                fractional: frac,
-            }),
+        .map_with_span(|(tot, frac), span| {
+            Type::Fixed(FixedType {
+                span: span.into(),
+                bounds: Some(Fixed {
+                    total: tot,
+                    fractional: frac,
+                }),
+            })
         })
 }
 
 // Rule 43
 fn fixed_pt_const_type() -> impl IdlParser<Type> {
-    just(Kind::Fixed).map_with_span(|_, span| Type::Fixed { span, bounds: None })
+    just(Kind::Fixed).map_with_span(|_, span: std::ops::Range<usize>| {
+        Type::Fixed(FixedType {
+            span: span.into(),
+            bounds: None,
+        })
+    })
 }
 
 // Rule 44
-fn constr_type_dcl() -> impl IdlParser<Definition> {
+fn constr_type_dcl() -> impl IdlParser<Item> {
     choice((struct_dcl(), union_dcl(), enum_dcl()))
 }
 
 // Rule 45
-fn struct_dcl() -> impl IdlParser<Definition> {
+fn struct_dcl() -> impl IdlParser<Item> {
     choice((struct_forward_dcl(), struct_def()))
 }
 
 // Rule 46
-fn struct_def() -> impl IdlParser<Definition> {
+fn struct_def() -> impl IdlParser<Item> {
     let fields = member()
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
@@ -451,7 +464,7 @@ fn struct_def() -> impl IdlParser<Definition> {
         .then(struct_def)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|v, span| StructDef::new(v.1.0.0, v.1.1, None, span))
+    def.map_with_span(|v, span| Item::def_struct(v.1.0.0, v.1.1, None, span))
 }
 
 // Rule 47
@@ -465,22 +478,24 @@ fn member() -> impl IdlParser<Field> {
 }
 
 // Rule 48
-fn struct_forward_dcl() -> impl IdlParser<Definition> {
+fn struct_forward_dcl() -> impl IdlParser<Item> {
     let decl = just(Kind::Struct)
         .ignore_then(ident())
         .labelled("struct declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|name, span| Item::decl(Declarator::Simple(name), DeclKind::Struct, span))
+    decl.map_with_span(|name, span| {
+        Item::decl(Declarator::Simple(name), DeclKind::DeclStruct, span)
+    })
 }
 
 // Rule 49
-fn union_dcl() -> impl IdlParser<Definition> {
+fn union_dcl() -> impl IdlParser<Item> {
     choice((union_def(), union_forward_dcl()))
 }
 
 // Rule 50
-fn union_def() -> impl IdlParser<Definition> {
+fn union_def() -> impl IdlParser<Item> {
     // `switch(foo)`
     let disc = just(Kind::Switch)
         .ignore_then(switch_type_spec().parenthesized())
@@ -498,7 +513,7 @@ fn union_def() -> impl IdlParser<Definition> {
         .then(body)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|((ident, disc), cases), span| UnionDef::new(ident, disc, cases, span))
+    def.map_with_span(|((ident, disc), cases), span| Item::def_union(ident, disc, cases, span))
 }
 
 // Rule 51
@@ -526,12 +541,12 @@ fn case() -> impl IdlParser<UnionField> {
 fn case_label() -> impl IdlParser<Label> {
     let case = just(Kind::Case)
         .ignore_then(const_expr())
-        .map(|expr| Label::Case { expr })
+        .map(|expr| Label::Case(expr))
         .labelled("case label")
         .then_ignore(just(Kind::Colon));
 
     let default = just(Kind::Default)
-        .map(|_| Label::Default)
+        .map(|_| Label::Default(Empty {}))
         .labelled("default label")
         .then_ignore(just(Kind::Colon));
 
@@ -543,28 +558,35 @@ fn element_spec() -> impl IdlParser<UnionElement> {
     // InterCOM extension that lets you define an "empty" member.
     let null = just(Kind::Null)
         .then_ignore(just(Kind::Semi))
-        .map_with_span(|_, span| UnionElement::Null { span });
+        .map_with_span(|_, span: std::ops::Range<usize>| {
+            UnionElement::Null(UnionNull { span: span.into() })
+        });
 
     let ty = type_spec()
         .then(declarator())
         .then_ignore(just(Kind::Semi))
-        .map(|(ty, decl)| UnionElement::Member { ty, decl });
+        .map(|(ty, decl)| {
+            UnionElement::Member(UnionMember {
+                ty: Box::new(ty),
+                decl,
+            })
+        });
 
     choice((ty, null))
 }
 
 // Rule 56
-fn union_forward_dcl() -> impl IdlParser<Definition> {
+fn union_forward_dcl() -> impl IdlParser<Item> {
     let decl = just(Kind::Union)
         .ignore_then(ident())
         .labelled("union declaration")
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|name, span| Item::decl(Declarator::Simple(name), DeclKind::Union, span))
+    decl.map_with_span(|name, span| Item::decl(Declarator::Simple(name), DeclKind::DeclUnion, span))
 }
 
 // Rule 57
-fn enum_dcl() -> impl IdlParser<Definition> {
+fn enum_dcl() -> impl IdlParser<Item> {
     let enumerators = enumerator()
         .separated_by(just(Kind::Comma))
         .allow_trailing()
@@ -576,18 +598,20 @@ fn enum_dcl() -> impl IdlParser<Definition> {
         .labelled("enum")
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(name, fields), span| EnumDef::new(name, fields, span))
+    def.map_with_span(|(name, fields), span| Item::def_enum(name, fields, span))
 }
 
 // Rule 58
 fn enumerator() -> impl IdlParser<Enumerator> {
     // Grammar extension for `MY_ENUMERATOR = 1`
     let value = just(Kind::Eq).ignore_then(const_expr()).or_not();
+    let def = ident().then(value).labelled("enumerator");
 
-    ident()
-        .then(value)
-        .map_with_span(|(name, value), span| Enumerator::new(name, value, span))
-        .labelled("enumerator")
+    def.map(|(name, value)| Enumerator {
+        name,
+        value,
+        annotations: vec![],
+    })
 }
 
 // Rule 59
@@ -595,7 +619,7 @@ fn array_declarator() -> impl IdlParser<Declarator> {
     let bounds = fixed_array_size().repeated().at_least(1);
     ident()
         .then(bounds)
-        .map(|(ident, bounds)| Declarator::Array { ident, bounds })
+        .map(|(ident, bounds)| Declarator::Array(ArrayDeclarator { ident, bounds }))
 }
 
 // Rule 60
@@ -604,10 +628,10 @@ fn fixed_array_size() -> impl IdlParser<Expr> {
 }
 
 // Rule 61
-fn native_dcl() -> impl IdlParser<Definition> {
+fn native_dcl() -> impl IdlParser<Item> {
     just(Kind::Native)
         .ignore_then(simple_declarator())
-        .map_with_span(|name, span| Item::decl(name, DeclKind::Native, span))
+        .map_with_span(|name, span| Item::decl(name, DeclKind::DeclNative, span))
 }
 
 // Rule 62
@@ -616,12 +640,12 @@ fn simple_declarator() -> impl IdlParser<Declarator> {
 }
 
 // Rule 63
-fn typedef_dcl() -> impl IdlParser<Definition> {
+fn typedef_dcl() -> impl IdlParser<Item> {
     let def = just(Kind::Typedef)
         .ignore_then(type_declarator())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ty, _), span| Typedef::new(Ident::default(), ty, span))
+    def.map_with_span(|(ty, _), span| Item::typedef(Ident::default(), ty, span))
 }
 
 // Rule 64
@@ -654,11 +678,12 @@ fn declarator() -> impl IdlParser<Declarator> {
 
 // Rule 70
 fn any_type() -> impl IdlParser<Type> {
-    just(Kind::Any).map_with_span(|_, span| Type::Any { span })
+    just(Kind::Any)
+        .map_with_span(|_, span: std::ops::Range<usize>| Type::Any(AnyType { span: span.into() }))
 }
 
 // Rule 72
-fn except_dcl() -> impl IdlParser<Definition> {
+fn except_dcl() -> impl IdlParser<Item> {
     let body = member()
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -666,32 +691,32 @@ fn except_dcl() -> impl IdlParser<Definition> {
     just(Kind::Exception)
         .ignore_then(ident())
         .then(body)
-        .map_with_span(|(i, mem), span| ExceptDef::new(i, mem, span))
+        .map_with_span(|(i, mem), span| Item::def_exception(i, mem, span))
 }
 
 // Rule 73
-fn interface_dcl() -> impl IdlParser<Definition> {
+fn interface_dcl() -> impl IdlParser<Item> {
     choice((interface_def(), interface_forward_dcl()))
 }
 
 // Rule 74
-fn interface_def() -> impl IdlParser<Definition> {
+fn interface_def() -> impl IdlParser<Item> {
     let body = interface_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
     let def = interface_header().then(body).then_ignore(just(Kind::Semi));
 
     def.map_with_span(|((((local, _), name), inherits), _), span| {
-        InterfaceDef::new(name, local, inherits, vec![], span)
+        Item::interface(name, local, inherits, vec![], span)
     })
 }
 
 // Rule 75
-fn interface_forward_dcl() -> impl IdlParser<Definition> {
+fn interface_forward_dcl() -> impl IdlParser<Item> {
     let def = interface_kind()
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
     def.map_with_span(|ident, span| {
-        Definition::decl(Declarator::Simple(ident), DeclKind::Interface, span)
+        Item::decl(Declarator::Simple(ident), DeclKind::DeclInterface, span)
     })
 }
 
@@ -707,7 +732,7 @@ fn interface_header() -> impl IdlParser<(((Option<Span>, Kind), Ident), Vec<Path
 // Rule 77 with the rule 121 extension
 fn interface_kind() -> impl IdlParser<(Option<Span>, Kind)> {
     just(Kind::Local)
-        .map_with_span(|_, span| span)
+        .map_with_span(|_, span| Span::from(span))
         .or_not()
         .then(just(Kind::Interface))
 }
@@ -863,12 +888,12 @@ fn exception_list() -> impl IdlParser<()> {
 }
 
 // Rule 99
-fn value_dcl() -> impl IdlParser<Definition> {
+fn value_dcl() -> impl IdlParser<Item> {
     choice((value_forward_dcl(), value_def()))
 }
 
 // Rule 100
-fn value_def() -> impl IdlParser<Definition> {
+fn value_def() -> impl IdlParser<Item> {
     let body = value_element()
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -876,7 +901,7 @@ fn value_def() -> impl IdlParser<Definition> {
     let def = value_header().then(body).then_ignore(just(Kind::Semi));
 
     def.map_with_span(|((ident, (inherits, supports)), _), span| {
-        ValuetypeDef::new(ident, vec![], inherits, supports, span)
+        Item::valuetype(ident, vec![], inherits, supports, span)
     })
 }
 
@@ -945,13 +970,13 @@ fn init_param_dcl() -> impl IdlParser<()> {
 }
 
 // Rule 110
-fn value_forward_dcl() -> impl IdlParser<Definition> {
+fn value_forward_dcl() -> impl IdlParser<Item> {
     let def = value_kind()
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
     def.map_with_span(|name, span| {
-        Definition::decl(Declarator::Simple(name), DeclKind::Valuetype, span)
+        Item::decl(Declarator::Simple(name), DeclKind::DeclValuetype, span)
     })
 }
 
@@ -988,16 +1013,18 @@ fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Ty
     let def =
         just(Kind::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
 
-    def.map_with_span(|((key, value), bound), span| Type::Map {
-        key: P(key),
-        value: P(value),
-        bound,
-        span,
+    def.map_with_span(|((key, value), bound), span| {
+        Type::Map(MapType {
+            key: Box::new(key),
+            value: Box::new(value),
+            bound,
+            span: span.into(),
+        })
     })
 }
 
 // Rule 200
-fn bitset_dcl() -> impl IdlParser<Definition> {
+fn bitset_dcl() -> impl IdlParser<Item> {
     let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
 
     let body = bitfield()
@@ -1010,18 +1037,17 @@ fn bitset_dcl() -> impl IdlParser<Definition> {
         .then(body)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|((ident, parent), fields), span| BitsetDef::new(ident, parent, fields, span))
+    def.map_with_span(|((ident, parent), fields), span| Item::bitset(ident, parent, fields, span))
 }
 
 // Rule 201
 fn bitfield() -> impl IdlParser<Bitfield> {
     let def = bitfield_spec().then(ident()).then_ignore(just(Kind::Semi));
-    def.map_with_span(|((size, ty), name), span| Bitfield {
+    def.map_with_span(|((size, _ty), name), span| Bitfield {
         annotations: vec![],
         name,
-        ty,
         size,
-        span,
+        span: span.into(),
     })
 }
 
@@ -1041,7 +1067,7 @@ fn destination_type() -> impl IdlParser<Ident> {
 }
 
 // Rule 204
-fn bitmask_dcl() -> impl IdlParser<Definition> {
+fn bitmask_dcl() -> impl IdlParser<Item> {
     let body = bit_value()
         .separated_by(just(Kind::Comma))
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -1051,7 +1077,7 @@ fn bitmask_dcl() -> impl IdlParser<Definition> {
         .then(body)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(name, flags), span| BitmaskDef::new(name, flags, span))
+    def.map_with_span(|(name, flags), span| Item::bitmask(name, flags, span))
 }
 
 // Rule 205
@@ -1061,18 +1087,18 @@ fn bit_value() -> impl IdlParser<Bit> {
         name,
         annotations: vec![],
         value,
-        span,
+        span: span.into(),
     })
 }
 
 // Rule 219
-fn annotation_dcl() -> impl IdlParser<Definition> {
+fn annotation_dcl() -> impl IdlParser<Item> {
     let params = annotation_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
     let def = annotation_header()
         .then(params)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(i, _), span| AnnotationDef::new(i, vec![], span))
+    def.map_with_span(|(i, _), span| Item::def_annotation(i, vec![], span))
 }
 
 // Rule 220

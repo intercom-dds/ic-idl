@@ -25,26 +25,24 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_alloc::interner::Interner;
-
 use crate::{Path, Type};
 
-pub fn path_name(interner: &Interner, path: &Path) -> String {
+pub fn path_name(path: &Path) -> String {
     let mut segments = vec![];
     if path.leading_colons.is_some() {
         segments.push("::");
     }
-    segments.extend(path.segments.iter().filter_map(|v| interner.get(v.name)));
+    segments.extend(path.segments.iter().map(|v| v.name.as_str()));
     segments.join("::")
 }
 
-pub fn type_name(interner: &Interner, path: &Type) -> String {
+pub fn type_name(path: &Type) -> String {
     match path {
-        Type::Any { .. } => "any".to_string(),
-        Type::String { .. } => "string".to_string(),
-        Type::Map { .. } => "map".to_string(),
-        Type::Fixed { .. } => "fixed".to_string(),
-        Type::Sequence { ty, .. } => format!("sequence<{}>", type_name(interner, &*ty)),
-        Type::Path(ty) => path_name(interner, &*ty),
+        Type::Any(..) => "any".to_string(),
+        Type::String_(..) => "string".to_string(),
+        Type::Map(..) => "map".to_string(),
+        Type::Fixed(..) => "fixed".to_string(),
+        Type::Sequence(seq) => format!("sequence<{}>", type_name(seq.ty.as_ref())),
+        Type::Path(ty) => path_name(ty),
     }
 }

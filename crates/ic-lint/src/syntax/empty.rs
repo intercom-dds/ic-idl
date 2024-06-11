@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Diag;
 use ic_syntax::visit::Visitor;
-use ic_syntax::Definition;
+use ic_syntax::Item;
 
 use crate::{Category, Lint};
 
@@ -49,7 +49,7 @@ impl Lint for EmptyTypes {
         Category::Pedantic
     }
 
-    fn check(self: Box<Self>, ast: &[Definition]) -> Vec<Diag> {
+    fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
         vec![]
     }
 }

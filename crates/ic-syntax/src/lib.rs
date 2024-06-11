@@ -233,16 +233,25 @@ pub enum Type {
     Any { span: Span },
 
     /// Sequence of another type, e.g. `sequence<string>`.
-    Sequence { ty: P<Type>, bound: Option<Expr> },
+    Sequence {
+        ty: P<Type>,
+        bound: Option<Expr>,
+        span: Span,
+    },
 
     /// A possibly bounded string.
-    String { wide: bool, bound: Option<Expr> },
+    String {
+        wide: bool,
+        bound: Option<Expr>,
+        span: Span,
+    },
 
     /// (key, value) pair of types, e.g. `map<string, string>`.
     Map {
         key: P<Type>,
         value: P<Type>,
         bound: Option<Expr>,
+        span: Span,
     },
 
     /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.

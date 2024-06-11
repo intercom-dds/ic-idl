@@ -361,7 +361,11 @@ fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlPars
         .delimited_by(just(Kind::Less), just(Kind::Greater));
 
     let seq = just(Kind::Sequence).ignore_then(inner);
-    seq.map(|(elem, bound)| Type::Sequence { ty: P(elem), bound })
+    seq.map_with_span(|(elem, bound), span| Type::Sequence {
+        ty: P(elem),
+        bound,
+        span,
+    })
 }
 
 // Rule 40
@@ -372,7 +376,11 @@ fn string_type() -> impl IdlParser<Type> {
 
     just(Kind::String)
         .ignore_then(bound)
-        .map(|bound| Type::String { wide: false, bound })
+        .map_with_span(|bound, span| Type::String {
+            wide: false,
+            bound,
+            span,
+        })
 }
 
 // Rule 41
@@ -383,7 +391,11 @@ fn wide_string_type() -> impl IdlParser<Type> {
 
     just(Kind::WString)
         .ignore_then(bound)
-        .map(|bound| Type::String { wide: true, bound })
+        .map_with_span(|bound, span| Type::String {
+            wide: true,
+            bound,
+            span,
+        })
 }
 
 // Rule 42
@@ -976,10 +988,11 @@ fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Ty
     let def =
         just(Kind::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
 
-    def.map(|((key, value), bound)| Type::Map {
+    def.map_with_span(|((key, value), bound), span| Type::Map {
         key: P(key),
         value: P(value),
         bound,
+        span,
     })
 }
 

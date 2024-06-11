@@ -1,0 +1,598 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+module ast {
+
+union Type;
+
+union Item;
+
+union Expr;
+
+@nested
+struct Span {
+    /// Byte offset to the start of the span.
+    uint32 start;
+
+    /// Byte offset to the end of the span.
+    uint32 end;
+};
+
+@nested
+struct Ident {
+    /// The actual identifier.
+    string name;
+
+    /// Span of the symbol.
+    Span span;
+};
+
+@nested
+struct Path {
+    @optional Span leading_colons;
+    sequence<Ident> segments;
+};
+
+@nested
+struct Literal {
+    Span span;
+};
+
+enum OpKind {
+    // Arithmetic operations
+    OP_ADD,
+    OP_SUB,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+    OP_MODULO,
+
+    // Bitwise operations
+    OP_LSHIFT,
+    OP_RShift,
+    OP_OR,
+    OP_XOR,
+    OP_AND,
+    OP_NOT
+};
+
+@nested
+struct Op {
+    /// Span of the token.
+    Span span;
+
+    /// The operation kind.
+    OpKind kind;
+};
+
+@nested
+struct Unary {
+    Op op;
+    @external Expr expr;
+};
+
+enum ExprKind {
+    /// A single literal like `1` or `"foo"`
+    EXPR_LITERAL,
+
+    /// A possibly scoped identifier like `foo` or `::foo::bar`
+    EXPR_PATH,
+
+    /// `-a` or `a`
+    EXPR_UNARY,
+
+    /// `a + b`
+    EXPR_BINARY,
+
+    /// Initializer list for complex types, e.g. `{1, 2, {3}}`
+    EXPR_INIT_LIST
+};
+
+@nested
+struct Binary {
+    @external Expr lhs;
+    Op op;
+    @external Expr rhs;
+};
+
+@nested
+union Expr switch(ExprKind) {
+case EXPR_LITERAL:
+    Literal literal;
+case EXPR_PATH:
+    Path path;
+case EXPR_UNARY:
+    Unary unary;
+case EXPR_BINARY:
+    Binary binary;
+case EXPR_INIT_LIST:
+    sequence<Expr> init_list;
+};
+
+enum DeclaratorKind {
+    /// A single, non-qualified identifier.
+    DECLARATOR_SIMPLE,
+
+    /// An array declarator, e.g. `value[3][4][5]`.
+    DECLARATOR_ARRAY
+};
+
+@nested
+struct ArrayDeclarator {
+    Ident ident;
+    sequence<Expr> bounds;
+};
+
+@nested
+union Declarator switch(DeclaratorKind) {
+case DECLARATOR_SIMPLE:
+    Ident ident;
+case DECLARATOR_ARRAY:
+    ArrayDeclarator array;
+};
+
+/// A parameter inside an applied annotation, e.g. `value=true` in
+/// `@optional(value=true)`.
+@nested
+struct AnnotationArg {
+    /// Name of the parameter if one was specified.
+    /// May be omitted for annotations with only a single, non-default member,
+    /// but this is not enforced by the parser.
+    @optional Ident name;
+
+    /// Span of the entire parameter.
+    Span span;
+
+    /// The specified value of the parameter.
+    Expr value;
+};
+
+
+@nested
+struct AnnotationAppl {
+    Ident name;
+    Span span;
+    sequence<AnnotationArg> args;
+};
+
+@nested
+struct Stmt {
+    /// Name and span of the item.
+    Ident name;
+
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    ///
+    /// The span of the above module will start at 'm' and end at '}'.
+    Span span;
+
+    /// Annotations that were applied to this item.
+    sequence<AnnotationAppl> annotations;
+};
+
+@nested
+struct AnnotationDef : Stmt {
+    // sequence<AnnotationField> params;
+};
+
+@nested
+struct ModuleDef : Stmt {
+    sequence<Item> definitions;
+};
+
+@nested
+struct Field {
+    sequence<Declarator> names;
+    @external Type ty;
+};
+
+@nested
+struct StructDef : Stmt {
+    sequence<Field> members;
+    @optional Path parent;
+};
+
+@nested
+struct Discriminator {
+    sequence<AnnotationAppl> annotations;
+    @external Type ty;
+};
+
+enum UnionCaseLabel {
+    LABEL_CASE,
+    LABEL_DEFAULT
+};
+
+@nested
+union Label switch(UnionCaseLabel) {
+case LABEL_CASE:
+    Expr expr;
+case LABEL_DEFAULT:
+    null;
+};
+
+enum UnionElementKind {
+    ELEMENT_MEMBER,
+    ELEMENT_NULL
+};
+
+@nested
+struct UnionMember {
+    @external Type ty;
+    Declarator decl;
+};
+
+@nested
+struct UnionNull {
+    Span span;
+};
+
+@nested
+union UnionElement switch(UnionElementKind) {
+case ELEMENT_MEMBER:
+    Expr expr;
+case ELEMENT_NULL:
+    null;
+};
+
+@nested
+struct UnionField {
+    sequence<AnnotationAppl> annotations;
+
+    /// Case labels that map to this variant.
+    sequence<Label> labels;
+
+    UnionElement field;
+};
+
+@nested
+struct UnionDef : Stmt {
+    /// The discriminator component of the union.
+    Discriminator disc;
+
+    /// All variants of the union. The case labels that map to each variant can
+    /// be found in `UnionField`.
+    sequence<UnionField> fields;
+};
+
+@nested
+struct ConstDef : Stmt {
+    Expr value;
+    @external Type ty;
+};
+
+@nested
+struct Enumerator {
+    Ident name;
+    sequence<AnnotationAppl> annotations;
+
+    /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
+    /// The `@value` annotation will *not* populate this field.
+    @optional Expr value;
+};
+
+@nested
+struct EnumDef : Stmt {
+    sequence<Enumerator> fields;
+    @optional Expr value;
+};
+
+@nested
+struct ExceptDef : Stmt {
+    sequence<Field> members;
+};
+
+@nested
+struct Typedef : Stmt {
+    /// List of all declarators. Always contains at least one declarator.
+    sequence<Declarator> decl;
+
+    /// The underlying type of the typedef.
+    @external Type ty;
+};
+
+@nested
+struct Bit : Stmt {
+    @optional Expr value;
+};
+
+@nested
+struct BitmaskDef : Stmt {
+    sequence<Bit> bits;
+};
+
+@nested
+struct Bitfield : Stmt {
+    Expr size;
+};
+
+@nested
+struct BitsetDef : Stmt {
+    sequence<Bitfield> fields;
+};
+
+@nested
+struct Attribute {
+    /// Name of the attribute.
+    Ident name;
+
+    /// The type of the attribute.
+    @external Type ty;
+
+    /// Indicates whether this attribute was marked as `readonly`, and if
+    /// so, the span of the keyword.
+    @optional Span _readonly;
+};
+
+enum ParamKind {
+    /// Explicitly marked as `in`
+    PARAM_IN,
+
+    /// Explicitly marked as `out`
+    PARAM_OUT,
+
+    /// Explicitly marked as `inout`
+    PARAM_INOUT
+};
+
+@nested
+struct Param {
+    /// Name of the parameter.
+    Ident name;
+
+    /// Type of the parameter.
+    @external Type ty;
+
+    /// Specifies whether this is an `in`, `out`, or `inout` parameter.
+    @optional ParamKind kind;
+};
+
+@nested
+struct Prototype {
+    Ident name;
+    sequence<Param> params;
+    sequence<Path> _raises;
+    @optional Span _oneway;
+};
+
+@nested
+struct InterfaceDef : Stmt {
+    sequence<Prototype> prototypes;
+    sequence<Path> inherits;
+    @optional Span _local;
+};
+
+@nested
+struct ValueMember {
+    Ident name;
+    @external Type ty;
+    @optional Span _public;
+};
+
+@nested
+struct ValuetypeDef : Stmt {
+    sequence<ValueMember> members;
+    sequence<Prototype> prototypes;
+    @optional Path inherits;
+    @optional Path _supports;
+};
+
+enum DeclKind {
+    DECL_STRUCT,
+    DECL_UNION,
+    DECL_NATIVE,
+    DECL_INTERFACE,
+    DECL_VALUETYPE
+};
+
+@nested
+struct Decl : Stmt {
+    DeclKind kind;
+};
+
+enum ItemKind {
+    /// A definition of an annotation
+    ITEM_ANNOTATION,
+
+    /// Module declaration
+    ITEM_MODULE,
+
+    /// Struct definition
+    ITEM_STRUCT,
+
+    /// Union definition
+    ITEM_UNION,
+
+    /// Enum definition
+    ITEM_ENUM,
+
+    /// Exception definition
+    ITEM_EXCEPTION,
+
+    /// Bitmask definition
+    ITEM_BITMASK,
+
+    /// Bitset definition
+    ITEM_BITSET,
+
+    /// Declaration of a `const`
+    ITEM_CONST,
+
+    /// Typedef definition
+    ITEM_TYPEDEF,
+
+    /// Interface definition
+    ITEM_INTERFACE,
+
+    /// Valuetype definition
+    ITEM_VALUETYPE,
+
+    /// A forward declaration
+    ITEM_DECL
+};
+
+@nested
+union Item switch(ItemKind) {
+case ITEM_ANNOTATION:
+    AnnotationDef annotation_value;
+case ITEM_MODULE:
+    ModuleDef module_value;
+case ITEM_STRUCT:
+    StructDef struct_value;
+case ITEM_UNION:
+    UnionDef union_value;
+case ITEM_ENUM:
+    EnumDef enum_value;
+case ITEM_EXCEPTION:
+    ExceptDef exception_value;
+case ITEM_BITMASK:
+    BitmaskDef bitmask_value;
+case ITEM_BITSET:
+    BitsetDef bitset_value;
+case ITEM_CONST:
+    ConstDef const_value;
+case ITEM_TYPEDEF:
+    Typedef typedef_value;
+case ITEM_INTERFACE:
+    InterfaceDef interface_value;
+case ITEM_VALUETYPE:
+    ValuetypeDef valuetype_value;
+case ITEM_DECL:
+    Decl decl_value;
+};
+
+@nested
+struct InitList {
+    sequence<Expr> values;
+};
+
+@nested
+struct AnyType {
+    Span span;
+};
+
+@nested
+struct SequenceType {
+    @external Type ty;
+    @optional Expr bound;
+    Span span;
+};
+
+@nested
+struct StringType {
+    boolean wide;
+    @optional Expr bound;
+    Span span;
+};
+
+@nested
+struct MapType {
+    @external Type key;
+    @external Type value;
+    @optional Expr bound;
+    Span span;
+};
+
+@nested
+struct Fixed {
+    Expr total;
+    Expr fractional;
+};
+
+@nested
+struct FixedType {
+    Span span;
+    @optional Fixed bounds;
+};
+
+enum TypeKind {
+    TYPE_ANY,
+    TYPE_SEQUENCE,
+    TYPE_STRING,
+    TYPE_MAP,
+    TYPE_FIXED,
+    TYPE_PATH
+};
+
+@nested
+union Type switch(TypeKind) {
+case TYPE_ANY:
+    /// The `any` type.
+    AnyType any_type;
+
+case TYPE_SEQUENCE:
+    /// Sequence of another type, e.g. `sequence<string>`.
+    SequenceType sequence_type;
+
+case TYPE_STRING:
+    /// A possibly bounded string.
+    StringType string_type;
+
+case TYPE_MAP:
+    /// (key, value) pair of types, e.g. `map<string, string>`.
+    MapType map_type;
+
+case TYPE_FIXED:
+    /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
+    FixedType fixed_type;
+
+case TYPE_PATH:
+    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
+    Path path;
+};
+
+enum InterfaceMemberKind {
+    /// An interface attribute.
+    INTERFACE_ATTRIBUTE,
+
+    /// Function definition.
+    INTERFACE_PROTOTYPE,
+
+    /// Type definition nested inside the interface.
+    INTERFACE_ITEM
+};
+
+union InterfaceMember switch(InterfaceMemberKind) {
+case INTERFACE_ATTRIBUTE:
+    /// An interface attribute.
+    Attribute attr;
+
+case INTERFACE_PROTOTYPE:
+    /// Function definition.
+    Prototype proto;
+
+case INTERFACE_ITEM:
+    /// Type definition nested inside the interface.
+    Item item;
+};
+
+}; // module ast

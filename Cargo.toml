@@ -32,9 +32,9 @@ members = [
     "crates/ic-cli",
     "crates/ic-cli-derive",
     "crates/ic-diagnostic",
-    "crates/ic-driver",
     "crates/ic-emit",
     "crates/ic-hir",
+    "crates/ic-idl",
     "crates/ic-lint",
     "crates/ic-macros",
     "crates/ic-parse",
@@ -49,7 +49,7 @@ exclude = [
     "tools/explorer",
     "tools/fuzz",
 ]
-default-members = ["crates/ic-driver"]
+default-members = ["crates/ic-idl"]
 
 [workspace.package]
 rust-version = "1.74"

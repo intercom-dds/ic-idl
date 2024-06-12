@@ -28,29 +28,16 @@
 #![allow(unused, dead_code)]
 
 use crate::{
-    AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef,
-    BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Ident,
-    InterfaceDef, Item, ItemKind, Label, Literal, ModuleDef, Prototype, StructDef, Type, Typedef,
-    UnionDef, UnionField, ValuetypeDef,
+    AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Binary, Bit, Bitfield,
+    BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
+    Field, Ident, InitList, InterfaceDef, Item, ItemKind, Label, Literal, ModuleDef, Prototype,
+    Span, StructDef, Type, Typedef, Unary, UnionDef, UnionElement, UnionField, UnionMember,
+    UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
     fn visit_item(&mut self, item: &'a Item) {
-        match &item {
-            Item::AnnotationValue(v) => self.visit_annotation_def(v),
-            Item::ModuleValue(v) => self.visit_module(v),
-            Item::StructValue(v) => self.visit_struct(v),
-            Item::UnionValue(v) => self.visit_union(v),
-            Item::EnumValue(v) => self.visit_enum(v),
-            Item::ExceptionValue(v) => self.visit_exception(v),
-            Item::BitmaskValue(v) => self.visit_bitmask(v),
-            Item::BitsetValue(v) => self.visit_bitset(v),
-            Item::ConstValue(v) => self.visit_const(v),
-            Item::TypedefValue(v) => self.visit_typedef(v),
-            Item::DeclValue(v) => self.visit_decl(v),
-            Item::InterfaceValue(v) => self.visit_interface(v),
-            Item::ValuetypeValue(v) => self.visit_valuetype(v),
-        }
+        visit_item(self, item);
     }
 
     fn visit_annotation_def(&mut self, def: &'a AnnotationDef) {}
@@ -62,15 +49,11 @@ pub trait Visitor<'a> {
     fn visit_annotation_arg(&mut self, def: &'a AnnotationArg) {}
 
     fn visit_module(&mut self, module: &'a ModuleDef) {
-        for def in &module.definitions {
-            self.visit_item(def);
-        }
+        visit_module(self, module);
     }
 
     fn visit_struct(&mut self, def: &'a StructDef) {
-        for mem in &def.members {
-            self.visit_struct_field(mem);
-        }
+        visit_struct(self, def);
     }
 
     fn visit_struct_field(&mut self, def: &'a Field) {
@@ -81,75 +64,80 @@ pub trait Visitor<'a> {
     }
 
     fn visit_union(&mut self, def: &'a UnionDef) {
-        self.visit_discriminant(&def.disc);
-        for var in &def.fields {
-            self.visit_union_variant(var);
-        }
+        visit_union(self, def);
     }
 
     fn visit_discriminant(&mut self, def: &'a Discriminator) {}
 
-    fn visit_union_variant(&mut self, def: &'a UnionField) {
-        for label in &def.labels {
-            self.visit_union_label(label);
-        }
+    fn visit_union_variant(&mut self, variant: &'a UnionField) {
+        visit_union_variant(self, variant);
     }
 
     fn visit_union_label(&mut self, def: &'a Label) {}
 
+    fn visit_union_member(&mut self, def: &'a UnionMember) {}
+
+    fn visit_union_null(&mut self, def: &'a UnionNull) {}
+
     fn visit_enum(&mut self, def: &'a EnumDef) {
-        for var in &def.fields {
-            self.visit_enum_variant(var);
-        }
+        visit_enum(self, def);
     }
 
-    fn visit_enum_variant(&mut self, def: &'a Enumerator) {
-        for ann in &def.annotations {
-            self.visit_annotation_appl(ann);
-        }
-        self.visit_ident(&def.name);
+    fn visit_enum_variant(&mut self, enumerator: &'a Enumerator) {
+        visit_enum_variant(self, enumerator);
     }
 
-    fn visit_exception(&mut self, def: &'a ExceptDef) {}
+    fn visit_exception(&mut self, exception: &'a ExceptDef) {
+        visit_exception(self, exception);
+    }
 
-    fn visit_interface(&mut self, def: &'a InterfaceDef) {
-        for proto in &def.prototypes {
-            self.visit_prototype(proto);
-        }
+    fn visit_interface(&mut self, interface: &'a InterfaceDef) {
+        visit_interface(self, interface);
     }
 
     fn visit_valuetype(&mut self, def: &'a ValuetypeDef) {
-        for proto in &def.prototypes {
-            self.visit_prototype(proto);
-        }
+        visit_valuetype(self, def);
     }
 
     fn visit_prototype(&mut self, def: &'a Prototype) {}
 
-    fn visit_literal(&mut self, num: &'a Literal) {}
-
     fn visit_bitmask(&mut self, bitmask: &'a BitmaskDef) {
-        for ann in &bitmask.annotations {
-            self.visit_annotation_appl(ann);
-        }
-        for bit in &bitmask.bits {
-            self.visit_bitmask_bit(bit);
-        }
+        visit_bitmask(self, bitmask);
     }
 
-    fn visit_bitmask_bit(&mut self, bit: &'a Bit) {}
+    fn visit_bitmask_bit(&mut self, bit: &'a Bit) {
+        visit_bitmask_bit(self, bit);
+    }
 
     fn visit_bitset(&mut self, bitset: &'a BitsetDef) {
-        for bit in &bitset.fields {
-            self.visit_bitfield(bit);
+        visit_bitset(self, bitset);
+    }
+
+    fn visit_bitfield(&mut self, bitfield: &'a Bitfield) {}
+
+    fn visit_const(&mut self, def: &'a ConstDef) {
+        visit_const(self, def);
+    }
+
+    fn visit_typedef(&mut self, def: &'a Typedef) {
+        visit_typedef(self, def);
+    }
+
+    fn visit_expr(&mut self, expr: &'a Expr) {
+        match expr {
+            Expr::Literal(_) => todo!(),
+            Expr::Path(_) => todo!(),
+            Expr::Unary(v) => self.visit_expr_unary(v),
+            Expr::Binary(v) => self.visit_expr_binary(v),
+            Expr::InitList(_) => todo!(),
         }
     }
 
-    fn visit_bitfield(&mut self, _bitset: &'a Bitfield) {}
+    fn visit_expr_unary(&mut self, binary: &'a Unary) {}
 
-    fn visit_const(&mut self, def: &'a ConstDef) {}
+    fn visit_expr_binary(&mut self, binary: &'a Binary) {}
 
-    fn visit_typedef(&mut self, def: &'a Typedef) {}
+    fn visit_expr_init_list(&mut self, binary: &'a InitList) {}
 
     fn visit_decl(&mut self, decl: &'a Decl) {}
 
@@ -157,17 +145,238 @@ pub trait Visitor<'a> {
 
     fn visit_type(&mut self, ident: &'a Type) {}
 
-    fn visit_expr(&mut self, expr: &'a Expr) {}
+    fn visit_literal(&mut self, num: &'a Literal) {}
+}
+
+pub fn visit_tree<'a, V>(visitor: &mut V, tree: &'a [Item])
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for item in tree {
+        visitor.visit_item(item);
+    }
+}
+
+pub fn visit_item<'a, V>(visitor: &mut V, item: &'a Item)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match item {
+        Item::AnnotationValue(v) => visitor.visit_annotation_def(v),
+        Item::ModuleValue(v) => visitor.visit_module(v),
+        Item::StructValue(v) => visitor.visit_struct(v),
+        Item::UnionValue(v) => visitor.visit_union(v),
+        Item::EnumValue(v) => visitor.visit_enum(v),
+        Item::ExceptionValue(v) => visitor.visit_exception(v),
+        Item::BitmaskValue(v) => visitor.visit_bitmask(v),
+        Item::BitsetValue(v) => visitor.visit_bitset(v),
+        Item::ConstValue(v) => visitor.visit_const(v),
+        Item::TypedefValue(v) => visitor.visit_typedef(v),
+        Item::DeclValue(v) => visitor.visit_decl(v),
+        Item::InterfaceValue(v) => visitor.visit_interface(v),
+        Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
+    }
+}
+
+pub fn visit_module<'a, V>(visitor: &mut V, module: &'a ModuleDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&module.name);
+    for def in &module.definitions {
+        visitor.visit_item(def);
+    }
+}
+
+pub fn visit_struct<'a, V>(visitor: &mut V, def: &'a StructDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    for mem in &def.members {
+        visitor.visit_struct_field(mem);
+    }
+}
+
+pub fn visit_union<'a, V>(visitor: &mut V, def: &'a UnionDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    visitor.visit_discriminant(&def.disc);
+    for mem in &def.fields {
+        visitor.visit_union_variant(mem);
+    }
+}
+
+pub fn visit_union_variant<'a, V>(visitor: &mut V, def: &'a UnionField)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for label in &def.labels {
+        visitor.visit_union_label(label);
+    }
+    match &def.field {
+        UnionElement::Member(v) => visitor.visit_union_member(v),
+        UnionElement::Null(v) => visitor.visit_union_null(v),
+    }
+}
+
+pub fn visit_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    for var in &def.fields {
+        visitor.visit_enum_variant(var);
+    }
+}
+
+pub fn visit_enum_variant<'a, V>(visitor: &mut V, def: &'a Enumerator)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    if let Some(expr) = &def.value {
+        visitor.visit_expr(expr);
+    }
+}
+
+pub fn visit_exception<'a, V>(visitor: &mut V, def: &'a ExceptDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    for member in &def.members {
+        visitor.visit_struct_field(&member);
+    }
+}
+
+pub fn visit_interface<'a, V>(visitor: &mut V, def: &'a InterfaceDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    // TODO: inherit? attributes?
+    for proto in &def.prototypes {
+        visitor.visit_prototype(&proto);
+    }
+}
+
+pub fn visit_valuetype<'a, V>(visitor: &mut V, def: &'a ValuetypeDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+
+    for proto in &def.prototypes {
+        visitor.visit_prototype(&proto);
+    }
+
+    // TODO:
+    // for proto in &def.members {
+    //     visitor.visit_valuetype_member(&proto);
+    // }
+}
+
+pub fn visit_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    for bit in &def.bits {
+        visitor.visit_bitmask_bit(bit);
+    }
+}
+
+pub fn visit_bitmask_bit<'a, V>(visitor: &mut V, def: &'a Bit)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    if let Some(expr) = &def.value {
+        visitor.visit_expr(expr);
+    }
+}
+
+pub fn visit_bitset<'a, V>(visitor: &mut V, def: &'a BitsetDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    for bitfield in &def.fields {
+        visitor.visit_bitfield(bitfield);
+    }
+}
+
+pub fn visit_const<'a, V>(visitor: &mut V, def: &'a ConstDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
+    visitor.visit_ident(&def.name);
+    visitor.visit_expr(&def.value);
+}
+
+pub fn visit_typedef<'a, V>(visitor: &mut V, def: &'a Typedef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
+    // TODO:
+    // for decl in &def.decl {
+    //     visitor.visit_decl(decl);
+    // }
 }
 
 pub trait Visit {
-    fn visit<'a, V: Visitor<'a>>(self, visitor: &mut V);
+    fn visit<'a, V>(&'a self, visitor: &mut V)
+    where
+        V: Visitor<'a> + ?Sized;
 }
 
 impl<T: Visit> Visit for Option<T> {
-    fn visit<'a, V: Visitor<'a>>(self, visitor: &mut V) {
+    fn visit<'a, V>(&'a self, visitor: &mut V)
+    where
+        V: Visitor<'a> + ?Sized,
+    {
         if let Some(v) = self {
             v.visit(visitor);
+        }
+    }
+}
+
+impl Visit for Item {
+    fn visit<'a, V>(&'a self, visitor: &mut V)
+    where
+        V: Visitor<'a> + ?Sized,
+    {
+        match &self {
+            Item::AnnotationValue(v) => visitor.visit_annotation_def(v),
+            Item::ModuleValue(v) => visitor.visit_module(v),
+            Item::StructValue(v) => visitor.visit_struct(v),
+            Item::UnionValue(v) => visitor.visit_union(v),
+            Item::EnumValue(v) => visitor.visit_enum(v),
+            Item::ExceptionValue(v) => visitor.visit_exception(v),
+            Item::BitmaskValue(v) => visitor.visit_bitmask(v),
+            Item::BitsetValue(v) => visitor.visit_bitset(v),
+            Item::ConstValue(v) => visitor.visit_const(v),
+            Item::TypedefValue(v) => visitor.visit_typedef(v),
+            Item::DeclValue(v) => visitor.visit_decl(v),
+            Item::InterfaceValue(v) => visitor.visit_interface(v),
+            Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
+        }
+    }
+}
+
+impl Visit for ModuleDef {
+    fn visit<'a, V>(&'a self, visitor: &mut V)
+    where
+        V: Visitor<'a> + ?Sized,
+    {
+        visitor.visit_ident(&self.name);
+        for item in &self.definitions {
+            visitor.visit_item(&item);
         }
     }
 }

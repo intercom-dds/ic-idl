@@ -148,7 +148,7 @@ case EXPR_UNARY:
 case EXPR_BINARY:
     @external Binary binary;
 case EXPR_INIT_LIST:
-    sequence<Expr> init_list;
+    InitList init_list;
 };
 
 enum DeclaratorKind {

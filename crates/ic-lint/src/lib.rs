@@ -47,6 +47,7 @@ macro_rules! lints {
 }
 
 lints! {
+    pedantic::null::NullVariant,
     semantic::div_by_zero::ByZero,
     syntax::ascii_ident::AsciiIdent,
     syntax::empty::EmptyTypes,

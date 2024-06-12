@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "ic-macros"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -208,7 +208,7 @@ dependencies = [
 
 [[package]]
 name = "ic-syntax"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "chumsky",
  "ic-alloc",

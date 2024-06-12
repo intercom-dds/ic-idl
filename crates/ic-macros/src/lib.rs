@@ -38,7 +38,7 @@ fn enum_iter(data: &Data) -> proc_macro2::TokenStream {
 
             variants.extend(quote! {
                 #index => Some(Self::#ident),
-            })
+            });
         }
     }
     variants

@@ -28,7 +28,7 @@
 use super::*;
 
 fn single(input: &str) -> Kind {
-    scan(input).first().unwrap().kind
+    scan(input).first().cloned().unwrap().kind
 }
 
 #[test]

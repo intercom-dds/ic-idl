@@ -25,16 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused)]
-
 use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_syntax::{
-    AnnotationDef, AnyType, ArrayDeclarator, Binary, Bit, Bitfield, BitmaskDef, BitsetDef,
-    ConstDef, DeclKind, Declarator, Discriminator, Empty, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Fixed, FixedType, Ident, InterfaceDef, Item, Label, LitKind, Literal, MapType,
-    ModuleDef, Op, OpKind, Path, SequenceType, Span, StringType, StructDef, Type, Typedef, Unary,
-    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
+    AnyType, ArrayDeclarator, Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty,
+    Enumerator, Expr, Field, Fixed, FixedType, Ident, Item, Label, LitKind, Literal, MapType, Op,
+    OpKind, Path, SequenceType, Span, StringType, Type, Unary, UnionElement, UnionField,
+    UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -152,7 +149,7 @@ fn scoped_name() -> impl IdlParser<Path> {
     let path = leading.then(ident().separated_by(just(Kind::DColon)).at_least(1));
 
     path.map(|(leading_colons, segments)| Path {
-        leading_colons: leading_colons.map(|v| v.into()),
+        leading_colons,
         segments,
     })
 }
@@ -163,7 +160,7 @@ fn const_dcl() -> impl IdlParser<Item> {
         .ignore_then(const_type())
         .then(ident())
         .then_ignore(just(Kind::Eq))
-        .then(const_expr())
+        .then(complex_const_expr())
         .then_ignore(just(Kind::Semi))
         .labelled("const declaration");
 
@@ -171,22 +168,25 @@ fn const_dcl() -> impl IdlParser<Item> {
 }
 
 // InterCOM extension for complex constants
-fn complex_const_expr() -> impl IdlParser<()> {
+fn complex_const_expr() -> impl IdlParser<Expr> {
     recursive(|state| {
-        let basic = const_expr().ignored();
-        let params = state.separated_by(just(Kind::Comma));
-        let complex = params
+        let basic = const_expr();
+        let complex = state
+            .separated_by(just(Kind::Comma))
             .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
-            .ignored();
+            .map(Expr::InitList);
 
         choice((basic, complex))
     })
-    .ignored()
 }
 
 // Rule 6
 fn const_type() -> impl IdlParser<Type> {
-    choice((template_type_spec(), scoped_name().map(Type::Path)))
+    choice((
+        template_type_spec(),
+        scoped_name().map(Type::Path),
+        fixed_pt_const_type(),
+    ))
 }
 
 // Rule 7-14, 16
@@ -198,7 +198,7 @@ fn const_expr() -> impl IdlParser<Expr> {
         // Rule 16
         let nested = primary.parenthesized();
 
-        let lit = literal().map_with_span(|v, span| {
+        let lit = literal().map_with_span(|_, span| {
             Expr::Literal(Literal {
                 kind: LitKind::LitInt,
                 span,
@@ -529,7 +529,7 @@ fn case() -> impl IdlParser<UnionField> {
 fn case_label() -> impl IdlParser<Label> {
     let case = just(Kind::Case)
         .ignore_then(const_expr())
-        .map(|expr| Label::Case(expr))
+        .map(Label::Case)
         .labelled("case label")
         .then_ignore(just(Kind::Colon));
 
@@ -717,7 +717,7 @@ fn interface_header() -> impl IdlParser<(((Option<Span>, Kind), Ident), Vec<Path
 // Rule 77 with the rule 121 extension
 fn interface_kind() -> impl IdlParser<(Option<Span>, Kind)> {
     just(Kind::Local)
-        .map_with_span(|_, span| Span::from(span))
+        .map_with_span(|_, span| span)
         .or_not()
         .then(just(Kind::Interface))
 }

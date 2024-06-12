@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_truncation)]
+
 #[cfg(test)]
 mod tests;
 
@@ -400,7 +402,6 @@ pub struct Token {
 /// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
 /// backtracking and some other required features.
 #[must_use]
-#[allow(clippy::range_plus_one)]
 pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
     // Remove trailing whitespace so we can correctly scope errors about
     // missing semicolons at the end of the file.

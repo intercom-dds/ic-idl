@@ -256,6 +256,7 @@ impl Md5Builder {
         update(bytes, bytes.len(), &mut self.ctx);
     }
 
+    #[must_use]
     pub fn digest(mut self) -> [u8; 16] {
         finalize(&mut self.ctx);
         extract(&self.ctx)

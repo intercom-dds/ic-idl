@@ -78,7 +78,6 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_alloc::interner::Interner;
-use ic_cli::color::Colorize;
 use ic_syntax::{Item, Span};
 use lexer::{Kind, Token};
 

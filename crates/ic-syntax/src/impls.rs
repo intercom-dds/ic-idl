@@ -35,6 +35,7 @@ use crate::{
 };
 
 impl Item {
+    #[must_use]
     pub fn def_module(name: Ident, defs: Vec<Item>, span: Span) -> Self {
         Self::ModuleValue(ModuleDef {
             name,
@@ -44,6 +45,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn def_struct(name: Ident, members: Vec<Field>, parent: Option<Path>, span: Span) -> Self {
         Self::StructValue(StructDef {
             name,
@@ -54,6 +56,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn def_exception(name: Ident, members: Vec<Field>, span: Span) -> Self {
         Self::ExceptionValue(ExceptDef {
             name,
@@ -63,6 +66,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn def_union(
         name: Ident,
         disc: Discriminator,
@@ -78,6 +82,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn def_enum(name: Ident, fields: Vec<Enumerator>, span: Span) -> Self {
         Self::EnumValue(EnumDef {
             name,
@@ -87,6 +92,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn def_const(name: Ident, ty: Type, value: Expr, span: Span) -> Self {
         Self::ConstValue(ConstDef {
             name,
@@ -97,6 +103,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn def_annotation(name: Ident, params: Vec<AnnotationField>, span: Span) -> Self {
         Self::AnnotationValue(AnnotationDef {
             name,
@@ -106,6 +113,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn interface(
         name: Ident,
         local: Option<Span>,
@@ -123,6 +131,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn valuetype(
         name: Ident,
         members: Vec<ValueMember>,
@@ -141,6 +150,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn bitmask(name: Ident, flags: Vec<Bit>, span: Span) -> Self {
         Self::BitmaskValue(BitmaskDef {
             name,
@@ -150,6 +160,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn bitset(name: Ident, parent: Option<Path>, bitfields: Vec<Bitfield>, span: Span) -> Self {
         Self::BitsetValue(BitsetDef {
             name,
@@ -160,6 +171,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn typedef(name: Ident, ty: Type, span: Span) -> Self {
         Self::TypedefValue(Typedef {
             name,
@@ -170,6 +182,7 @@ impl Item {
         })
     }
 
+    #[must_use]
     pub fn decl(name: Declarator, kind: DeclKind, span: Span) -> Self {
         Self::DeclValue(Decl {
             name: match name {
@@ -196,9 +209,7 @@ impl chumsky::Span for Span {
         }
     }
 
-    fn context(&self) -> Self::Context {
-        ()
-    }
+    fn context(&self) -> Self::Context {}
 
     fn start(&self) -> Self::Offset {
         self.start
@@ -209,11 +220,11 @@ impl chumsky::Span for Span {
     }
 }
 
-impl Into<Range<usize>> for Span {
-    fn into(self) -> Range<usize> {
+impl From<Span> for Range<usize> {
+    fn from(val: Span) -> Self {
         Range {
-            start: self.start as usize,
-            end: self.end as usize,
+            start: val.start as usize,
+            end: val.end as usize,
         }
     }
 }

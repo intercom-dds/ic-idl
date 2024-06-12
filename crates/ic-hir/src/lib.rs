@@ -107,11 +107,16 @@ impl Context {
         }
     }
 
+    /// # Panics
+    ///
+    /// Panics if the given type ID does not exist. This can only ever happen
+    /// if there are multiple `Context`s whose arenas have been mixed up.
     pub fn ty(&self, id: Id<Type>) -> &Type {
         self.try_ty(id)
             .expect(&format!("type {id:?} does not exist"))
     }
 
+    /// # Panics
     pub fn str(&self, id: SymbolId) -> &str {
         self.try_str(id)
             .expect(&format!("symbol {id:?} does not exist"))
@@ -267,7 +272,7 @@ pub fn qualified_name(ty: &Typedef) -> String {
             Type::Typedef(v) => {
                 node = v;
             }
-            _ => (),
+            Type::Primitive(_) => (),
         }
     }
     path.reverse();

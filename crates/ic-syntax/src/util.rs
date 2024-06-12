@@ -27,6 +27,7 @@
 
 use crate::{Path, Type};
 
+#[must_use]
 pub fn path_name(path: &Path) -> String {
     let mut segments = vec![];
     if path.leading_colons.is_some() {
@@ -36,6 +37,7 @@ pub fn path_name(path: &Path) -> String {
     segments.join("::")
 }
 
+#[must_use]
 pub fn type_name(path: &Type) -> String {
     match path {
         Type::Any(..) => "any".to_string(),

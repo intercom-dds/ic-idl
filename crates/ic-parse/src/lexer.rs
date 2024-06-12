@@ -31,7 +31,6 @@ mod tests;
 use std::fmt;
 
 use chumsky::Stream;
-use ic_alloc::interner::{Interner, SymbolId};
 use ic_syntax::Span;
 use logos::{Lexer, Logos};
 
@@ -41,7 +40,6 @@ use logos::{Lexer, Logos};
 #[logos(skip r"//[^@][^\r\n]*")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
 #[logos(subpattern ident = r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
-#[logos(extras = Context)]
 pub enum Kind {
     #[token("any")]
     Any,
@@ -286,8 +284,8 @@ pub enum Kind {
     Char(Option<char>),
 
     // Preserve documentation comments
-    #[regex(r"//[/!][^\r\n]*", to_interned, priority = 7)]
-    Comment(SymbolId),
+    #[regex(r"//[/!][^\r\n]*", to_owned, priority = 7)]
+    Comment(String),
 
     /// Fallback for invalid tokens
     Invalid,
@@ -388,20 +386,8 @@ fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
     }
 }
 
-// Stores a lexed slice in the string interner.
-fn to_interned(lex: &mut Lexer<Kind>) -> SymbolId {
-    let slice = lex.slice();
-    lex.extras.interner.insert(slice)
-}
-
 fn to_owned(lex: &mut Lexer<Kind>) -> String {
     lex.slice().to_string()
-}
-
-/// Context used by the lexer to store additional information.
-#[derive(Default)]
-pub struct Context {
-    interner: Interner,
 }
 
 /// A lexed token. Contains the span of the token and its kind.

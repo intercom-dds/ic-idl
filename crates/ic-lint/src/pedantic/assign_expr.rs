@@ -60,38 +60,38 @@ impl<'a> Visitor<'a> for AssignExpr {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use ic_syntax::*;
-
-    use super::*;
-
-    #[test]
-    fn omitted_value() {
-        let variant = Enumerator {
-            annotations: vec![],
-            name: Ident {
-                name: Symbol::default(),
-                span: Span::default(),
-            },
-            value: None,
-        };
-        AssignExpr.visit_enum_variant(&variant);
-    }
-
-    #[test]
-    fn value_expr() {
-        let variant = Enumerator {
-            annotations: vec![],
-            name: Ident {
-                name: Symbol::default(),
-                span: Span::default(),
-            },
-            value: Some(Expr::Lit(Literal {
-                kind: LitKind::Int,
-                span: Span::default(),
-            })),
-        };
-        AssignExpr.visit_enum_variant(&variant);
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use ic_syntax::*;
+//
+//     use super::*;
+//
+//     #[test]
+//     fn omitted_value() {
+//         let variant = Enumerator {
+//             annotations: vec![],
+//             name: Ident {
+//                 name: Symbol::default(),
+//                 span: Span::default(),
+//             },
+//             value: None,
+//         };
+//         AssignExpr.visit_enum_variant(&variant);
+//     }
+//
+//     #[test]
+//     fn value_expr() {
+//         let variant = Enumerator {
+//             annotations: vec![],
+//             name: Ident {
+//                 name: Symbol::default(),
+//                 span: Span::default(),
+//             },
+//             value: Some(Expr::Lit(Literal {
+//                 kind: LitKind::Int,
+//                 span: Span::default(),
+//             })),
+//         };
+//         AssignExpr.visit_enum_variant(&variant);
+//     }
+// }

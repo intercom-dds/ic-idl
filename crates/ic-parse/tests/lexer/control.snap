@@ -4,107 +4,185 @@ expression: tokens
 ---
 [
     Token {
-        span: 644..645,
+        span: Span {
+            start: 644,
+            end: 645,
+        },
         kind: Colon,
     },
     Token {
-        span: 646..648,
+        span: Span {
+            start: 646,
+            end: 648,
+        },
         kind: DColon,
     },
     Token {
-        span: 649..650,
+        span: Span {
+            start: 649,
+            end: 650,
+        },
         kind: Eq,
     },
     Token {
-        span: 651..652,
+        span: Span {
+            start: 651,
+            end: 652,
+        },
         kind: Semi,
     },
     Token {
-        span: 653..654,
+        span: Span {
+            start: 653,
+            end: 654,
+        },
         kind: Comma,
     },
     Token {
-        span: 655..656,
+        span: Span {
+            start: 655,
+            end: 656,
+        },
         kind: Less,
     },
     Token {
-        span: 657..658,
+        span: Span {
+            start: 657,
+            end: 658,
+        },
         kind: Greater,
     },
     Token {
-        span: 659..660,
+        span: Span {
+            start: 659,
+            end: 660,
+        },
         kind: LBrace,
     },
     Token {
-        span: 661..662,
+        span: Span {
+            start: 661,
+            end: 662,
+        },
         kind: RBrace,
     },
     Token {
-        span: 663..664,
+        span: Span {
+            start: 663,
+            end: 664,
+        },
         kind: Less,
     },
     Token {
-        span: 664..665,
+        span: Span {
+            start: 664,
+            end: 665,
+        },
         kind: Less,
     },
     Token {
-        span: 666..667,
+        span: Span {
+            start: 666,
+            end: 667,
+        },
         kind: Greater,
     },
     Token {
-        span: 667..668,
+        span: Span {
+            start: 667,
+            end: 668,
+        },
         kind: Greater,
     },
     Token {
-        span: 669..670,
+        span: Span {
+            start: 669,
+            end: 670,
+        },
         kind: BitAnd,
     },
     Token {
-        span: 671..672,
+        span: Span {
+            start: 671,
+            end: 672,
+        },
         kind: BitOr,
     },
     Token {
-        span: 673..674,
+        span: Span {
+            start: 673,
+            end: 674,
+        },
         kind: BitXor,
     },
     Token {
-        span: 675..676,
+        span: Span {
+            start: 675,
+            end: 676,
+        },
         kind: Plus,
     },
     Token {
-        span: 677..678,
+        span: Span {
+            start: 677,
+            end: 678,
+        },
         kind: Minus,
     },
     Token {
-        span: 679..680,
+        span: Span {
+            start: 679,
+            end: 680,
+        },
         kind: Tilde,
     },
     Token {
-        span: 681..682,
+        span: Span {
+            start: 681,
+            end: 682,
+        },
         kind: Star,
     },
     Token {
-        span: 683..684,
+        span: Span {
+            start: 683,
+            end: 684,
+        },
         kind: Slash,
     },
     Token {
-        span: 685..686,
+        span: Span {
+            start: 685,
+            end: 686,
+        },
         kind: Modulo,
     },
     Token {
-        span: 687..688,
+        span: Span {
+            start: 687,
+            end: 688,
+        },
         kind: LParen,
     },
     Token {
-        span: 689..690,
+        span: Span {
+            start: 689,
+            end: 690,
+        },
         kind: RParen,
     },
     Token {
-        span: 691..692,
+        span: Span {
+            start: 691,
+            end: 692,
+        },
         kind: LBracket,
     },
     Token {
-        span: 693..694,
+        span: Span {
+            start: 693,
+            end: 694,
+        },
         kind: RBracket,
     },
 ]

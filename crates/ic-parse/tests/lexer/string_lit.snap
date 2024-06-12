@@ -4,31 +4,52 @@ expression: tokens
 ---
 [
     Token {
-        span: 644..652,
+        span: Span {
+            start: 644,
+            end: 652,
+        },
         kind: StringLit,
     },
     Token {
-        span: 653..666,
+        span: Span {
+            start: 653,
+            end: 666,
+        },
         kind: StringLit,
     },
     Token {
-        span: 667..672,
+        span: Span {
+            start: 667,
+            end: 672,
+        },
         kind: StringLit,
     },
     Token {
-        span: 673..693,
+        span: Span {
+            start: 673,
+            end: 693,
+        },
         kind: StringLit,
     },
     Token {
-        span: 694..698,
+        span: Span {
+            start: 694,
+            end: 698,
+        },
         kind: StringLit,
     },
     Token {
-        span: 699..708,
+        span: Span {
+            start: 699,
+            end: 708,
+        },
         kind: StringLit,
     },
     Token {
-        span: 709..711,
+        span: Span {
+            start: 709,
+            end: 711,
+        },
         kind: StringLit,
     },
 ]

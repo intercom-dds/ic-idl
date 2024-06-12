@@ -234,8 +234,7 @@ pub enum Scope {
 
 impl Typedef {
     pub fn name(&self) -> &str {
-        todo!()
-        // self.state.str(self.ident.name)
+        &self.ident.name
     }
 
     pub fn ty(&self) -> &Type {
@@ -283,12 +282,11 @@ pub fn qualified_name(ty: &Typedef) -> String {
 fn test_typedef() {
     let mut ctx = Context::new();
     let ty = *ctx.types.get("int32").unwrap();
-    let name = ctx.interner.insert("foobar");
     let state = Rc::new(ctx);
 
     let typedef = Typedef {
         ident: Ident {
-            name,
+            name: "foobar".to_string(),
             span: Span::default(),
         },
         ty,

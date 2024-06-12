@@ -4,55 +4,94 @@ expression: tokens
 ---
 [
     Token {
-        span: 644..645,
+        span: Span {
+            start: 644,
+            end: 645,
+        },
         kind: Decimal,
     },
     Token {
-        span: 646..649,
+        span: Span {
+            start: 646,
+            end: 649,
+        },
         kind: Decimal,
     },
     Token {
-        span: 650..653,
+        span: Span {
+            start: 650,
+            end: 653,
+        },
         kind: Decimal,
     },
     Token {
-        span: 654..657,
+        span: Span {
+            start: 654,
+            end: 657,
+        },
         kind: Decimal,
     },
     Token {
-        span: 658..662,
+        span: Span {
+            start: 658,
+            end: 662,
+        },
         kind: Octal,
     },
     Token {
-        span: 663..668,
+        span: Span {
+            start: 663,
+            end: 668,
+        },
         kind: Hex,
     },
     Token {
-        span: 669..673,
+        span: Span {
+            start: 669,
+            end: 673,
+        },
         kind: Hex,
     },
     Token {
-        span: 674..682,
+        span: Span {
+            start: 674,
+            end: 682,
+        },
         kind: Hex,
     },
     Token {
-        span: 683..692,
+        span: Span {
+            start: 683,
+            end: 692,
+        },
         kind: Float,
     },
     Token {
-        span: 693..698,
+        span: Span {
+            start: 693,
+            end: 698,
+        },
         kind: Float,
     },
     Token {
-        span: 699..706,
+        span: Span {
+            start: 699,
+            end: 706,
+        },
         kind: Float,
     },
     Token {
-        span: 707..708,
+        span: Span {
+            start: 707,
+            end: 708,
+        },
         kind: Invalid,
     },
     Token {
-        span: 708..712,
+        span: Span {
+            start: 708,
+            end: 712,
+        },
         kind: Float,
     },
 ]

@@ -4,7 +4,10 @@ expression: tokens
 ---
 [
     Token {
-        span: 644..647,
+        span: Span {
+            start: 644,
+            end: 647,
+        },
         kind: Char(
             Some(
                 '0',
@@ -12,7 +15,10 @@ expression: tokens
         ),
     },
     Token {
-        span: 648..651,
+        span: Span {
+            start: 648,
+            end: 651,
+        },
         kind: Char(
             Some(
                 'a',
@@ -20,7 +26,10 @@ expression: tokens
         ),
     },
     Token {
-        span: 652..655,
+        span: Span {
+            start: 652,
+            end: 655,
+        },
         kind: Char(
             Some(
                 'b',
@@ -28,7 +37,10 @@ expression: tokens
         ),
     },
     Token {
-        span: 656..659,
+        span: Span {
+            start: 656,
+            end: 659,
+        },
         kind: Char(
             Some(
                 'z',
@@ -36,7 +48,10 @@ expression: tokens
         ),
     },
     Token {
-        span: 660..663,
+        span: Span {
+            start: 660,
+            end: 663,
+        },
         kind: Char(
             Some(
                 '_',
@@ -44,13 +59,19 @@ expression: tokens
         ),
     },
     Token {
-        span: 664..666,
+        span: Span {
+            start: 664,
+            end: 666,
+        },
         kind: Char(
             None,
         ),
     },
     Token {
-        span: 667..671,
+        span: Span {
+            start: 667,
+            end: 671,
+        },
         kind: Char(
             Some(
                 '\'',
@@ -58,15 +79,24 @@ expression: tokens
         ),
     },
     Token {
-        span: 672..673,
+        span: Span {
+            start: 672,
+            end: 673,
+        },
         kind: Invalid,
     },
     Token {
-        span: 673..677,
+        span: Span {
+            start: 673,
+            end: 677,
+        },
         kind: Invalid,
     },
     Token {
-        span: 677..678,
+        span: Span {
+            start: 677,
+            end: 678,
+        },
         kind: Invalid,
     },
 ]

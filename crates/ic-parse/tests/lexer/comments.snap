@@ -4,109 +4,175 @@ expression: tokens
 ---
 [
     Token {
-        span: 644..658,
+        span: Span {
+            start: 644,
+            end: 658,
+        },
         kind: Comment(
-            0,
+            "/// foobar baz",
         ),
     },
     Token {
-        span: 659..676,
+        span: Span {
+            start: 659,
+            end: 676,
+        },
         kind: Comment(
-            1,
+            "/// /* foo bar */",
         ),
     },
     Token {
-        span: 677..706,
+        span: Span {
+            start: 677,
+            end: 706,
+        },
         kind: Comment(
-            2,
+            "/// foo // bar // baz /// baz",
         ),
     },
     Token {
-        span: 708..709,
+        span: Span {
+            start: 708,
+            end: 709,
+        },
         kind: Slash,
     },
     Token {
-        span: 709..710,
+        span: Span {
+            start: 709,
+            end: 710,
+        },
         kind: Star,
     },
     Token {
-        span: 710..711,
+        span: Span {
+            start: 710,
+            end: 711,
+        },
         kind: Star,
     },
     Token {
-        span: 712..715,
+        span: Span {
+            start: 712,
+            end: 715,
+        },
         kind: Ident(
-            3,
+            "foo",
         ),
     },
     Token {
-        span: 716..719,
+        span: Span {
+            start: 716,
+            end: 719,
+        },
         kind: Ident(
-            4,
+            "bar",
         ),
     },
     Token {
-        span: 720..721,
+        span: Span {
+            start: 720,
+            end: 721,
+        },
         kind: Star,
     },
     Token {
-        span: 721..722,
+        span: Span {
+            start: 721,
+            end: 722,
+        },
         kind: Slash,
     },
     Token {
-        span: 724..725,
+        span: Span {
+            start: 724,
+            end: 725,
+        },
         kind: Slash,
     },
     Token {
-        span: 725..726,
+        span: Span {
+            start: 725,
+            end: 726,
+        },
         kind: Star,
     },
     Token {
-        span: 726..727,
+        span: Span {
+            start: 726,
+            end: 727,
+        },
         kind: Star,
     },
     Token {
-        span: 728..731,
+        span: Span {
+            start: 728,
+            end: 731,
+        },
         kind: Ident(
-            3,
+            "foo",
         ),
     },
     Token {
-        span: 733..734,
+        span: Span {
+            start: 733,
+            end: 734,
+        },
         kind: Star,
     },
     Token {
-        span: 735..738,
+        span: Span {
+            start: 735,
+            end: 738,
+        },
         kind: Ident(
-            4,
+            "bar",
         ),
     },
     Token {
-        span: 740..741,
+        span: Span {
+            start: 740,
+            end: 741,
+        },
         kind: Star,
     },
     Token {
-        span: 742..745,
+        span: Span {
+            start: 742,
+            end: 745,
+        },
         kind: Ident(
-            5,
+            "baz",
         ),
     },
     Token {
-        span: 747..748,
+        span: Span {
+            start: 747,
+            end: 748,
+        },
         kind: Star,
     },
     Token {
-        span: 749..752,
+        span: Span {
+            start: 749,
+            end: 752,
+        },
         kind: Ident(
-            3,
+            "foo",
         ),
     },
     Token {
-        span: 754..755,
+        span: Span {
+            start: 754,
+            end: 755,
+        },
         kind: Star,
     },
     Token {
-        span: 755..756,
+        span: Span {
+            start: 755,
+            end: 756,
+        },
         kind: Slash,
     },
 ]

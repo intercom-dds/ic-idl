@@ -4,75 +4,111 @@ expression: tokens
 ---
 [
     Token {
-        span: 644..647,
+        span: Span {
+            start: 644,
+            end: 647,
+        },
         kind: Ident(
-            0,
+            "foo",
         ),
     },
     Token {
-        span: 648..652,
+        span: Span {
+            start: 648,
+            end: 652,
+        },
         kind: Ident(
-            1,
+            "bar_",
         ),
     },
     Token {
-        span: 653..657,
+        span: Span {
+            start: 653,
+            end: 657,
+        },
         kind: Ident(
-            2,
+            "_baz",
         ),
     },
     Token {
-        span: 658..665,
+        span: Span {
+            start: 658,
+            end: 665,
+        },
         kind: Ident(
-            3,
+            "_struct",
         ),
     },
     Token {
-        span: 666..672,
+        span: Span {
+            start: 666,
+            end: 672,
+        },
         kind: Ident(
-            4,
+            "_union",
         ),
     },
     Token {
-        span: 673..678,
+        span: Span {
+            start: 673,
+            end: 678,
+        },
         kind: Ident(
-            5,
+            "_enum",
         ),
     },
     Token {
-        span: 679..685,
+        span: Span {
+            start: 679,
+            end: 685,
+        },
         kind: Ident(
-            6,
+            "xyz123",
         ),
     },
     Token {
-        span: 686..690,
+        span: Span {
+            start: 686,
+            end: 690,
+        },
         kind: Ident(
-            7,
+            "_123",
         ),
     },
     Token {
-        span: 691..697,
+        span: Span {
+            start: 691,
+            end: 697,
+        },
         kind: Ident(
-            8,
+            "東京",
         ),
     },
     Token {
-        span: 698..708,
+        span: Span {
+            start: 698,
+            end: 708,
+        },
         kind: Ident(
-            9,
+            "scooby_doo",
         ),
     },
     Token {
-        span: 709..710,
+        span: Span {
+            start: 709,
+            end: 710,
+        },
         kind: Ident(
-            10,
+            "_",
         ),
     },
     Token {
-        span: 711..713,
+        span: Span {
+            start: 711,
+            end: 713,
+        },
         kind: Ident(
-            11,
+            "__",
         ),
     },
 ]

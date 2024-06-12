@@ -32,6 +32,7 @@ use std::fmt;
 
 use chumsky::Stream;
 use ic_alloc::interner::{Interner, SymbolId};
+use ic_syntax::Span;
 use logos::{Lexer, Logos};
 
 /// All tokens recognized by the lexer.
@@ -403,9 +404,6 @@ pub struct Context {
     interner: Interner,
 }
 
-/// Byte offset to a token.
-pub type Span = std::ops::Range<usize>;
-
 /// A lexed token. Contains the span of the token and its kind.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Token {
@@ -422,9 +420,12 @@ pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind,
     // missing semicolons at the end of the file.
     let input = input.trim_end();
     let lexer = lexer(input);
-    let len = input.len();
+    let end = Span {
+        start: input.len() as u32,
+        end: input.len() as u32 + 1,
+    };
 
-    Stream::from_iter(len..len + 1, lexer.map(move |tok| (tok.kind, tok.span)))
+    Stream::from_iter(end, lexer.map(move |tok| (tok.kind, tok.span)))
 }
 
 /// Constructs an iterator that lazily lexes the input.
@@ -437,7 +438,10 @@ pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
     // and lets us better handle the error during parsing.
     Kind::lexer(input).spanned().map(|(token, span)| Token {
         kind: token.unwrap_or(Kind::Invalid),
-        span,
+        span: Span {
+            start: span.start as u32,
+            end: span.end as u32,
+        },
     })
 }
 

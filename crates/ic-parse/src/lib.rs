@@ -161,7 +161,7 @@ pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
 /// If the given input contains IDL that is not syntactically valid, a
 /// non-exhausitve list of parse errors will be returned that contains the
 /// cause of each error and its span.
-pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Simple<Kind>>>
+pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Simple<Kind, ic_syntax::Span>>>
 where
     I: IntoIterator<Item = Token>,
 {

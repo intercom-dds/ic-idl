@@ -199,7 +199,7 @@ struct AnnotationAppl {
 
 @nested
 struct Stmt {
-    /// Name and span of the item.
+    /// Name of the item.
     Ident name;
 
     /// Span of the entire item, from start to end. For example, given the
@@ -266,13 +266,13 @@ struct Discriminator {
 @nested
 struct Empty {};
 
-enum UnionCaseLabel {
+enum LabelKind {
     LABEL_CASE,
     LABEL_DEFAULT
 };
 
 @nested
-union Label switch(UnionCaseLabel) {
+union Label switch(LabelKind) {
 case LABEL_CASE:
     Expr _case;
 case LABEL_DEFAULT:
@@ -502,30 +502,55 @@ enum ItemKind {
 @nested
 union Item switch(ItemKind) {
 case ITEM_ANNOTATION:
+    /// A definition of an annotation
     AnnotationDef annotation_value;
+
 case ITEM_MODULE:
+    /// Module declaration
     ModuleDef module_value;
+
 case ITEM_STRUCT:
+    /// Struct definition
     StructDef struct_value;
+
 case ITEM_UNION:
+    /// Union definition
     UnionDef union_value;
+
 case ITEM_ENUM:
+    /// Enum definition
     EnumDef enum_value;
+
 case ITEM_EXCEPTION:
+    /// Exception definition
     ExceptDef exception_value;
+
 case ITEM_BITMASK:
+    /// Bitmask definition
     BitmaskDef bitmask_value;
+
 case ITEM_BITSET:
+    /// Bitset definition
     BitsetDef bitset_value;
+
 case ITEM_CONST:
+    /// Declaration of a `const`
     ConstDef const_value;
+
 case ITEM_TYPEDEF:
+    /// Typedef definition
     Typedef typedef_value;
+
 case ITEM_INTERFACE:
+    /// Interface definition
     InterfaceDef interface_value;
+
 case ITEM_VALUETYPE:
+    /// Valuetype definition
     ValuetypeDef valuetype_value;
+
 case ITEM_DECL:
+    /// A forward declaration
     Decl decl_value;
 };
 

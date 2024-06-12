@@ -210,6 +210,7 @@ dependencies = [
 name = "ic-syntax"
 version = "0.1.0"
 dependencies = [
+ "chumsky",
  "ic-alloc",
  "intercom-cts",
 ]

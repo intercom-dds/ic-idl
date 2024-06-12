@@ -40,22 +40,21 @@ use ic_syntax::{
 use crate::lexer::Kind;
 
 // Workaround until trait aliases are stabilized
-pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {
+pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Clone {
     fn parenthesized(self) -> impl IdlParser<T> {
         self.delimited_by(just(Kind::LParen), just(Kind::RParen))
     }
 }
 
 // Blanket impl because we really just want an alias
-impl<T, U: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone> IdlParser<T> for U {}
+impl<T, U: chumsky::Parser<Kind, T, Error = Error> + Clone> IdlParser<T> for U {}
+
+pub type Error = Simple<Kind, Span>;
 
 fn ident() -> impl IdlParser<Ident> {
     let ident = select! { Kind::Ident(v) => v };
     ident
-        .map_with_span(|name, span: std::ops::Range<usize>| Ident {
-            name,
-            span: span.into(),
-        })
+        .map_with_span(|name, span| Ident { name, span })
         .labelled("identifier")
 }
 
@@ -80,19 +79,19 @@ fn string_literal() -> impl IdlParser<Kind> {
 }
 
 fn lshift() -> impl IdlParser<Op> {
-    just([Kind::Less, Kind::Less]).labelled("<<").map_with_span(
-        |_, span: std::ops::Range<usize>| Op {
-            span: span.into(),
+    just([Kind::Less, Kind::Less])
+        .labelled("<<")
+        .map_with_span(|_, span| Op {
+            span,
             kind: OpKind::OpLshift,
-        },
-    )
+        })
 }
 
 fn rshift() -> impl IdlParser<Op> {
     just([Kind::Greater, Kind::Greater])
         .labelled(">>")
-        .map_with_span(|_, span: std::ops::Range<usize>| Op {
-            span: span.into(),
+        .map_with_span(|_, span| Op {
+            span,
             kind: OpKind::OpRshift,
         })
 }
@@ -132,7 +131,7 @@ fn definition() -> impl IdlParser<Item> {
 }
 
 // Rule 3
-fn module_dcl(state: Recursive<'_, Kind, Item, Simple<Kind>>) -> impl IdlParser<Item> + '_ {
+fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> + '_ {
     let items = state
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
@@ -176,9 +175,8 @@ fn complex_const_expr() -> impl IdlParser<()> {
     recursive(|state| {
         let basic = const_expr().ignored();
         let params = state.separated_by(just(Kind::Comma));
-        let complex = just(Kind::LBrace)
-            .ignore_then(params)
-            .then_ignore(just(Kind::RBrace))
+        let complex = params
+            .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
             .ignored();
 
         choice((basic, complex))
@@ -203,7 +201,7 @@ fn const_expr() -> impl IdlParser<Expr> {
         let lit = literal().map_with_span(|v, span| {
             Expr::Literal(Literal {
                 kind: LitKind::LitInt,
-                span: span.into(),
+                span,
             })
         });
         let scoped = scoped_name().map(Expr::Path);
@@ -254,10 +252,7 @@ fn to_unary((op, expr): (Option<Op>, Expr)) -> Expr {
 }
 
 fn operator(from: Kind, to: OpKind) -> impl IdlParser<Op> {
-    just(from).map_with_span(move |_, span: std::ops::Range<usize>| Op {
-        span: span.into(),
-        kind: to,
-    })
+    just(from).map_with_span(move |_, span| Op { span, kind: to })
 }
 
 fn binary_op<'a, T, Oper>(expr: T, op: Oper) -> impl IdlParser<Expr> + 'a
@@ -348,14 +343,12 @@ fn template_type_spec() -> impl IdlParser<Type> {
 // Not standard, but we need this rule here since `type_spec` is recursive.
 // Without it, `sequence_type` will call `type_spec` without propagating the
 // recursive state and we'll end up with a stack overflow.
-fn sequence_element_type(
-    state: Recursive<'_, Kind, Type, Simple<Kind>>,
-) -> impl IdlParser<Type> + '_ {
+fn sequence_element_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type> + '_ {
     choice((state, simple_type_spec()))
 }
 
 // Rule 39
-fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
+fn sequence_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type> + '_ {
     let inner = sequence_element_type(state)
         .then(bound())
         .delimited_by(just(Kind::Less), just(Kind::Greater));
@@ -365,7 +358,7 @@ fn sequence_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlPars
         Type::Sequence(SequenceType {
             ty: Box::new(elem),
             bound,
-            span: span.into(),
+            span,
         })
     })
 }
@@ -382,7 +375,7 @@ fn string_type() -> impl IdlParser<Type> {
             Type::String_(StringType {
                 wide: false,
                 bound,
-                span: span.into(),
+                span,
             })
         })
 }
@@ -399,7 +392,7 @@ fn wide_string_type() -> impl IdlParser<Type> {
             Type::String_(StringType {
                 wide: true,
                 bound,
-                span: span.into(),
+                span,
             })
         })
 }
@@ -415,7 +408,7 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
         .ignore_then(body)
         .map_with_span(|(tot, frac), span| {
             Type::Fixed(FixedType {
-                span: span.into(),
+                span,
                 bounds: Some(Fixed {
                     total: tot,
                     fractional: frac,
@@ -426,12 +419,7 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
 
 // Rule 43
 fn fixed_pt_const_type() -> impl IdlParser<Type> {
-    just(Kind::Fixed).map_with_span(|_, span: std::ops::Range<usize>| {
-        Type::Fixed(FixedType {
-            span: span.into(),
-            bounds: None,
-        })
-    })
+    just(Kind::Fixed).map_with_span(|_, span| Type::Fixed(FixedType { span, bounds: None }))
 }
 
 // Rule 44
@@ -558,9 +546,7 @@ fn element_spec() -> impl IdlParser<UnionElement> {
     // InterCOM extension that lets you define an "empty" member.
     let null = just(Kind::Null)
         .then_ignore(just(Kind::Semi))
-        .map_with_span(|_, span: std::ops::Range<usize>| {
-            UnionElement::Null(UnionNull { span: span.into() })
-        });
+        .map_with_span(|_, span| UnionElement::Null(UnionNull { span }));
 
     let ty = type_spec()
         .then(declarator())
@@ -678,8 +664,7 @@ fn declarator() -> impl IdlParser<Declarator> {
 
 // Rule 70
 fn any_type() -> impl IdlParser<Type> {
-    just(Kind::Any)
-        .map_with_span(|_, span: std::ops::Range<usize>| Type::Any(AnyType { span: span.into() }))
+    just(Kind::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
 }
 
 // Rule 72
@@ -1005,7 +990,7 @@ fn in_param_dcl() -> impl IdlParser<()> {
 }
 
 // Rule 199
-fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Type> + '_ {
+fn map_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type> + '_ {
     let key = state.clone();
     let value = state;
     let inner = key.then_ignore(just(Kind::Comma)).then(value).then(bound());
@@ -1018,7 +1003,7 @@ fn map_type(state: Recursive<'_, Kind, Type, Simple<Kind>>) -> impl IdlParser<Ty
             key: Box::new(key),
             value: Box::new(value),
             bound,
-            span: span.into(),
+            span,
         })
     })
 }
@@ -1047,7 +1032,7 @@ fn bitfield() -> impl IdlParser<Bitfield> {
         annotations: vec![],
         name,
         size,
-        span: span.into(),
+        span,
     })
 }
 
@@ -1087,7 +1072,7 @@ fn bit_value() -> impl IdlParser<Bit> {
         name,
         annotations: vec![],
         value,
-        span: span.into(),
+        span,
     })
 }
 

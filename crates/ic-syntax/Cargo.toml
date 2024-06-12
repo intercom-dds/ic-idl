@@ -34,6 +34,7 @@ publish.workspace = true
 
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
+chumsky = { version = "0.9.3", default-features = false }
 
 intercom-cts.workspace = true
 

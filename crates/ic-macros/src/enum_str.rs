@@ -25,17 +25,48 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod enum_iter;
-mod enum_str;
-
 use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput};
 
-#[proc_macro_derive(EnumIter)]
-pub fn derive_enum_iter(input: TokenStream) -> TokenStream {
-    enum_iter::derive(input)
+fn enum_string(data: &Data) -> proc_macro2::TokenStream {
+    let mut variants = proc_macro2::TokenStream::new();
+
+    if let syn::Data::Enum(ref value) = data {
+        for variant in &value.variants {
+            let ident = &variant.ident;
+            let params = match &variant.fields {
+                syn::Fields::Unit => quote! {},
+                syn::Fields::Unnamed(_) => quote! { (..) },
+                syn::Fields::Named(_) => quote! { { .. } },
+            };
+
+            variants.extend(quote! {
+                Self::#ident #params => stringify!(#ident).to_string(),
+            });
+        }
+    }
+    variants
 }
 
-#[proc_macro_derive(ToString)]
-pub fn derive_to_string(input: TokenStream) -> TokenStream {
-    enum_str::derive(input)
+pub fn derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = input.ident;
+
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let variants = enum_string(&input.data);
+
+    let expanded = quote! {
+        impl #impl_generics ::std::string::ToString for #name #ty_generics
+        #where_clause
+        {
+            fn to_string(&self) -> String {
+                match self {
+                    #variants
+                }
+            }
+        }
+    };
+    TokenStream::from(expanded)
 }

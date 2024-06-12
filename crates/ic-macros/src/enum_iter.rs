@@ -25,17 +25,50 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod enum_iter;
-mod enum_str;
-
 use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput};
 
-#[proc_macro_derive(EnumIter)]
-pub fn derive_enum_iter(input: TokenStream) -> TokenStream {
-    enum_iter::derive(input)
+fn enum_iter(data: &Data) -> proc_macro2::TokenStream {
+    let mut variants = proc_macro2::TokenStream::new();
+
+    if let syn::Data::Enum(ref value) = data {
+        for (index, variant) in value.variants.iter().enumerate() {
+            let ident = &variant.ident;
+
+            variants.extend(quote! {
+                #index => Some(Self::#ident),
+            });
+        }
+    }
+    variants
 }
 
-#[proc_macro_derive(ToString)]
-pub fn derive_to_string(input: TokenStream) -> TokenStream {
-    enum_str::derive(input)
+pub fn derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = input.ident;
+
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let variants = enum_iter(&input.data);
+
+    let expanded = quote! {
+        impl #impl_generics #name #ty_generics
+        #where_clause
+        {
+            pub fn iter() -> impl ::std::iter::Iterator<Item = Self> {
+                let mut state = 0;
+
+                ::std::iter::from_fn(move || {
+                    let var = match state {
+                        #variants
+                        _ => None,
+                    };
+                    state += 1;
+                    var
+                })
+            }
+        }
+    };
+    TokenStream::from(expanded)
 }

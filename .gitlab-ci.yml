@@ -77,7 +77,7 @@ build:stable:
   script:
     - rustc --version && cargo --version
     - cargo xtask bootstrap
-    - cargo install --path crates/ic-driver --root install
+    - cargo install --path crates/ic-idl --root install
   artifacts:
     paths:
       - "install/bin/"

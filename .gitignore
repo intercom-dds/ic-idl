@@ -29,4 +29,5 @@
 */**/Cargo.lock
 /cidl
 *.orig
+*.new
 tools/explorer/dist

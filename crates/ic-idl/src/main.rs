@@ -99,7 +99,6 @@ fn main() {
     }
 }
 
-#[cfg(feature = "hir")]
 fn try_main(options: &Options) -> anyhow::Result<()> {
     // For the time being, lexing and parsing happens in two separate stages as
     // debugging them separately is easier. This can be changed later so we
@@ -126,8 +125,7 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(not(feature = "hir"))]
-fn try_main(options: &Options) -> anyhow::Result<()> {
+fn try_ptree(options: &Options) -> anyhow::Result<()> {
     let preprocessed = options
         .files
         .iter()

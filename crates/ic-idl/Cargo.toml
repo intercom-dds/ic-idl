@@ -38,19 +38,13 @@ workspace = true
 
 [dependencies]
 anyhow = "1.0"
-ic-cli = { path = "../ic-cli" }
-ic-preproc = { path = "../ic-preproc" }
-ic-ptree = { path = "../ic-ptree", optional = true }
 
-# HIR-related deps
-ic-hir = { path = "../ic-hir", optional = true }
-ic-lint = { path = "../ic-lint", optional = true }
-ic-parse = { path = "../ic-parse", optional = true }
-ic-diagnostic = { path = "../ic-diagnostic", optional = true }
+ic-cli = { path = "../ic-cli" }
+ic-hir = { path = "../ic-hir" }
+ic-lint = { path = "../ic-lint" }
+ic-parse = { path = "../ic-parse" }
+ic-preproc = { path = "../ic-preproc" }
+ic-ptree = { path = "../ic-ptree" }
+ic-diagnostic = { path = "../ic-diagnostic" }
 
 intercom-cts.workspace = true
-
-[features]
-default = ["hir"]
-ptree = ["dep:ic-ptree"]
-hir = ["dep:ic-parse", "dep:ic-lint", "dep:ic-diagnostic"]

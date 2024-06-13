@@ -33,26 +33,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_MODULES}/cmake")
 
-find_package(BISON REQUIRED)
-find_package(FLEX REQUIRED)
-
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl)
-
-bison_target(
-    CidlGrammar
-        src/idl_grammar.y
-        ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl/idl_grammar.tab.c
-    COMPILE_FLAGS --name-prefix=idl
-)
-
-flex_target(
-    CidlTokens
-        src/idl_tokens.l
-        ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl/idl_tokens.c
-    COMPILE_FLAGS -Pidl
-)
-
-add_flex_bison_dependency(CidlTokens CidlGrammar)
 
 add_compile_definitions(
     FMT_HEADER_ONLY
@@ -71,8 +52,6 @@ add_subdirectory(
 
 add_library(ic_parser OBJECT
     src/idl_parser.cpp
-    ${BISON_CidlGrammar_OUTPUTS}
-    ${FLEX_CidlTokens_OUTPUTS}
 )
 
 target_include_directories(ic_parser PUBLIC

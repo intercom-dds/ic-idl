@@ -678,7 +678,8 @@ static void init_parser_state(const std::shared_ptr<parser>& state) {
         msgout().str("");
         msgout().clear();
         reset_top_level();
-        scan_string(g_builtin_annotations);
+        // TODO(idarcar):
+        // scan_string(g_builtin_annotations);
         clear_namespace_nodes();
         // Everything created up until this point is builtin types
         for (const auto& node : g_state->allocated_nodes) {
@@ -688,7 +689,8 @@ static void init_parser_state(const std::shared_ptr<parser>& state) {
         g_rpc_initial_state = std::make_shared<parser>(*initial);
         g_state = g_rpc_initial_state;
         reset_top_level();
-        scan_string(g_rpc_types);
+        // TODO(idarcar):
+        // scan_string(g_rpc_types);
 
         if (g_parse_result.error_count > 0) {
             std::cerr
@@ -884,8 +886,9 @@ static struct parse_result get_parse_result() {
     return g_parse_result;
 }
 
-static parse_result run_parser(const char* input) {
-    scan_string(input);
+static parse_result run_parser(const char* ) {
+    // TODO(idarcar):
+    // scan_string(input);
     return get_parse_result();
 }
 
@@ -1217,10 +1220,11 @@ parse_result& IdlParser::result() {
     return m_impl->result;
 }
 
-void IdlParser::run(const std::string& input) {
+void IdlParser::run(const std::string&) {
     std::lock_guard<std::mutex> guard(g_parse_mutex);
     init_parser_state(m_impl->state);
-    scan_string(input.c_str());
+    // TODO(idarcar):
+    // scan_string(input.c_str());
     m_impl->result = get_parse_result();
     m_impl->result.state = m_impl->state;
     g_state = std::make_shared<parser>();

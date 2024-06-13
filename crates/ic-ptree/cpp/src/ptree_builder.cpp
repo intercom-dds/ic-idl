@@ -47,6 +47,8 @@
 
 using namespace intercom::cidl;
 
+struct position current_pos;
+
 bool string_ends_with(const std::string& pragma, const std::string& end);
 
 extern std::map<std::string, ptree**> g_builtin_annotation_map;
@@ -384,6 +386,23 @@ std::string format_docstring(const char* text, int placement) {
     return res.str();
 }
 }  // namespace
+
+identifier create_identifier(const char* name) {
+    struct identifier ident;
+    ident.name = get_symbol(name);
+    ident.pos = current_pos;
+    return ident;
+}
+
+int idlerror(const char* s) {
+    parse_error(s, current_input_file, current_pos.line);
+    return 0;
+}
+
+int idlwarning(const char* s) {
+    parse_warning(s, current_input_file, current_pos.line);
+    return 0;
+}
 
 ptree* create_doc(struct identifier ident, int post_doc) {
     identifier doc_ident = create_identifier("@doc");

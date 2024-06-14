@@ -265,17 +265,17 @@ pub enum Kind {
     #[regex("0[xX][a-fA-F0-9]+")]
     Hex,
 
-    /// Fpoating-point literal
+    /// Floating-point literal
     #[regex(r"(?&digits)(?:[eE](?&digits)|\.(?&digits)(?:[eE](?&digits))?)")]
     Float,
 
     /// String literal. Handles escaped quotes.
-    #[regex(r#"L?"(?:[^"]|\\")*""#)]
-    StringLit,
+    #[regex(r#"L?"(?:[^"]|\\")*""#, to_owned)]
+    StringLit(String),
 
     /// Applied annotation made up of a valid UAX#31 identifier
-    #[regex(r#"(@|//@)(?&ident)"#)]
-    AnnotationAppl,
+    #[regex(r#"(@|//@)(?&ident)"#, to_owned)]
+    AnnotationAppl(String),
 
     /// A valid UAX#31 identifier.
     #[regex("(?&ident)", to_owned)]
@@ -296,7 +296,6 @@ pub enum Kind {
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Kind::Annotation => write!(f, "annotation"),
             Kind::Struct => write!(f, "struct"),
             Kind::Enum => write!(f, "enum"),
             Kind::Bitmask => write!(f, "bitmask"),
@@ -329,8 +328,8 @@ impl fmt::Display for Kind {
             Kind::ReadOnly => write!(f, "readonly"),
             Kind::Oneway => write!(f, "oneway"),
             Kind::Float => write!(f, "floating-point number"),
-            Kind::StringLit => write!(f, "string literal"),
-            Kind::AnnotationAppl => write!(f, "applied annotation"),
+            Kind::StringLit(_) => write!(f, "string literal"),
+            Kind::Annotation | Kind::AnnotationAppl(_) => write!(f, "annotation"),
             Kind::In => write!(f, "in"),
             Kind::Out => write!(f, "out"),
             Kind::InOut => write!(f, "inout"),

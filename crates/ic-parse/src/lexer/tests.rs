@@ -98,10 +98,10 @@ fn test_char_lit() {
 #[test]
 fn test_string_lit() {
     let input = r#""foo 'bar' baz""#;
-    assert_eq!(single(input), Kind::StringLit);
+    assert!(matches!(single(input), Kind::StringLit(_)));
 
     let input = r#""howdy 🤠""#;
-    assert_eq!(single(input), Kind::StringLit);
+    assert!(matches!(single(input), Kind::StringLit(_)));
 
     assert_eq!(single("\"foo"), Kind::Invalid);
 
@@ -115,28 +115,25 @@ fn test_string_lit() {
 fn escaped_string_lit() {
     let input = scan(r#""foo \"bar\" baz""#);
     assert_eq!(input.len(), 1);
-    assert_eq!(input[0].kind, Kind::StringLit);
+    assert!(matches!(input[0].kind, Kind::StringLit(_)));
 }
 
-// #[test]
-// fn test_ident() {
-//     assert_eq!(scan("foo123_456"), Token::Ident("foo123_456".to_string()),);
-//     assert!(scan("123foo").is_err());
-//
-//     // escaped keywords
-//     assert_eq!(scan("_struct"), Token::Ident("struct".to_string()),);
-//     assert_eq!(scan("_string"), Token::Ident("string".to_string()),);
-//     assert_eq!(scan("_foo"), Token::Ident("foo".to_string()),);
-//     assert_eq!(scan("_123"), Token::Ident("_123".to_string()),);
-//
-//     // annotations
-//     assert_eq!(scan("@foo"), Token::AnnAppl("foo".to_string()),);
-//     assert_eq!(scan("@default"), Token::AnnAppl("default".to_string()),);
-//     assert_eq!(
-//         scan("@annotation"),
-//         Token::AnnAppl("annotation".to_string()),
-//     );
-// }
+#[test]
+fn test_ident() {
+    // escaped keywords
+    assert_eq!(single("_struct"), Kind::Ident("_struct".to_string()));
+    assert_eq!(single("_string"), Kind::Ident("_string".to_string()));
+    assert_eq!(single("_foo"), Kind::Ident("_foo".to_string()));
+    assert_eq!(single("_123"), Kind::Ident("_123".to_string()));
+
+    // annotations
+    assert_eq!(single("@foo"), Kind::AnnotationAppl("@foo".to_string()));
+    assert_eq!(
+        single("@default"),
+        Kind::AnnotationAppl("@default".to_string()),
+    );
+    assert_eq!(single("@annotation"), Kind::Annotation);
+}
 
 #[test]
 fn invalid_token() {

@@ -59,20 +59,35 @@ fn ty() -> impl IdlParser<Ident> {
     ident().labelled("type")
 }
 
-fn integer_literal() -> impl IdlParser<Kind> {
-    one_of([Kind::Octal, Kind::Decimal, Kind::Hex])
+fn integer_literal() -> impl IdlParser<Literal> {
+    let lit = one_of([Kind::Octal, Kind::Decimal, Kind::Hex]);
+    lit.map_with_span(|_, span| Literal {
+        span,
+        kind: LitKind::LitInt,
+    })
 }
 
-fn floating_pt_literal() -> impl IdlParser<Kind> {
-    just(Kind::Float)
+fn floating_pt_literal() -> impl IdlParser<Literal> {
+    just(Kind::Float).map_with_span(|_, span| Literal {
+        span,
+        kind: LitKind::LitFloat,
+    })
 }
 
-fn character_literal() -> impl IdlParser<Kind> {
-    one_of([Kind::Octal, Kind::Decimal, Kind::Hex])
+fn character_literal() -> impl IdlParser<Literal> {
+    let lit = one_of([Kind::Octal, Kind::Decimal, Kind::Hex]);
+    lit.map_with_span(|_, span| Literal {
+        span,
+        kind: LitKind::LitChar,
+    })
 }
 
-fn string_literal() -> impl IdlParser<Kind> {
-    just(Kind::StringLit)
+fn string_literal() -> impl IdlParser<Literal> {
+    let lit = select! { Kind::StringLit(v) => v };
+    lit.map_with_span(|_, span| Literal {
+        span,
+        kind: LitKind::LitString,
+    })
 }
 
 fn lshift() -> impl IdlParser<Op> {
@@ -198,12 +213,7 @@ fn const_expr() -> impl IdlParser<Expr> {
         // Rule 16
         let nested = primary.parenthesized();
 
-        let lit = literal().map_with_span(|_, span| {
-            Expr::Literal(Literal {
-                kind: LitKind::LitInt,
-                span,
-            })
-        });
+        let lit = literal().map(Expr::Literal);
         let scoped = scoped_name().map(Expr::Path);
         let expr = choice((scoped, lit, nested));
 
@@ -278,7 +288,7 @@ fn unary_operator() -> impl IdlParser<Op> {
 }
 
 // Rule 17
-fn literal() -> impl IdlParser<Kind> {
+fn literal() -> impl IdlParser<Literal> {
     choice((
         integer_literal(),
         floating_pt_literal(),
@@ -289,8 +299,11 @@ fn literal() -> impl IdlParser<Kind> {
 }
 
 // Rule 18
-fn boolean_literal() -> impl IdlParser<Kind> {
-    one_of([Kind::True, Kind::False])
+fn boolean_literal() -> impl IdlParser<Literal> {
+    one_of([Kind::True, Kind::False]).map_with_span(|_, span| Literal {
+        span,
+        kind: LitKind::LitBool,
+    })
 }
 
 // Rule 19
@@ -1123,12 +1136,10 @@ fn any_const_type() -> impl IdlParser<()> {
 
 // Rule 225
 fn annotation_appl() -> impl IdlParser<()> {
-    choice((
-        just(Kind::AnnotationAppl)
-            .then(annotation_appl_params().parenthesized())
-            .ignored(),
-        just(Kind::AnnotationAppl).ignored(),
-    ))
+    let ident = select! { Kind::AnnotationAppl(v) => v };
+    ident
+        .then(annotation_appl_params().parenthesized().or_not())
+        .ignored()
 }
 
 // Rule 226

@@ -248,7 +248,7 @@ where
 {
     visitor.visit_ident(&def.name);
     for member in &def.members {
-        visitor.visit_struct_field(&member);
+        visitor.visit_struct_field(member);
     }
 }
 
@@ -259,7 +259,7 @@ where
     visitor.visit_ident(&def.name);
     // TODO: inherit? attributes?
     for proto in &def.prototypes {
-        visitor.visit_prototype(&proto);
+        visitor.visit_prototype(proto);
     }
 }
 
@@ -270,7 +270,7 @@ where
     visitor.visit_ident(&def.name);
 
     for proto in &def.prototypes {
-        visitor.visit_prototype(&proto);
+        visitor.visit_prototype(proto);
     }
 
     // TODO:
@@ -376,7 +376,7 @@ impl Visit for ModuleDef {
     {
         visitor.visit_ident(&self.name);
         for item in &self.definitions {
-            visitor.visit_item(&item);
+            visitor.visit_item(item);
         }
     }
 }

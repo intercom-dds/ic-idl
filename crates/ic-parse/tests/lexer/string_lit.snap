@@ -9,7 +9,7 @@ expression: tokens
             end: 652,
         },
         kind: StringLit(
-            "\"foobar\"",
+            "foobar",
         ),
     },
     Token {
@@ -18,7 +18,7 @@ expression: tokens
             end: 666,
         },
         kind: StringLit(
-            "\"foo bar baz\"",
+            "foo bar baz",
         ),
     },
     Token {
@@ -27,7 +27,7 @@ expression: tokens
             end: 672,
         },
         kind: StringLit(
-            "\"123\"",
+            "123",
         ),
     },
     Token {
@@ -36,7 +36,7 @@ expression: tokens
             end: 693,
         },
         kind: StringLit(
-            "\"escaped \\\"string\\\"\"",
+            "escaped \\\"string\\\"",
         ),
     },
     Token {
@@ -45,7 +45,7 @@ expression: tokens
             end: 698,
         },
         kind: StringLit(
-            "\"\\\"\"",
+            "\\\"",
         ),
     },
     Token {
@@ -54,7 +54,7 @@ expression: tokens
             end: 708,
         },
         kind: StringLit(
-            "\"foo<'a>\"",
+            "foo<'a>",
         ),
     },
     Token {
@@ -63,7 +63,7 @@ expression: tokens
             end: 711,
         },
         kind: StringLit(
-            "\"\"",
+            "",
         ),
     },
 ]

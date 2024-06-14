@@ -270,7 +270,7 @@ pub enum Kind {
     Float,
 
     /// String literal. Handles escaped quotes.
-    #[regex(r#"L?"(?:[^"]|\\")*""#, to_owned)]
+    #[regex(r#"L?"(?:[^"]|\\")*""#, string_lit)]
     StringLit(String),
 
     /// Applied annotation made up of a valid UAX#31 identifier
@@ -385,6 +385,13 @@ fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
         // The regex will never match more than 4 characters
         _ => unreachable!(),
     }
+}
+
+fn string_lit(lex: &mut Lexer<Kind>) -> String {
+    let mut iter = lex.slice().chars();
+    iter.next();
+    iter.next_back();
+    iter.as_str().to_string()
 }
 
 fn to_owned(lex: &mut Lexer<Kind>) -> String {

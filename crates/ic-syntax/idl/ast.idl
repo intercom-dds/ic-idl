@@ -75,10 +75,21 @@ enum LitKind {
     LIT_STRING
 };
 
+union LiteralValue switch(LitKind) {
+case LIT_BOOL:
+    boolean bool;
+case LIT_INT:
+     int64 int;
+case LIT_CHAR:
+     char _char;
+case LIT_STRING:
+     string _string;
+};
+
 @nested
 struct Literal {
     Span span;
-    LitKind kind;
+    LiteralValue value;
 };
 
 enum OpKind {

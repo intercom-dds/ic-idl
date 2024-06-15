@@ -28,6 +28,7 @@
 //! Collection of memory-related utilities.
 
 pub mod arena;
+pub mod bitset;
 pub mod inline_str;
 pub mod inline_vec;
 pub mod interner;

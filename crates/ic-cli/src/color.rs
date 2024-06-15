@@ -28,6 +28,7 @@
 use std::fmt::Display;
 use std::sync::OnceLock;
 
+#[derive(Copy, Clone, Debug)]
 pub enum Color {
     Black,
     Red,

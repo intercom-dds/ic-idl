@@ -141,7 +141,7 @@ impl<I, S> From<SimpleReason<I, S>> for Reason<I, S> {
 /// # Panics
 pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
     let tokens = lexer::stream(input);
-    let ast = parser::specification().parse(tokens);
+    let (ast, errs) = parser::specification().parse_recovery(tokens);
 
     if let Ok(tree) = ast {
         Ok(ParseResult {

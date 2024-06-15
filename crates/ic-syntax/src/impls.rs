@@ -222,7 +222,7 @@ impl chumsky::Span for Span {
 
 impl From<Span> for Range<usize> {
     fn from(val: Span) -> Self {
-        Range {
+        Self {
             start: val.start as usize,
             end: val.end as usize,
         }

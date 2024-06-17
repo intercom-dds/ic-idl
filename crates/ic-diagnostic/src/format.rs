@@ -39,25 +39,31 @@ struct Charset {
     up_right: &'static str,
     down_right: &'static str,
     vertical: &'static str,
-    horizontal: &'static str,
+    vertical_dx: &'static str,
+    highlight: &'static str,
+    highlight_arrow: &'static str,
 }
 
 impl Charset {
     fn ascii() -> Self {
         Self {
-            up_right: ">",
-            down_right: "-",
+            up_right: "==>",
+            down_right: "--",
             vertical: "|",
-            horizontal: "-",
+            vertical_dx: "+",
+            highlight: "^",
+            highlight_arrow: "`~~",
         }
     }
 
     fn unicode() -> Self {
         Self {
             up_right: "┌",
-            down_right: "└",
+            down_right: "└─",
             vertical: "│",
-            horizontal: "─",
+            vertical_dx: "·",
+            highlight: "^",
+            highlight_arrow: "└─",
         }
     }
 }
@@ -109,6 +115,7 @@ fn line_span(input: &str, offset: usize) -> Range<usize> {
 struct Formatter<'a> {
     filename: Option<&'a str>,
     source: &'a str,
+    chars: Charset,
 }
 
 impl<'a> Formatter<'a> {
@@ -153,32 +160,33 @@ impl<'a> Formatter<'a> {
         writeln!(
             f,
             "{indent}{} {}:1:5",
-            "┌".blue(),
+            self.chars.up_right.blue(),
             self.filename.unwrap_or("unknown"),
         )?;
-        writeln!(f, "{indent}{}", "│".blue())?;
+        writeln!(f, "{indent}{}", self.chars.vertical.blue())?;
 
         // Fill in the line number
         write!(
             f,
             " {} {}",
-            line_number.to_string().blue().bold(),
-            "│".blue(),
+            line_number.blue().bold(),
+            self.chars.vertical.blue(),
         )?;
 
         // Embed the origin of the diagnostic
         writeln!(f, " {}", self.source)?;
 
         // Draw all labels
-        Self::emit_labels(f, &indent, &diag.labels)?;
+        self.emit_labels(f, &indent, &diag.labels)?;
 
         // Finish the frame
-        writeln!(f, "{indent}{}", "└──".blue())
+        // writeln!(f, "{indent}{}", "└──".blue())
+        writeln!(f, "{indent}{}", self.chars.down_right.blue(),)
     }
 
     /// Highlights the relevant portion of the line. A highlight is a sequence
     /// of `^` characters.
-    fn emit_highlight(f: &mut dyn fmt::Write, ordered: &[&Label]) -> fmt::Result {
+    fn emit_highlight(&self, f: &mut dyn fmt::Write, ordered: &[&Label]) -> fmt::Result {
         let mut last_idx = 0;
 
         for label in ordered {
@@ -187,25 +195,29 @@ impl<'a> Formatter<'a> {
 
             // Emit the highlight
             let len = label.span.end.checked_sub(label.span.start).unwrap_or(1);
-            write!(f, "{indent}{}", "^".repeat(len).bold().fg(label.color))?;
+            write!(
+                f,
+                "{indent}{}",
+                self.chars.highlight.repeat(len).bold().fg(label.color),
+            )?;
             last_idx = label.span.end;
         }
         Ok(())
     }
 
-    fn emit_labels(f: &mut dyn fmt::Write, indent: &str, labels: &[Label]) -> fmt::Result {
+    fn emit_labels(&self, f: &mut dyn fmt::Write, indent: &str, labels: &[Label]) -> fmt::Result {
         // Order the labels from left to right, as determined by their
         // starting position.
         let mut ordered: Vec<_> = labels.iter().collect();
         ordered.sort_unstable_by_key(|v| v.span.start);
-        write!(f, "{indent}{} ", "·".blue())?;
+        write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
 
         // To properly format multiple labels, we start with the right-most
         // label and work our way towards the left.
         let mut iter = ordered.iter();
 
         // Iterate once over all labels and highlight the relevant portions
-        Self::emit_highlight(f, &ordered)?;
+        self.emit_highlight(f, &ordered)?;
 
         // Emit the message of the last, right-most diagnostic
         if let Some(last) = iter.next_back() {
@@ -214,7 +226,7 @@ impl<'a> Formatter<'a> {
 
         while let Some(label) = iter.next_back() {
             // Draw the line of the frame
-            write!(f, "{indent}{} ", "·".blue())?;
+            write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
 
             // Iterate over all remaining labels, drawing a vertical line
             // at the appropriate location.
@@ -222,12 +234,16 @@ impl<'a> Formatter<'a> {
             for rem in iter.clone() {
                 let padding = " ".repeat(rem.span.start - last_idx);
                 last_idx = rem.span.start + 1;
-                write!(f, "{padding}{}", "│".fg(rem.color))?;
+                write!(f, "{padding}{}", self.chars.vertical.fg(rem.color))?;
             }
 
             // Emit the message of the current label
             let padding = " ".repeat(label.span.start - last_idx);
-            write!(f, "{padding}{} ", "└─".fg(label.color))?;
+            write!(
+                f,
+                "{padding}{} ",
+                self.chars.highlight_arrow.fg(label.color),
+            )?;
             writeln!(f, "{}", label.msg.bold().fg(label.color))?;
         }
         Ok(())
@@ -239,6 +255,7 @@ impl fmt::Display for Diag {
         let fmt = Formatter {
             filename: None,
             source: "",
+            chars: Charset::unicode(),
         };
         fmt.report(f, self)
     }
@@ -248,6 +265,7 @@ pub fn with_source(f: &mut dyn fmt::Write, source: &str, diag: &Diag) -> fmt::Re
     let fmt = Formatter {
         filename: None,
         source,
+        chars: Charset::unicode(),
     };
     fmt.report(f, diag)
 }

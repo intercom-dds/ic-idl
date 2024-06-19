@@ -57,23 +57,24 @@ pub trait Visitor<'a> {
     }
 
     fn visit_struct_field(&mut self, def: &'a Field) {
-        self.visit_type(&def.ty);
-        for name in &def.names {
-            // self.visit_ident(name);
-        }
+        visit_struct_field(self, def);
     }
 
     fn visit_union(&mut self, def: &'a UnionDef) {
         visit_union(self, def);
     }
 
-    fn visit_discriminant(&mut self, def: &'a Discriminator) {}
+    fn visit_discriminant(&mut self, def: &'a Discriminator) {
+        visit_discriminant(self, def);
+    }
 
     fn visit_union_variant(&mut self, variant: &'a UnionField) {
         visit_union_variant(self, variant);
     }
 
-    fn visit_union_label(&mut self, def: &'a Label) {}
+    fn visit_union_label(&mut self, def: &'a Label) {
+        visit_union_label(self, def);
+    }
 
     fn visit_union_member(&mut self, def: &'a UnionMember) {}
 
@@ -125,11 +126,11 @@ pub trait Visitor<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr {
-            Expr::Literal(_) => todo!(),
-            Expr::Path(_) => todo!(),
+            Expr::Literal(_) => (),
+            Expr::Path(_) => (),
             Expr::Unary(v) => self.visit_expr_unary(v),
             Expr::Binary(v) => self.visit_expr_binary(v),
-            Expr::InitList(_) => todo!(),
+            Expr::InitList(_) => (),
         }
     }
 
@@ -198,6 +199,16 @@ where
     }
 }
 
+pub fn visit_struct_field<'a, V>(visitor: &mut V, def: &'a Field)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
+    for _decl in &def.names {
+        // visitor.visit_decl(decl.clon);
+    }
+}
+
 pub fn visit_union<'a, V>(visitor: &mut V, def: &'a UnionDef)
 where
     V: Visitor<'a> + ?Sized,
@@ -207,6 +218,13 @@ where
     for mem in &def.fields {
         visitor.visit_union_variant(mem);
     }
+}
+
+pub fn visit_discriminant<'a, V>(visitor: &mut V, def: &'a Discriminator)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
 }
 
 pub fn visit_union_variant<'a, V>(visitor: &mut V, def: &'a UnionField)
@@ -219,6 +237,15 @@ where
     match &def.field {
         UnionElement::Member(v) => visitor.visit_union_member(v),
         UnionElement::Null(v) => visitor.visit_union_null(v),
+    }
+}
+
+pub fn visit_union_label<'a, V>(visitor: &mut V, def: &'a Label)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    if let Label::Case(v) = def {
+        visitor.visit_expr(v);
     }
 }
 

@@ -144,9 +144,9 @@ pub struct Label {
 }
 
 impl Label {
-    pub fn new(span: Range<usize>) -> Self {
+    pub fn new(span: impl Into<Range<usize>>) -> Self {
         Self {
-            span,
+            span: span.into(),
             msg: String::new(),
             color: Color::White,
         }

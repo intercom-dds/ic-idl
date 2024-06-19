@@ -47,6 +47,9 @@ macro_rules! lints {
 }
 
 lints! {
+    pedantic::assign_expr::AssignExpr,
+    pedantic::complex_default::ComplexDefaultValue,
+    pedantic::empty_mod::EmptyMod,
     pedantic::null::NullVariant,
     semantic::div_by_zero::ByZero,
     syntax::ascii_ident::AsciiIdent,

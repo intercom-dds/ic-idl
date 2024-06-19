@@ -25,36 +25,47 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Diag;
-use ic_syntax::visit::Visitor;
+use ic_diagnostic::{error_span, Diag, Label};
+use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::Item;
 
 use crate::{Category, Lint};
 
 /// Verifies that all identifiers are made up of alphanumeric ASCII characters.
-pub struct AsciiIdent<'a>(&'a str);
+#[derive(Default)]
+pub struct AsciiIdent(Vec<Diag>);
 
-impl<'a, 'b> Visitor<'a> for AsciiIdent<'b> {
+impl<'a> Visitor<'a> for AsciiIdent {
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
-        let str = &self.0[ident.span.start as usize..ident.span.end as usize];
-        let invalid = str.chars().any(|v| !v.is_ascii_alphanumeric() && v != '_');
-        assert!(!invalid, "identifiers must be alphanumeric");
+        let invalid = ident
+            .name
+            .chars()
+            .any(|v| !v.is_ascii_alphanumeric() && v != '_');
+
+        if invalid {
+            let diag = error_span(
+                "identifiers can only consist of alphanumeric ASCII characters",
+                Label::new(ident.span).message("defined here"),
+            );
+            self.0.push(diag);
+        }
     }
 }
 
-impl Lint for AsciiIdent<'_> {
+impl Lint for AsciiIdent {
     fn new() -> Box<dyn Lint>
     where
         Self: Sized,
     {
-        Box::new(AsciiIdent(""))
+        Box::<Self>::default()
     }
 
     fn category(&self) -> crate::Category {
         Category::Syntax
     }
 
-    fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        vec![]
+    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
+        visit_tree(&mut *self, ast);
+        self.0
     }
 }

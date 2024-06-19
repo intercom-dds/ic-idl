@@ -25,21 +25,25 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Diag;
+use ic_diagnostic::{warn_span, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::{Item, UnionNull};
 
 use crate::{Category, Lint};
 
 /// Warns when the `null` keyword is used as a union member.
-pub struct NullVariant;
+#[derive(Default)]
+pub struct NullVariant(Vec<Diag>);
 
 impl<'a> Visitor<'a> for NullVariant {
     fn visit_union_null(&mut self, def: &'a UnionNull) {
-        eprintln!(
-            "{}..{}: `null` variants are an InterCOM extension",
-            def.span.start, def.span.end,
-        );
+        let diag = warn_span(
+            "`null` variants are an InterCOM extension",
+            Label::new(def.span).message("`null` is not standard"),
+        )
+        .note("all case labels must map to a value");
+
+        self.0.push(diag);
     }
 }
 
@@ -48,7 +52,7 @@ impl Lint for NullVariant {
     where
         Self: Sized,
     {
-        Box::new(Self)
+        Box::<Self>::default()
     }
 
     fn category(&self) -> Category {
@@ -57,6 +61,6 @@ impl Lint for NullVariant {
 
     fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
         visit_tree(&mut *self, ast);
-        vec![]
+        self.0
     }
 }

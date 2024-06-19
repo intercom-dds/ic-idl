@@ -31,3 +31,4 @@
 *.orig
 *.new
 tools/explorer/dist
+.jj

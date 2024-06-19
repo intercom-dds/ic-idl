@@ -25,5 +25,44 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_diagnostic::{warn_span, Diag, Label};
+use ic_syntax::visit::{visit_module, visit_tree, Visitor};
+use ic_syntax::{Item, UnionNull};
+
+use crate::{Category, Lint};
+
 /// Checks for empty module declarations.
-pub struct EmptyMod;
+#[derive(Default)]
+pub struct EmptyMod(Vec<Diag>);
+
+impl<'a> Visitor<'a> for EmptyMod {
+    fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
+        if def.definitions.is_empty() {
+            let diag = warn_span(
+                "empty module declarations are not allowed",
+                Label::new(def.span),
+            )
+            .help("either remove the module or add an item to it");
+            self.0.push(diag);
+        }
+        visit_module(self, def);
+    }
+}
+
+impl Lint for EmptyMod {
+    fn new() -> Box<dyn Lint>
+    where
+        Self: Sized,
+    {
+        Box::<Self>::default()
+    }
+
+    fn category(&self) -> Category {
+        Category::Pedantic
+    }
+
+    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
+        visit_tree(&mut *self, ast);
+        self.0
+    }
+}

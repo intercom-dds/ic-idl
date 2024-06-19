@@ -101,7 +101,15 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     match ast {
         Ok(v) => {
             dbg!(&v.tree);
-            dbg!(ic_lint::lint_syntax(&v.tree));
+
+            let report = ic_lint::lint_syntax(&v.tree);
+            dbg!(&report);
+
+            for diag in &report.diagnostics {
+                let mut buf = String::new();
+                ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
+                eprintln!("{buf}");
+            }
         }
         Err(e) => {
             pretty::emit_errors(&input, &e);

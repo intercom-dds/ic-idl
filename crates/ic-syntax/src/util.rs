@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Path, Type};
+use crate::{Expr, Path, Span, Type};
 
 #[must_use]
 pub fn path_name(path: &Path) -> String {
@@ -46,5 +46,41 @@ pub fn type_name(path: &Type) -> String {
         Type::Fixed(..) => "fixed".to_string(),
         Type::Sequence(seq) => format!("sequence<{}>", type_name(seq.ty.as_ref())),
         Type::Path(ty) => path_name(ty),
+    }
+}
+
+pub fn expr_span(expr: &Expr) -> Span {
+    match expr {
+        Expr::Literal(v) => v.span,
+        Expr::Path(v) => {
+            let start = v
+                .leading_colons
+                .map(|v| v.start)
+                .unwrap_or_else(|| v.segments.first().map_or(0, |v| v.span.start));
+
+            let end = v.segments.last().map_or(0, |v| v.span.end);
+            Span { start, end }
+        }
+        Expr::Unary(v) => {
+            let start = v.op.span.start;
+            let end = expr_span(&v.expr).end;
+            Span { start, end }
+        }
+        Expr::Binary(v) => {
+            let start = expr_span(&v.lhs).start;
+            let end = expr_span(&v.rhs).end;
+            Span { start, end }
+        }
+        Expr::InitList(v) => {
+            let start = v.first().map(expr_span).unwrap_or_default().start;
+            let end = v.last().map(expr_span).unwrap_or_default().end;
+            Span { start, end }
+        }
+    }
+}
+
+impl Expr {
+    pub fn span(&self) -> Span {
+        expr_span(self)
     }
 }

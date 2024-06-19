@@ -33,13 +33,12 @@ fn emit_error(input: &str, error: &Error) {
     let diag = match &error.reason {
         Reason::Unclosed { span, delimiter } => error_span(
             format!("unclosed delimiter {delimiter}"),
-            Label::new((*span).into()).message("unclosed delimiter here"),
+            Label::new(*span).message("unclosed delimiter here"),
         ),
 
-        Reason::Custom(msg) => error_span(
-            msg,
-            Label::new(error.span.into()).message("unexpected token"),
-        ),
+        Reason::Custom(message) => {
+            error_span(message, Label::new(error.span).message("unexpected token"))
+        }
 
         Reason::Unexpected => {
             let cause = if let Some(e) = &error.found {
@@ -64,7 +63,7 @@ fn emit_error(input: &str, error: &Error) {
 
             error_span(
                 format!("{cause}, expected {expected}"),
-                Label::new(error.span.into()).message(format!("unexpected {found}")),
+                Label::new(error.span).message(format!("unexpected {found}")),
             )
         }
     };

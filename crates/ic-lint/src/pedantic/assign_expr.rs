@@ -25,38 +25,58 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::visit::Visitor;
+use ic_diagnostic::{warn_span, Diag, Label};
+use ic_syntax::visit::{visit_tree, Visitor};
+use ic_syntax::{util, Item, UnionNull};
+
+use crate::{Category, Lint};
 
 /// Lint that checks for enumerators and bitmask flags where a field was
 /// assigned a value using an assignment operator instead of an annotation.
-pub struct AssignExpr;
+#[derive(Default)]
+pub struct AssignExpr(Vec<Diag>);
 
 impl<'a> Visitor<'a> for AssignExpr {
     fn visit_bitmask_bit(&mut self, flag: &'a ic_syntax::Bit) {
-        if flag.value.is_some() {
-            // TODO: we should use the span of the expression
-            let span = &flag.name.span;
-            eprintln!(
-                "{}:{}: assignment operator on bitmask flags is an InterCOM extension",
-                span.start,
-                span.end - span.start,
-            );
-            eprintln!(" = help: use the `@position` annotation instead");
-            eprintln!(" = note: warning produced by -Wpedantic");
+        if let Some(value) = &flag.value {
+            let diag = warn_span(
+                "assignment operator on bitmask flags is an InterCOM extension",
+                Label::new(value.span()),
+            )
+            .help("use the `@position` annotation instead");
+
+            self.0.push(diag);
         }
     }
 
     fn visit_enum_variant(&mut self, variant: &'a ic_syntax::Enumerator) {
-        if variant.value.is_some() {
-            let span = &variant.name.span;
-            eprintln!(
-                "{}:{}: assignment operator on enumerators is an InterCOM extension",
-                span.start,
-                span.end - span.start,
-            );
-            eprintln!(" = help: use the `@value` annotation instead");
-            eprintln!(" = note: warning produced by -Wpedantic");
+        if let Some(value) = &variant.value {
+            let diag = warn_span(
+                "assignment operator on enumerators is an InterCOM extension",
+                Label::new(value.span()),
+            )
+            .help("use the `@value` annotation instead");
+
+            self.0.push(diag);
         }
+    }
+}
+
+impl Lint for AssignExpr {
+    fn new() -> Box<dyn Lint>
+    where
+        Self: Sized,
+    {
+        Box::<Self>::default()
+    }
+
+    fn category(&self) -> Category {
+        Category::Pedantic
+    }
+
+    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
+        visit_tree(&mut *self, ast);
+        self.0
     }
 }
 

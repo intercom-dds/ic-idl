@@ -97,16 +97,16 @@ fn line_col(input: &str, offset: usize) -> (usize, usize) {
 fn line_span(input: &str, offset: usize) -> Range<usize> {
     let start = input
         .bytes()
-        .take(offset)
         .enumerate()
+        .take(offset)
         .rfind(|(_, v)| *v == b'\n')
         .map_or(0, |v| v.0 + 1);
 
     let end = input
         .trim_end()
         .bytes()
-        .skip(offset)
         .enumerate()
+        .skip(offset)
         .find(|(_, v)| *v == b'\n')
         .map_or(input.len().saturating_sub(1), |v| v.0);
 
@@ -182,21 +182,24 @@ impl<'a> Formatter<'a> {
         self.emit_labels(f, &indent, &diag.labels)?;
 
         // Finish the frame
-        // writeln!(f, "{indent}{}", "└──".blue())
-        writeln!(f, "{indent}{}", self.chars.down_right.blue(),)
+        writeln!(f, "{indent}{}", self.chars.down_right.blue())
     }
 
     /// Highlights the relevant portion of the line. A highlight is a sequence
     /// of `^` characters.
     fn emit_highlight(&self, f: &mut dyn fmt::Write, ordered: &[&Label]) -> fmt::Result {
-        let mut last_idx = 0;
+        let last_idx = ordered.iter().next().map_or(0, |v| v.span.start);
+        let mut last_idx = line_span(&self.source, last_idx).start;
 
         for label in ordered {
             // Determine the indentation needed to reach the highlighted region
             let indent = " ".repeat(label.span.start.saturating_sub(last_idx));
 
             // Emit the highlight
-            let len = label.span.end.checked_sub(label.span.start).unwrap_or(1);
+            let len = self.source[label.span.start..label.span.end]
+                .chars()
+                .count();
+
             write!(
                 f,
                 "{indent}{}",

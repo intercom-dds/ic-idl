@@ -2589,9 +2589,7 @@ static void cpl_union_c_def(const ptree* obj) {
                     if (pos != std::string::npos) {
                         type_name = type_name.substr(pos + 2);
                     }
-                    mprintf(
-                        &g_hd_impl_file, "intercom::destroy_at(&ic_union_value_.{});\n", name(lhs)
-                    );
+                    mprintf(&g_hd_impl_file, "std::destroy_at(&ic_union_value_.{});\n", name(lhs));
                 }
                 mprintf(&g_hd_impl_file, "break;\n");
             }

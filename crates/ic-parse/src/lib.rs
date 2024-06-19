@@ -77,9 +77,6 @@
 
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
-use ic_alloc::interner::Interner;
-use ic_cli::color::Colorize;
-use ic_diagnostic::{error_span, Label};
 use ic_syntax::{Item, Span};
 use lexer::{Kind, Token};
 
@@ -90,44 +87,29 @@ mod parser;
 
 #[derive(Debug)]
 pub struct ParseResult {
-    pub interner: Interner,
     pub tree: Vec<Item>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Error<I, S> {
-    pub reason: Reason<I, S>,
-    pub span: Span,
-}
-
-// impl<I, S> From<Simple<I, S>> for Error<I, S> {
-//     fn from(value: Simple<I, S>) -> Self {
-//         Self {
-//             reason: value.reason(),
-//             span: value.span(),
-//         }
-//     }
-// }
-
-#[derive(Clone, Debug)]
-pub enum Reason<I, S> {
+pub enum Reason {
     /// An unexpected input was found.
     Unexpected,
 
     /// An unclosed delimiter was found.
     Unclosed {
         /// The span of the unclosed delimiter.
-        span: S,
+        span: Span,
+
         /// The unclosed delimiter.
-        delimiter: I,
+        delimiter: Kind,
     },
 
     /// An error with a custom message occurred.
     Custom(String),
 }
 
-impl<I, S> From<SimpleReason<I, S>> for Reason<I, S> {
-    fn from(value: SimpleReason<I, S>) -> Self {
+impl From<SimpleReason<Kind, Span>> for Reason {
+    fn from(value: SimpleReason<Kind, Span>) -> Self {
         match value {
             SimpleReason::Unexpected => Self::Unexpected,
             SimpleReason::Unclosed { span, delimiter } => Self::Unclosed { span, delimiter },
@@ -136,76 +118,49 @@ impl<I, S> From<SimpleReason<I, S>> for Reason<I, S> {
     }
 }
 
+#[derive(Debug)]
+pub struct Error {
+    pub found: Option<Kind>,
+    pub expected: Option<Vec<Kind>>,
+    pub reason: Reason,
+    pub span: Span,
+}
+
+impl From<Simple<Kind, Span>> for Error {
+    fn from(value: Simple<Kind, Span>) -> Self {
+        Self {
+            found: value.found().cloned(),
+            expected: value.expected().cloned().collect(),
+            reason: Reason::from(value.reason().clone()),
+            span: value.span(),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:{}: syntax error: expected {:?}, found {:?}",
+            self.span.start, self.span.end, self.found, self.expected,
+        )
+    }
+}
+
 /// Constructs an AST from the given source code.
 ///
 /// # Errors
 ///
 /// # Panics
-pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
+pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
     let tokens = lexer::stream(input);
-    let (ast, errs) = parser::specification().parse_recovery(tokens);
-    dbg!(errs.len());
+    let tree = parser::specification()
+        .parse(tokens)
+        .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
 
-    let diagnostics: Vec<_> = errs
-        .into_iter()
-        .map(|v| v.map(|c| c.to_string()))
-        .map(|e| {
-            match e.reason() {
-                SimpleReason::Unclosed { span, delimiter } => error_span(
-                    format!("unclosed delimiter {delimiter}"),
-                    Label::new((*span).into()).message("unclosed delimiter here"),
-                ),
-                SimpleReason::Unexpected => error_span(
-                    format!(
-                        "{}, expected {}",
-                        if e.found().is_some() {
-                            format!("unexpected {}", e.found().unwrap().red())
-                        } else {
-                            "unexpected end of input".to_string()
-                        },
-                        // if e.label().is_some() {
-                        //     e.label().unwrap().to_string()
-                        // }
-                        if e.expected().len() == 0 {
-                            "definition".to_string()
-                        } else {
-                            e.expected()
-                                .map(|expected| match expected {
-                                    Some(expected) => expected.to_string().cyan().bold(),
-                                    None => "end of input".to_string(),
-                                })
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        }
-                    ),
-                    Label::new(e.span().into()).message(format!(
-                        "unexpected {}",
-                        e.found()
-                            .map(ToString::to_string)
-                            .unwrap_or("end of input".to_string()),
-                    )),
-                ),
-                SimpleReason::Custom(msg) => {
-                    error_span(msg, Label::new(e.span().into()).message("unexpected token"))
-                }
-            }
-        })
-        .collect();
-
-    for diag in &diagnostics {
-        let mut buf = String::new();
-        ic_diagnostic::emit_diagnostic(&mut buf, input, diag)?;
-        eprintln!("{buf}");
-    }
-
-    if let Some(ast) = ast {
-        Ok(ParseResult {
-            interner: Interner::default(),
-            tree: ast,
-        })
-    } else {
-        Err(anyhow::anyhow!("parse error"))
-    }
+    Ok(ParseResult { tree })
 }
 
 /// Constructs an AST from the given token iterator.
@@ -215,16 +170,15 @@ pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
 /// If the given input contains IDL that is not syntactically valid, a
 /// non-exhausitve list of parse errors will be returned that contains the
 /// cause of each error and its span.
-pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Simple<Kind, ic_syntax::Span>>>
+pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Error>>
 where
     I: IntoIterator<Item = Token>,
 {
     let tokens = iter.into_iter();
     let stream = Stream::from_iter(Span::default(), tokens.map(move |tok| (tok.kind, tok.span)));
-    let ast = parser::specification().parse(stream)?;
+    let tree = parser::specification()
+        .parse(stream)
+        .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
 
-    Ok(ParseResult {
-        interner: Interner::default(),
-        tree: ast,
-    })
+    Ok(ParseResult { tree })
 }

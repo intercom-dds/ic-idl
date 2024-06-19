@@ -184,11 +184,8 @@ dependencies = [
 name = "ic-parse"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "chumsky",
- "ic-alloc",
  "ic-cli",
- "ic-diagnostic",
  "ic-syntax",
  "insta",
  "logos",

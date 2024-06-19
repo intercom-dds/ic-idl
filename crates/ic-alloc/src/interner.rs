@@ -33,7 +33,6 @@ use crate::arena::{Arena, Id};
 
 /// A cached entry in the interner.
 #[derive(Debug)]
-#[derive(Default)] // TODO: remove
 pub struct CachedStr {
     hash: u64,
     string: Box<str>,

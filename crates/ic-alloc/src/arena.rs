@@ -37,7 +37,6 @@ use intercom_cts::{Marshal, Unmarshal};
 
 #[must_use]
 #[repr(transparent)]
-#[derive(Default)] // TODO: remove
 pub struct Id<T> {
     id: usize,
     _marker: PhantomData<fn() -> T>,

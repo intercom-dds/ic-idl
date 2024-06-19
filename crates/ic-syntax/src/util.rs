@@ -49,18 +49,20 @@ pub fn type_name(path: &Type) -> String {
     }
 }
 
+pub fn path_span(path: &Path) -> Span {
+    let start = path
+        .leading_colons
+        .map(|v| v.start)
+        .unwrap_or_else(|| path.segments.first().map_or(0, |v| v.span.start));
+
+    let end = path.segments.last().map_or(0, |v| v.span.end);
+    Span { start, end }
+}
+
 pub fn expr_span(expr: &Expr) -> Span {
     match expr {
         Expr::Literal(v) => v.span,
-        Expr::Path(v) => {
-            let start = v
-                .leading_colons
-                .map(|v| v.start)
-                .unwrap_or_else(|| v.segments.first().map_or(0, |v| v.span.start));
-
-            let end = v.segments.last().map_or(0, |v| v.span.end);
-            Span { start, end }
-        }
+        Expr::Path(v) => path_span(v),
         Expr::Unary(v) => {
             let start = v.op.span.start;
             let end = expr_span(&v.expr).end;
@@ -76,6 +78,17 @@ pub fn expr_span(expr: &Expr) -> Span {
             let end = v.last().map(expr_span).unwrap_or_default().end;
             Span { start, end }
         }
+    }
+}
+
+pub fn ty_span(ty: &Type) -> Span {
+    match ty {
+        Type::Any(v) => v.span,
+        Type::Sequence(v) => v.span,
+        Type::String_(v) => v.span,
+        Type::Map(v) => v.span,
+        Type::Fixed(v) => v.span,
+        Type::Path(v) => path_span(v),
     }
 }
 

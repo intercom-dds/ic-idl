@@ -30,9 +30,9 @@
 use crate::{
     AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Binary, Bit, Bitfield,
     BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Ident, InitList, InterfaceDef, Item, ItemKind, Label, Literal, ModuleDef, Prototype,
-    Span, StructDef, Type, Typedef, Unary, UnionDef, UnionElement, UnionField, UnionMember,
-    UnionNull, ValuetypeDef,
+    Field, Ident, InitList, InterfaceDef, Item, ItemKind, Label, Literal, ModuleDef, Param,
+    Prototype, Span, StructDef, Type, Typedef, Unary, UnionDef, UnionElement, UnionField,
+    UnionMember, UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -100,7 +100,13 @@ pub trait Visitor<'a> {
         visit_valuetype(self, def);
     }
 
-    fn visit_prototype(&mut self, def: &'a Prototype) {}
+    fn visit_prototype(&mut self, def: &'a Prototype) {
+        visit_prototype(self, def);
+    }
+
+    fn visit_prototype_param(&mut self, param: &'a Param) {
+        visit_param(self, param);
+    }
 
     fn visit_bitmask(&mut self, bitmask: &'a BitmaskDef) {
         visit_bitmask(self, bitmask);
@@ -304,6 +310,24 @@ where
     // for proto in &def.members {
     //     visitor.visit_valuetype_member(&proto);
     // }
+}
+
+pub fn visit_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.name);
+    for param in &def.params {
+        visitor.visit_prototype_param(param);
+    }
+}
+
+pub fn visit_param<'a, V>(visitor: &mut V, def: &'a Param)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
+    visitor.visit_ident(&def.name);
 }
 
 pub fn visit_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)

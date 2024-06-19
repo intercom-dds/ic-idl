@@ -51,6 +51,7 @@ lints! {
     pedantic::complex_default::ComplexDefaultValue,
     pedantic::empty_mod::EmptyMod,
     pedantic::null::NullVariant,
+    pedantic::optional_in::OptionalIn,
     semantic::div_by_zero::ByZero,
     syntax::ascii_ident::AsciiIdent,
     syntax::empty::EmptyTypes,

@@ -789,6 +789,7 @@ fn parameter_dcls() -> impl IdlParser<()> {
 // Rule 85
 fn param_dcl() -> impl IdlParser<()> {
     param_attribute()
+        .or_not()
         .then(type_spec())
         .then(simple_declarator())
         .ignored()

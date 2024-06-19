@@ -174,7 +174,7 @@ pub struct Options {
 
     /// Add directory to include search paths
     #[option(short = 'I', long, arg = "dir")]
-    pub include: Vec<PathBuf>,
+    pub include: Vec<String>,
 
     /// Define <def> to <val> (or 1 if <val> is omitted)
     #[option(short = 'D', long, arg = "def>=<val")]

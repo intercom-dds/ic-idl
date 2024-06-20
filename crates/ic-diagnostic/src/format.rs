@@ -153,10 +153,8 @@ impl<'a> Formatter<'a> {
 
     fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
         // Determine the necessary indentation based on length of the linenu
-        let (line_number, col) = line_col(
-            &self.source,
-            diag.labels.first().map_or(0, |v| v.span.start),
-        );
+        let (line_number, col) =
+            line_col(self.source, diag.labels.first().map_or(0, |v| v.span.start));
         let indent = line_number.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 

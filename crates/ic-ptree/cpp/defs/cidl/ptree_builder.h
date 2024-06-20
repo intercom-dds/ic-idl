@@ -35,12 +35,6 @@ extern "C" {
 
 const char* get_symbol(const char* name);
 
-void parse_error(const char* msg, const char* file_name, int line_number);
-
-void parse_warning(const char* msg, const char* file_name, int line_number);
-
-int parser_has_error(void);
-
 struct identifier create_identifier(const char* name);
 
 struct identifier build_scoped_name(struct identifier base, struct identifier next);
@@ -282,111 +276,11 @@ inline std::string tolower(std::string res) {
     return res;
 }
 
-/// parses messages, but does not print them
-class ParserMessage {
-  public:
-    using WriterType = void (*)(const char*, const char*, int, CommandLineOption::WarningType);
-
-    ParserMessage(WriterType writer, CommandLineOption::WarningType warning)
-        : line_number(0), writer(writer), warning_type(warning) {}
-
-    ~ParserMessage() {
-        if (context_node) {
-            writer(stream.str().c_str(), context_node->file_name.c_str(), 0, warning_type);
-        } else {
-            writer(stream.str().c_str(), current_input_file, 0, warning_type);
-        }
-    }
-
-    ParserMessage& context(const ptree* n) {
-        context_node = n;
-        return *this;
-    }
-
-    ParserMessage& context(struct identifier) {
-        return *this;
-    }
-
-    template <typename T>
-    ParserMessage& operator<<(const T& val) {
-        stream << val;
-        return *this;
-    }
-
-    ParserMessage& operator<<(numeric_kind val) {
-        stream << numeric_kind_str(val);
-        return *this;
-    }
-
-    ParserMessage& operator<<(node_kind val) {
-        stream << node_kind_str(val);
-        return *this;
-    }
-
-    ParserMessage& operator<<(struct ptree* val) {
-        return operator<<(static_cast<const struct ptree*>(val));
-    }
-
-    ParserMessage& operator<<(const struct ptree* val) {
-        if (val) {
-            stream << "\"" << val->name << "\"";
-        } else if (val) {
-            stream << "\"(no name)\"";
-        } else {
-            stream << "\"(null)\"";
-        }
-        return *this;
-    }
-
-    template <typename Iter_t>
-    ParserMessage& append(Iter_t begin, Iter_t end, const char* separator = ", ") {
-        while (begin != end) {
-            *this << *begin;
-            if (begin + 1 != end) {
-                *this << separator;
-            }
-            begin++;
-        }
-        return *this;
-    }
-
-  protected:
-    std::stringstream stream;
-    const ptree* context_node = nullptr;
-    int line_number;
-
-    const WriterType writer;
-    const CommandLineOption::WarningType warning_type;
-};
-
 extern std::shared_ptr<::parser> g_state;
 extern std::mutex g_parse_mutex;
 
 }  // namespace intercom::cidl
 
-/// creates error, warning, or nothing depending on commandline user inputs
-void parse_alert(
-    const char* msg,
-    const char* file_name,
-    int line_number,
-    intercom::cidl::CommandLineOption::WarningType warning_type
-);
-
-/// creates error, warning, or nothing depending on commandline user inputs
-#  define ALERT(warning_type)                                       \
-      intercom::cidl::ParserMessage msg(parse_alert, warning_type); \
-      msg
-
-#  define ERR                                                                         \
-      intercom::cidl::ParserMessage msg(                                              \
-          parse_alert, intercom::cidl::CommandLineOption::WARNING_UNCATEGORIZED_ERROR \
-      );                                                                              \
-      msg
-
-#  define WARN                                                                          \
-      intercom::cidl::ParserMessage msg(                                                \
-          parse_alert, intercom::cidl::CommandLineOption::WARNING_UNCATEGORIZED_WARNING \
-      );                                                                                \
-      msg
+#  define ERR std::cerr
 
 #endif

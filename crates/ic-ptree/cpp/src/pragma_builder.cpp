@@ -27,6 +27,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 #include <vector>
 
@@ -94,7 +95,6 @@ bool pragma_finish_impl() {
             intercom::cidl::g_state->current_under_documentation.reset();
             return true;
         }
-        WARN << "missing type argument for pragma \"" << g_pragma_command[0] << "\"";
         return false;
     }
     if (g_pragma_command[0] == "INTERCOM_KONGSBERG_COPYRIGHT") {
@@ -114,8 +114,6 @@ bool pragma_finish_impl() {
         }
         node = try_lookup_node(replace_dots.str().c_str(), ANY_KIND);
         if (!node) {
-            WARN << "unknown type \"" << g_pragma_command[1] << "\" for pragma \""
-                 << g_pragma_command[0] << "\"";
             if (g_pragma_command[0] != "INTERCOM_DOC") {
                 return false;
             }
@@ -125,23 +123,14 @@ bool pragma_finish_impl() {
     if (g_pragma_command.size() >= 3) {
         member = lookup_member(node, g_pragma_command[2].c_str());
         if (!member) {
-            WARN << "unknown member \"" << g_pragma_command[2] << "\" for pragma \""
-                 << g_pragma_command[0] << "\"";
             return false;
         }
     }
     if (g_pragma_command[0] == "DCPS_DATA_TYPE" || g_pragma_command[0] == "INTERCOM_DLL_EXPORT" ||
         g_pragma_command[0] == "INTERCOM_PACKED_BIT_LITTLE" ||
         g_pragma_command[0] == "INTERCOM_STRING_TERM") {
-        ALERT(intercom::cidl::CommandLineOption::WARNING_DEPRECATED)
-            << "deprecated syntax \"" << g_pragma_command[0] << "\"";
     } else if (g_pragma_command[0] == "DCPS_DATA_KEY") {
-        {
-            ALERT(intercom::cidl::CommandLineOption::WARNING_DEPRECATED)
-                << "deprecated syntax \"" << g_pragma_command[0] << "\"";
-        }
         if (!member) {
-            WARN << "missing key argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
         }
         create_annotation_start(create_identifier("@key"));
@@ -174,7 +163,6 @@ bool pragma_finish_impl() {
         intercom::cidl::g_state->current_under_documentation = node;
     } else if (g_pragma_command[0] == "INTERCOM_VMF_XRI") {
         if (!member) {
-            WARN << "missing member argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
         }
         create_annotation_start(create_identifier("@ext::vmf_xri"));
@@ -185,7 +173,6 @@ bool pragma_finish_impl() {
             annotation = "@ext::length_bit_bound";
         }
         if (!member || g_pragma_command.size() < 4) {
-            WARN << "missing argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
         }
         ptree* param = create_node(N_CONST, create_identifier("value"));
@@ -205,7 +192,6 @@ bool pragma_finish_impl() {
     } else if (g_pragma_command[0] == "INTERCOM_FIELD_VALUE_OFFSET") {
         std::string annotation = "@ext::value_offset";
         if (!member || g_pragma_command.size() < 4) {
-            WARN << "missing argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
         }
         ptree* param = create_node(N_CONST, create_identifier("value"));
@@ -217,7 +203,6 @@ bool pragma_finish_impl() {
         ptree* repeater;
         if (!member || g_pragma_command.size() < 4 ||
             !(repeater = lookup_member(node, g_pragma_command[3].c_str()))) {
-            WARN << "missing argument for pragma \"" << g_pragma_command[0] << "\"";
             return false;
         }
         ptree* param = create_node(N_CONST, create_identifier("value"));
@@ -226,8 +211,6 @@ bool pragma_finish_impl() {
         create_annotation_start(create_identifier("@ext::repeat_count"));
         annotate(member, create_annotation_finish(param));
     } else {
-        WARN << "unknown pragma \"" << g_pragma_command[0] << "\" for type \""
-             << g_pragma_command[1] << "\"";
         return false;
     }
     return true;

@@ -360,7 +360,7 @@ static void recurse_node(Printer& out, const ptree* node) {
 void validate_proto(const ptree* node) {
     if (node->kind == N_ENUM) {
         if (long_long_value(node->members->value) != 0) {
-            ERR.context(node) << "The first enum value must be zero in proto3";
+            ERR << "The first enum value must be zero in proto3";
         }
     }
 }

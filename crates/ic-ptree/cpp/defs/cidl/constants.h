@@ -160,10 +160,6 @@ const struct numeric* expr_unary(char op, const struct numeric* v);
 
 const struct numeric* expr_binary(char op, const struct numeric* v1, const struct numeric* v2);
 
-int idlerror(const char* msg);
-
-int idlwarning(const char* msg);
-
 extern const char* current_input_file;
 
 extern struct ptree boolean_type;

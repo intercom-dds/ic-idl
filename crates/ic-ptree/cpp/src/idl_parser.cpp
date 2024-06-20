@@ -630,28 +630,6 @@ void do_parse_warning(const char* msg, const char* file_name, int line_number) {
     ++g_parse_result.warning_count;
 }
 
-void parse_alert(
-    const char* msg,
-    const char* file_name,
-    int line_number,
-    CommandLineOption::WarningType warning_type
-) {
-    if (!CommandLineOption::suppress_error(warning_type) &&
-        !CommandLineOption::suppress_warning(warning_type)) {
-        do_parse_error(msg, file_name, line_number);
-    } else if (!CommandLineOption::suppress_warning(warning_type)) {
-        do_parse_warning(msg, file_name, line_number);
-    }
-}
-
-void parse_error(const char* msg, const char* file_name, int line_number) {
-    parse_alert(msg, file_name, line_number, CommandLineOption::WARNING_UNCATEGORIZED_ERROR);
-}
-
-void parse_warning(const char* msg, const char* file_name, int line_number) {
-    parse_alert(msg, file_name, line_number, CommandLineOption::WARNING_UNCATEGORIZED_WARNING);
-}
-
 int parser_has_error() {
     return g_parse_result.error_count > 0;
 }
@@ -664,7 +642,6 @@ static std::shared_ptr<parser> g_rpc_initial_state;
 
 static void init_parser_state(const std::shared_ptr<parser>& state) {
     static auto s_initial_state = []() -> std::shared_ptr<parser> {
-        const CommandLineOption::ScopeDefaultWarnings scp;
         auto initial = std::make_shared<parser>();
         g_state = initial;
         current_input_file = "";
@@ -719,7 +696,7 @@ void update_incomplete_type(struct ptree* node, struct ptree*& type) {
                 std::stringstream stream;
                 stream << "type \"" << type->name << "\" declared only (as \"" << node->name
                        << "\")";
-                idlerror(stream.str().c_str());
+                ERR << stream.str().c_str();
             }
         }
         update_incomplete_type(node, type->type);

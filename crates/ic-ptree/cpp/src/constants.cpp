@@ -29,6 +29,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <string>
 
 #include "cidl/ptree.h"
@@ -435,7 +436,7 @@ const numeric* expr_unary(char op, const numeric* v) {
         break;
     }
     if (res->kind() == UNDEF_KIND) {
-        idlerror("Invalid unary operator");
+        ERR << "Invalid unary operator";
     }
     if (numeric_base(*v) != 0) {
         res->base = numeric_base(*v);
@@ -498,7 +499,7 @@ const numeric* expr_binary(char op, const numeric* v1, const numeric* v2) {
     }
 
     if (res->kind() == UNDEF_KIND) {
-        idlerror("Invalid binary operator");
+        ERR << "Invalid binary operator";
     }
     if (numeric_base(*v1) == numeric_base(*v2) && numeric_base(*v1) != 0) {
         res->base = numeric_base(*v1);

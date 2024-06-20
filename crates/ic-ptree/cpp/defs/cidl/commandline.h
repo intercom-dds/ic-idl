@@ -36,29 +36,6 @@ namespace intercom::cidl {
 
 class CommandLineOption {
   public:
-    enum WarningType {
-        WARNING_NONE = 0,
-        WARNING_ALL,
-        WARNING_ERROR,
-        WARNING_DEPRECATED,             // ALERT(...)
-        WARNING_ANNOTATION,             // ALERT(...)
-        WARNING_UNKNOWN_ANNOTATION,     // ALERT(...)
-        WARNING_UNCATEGORIZED_WARNING,  // WARN(...)
-        WARNING_UNCATEGORIZED_ERROR,    // ERR(...)
-    };
-    /// swaps warning configurations with default for the duration of a scope
-    class ScopeDefaultWarnings {
-      public:
-        ScopeDefaultWarnings();
-        ~ScopeDefaultWarnings();
-
-      private:
-        unsigned long m_prev_errors;
-        unsigned long m_prev_warnings;
-    };
-
-    static void set_warning(const WarningType& type, bool enable);
-
     static bool intercom_build();
     static bool generate_typesupport_only();
     static bool list_only();
@@ -100,14 +77,6 @@ class CommandLineOption {
     static const char* copyright_notice();
 
     static intercom::cidl::Config& get_instance();
-
-    static const std::vector<std::string>& get_input_list();
-    static const std::vector<std::string>& get_parameters();
-    static const std::vector<std::string>& include_directories();
-
-    static bool suppress_warning(WarningType warning);
-    static bool suppress_error(WarningType warning);
-    static bool suppress_alert(WarningType warning);
 };
 
 }  // namespace intercom::cidl

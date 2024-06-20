@@ -28,10 +28,10 @@
 use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_syntax::{
-    AnyType, ArrayDeclarator, Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty,
-    Enumerator, Expr, Field, Fixed, FixedType, Ident, InterfaceMember, Item, Label, LitKind,
-    Literal, MapType, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
-    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
+    AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind, Declarator,
+    Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident, InterfaceMember, Item,
+    Label, LitKind, Literal, MapType, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType,
+    Span, StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -755,11 +755,11 @@ fn interface_body() -> impl IdlParser<Vec<InterfaceMember>> {
 fn export() -> impl IdlParser<InterfaceMember> {
     choice((
         op_dcl().map(InterfaceMember::Proto),
-        // attr_dcl().map(InterfaceMember::Attr),
+        attr_dcl().map(InterfaceMember::Attr),
         type_dcl().map(InterfaceMember::Item),
         const_dcl().map(InterfaceMember::Item),
         except_dcl().map(InterfaceMember::Item),
-        // op_oneway_dcl(),
+        op_oneway_dcl().map(InterfaceMember::Proto),
     ))
 }
 
@@ -829,18 +829,24 @@ fn raises_expr() -> impl IdlParser<Vec<Path>> {
 }
 
 // Rule 88
-fn attr_dcl() -> impl IdlParser<()> {
+fn attr_dcl() -> impl IdlParser<Attribute> {
     choice((readonly_attr_spec(), attr_spec()))
 }
 
 // Rule 89
-fn readonly_attr_spec() -> impl IdlParser<()> {
-    just(Kind::ReadOnly)
-        .ignore_then(just(Kind::Attribute))
-        .then_ignore(type_spec())
+fn readonly_attr_spec() -> impl IdlParser<Attribute> {
+    let def = just(Kind::ReadOnly)
+        .map_with_span(|_, span| span)
+        .then_ignore(just(Kind::Attribute))
+        .then(type_spec())
         .then(readonly_attr_declarator())
-        .then_ignore(just(Kind::Semi))
-        .ignored()
+        .then_ignore(just(Kind::Semi));
+
+    def.map(|((readonly, ty), _)| Attribute {
+        name: todo!(),
+        ty,
+        readonly: Some(readonly),
+    })
 }
 
 // Rule 90
@@ -855,11 +861,16 @@ fn readonly_attr_declarator() -> impl IdlParser<()> {
 }
 
 // Rule 91
-fn attr_spec() -> impl IdlParser<()> {
-    just(Kind::Attribute)
+fn attr_spec() -> impl IdlParser<Attribute> {
+    let def = just(Kind::Attribute)
         .ignore_then(type_spec())
-        .then(attr_declarator())
-        .ignored()
+        .then(attr_declarator());
+
+    def.map(|(ty, _)| Attribute {
+        name: todo!(),
+        ty,
+        readonly: None,
+    })
 }
 
 // Rule 92
@@ -877,31 +888,26 @@ fn attr_declarator() -> impl IdlParser<()> {
 fn attr_raises_expr() -> impl IdlParser<()> {
     choice((
         get_excep_expr().then(set_excep_expr().or_not()).ignored(),
-        set_excep_expr(),
+        set_excep_expr().ignored(),
     ))
 }
 
 // Rule 94
-fn get_excep_expr() -> impl IdlParser<()> {
-    just(Kind::GetRaises)
-        .ignore_then(exception_list())
-        .ignored()
+fn get_excep_expr() -> impl IdlParser<Vec<Path>> {
+    just(Kind::GetRaises).ignore_then(exception_list())
 }
 
 // Rule 95
-fn set_excep_expr() -> impl IdlParser<()> {
-    just(Kind::SetRaises)
-        .ignore_then(exception_list())
-        .ignored()
+fn set_excep_expr() -> impl IdlParser<Vec<Path>> {
+    just(Kind::SetRaises).ignore_then(exception_list())
 }
 
 // Rule 96
-fn exception_list() -> impl IdlParser<()> {
+fn exception_list() -> impl IdlParser<Vec<Path>> {
     scoped_name()
         .separated_by(just(Kind::Comma))
         .at_least(1)
         .parenthesized()
-        .ignored()
 }
 
 // Rule 99
@@ -998,14 +1004,20 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
 }
 
 // Rule 119
-fn op_oneway_dcl() -> impl IdlParser<()> {
+fn op_oneway_dcl() -> impl IdlParser<Prototype> {
     let params = in_parameter_dcls().parenthesized();
-
-    just(Kind::Oneway)
-        .ignore_then(ty())
+    let def = just(Kind::Oneway)
+        .map_with_span(|_, span| span)
+        .then(ty())
         .then(ident())
-        .then(params)
-        .ignored()
+        .then(params);
+
+    def.map(|(((oneway, _ty), name), _params)| Prototype {
+        name,
+        params: vec![],
+        raises: vec![],
+        oneway: Some(oneway),
+    })
 }
 
 // Rule 120
@@ -1143,14 +1155,14 @@ fn annotation_member() -> impl IdlParser<()> {
 }
 
 // Rule 223
-fn annotation_member_type() -> impl IdlParser<()> {
+fn annotation_member_type() -> impl IdlParser<Type> {
     // `scoped_name` is omitted because it's already included in `const_type`
-    choice((const_type().ignored(), any_const_type()))
+    choice((const_type(), any_const_type()))
 }
 
 // Rule 224
-fn any_const_type() -> impl IdlParser<()> {
-    just(Kind::Any).ignored()
+fn any_const_type() -> impl IdlParser<Type> {
+    just(Kind::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
 }
 
 // Rule 225

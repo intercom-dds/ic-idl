@@ -43,7 +43,6 @@ class CommandLineOption {
         WARNING_DEPRECATED,             // ALERT(...)
         WARNING_ANNOTATION,             // ALERT(...)
         WARNING_UNKNOWN_ANNOTATION,     // ALERT(...)
-        WARNING_UNSAFE_EXTENSIBILITY,   // ALERT(...)
         WARNING_UNCATEGORIZED_WARNING,  // WARN(...)
         WARNING_UNCATEGORIZED_ERROR,    // ERR(...)
     };

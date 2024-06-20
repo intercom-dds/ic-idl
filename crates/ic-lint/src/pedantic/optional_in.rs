@@ -41,7 +41,8 @@ impl<'a> Visitor<'a> for OptionalIn {
         if def.kind.is_none() {
             let diag = warn_span(
                 "parameters must be declared with `in`, `out`, or `inout`",
-                Label::new(ty_span(&def.ty)).message("expected specifier before type"),
+                Label::new(ty_span(&def.ty))
+                    .message("expected parameter specifier before this type"),
             )
             .help("prefix the paramter with `in`");
 

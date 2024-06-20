@@ -53,6 +53,7 @@ lints! {
     pedantic::null::NullVariant,
     pedantic::optional_in::OptionalIn,
     semantic::div_by_zero::ByZero,
+    semantic::oneway::NonVoidOneway,
     syntax::ascii_ident::AsciiIdent,
     syntax::empty::EmptyTypes,
 }
@@ -69,7 +70,7 @@ pub enum Category {
     /// Lint for language extensions
     Pedantic,
 
-    // Syntax errors or other things that should always be hard errors
+    // Syntax errors or other semantic issues that should always be hard errors
     Syntax,
 }
 

@@ -162,17 +162,17 @@ impl<'a> Formatter<'a> {
         writeln!(
             f,
             "{indent}{} {}:{line_number}:{col}",
-            self.chars.up_right.blue(),
+            self.chars.up_right.blue().bold(),
             self.filename.unwrap_or("unknown"),
         )?;
-        writeln!(f, "{indent}{}", self.chars.vertical.blue())?;
+        writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
 
         // Fill in the line number
         write!(
             f,
             " {} {}",
             line_number.blue().bold(),
-            self.chars.vertical.blue(),
+            self.chars.vertical.blue().bold(),
         )?;
 
         // Embed the origin of the diagnostic
@@ -183,7 +183,7 @@ impl<'a> Formatter<'a> {
         self.emit_labels(f, &indent, &diag.labels)?;
 
         // Finish the frame
-        writeln!(f, "{indent}{}", self.chars.down_right.blue())
+        writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
     }
 
     /// Highlights the relevant portion of the line. A highlight is a sequence
@@ -216,7 +216,7 @@ impl<'a> Formatter<'a> {
         // starting position.
         let mut ordered: Vec<_> = labels.iter().collect();
         ordered.sort_unstable_by_key(|v| v.span.start);
-        write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
+        write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
 
         // To properly format multiple labels, we start with the right-most
         // label and work our way towards the left.

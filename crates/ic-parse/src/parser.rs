@@ -29,9 +29,9 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_syntax::{
     AnyType, ArrayDeclarator, Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty,
-    Enumerator, Expr, Field, Fixed, FixedType, Ident, Item, Label, LitKind, Literal, MapType, Op,
-    OpKind, Path, SequenceType, Span, StringType, Type, Unary, UnionElement, UnionField,
-    UnionMember, UnionNull,
+    Enumerator, Expr, Field, Fixed, FixedType, Ident, InterfaceMember, Item, Label, LitKind,
+    Literal, MapType, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
+    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -634,6 +634,7 @@ fn native_dcl() -> impl IdlParser<Item> {
 }
 
 // Rule 62
+// TODO: should this return Ident instead?
 fn simple_declarator() -> impl IdlParser<Declarator> {
     ident().map(Declarator::Simple)
 }
@@ -746,32 +747,37 @@ fn interface_name() -> impl IdlParser<Path> {
 }
 
 // Rule 80
-fn interface_body() -> impl IdlParser<Vec<()>> {
+fn interface_body() -> impl IdlParser<Vec<InterfaceMember>> {
     export().repeated()
 }
 
 // Rule 81 with the rule 97 extension
-fn export() -> impl IdlParser<()> {
+fn export() -> impl IdlParser<InterfaceMember> {
     choice((
-        op_dcl(),
-        attr_dcl(),
-        type_dcl().ignored(),
-        const_dcl().ignored(),
-        except_dcl().ignored(),
-        op_oneway_dcl(),
+        op_dcl().map(InterfaceMember::Proto),
+        // attr_dcl().map(InterfaceMember::Attr),
+        type_dcl().map(InterfaceMember::Item),
+        const_dcl().map(InterfaceMember::Item),
+        except_dcl().map(InterfaceMember::Item),
+        // op_oneway_dcl(),
     ))
 }
 
 // Rule 82
-fn op_dcl() -> impl IdlParser<()> {
+fn op_dcl() -> impl IdlParser<Prototype> {
     let params = parameter_dcls().parenthesized();
-
-    op_type_spec()
+    let proto = op_type_spec()
         .then(ident())
         .then(params)
         .then(raises_expr().or_not())
-        .ignore_then(just(Kind::Semi))
-        .ignored()
+        .then_ignore(just(Kind::Semi));
+
+    proto.map(|(((_ret, name), params), raises)| Prototype {
+        name,
+        params,
+        raises: raises.unwrap_or_default(),
+        oneway: None,
+    })
 }
 
 // Rule 83
@@ -782,32 +788,44 @@ fn op_type_spec() -> impl IdlParser<Type> {
 }
 
 // Rule 84
-fn parameter_dcls() -> impl IdlParser<()> {
-    param_dcl().separated_by(just(Kind::Comma)).ignored()
+fn parameter_dcls() -> impl IdlParser<Vec<Param>> {
+    param_dcl().separated_by(just(Kind::Comma))
 }
 
 // Rule 85
-fn param_dcl() -> impl IdlParser<()> {
-    param_attribute()
+fn param_dcl() -> impl IdlParser<Param> {
+    let param = param_attribute()
         .or_not()
         .then(type_spec())
-        .then(simple_declarator())
-        .ignored()
+        .then(simple_declarator());
+
+    param.map(|((kind, ty), decl)| Param {
+        name: match decl {
+            Declarator::Simple(v) => v,
+            Declarator::Array(_) => todo!(),
+        },
+        ty,
+        kind,
+    })
 }
 
 // Rule 86
-fn param_attribute() -> impl IdlParser<Kind> {
-    one_of([Kind::In, Kind::Out, Kind::InOut])
+fn param_attribute() -> impl IdlParser<ParamKind> {
+    choice((
+        just(Kind::In).to(ParamKind::ParamIn),
+        just(Kind::Out).to(ParamKind::ParamOut),
+        just(Kind::InOut).to(ParamKind::ParamInout),
+    ))
 }
 
 // Rule 87
-fn raises_expr() -> impl IdlParser<()> {
+fn raises_expr() -> impl IdlParser<Vec<Path>> {
     let exceptions = scoped_name()
         .separated_by(just(Kind::Comma))
         .at_least(1)
         .parenthesized();
 
-    just(Kind::Raises).then(exceptions).ignored()
+    just(Kind::Raises).ignore_then(exceptions)
 }
 
 // Rule 88
@@ -930,7 +948,7 @@ fn value_name() -> impl IdlParser<Path> {
 
 // Rule 105
 fn value_element() -> impl IdlParser<()> {
-    choice((export(), state_member(), init_dcl()))
+    choice((export().ignored(), state_member(), init_dcl()))
 }
 
 // Rule 106

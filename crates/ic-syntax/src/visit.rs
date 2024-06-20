@@ -132,11 +132,9 @@ pub trait Visitor<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr {
-            Expr::Literal(_) => (),
-            Expr::Path(_) => (),
             Expr::Unary(v) => self.visit_expr_unary(v),
             Expr::Binary(v) => self.visit_expr_binary(v),
-            Expr::InitList(_) => (),
+            _ => (),
         }
     }
 

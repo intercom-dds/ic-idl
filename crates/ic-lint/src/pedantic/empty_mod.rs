@@ -42,7 +42,7 @@ impl<'a> Visitor<'a> for EmptyMod {
                 "empty module declarations are not allowed",
                 Label::new(def.span),
             )
-            .help("either remove the module or add an item to it");
+            .help("either remove the declaration or add an item to it");
             self.0.push(diag);
         }
         visit_module(self, def);

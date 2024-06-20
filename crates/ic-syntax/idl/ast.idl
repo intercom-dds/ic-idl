@@ -35,6 +35,8 @@ union Item;
 
 union Expr;
 
+union InterfaceMember;
+
 struct EnumDef;
 
 struct BitmaskDef;
@@ -428,15 +430,23 @@ struct Param {
 
 @nested
 struct Prototype {
+    /// Name of the prototype.
     Ident name;
+
+    /// Return type.
+    Type ret;
+
     sequence<Param> params;
     sequence<Path> _raises;
+
+    /// Indicates whether this function was prefixed with the `oneway` keyword.
+    /// Does not account for the `@oneway` annotation.
     @optional Span _oneway;
 };
 
 @nested
 struct InterfaceDef : Stmt {
-    sequence<Prototype> prototypes;
+    sequence<InterfaceMember> members;
     sequence<Path> inherits;
     @optional Span _local;
 };

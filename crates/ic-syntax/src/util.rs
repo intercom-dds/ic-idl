@@ -49,16 +49,18 @@ pub fn type_name(path: &Type) -> String {
     }
 }
 
+#[must_use]
 pub fn path_span(path: &Path) -> Span {
-    let start = path
-        .leading_colons
-        .map(|v| v.start)
-        .unwrap_or_else(|| path.segments.first().map_or(0, |v| v.span.start));
+    let start = path.leading_colons.map_or_else(
+        || path.segments.first().map_or(0, |v| v.span.start),
+        |v| v.start,
+    );
 
     let end = path.segments.last().map_or(0, |v| v.span.end);
     Span { start, end }
 }
 
+#[must_use]
 pub fn expr_span(expr: &Expr) -> Span {
     match expr {
         Expr::Literal(v) => v.span,
@@ -81,6 +83,7 @@ pub fn expr_span(expr: &Expr) -> Span {
     }
 }
 
+#[must_use]
 pub fn ty_span(ty: &Type) -> Span {
     match ty {
         Type::Any(v) => v.span,
@@ -93,6 +96,7 @@ pub fn ty_span(ty: &Type) -> Span {
 }
 
 impl Expr {
+    #[must_use]
     pub fn span(&self) -> Span {
         expr_span(self)
     }

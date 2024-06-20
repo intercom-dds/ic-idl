@@ -25,40 +25,79 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Diag;
-use ic_syntax::visit::Visitor;
-use ic_syntax::Item;
+use ic_diagnostic::{error_span, Diag, Label};
+use ic_syntax::visit::{visit_tree, Visitor};
+use ic_syntax::{Item, Span};
 
 use crate::{Category, Lint};
 
-/// Verifies that enums, unions and valuetypes have at least one member.
+/// Verifies that enums, unions, bitmasks, exceptions and valuetypes have at
+/// least one member.
 ///
 /// Support for empty structs is allowed in the extended data-types building
 /// block.
-pub struct EmptyTypes;
+#[derive(Default)]
+pub struct EmptyTypes(Vec<Diag>);
+
+impl EmptyTypes {
+    fn diagnose(&mut self, span: Span, ty: &str, member: &str) {
+        let note = format!("all {ty} must have at least one {member}");
+        let diag = error_span(
+            format!("empty {ty} are not allowed"),
+            Label::new(span).message("defined here"),
+        )
+        .note(note);
+
+        self.0.push(diag);
+    }
+}
+
+impl<'a> Visitor<'a> for EmptyTypes {
+    fn visit_enum(&mut self, def: &'a ic_syntax::EnumDef) {
+        if def.fields.is_empty() {
+            self.diagnose(def.span, "enums", "enumerator");
+        }
+    }
+
+    fn visit_union(&mut self, def: &'a ic_syntax::UnionDef) {
+        if def.fields.is_empty() {
+            self.diagnose(def.span, "unions", "member");
+        }
+    }
+
+    fn visit_valuetype(&mut self, def: &'a ic_syntax::ValuetypeDef) {
+        if def.prototypes.is_empty() {
+            self.diagnose(def.span, "valuetypes", "member");
+        }
+    }
+
+    fn visit_bitmask(&mut self, def: &'a ic_syntax::BitmaskDef) {
+        if def.bits.is_empty() {
+            self.diagnose(def.span, "bitmasks", "flag");
+        }
+    }
+
+    fn visit_exception(&mut self, def: &'a ic_syntax::ExceptDef) {
+        if def.members.is_empty() {
+            self.diagnose(def.span, "exceptions", "member");
+        }
+    }
+}
 
 impl Lint for EmptyTypes {
     fn new() -> Box<dyn Lint>
     where
         Self: Sized,
     {
-        Box::new(EmptyTypes)
+        Box::<Self>::default()
     }
 
     fn category(&self) -> crate::Category {
-        Category::Pedantic
+        Category::Syntax
     }
 
-    fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        vec![]
+    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
+        visit_tree(&mut *self, ast);
+        self.0
     }
-}
-
-/// Verifies that enums, unions and valuetypes have at least one member, and
-/// all modules have at least one definition.
-///
-/// Support for empty structs and exceptions is an extension defined in the
-/// `DDS-RPC` standard, thus not covered by this lint.
-pub fn empty_types() -> Box<dyn Lint> {
-    Box::new(EmptyTypes)
 }

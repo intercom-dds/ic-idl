@@ -108,7 +108,7 @@ fn line_span(input: &str, offset: usize) -> Range<usize> {
         .enumerate()
         .skip(offset)
         .find(|(_, v)| *v == b'\n')
-        .map_or(input.len().saturating_sub(1), |v| v.0);
+        .map_or(input.len(), |v| v.0);
 
     Range { start, end }
 }
@@ -153,14 +153,17 @@ impl<'a> Formatter<'a> {
 
     fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
         // Determine the necessary indentation based on length of the linenu
-        let line_number = line_number(self.source, diag.labels.first().map_or(0, |v| v.span.start));
+        let (line_number, col) = line_col(
+            &self.source,
+            diag.labels.first().map_or(0, |v| v.span.start),
+        );
         let indent = line_number.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
         // Start the diagnostic frame by emitting the file name
         writeln!(
             f,
-            "{indent}{} {}:1:5",
+            "{indent}{} {}:{line_number}:{col}",
             self.chars.up_right.blue(),
             self.filename.unwrap_or("unknown"),
         )?;
@@ -188,8 +191,8 @@ impl<'a> Formatter<'a> {
     /// Highlights the relevant portion of the line. A highlight is a sequence
     /// of `^` characters.
     fn emit_highlight(&self, f: &mut dyn fmt::Write, ordered: &[&Label]) -> fmt::Result {
-        let last_idx = ordered.iter().next().map_or(0, |v| v.span.start);
-        let mut last_idx = line_span(&self.source, last_idx).start;
+        let last_idx = ordered.first().map_or(0, |v| v.span.start);
+        let mut last_idx = line_span(self.source, last_idx).start;
 
         for label in ordered {
             // Determine the indentation needed to reach the highlighted region
@@ -235,7 +238,9 @@ impl<'a> Formatter<'a> {
 
             // Iterate over all remaining labels, drawing a vertical line
             // at the appropriate location.
-            let mut last_idx = 0;
+            let last_idx = ordered.first().map_or(0, |v| v.span.start);
+            let mut last_idx = line_span(self.source, last_idx).start;
+
             for rem in iter.clone() {
                 let padding = " ".repeat(rem.span.start - last_idx);
                 last_idx = rem.span.start + 1;

@@ -46,7 +46,7 @@ impl<'a> Visitor<'a> for ComplexDefaultValue {
                 )
                 .label(
                     Label::new(def.name.span)
-                        .message("defined here")
+                        .message("const defined here")
                         .color(Color::Cyan),
                 )
                 .note("only trivial types can be used as constants");

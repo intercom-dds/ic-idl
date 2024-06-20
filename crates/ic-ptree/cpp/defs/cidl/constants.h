@@ -128,14 +128,8 @@ enum ptree_opts {
     OPT_BUILTIN = (1 << 17),  // Built-in type definitions, mostly primitives and annotations
 };
 
-struct position {
-    int line;
-    int column;
-};
-
 struct identifier {
     const char* name;
-    struct position pos;
 };
 
 struct ptree;
@@ -169,8 +163,6 @@ const struct numeric* expr_binary(char op, const struct numeric* v1, const struc
 int idlerror(const char* msg);
 
 int idlwarning(const char* msg);
-
-extern struct position current_pos;
 
 extern const char* current_input_file;
 

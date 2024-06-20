@@ -78,15 +78,6 @@ class ScopedPrinter {
 
 static void recurse_node(ScopedPrinter&, const ptree*);
 
-static std::string loc(const ptree* node) {
-    auto style = fg(fmt::terminal_color::yellow);
-    auto line_fmt = node->pos.line == node->pos_end.line ? "line:{}" : "line:{}:{}";
-    auto col_fmt = node->pos.column == node->pos_end.column ? "col:{}" : "col:{}:{}";
-    auto line = fmt::format(style, line_fmt, node->pos.line, node->pos_end.line);
-    auto col = fmt::format(style, col_fmt, node->pos.column, node->pos_end.column);
-    return fmt::format("<{}, {}> ", line, col);
-}
-
 static std::string kind_name(node_kind kind) {
     std::array<const char*, 26> names = {
         "Undef",         "Include",    "Primitive", "Native",     "ModuleDef", "StructDef",
@@ -200,7 +191,7 @@ static void emit_value(ScopedPrinter& out, numeric val) {
 }
 
 static void recurse_node(ScopedPrinter& out, const ptree* node) {
-    out << decl(node) << addr(node) << loc(node) << name(node);
+    out << decl(node) << addr(node) << name(node);
     if (node->type) {
         out << type(node, node->type);
     }

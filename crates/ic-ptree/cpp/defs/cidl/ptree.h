@@ -66,13 +66,10 @@
  *         and for long x[3][4], bounds == {2, 3, 4}.
  * flags: A bitmask of flags applied to the node
  * file_name: The name of the IDL source file
- * pos, pos_end: The position (line, column) of a ptree node in the IDL file
  * value: The value of a const node (from a const expression or a member of an enum or bitmask)
  */
 struct ptree {
     ptree() {
-        pos.column = pos.line = 0;
-        pos_end.column = pos_end.line = 0;
         value = num_undef;
     }
 
@@ -165,8 +162,6 @@ struct ptree {
     std::vector<numeric> bounds;
     unsigned int flags{0};
     std::string file_name;
-    position pos{};
-    position pos_end{};
     numeric value;
     parser* state{};
 };
@@ -174,8 +169,6 @@ struct ptree {
 struct declarator {
     declarator() {
         ident.name = "";
-        ident.pos.line = 0;
-        ident.pos.column = 0;
         annotations = nullptr;
         next = nullptr;
     }
@@ -184,13 +177,6 @@ struct declarator {
     struct ptree* annotations;
     struct declarator* next;
 };
-
-inline bool operator<(struct position p1, struct position p2) {
-    return p1.line < p2.line || (p1.line == p2.line && p1.column < p2.column);
-}
-inline bool operator>(struct position p1, struct position p2) {
-    return p2 < p1;
-}
 
 inline ptree::iterator begin(ptree* node) {
     return ptree::iterator(node);

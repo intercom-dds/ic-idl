@@ -28,6 +28,7 @@
 #include "cidl/idl_parser.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
@@ -717,7 +718,7 @@ void update_incomplete_type(struct ptree* node, struct ptree*& type) {
             } else {
                 std::stringstream stream;
                 stream << "type \"" << type->name << "\" declared only (as \"" << node->name
-                       << "\" on line " << node->pos.line << ")";
+                       << "\")";
                 idlerror(stream.str().c_str());
             }
         }
@@ -879,7 +880,7 @@ static struct parse_result get_parse_result() {
     return g_parse_result;
 }
 
-static parse_result run_parser(const char* ) {
+static parse_result run_parser(const char*) {
     // TODO(idarcar):
     // scan_string(input);
     return get_parse_result();

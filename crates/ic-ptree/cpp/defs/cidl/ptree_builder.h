@@ -77,7 +77,7 @@ struct ptree* create_include_finish(struct ptree* members);
 
 void create_module_start(struct identifier ident);
 
-struct ptree* create_module_finish(struct ptree* members, struct position pos_end);
+struct ptree* create_module_finish(struct ptree* members);
 
 const struct numeric* lookup_value(struct identifier ident);
 
@@ -112,14 +112,13 @@ const struct numeric* create_double(double value);
 
 struct ptree* create_struct_start(struct identifier ident, struct ptree* parent);
 
-struct ptree* create_struct_finish(struct ptree* members, struct position pos_end);
+struct ptree* create_struct_finish(struct ptree* members);
 
 struct ptree* create_struct_dcl(struct identifier ident);
 
 struct ptree* create_union_start(struct identifier ident);
 
-struct ptree*
-create_union_finish(struct ptree* discriminator, struct ptree* members, struct position pos_end);
+struct ptree* create_union_finish(struct ptree* discriminator, struct ptree* members);
 
 struct ptree* create_union_dcl(struct identifier ident);
 
@@ -135,7 +134,7 @@ struct ptree* create_default_case(void);
 
 struct ptree* create_null_node(void);
 
-struct ptree* create_enum(struct identifier ident, struct ptree* values, struct position pos_end);
+struct ptree* create_enum(struct identifier ident, struct ptree* values);
 
 struct ptree* create_enum_value(struct identifier ident, const struct numeric* value);
 
@@ -145,13 +144,13 @@ struct ptree* create_native_type(struct identifier ident);
 
 void create_exception_start(struct identifier ident);
 
-struct ptree* create_exception_finish(struct ptree* members, struct position pos_end);
+struct ptree* create_exception_finish(struct ptree* members);
 
 struct ptree* create_interface_dcl(struct identifier ident, int is_local);
 
 void create_interface_start(struct identifier ident, struct declarator* parents, int is_local);
 
-struct ptree* create_interface_finish(struct ptree* members, struct position pos_end);
+struct ptree* create_interface_finish(struct ptree* members);
 
 struct ptree* annotate(struct ptree* node, struct ptree* annotations);
 
@@ -181,24 +180,18 @@ struct ptree* create_attribute(
 struct ptree*
 create_map(struct ptree* key_type, struct ptree* element_type, const struct numeric* bound);
 
-struct ptree* create_bitset(
-    struct identifier ident,
-    struct ptree* fields,
-    struct ptree* type,
-    struct position pos_end
-);
+struct ptree* create_bitset(struct identifier ident, struct ptree* fields, struct ptree* type);
 
 struct ptree*
 create_bitfield(struct declarator* declarators, const struct numeric* bits, struct ptree* type);
 
-struct ptree*
-create_bitmask(struct identifier ident, struct ptree* values, struct position pos_end);
+struct ptree* create_bitmask(struct identifier ident, struct ptree* values);
 
 struct ptree* create_bitmask_value(struct identifier ident, const struct numeric* value);
 
 void create_annotation_dcl_start(struct identifier ident);
 
-struct ptree* create_annotation_dcl_finish(struct ptree* members, struct position pos_end);
+struct ptree* create_annotation_dcl_finish(struct ptree* members);
 
 struct ptree* create_annotation_member(
     struct declarator* decl,
@@ -217,7 +210,7 @@ struct ptree* create_valuetype_dcl(struct identifier ident);
 struct ptree*
 create_valuetype_start(struct identifier ident, struct ptree* parent, struct ptree* interface);
 
-struct ptree* create_valuetype_finish(struct ptree* members, struct position pos_end);
+struct ptree* create_valuetype_finish(struct ptree* members);
 
 struct ptree*
 create_valuetype_factory(struct identifier ident, struct ptree* params, struct declarator* raises);
@@ -295,18 +288,13 @@ class ParserMessage {
     using WriterType = void (*)(const char*, const char*, int, CommandLineOption::WarningType);
 
     ParserMessage(WriterType writer, CommandLineOption::WarningType warning)
-        : line_number(current_pos.line), writer(writer), warning_type(warning) {}
+        : line_number(0), writer(writer), warning_type(warning) {}
 
     ~ParserMessage() {
         if (context_node) {
-            writer(
-                stream.str().c_str(),
-                context_node->file_name.c_str(),
-                context_node->pos.line,
-                warning_type
-            );
+            writer(stream.str().c_str(), context_node->file_name.c_str(), 0, warning_type);
         } else {
-            writer(stream.str().c_str(), current_input_file, line_number, warning_type);
+            writer(stream.str().c_str(), current_input_file, 0, warning_type);
         }
     }
 
@@ -315,8 +303,7 @@ class ParserMessage {
         return *this;
     }
 
-    ParserMessage& context(struct identifier ident) {
-        line_number = ident.pos.line;
+    ParserMessage& context(struct identifier) {
         return *this;
     }
 

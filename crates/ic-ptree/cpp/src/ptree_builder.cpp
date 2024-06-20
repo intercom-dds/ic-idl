@@ -47,8 +47,6 @@
 
 using namespace intercom::cidl;
 
-struct position current_pos;
-
 bool string_ends_with(const std::string& pragma, const std::string& end);
 
 extern std::map<std::string, ptree**> g_builtin_annotation_map;
@@ -390,17 +388,16 @@ std::string format_docstring(const char* text, int placement) {
 identifier create_identifier(const char* name) {
     struct identifier ident;
     ident.name = get_symbol(name);
-    ident.pos = current_pos;
     return ident;
 }
 
 int idlerror(const char* s) {
-    parse_error(s, current_input_file, current_pos.line);
+    parse_error(s, current_input_file, 0);
     return 0;
 }
 
 int idlwarning(const char* s) {
-    parse_warning(s, current_input_file, current_pos.line);
+    parse_warning(s, current_input_file, 0);
     return 0;
 }
 
@@ -412,9 +409,9 @@ ptree* create_doc(struct identifier ident, int post_doc) {
     param->type = &unbounded_string_type;
     param->value.val.str(ident.name);
     int placement_value = post_doc ? AFTER_DECLARATION : BEFORE_DECLARATION;
-    if (placement_value == BEFORE_DECLARATION && ident.pos.line <= 1) {
-        placement_value = BEGIN_FILE;
-    }
+    // if (placement_value == BEFORE_DECLARATION && ident.pos.line <= 1) {
+    //     placement_value = BEGIN_FILE;
+    // }
     identifier placement_ident = create_identifier(get_symbol("placement"));
     ptree* placement = create_node(N_CONST, placement_ident);
     ptree* placement_kind = nullptr;
@@ -437,7 +434,6 @@ ptree* create_doc(struct identifier ident, int post_doc) {
     param = append_node(param, placement);
 
     auto ann = create_annotation_finish(param);
-    ann->pos = ann->pos_end = ident.pos;
     return ann;
 }
 
@@ -451,7 +447,6 @@ ptree* create_node(node_kind kind, identifier ident) {
         g_state->context.empty() ? nullptr : g_state->context[g_state->context.size() - 1][0];
     p->scope = p->super;
     p->file_name = current_input_file;
-    p->pos = p->pos_end = ident.pos;
     p->flags |= OPT_EMIT_CODE;
     if (!g_state->include_context.empty()) {
         p->included_from = g_state->include_context[g_state->include_context.size() - 1];
@@ -500,8 +495,6 @@ static ptree* deep_clone_node(const ptree* node, std::map<const ptree*, ptree*>&
     p->kind = node->kind;
     p->name = node->name;
     p->flags = node->flags;
-    p->pos = node->pos;
-    p->pos_end = node->pos_end;
     p->file_name = node->file_name;
     p->original = node;
 
@@ -650,7 +643,6 @@ bool validate_dimensionality(const numeric& value, const ptree* type) {
         }
         err << " (too " << (dimensions < expected_dimensions ? "few " : "many ") << "{..})";
         if (value.kind() == PTREE_KIND) {
-            err << " [ca. column " << value.val.node()->pos.column << ']';
             err.context(value.val.node());
         }
         return false;
@@ -1046,8 +1038,6 @@ identifier build_scoped_name(identifier base, identifier next) {
     res += "::";
     res += next.name;
     identifier ident = create_identifier(res.c_str());
-    ident.pos.line = base.pos.line < next.pos.line ? base.pos.line : next.pos.line;
-    ident.pos.column = base.pos.column < next.pos.column ? base.pos.column : next.pos.column;
     return ident;
 }
 
@@ -1089,31 +1079,32 @@ ptree* append_node(ptree* list, ptree* node) {
     }
 
     // If both last and node are doc annotations, combine them
-    if (annotation_type_doc != nullptr && node->type == annotation_type_doc &&
-        last->type == annotation_type_doc && node->included_from == last->included_from &&
-        (node->pos.line - last->pos_end.line) <= 1) {
-        auto placement_lhs = value<int32_t>(get_annotation_value(last, "placement"));
-        auto placement_rhs = value<int32_t>(get_annotation_value(node, "placement"));
-        if (placement_lhs == placement_rhs ||
-            (placement_lhs == BEGIN_FILE && placement_rhs == BEFORE_DECLARATION)) {
-            for (auto member : last->members) {
-                if (member->name == "text") {
-                    member->value.val.str() += "\n" + get_annotation_value(node, "text").val.str();
-                    break;
-                }
-            }
-            last->pos_end = node->pos;
-            return list;
-        }
-    }
+    // if (annotation_type_doc != nullptr && node->type == annotation_type_doc &&
+    //     last->type == annotation_type_doc && node->included_from == last->included_from &&
+    //     (node->pos.line - last->pos_end.line) <= 1) {
+    //     auto placement_lhs = value<int32_t>(get_annotation_value(last, "placement"));
+    //     auto placement_rhs = value<int32_t>(get_annotation_value(node, "placement"));
+    //     if (placement_lhs == placement_rhs ||
+    //         (placement_lhs == BEGIN_FILE && placement_rhs == BEFORE_DECLARATION)) {
+    //         for (auto member : last->members) {
+    //             if (member->name == "text") {
+    //                 member->value.val.str() += "\n" + get_annotation_value(node,
+    //                 "text").val.str(); break;
+    //             }
+    //         }
+    //         last->pos_end = node->pos;
+    //         return list;
+    //     }
+    // }
 
     // If node is trailing doc, append it to last annotations
-    if (last->kind != N_ANNOTATION &&
-        (is_doc_with_placement(node, AFTER_DECLARATION) ||
-         (is_doc_with_placement(node, BEFORE_DECLARATION) && last->pos.line == node->pos.line))) {
-        last->annotations = append_node(last->annotations, node);
-        return list;
-    }
+    // if (last->kind != N_ANNOTATION &&
+    //     (is_doc_with_placement(node, AFTER_DECLARATION) ||
+    //      (is_doc_with_placement(node, BEFORE_DECLARATION) && last->pos.line == node->pos.line)))
+    //      {
+    //     last->annotations = append_node(last->annotations, node);
+    //     return list;
+    // }
 
     // If current list ends with annotations, put them as annotations on node
     if (last->kind == N_ANNOTATION && node->kind != N_ANNOTATION) {
@@ -1128,18 +1119,18 @@ ptree* append_node(ptree* list, ptree* node) {
             if (n->kind != N_ANNOTATION) {
                 break;
             }
-            if (n->type != annotation_type_doc || is_doc_with_placement(n, BEFORE_DECLARATION) ||
-                (!is_doc_with_placement(n, AFTER_DECLARATION) &&
-                 (node->pos.line - n->pos_end.line) <= 1)) {
-                if (i > 1) {
-                    node_vec[i - 2]->next = i < node_vec.size() ? node_vec[i] : nullptr;
-                }
-                node_vec.erase(
-                    node_vec.begin() + static_cast<decltype(node_vec)::difference_type>(i - 1)
-                );
-                n->next = new_annotations;
-                new_annotations = n;
-            }
+            // if (n->type != annotation_type_doc || is_doc_with_placement(n, BEFORE_DECLARATION) ||
+            //     (!is_doc_with_placement(n, AFTER_DECLARATION) &&
+            //      (node->pos.line - n->pos_end.line) <= 1)) {
+            //     if (i > 1) {
+            //         node_vec[i - 2]->next = i < node_vec.size() ? node_vec[i] : nullptr;
+            //     }
+            //     node_vec.erase(
+            //         node_vec.begin() + static_cast<decltype(node_vec)::difference_type>(i - 1)
+            //     );
+            //     n->next = new_annotations;
+            //     new_annotations = n;
+            // }
         }
         if (new_annotations) {
             annotate(node, new_annotations);
@@ -1225,15 +1216,13 @@ int register_node(ptree* p) {
     std::string lc_name = lc_scoped_name(p);
     if (g_state->type_map.find(lc_name) != g_state->type_map.end()) {
         ERR.context(p) << "duplicate registration of name \"" << idl_scoped_name(p, nullptr)
-                       << "\" " << "(previous on line " << g_state->type_map[lc_name]->pos.line
-                       << ")";
+                       << "\"";
         return false;
     }
     if (g_state->type_dcl_map.find(lc_name) != g_state->type_dcl_map.end() &&
         g_state->type_dcl_map[lc_name]->kind != p->kind) {
         ERR.context(p) << "inconsistent kind for previously declared type \""
-                       << idl_scoped_name(p, nullptr) << "\" " << "(previous on line "
-                       << g_state->type_dcl_map[lc_name]->pos.line << ")";
+                       << idl_scoped_name(p, nullptr) << "\" ";
         return false;
     }
     g_state->type_map[lc_name] = p;
@@ -1390,7 +1379,6 @@ void create_include_start(identifier ident) {
             }
             new_ident.name = it->c_str();
         }
-        new_ident.pos = ident.pos;
     }
     std::string scoped_name = std::string("::<") + new_ident.name;
     auto it = g_state->type_map.find(scoped_name);
@@ -1428,10 +1416,9 @@ void create_module_start(identifier ident) {
     push_context(p);
 }
 
-ptree* create_module_finish(ptree* def, struct position pos_end) {
+ptree* create_module_finish(ptree* def) {
     ptree* p = pop_context();
     assign_members(p, def);
-    p->pos_end = pos_end;
     return p;
 }
 
@@ -1456,7 +1443,7 @@ const numeric* create_value_node(const numeric* value, ptree* members) {
     auto num = new_numeric(value->kind());
     *num = *value;
     if (num->kind() == UNDEF_KIND) {
-        identifier ident = {nullptr, current_pos};
+        identifier ident = {nullptr};
         ptree* node = create_node(N_CONST, ident);
         assign_members(node, members);
         node->flags |= OPT_CONST_VALUE;
@@ -1483,7 +1470,7 @@ static void validate_const_value_type(identifier ident, const ptree* complex_val
 
 ptree* create_const_node(declarator* decl, ptree* type, const numeric* value) {
     numeric num(*value);
-    identifier ident = {nullptr, current_pos};
+    identifier ident = {nullptr};
     if (decl) {
         ident = decl->ident;
     }
@@ -1625,10 +1612,9 @@ ptree* create_struct_start(identifier ident, ptree* parent) {
     return type;
 }
 
-ptree* create_struct_finish(ptree* members, position pos_end) {
+ptree* create_struct_finish(ptree* members) {
     ptree* p = pop_context();
     assign_members(p, members);
-    p->pos_end = pos_end;
     return p;
 }
 
@@ -1643,7 +1629,7 @@ ptree* create_union_start(identifier ident) {
     return create_context_node(N_UNION, ident);
 }
 
-ptree* create_union_finish(ptree* discriminator, ptree* members, position pos_end) {
+ptree* create_union_finish(ptree* discriminator, ptree* members) {
     if (discriminator) {
         ptree* prev_case = nullptr;
         ptree* default_case = nullptr;
@@ -1759,7 +1745,6 @@ ptree* create_union_finish(ptree* discriminator, ptree* members, position pos_en
     ptree* p = pop_context();
     p->discriminator = discriminator;
     assign_members(p, members);
-    p->pos_end = pos_end;
     return p;
 }
 
@@ -1864,10 +1849,9 @@ void create_exception_start(identifier ident) {
     create_context_node(N_EXCEPTION, ident);
 }
 
-ptree* create_exception_finish(ptree* members, position pos_end) {
+ptree* create_exception_finish(ptree* members) {
     ptree* node = pop_context();
     assign_members(node, members);
-    node->pos_end = pos_end;
     return node;
 }
 
@@ -1888,10 +1872,9 @@ void create_interface_start(identifier ident, declarator* parents, int is_local)
     }
 }
 
-ptree* create_interface_finish(ptree* members, position pos_end) {
+ptree* create_interface_finish(ptree* members) {
     ptree* node = pop_context();
     assign_members(node, members);
-    node->pos_end = pos_end;
     for (auto& parent : node->parents) {
         parent->flags |= OPT_HAS_CHILDREN;
     }
@@ -2139,7 +2122,7 @@ ptree* annotate_alias(ptree* node, ptree* annotations) {
         if (existing) {
             res = existing;
         } else {
-            res = create_node(N_ALIAS, {name.str().c_str(), node->pos});
+            res = create_node(N_ALIAS, {name.str().c_str()});
             res->type = node;
             res->flags |= OPT_ANONYMOUS_ALIAS;
             res = annotate(res, annotations);
@@ -2204,11 +2187,10 @@ ptree* create_map(ptree* key_type, ptree* element_type, const numeric* bound) {
     return p;
 }
 
-ptree* create_bitset(identifier ident, ptree* fields, ptree* parent, struct position pos_end) {
+ptree* create_bitset(identifier ident, ptree* fields, ptree* parent) {
     ptree* node = create_node(N_BITSET, ident);
     register_node(node);
     assign_members(node, fields);
-    node->pos_end = pos_end;
     if (parent) {
         parent->flags |= OPT_HAS_CHILDREN;
         node->parents.push_back(parent);
@@ -2234,7 +2216,7 @@ ptree* create_bitfield(declarator* declarators, const numeric* bits, ptree* type
     return res;
 }
 
-ptree* create_enum(identifier ident, ptree* values, struct position pos_end) {
+ptree* create_enum(identifier ident, ptree* values) {
     ptree* node = create_node(N_ENUM, ident);
     register_node(node);
 
@@ -2249,7 +2231,6 @@ ptree* create_enum(identifier ident, ptree* values, struct position pos_end) {
         register_node(val);
     }
     assign_members(node, values);
-    node->pos_end = pos_end;
     update_enum_values(node);
     return node;
 }
@@ -2261,7 +2242,7 @@ ptree* create_enum_value(identifier ident, const numeric* value) {
     return p;
 }
 
-ptree* create_bitmask(identifier ident, ptree* values, struct position pos_end) {
+ptree* create_bitmask(identifier ident, ptree* values) {
     ptree* node = create_node(N_BITMASK, ident);
     register_node(node);
     for (ptree* val : values) {
@@ -2272,7 +2253,6 @@ ptree* create_bitmask(identifier ident, ptree* values, struct position pos_end) 
     assign_members(node, values);
     node->element_type = &ulong_type;
     node->value = ulong_type.value;
-    node->pos_end = pos_end;
     update_enum_values(node);
     update_bitmask_values(node);
     return node;
@@ -2289,10 +2269,9 @@ void create_annotation_dcl_start(identifier ident) {
     create_context_node(N_ANNOTATION_DEF, ident);
 }
 
-ptree* create_annotation_dcl_finish(ptree* members, position pos_end) {
+ptree* create_annotation_dcl_finish(ptree* members) {
     ptree* node = pop_context();
     assign_members(node, members);
-    node->pos_end = pos_end;
     auto builtin_it = g_builtin_annotation_map.find(idl_scoped_name(node, nullptr));
     if (builtin_it != g_builtin_annotation_map.end()) {
         *builtin_it->second = node;
@@ -2316,13 +2295,13 @@ void create_annotation_start(identifier ident) {
         type = try_lookup_node(ident.name + 1, ANY_KIND);
     }
     if (type && type->kind == N_ANNOTATION_DEF) {
-        identifier id = {type->name.c_str(), ident.pos};
+        identifier id = {type->name.c_str()};
         node = create_node(N_ANNOTATION, id);
         node->type = type;
         node->super = type->super;
         node->scope = type->scope;
     } else {
-        identifier id = {ident.name + 1, ident.pos};
+        identifier id = {ident.name + 1};
         node = create_node(N_ANNOTATION, id);
         ALERT(CommandLineOption::WARNING_UNKNOWN_ANNOTATION)
             << "unknown annotation \"" << ident.name << "\"";
@@ -2483,10 +2462,9 @@ ptree* create_valuetype_start(identifier ident, ptree* parent, ptree* interface)
     return node;
 }
 
-ptree* create_valuetype_finish(ptree* members, position pos_end) {
+ptree* create_valuetype_finish(ptree* members) {
     ptree* node = pop_context();
     assign_members(node, members);
-    node->pos_end = pos_end;
     return node;
 }
 

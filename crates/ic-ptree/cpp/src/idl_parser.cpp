@@ -647,13 +647,6 @@ void parse_error(const char* msg, const char* file_name, int line_number) {
     parse_alert(msg, file_name, line_number, CommandLineOption::WARNING_UNCATEGORIZED_ERROR);
 }
 
-void parse_pedantic(const ptree* node, const char* message) {
-    ALERT(CommandLineOption::WARNING_PEDANTIC).context(node) << message;
-    if (node) {
-        msg << " on node " << node;
-    }
-}
-
 void parse_warning(const char* msg, const char* file_name, int line_number) {
     parse_alert(msg, file_name, line_number, CommandLineOption::WARNING_UNCATEGORIZED_WARNING);
 }

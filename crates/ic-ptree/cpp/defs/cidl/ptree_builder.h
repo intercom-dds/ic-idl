@@ -39,8 +39,6 @@ void parse_error(const char* msg, const char* file_name, int line_number);
 
 void parse_warning(const char* msg, const char* file_name, int line_number);
 
-void parse_pedantic(const struct ptree* node, const char* message);
-
 int parser_has_error(void);
 
 struct identifier create_identifier(const char* name);

@@ -86,9 +86,6 @@ static WarningDetails g_all_warnings[] = {
     {"unknown-annotation",
      CommandLineOption::WARNING_UNKNOWN_ANNOTATION,
      "Warn on use of unknown annotation"},
-    {"pedantic",
-     CommandLineOption::WARNING_PEDANTIC,
-     "Warn on use of language extensions or implementation-defined behavior"},
     {"error", CommandLineOption::WARNING_ERROR, "Treat warnings like errors"},
 };
 

@@ -1435,27 +1435,11 @@ ptree* create_module_finish(ptree* def, struct position pos_end) {
     return p;
 }
 
-static bool is_scoped_literal(std::string_view name, const ptree* node) {
-    auto pos = name.find("::");
-    if (pos != std::string_view::npos) {
-        pos += 2;
-        size_t next = name.find("::", pos);
-        return name.substr(pos, next - pos) == node->name;
-    }
-    return false;
-}
-
 const numeric* lookup_value(identifier ident) {
     ptree* p = try_lookup_node(ident.name, ANY_KIND);
     if (p) {
         auto n = new_numeric(PTREE_KIND);
         n->val.node(p);
-
-        if (base_type_of(p)->kind == N_ENUM && is_scoped_literal(ident.name, p)) {
-            ALERT(CommandLineOption::WARNING_PEDANTIC)
-                << "Scoped enums are an InterCOM extension. "
-                << "Enum literals are registered in the parent scope";
-        }
         return n;
     }
     if (!g_state->context.empty() &&
@@ -3222,41 +3206,6 @@ void validate_node(ptree* node) {
                 unsigned long bound = unsigned_value(base_type->bounds.back());
                 if (value_len(node) > bound) {
                     ERR.context(node) << "Value for " << node << " exceeds bound of " << bound;
-                }
-            }
-        }
-
-        if (!CommandLineOption::suppress_alert(CommandLineOption::WARNING_PEDANTIC)) {
-            // Maps with complex keys are not allowed, but do work on some backends
-            if (node->kind == N_MAP && !(node->flags & OPT_DECLARATION) &&
-                !is_of_type(base_type_of(node->key_type), valid_map_key)) {
-                ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
-                    << "Complex map key type " << node->key_type << " are not supported by IDL "
-                    << node;
-            }
-
-            // The intended behavior of mixing extensibility for members is not
-            // defined in the standard. We emit a warning if the type has stricter
-            // extensibility than its members, e.g. a @final type with @mutable members.
-            if (node->kind == N_STRUCT || node->kind == N_UNION) {
-                auto ext = get_extensibility(node);
-                for (auto mem : node->members) {
-                    if (is_of_type(mem->type, has_members) && get_extensibility(mem->type) > ext) {
-                        ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
-                            << "Type " << node << " has member " << mem
-                            << " with different extensibility";
-                    }
-                }
-            }
-
-            // Only primitive members can have @default annotations
-            if (node->kind == N_MEMBER && has_default_value(node)) {
-                auto base = base_type_of(node);
-                if (base->kind != N_PRIMITIVE && base->kind != N_STRING && base->kind != N_ENUM &&
-                    base->kind != N_BITMASK) {
-                    ALERT(CommandLineOption::WARNING_PEDANTIC).context(node)
-                        << "Specifying default values for complex types is an InterCOM extension. Related to node "
-                        << node;
                 }
             }
         }

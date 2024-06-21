@@ -37,6 +37,7 @@ use ic_preproc::preprocess;
 
 mod config;
 mod info;
+mod panic;
 mod pretty;
 
 macro_rules! error {
@@ -86,6 +87,9 @@ fn main() {
         error!("no input files");
         return;
     }
+
+    // Install a panic handler to catch failed asserts.
+    panic::install_hook();
 
     if let Err(e) = try_main(&options) {
         error!("{e}");

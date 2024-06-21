@@ -31,7 +31,8 @@ use ic_syntax::Item;
 
 use crate::{Category, Lint};
 
-/// Verifies that all identifiers are made up of alphanumeric ASCII characters.
+/// Verifies that all identifiers are made up of alphanumeric ASCII characters,
+/// and that all character literals only consist of ASCII characters.
 #[derive(Default)]
 pub struct AsciiIdent(Vec<Diag>);
 
@@ -49,6 +50,16 @@ impl<'a> Visitor<'a> for AsciiIdent {
             );
             self.0.push(diag);
         }
+    }
+
+    fn visit_literal(&mut self, _num: &'a ic_syntax::Literal) {
+        // match &num.kind {
+        //     ic_syntax::LitKind::LitBool => todo!(),
+        //     ic_syntax::LitKind::LitInt => todo!(),
+        //     ic_syntax::LitKind::LitFloat => todo!(),
+        //     ic_syntax::LitKind::LitChar => todo!(),
+        //     ic_syntax::LitKind::LitString => todo!(),
+        // }
     }
 }
 

@@ -34,9 +34,9 @@ use crate::{Category, Lint};
 
 /// Warns when the `in` keyword is omitted in prototypes.
 #[derive(Default)]
-pub struct OptionalIn(Vec<Diag>);
+pub struct OmittedIn(Vec<Diag>);
 
-impl<'a> Visitor<'a> for OptionalIn {
+impl<'a> Visitor<'a> for OmittedIn {
     fn visit_prototype_param(&mut self, def: &'a ic_syntax::Param) {
         if def.kind.is_none() {
             let diag = warn_span(
@@ -51,7 +51,7 @@ impl<'a> Visitor<'a> for OptionalIn {
     }
 }
 
-impl Lint for OptionalIn {
+impl Lint for OmittedIn {
     fn new() -> Box<dyn Lint>
     where
         Self: Sized,

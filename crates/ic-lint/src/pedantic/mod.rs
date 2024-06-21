@@ -33,5 +33,5 @@ pub mod complex_key;
 pub mod empty_mod;
 pub mod lowercase_bool;
 pub mod null;
-pub mod optional_in;
+pub mod omitted_in;
 pub mod scoped_enum;

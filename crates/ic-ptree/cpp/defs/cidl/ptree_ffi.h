@@ -35,10 +35,6 @@ extern "C" {
 
 struct ic_parse_result_t;
 
-ic_parse_result_t* ic_parse_idl(const char* input);
-
-uint32_t ic_warning_count(const ic_parse_result_t* result);
-
 uint32_t ic_error_count(const ic_parse_result_t* result);
 
 const char* ic_parse_error(const ic_parse_result_t* result);

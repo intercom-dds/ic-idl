@@ -2371,7 +2371,6 @@ void validate_node(ptree* node) {
     node_kind can_declare[] = {N_STRUCT, N_UNION, N_VALUETYPE, N_INTERFACE, N_CONST, N_UNDEF};
     node_kind is_member[] = {N_MEMBER, N_CASE, N_PROTOTYPE, N_UNDEF};
     node_kind illegal_types[] = {N_MODULE, N_INCLUDE, N_CONST, N_MEMBER, N_CASE, N_UNDEF};
-    node_kind valid_map_key[] = {N_PRIMITIVE, N_ENUM, N_STRING, N_UNDEF};
     if (node) {
         const ptree* base_type = base_type_of(node);
 

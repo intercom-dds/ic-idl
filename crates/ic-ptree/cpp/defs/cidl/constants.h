@@ -146,8 +146,6 @@ void add_comment(const char* text);
 
 void reset_comment(void);
 
-void comment_complete(struct position first, struct position last);
-
 extern enum node_kind ANY_KIND[];
 
 extern int ZERO_BOUNDS;

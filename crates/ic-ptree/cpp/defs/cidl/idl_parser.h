@@ -51,8 +51,6 @@ struct parse_result {
 };
 
 struct IdlParserImpl;
-struct JsonParserImpl;
-struct XmlParserImpl;
 
 enum class JsonValueFlags { FLAG_ESCAPED = 1, FLAG_NUMERICAL_VALUE = 2 };
 
@@ -60,19 +58,7 @@ std::string json_value(const numeric& value, const ptree* context = nullptr, int
 
 std::string json_value(const ptree* value);
 
-ptree* parse_json(const std::string& input);
-
-ptree* parse_xml(const std::string& input);
-
-ptree* parse_xml_file(const std::string& uri);
-
 parse_result merge_results(std::vector<parse_result>& to_merge);
-
-parse_result run_parser(
-    const std::vector<std::string>& input_files,
-    const std::vector<std::string>& pp_options,
-    uint32_t flags = 0
-);
 
 class IdlParser {
   public:
@@ -82,8 +68,6 @@ class IdlParser {
     const parse_result& result() const;
     parse_result& result();
 
-    void run(const std::string& input);
-    void run(FILE* input);
     void run(const std::function<ptree*()>& input);
 
     std::shared_ptr<parser> state();
@@ -91,37 +75,4 @@ class IdlParser {
   private:
     std::unique_ptr<IdlParserImpl> m_impl;
 };
-
-// TODO(idarcar);
-// class JsonParser {
-//   public:
-//     JsonParser();
-//     ~JsonParser();
-//
-//     const parse_result& result() const;
-//     parse_result& result();
-//
-//     void run(const std::string& input, const std::string& input_file_name = "<stdin>");
-//     void run(std::istream& input, const std::string& input_file_name = "<stdin>");
-//
-//     std::shared_ptr<parser> state();
-//
-//   private:
-//     std::unique_ptr<JsonParserImpl> m_impl;
-// };
-//
-// class XmlParser {
-//   public:
-//     XmlParser();
-//     ~XmlParser();
-//
-//     const parse_result& result() const;
-//     parse_result& result();
-//
-//     void run(const std::string& input, const std::string& input_file_name = "<stdin>");
-//     std::shared_ptr<parser> state();
-//
-//   private:
-//     std::unique_ptr<XmlParserImpl> m_impl;
-// };
 }  // namespace intercom::cidl

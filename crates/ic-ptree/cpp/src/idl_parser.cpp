@@ -46,10 +46,10 @@
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
+using namespace intercom::cidl;
+
 extern "C" {
-int scan_string(const char* str);
-int scan_file(FILE* file);
-int idlparse();
+
 struct ptree g_top_level;
 
 struct ptree* annotation_type_id;
@@ -213,7 +213,7 @@ const char* numeric_kind_str(numeric_kind kind) {
 }
 }
 
-using namespace intercom::cidl;
+static intercom::cidl::parse_result g_parse_result;
 
 using FileList = std::vector<std::pair<std::filesystem::path, std::filesystem::path>>;
 
@@ -292,347 +292,8 @@ static std::map<std::string, ptree**> initialize_builtin_annotation_map() {
     return res;
 }
 
-std::map<std::string, ptree**> g_builtin_annotation_map = initialize_builtin_annotation_map();
-
-namespace {
-const char* g_builtin_annotations =
-    "module intercom {\n"
-    "module annotations {\n"
-    "@annotation id {\n"
-    "   unsigned long value;\n"
-    "};\n"
-    "@annotation autoid {\n"
-    "   enum AutoidKind {\n"
-    "      SEQUENTIAL,\n"
-    "      HASH\n"
-    "   };\n"
-    "   AutoidKind value default HASH;\n"
-    "};\n"
-    "@annotation optional {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation position {\n"
-    "   unsigned short value;\n"
-    "};\n"
-    "@annotation value {\n"
-    "   any value;\n"
-    "};\n"
-    "@annotation empty {\n"
-    "};\n"
-    "@annotation extensibility {\n"
-    "   enum ExtensibilityKind {\n"
-    "      FINAL,\n"
-    "      APPENDABLE,\n"
-    "      MUTABLE,\n"
-    "      EXTENSIBLE = APPENDABLE,\n"  // non standard alias
-    "      FINAL_EXTENSIBILITY = FINAL,\n"
-    "      APPENDABLE_EXTENSIBILITY = APPENDABLE,\n"
-    "      MUTABLE_EXTENSIBILITY = MUTABLE,\n"
-    "      EXTENSIBLE_EXTENSIBILITY = APPENDABLE\n"
-    "   };\n"
-    "   ExtensibilityKind value;\n"
-    "};\n"
-    "@annotation final {\n"
-    "};\n"
-    "@annotation mutable {\n"
-    "};\n"
-    "@annotation appendable {\n"
-    "};\n"
-    "@annotation shared {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation key {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation must_understand {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation _default {\n"
-    "   any value;\n"
-    "};\n"
-    "@annotation default_literal {\n"
-    "};\n"
-    "@annotation range {\n"
-    "   any min;\n"
-    "   any max;\n"
-    "};\n"
-    "@annotation min {\n"
-    "   any value;\n"
-    "};\n"
-    "@annotation max {\n"
-    "   any value;\n"
-    "};\n"
-    "@annotation unit {\n"
-    "   string value;\n"
-    "};\n"
-    "@annotation bit_bound {\n"
-    "   unsigned short value;\n"
-    "};\n"
-    "@annotation external {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation nested {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation verbatim {\n"
-    "   enum PlacementKind {\n"
-    "      BEGIN_FILE,\n"
-    "      BEFORE_DECLARATION,\n"
-    "      BEGIN_DECLARATION,\n"
-    "      END_DECLARATION,\n"
-    "      AFTER_DECLARATION,\n"
-    "      END_FILE\n"
-    "   };\n"
-    "   string language default \"*\";\n"
-    "   PlacementKind placement default BEFORE_DECLARATION;\n"
-    "   string text;\n"
-    "};\n"
-    "@annotation service {\n"
-    "   string platform default \"*\";\n"
-    "   string name default \"\";\n"
-    "   string request_topic default \"\";\n"
-    "   string reply_topic default \"\";\n"
-    "};\n"
-    "@annotation topic {\n"
-    "   string name default \"\";\n"
-    "   string class default \"\";\n"
-    "   string namespace default \"\";\n"
-    "   string qosprofile default \"\";\n"
-    "   string partition default \"\";\n"
-    "   long long domain default -1;\n"
-    "   string udpmessage default \"\";\n"
-    "   string platform default \"*\";\n"
-    "};\n"
-    "@annotation qoslibrary {\n"
-    "   string name;\n"
-    "};\n"
-    "@annotation DDSService {\n"
-    "   string name default \"\";\n"
-    "};\n"
-    "@annotation DDSRequestTopic {\n"
-    "   string name;\n"
-    "};\n"
-    "@annotation DDSReplyTopic {\n"
-    "   string name;\n"
-    "};\n"
-    "@annotation _oneway {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation ami {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation _bitset {\n"  // old annotation for bitmask
-    "};\n"
-    "@annotation bitbound {\n"  // old name for bit_bound
-    "   unsigned short value;\n"
-    "};\n"
-    "@annotation mustunderstand {\n"  // old name for must_understand
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation minimumtypecheck {\n"  // old name for minimum_type_check
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation hashid {\n"
-    "   string value default \"\"\n;"
-    "};\n"
-    "@annotation default_nested {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation ignore_literal_names {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation try_construct {\n"
-    "   enum TryConstructFailAction {\n"
-    "      USE_DEFAULT, DISCARD, TRIM\n"
-    "   };\n"
-    "   TryConstructFailAction value default USE_DEFAULT;\n"
-    "};\n"
-    "@annotation non_serialized {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation data_representation {\n"
-    "   bitmask DataRepresentationMask {\n"
-    "      XCDR1, XML, XCDR2\n"
-    "   };\n"
-    "   DataRepresentationMask allowed_kinds;\n"
-    "};\n"
-    "@annotation jaus {\n"
-    "   string id default \"\";\n"
-    "   string name default \"\";\n"
-    "   string version default \"\";\n"
-    "   string assumptions default \"\";\n"
-    "   string inherits_from default \"\";\n"
-    "};\n"
-    "@annotation doc {\n"
-    "   enum PlacementKind {\n"
-    "      BEGIN_FILE,\n"
-    "      BEFORE_DECLARATION,\n"
-    "      BEGIN_DECLARATION,\n"
-    "      END_DECLARATION,\n"
-    "      AFTER_DECLARATION,\n"
-    "      END_FILE\n"
-    "   };\n"
-    "   string text;\n"
-    "   PlacementKind placement default BEFORE_DECLARATION;\n"
-    "};\n"
-    "@annotation merge {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation static {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation _const {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation derive {\n"
-    "   string value;\n"
-    "};\n"
-    "module ext {\n"
-    "@annotation doc {\n"
-    "   enum PlacementKind {\n"
-    "      BEGIN_FILE,\n"
-    "      BEFORE_DECLARATION,\n"
-    "      BEGIN_DECLARATION,\n"
-    "      END_DECLARATION,\n"
-    "      AFTER_DECLARATION,\n"
-    "      END_FILE\n"
-    "   };\n"
-    "   string text;\n"
-    "   PlacementKind placement default BEFORE_DECLARATION;\n"
-    "};\n"
-    "@annotation minimum_type_check {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation suppress {\n"
-    "   boolean value default TRUE;\n"
-    "   string language default \"*\";\n"
-    "};\n"
-    "@annotation no_constructor {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation no_serializer {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation listener {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation length_bit_bound {\n"
-    "   unsigned short value;\n"
-    "};\n"
-    "@annotation value_offset {\n"
-    "   long value;\n"
-    "};\n"
-    "@annotation length_value_offset {\n"
-    "   long value;\n"
-    "};\n"
-    "@annotation repeat_count {\n"
-    "   any value;\n"
-    "};\n"
-    "@annotation vmf_xri {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation vmf_decimal {\n"
-    "   long chars default 0;\n"
-    "   long decimal_bits;\n"
-    "};\n"
-    "@annotation jaus_presence_vector {\n"
-    "   long value;\n"
-    "};\n"
-    "@annotation jaus_integer {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation jaus_integer_function {\n"
-    "   boolean value default TRUE;\n"
-    "};\n"
-    "@annotation rename {\n"
-    "   string name;\n"
-    "};\n"
-    "@annotation builder {\n"
-    "   string name default \"\";\n"
-    "};\n"
-    "@annotation string_constants {\n"
-    "   boolean value default TRUE;\n"
-    "   string namespace;\n"
-    "};\n"
-    "@annotation protobuf_type {\n"
-    "   string name;\n"
-    "};\n"
-    "};\n"
-    "};\n"
-    "};\n";
-
-const char* g_rpc_types =
-    "@ext::suppress module DDS {\n"
-    "   typedef octet GuidPrefix_t[12];\n"
-    "   @final @nested struct EntityId_t {\n"
-    "      octet entity_key[3];\n"
-    "      octet entity_kind;\n"
-    "   };\n"
-    "   @final @nested struct GUID_t {\n"
-    "      GuidPrefix_t guid_prefix;\n"
-    "      EntityId_t   entity_id;\n"
-    "   };\n"
-    "   @final @nested struct SequenceNumber_t {\n"
-    "      long          high;\n"
-    "      unsigned long low;\n"
-    "   };\n"
-    "   @final @nested struct SampleIdentity_t {\n"
-    "      GUID_t      writer_guid;\n"
-    "      SequenceNumber_t sequence_number;\n"
-    "   };\n"
-    "   module RPC {\n"
-    "      typedef octet UnknownOperation;\n"
-    "      typedef octet UnknownException;\n"
-    "      typedef octet UnusedMember;\n"
-    "      typedef long RemoteExceptionCode_t;\n"
-    "      const RemoteExceptionCode_t REMOTE_EX_OK = 0;\n"
-    "      const RemoteExceptionCode_t REMOTE_EX_UNSUPPORTED = 1;"
-    "      const RemoteExceptionCode_t REMOTE_EX_INVALID_ARGUMENT = 2;\n"
-    "      const RemoteExceptionCode_t REMOTE_EX_OUT_OF_RESOURCES = 3;\n"
-    "      const RemoteExceptionCode_t REMOTE_EX_UNKNOWN_OPERATION = 4;\n"
-    "      const RemoteExceptionCode_t REMOTE_EX_UNKNOWN_EXCEPTION = 5;\n"
-    "      const RemoteExceptionCode_t REMOTE_EX_SERVICE_LOST = 6;\n"
-    "      typedef string<255> InstanceName;\n"
-    "      @final\n"
-    "      struct RequestHeader {\n"
-    "         SampleIdentity_t request_id;\n"
-    "         InstanceName instance_name;\n"
-    "      };\n"
-    "      @final\n"
-    "      struct ReplyHeader {\n"
-    "         SampleIdentity_t related_request_id;\n"
-    "         RemoteExceptionCode_t remote_ex;\n"
-    "      };\n"
-    "   };\n"
-    "};\n";
-
-intercom::cidl::parse_result g_parse_result;
-
-std::stringstream& msgout() {
-    static auto s_messages = std::make_unique<std::stringstream>();
-    return *s_messages;
-}
-}  // namespace
-
-void do_parse_error(const char* msg, const char* file_name, int line_number) {
-    msgout() << msg << " near line " << line_number - 1;  // -1 is statistically more accurate
-    if (file_name) {
-        msgout() << " in " << file_name;
-    }
-    ++g_parse_result.error_count;
-}
-
-void do_parse_warning(const char* msg, const char* file_name, int line_number) {
-    msgout() << msg << " near line " << line_number - 1;  // -1 is statistically more accurate
-    if (file_name) {
-        msgout() << " in " << file_name;
-    }
-    ++g_parse_result.warning_count;
-}
-
-int parser_has_error() {
-    return g_parse_result.error_count > 0;
-}
+static std::map<std::string, ptree**> g_builtin_annotation_map =
+    initialize_builtin_annotation_map();
 
 static void reset_top_level() {
     g_top_level = ptree();
@@ -646,8 +307,6 @@ static void init_parser_state(const std::shared_ptr<parser>& state) {
         g_state = initial;
         current_input_file = "";
         g_parse_result = parse_result();
-        msgout().str("");
-        msgout().clear();
         reset_top_level();
         // TODO(idarcar):
         // scan_string(g_builtin_annotations);
@@ -662,21 +321,13 @@ static void init_parser_state(const std::shared_ptr<parser>& state) {
         reset_top_level();
         // TODO(idarcar):
         // scan_string(g_rpc_types);
-
-        if (g_parse_result.error_count > 0) {
-            std::cerr
-                << "[CRITICAL] FAILED to parse builtin idl files\nbuiltin idl parse errors: {\n"
-                << msgout().str() << '}' << std::endl;
-        }
-
+        assert(g_parse_result.error_count == 0 && "parsing built-in IDL failed");
         return initial;
     }();
     *state = *s_initial_state;
     g_state = state;
     current_input_file = "";
     g_parse_result = parse_result();
-    msgout().str("");
-    msgout().clear();
     reset_top_level();
 }
 
@@ -686,7 +337,7 @@ static void add_rpc_types_to_global_state() {
     );
 }
 
-void update_incomplete_type(struct ptree* node, struct ptree*& type) {
+static void update_incomplete_type(struct ptree* node, struct ptree*& type) {
     if (type) {
         if (type->flags & OPT_DECLARATION) {
             if (type->type) {
@@ -705,7 +356,7 @@ void update_incomplete_type(struct ptree* node, struct ptree*& type) {
     }
 }
 
-void resolve_incomplete_types(struct ptree* node) {
+static void resolve_incomplete_types(struct ptree* node) {
     while (node) {
         update_incomplete_type(node, node->type);
         resolve_incomplete_types(node->members);
@@ -713,7 +364,7 @@ void resolve_incomplete_types(struct ptree* node) {
     }
 }
 
-ptree* prune_annotations(struct ptree* node, struct ptree* super = nullptr) {
+static ptree* prune_annotations(struct ptree* node, struct ptree* super = nullptr) {
     if (!node) {
         return nullptr;
     }
@@ -726,7 +377,7 @@ ptree* prune_annotations(struct ptree* node, struct ptree* super = nullptr) {
     return node;
 }
 
-void generate_code(struct ptree* node) {
+static void generate_code(struct ptree* node) {
     while (node) {
         current_input_file = get_symbol(node->file_name.c_str());
         g_state->include_context.push_back(node->included_from);
@@ -787,7 +438,7 @@ static void tree_includes(const ptree* tree, std::set<const ptree*>& includes) {
     }
 }
 
-void merge_structs(ptree* node) {
+static void merge_structs(ptree* node) {
     while (node) {
         ptree* base = base_type_of(node);
         if (base->kind == N_STRUCT && !base->original_members /* only merge once */) {
@@ -803,7 +454,7 @@ void merge_structs(ptree* node) {
     }
 }
 
-void register_node_in_scope(ptree* node, ptree* scp) {
+static void register_node_in_scope(ptree* node, ptree* scp) {
     std::swap(node->super, scp);
     register_node(node);
     std::swap(node->super, scp);
@@ -812,7 +463,7 @@ void register_node_in_scope(ptree* node, ptree* scp) {
 /// \brief registers inherited and merged members
 /// \details register_node(..) is usually called during ptree construction, but for forward
 /// declarations it has to happen after
-void register_inherited_nodes(ptree* node) {
+static void register_inherited_nodes(ptree* node) {
     if (node->type || (node->kind != N_STRUCT && node->kind != N_INTERFACE)) {
         return;
     }
@@ -831,7 +482,7 @@ void register_inherited_nodes(ptree* node) {
     }
 }
 
-static struct parse_result get_parse_result() {
+static parse_result get_parse_result() {
     resolve_incomplete_types(g_top_level.next);
     g_top_level.next = prune_annotations(g_top_level.next);
     format_doxy_comments(g_top_level.next);
@@ -845,7 +496,6 @@ static struct parse_result get_parse_result() {
     }
     validate_tree(g_top_level.next);
     g_parse_result.tree = g_top_level.next;
-    g_parse_result.msg = msgout().str();
 
     if (g_top_level.next) {
         g_top_level.next->state->numeric_map.clear();
@@ -857,21 +507,7 @@ static struct parse_result get_parse_result() {
     return g_parse_result;
 }
 
-static parse_result run_parser(const char*) {
-    // TODO(idarcar):
-    // scan_string(input);
-    return get_parse_result();
-}
-
-static parse_result run_parser_on_file(FILE* input) {
-    scan_file(input);
-    return get_parse_result();
-}
-
-namespace intercom::cidl {
-
-namespace {
-void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
+static void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
     std::set<std::string> input_file_set;
     for (auto& file : input_files) {
         input_file_set.insert(std::filesystem::canonical(file.first));
@@ -893,7 +529,7 @@ void suppress_content_from_includes(parse_result& result, const FileList& input_
     tree_modules(result.tree, result.modules);
 }
 
-void update_include_paths(parse_result& result, const FileList& input_files) {
+static void update_include_paths(parse_result& result, const FileList& input_files) {
     std::map<std::string, std::string> path_map;
     for (auto& file : input_files) {
         path_map.emplace(std::filesystem::canonical(file.first), file.second);
@@ -913,7 +549,7 @@ void update_include_paths(parse_result& result, const FileList& input_files) {
     filter(const_cast<ptree*>(result.tree));
 }
 
-void validate_consistent_types(
+static void validate_consistent_types(
     const ptree* tree,
     std::map<std::string, const ptree*>& type_map,
     parse_result& result
@@ -959,7 +595,7 @@ void validate_consistent_types(
 
 // Update type pointers in tree to point into the main
 // tree structure if they are defined there
-void update_ptree_types_after_merge(parse_result& result) {
+static void update_ptree_types_after_merge(parse_result& result) {
     // Update type map with pointers from merged tree
     std::function<void(ptree*)> update_type_map = [&](ptree* tree) {
         for (auto node : tree) {
@@ -1047,7 +683,8 @@ void update_ptree_types_after_merge(parse_result& result) {
     std::map<std::string, const ptree*> type_map;
     validate_consistent_types(tree, type_map, result);
 }
-}  // namespace
+
+namespace intercom::cidl {
 
 parse_result merge_results(std::vector<parse_result>& to_merge) {
     std::lock_guard<std::mutex> guard(g_parse_mutex);
@@ -1146,34 +783,10 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     return out;
 }
 
-static void collect_files_from_directory(
-    const std::filesystem::path& a_base,
-    const std::filesystem::path& a_dir,
-    FileList& a_files
-) {
-    for (const auto& f : std::filesystem::recursive_directory_iterator(a_dir)) {
-        const auto& path = f.path();
-        if (!f.is_directory() && (path.extension() == ".idl" || path.extension() == ".IDL")) {
-            a_files.emplace_back(f, std::filesystem::relative(f, a_base));
-        }
-    }
-}
-
 struct IdlParserImpl {
     parse_result result;
     std::shared_ptr<parser> state;
 };
-
-// TODO(idarcar):
-// struct JsonParserImpl {
-//     parse_result result;
-//     std::shared_ptr<parser> state;
-// };
-//
-// struct XmlParserImpl {
-//     parse_result result;
-//     std::shared_ptr<parser> state;
-// };
 
 std::mutex g_parse_mutex;
 
@@ -1191,27 +804,6 @@ parse_result& IdlParser::result() {
     return m_impl->result;
 }
 
-void IdlParser::run(const std::string&) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    init_parser_state(m_impl->state);
-    // TODO(idarcar):
-    // scan_string(input.c_str());
-    m_impl->result = get_parse_result();
-    m_impl->result.state = m_impl->state;
-    g_state = std::make_shared<parser>();
-    reset_top_level();
-}
-
-void IdlParser::run(FILE* input) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    init_parser_state(m_impl->state);
-    scan_file(input);
-    m_impl->result = get_parse_result();
-    m_impl->result.state = m_impl->state;
-    g_state = std::make_shared<parser>();
-    reset_top_level();
-}
-
 void IdlParser::run(const std::function<ptree*()>& input) {
     std::lock_guard<std::mutex> guard(g_parse_mutex);
     init_parser_state(m_impl->state);
@@ -1227,80 +819,4 @@ void IdlParser::run(const std::function<ptree*()>& input) {
 std::shared_ptr<parser> IdlParser::state() {
     return m_impl->state;
 }
-
-// TODO(idarcar):
-// JsonParser::JsonParser() : m_impl(new JsonParserImpl()) {
-//     m_impl->state = std::make_shared<parser>();
-// }
-//
-// JsonParser::~JsonParser() = default;
-//
-// const parse_result& JsonParser::result() const {
-//     return m_impl->result;
-// }
-//
-// parse_result& JsonParser::result() {
-//     return m_impl->result;
-// }
-//
-// void JsonParser::run(const std::string& input, const std::string& input_file_name) {
-//     std::lock_guard<std::mutex> guard(g_parse_mutex);
-//     init_parser_state(m_impl->state);
-//     create_include_start(create_identifier(input_file_name.c_str()));
-//     std::string canonical_file_name;
-//     try {
-//         canonical_file_name = std::filesystem::canonical(input_file_name);
-//     } catch (std::exception&) {
-//         canonical_file_name = input_file_name;
-//     }
-//     current_input_file = canonical_file_name.c_str();
-//     g_top_level.next = create_include_finish(parse_json(input));
-//     m_impl->result = get_parse_result();
-//     m_impl->result.state = m_impl->state;
-//     g_state = std::make_shared<parser>();
-//     current_input_file = "";
-//     reset_top_level();
-// }
-//
-// void JsonParser::run(std::istream& input, const std::string& input_file_name) {
-//     std::stringstream stream;
-//     stream << input.rdbuf();
-//     run(stream.str(), input_file_name);
-// }
-//
-// std::shared_ptr<parser> JsonParser::state() {
-//     return m_impl->state;
-// }
-//
-// XmlParser::XmlParser() : m_impl(new XmlParserImpl()) {
-//     m_impl->state = std::make_shared<parser>();
-// }
-//
-// XmlParser::~XmlParser() = default;
-//
-// const parse_result& XmlParser::result() const {
-//     return m_impl->result;
-// }
-//
-// parse_result& XmlParser::result() {
-//     return m_impl->result;
-// }
-//
-// void XmlParser::run(const std::string& input, const std::string& input_file_name) {
-//     std::lock_guard<std::mutex> guard(g_parse_mutex);
-//     init_parser_state(m_impl->state);
-//
-//     auto inc_name = fmt::format("\"{}\"", input_file_name);
-//     create_include_start(create_identifier(inc_name.c_str()));
-//     current_input_file = get_symbol(inc_name.c_str());
-//     g_top_level.next = create_include_finish(parse_xml(input));
-//     m_impl->result = get_parse_result();
-//     m_impl->result.state = m_impl->state;
-//     g_state = std::make_shared<parser>();
-//     reset_top_level();
-// }
-//
-// std::shared_ptr<parser> XmlParser::state() {
-//     return m_impl->state;
-// }
 }  // namespace intercom::cidl

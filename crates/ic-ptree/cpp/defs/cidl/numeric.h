@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include <memory>
 #include <stdexcept>
 
 #include "cidl/constants.h"
@@ -37,11 +38,6 @@ template <typename T, typename... Args>
 constexpr T* construct_at(T* ptr, Args&&... args) {
     return ::new (const_cast<void*>(static_cast<const volatile void*>(ptr)))
         T(std::forward<Args>(args)...);
-}
-
-template <typename T>
-void destroy_at(T* ptr) {
-    ptr->T::~T();
 }
 
 namespace cidl {
@@ -864,7 +860,7 @@ inline void numeric_storage::node(const ptree* value) {
 
 inline void numeric_storage::free_union_() {
     if (m_ic_discriminator_value == STRING_KIND) {
-        intercom::destroy_at(&m_ic_union_value.str);
+        std::destroy_at(&m_ic_union_value.str);
     }
 }
 

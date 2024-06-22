@@ -67,7 +67,6 @@ add_library(ic_ptree STATIC
     src/ptree_builder.cpp
     src/ptree_ffi.cpp
     src/ptree_helpers.cpp
-    # src/ptree_json.cpp
     src/symbols.cpp
     src/commandline.cpp
     src/memf.cpp

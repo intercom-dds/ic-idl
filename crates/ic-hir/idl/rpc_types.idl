@@ -25,53 +25,64 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+#pragma once
 
-use ic_syntax::visit::Visitor;
-use ic_syntax::*;
-use visit::{visit_module, visit_struct, visit_struct_field};
+@ext::suppress
+module DDS {
 
-#[derive(Default, Debug)]
-struct Scope {
-    fwd_decls: HashMap<String, ()>,
-    types: HashMap<String, ()>,
-}
+typedef octet GuidPrefix_t[12];
 
-// TODO: Scope or absolute names?
-#[derive(Default, Debug)]
-pub struct Resolver {
-    modules: HashSet<String>,
-    fwd_decls: HashMap<String, ()>,
-    types: HashMap<String, ()>,
-    scopes: Vec<Scope>,
-}
+@final @nested
+struct EntityId_t {
+    octet entity_key[3];
+    octet entity_kind;
+};
 
-impl Resolver {
-    fn is_defined(&self, ty: &Type) -> bool {
-        let name = util::type_name(ty);
-        self.types.contains_key(&name) || self.fwd_decls.contains_key(&name)
-    }
-}
+@final @nested
+struct GUID_t {
+    GuidPrefix_t guid_prefix;
+    EntityId_t   entity_id;
+};
 
-impl<'a> Visitor<'a> for Resolver {
-    fn visit_module(&mut self, module: &'a ModuleDef) {
-        self.modules.insert(module.name.name.clone());
-        visit_module(self, module);
-    }
+@final @nested
+struct SequenceNumber_t {
+    long          high;
+    unsigned long low;
+};
 
-    fn visit_decl(&mut self, decl: &'a Decl) {
-        self.fwd_decls.insert(decl.name.name.clone(), ());
-    }
+@final @nested
+struct SampleIdentity_t {
+    GUID_t      writer_guid;
+    SequenceNumber_t sequence_number;
+};
 
-    fn visit_struct(&mut self, def: &'a StructDef) {
-        self.types.insert(def.name.name.clone(), ());
-        visit_struct(self, def);
-    }
+module RPC {
+    typedef octet UnknownOperation;
+    typedef octet UnknownException;
+    typedef octet UnusedMember;
+    typedef long RemoteExceptionCode_t;
 
-    fn visit_struct_field(&mut self, def: &'a Field) {
-        if !self.is_defined(&def.ty) {
-            eprintln!("type not defined");
-        }
-        visit_struct_field(self, def);
-    }
-}
+    const RemoteExceptionCode_t REMOTE_EX_OK = 0;
+    const RemoteExceptionCode_t REMOTE_EX_UNSUPPORTED =
+    const RemoteExceptionCode_t REMOTE_EX_INVALID_ARGUMENT = 2;
+    const RemoteExceptionCode_t REMOTE_EX_OUT_OF_RESOURCES = 3;
+    const RemoteExceptionCode_t REMOTE_EX_UNKNOWN_OPERATION = 4;
+    const RemoteExceptionCode_t REMOTE_EX_UNKNOWN_EXCEPTION = 5;
+    const RemoteExceptionCode_t REMOTE_EX_SERVICE_LOST = 6;
+
+    typedef string<255> InstanceName;
+
+    @final
+    struct RequestHeader {
+        SampleIdentity_t request_id;
+        InstanceName instance_name;
+    };
+
+    @final
+    struct ReplyHeader {
+        SampleIdentity_t related_request_id;
+        RemoteExceptionCode_t remote_ex;
+    };
+};
+
+};

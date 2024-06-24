@@ -31,62 +31,37 @@ use std::any::TypeId;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::num::NonZero;
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
-use ic_alloc::interner::{Interner, SymbolId};
 use ic_macros::EnumIter;
-use ic_syntax::{Expr, Ident, Item, Span};
+use ic_syntax::util::{path_name, type_name};
+use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
 
 // mod annotation;
+mod hir;
 pub mod keywords;
+mod resolve;
 pub mod visit;
-
 // mod downcast;
+
+use hir::{AliasTy, DeclTy, EnumTy, Enumerator, Member, ModuleTy, PrimitiveTy, StructTy, Type};
+
+mod embedded {
+    pub const RPC_TYPES: &str = include_str!("../idl/rpc_types.idl");
+    pub const ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
+}
 
 // TODO: some id that identifies the source file this belongs to
 pub type NodeId = ic_alloc::arena::Id<Type>;
 
-/// A dynamic representation of an applied annotation.
-#[derive(Debug)]
-pub struct GenericAnn {
-    pub ident: Ident,
-    pub span: Span,
-    pub fields: Vec<AnnParam>,
-}
-
-#[derive(Debug)]
-pub struct AnnParam {
-    pub ident: Option<Ident>,
-    pub span: Span,
-    pub value: Expr,
-}
-
-impl GenericAnn {
-    /// Attempts to "downcast" the annotation to a concrete annotation type.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use ic_hir::GenericAnn;
-    /// use ic_hir::annotations::MustUnderstand;
-    ///
-    /// let ann = GenericAnn { ... };
-    /// let concrete = ann.try_get::<MustUnderstand>().unwrap();
-    /// assert_eq!(concrete.value, true);
-    /// ```
-    pub fn try_get<T>(&self) -> T {
-        todo!()
-    }
-}
-
 #[derive(Debug)]
 pub struct Context {
     pub arena: Arena<Type>,
-    pub interner: Interner,
 
     // Qualified name => Type ID
-    pub types: HashMap<String, Id<Type>>,
+    pub types: HashMap<String, NodeId>,
 }
 
 impl Context {
@@ -102,7 +77,6 @@ impl Context {
     pub fn empty() -> Self {
         Self {
             arena: Arena::default(),
-            interner: Interner::default(),
             types: HashMap::new(),
         }
     }
@@ -111,33 +85,24 @@ impl Context {
     ///
     /// Panics if the given type ID does not exist. This can only ever happen
     /// if there are multiple `Context`s whose arenas have been mixed up.
-    pub fn ty(&self, id: Id<Type>) -> &Type {
-        self.try_ty(id)
-            .expect(&format!("type {id:?} does not exist"))
-    }
+    // pub fn ty(&self, id: Id<Type>) -> &Type {
+    //     self.try_ty(id)
+    //         .expect(&format!("type {id:?} does not exist"))
+    // }
 
     /// # Panics
-    pub fn str(&self, id: SymbolId) -> &str {
-        self.try_str(id)
-            .expect(&format!("symbol {id:?} does not exist"))
-    }
+    // pub fn try_ty(&self, id: Id<Type>) -> Option<&Type> {
+    //     self.arena.get(id)
+    // }
 
-    pub fn try_ty(&self, id: Id<Type>) -> Option<&Type> {
-        self.arena.get(id)
-    }
-
-    pub fn try_str(&self, id: SymbolId) -> Option<&str> {
-        self.interner.get(id)
-    }
-
-    pub fn primitive_type(&self, _kind: Primitive) -> &Type {
+    pub fn primitive_type(&self, _kind: PrimitiveTy) -> &Type {
         todo!()
     }
 
-    pub fn lookup_type(&self, name: &str) -> Option<&Type> {
-        let ty = self.types.get(name)?;
-        self.try_ty(*ty)
-    }
+    // pub fn lookup_type(&self, name: &str) -> Option<&Type> {
+    //     let ty = self.types.get(name)?;
+    //     self.try_ty(*ty)
+    // }
 
     fn register_type<I>(&mut self, name: I, ty: Type) -> Id<Type>
     where
@@ -154,149 +119,309 @@ impl Context {
             }
         }
     }
+
+    /// Returns the type definition of the specified type.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified type does not exist in the arena. This can only
+    /// happen if there are multiple `Context`s whose arenas have been mixed
+    /// up.
+    fn type_of(&self, ty: NodeId) -> &Type {
+        self.arena
+            .get(ty)
+            .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
+    }
+
+    /// Similar to `type_of`, but will resolve the underlying type.
+    fn base_type_of(&self, ty: NodeId) -> &Type {
+        let ty = self.type_of(ty);
+        if let Type::Alias(alias) = ty {
+            self.type_of(alias.ty)
+        } else {
+            ty
+        }
+    }
+
+    // TODO: handle this in `Resolver` instead -- we should only operate on IDs.
+    fn resolve_type(&self, name: &ic_syntax::Type) -> NodeId {
+        let name = type_name(name);
+        *self.types.get(&name).expect("unknown type")
+    }
+
+    fn resolve_path(&self, path: &ic_syntax::Path) -> NodeId {
+        let name = path_name(path);
+        *self.types.get(&name).expect("unknown type")
+    }
 }
 
 /// Inserts primitive types and built-in annotations into the context.
 fn init_ctx_state(ctx: &mut Context) {
-    for ty in Primitive::iter() {
+    for ty in PrimitiveTy::iter() {
         ctx.register_type(ty.name(), Type::Primitive(ty));
     }
 }
 
+pub fn resolve(tree: &[Item]) {
+    let mut visitor = resolve::Resolver::default();
+    ic_syntax::visit::visit_tree(&mut visitor, tree);
+    println!("{visitor:#?}");
+}
+
+fn alloc_module(context: &mut Context, symbol: &ic_syntax::ModuleDef) {
+    let ident = symbol.name.clone();
+    let id = context.arena.alloc_with_id(|id| {
+        Type::Module(ModuleTy {
+            id,
+            ident,
+            scope: None,
+            span: symbol.span,
+            definitions: vec![],
+        })
+    });
+    context.types.insert(symbol.name.name.clone(), id);
+}
+
+/// A typedef with multiple declarators will be expanded to multiple,
+/// individual typedefs, each with one declarator.
+fn alloc_typedef(context: &mut Context, symbol: &ic_syntax::Typedef) {
+    for decl in &symbol.decl {
+        // TODO: have to check for dups as well
+        let ident = symbol.name.clone();
+        let ty = context.resolve_type(&symbol.ty);
+        let id = context.arena.alloc_with_id(|id| {
+            Type::Alias(AliasTy {
+                id,
+                ty,
+                ident,
+                scope: None,
+                span: symbol.span,
+            })
+        });
+        context.types.insert(symbol.name.name.clone(), id);
+    }
+}
+
+/// Responsible for lowering the AST to a HIR. This process will, amongst other
+/// things, perform type checking, evaluate expressions, assign values to
+/// things like enumerators, and ultimately construct the type-resolved graph
+/// that is the HIR.
+///
+/// The HIR will alter the representation of the source code in some minor
+/// ways, such as expanding a typedef with multiple declarators to multiple
+/// typedefs with a single declarator each. More opinionated transformations of
+/// the source code happens as subsequent passes on the `HIR`.
+///
+/// Note: avoid triggering errors here unless absolutely necessary.
+/// Non-critical warnings and errors are better suited as lints.
+struct Lower {
+    ctx: Context,
+}
+
+impl Lower {
+    pub fn alloc_struct(&mut self) {}
+
+    pub fn resolve_expr(&mut self, expr: &Expr) {}
+}
+
+#[derive(Default)]
+struct Resolver;
+
+impl Resolver {
+    fn resolve_expr(&mut self, expr: &Expr) -> i32 {
+        match expr {
+            Expr::Literal(v) => 9,
+            Expr::Path(_) => todo!(),
+            Expr::Unary(_) => todo!(),
+            Expr::Binary(_) => todo!(),
+            Expr::InitList(_) => todo!(),
+        }
+    }
+}
+
+// Forward declarations are somewhat tricky. Types that depend on the
+// forward-declared type should point to the type definition and not the
+// declaration, but at this point we're not guaranteed to have the seen the
+// definition.
+//
+// Instead, we allocate two type entries: one for the declaration, and one for
+// the yet-to-be-seen definition. The declaration will point to the definition,
+// and future calls to `Context::resolve_type` will yield the ID of the
+// definition. When we encounter the definition, we will mutate the existing
+// entry. Once construction of the HIR is done, we'll traverse it to make sure
+// all forward-declared types also have been defined.
+fn alloc_decl(context: &mut Context, symbol: &ic_syntax::Decl) -> NodeId {
+    context.arena.alloc_with_id(|id| {
+        Type::Decl(DeclTy {
+            ident: symbol.name.clone(),
+            ty: id,
+        })
+    })
+}
+
+// Members with multiple declarators are expanded into multiple members, each
+// with a single declarator.
+fn alloc_struct(context: &mut Context, symbol: &ic_syntax::StructDef) -> NodeId {
+    let mut members = vec![];
+    for mem in &symbol.members {
+        assert!(
+            !mem.names.is_empty(),
+            "struct member without any declarators",
+        );
+
+        // TODO: keep a set of fwd declared types, then iterate over later?
+        // .what we can do is allocate two entries:
+        //  - one for the decl
+        //  - one for the yet-to-be-defined type.
+        // calls to resolve_type will yield the id of the type and not the decl
+        let ty = context.resolve_type(&mem.ty);
+        for decl in &mem.names {
+            let ident = match decl {
+                ic_syntax::Declarator::Simple(v) => v.clone(),
+                ic_syntax::Declarator::Array(_) => todo!(),
+            };
+            members.push(Member { ident, ty });
+        }
+    }
+
+    let id = context.arena.alloc_with_id(|id| {
+        Type::Struct(StructTy {
+            id,
+            ident: symbol.name.clone(),
+            scope: None,
+            span: symbol.span,
+            members,
+        })
+    });
+    context.types.insert(symbol.name.name.clone(), id);
+    id
+}
+
+fn alloc_enum(context: &mut Context, symbol: &ic_syntax::EnumDef) -> NodeId {
+    let mut last_value = 0;
+    let mut enumerators = vec![];
+
+    for lit in &symbol.fields {
+        let value = lit.value.as_ref().map_or_else(|| last_value + 1, |_| 0);
+        last_value = value;
+
+        enumerators.push(Enumerator {
+            ident: lit.name.clone(),
+            value,
+        });
+    }
+
+    context.arena.alloc_with_id(|id| {
+        Type::Enum(EnumTy {
+            id,
+            ident: symbol.name.clone(),
+            scope: None,
+            span: symbol.span,
+            enumerators,
+        })
+    })
+}
+
+/// Determines if two annotation definitions are consistent. The standard
+/// doesn't clarify what "consistent" means, but I've interpreted it as the two
+/// definitions being identical.
+fn is_consistent(ctx: &mut Context, lhs: &AnnotationDef, rhs: &AnnotationDef) -> bool {
+    if !lhs.name.name.eq_ignore_ascii_case(&rhs.name.name) || lhs.params.len() != rhs.params.len() {
+        return false;
+    }
+
+    lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
+        (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
+            decl_consistent(ctx, &lhs.names, &rhs.names)
+                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+        }
+        (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
+            // TODO: check value
+            lhs.name.name.eq_ignore_ascii_case(&rhs.name.name)
+                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+        }
+        (lhs, rhs) => lhs.disc() == rhs.disc(),
+    })
+}
+
+/// Determines if two sets of declarators are semantically consistent. They
+/// must resolve to the same types with the same bounds for them to be
+/// considered consistent.
+fn decl_consistent(
+    ctx: &mut Context,
+    lhs: &[ic_syntax::Declarator],
+    rhs: &[ic_syntax::Declarator],
+) -> bool {
+    use ic_syntax::Declarator;
+
+    lhs.iter().zip(rhs.iter()).all(|v| match v {
+        (Declarator::Simple(lhs), Declarator::Simple(rhs)) => {
+            lhs.name.eq_ignore_ascii_case(&rhs.name)
+        }
+        (Declarator::Array(lhs), Declarator::Array(rhs)) => {
+            // TODO: should check each expr
+            lhs.bounds.len() == rhs.bounds.len()
+                && lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name)
+        }
+        _ => false,
+    })
+}
+
+/// Determines if two types are semantically consistent. Collection types are
+/// treated as consistent if they have the same bound and resolve to the same
+/// element type.
+fn is_type_consistent(ctx: &mut Context, lhs: &ic_syntax::Type, rhs: &ic_syntax::Type) -> bool {
+    use ic_syntax::Type;
+
+    // TODO: eval and check bounds
+    match (lhs, rhs) {
+        (Type::Sequence(lhs), Type::Sequence(rhs)) => {
+            is_type_consistent(ctx, lhs.ty.as_ref(), rhs.ty.as_ref())
+        }
+        (Type::String_(lhs), Type::String_(rhs)) => lhs.wide == rhs.wide,
+        (Type::Map(lhs), Type::Map(rhs)) => {
+            is_type_consistent(ctx, lhs.key.as_ref(), rhs.key.as_ref())
+                && is_type_consistent(ctx, lhs.value.as_ref(), rhs.value.as_ref())
+        }
+        (Type::Path(lhs), Type::Path(rhs)) => ctx.resolve_path(lhs) == ctx.resolve_path(rhs),
+        _ => lhs.disc() == rhs.disc(),
+    }
+}
+
 #[derive(Debug)]
-pub enum Type {
-    Primitive(Primitive),
-    Typedef(Typedef),
+pub struct ResolvedGraph {
+    /// The primary data structure that owns all the types.
+    pub context: Context,
+
+    /// Defines the order in which the types appeared in the syntax tree. This
+    /// can be used to traverse the graph in the same order in which the types
+    /// were defined.
+    pub order: Vec<NodeId>,
 }
 
-impl Type {
-    pub fn name(&self) -> &str {
-        match self {
-            Type::Primitive(v) => v.name(),
-            Type::Typedef(v) => v.name(),
-        }
-    }
-}
+pub fn lower_ast(ast: &[Item]) -> ResolvedGraph {
+    let mut context = Context::new();
+    let mut resolver = Resolver::default();
+    let mut order = vec![];
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter)]
-pub enum Primitive {
-    Boolean,
-    Char,
-    Int8,
-    UInt8,
-    Int16,
-    UInt16,
-    Int32,
-    UInt32,
-    Int64,
-    UInt64,
-    Float,
-    Double,
-    String,
-}
-
-impl Primitive {
-    pub fn name(&self) -> &'static str {
-        match self {
-            Primitive::Boolean => "boolean",
-            Primitive::Char => "char",
-            Primitive::Int8 => "int8",
-            Primitive::UInt8 => "octet",
-            Primitive::Int16 => "int16",
-            Primitive::UInt16 => "uint16",
-            Primitive::Int32 => "int32",
-            Primitive::UInt32 => "uint32",
-            Primitive::Int64 => "int64",
-            Primitive::UInt64 => "uint64",
-            Primitive::Float => "float",
-            Primitive::Double => "double",
-            Primitive::String => "string",
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Typedef {
-    ident: Ident,
-    ty: NodeId,
-    scope: Option<NodeId>,
-    span: Span,
-    state: Rc<Context>,
-    flags: usize,
-    pub annotations: Vec<GenericAnn>,
-}
-
-pub enum Scope {
-    Global,
-    Module,
-    Interface,
-}
-
-impl Typedef {
-    pub fn name(&self) -> &str {
-        &self.ident.name
+    for item in ast {
+        let ty = match item {
+            Item::AnnotationValue(_) => todo!(),
+            Item::ModuleValue(_) => todo!(),
+            Item::StructValue(v) => alloc_struct(&mut context, v),
+            Item::UnionValue(_) => todo!(),
+            Item::EnumValue(v) => alloc_enum(&mut context, v),
+            Item::ExceptionValue(_) => todo!(),
+            Item::BitmaskValue(_) => todo!(),
+            Item::BitsetValue(_) => todo!(),
+            Item::ConstValue(_) => todo!(),
+            Item::TypedefValue(_) => todo!(),
+            Item::InterfaceValue(_) => todo!(),
+            Item::ValuetypeValue(_) => todo!(),
+            Item::DeclValue(v) => alloc_decl(&mut context, v),
+        };
+        order.push(ty);
     }
 
-    pub fn ty(&self) -> &Type {
-        self.state.ty(self.ty)
-    }
-
-    pub fn span(&self) -> Span {
-        self.span.clone()
-    }
-
-    pub fn annotations(&self) -> &[GenericAnn] {
-        &self.annotations
-    }
-
-    /// The scope in which this node was defined. Returns `None` if the type
-    /// was defined in the global scope.
-    pub fn scope(&self) -> Option<&Type> {
-        self.scope.map(|id| self.state.ty(id))
-    }
-
-    pub fn flags(&self) -> usize {
-        self.flags
-    }
-}
-
-pub fn qualified_name(ty: &Typedef) -> String {
-    let mut path = vec![ty.name()];
-    let mut node = ty;
-
-    while let Some(v) = ty.scope() {
-        path.push(v.name());
-
-        match v {
-            Type::Typedef(v) => {
-                node = v;
-            }
-            Type::Primitive(_) => (),
-        }
-    }
-    path.reverse();
-    path.join("::")
-}
-
-#[test]
-fn test_typedef() {
-    let mut ctx = Context::new();
-    let ty = *ctx.types.get("int32").unwrap();
-    let state = Rc::new(ctx);
-
-    let typedef = Typedef {
-        ident: Ident {
-            name: "foobar".to_string(),
-            span: Span::default(),
-        },
-        ty,
-        scope: None,
-        span: Span::default(),
-        state,
-        annotations: vec![],
-        flags: 0,
-    };
-
-    println!("{}", typedef.ty().name());
-    println!("{}", qualified_name(&typedef));
+    ResolvedGraph { context, order }
 }

@@ -35,9 +35,4 @@ constexpr T* construct_at(T* ptr, Args&&... args) {
         T(std::forward<Args>(args)...);
 }
 
-template <typename T>
-void destroy_at(T* ptr) {
-    ptr->T::~T();
-}
-
 }  // namespace intercom

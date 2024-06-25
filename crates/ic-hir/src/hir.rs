@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Type definitions of the HIR.
+
 use std::any::TypeId;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -36,6 +38,9 @@ use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
+
+/// Dependency graph
+pub type TyGraph = ic_alloc::graph::DiGraph<NodeId>;
 
 use crate::NodeId;
 
@@ -59,7 +64,7 @@ pub enum PrimitiveTy {
 }
 
 impl PrimitiveTy {
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             PrimitiveTy::Bool => "boolean",
             PrimitiveTy::Char => "char",
@@ -117,19 +122,60 @@ pub enum Type {
     Annotation(AnnTy),
     Module(ModuleTy),
     Alias(AliasTy),
+    Const(ConstTy),
     Struct(StructTy),
     Union(UnionTy),
     Enum(EnumTy),
+    Interface(InterfaceTy),
     Decl(DeclTy),
 }
 
+intercom_cts::bitmask! {
+    #[derive(Copy, Clone)]
+    pub TyFlags: u16 {
+        /// Indicates whether the type is recursive.
+        IS_CIRCULAR  = 1 << 0,
+
+        /// Indicates whether the type is trivial, i.e. consists only of
+        /// primitive types and arrays thereof.
+        IS_TRIVIAL   = 1 << 1,
+
+        /// Indicates whether the type is anonymous.
+        IS_ANONYMOUS = 1 << 2,
+
+        /// Marker for built-in types.
+        IS_BUILTIN   = 1 << 3,
+
+        /// Indicates whether the type consists of members that can form a
+        /// total order.
+        TOTAL_ORDER  = 1 << 4,
+    }
+}
+
 #[derive(Debug)]
-struct Node {
+pub struct Node {
     pub id: NodeId,
     pub ident: Ident,
     pub scope: Option<NodeId>,
+    pub annotations: Vec<GenericAnn>,
     pub span: Span,
     pub data: Type,
+}
+
+pub enum Kind {
+    Enum {
+        enumerators: Vec<Enumerator>,
+    },
+    Struct {
+        members: Vec<Member>,
+    },
+    Union {
+        disc: Discriminator,
+        variants: Vec<Variant>,
+    },
+    Module {
+        defs: Vec<Node>,
+    },
 }
 
 #[derive(Debug)]
@@ -143,7 +189,6 @@ pub struct AnnTy {
 pub struct ModuleTy {
     pub id: NodeId,
     pub ident: Ident,
-    pub scope: Option<NodeId>,
     pub span: Span,
     pub definitions: Vec<NodeId>,
 }
@@ -153,7 +198,15 @@ pub struct AliasTy {
     pub id: NodeId,
     pub ident: Ident,
     pub ty: NodeId,
-    pub scope: Option<NodeId>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub struct ConstTy {
+    pub id: NodeId,
+    pub ident: Ident,
+    pub ty: NodeId,
+    pub value: Numeric,
     pub span: Span,
 }
 
@@ -161,9 +214,9 @@ pub struct AliasTy {
 pub struct StructTy {
     pub id: NodeId,
     pub ident: Ident,
-    pub scope: Option<NodeId>,
     pub span: Span,
     pub members: Vec<Member>,
+    pub flags: TyFlags,
 }
 
 /// Member of a struct or union.
@@ -173,11 +226,30 @@ pub struct Member {
     pub ty: NodeId,
 }
 
+pub enum MemberKind {
+    Type(NodeId),
+    String {
+        bound: Option<usize>,
+    },
+    Sequence {
+        ty: Box<MemberKind>,
+        bound: Option<usize>,
+    },
+    Array {
+        ty: NodeId,
+        bounds: Vec<usize>,
+    },
+    Map {
+        key: Box<MemberKind>,
+        element: Box<MemberKind>,
+        bound: Option<usize>,
+    },
+}
+
 #[derive(Debug)]
 pub struct UnionTy {
     pub id: NodeId,
     pub ident: Ident,
-    pub scope: Option<NodeId>,
     pub span: Span,
     pub disc: Discriminator,
     pub variants: Vec<Variant>,
@@ -199,7 +271,6 @@ pub enum Variant {
 pub struct EnumTy {
     pub id: NodeId,
     pub ident: Ident,
-    pub scope: Option<NodeId>,
     pub span: Span,
     pub enumerators: Vec<Enumerator>,
 }
@@ -208,6 +279,28 @@ pub struct EnumTy {
 pub struct Enumerator {
     pub ident: Ident,
     pub value: i32,
+}
+
+#[derive(Debug)]
+pub struct InterfaceTy {
+    pub id: NodeId,
+    pub ident: Ident,
+    pub span: Span,
+    pub prototypes: Vec<Proto>,
+    pub attributes: Vec<Attr>,
+}
+
+#[derive(Debug)]
+pub struct Proto {
+    pub ident: Ident,
+    pub return_ty: Option<NodeId>,
+}
+
+#[derive(Debug)]
+pub struct Attr {
+    pub ident: Ident,
+    pub ty: NodeId,
+    pub read_only: bool,
 }
 
 #[derive(Debug)]

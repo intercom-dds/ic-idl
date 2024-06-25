@@ -77,9 +77,18 @@ enum LitKind {
     LIT_STRING
 };
 
+@nested
+struct LitBool {
+    /// Indicates whether the bool was written in uppercase or lowercase.
+    boolean uppercase;
+
+    /// The assigned value of the boolean.
+    boolean value;
+};
+
 union LiteralValue switch(LitKind) {
 case LIT_BOOL:
-    boolean bool;
+     LitBool bool;
 case LIT_INT:
      int64 int;
 case LIT_CHAR:
@@ -193,7 +202,7 @@ struct AnnotationArg {
     /// Name of the parameter if one was specified.
     /// May be omitted for annotations with only a single, non-default member,
     /// but this is not enforced by the parser.
-    @optional Ident name;
+    @optional Ident ident;
 
     /// Span of the entire parameter.
     Span span;
@@ -205,7 +214,7 @@ struct AnnotationArg {
 
 @nested
 struct AnnotationAppl {
-    Ident name;
+    Ident ident;
     Span span;
     sequence<AnnotationArg> args;
 };
@@ -213,7 +222,7 @@ struct AnnotationAppl {
 @nested
 struct Stmt {
     /// Name of the item.
-    Ident name;
+    Ident ident;
 
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
@@ -338,13 +347,14 @@ struct UnionDef : Stmt {
 
 @nested
 struct ConstDef : Stmt {
-    Expr value;
+    Declarator decl;
     Type ty;
+    Expr value;
 };
 
 @nested
 struct Enumerator {
-    Ident name;
+    Ident ident;
     sequence<AnnotationAppl> annotations;
 
     /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
@@ -395,7 +405,7 @@ struct BitsetDef : Stmt {
 @nested
 struct Attribute {
     /// Name of the attribute.
-    Ident name;
+    Ident ident;
 
     /// The type of the attribute.
     Type ty;
@@ -419,7 +429,7 @@ enum ParamKind {
 @nested
 struct Param {
     /// Name of the parameter.
-    Ident name;
+    Ident ident;
 
     /// Type of the parameter.
     Type ty;
@@ -431,7 +441,7 @@ struct Param {
 @nested
 struct Prototype {
     /// Name of the prototype.
-    Ident name;
+    Ident ident;
 
     /// Return type.
     Type ret;
@@ -453,7 +463,7 @@ struct InterfaceDef : Stmt {
 
 @nested
 struct ValueMember {
-    Ident name;
+    Ident ident;
     Type ty;
     @optional Span _public;
 };

@@ -31,6 +31,8 @@ use ic_syntax::visit::Visitor;
 use ic_syntax::*;
 use visit::{visit_module, visit_struct, visit_struct_field};
 
+pub struct SymbolTable {}
+
 #[derive(Default, Debug)]
 struct Scope {
     fwd_decls: HashMap<String, ()>,

@@ -175,13 +175,19 @@ fn scoped_name() -> impl IdlParser<Path> {
 fn const_dcl() -> impl IdlParser<Item> {
     let def = just(Kind::Const)
         .ignore_then(const_type())
-        .then(ident())
+        .then(declarator())
         .then_ignore(just(Kind::Eq))
         .then(complex_const_expr())
         .then_ignore(just(Kind::Semi))
         .labelled("const declaration");
 
-    def.map_with_span(|((ty, name), val), span| Item::def_const(name, ty, val, span))
+    def.map_with_span(|((ty, name), val), span| {
+        let name = match name {
+            Declarator::Simple(v) => v,
+            Declarator::Array(v) => v.ident,
+        };
+        Item::def_const(name, ty, val, span)
+    })
 }
 
 // InterCOM extension for complex constants

@@ -50,6 +50,15 @@ pub fn type_name(path: &Type) -> String {
 }
 
 #[must_use]
+pub fn element_type(path: &Type) -> String {
+    match path {
+        Type::Map(v) => element_type(v.value.as_ref()),
+        Type::Sequence(seq) => element_type(seq.ty.as_ref()),
+        _ => type_name(path),
+    }
+}
+
+#[must_use]
 pub fn path_span(path: &Path) -> Span {
     let start = path.leading_colons.map_or_else(
         || path.segments.first().map_or(0, |v| v.span.start),
@@ -100,4 +109,39 @@ impl Expr {
     pub fn span(&self) -> Span {
         expr_span(self)
     }
+}
+
+pub trait ItemTraits {
+    fn item_name() -> &'static str;
+}
+
+macro_rules! named_item {
+    ($($type:ty: $name:expr $(,)?)+) => {
+        $(
+            impl ItemTraits for $type {
+                fn item_name() -> &'static str {
+                    $name
+                }
+            }
+        )*
+    };
+}
+
+named_item! {
+    crate::AnnotationDef: "annotation",
+    crate::ModuleDef: "module",
+    crate::StructDef: "struct",
+    crate::UnionDef: "union",
+    crate::EnumDef: "enum",
+    crate::ValuetypeDef: "valuetype",
+    crate::ExceptDef: "exception",
+    crate::BitmaskDef: "bitmask",
+    crate::BitsetDef: "bitset",
+    crate::Typedef: "typedef",
+    crate::ConstDef: "const",
+}
+
+#[must_use]
+pub fn item_name<T: ItemTraits>(_: &T) -> &'static str {
+    T::item_name()
 }

@@ -123,11 +123,13 @@ pub fn ast_dump(result: &ParseResult) {
 
 macro_rules! define_backend {
     ($fn_name:tt, $ffi_name:tt) => {
-        pub fn $fn_name(result: &ParseResult, directory: &Path) {
+        #[must_use]
+        pub fn $fn_name(result: &ParseResult, directory: &Path) -> Vec<String> {
             let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
             unsafe {
                 ffi::$ffi_name(result.inner, dir.as_ptr());
             }
+            vec![]
         }
     };
 }

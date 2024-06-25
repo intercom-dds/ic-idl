@@ -141,7 +141,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
             error!(
                 "aborting due to {} previous error{}",
                 e.len(),
-                if e.is_empty() { "" } else { "s" },
+                if e.len() > 1 { "s" } else { "" },
             );
         }
     }

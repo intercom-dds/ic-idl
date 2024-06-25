@@ -54,6 +54,7 @@ lints! {
     pedantic::omitted_in::OmittedIn,
     semantic::div_by_zero::ByZero,
     semantic::oneway::NonVoidOneway,
+    semantic::unsupported::Unsupported,
     syntax::ascii::AsciiIdent,
     syntax::empty::EmptyTypes,
 }
@@ -66,6 +67,9 @@ pub enum Category {
 
     /// Deprecated language items
     Deprecated,
+
+    /// Unsupported language items
+    Unsupported,
 
     /// Lint for language extensions
     Pedantic,

@@ -25,68 +25,33 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, Diag, Label};
-use ic_syntax::util::{item_name, ItemTraits};
+use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{Ident, Item, Span};
+use ic_syntax::{util, Item, UnionNull};
 
 use crate::{Category, Lint};
 
-/// Verifies that enums, unions, bitmasks, exceptions and valuetypes have at
-/// least one member.
-///
-/// Support for empty structs is allowed in the extended data-types building
-/// block.
+/// Warns when unsupported language items are used.
 #[derive(Default)]
-pub struct EmptyTypes(Vec<Diag>);
+pub struct Unsupported(Vec<Diag>);
 
-impl EmptyTypes {
-    fn diagnose<T: ItemTraits>(&mut self, span: Span, def: &T, member: &str) {
-        let ty = T::item_name();
-        let note = format!("all {ty}s must have at least one {member}");
-        let diag = error_span(
-            format!("empty {ty} are not allowed"),
-            Label::new(span).message("defined here"),
+impl<'a> Visitor<'a> for Unsupported {
+    fn visit_literal(&mut self, _: &'a ic_syntax::Literal) {
+        // TODO: this should check for `long double`s
+    }
+
+    fn visit_bitset(&mut self, bitset: &'a ic_syntax::BitsetDef) {
+        let diag = warn_span(
+            "bitsets are not supported",
+            Label::new(bitset.name.span).message("defined here"),
         )
-        .note(note);
+        .note("the bitset will be skipped during codegen");
 
         self.0.push(diag);
     }
 }
 
-impl<'a> Visitor<'a> for EmptyTypes {
-    fn visit_enum(&mut self, def: &'a ic_syntax::EnumDef) {
-        if def.fields.is_empty() {
-            self.diagnose(def.name.span, def, "enumerator");
-        }
-    }
-
-    fn visit_union(&mut self, def: &'a ic_syntax::UnionDef) {
-        if def.fields.is_empty() {
-            self.diagnose(def.name.span, def, "variant");
-        }
-    }
-
-    fn visit_valuetype(&mut self, def: &'a ic_syntax::ValuetypeDef) {
-        if def.prototypes.is_empty() {
-            self.diagnose(def.name.span, def, "member or prototype");
-        }
-    }
-
-    fn visit_bitmask(&mut self, def: &'a ic_syntax::BitmaskDef) {
-        if def.bits.is_empty() {
-            self.diagnose(def.name.span, def, "flag");
-        }
-    }
-
-    fn visit_exception(&mut self, def: &'a ic_syntax::ExceptDef) {
-        if def.members.is_empty() {
-            self.diagnose(def.name.span, def, "member");
-        }
-    }
-}
-
-impl Lint for EmptyTypes {
+impl Lint for Unsupported {
     fn new() -> Box<dyn Lint>
     where
         Self: Sized,
@@ -94,8 +59,8 @@ impl Lint for EmptyTypes {
         Box::<Self>::default()
     }
 
-    fn category(&self) -> crate::Category {
-        Category::Syntax
+    fn category(&self) -> Category {
+        Category::Unsupported
     }
 
     fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {

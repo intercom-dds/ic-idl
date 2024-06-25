@@ -27,31 +27,50 @@
 
 use ic_diagnostic::{warn_span, Color, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{ConstDef, Expr, Item, UnionNull};
+use ic_syntax::{ConstDef, Expr, Item, Span, UnionNull};
 
 use crate::{Category, Lint};
 
-/// Warns when a complex default value is used.
+/// Warns when an initializer list is used, e.g. for complex constants or
+/// complex default values.
 #[derive(Default)]
 pub struct ComplexDefaultValue(Vec<Diag>);
 
+impl ComplexDefaultValue {
+    fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
+        let diag = Diag::warning("complex default values are an InterCOM extension")
+            .label(Label::new(diag).message(msg).color(Color::Yellow))
+            .label(Label::new(label_span).message(label).color(Color::Cyan))
+            .note("only trivial literals are standardized");
+
+        self.0.push(diag);
+    }
+}
+
 impl<'a> Visitor<'a> for ComplexDefaultValue {
+    fn visit_annotation_appl(&mut self, def: &'a ic_syntax::AnnotationAppl) {
+        for arg in &def.args {
+            if let Expr::InitList(_) = &arg.value {
+                self.diagnose(
+                    (
+                        arg.value.span(),
+                        "complex default values are an InterCOM extension",
+                    ),
+                    (def.span, "in this annotation"),
+                );
+            }
+        }
+    }
+
     fn visit_const(&mut self, def: &'a ConstDef) {
         if let Expr::InitList(_) = &def.value {
-            let diag = Diag::warning("complex constants are an InterCOM extension")
-                .label(
-                    Label::new(def.value.span())
-                        .message("non-trivial value")
-                        .color(Color::Yellow),
-                )
-                .label(
-                    Label::new(def.name.span)
-                        .message("const defined here")
-                        .color(Color::Cyan),
-                )
-                .note("only trivial types can be used as constants");
-
-            self.0.push(diag);
+            self.diagnose(
+                (
+                    def.value.span(),
+                    "complex constants are an InterCOM extension",
+                ),
+                (def.name.span, "const defined here"),
+            );
         }
     }
 }

@@ -48,7 +48,7 @@ impl Charset {
     fn ascii() -> Self {
         Self {
             up_right: "==>",
-            down_right: "--",
+            down_right: "---",
             vertical: "|",
             vertical_dx: "+",
             highlight: "^",
@@ -90,7 +90,7 @@ fn line_col(input: &str, offset: usize) -> (usize, usize) {
             last_newl = idx;
         }
     }
-    (line, offset - last_newl)
+    (line, offset.checked_sub(last_newl).unwrap_or(1))
 }
 
 /// Returns the span of the line in which the given byte offset exists.
@@ -177,7 +177,7 @@ impl<'a> Formatter<'a> {
 
         // Embed the origin of the diagnostic
         let range = line_span(self.source, diag.labels.first().map_or(0, |v| v.span.start));
-        writeln!(f, " {}", &self.source[range])?;
+        writeln!(f, " {}", self.source[range].trim_end())?;
 
         // Draw all labels
         self.emit_labels(f, &indent, &diag.labels)?;

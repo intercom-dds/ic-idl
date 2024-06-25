@@ -70,7 +70,10 @@ macro_rules! bitmask {
     (
         $(#[$meta:meta])*
         $vis:vis $name:ident: $type:ty {
-            $($const_name:ident = $value:expr),* $(,)?
+            $(
+                $(#[$bit_meta:meta])*
+                $const_name:ident = $value:expr
+            ),* $(,)?
         }
     ) => {
         $(#[$meta])*
@@ -78,18 +81,24 @@ macro_rules! bitmask {
         $vis struct $name(pub $type);
 
         impl $name {
-            $($vis const $const_name: Self = Self($value);)*
+            $(
+                $(#[$bit_meta])*
+                $vis const $const_name: Self = Self($value);
+            )*
 
+            /// Constructs a bitmask where all bits are zeroed out.
             #[inline]
             pub const fn nil() -> Self {
                 Self(0)
             }
 
+            /// Constructs a bitmask where all bit are set.
             #[inline]
             pub const fn all() -> Self {
                 Self(0 $(| $value)*)
             }
 
+            /// Returns the underlying bits.
             #[inline]
             pub const fn bits(&self) -> $type {
                 self.0
@@ -100,21 +109,25 @@ macro_rules! bitmask {
                 self.0 == 0
             }
 
+            /// Checks if all bits are set.
             #[inline]
             pub const fn is_all(&self) -> bool {
                 self.0 == Self::all().0
             }
 
+            /// Checks if all bits of the given bitmask are set.
             #[inline]
             pub const fn all_of(&self, rhs: Self) -> bool {
                 (self.0 & rhs.0) == rhs.0
             }
 
+            /// Checks if the there is an overlap between the two bitmasks.
             #[inline]
             pub const fn contains(&self, rhs: Self) -> bool {
                 (self.0 & rhs.0) != 0
             }
 
+            /// Clears the bitmask.
             #[inline]
             pub fn clear(&mut self) {
                 self.0 = 0

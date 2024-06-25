@@ -25,12 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of memory-related utilities.
+//! Collection of data structures and memory-related utilities.
 
 pub mod arena;
 pub mod bitset;
+pub mod graph;
+pub mod index;
 pub mod inline_str;
-pub mod inline_vec;
 pub mod interner;
 pub mod md5;
 pub mod ptr;

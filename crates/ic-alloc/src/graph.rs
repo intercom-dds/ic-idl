@@ -25,4 +25,68 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type InlineVec<T> = Vec<T>;
+use std::hash::Hash;
+
+use crate::index::{IndexMap, IndexSet};
+
+#[must_use]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct VertexId(usize);
+
+/// A directed graph implementation.
+#[must_use]
+#[derive(Debug)]
+pub struct DiGraph<T> {
+    vertices: Vec<T>,
+    edges: IndexMap<VertexId, IndexSet<VertexId>>,
+}
+
+impl<T> DiGraph<T>
+where
+    T: Hash + Eq + Clone,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_edge(&mut self, u: VertexId, v: VertexId) {
+        if let Some(entry) = self.edges.get_mut(&u) {
+            entry.insert(v);
+        } else {
+            let mut set = IndexSet::new();
+            set.insert(u);
+            self.edges.insert(v, set);
+        }
+    }
+
+    /// Adds a vertex to the graph.
+    pub fn add_vertex(&mut self, vertex: T) -> VertexId {
+        let idx = self.vertices.len();
+        self.vertices.push(vertex);
+        VertexId(idx)
+    }
+
+    /// Returns the number of vertices in the graph.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.vertices.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.vertices.is_empty()
+    }
+}
+
+impl<T> Default for DiGraph<T> {
+    fn default() -> Self {
+        Self {
+            vertices: vec![],
+            edges: IndexMap::new(),
+        }
+    }
+}
+
+pub fn post_order<T>(_graph: &DiGraph<T>) {}
+
+pub fn topological_sort<T>(_graph: &DiGraph<T>) {}

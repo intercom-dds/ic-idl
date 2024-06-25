@@ -120,6 +120,16 @@ impl<T> Arena<T> {
         index
     }
 
+    pub fn alloc_with_id<F>(&mut self, closure: F) -> Id<T>
+    where
+        F: FnOnce(Id<T>) -> T,
+    {
+        let index = Id::new(self.elements.len());
+        let value = closure(index);
+        self.elements.push(value);
+        index
+    }
+
     pub fn get<Q>(&self, id: Q) -> Option<&T>
     where
         Q: Borrow<Id<T>>,

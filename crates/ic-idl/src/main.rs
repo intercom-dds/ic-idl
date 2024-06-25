@@ -39,6 +39,7 @@ mod config;
 mod info;
 mod panic;
 mod pretty;
+mod unstable;
 
 macro_rules! error {
     ($($arg:tt)*) => {{
@@ -47,17 +48,54 @@ macro_rules! error {
     }}
 }
 
-fn unstable_help() {
-    let command = Unstable::command();
-    let flags = command.format_args(|_| true).join("\n");
+fn main() {
+    let options = Options::parse();
 
-    println!("{}", "\nunstable flags:".yellow());
-    println!("{flags}");
-    println!("\nRun with `{}`\n", "ic-idl -Z [FLAG] <files>...".green());
-    println!(
-        "{} unstable flags may change at any time in backward-incompatible ways",
-        "warning:".yellow(),
-    );
+    if options.version {
+        println!("{}", info::version());
+        return;
+    }
+
+    if !options.unstable.is_empty() {
+        unstable::parse(&options.unstable);
+        return;
+    }
+
+    if options.files.is_empty() {
+        error!("no input files");
+        return;
+    }
+
+    // Install a panic handler to catch failed asserts.
+    panic::install_hook();
+
+    let generated = match try_main(&options) {
+        Ok(v) => v,
+        Err(e) => {
+            error!("{e}");
+            std::process::exit(1);
+        }
+    };
+
+    if options.list {
+        for f in generated {
+            println!("{f}");
+        }
+    }
+}
+
+enum File {
+    Dep(String),
+    Generated(String),
+}
+
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            File::Dep(v) => write!(f, "dep:{v}"),
+            File::Generated(v) => write!(f, "gen:{v}"),
+        }
+    }
 }
 
 fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
@@ -70,42 +108,17 @@ fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
     Ok(input)
 }
 
-fn main() {
-    let options = Options::parse();
-
-    if options.version {
-        println!("{}", info::version());
-        return;
-    }
-
-    if !options.unstable.is_empty() {
-        unstable_help();
-        return;
-    }
-
-    if options.files.is_empty() {
-        error!("no input files");
-        return;
-    }
-
-    // Install a panic handler to catch failed asserts.
-    panic::install_hook();
-
-    if let Err(e) = try_main(&options) {
-        error!("{e}");
-        std::process::exit(1);
-    }
-}
-
-fn try_main(options: &Options) -> anyhow::Result<()> {
+fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let input = options.files.iter().next().unwrap();
     let input = std::fs::read_to_string(input)?;
     let ast = ic_parse::from_str(&input);
 
     match ast {
         Ok(v) => {
-            dbg!(&v.tree);
+            // Lower the AST to a HIR
+            let hir = ic_hir::lower_ast(&v.tree);
 
+            // If lowering succeeded, lint the syntax tree and the HIR
             let report = ic_lint::lint_syntax(&v.tree);
             dbg!(&report);
 
@@ -114,17 +127,28 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
                 ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
                 eprintln!("{buf}");
             }
+
+            if options.hir_dump {
+                println!("{hir:#?}");
+            }
+
+            if options.ast_dump {
+                println!("{:#?}", v.tree);
+            }
         }
         Err(e) => {
             pretty::emit_errors(&input, &e);
-            error!("aborting due to {} previous error", e.len());
+            error!(
+                "aborting due to {} previous error{}",
+                e.len(),
+                if e.is_empty() { "" } else { "s" },
+            );
         }
     }
-
-    Ok(())
+    Ok(vec![])
 }
 
-fn try_ptree(options: &Options) -> anyhow::Result<()> {
+fn try_ptree(options: &Options) -> anyhow::Result<Vec<String>> {
     let preprocessed = options
         .files
         .iter()
@@ -133,7 +157,7 @@ fn try_ptree(options: &Options) -> anyhow::Result<()> {
 
     if options.preprocessor_only {
         println!("{}", preprocessed.join("\n"));
-        return Ok(());
+        return Ok(vec![]);
     }
 
     let parsed = preprocessed
@@ -147,25 +171,31 @@ fn try_ptree(options: &Options) -> anyhow::Result<()> {
         ic_ptree::ast_dump(&merged);
     }
 
+    let mut generated = vec![];
     if let Some(dir) = &options.csharp_out {
-        ic_ptree::codegen_csharp(&merged, dir);
+        let res = ic_ptree::codegen_csharp(&merged, dir);
+        generated.extend(res);
     }
 
     if let Some(dir) = &options.cpp_out {
-        ic_ptree::codegen_cpp(&merged, dir);
+        let res = ic_ptree::codegen_cpp(&merged, dir);
+        generated.extend(res);
     }
 
     if let Some(dir) = &options.java_out {
-        ic_ptree::codegen_java(&merged, dir);
+        let res = ic_ptree::codegen_java(&merged, dir);
+        generated.extend(res);
     }
 
     if let Some(dir) = &options.proto_out {
-        ic_ptree::codegen_proto(&merged, dir);
+        let res = ic_ptree::codegen_proto(&merged, dir);
+        generated.extend(res);
     }
 
     if let Some(dir) = &options.python_out {
-        ic_ptree::codegen_python(&merged, dir);
+        let res = ic_ptree::codegen_python(&merged, dir);
+        generated.extend(res);
     }
 
-    Ok(())
+    Ok(generated)
 }

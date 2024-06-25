@@ -149,9 +149,6 @@ struct GlobalOptions {
 /// Generic IDL code generator
 #[derive(Command, Default)]
 pub struct Options {
-    #[option(long)]
-    pub ast_dump: bool,
-
     /// Only preprocess the files
     #[option(short = 'E', long)]
     pub preprocessor_only: bool,
@@ -187,6 +184,14 @@ pub struct Options {
     /// Unstable flags, see `-Z help` for details
     #[option(short = 'Z', arg = "flag")]
     pub unstable: Vec<String>,
+
+    /// Dump out the AST exactly as it was parsed
+    #[option(long)]
+    pub ast_dump: bool,
+
+    /// Dump out the HIR
+    #[option(long)]
+    pub hir_dump: bool,
 
     /// Display version information
     #[option(short = 'V', long)]

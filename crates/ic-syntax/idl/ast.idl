@@ -373,7 +373,7 @@ struct ExceptDef : Stmt {
 };
 
 @nested
-struct Typedef : Stmt {
+struct AliasDef : Stmt {
     /// List of all declarators. Always contains at least one declarator.
     sequence<Declarator> decl;
 
@@ -570,7 +570,7 @@ case ITEM_CONST:
 
 case ITEM_TYPEDEF:
     /// Typedef definition
-    Typedef typedef_value;
+    AliasDef alias_value;
 
 case ITEM_INTERFACE:
     /// Interface definition

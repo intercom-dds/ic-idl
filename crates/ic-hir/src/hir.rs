@@ -27,7 +27,6 @@
 
 //! Type definitions of the HIR.
 
-use std::any::TypeId;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -40,9 +39,9 @@ use ic_syntax::util::{path_name, type_name};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
 
 /// Dependency graph
-pub type TyGraph = ic_alloc::graph::DiGraph<NodeId>;
+pub type TyGraph = ic_alloc::graph::DiGraph<TypeId>;
 
-use crate::NodeId;
+use crate::TypeId;
 
 /// Built-in primitive types. These types are effectively stateless and have no
 /// bounds or other attributes attached to them.
@@ -124,8 +123,10 @@ pub enum Type {
     Alias(AliasTy),
     Const(ConstTy),
     Struct(StructTy),
+    Except(ExceptTy),
     Union(UnionTy),
     Enum(EnumTy),
+    Bitmask(BitmaskTy),
     Interface(InterfaceTy),
     Decl(DeclTy),
 }
@@ -154,9 +155,9 @@ intercom_cts::bitmask! {
 
 #[derive(Debug)]
 pub struct Node {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
-    pub scope: Option<NodeId>,
+    pub scope: Option<TypeId>,
     pub annotations: Vec<GenericAnn>,
     pub span: Span,
     pub data: Type,
@@ -180,54 +181,56 @@ pub enum Kind {
 
 #[derive(Debug)]
 pub struct AnnTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct ModuleTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
-    pub definitions: Vec<NodeId>,
+    pub definitions: Vec<TypeId>,
 }
 
 #[derive(Debug)]
 pub struct AliasTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
-    pub ty: NodeId,
+    pub ty: TypeId,
     pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct ConstTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
-    pub ty: NodeId,
+    pub ty: TypeId,
     pub value: Numeric,
     pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct StructTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
     pub members: Vec<Member>,
     pub flags: TyFlags,
 }
 
+pub type ExceptTy = StructTy;
+
 /// Member of a struct or union.
 #[derive(Debug)]
 pub struct Member {
     pub ident: Ident,
-    pub ty: NodeId,
+    pub ty: TypeId,
 }
 
 pub enum MemberKind {
-    Type(NodeId),
+    Type(TypeId),
     String {
         bound: Option<usize>,
     },
@@ -236,7 +239,7 @@ pub enum MemberKind {
         bound: Option<usize>,
     },
     Array {
-        ty: NodeId,
+        ty: TypeId,
         bounds: Vec<usize>,
     },
     Map {
@@ -248,7 +251,7 @@ pub enum MemberKind {
 
 #[derive(Debug)]
 pub struct UnionTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
     pub disc: Discriminator,
@@ -257,7 +260,7 @@ pub struct UnionTy {
 
 #[derive(Debug)]
 pub struct Discriminator {
-    pub ty: NodeId,
+    pub ty: TypeId,
     pub span: Span,
 }
 
@@ -269,7 +272,7 @@ pub enum Variant {
 
 #[derive(Debug)]
 pub struct EnumTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
     pub enumerators: Vec<Enumerator>,
@@ -282,8 +285,16 @@ pub struct Enumerator {
 }
 
 #[derive(Debug)]
+pub struct BitmaskTy {
+    pub id: TypeId,
+    pub ident: Ident,
+    pub span: Span,
+    pub bits: Vec<(Ident, usize)>,
+}
+
+#[derive(Debug)]
 pub struct InterfaceTy {
-    pub id: NodeId,
+    pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
     pub prototypes: Vec<Proto>,
@@ -293,20 +304,20 @@ pub struct InterfaceTy {
 #[derive(Debug)]
 pub struct Proto {
     pub ident: Ident,
-    pub return_ty: Option<NodeId>,
+    pub return_ty: Option<TypeId>,
 }
 
 #[derive(Debug)]
 pub struct Attr {
     pub ident: Ident,
-    pub ty: NodeId,
+    pub ty: TypeId,
     pub read_only: bool,
 }
 
 #[derive(Debug)]
 pub struct DeclTy {
     pub ident: Ident,
-    pub ty: NodeId,
+    pub ty: TypeId,
 }
 
 #[derive(Debug)]
@@ -327,23 +338,23 @@ pub enum Numeric {
 
     /// Value that points to another constant.
     /// To retrieve the fully resolved value, use `Context::resolve_expr`.
-    Const(NodeId),
+    Const(TypeId),
 
     /// Fixed-size array elements, e.g. `{1, 2, 3}`.
     Array {
-        ty: NodeId,
+        ty: TypeId,
         values: Box<[Numeric]>,
     },
 
     /// Sequence elements, e.g. `{1, 2, 3}`.
     Sequence {
-        ty: NodeId,
+        ty: TypeId,
         values: Vec<Numeric>,
     },
 
     /// Map entries, eg. `{{key1, value1}, {key2, value2}}`.
     Map {
-        ty: NodeId,
+        ty: TypeId,
         values: Vec<(Numeric, Numeric)>,
     },
 }

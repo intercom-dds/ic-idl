@@ -27,7 +27,6 @@
 
 #![allow(unused, dead_code, clippy::all, clippy::must_use_candidate)]
 
-use std::any::TypeId;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -42,6 +41,7 @@ use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
 // mod annotation;
 mod hir;
 pub mod keywords;
+mod lower;
 mod resolve;
 pub mod visit;
 // mod downcast;
@@ -57,14 +57,14 @@ mod embedded {
 }
 
 // TODO: some id that identifies the source file this belongs to
-pub type NodeId = ic_alloc::arena::Id<Type>;
+pub type TypeId = ic_alloc::arena::Id<Type>;
 
 #[derive(Debug)]
 pub struct Context {
     pub arena: Arena<Type>,
 
     // Qualified name => Type ID
-    pub symbols: HashMap<String, NodeId>,
+    pub symbols: HashMap<String, TypeId>,
 }
 
 impl Context {
@@ -130,14 +130,14 @@ impl Context {
     /// Panics if the specified type does not exist in the arena. This can only
     /// happen if there are multiple `Context`s whose arenas have been mixed
     /// up.
-    fn type_of(&self, ty: NodeId) -> &Type {
+    fn type_of(&self, ty: TypeId) -> &Type {
         self.arena
             .get(ty)
             .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
     }
 
     /// Similar to `type_of`, but will resolve the underlying type.
-    fn base_type_of(&self, ty: NodeId) -> &Type {
+    fn base_type_of(&self, ty: TypeId) -> &Type {
         let ty = self.type_of(ty);
         if let Type::Alias(alias) = ty {
             self.type_of(alias.ty)
@@ -147,12 +147,12 @@ impl Context {
     }
 
     // TODO: handle this in `Resolver` instead -- we should only operate on IDs.
-    fn resolve_type(&self, name: &ic_syntax::Type) -> NodeId {
+    fn resolve_type(&self, name: &ic_syntax::Type) -> TypeId {
         let name = type_name(name);
         *self.symbols.get(&name).expect("unknown type")
     }
 
-    fn resolve_path(&self, path: &ic_syntax::Path) -> NodeId {
+    fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
         let name = path_name(path);
         *self.symbols.get(&name).expect("unknown type")
     }
@@ -171,60 +171,6 @@ pub fn resolve(tree: &[Item]) {
     println!("{visitor:#?}");
 }
 
-// fn alloc_module(context: &mut Context, symbol: &ic_syntax::ModuleDef) {
-//     let ident = symbol.name.clone();
-//     let id = context.arena.alloc_with_id(|id| {
-//         Type::Module(ModuleTy {
-//             id,
-//             ident,
-//             span: symbol.span,
-//             definitions: vec![],
-//         })
-//     });
-//     context.symbols.insert(symbol.name.name.clone(), id);
-// }
-
-/// A typedef with multiple declarators will be expanded to multiple,
-/// individual typedefs, each with one declarator.
-fn alloc_typedef(context: &mut Context, symbol: &ic_syntax::Typedef) {
-    for decl in &symbol.decl {
-        // TODO: have to check for dups as well
-        let ident = symbol.name.clone();
-        let ty = context.resolve_type(&symbol.ty);
-        let id = context.arena.alloc_with_id(|id| {
-            Type::Alias(AliasTy {
-                id,
-                ty,
-                ident,
-                span: symbol.span,
-            })
-        });
-        context.symbols.insert(symbol.name.name.clone(), id);
-    }
-}
-
-/// Responsible for lowering the AST to a HIR. This process will, amongst other
-/// things, perform type checking, evaluate expressions, assign values to
-/// things like enumerators, and ultimately construct the type-resolved graph
-/// that is the HIR.
-///
-/// The HIR will alter the representation of the source code in some minor
-/// ways, such as expanding a typedef with multiple declarators to multiple
-/// typedefs with a single declarator each. More opinionated transformations of
-/// the source code happens as subsequent passes on the `HIR`.
-///
-/// Note: avoid triggering errors here unless absolutely necessary.
-/// Non-critical warnings and errors are better suited as lints.
-struct Lower {
-    ctx: Context,
-}
-
-impl Lower {
-    pub fn alloc_struct(&mut self) {}
-
-    pub fn resolve_expr(&mut self, expr: &Expr) {}
-}
-
 #[derive(Default)]
 struct Resolver;
 
@@ -238,161 +184,6 @@ impl Resolver {
             Expr::InitList(_) => todo!(),
         }
     }
-}
-
-// Forward declarations are somewhat tricky. Types that depend on the
-// forward-declared type should point to the type definition and not the
-// declaration, but at this point we're not guaranteed to have the seen the
-// definition.
-//
-// Instead, we allocate two type entries: one for the declaration, and one for
-// the yet-to-be-seen definition. The declaration will point to the definition,
-// and future calls to `Context::resolve_type` will yield the ID of the
-// definition. When we encounter the definition, we will mutate the existing
-// entry. Once construction of the HIR is done, we'll traverse it to make sure
-// all forward-declared types also have been defined.
-fn alloc_decl(context: &mut Context, symbol: &ic_syntax::Decl) -> NodeId {
-    context.arena.alloc_with_id(|id| {
-        Type::Decl(DeclTy {
-            ident: symbol.name.clone(),
-            ty: id,
-        })
-    })
-}
-
-fn alloc_module(
-    context: &mut Context,
-    symbol: &ic_syntax::ModuleDef,
-    order: &mut Vec<NodeId>,
-) -> NodeId {
-    let definitions = symbol
-        .definitions
-        .iter()
-        .filter_map(|v| recurse_item(v, context, order))
-        .collect();
-
-    context.arena.alloc_with_id(|id| {
-        Type::Module(ModuleTy {
-            id,
-            ident: symbol.name.clone(),
-            span: symbol.span,
-            definitions,
-        })
-    })
-}
-
-// Members with multiple declarators are expanded into multiple members, each
-// with a single declarator.
-fn alloc_struct(context: &mut Context, symbol: &ic_syntax::StructDef) -> NodeId {
-    let mut members = vec![];
-    for mem in &symbol.members {
-        assert!(
-            !mem.names.is_empty(),
-            "struct member without any declarators",
-        );
-
-        let ty = context.resolve_type(&mem.ty);
-        for decl in &mem.names {
-            let (ident, ty) = match decl {
-                ic_syntax::Declarator::Simple(v) => (v.clone(), ty),
-                ic_syntax::Declarator::Array(v) => todo!(),
-            };
-
-            // TODO: should collection types be their own type? or should it be
-            // a separate ValueType enum for map/sequence/array?
-            members.push(Member { ident, ty });
-        }
-    }
-
-    let id = context.arena.alloc_with_id(|id| {
-        Type::Struct(StructTy {
-            id,
-            ident: symbol.name.clone(),
-            span: symbol.span,
-            members,
-            flags: TyFlags::nil(),
-        })
-    });
-    context.symbols.insert(symbol.name.name.clone(), id);
-    id
-}
-
-fn alloc_union(context: &mut Context, symbol: &ic_syntax::UnionDef) -> NodeId {
-    let disc = hir::Discriminator {
-        ty: context.resolve_type(&symbol.disc.ty),
-        span: ic_syntax::util::ty_span(&symbol.disc.ty),
-    };
-
-    let mut variants = vec![];
-    for var in &symbol.fields {
-        let labels: Vec<_> = var.labels.iter().map(|_| Numeric::Octet(0)).collect();
-
-        let variant = match &var.field {
-            ic_syntax::UnionElement::Member(v) => {
-                let ty = context.resolve_type(v.ty.as_ref());
-                hir::Variant::Member(
-                    Member {
-                        ident: match v.decl.clone() {
-                            ic_syntax::Declarator::Simple(s) => s,
-                            ic_syntax::Declarator::Array(v) => v.ident,
-                        },
-                        ty,
-                    },
-                    labels,
-                )
-            }
-            ic_syntax::UnionElement::Null(_) => hir::Variant::Null(labels),
-        };
-        variants.push(variant);
-    }
-
-    context.arena.alloc_with_id(|id| {
-        Type::Union(UnionTy {
-            id,
-            ident: symbol.name.clone(),
-            span: symbol.span,
-            disc,
-            variants,
-        })
-    })
-}
-
-fn alloc_enum(context: &mut Context, symbol: &ic_syntax::EnumDef) -> NodeId {
-    let mut last_value = 0;
-    let mut enumerators = vec![];
-
-    for lit in &symbol.fields {
-        let value = lit.value.as_ref().map_or_else(|| last_value + 1, |_| 0);
-        last_value = value;
-
-        enumerators.push(Enumerator {
-            ident: lit.name.clone(),
-            value,
-        });
-    }
-
-    context.arena.alloc_with_id(|id| {
-        Type::Enum(EnumTy {
-            id,
-            ident: symbol.name.clone(),
-            span: symbol.span,
-            enumerators,
-        })
-    })
-}
-
-fn alloc_const(context: &mut Context, symbol: &ic_syntax::ConstDef) -> NodeId {
-    let ty = context.resolve_type(&symbol.ty);
-
-    context.arena.alloc_with_id(|id| {
-        Type::Const(hir::ConstTy {
-            id,
-            ident: symbol.name.clone(),
-            span: symbol.span,
-            ty,
-            value: Numeric::Octet(0),
-        })
-    })
 }
 
 /// Determines if two annotation definitions are consistent. The standard
@@ -469,38 +260,13 @@ pub struct ResolvedGraph {
     /// Defines the order in which the types appeared in the syntax tree. This
     /// can be used to traverse the graph in the same order in which the types
     /// were defined.
-    pub order: Vec<NodeId>,
-}
-
-fn recurse_item(item: &Item, context: &mut Context, order: &mut Vec<NodeId>) -> Option<NodeId> {
-    let ty = match item {
-        Item::AnnotationValue(_) => todo!(),
-        Item::ModuleValue(v) => alloc_module(context, v, order),
-        Item::StructValue(v) => alloc_struct(context, v),
-        Item::UnionValue(v) => alloc_union(context, v),
-        Item::EnumValue(v) => alloc_enum(context, v),
-        Item::ExceptionValue(_) => todo!(),
-        Item::BitmaskValue(_) => todo!(),
-        Item::ConstValue(v) => alloc_const(context, v),
-        Item::TypedefValue(_) => todo!(),
-        Item::InterfaceValue(_) => todo!(),
-        Item::ValuetypeValue(_) => todo!(),
-        Item::DeclValue(v) => alloc_decl(context, v),
-        Item::BitsetValue(_) => return None,
-    };
-    Some(ty)
+    pub order: Vec<TypeId>,
 }
 
 pub fn lower_ast(ast: &[Item]) -> ResolvedGraph {
     let mut context = Context::new();
     let mut resolver = Resolver::default();
-    let mut order = vec![];
-
-    for item in ast {
-        if let Some(ty) = recurse_item(item, &mut context, &mut order) {
-            order.push(ty);
-        }
-    }
+    let order = lower::from_ast(&mut context, ast);
 
     ResolvedGraph { context, order }
 }

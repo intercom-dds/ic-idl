@@ -25,22 +25,41 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub trait Visitor: Sized {
-    fn visit_struct(&mut self);
+use crate::hir::{EnumTy, ModuleTy, Numeric, StructTy, Type, UnionTy};
 
-    fn visit_union(&mut self);
+pub trait Visitor<'a> {
+    fn visit_ty(&mut self, ty: &'a Type) {
+        visit_ty(self, ty)
+    }
 
-    fn visit_enum(&mut self);
+    fn visit_module(&mut self, ty: &'a ModuleTy) {}
+
+    fn visit_struct(&mut self, ty: &'a StructTy) {}
+
+    fn visit_enum(&mut self, ty: &'a EnumTy) {}
+
+    fn visit_union(&mut self, ty: &'a UnionTy) {}
+
+    fn visit_numeric(&mut self, ty: &'a Numeric) {}
 }
 
-pub trait Visit {
-    fn visit<V: Visitor>(self, visitor: &mut V);
-}
-
-impl<T: Visit> Visit for Option<T> {
-    fn visit<V: Visitor>(self, visitor: &mut V) {
-        if let Some(v) = self {
-            v.visit(visitor);
-        }
+pub fn visit_ty<'a, V>(visitor: &mut V, ty: &'a Type)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match ty {
+        Type::Primitive(_) => todo!(),
+        Type::Annotation(_) => todo!(),
+        Type::Module(v) => visitor.visit_module(v),
+        Type::Alias(_) => todo!(),
+        Type::Const(_) => todo!(),
+        Type::Struct(v) => visitor.visit_struct(v),
+        Type::Except(_) => todo!(),
+        Type::Union(v) => visitor.visit_union(v),
+        Type::Enum(v) => visitor.visit_enum(v),
+        Type::Bitmask(_) => todo!(),
+        Type::Interface(_) => todo!(),
+        Type::Decl(_) => todo!(),
+        Type::Array { ty, len } => todo!(),
     }
 }

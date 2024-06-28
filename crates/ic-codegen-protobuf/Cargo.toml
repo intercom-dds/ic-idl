@@ -38,3 +38,4 @@ workspace = true
 
 [dependencies]
 ic-emit = { path = "../ic-emit" }
+ic-hir = { path = "../ic-hir" }

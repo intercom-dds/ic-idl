@@ -189,7 +189,7 @@ pub struct Options {
     #[option(long)]
     pub ast_dump: bool,
 
-    /// Dump out the HIR
+    /// Dump out the type-resolved IR
     #[option(long)]
     pub hir_dump: bool,
 
@@ -197,25 +197,37 @@ pub struct Options {
     #[option(short = 'V', long)]
     pub version: bool,
 
-    /// Generate Protobuf files
+    /// Generate Protobuf files in <dir>
     #[option(long, arg = "dir")]
     pub proto_out: Option<PathBuf>,
 
-    /// Generate Java files
+    /// Generate Java files in <dir>
     #[option(long, arg = "dir")]
     pub java_out: Option<PathBuf>,
 
-    /// Generate C# files
+    /// Generate C# files in <dir>
     #[option(long, arg = "dir")]
     pub csharp_out: Option<PathBuf>,
 
-    /// Generate C++ files
+    /// Generate C++ files in <dir>
     #[option(long, arg = "dir")]
     pub cpp_out: Option<PathBuf>,
 
-    /// Generate Python files
+    /// Generate C++11 files in <dir>
+    #[option(long, arg = "dir")]
+    pub cpp11_out: Option<PathBuf>,
+
+    /// Generate Python files in <dir>
     #[option(long, arg = "dir")]
     pub python_out: Option<PathBuf>,
+
+    /// Generate Rust files in <dir>
+    #[option(long, arg = "dir")]
+    pub rust_out: Option<PathBuf>,
+
+    /// Generate IDL files in <dir>
+    #[option(long, arg = "dir")]
+    pub idl_out: Option<PathBuf>,
 
     #[option(positional)]
     pub files: HashSet<PathBuf>,

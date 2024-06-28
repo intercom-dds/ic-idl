@@ -39,7 +39,7 @@ use ic_syntax::util::{path_name, type_name};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
 
 // mod annotation;
-mod hir;
+pub mod hir;
 pub mod keywords;
 mod lower;
 mod resolve;
@@ -62,8 +62,9 @@ pub type TypeId = ic_alloc::arena::Id<Type>;
 #[derive(Debug)]
 pub struct Context {
     pub arena: Arena<Type>,
+    pub items: Arena<hir::Item>,
 
-    // Qualified name => Type ID
+    // Qualified type name => Type ID
     pub symbols: HashMap<String, TypeId>,
 }
 
@@ -80,6 +81,7 @@ impl Context {
     pub fn empty() -> Self {
         Self {
             arena: Arena::default(),
+            items: Arena::default(),
             symbols: HashMap::new(),
         }
     }
@@ -155,6 +157,13 @@ impl Context {
     fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
         let name = path_name(path);
         *self.symbols.get(&name).expect("unknown type")
+    }
+
+    // TODO: or should it be TypeId? that must be a ConstTy?
+    fn resolve_const(&self, path: &ic_syntax::Path) -> Type {
+        todo!()
+        // let name = path_name(path);
+        // *self.symbols.get(&name).expect("unknown const")
     }
 }
 

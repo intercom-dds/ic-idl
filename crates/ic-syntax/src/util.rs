@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Expr, Path, Span, Type};
+use crate::{Declarator, Expr, Path, Span, Type};
 
 #[must_use]
 pub fn path_name(path: &Path) -> String {
@@ -101,6 +101,14 @@ pub fn ty_span(ty: &Type) -> Span {
         Type::Map(v) => v.span,
         Type::Fixed(v) => v.span,
         Type::Path(v) => path_span(v),
+    }
+}
+
+#[must_use]
+pub fn decl_name(decl: &Declarator) -> &str {
+    match decl {
+        Declarator::Simple(v) => &v.name,
+        Declarator::Array(v) => &v.ident.name,
     }
 }
 

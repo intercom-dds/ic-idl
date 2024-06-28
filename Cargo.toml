@@ -31,6 +31,7 @@ members = [
     "crates/ic-alloc",
     "crates/ic-cli",
     "crates/ic-cli-derive",
+    "crates/ic-codegen-protobuf",
     "crates/ic-diagnostic",
     "crates/ic-emit",
     "crates/ic-hir",

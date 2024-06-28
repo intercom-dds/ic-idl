@@ -659,7 +659,17 @@ fn typedef_dcl() -> impl IdlParser<Item> {
         .ignore_then(type_declarator())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ty, _), span| Item::typedef(Ident::default(), ty, span))
+    def.map_with_span(|(ty, decls), span| {
+        Item::typedef(
+            Ident {
+                // TODO: fix this
+                name: ic_syntax::util::decl_name(&decls[0]).to_string(),
+                span: Span::default(),
+            },
+            ty,
+            span,
+        )
+    })
 }
 
 // Rule 64

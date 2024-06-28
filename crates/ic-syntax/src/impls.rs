@@ -228,3 +228,15 @@ impl From<Span> for Range<usize> {
         }
     }
 }
+
+impl Ident {
+    pub fn nil() -> Self {
+        Self {
+            name: "unknown".to_string(),
+            span: Span {
+                start: u32::MAX,
+                end: u32::MAX,
+            },
+        }
+    }
+}

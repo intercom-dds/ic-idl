@@ -36,7 +36,7 @@ use std::rc::Rc;
 use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
-use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
+use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Span, Type};
 
 /// Dependency graph
 pub type TyGraph = ic_alloc::graph::DiGraph<TypeId>;
@@ -116,8 +116,46 @@ impl GenericAnn {
 }
 
 #[derive(Debug)]
+pub enum Item {
+    Annotation(AnnTy),
+    Module(ModuleTy),
+    Const(ConstTy),
+    Decl(DeclTy),
+    Adt(TypeId),
+
+    // Should this be an ADT?
+    Interface(InterfaceTy),
+}
+
+pub enum Ty {
+    Primitive(PrimitiveTy),
+    Array {
+        ty: Box<Ty>,
+        // TODO: or Vec<usize>?
+        len: usize,
+    },
+    Sequence {
+        ty: Box<Ty>,
+        bound: Option<usize>,
+    },
+    Map {
+        key: Box<Ty>,
+        elem: Box<Ty>,
+        bound: Option<usize>,
+    },
+    Struct(StructTy),
+    Except(ExceptTy),
+    Union(UnionTy),
+    Enum(EnumTy),
+    Bitmask(BitmaskTy),
+    Alias(AliasTy),
+}
+
+#[derive(Debug)]
 pub enum Type {
     Primitive(PrimitiveTy),
+    // TODO: or Vec<usize>?
+    Array { ty: Box<Type>, len: usize },
     Annotation(AnnTy),
     Module(ModuleTy),
     Alias(AliasTy),
@@ -188,7 +226,7 @@ pub struct AnnTy {
 
 #[derive(Debug)]
 pub struct ModuleTy {
-    pub id: TypeId,
+    pub id: ic_alloc::arena::Id<Item>,
     pub ident: Ident,
     pub span: Span,
     pub definitions: Vec<TypeId>,
@@ -275,13 +313,14 @@ pub struct EnumTy {
     pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
+    pub ty: PrimitiveTy,
     pub enumerators: Vec<Enumerator>,
 }
 
 #[derive(Debug)]
 pub struct Enumerator {
     pub ident: Ident,
-    pub value: i32,
+    pub value: i64,
 }
 
 #[derive(Debug)]
@@ -289,6 +328,7 @@ pub struct BitmaskTy {
     pub id: TypeId,
     pub ident: Ident,
     pub span: Span,
+    pub ty: PrimitiveTy,
     pub bits: Vec<(Ident, usize)>,
 }
 
@@ -320,7 +360,7 @@ pub struct DeclTy {
     pub ty: TypeId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Numeric {
     Boolean(bool),
     Char(char),
@@ -340,6 +380,9 @@ pub enum Numeric {
     /// To retrieve the fully resolved value, use `Context::resolve_expr`.
     Const(TypeId),
 
+    /// Initializer list of numerics.
+    InitList(Vec<Numeric>),
+
     /// Fixed-size array elements, e.g. `{1, 2, 3}`.
     Array {
         ty: TypeId,
@@ -357,4 +400,31 @@ pub enum Numeric {
         ty: TypeId,
         values: Vec<(Numeric, Numeric)>,
     },
+}
+
+macro_rules! numeric_from {
+    ($($ty:ty => $var:ident),+ $(,)?) => {
+        $(
+            impl From<$ty> for Numeric {
+                fn from(value: $ty) -> Self {
+                    Self::$var(value)
+                }
+            }
+        )+
+    }
+}
+
+numeric_from! {
+    i8 => Int8,
+    i16 => Int16,
+    i32 => Int32,
+    i64 => Int64,
+    u8 => Octet,
+    u16 => UInt16,
+    u32 => UInt32,
+    u64 => UInt64,
+    f32 => Float,
+    f64 => Double,
+    String => String,
+    TypeId => Const,
 }

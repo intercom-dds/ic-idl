@@ -29,6 +29,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::num::NonZero;
+use std::ops::{Neg, Not};
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
@@ -38,8 +39,8 @@ use ic_syntax::visit::{visit_item, Visitor};
 use ic_syntax::{Ident, Item, Span};
 
 use crate::hir::{
-    self, AliasTy, BitmaskTy, DeclTy, EnumTy, Enumerator, Member, ModuleTy, Numeric, PrimitiveTy,
-    StructTy, TyFlags, Type, UnionTy,
+    self, AliasTy, BitmaskTy, ConstTy, DeclTy, EnumTy, Enumerator, Member, ModuleTy, Numeric,
+    PrimitiveTy, StructTy, TyFlags, Type, UnionTy,
 };
 use crate::{Context, TypeId};
 
@@ -48,6 +49,154 @@ pub struct Scope {
 }
 
 pub struct Resolver {}
+
+#[derive(Debug)]
+pub struct Interp<'a> {
+    ctx: &'a Context,
+}
+
+impl Interp<'_> {
+    fn sub_num(&mut self, num: Numeric) -> Numeric {
+        match num {
+            // Use the NOT operator for unsigned numbers to simulate an
+            // unsigned overflow
+            Numeric::Boolean(v) => Numeric::Int8(i8::from(v).not()),
+            Numeric::Octet(v) => Numeric::Octet(v.not()),
+            Numeric::UInt16(v) => Numeric::UInt16(v.not()),
+            Numeric::UInt32(v) => Numeric::UInt32(v.not()),
+            Numeric::UInt64(v) => Numeric::UInt64(v.not()),
+
+            // Signed numbers are negated
+            Numeric::Int8(v) => Numeric::Int8(v.neg()),
+            Numeric::Int16(v) => Numeric::Int16(v.neg()),
+            Numeric::Int32(v) => Numeric::Int32(v.neg()),
+            Numeric::Int64(v) => Numeric::Int64(v.neg()),
+            Numeric::Float(v) => Numeric::Float(v.neg()),
+            Numeric::Double(v) => Numeric::Double(v.neg()),
+
+            Numeric::Const(_) => todo!(),
+            _ => panic!("tried to negate non-primitive type"),
+        }
+    }
+
+    fn not_num(&mut self, mut num: Numeric) -> Numeric {
+        match &mut num {
+            Numeric::Boolean(v) => *v = v.not(),
+            Numeric::Octet(v) => *v = v.not(),
+            Numeric::UInt16(v) => *v = v.not(),
+            Numeric::UInt32(v) => *v = v.not(),
+            Numeric::UInt64(v) => *v = v.not(),
+            Numeric::Int8(v) => *v = v.not(),
+            Numeric::Int16(v) => *v = v.not(),
+            Numeric::Int32(v) => *v = v.not(),
+            Numeric::Int64(v) => *v = v.not(),
+            Numeric::Const(_) => todo!(),
+            _ => panic!("tried to negate non-primitive or floating-point type"),
+        }
+        num
+    }
+
+    fn eval_unary(&mut self, unary: &ic_syntax::Unary) -> i64 {
+        use ic_syntax::OpKind;
+
+        let val = self.to_value(&unary.expr);
+        match unary.op.kind {
+            OpKind::OpSub => -val,
+            OpKind::OpNot => !val,
+            OpKind::OpAdd => val,
+            _ => panic!("invalid operator in unary expression"),
+        }
+    }
+
+    fn eval_binary(&mut self, binary: &ic_syntax::Binary) -> i64 {
+        use ic_syntax::OpKind;
+
+        let lhs = self.to_value(&binary.lhs);
+        let rhs = self.to_value(&binary.rhs);
+        match binary.op.kind {
+            OpKind::OpAdd => lhs + rhs,
+            OpKind::OpSub => lhs - rhs,
+            OpKind::OpMultiply => lhs * rhs,
+            OpKind::OpDivide => lhs / rhs,
+            OpKind::OpModulo => lhs % rhs,
+            OpKind::OpLshift => lhs << rhs,
+            OpKind::OpRshift => lhs >> rhs,
+            OpKind::OpOr => lhs | rhs,
+            OpKind::OpXor => lhs ^ rhs,
+            OpKind::OpAnd => lhs & rhs,
+            OpKind::OpNot => panic!("expected binary op, found bitwise NOT"),
+        }
+    }
+
+    pub(crate) fn to_value(&mut self, expr: &ic_syntax::Expr) -> i64 {
+        use ic_syntax::{Expr, LitKind};
+
+        match expr {
+            Expr::Literal(v) => match &v.kind {
+                LitKind::LitBool(v) => i64::from(*v),
+                LitKind::LitInt(v) => *v as i64,
+                LitKind::LitFloat(_) => todo!(),
+                LitKind::LitChar(_) => todo!(),
+                LitKind::LitString(_) => todo!(),
+            },
+            // ic_syntax::Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
+            Expr::Unary(v) => self.eval_unary(v),
+            Expr::Binary(v) => self.eval_binary(v),
+            _ => panic!("called to_value on a non-primitive numeric"),
+        }
+    }
+
+    pub(crate) fn eval_expr(&mut self, expr: &ic_syntax::Expr) -> Numeric {
+        use ic_syntax::Expr;
+
+        match expr {
+            Expr::Literal(v) => Numeric::Octet(0),
+            Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
+            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v) as i64),
+            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v) as i64),
+            Expr::InitList(_) => todo!(),
+        }
+    }
+
+    pub(crate) fn eval_expr_ty<T>(&mut self, expr: &ic_syntax::Expr) -> Numeric
+    where
+        T: TryFrom<i64>,
+        T::Error: Debug,
+        Numeric: From<T>,
+    {
+        use ic_syntax::{Expr, LitKind};
+
+        match expr {
+            Expr::Literal(v) => match v.kind {
+                LitKind::LitBool(v) => Numeric::Boolean(v),
+                LitKind::LitInt(v) => Numeric::from(T::try_from(v as i64).unwrap()),
+                LitKind::LitString(ref v) => Numeric::String(v.clone()),
+                _ => todo!(),
+            },
+            Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
+            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v) as i64),
+            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v) as i64),
+            Expr::InitList(v) => todo!(),
+        }
+    }
+
+    pub(crate) fn truncate<T>(&mut self, expr: &ic_syntax::Expr) -> Result<Numeric, T::Error>
+    where
+        T: TryFrom<i64>,
+        Numeric: From<T>,
+    {
+        use ic_syntax::Expr;
+
+        let num = match expr {
+            Expr::Literal(_) => Numeric::from(T::try_from(0)?),
+            Expr::Unary(v) => Numeric::from(T::try_from(self.eval_unary(v))?),
+            Expr::Binary(v) => Numeric::from(T::try_from(self.eval_binary(v))?),
+            Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
+            Expr::InitList(_) => todo!(),
+        };
+        Ok(num)
+    }
+}
 
 /// Responsible for lowering the AST to a HIR. This process will, amongst other
 /// things, perform type checking, evaluate expressions, assign values to
@@ -64,11 +213,16 @@ pub struct Resolver {}
 struct Lower<'a> {
     ctx: &'a mut Context,
     order: Vec<TypeId>,
+    decls: Vec<TypeId>,
 }
 
 impl<'a> Lower<'a> {
     fn with_ctx(ctx: &'a mut Context) -> Self {
-        Self { ctx, order: vec![] }
+        Self {
+            ctx,
+            order: vec![],
+            decls: vec![],
+        }
     }
 
     pub(crate) fn check_name_consistency(&self, lhs: &Ident, rhs: &Ident) -> bool {
@@ -154,9 +308,7 @@ impl<'a> Lower<'a> {
         lhs: &ic_syntax::Expr,
         rhs: &ic_syntax::Expr,
     ) -> bool {
-        let lhs = self.eval_expr(lhs);
-        let rhs = self.eval_expr(rhs);
-        bitwise_eq(&lhs, &rhs)
+        self.eval_expr(lhs) == self.eval_expr(rhs)
     }
 
     /// Determines if two types are semantically consistent. Collection types
@@ -203,6 +355,42 @@ impl<'a> Lower<'a> {
     }
 
     pub(crate) fn eval_expr(&mut self, expr: &ic_syntax::Expr) -> Numeric {
+        // TODO: can we make this accept TypeId instead?
+        Interp { ctx: &self.ctx }.eval_expr_ty::<i64>(expr)
+    }
+
+    pub(crate) fn bound_expr(&mut self, expr: &ic_syntax::Expr) -> usize {
+        match self.eval_expr(expr) {
+            Numeric::Int32(v) => v as usize,
+            Numeric::UInt32(v) => v as usize,
+            Numeric::Int64(v) => v as usize,
+            Numeric::UInt64(v) => v as usize,
+            _ => todo!(),
+        }
+    }
+
+    fn register_type<I>(&mut self, name: I, ty: TypeId)
+    where
+        I: Into<String>,
+    {
+        self.ctx.symbols.insert(name.into(), ty);
+    }
+
+    /// Destructures a declarator into a (ident, type) tuple. For arrays, this
+    /// will create a suitable type with the defined bounds.
+    fn lower_declarator(&mut self, decl: &ic_syntax::Declarator, ty: TypeId) -> (Ident, TypeId) {
+        match decl {
+            ic_syntax::Declarator::Simple(v) => (v.clone(), ty),
+            ic_syntax::Declarator::Array(v) => {
+                let bounds: Vec<_> = v.bounds.iter().map(|v| self.bound_expr(v)).collect();
+                let ty = self.lower_array(ty, &bounds);
+                (v.ident.clone(), ty)
+            }
+        }
+    }
+
+    /// Constructs an array type.
+    fn lower_array(&mut self, ty: TypeId, bounds: &[usize]) -> TypeId {
         todo!()
     }
 
@@ -228,31 +416,36 @@ impl<'a> Lower<'a> {
 
     fn lower_const(&mut self, symbol: &ic_syntax::ConstDef) -> TypeId {
         let ty = self.ctx.resolve_type(&symbol.ty);
-
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Const(hir::ConstTy {
+        let value = self.eval_expr(&symbol.value);
+        let id = self.ctx.arena.alloc_with_id(|id| {
+            Type::Const(ConstTy {
                 id,
                 ident: symbol.name.clone(),
                 span: symbol.span,
                 ty,
-                value: Numeric::Octet(0),
+                value,
             })
-        })
+        });
+
+        self.register_type(symbol.name.name.clone(), id);
+        id
     }
 
     // A typedef with multiple declarators will be expanded to multiple,
     // individual typedefs, each with one declarator.
     fn lower_alias(&mut self, symbol: &ic_syntax::Typedef) -> TypeId {
         let ty = self.ctx.resolve_type(&symbol.ty);
-
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Alias(hir::AliasTy {
+        let id = self.ctx.arena.alloc_with_id(|id| {
+            Type::Alias(AliasTy {
                 id,
                 ident: symbol.name.clone(),
                 span: symbol.span,
                 ty,
             })
-        })
+        });
+
+        self.register_type(symbol.name.name.clone(), id);
+        id
     }
 
     fn lower_mod(&mut self, symbol: &ic_syntax::ModuleDef) -> TypeId {
@@ -304,7 +497,7 @@ impl<'a> Lower<'a> {
                 flags: TyFlags::nil(),
             })
         });
-        self.ctx.symbols.insert(symbol.name.name.clone(), id);
+        self.register_type(symbol.name.name.clone(), id);
         id
     }
 
@@ -359,6 +552,7 @@ impl<'a> Lower<'a> {
                 id,
                 ident: symbol.name.clone(),
                 span: symbol.span,
+                ty: PrimitiveTy::UInt32,
                 bits,
             })
         })
@@ -383,6 +577,7 @@ impl<'a> Lower<'a> {
                 id,
                 ident: symbol.name.clone(),
                 span: symbol.span,
+                ty: PrimitiveTy::UInt32,
                 enumerators,
             })
         })
@@ -412,7 +607,15 @@ impl<'a> Lower<'a> {
 
 struct HirBuilder<'a, 'cx> {
     lower: &'a mut Lower<'cx>,
+
+    /// IDs of top-level declarations in the order they were defined.
     defined: Vec<TypeId>,
+
+    /// IDs of top-level declarations in the order they were defined.
+    items: Vec<TypeId>,
+
+    /// Types that have been declared but not yet defined.
+    declared: HashSet<TypeId>,
 }
 
 impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
@@ -443,22 +646,23 @@ impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
     // for the yet-to-be-seen definition. The declaration will point to the
     // definition, and future calls to `Context::resolve_type` will yield the
     // ID of the definition. When we encounter the definition, we will mutate
-    // the existing entry. Once construction of the HIR is done, we'll check
-    // that all types have been defined.
+    // the existing entry. Once construction of the HIR is done, we'll iterate
+    // over all declared types and ensure they've been defined.
     fn visit_decl(&mut self, symbol: &'a ic_syntax::Decl) {
-        self.lower.ctx.arena.alloc_with_id(|id| {
+        let id = self.lower.ctx.arena.alloc_with_id(|id| {
             Type::Decl(DeclTy {
                 ident: symbol.name.clone(),
                 ty: id,
             })
         });
+        self.declared.insert(id);
     }
 
     fn visit_const(&mut self, symbol: &'a ic_syntax::ConstDef) {
         let ty = self.lower.ctx.resolve_type(&symbol.ty);
 
         self.lower.ctx.arena.alloc_with_id(|id| {
-            Type::Const(hir::ConstTy {
+            Type::Const(ConstTy {
                 id,
                 ident: symbol.name.clone(),
                 span: symbol.span,
@@ -469,14 +673,12 @@ impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
     }
 }
 
-pub(crate) fn bitwise_eq(_lhs: &Numeric, _rhs: &Numeric) -> bool {
-    false
-}
-
 fn lower_item<'cx>(lower: &mut Lower<'cx>, item: &Item) -> Vec<TypeId> {
     let mut builder = HirBuilder {
         lower,
         defined: vec![],
+        items: vec![],
+        declared: HashSet::new(),
     };
     visit_item(&mut builder, item);
     builder.defined

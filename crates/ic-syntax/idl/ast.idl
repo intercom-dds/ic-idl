@@ -90,7 +90,7 @@ union LiteralValue switch(LitKind) {
 case LIT_BOOL:
      LitBool bool;
 case LIT_INT:
-     int64 int;
+     uint64 int;
 case LIT_CHAR:
      char _char;
 case LIT_STRING:
@@ -104,19 +104,37 @@ struct Literal {
 };
 
 enum OpKind {
-    // Arithmetic operations
+    /// `+`
     OP_ADD,
+
+    /// `-`
     OP_SUB,
+
+    /// `*`
     OP_MULTIPLY,
+
+    /// `/`
     OP_DIVIDE,
+
+    /// `%`
     OP_MODULO,
 
-    // Bitwise operations
+    /// `<<`
     OP_LSHIFT,
+
+    /// `>>`
     OP_RSHIFT,
+
+    /// `|`
     OP_OR,
+
+    /// `^`
     OP_XOR,
+
+    /// `&`
     OP_AND,
+
+    /// `~`
     OP_NOT
 };
 

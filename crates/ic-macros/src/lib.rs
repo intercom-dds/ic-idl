@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod enum_hash;
 mod enum_iter;
 mod enum_str;
 
@@ -38,4 +39,9 @@ pub fn derive_enum_iter(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(ToString)]
 pub fn derive_to_string(input: TokenStream) -> TokenStream {
     enum_str::derive(input)
+}
+
+#[proc_macro_derive(DiscHash)]
+pub fn derive_disc_hash(input: TokenStream) -> TokenStream {
+    enum_hash::derive(input)
 }

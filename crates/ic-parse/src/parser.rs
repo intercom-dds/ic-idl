@@ -62,33 +62,38 @@ fn ty() -> impl IdlParser<Ident> {
 }
 
 fn integer_literal() -> impl IdlParser<Literal> {
-    let lit = one_of([Kind::Octal, Kind::Decimal, Kind::Hex]);
-    lit.map_with_span(|_, span| Literal {
+    let lit = select! {
+        Kind::Octal(v) => v,
+        Kind::Decimal(v) => v,
+        Kind::Hex(v) => v,
+    };
+    lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitInt,
+        kind: LitKind::LitInt(v),
     })
 }
 
 fn floating_pt_literal() -> impl IdlParser<Literal> {
-    just(Kind::Float).map_with_span(|_, span| Literal {
+    let lit = select! { Kind::Float(v) => v };
+    lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitFloat,
+        kind: LitKind::LitFloat(v),
     })
 }
 
 fn character_literal() -> impl IdlParser<Literal> {
-    let lit = one_of([Kind::Octal, Kind::Decimal, Kind::Hex]);
-    lit.map_with_span(|_, span| Literal {
+    let lit = select! { Kind::Char(v) => v };
+    lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitChar,
+        kind: LitKind::LitChar(v.unwrap_or_default()),
     })
 }
 
 fn string_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::StringLit(v) => v };
-    lit.map_with_span(|_, span| Literal {
+    lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitString,
+        kind: LitKind::LitString(v),
     })
 }
 
@@ -308,9 +313,10 @@ fn literal() -> impl IdlParser<Literal> {
 
 // Rule 18
 fn boolean_literal() -> impl IdlParser<Literal> {
-    one_of([Kind::True, Kind::False]).map_with_span(|_, span| Literal {
+    let val = choice((just(Kind::True).to(true), just(Kind::False).to(false)));
+    val.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitBool,
+        kind: LitKind::LitBool(v),
     })
 }
 

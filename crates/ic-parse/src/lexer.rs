@@ -33,11 +33,12 @@ mod tests;
 use std::fmt;
 
 use chumsky::Stream;
+use ic_macros::DiscHash;
 use ic_syntax::Span;
 use logos::{Lexer, Logos};
 
 /// All tokens recognized by the lexer.
-#[derive(Logos, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Logos, Clone, Debug, PartialEq, DiscHash)]
 #[logos(skip r"[ \t\r\n\f]+")]
 #[logos(skip r"//[^@][^\r\n]*")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
@@ -254,20 +255,23 @@ pub enum Kind {
     False,
 
     /// Octal number, e.g. `0123`.
-    #[regex("0[1-9]+")]
-    Octal,
+    #[regex("0[1-7][0-7]*", |v| integer_lit(v, 8))]
+    Octal(u64),
 
     /// Decimal number.
-    #[regex(r#"(?:0|[1-9]\d*)"#)]
-    Decimal,
+    #[regex(r#"(?:0|[1-9]\d*)"#, |v| integer_lit(v, 10))]
+    Decimal(u64),
 
     /// Hexadecimal number.
-    #[regex("0[xX][a-fA-F0-9]+")]
-    Hex,
+    #[regex("0[xX][a-fA-F0-9]+", |v| integer_lit(v, 16))]
+    Hex(u64),
 
     /// Floating-point literal
-    #[regex(r"(?&digits)(?:[eE](?&digits)|\.(?&digits)(?:[eE](?&digits))?)")]
-    Float,
+    #[regex(
+        r"(?&digits)(?:[eE](?&digits)|\.(?&digits)(?:[eE](?&digits))?)",
+        float_lit
+    )]
+    Float(f64),
 
     /// String literal. Handles escaped quotes.
     #[regex(r#"L?"(?:[^"]|\\")*""#, string_lit)]
@@ -327,7 +331,7 @@ impl fmt::Display for Kind {
             Kind::Attribute => write!(f, "attribute"),
             Kind::ReadOnly => write!(f, "readonly"),
             Kind::Oneway => write!(f, "oneway"),
-            Kind::Float => write!(f, "floating-point number"),
+            Kind::Float(_) => write!(f, "floating-point number"),
             Kind::StringLit(_) => write!(f, "string literal"),
             Kind::Annotation | Kind::AnnotationAppl(_) => write!(f, "annotation"),
             Kind::In => write!(f, "in"),
@@ -362,12 +366,14 @@ impl fmt::Display for Kind {
             Kind::Slash => write!(f, "`/`"),
             Kind::Modulo => write!(f, "`%`"),
             Kind::Char(v) => write!(f, "'{}'", v.unwrap_or_default()),
-            Kind::Octal | Kind::Decimal | Kind::Hex => write!(f, "number"),
+            Kind::Octal(_) | Kind::Decimal(_) | Kind::Hex(_) => write!(f, "number"),
             Kind::Comment(_) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
         }
     }
 }
+
+impl Eq for Kind {}
 
 // Empty character literals are permitted during parsing and instead gets
 // checked later during the linting stage.
@@ -385,6 +391,14 @@ fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
         // The regex will never match more than 4 characters
         _ => unreachable!(),
     }
+}
+
+fn integer_lit(lex: &mut Lexer<Kind>, radix: u32) -> u64 {
+    u64::from_str_radix(lex.slice(), radix).unwrap_or(0)
+}
+
+fn float_lit(lex: &mut Lexer<Kind>) -> f64 {
+    lex.slice().parse().unwrap()
 }
 
 fn string_lit(lex: &mut Lexer<Kind>) -> String {

@@ -36,10 +36,10 @@ use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::visit::{visit_item, Visitor};
-use ic_syntax::{Ident, Item, Span};
+use ic_syntax::{Ident, Span};
 
 use crate::hir::{
-    self, AliasTy, BitmaskTy, ConstTy, DeclTy, EnumTy, Enumerator, Member, ModuleTy, Numeric,
+    self, AliasTy, BitmaskTy, ConstTy, DeclTy, EnumTy, Enumerator, Item, Member, ModuleTy, Numeric,
     PrimitiveTy, StructTy, TyFlags, Type, UnionTy,
 };
 use crate::{Context, TypeId};
@@ -414,21 +414,16 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_const(&mut self, symbol: &ic_syntax::ConstDef) -> TypeId {
+    fn lower_const(&mut self, symbol: &ic_syntax::ConstDef) -> ConstTy {
         let ty = self.ctx.resolve_type(&symbol.ty);
         let value = self.eval_expr(&symbol.value);
-        let id = self.ctx.arena.alloc_with_id(|id| {
-            Type::Const(ConstTy {
-                id,
-                ident: symbol.name.clone(),
-                span: symbol.span,
-                ty,
-                value,
-            })
-        });
 
-        self.register_type(symbol.name.name.clone(), id);
-        id
+        ConstTy {
+            ident: symbol.name.clone(),
+            span: symbol.span,
+            ty,
+            value,
+        }
     }
 
     // A typedef with multiple declarators will be expanded to multiple,
@@ -448,21 +443,21 @@ impl<'a> Lower<'a> {
         id
     }
 
-    fn lower_mod(&mut self, symbol: &ic_syntax::ModuleDef) -> TypeId {
+    fn lower_mod(&mut self, symbol: &ic_syntax::ModuleDef) -> Item {
         let definitions = symbol
             .definitions
             .iter()
             .filter_map(|v| self.lower_item(v))
             .collect();
 
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Module(ModuleTy {
-                id,
-                ident: symbol.name.clone(),
-                span: symbol.span,
-                definitions,
-            })
+        // self.ctx.items.alloc_with_id(|id| {
+        Item::Module(ModuleTy {
+            // id,
+            ident: symbol.name.clone(),
+            span: symbol.span,
+            definitions,
         })
+        // })
     }
 
     // Members with multiple declarators are expanded into multiple members,
@@ -583,22 +578,47 @@ impl<'a> Lower<'a> {
         })
     }
 
+    fn lower_item2(&mut self, item: &ic_syntax::Item) -> Option<Item> {
+        use ic_syntax as syn;
+
+        Some(match item {
+            syn::Item::AnnotationValue(_) => todo!(),
+            syn::Item::ModuleValue(v) => self.lower_mod(v),
+            syn::Item::StructValue(v) => Item::Adt(self.lower_struct(v)),
+            syn::Item::UnionValue(v) => Item::Adt(self.lower_union(v)),
+            syn::Item::EnumValue(v) => Item::Adt(self.lower_enum(v)),
+            syn::Item::ConstValue(v) => Item::Const(self.lower_const(v)),
+            syn::Item::TypedefValue(v) => Item::Adt(self.lower_alias(v)),
+            syn::Item::InterfaceValue(_) => todo!(),
+            syn::Item::ValuetypeValue(_) => todo!(),
+            // syn::Item::DeclValue(v) => Item::Decl(self.lower_decl(v)),
+            syn::Item::BitsetValue(_) => return None,
+            _ => todo!(),
+        })
+    }
+
     // TODO: implement as visitor instead?
-    fn lower_item(&mut self, item: &Item) -> Option<TypeId> {
+    fn lower_item(&mut self, item: &ic_syntax::Item) -> Option<TypeId> {
+        use ic_syntax::Item;
+
         let ty = match item {
             Item::AnnotationValue(_) => todo!(),
-            Item::ModuleValue(v) => self.lower_mod(v),
+            Item::ModuleValue(v) => {
+                self.lower_mod(v);
+                return None;
+            }
             Item::StructValue(v) => self.lower_struct(v),
             Item::UnionValue(v) => self.lower_union(v),
             Item::EnumValue(v) => self.lower_enum(v),
             Item::ExceptionValue(v) => self.lower_except(v),
             Item::BitmaskValue(v) => self.lower_bitmask(v),
-            Item::ConstValue(v) => self.lower_const(v),
+            // Item::ConstValue(v) => self.lower_const(v),
             Item::TypedefValue(v) => self.lower_alias(v),
             Item::InterfaceValue(_) => todo!(),
             Item::ValuetypeValue(_) => todo!(),
             Item::DeclValue(v) => self.lower_decl(v),
             Item::BitsetValue(_) => return None,
+            _ => todo!(),
         };
         self.order.push(ty);
         Some(ty)
@@ -619,23 +639,23 @@ struct HirBuilder<'a, 'cx> {
 }
 
 impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
-    fn visit_module(&mut self, module: &'a ic_syntax::ModuleDef) {
-        let definitions = module
-            .definitions
-            .iter()
-            .flat_map(|v| lower_item(self.lower, v))
-            .collect();
-
-        let id = self.lower.ctx.arena.alloc_with_id(|id| {
-            Type::Module(ModuleTy {
-                id,
-                ident: module.name.clone(),
-                span: module.span,
-                definitions,
-            })
-        });
-        self.defined.push(id);
-    }
+    // fn visit_module(&mut self, module: &'a ic_syntax::ModuleDef) {
+    //     let definitions = module
+    //         .definitions
+    //         .iter()
+    //         .flat_map(|v| lower_item(self.lower, v))
+    //         .collect();
+    //
+    //     let id = self.lower.ctx.arena.alloc_with_id(|id| {
+    //         Type::Module(ModuleTy {
+    //             id,
+    //             ident: module.name.clone(),
+    //             span: module.span,
+    //             definitions,
+    //         })
+    //     });
+    //     self.defined.push(id);
+    // }
 
     // Forward declarations are somewhat tricky. Types that depend on the
     // forward-declared type should point to the type definition and not the
@@ -657,23 +677,9 @@ impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
         });
         self.declared.insert(id);
     }
-
-    fn visit_const(&mut self, symbol: &'a ic_syntax::ConstDef) {
-        let ty = self.lower.ctx.resolve_type(&symbol.ty);
-
-        self.lower.ctx.arena.alloc_with_id(|id| {
-            Type::Const(ConstTy {
-                id,
-                ident: symbol.name.clone(),
-                span: symbol.span,
-                ty,
-                value: Numeric::Octet(0),
-            })
-        });
-    }
 }
 
-fn lower_item<'cx>(lower: &mut Lower<'cx>, item: &Item) -> Vec<TypeId> {
+fn lower_item<'cx>(lower: &mut Lower<'cx>, item: &ic_syntax::Item) -> Vec<TypeId> {
     let mut builder = HirBuilder {
         lower,
         defined: vec![],
@@ -689,10 +695,10 @@ fn all_unique(types: &[TypeId]) -> bool {
     unique.len() == types.len()
 }
 
-pub fn from_ast(ctx: &mut Context, ast: &[Item]) -> Vec<TypeId> {
+pub fn from_ast(ctx: &mut Context, ast: &[ic_syntax::Item]) -> Vec<TypeId> {
     let mut state = Lower::with_ctx(ctx);
     for item in ast {
-        state.lower_item(item);
+        state.lower_item2(item);
     }
     debug_assert!(
         all_unique(&state.order),

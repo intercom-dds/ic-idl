@@ -36,7 +36,7 @@ use std::rc::Rc;
 use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
-use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Span, Type};
+use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Span};
 
 /// Dependency graph
 pub type TyGraph = ic_alloc::graph::DiGraph<TypeId>;
@@ -122,16 +122,12 @@ pub enum Item {
     Const(ConstTy),
     Decl(DeclTy),
     Adt(TypeId),
-
-    // Should this be an ADT?
-    Interface(InterfaceTy),
 }
 
 pub enum Ty {
     Primitive(PrimitiveTy),
     Array {
         ty: Box<Ty>,
-        // TODO: or Vec<usize>?
         len: usize,
     },
     Sequence {
@@ -149,13 +145,12 @@ pub enum Ty {
     Enum(EnumTy),
     Bitmask(BitmaskTy),
     Alias(AliasTy),
+    Interface(InterfaceTy),
 }
 
 #[derive(Debug)]
 pub enum Type {
     Primitive(PrimitiveTy),
-    // TODO: or Vec<usize>?
-    Array { ty: Box<Type>, len: usize },
     Annotation(AnnTy),
     Module(ModuleTy),
     Alias(AliasTy),
@@ -226,7 +221,7 @@ pub struct AnnTy {
 
 #[derive(Debug)]
 pub struct ModuleTy {
-    pub id: ic_alloc::arena::Id<Item>,
+    // pub id: ic_alloc::arena::Id<Item>,
     pub ident: Ident,
     pub span: Span,
     pub definitions: Vec<TypeId>,
@@ -242,7 +237,6 @@ pub struct AliasTy {
 
 #[derive(Debug)]
 pub struct ConstTy {
-    pub id: TypeId,
     pub ident: Ident,
     pub ty: TypeId,
     pub value: Numeric,

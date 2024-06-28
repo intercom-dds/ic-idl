@@ -60,6 +60,5 @@ where
         Type::Bitmask(_) => todo!(),
         Type::Interface(_) => todo!(),
         Type::Decl(_) => todo!(),
-        Type::Array { ty, len } => todo!(),
     }
 }

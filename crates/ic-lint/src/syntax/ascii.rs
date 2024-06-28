@@ -46,20 +46,10 @@ impl<'a> Visitor<'a> for AsciiIdent {
         if invalid {
             let diag = error_span(
                 "identifiers can only consist of alphanumeric ASCII characters",
-                Label::new(ident.span).message("defined here"),
+                Label::new(ident.span).message("non-ASCII identifier"),
             );
             self.0.push(diag);
         }
-    }
-
-    fn visit_literal(&mut self, _num: &'a ic_syntax::Literal) {
-        // match &num.kind {
-        //     ic_syntax::LitKind::LitBool => todo!(),
-        //     ic_syntax::LitKind::LitInt => todo!(),
-        //     ic_syntax::LitKind::LitFloat => todo!(),
-        //     ic_syntax::LitKind::LitChar => todo!(),
-        //     ic_syntax::LitKind::LitString => todo!(),
-        // }
     }
 }
 

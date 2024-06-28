@@ -45,7 +45,7 @@ impl EmptyTypes {
         let ty = T::item_name();
         let note = format!("all {ty}s must have at least one {member}");
         let diag = error_span(
-            format!("empty {ty} are not allowed"),
+            format!("empty {ty}s are not allowed"),
             Label::new(span).message("defined here"),
         )
         .note(note);

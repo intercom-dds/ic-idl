@@ -25,4 +25,30 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub struct ComplexMapKey;
+use ic_diagnostic::{warn_span, Color, Diag, Label};
+use ic_hir::hir::Type;
+use ic_syntax::Item;
+
+use crate::{Category, Lint};
+
+/// Warns when an initializer list is used, e.g. for complex constants or
+/// complex default values.
+#[derive(Default)]
+pub struct ComplexMapKey(Vec<Diag>);
+
+impl Lint for ComplexMapKey {
+    fn new() -> Box<dyn Lint>
+    where
+        Self: Sized,
+    {
+        Box::<Self>::default()
+    }
+
+    fn category(&self) -> Category {
+        Category::Pedantic
+    }
+
+    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
+        vec![]
+    }
+}

@@ -60,18 +60,6 @@ impl<'a> Visitor<'a> for AssignExpr {
             self.0.push(diag);
         }
     }
-
-    // Fallback in case we ever end up with an initializer list that does not
-    // belong to an enum or a bitmask.
-    fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
-        if let ic_syntax::Expr::InitList(_) = expr {
-            let diag = warn_span(
-                "initializer lists are an InterCOM extension",
-                Label::new(expr.span()),
-            );
-            self.0.push(diag);
-        }
-    }
 }
 
 impl Lint for AssignExpr {

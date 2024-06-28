@@ -52,7 +52,6 @@ lints! {
     pedantic::empty_mod::EmptyMod,
     pedantic::null::NullVariant,
     pedantic::omitted_in::OmittedIn,
-    semantic::div_by_zero::ByZero,
     semantic::oneway::NonVoidOneway,
     semantic::unsupported::Unsupported,
     syntax::ascii::AsciiIdent,
@@ -92,6 +91,18 @@ pub trait Lint {
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
     fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag>;
+
+    /// Runs the lint on the given HIR.
+    ///
+    /// A lint should never fail in a way that prevents further traversal. Any
+    /// potential errors should be gracefully ignored.
+    fn check_hir(
+        self: Box<Self>,
+        context: &ic_hir::Context,
+        graph: &[ic_hir::hir::Type],
+    ) -> Vec<Diag> {
+        todo!()
+    }
 }
 
 #[derive(Debug)]

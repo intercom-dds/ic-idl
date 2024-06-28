@@ -38,7 +38,7 @@ pub struct ComplexDefaultValue(Vec<Diag>);
 
 impl ComplexDefaultValue {
     fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
-        let diag = Diag::warning("complex default values are an InterCOM extension")
+        let diag = Diag::warning("complex literals are an InterCOM extension")
             .label(Label::new(diag).message(msg).color(Color::Yellow))
             .label(Label::new(label_span).message(label).color(Color::Cyan))
             .note("only trivial literals are standardized");
@@ -71,6 +71,18 @@ impl<'a> Visitor<'a> for ComplexDefaultValue {
                 ),
                 (def.name.span, "const defined here"),
             );
+        }
+    }
+
+    // Fallback in case we ever end up with an initializer list in another
+    // place.
+    fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
+        if let ic_syntax::Expr::InitList(_) = expr {
+            let diag = warn_span(
+                "initializer lists are an InterCOM extension",
+                Label::new(expr.span()),
+            );
+            self.0.push(diag);
         }
     }
 }

@@ -32,7 +32,7 @@ used everywhere in CMake as a temporary hack to make things work.
 
 ## Building
 
-Building `ic-idl` requires a C++17 toolchain and a Rust 1.74+ toolchain.
+Building `ic-idl` requires a C++17 toolchain and a Rust 1.80+ toolchain.
 
 `ic-idl` is bootstrapped. To build a full-fledged version, we first need to
 compile a reduced, C++-only version that is capable of emitting simplified type
@@ -64,12 +64,6 @@ Once compiled, `cargo` can be invoked as usual, e.g.:
 cargo test --workspace
 ```
 
-To use the experimental new parser, you must enable the `hir` feature:
-
-```
-cargo run --features hir --no-default-features
-```
-
 Development documentation can be generated with:
 
 ```
@@ -78,7 +72,7 @@ cargo doc --document-private-items --no-deps --workspace
 
 ## MSRV
 
-- MSRV for the compiler is 1.74.
+- MSRV for the compiler is 1.80.
 - MSRV for the serialization library is 1.70.
 
 The MSRV may change between minor version releases and is not considered a

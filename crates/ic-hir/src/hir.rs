@@ -49,6 +49,7 @@ use crate::TypeId;
 pub enum PrimitiveTy {
     Bool,
     Char,
+    WChar,
     Int8,
     UInt8,
     Int16,
@@ -60,12 +61,14 @@ pub enum PrimitiveTy {
     Float,
     Double,
     String,
+    WString,
 }
 
 impl PrimitiveTy {
     pub fn name(self) -> &'static str {
         match self {
             PrimitiveTy::Bool => "boolean",
+            PrimitiveTy::WChar => "wchar",
             PrimitiveTy::Char => "char",
             PrimitiveTy::Int8 => "int8",
             PrimitiveTy::UInt8 => "octet",
@@ -78,6 +81,7 @@ impl PrimitiveTy {
             PrimitiveTy::Float => "float",
             PrimitiveTy::Double => "double",
             PrimitiveTy::String => "string",
+            PrimitiveTy::WString => "wstring",
         }
     }
 }

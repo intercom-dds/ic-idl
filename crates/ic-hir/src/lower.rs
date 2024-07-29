@@ -443,7 +443,7 @@ impl<'a> Lower<'a> {
         id
     }
 
-    fn lower_mod(&mut self, symbol: &ic_syntax::ModuleDef) -> Item {
+    fn lower_mod(&mut self, symbol: &ic_syntax::ModuleDef) -> ModuleTy {
         let definitions = symbol
             .definitions
             .iter()
@@ -451,12 +451,12 @@ impl<'a> Lower<'a> {
             .collect();
 
         // self.ctx.items.alloc_with_id(|id| {
-        Item::Module(ModuleTy {
+        ModuleTy {
             // id,
             ident: symbol.name.clone(),
             span: symbol.span,
             definitions,
-        })
+        }
         // })
     }
 
@@ -558,7 +558,11 @@ impl<'a> Lower<'a> {
         let mut enumerators = vec![];
 
         for lit in &symbol.fields {
-            let value = lit.value.as_ref().map_or_else(|| last_value + 1, |_| 0);
+            let value = lit
+                .value
+                .as_ref()
+                .map_or_else(|| last_value + 1, |e| self.bound_expr(e) as i64);
+
             last_value = value;
 
             enumerators.push(Enumerator {
@@ -583,7 +587,7 @@ impl<'a> Lower<'a> {
 
         Some(match item {
             syn::Item::AnnotationValue(_) => todo!(),
-            syn::Item::ModuleValue(v) => self.lower_mod(v),
+            syn::Item::ModuleValue(v) => Item::Module(self.lower_mod(v)),
             syn::Item::StructValue(v) => Item::Adt(self.lower_struct(v)),
             syn::Item::UnionValue(v) => Item::Adt(self.lower_union(v)),
             syn::Item::EnumValue(v) => Item::Adt(self.lower_enum(v)),

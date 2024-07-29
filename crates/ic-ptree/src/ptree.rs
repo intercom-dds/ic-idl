@@ -29,7 +29,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(clippy::all, clippy::unreadable_literal)]
+#![allow(clippy::all, clippy::unreadable_literal, unused)]
 
 pub const BEGIN_FILE: PlacementKind = 0;
 pub const BEFORE_DECLARATION: PlacementKind = 1;

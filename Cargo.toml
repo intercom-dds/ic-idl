@@ -76,3 +76,8 @@ cargo = { level = "warn", priority = -1 }
 module_name_repetitions = "allow"
 struct_excessive_bools = "allow"
 ignored_unit_patterns = "allow"
+
+[profile.release]
+lto = true
+opt-level = "s"
+codegen-units = 1

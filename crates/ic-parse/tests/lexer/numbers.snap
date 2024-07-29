@@ -8,77 +8,99 @@ expression: tokens
             start: 644,
             end: 645,
         },
-        kind: Decimal,
+        kind: Decimal(
+            0,
+        ),
     },
     Token {
         span: Span {
             start: 646,
             end: 649,
         },
-        kind: Decimal,
+        kind: Decimal(
+            123,
+        ),
     },
     Token {
         span: Span {
             start: 650,
             end: 653,
         },
-        kind: Decimal,
+        kind: Decimal(
+            456,
+        ),
     },
     Token {
         span: Span {
             start: 654,
             end: 657,
         },
-        kind: Decimal,
+        kind: Decimal(
+            789,
+        ),
     },
     Token {
         span: Span {
             start: 658,
             end: 662,
         },
-        kind: Octal,
+        kind: Octal(
+            511,
+        ),
     },
     Token {
         span: Span {
             start: 663,
             end: 668,
         },
-        kind: Hex,
+        kind: Hex(
+            0,
+        ),
     },
     Token {
         span: Span {
             start: 669,
             end: 673,
         },
-        kind: Hex,
+        kind: Hex(
+            0,
+        ),
     },
     Token {
         span: Span {
             start: 674,
             end: 682,
         },
-        kind: Hex,
+        kind: Hex(
+            0,
+        ),
     },
     Token {
         span: Span {
             start: 683,
             end: 692,
         },
-        kind: Float,
+        kind: Float(
+            3.1415926,
+        ),
     },
     Token {
         span: Span {
             start: 693,
             end: 698,
         },
-        kind: Float,
+        kind: Float(
+            1e54,
+        ),
     },
     Token {
         span: Span {
             start: 699,
             end: 706,
         },
-        kind: Float,
+        kind: Float(
+            1.23e19,
+        ),
     },
     Token {
         span: Span {
@@ -92,6 +114,8 @@ expression: tokens
             start: 708,
             end: 712,
         },
-        kind: Float,
+        kind: Float(
+            1900.0,
+        ),
     },
 ]

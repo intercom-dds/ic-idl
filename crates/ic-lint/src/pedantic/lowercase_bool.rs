@@ -59,14 +59,14 @@ mod tests {
     #[test]
     fn lowercase_lit() {
         let ident = Literal {
-            kind: LitKind::LitBool,
+            kind: LitKind::LitBool(false),
             span: Span::default(),
         };
         let mut lint = LowercaseBool("true");
         lint.visit_literal(&ident);
 
         let ident = Literal {
-            kind: LitKind::LitBool,
+            kind: LitKind::LitBool(false),
             span: Span::default(),
         };
         let mut lint = LowercaseBool("false");
@@ -77,14 +77,14 @@ mod tests {
     fn uppercase_lit() {
         // complies with the standard so no warning produced
         let num = Literal {
-            kind: LitKind::LitBool,
+            kind: LitKind::LitBool(false),
             span: Span::default(),
         };
         let mut lint = LowercaseBool("TRUE");
         lint.visit_literal(&num);
 
         let num = Literal {
-            kind: LitKind::LitBool,
+            kind: LitKind::LitBool(false),
             span: Span::default(),
         };
         let mut lint = LowercaseBool("FALSE");

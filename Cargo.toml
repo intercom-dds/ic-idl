@@ -39,7 +39,6 @@ members = [
     "crates/ic-lint",
     "crates/ic-macros",
     "crates/ic-parse",
-    "crates/ic-preproc",
     "crates/ic-ptree",
     "crates/ic-syntax",
     "tools/xtask",

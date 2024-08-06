@@ -27,6 +27,7 @@
 
 #![allow(clippy::struct_excessive_bools)]
 
+use std::collections::HashMap;
 use std::env;
 
 use color::Colorize;
@@ -49,7 +50,6 @@ pub struct CommandLine {
     desc: String,
     version: Option<String>,
     options: IndexMap<String, Opt>,
-    section: Option<String>,
     hide_flags: bool,
     hide_options: bool,
     arg_name: Option<String>,
@@ -57,7 +57,7 @@ pub struct CommandLine {
     positionals: bool,
     external: bool,
     parent: Option<String>,
-    subcommands: IndexMap<String, Vec<CommandLine>>,
+    subcommands: HashMap<String, Vec<CommandLine>>,
 }
 
 impl CommandLine {
@@ -67,7 +67,6 @@ impl CommandLine {
             desc: String::new(),
             version: None,
             options: IndexMap::new(),
-            section: None,
             hide_flags: false,
             hide_options: false,
             arg_name: None,
@@ -75,7 +74,7 @@ impl CommandLine {
             external: false,
             positionals: false,
             parent: None,
-            subcommands: IndexMap::new(),
+            subcommands: HashMap::new(),
         }
     }
 
@@ -89,8 +88,12 @@ impl CommandLine {
         self
     }
 
-    pub fn section(mut self, section: impl Into<String>) -> Self {
-        self.section = Some(section.into());
+    pub fn section(mut self, section: impl Into<String>, mut options: CommandLine) -> Self {
+        let section = section.into();
+        for opt in options.options.values_mut() {
+            opt.section = Some(section.clone());
+        }
+        self = self.opts(options.options.values().iter().cloned());
         self
     }
 
@@ -115,7 +118,7 @@ impl CommandLine {
         self
     }
 
-    pub fn merge(self, command: &CommandLine) -> Self {
+    pub fn merge(self, command: CommandLine) -> Self {
         self.opts(command.options.values().iter().cloned())
     }
 
@@ -134,8 +137,7 @@ impl CommandLine {
             })
             .collect();
 
-        self.subcommands
-            .insert(vec![category.name.to_string()], commands);
+        self.subcommands.insert(category.name.to_string(), commands);
         self
     }
 
@@ -245,7 +247,7 @@ impl CommandLine {
         lines.push(usage);
 
         if !self.hide_flags {
-            let flags = self.format_args(|v| v.kind == Value::Flag);
+            let flags = self.format_args(|v| v.kind == Value::Flag && v.section.is_none());
             if !flags.is_empty() {
                 lines.push("\nflags:".yellow());
                 lines.extend(flags);
@@ -253,10 +255,34 @@ impl CommandLine {
         }
 
         if !self.hide_options {
-            let options = self.format_args(|v| v.kind != Value::Flag);
+            let options = self.format_args(|v| v.kind != Value::Flag && v.section.is_none());
             if !options.is_empty() {
                 lines.push("\noptions:".yellow());
                 lines.extend(options);
+            }
+        }
+
+        {
+            // Group options by their section
+            let mut sections = HashMap::<_, Vec<_>>::new();
+            let options = self.options.values().iter();
+            for opt in options {
+                if let Some(v) = &opt.section {
+                    sections.entry(v.to_string()).or_default().push(opt);
+                }
+            }
+
+            for section in sections {
+                let flags = self.format_args(|v| {
+                    if let Some(name) = &v.section {
+                        *name == section.0
+                    } else {
+                        false
+                    }
+                });
+
+                lines.push(format!("\n{}:", section.0).yellow());
+                lines.extend(flags);
             }
         }
 
@@ -336,7 +362,6 @@ impl CommandLine {
         let width = self
             .subcommands
             .values()
-            .iter()
             .flatten()
             .map(|v| v.name.green().len())
             .max()
@@ -398,6 +423,7 @@ pub struct Opt {
     required: bool,
     count: usize,
     values: Vec<String>,
+    section: Option<String>,
 }
 
 impl Opt {
@@ -414,6 +440,11 @@ impl Opt {
     pub fn value(mut self, value: Value, name: impl Into<String>) -> Self {
         self.kind = value;
         self.value_name = Some(name.into());
+        self
+    }
+
+    pub fn section(mut self, section: impl Into<String>) -> Self {
+        self.section = Some(section.into());
         self
     }
 
@@ -449,6 +480,7 @@ impl<'a, const N: usize> From<[&'a str; N]> for Opt {
             required: false,
             count: 0,
             values: vec![],
+            section: None,
         }
     }
 }

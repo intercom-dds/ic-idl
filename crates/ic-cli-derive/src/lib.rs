@@ -162,6 +162,7 @@ struct OptAttr {
     arg_name: Option<syn::LitStr>,
     positional: bool,
     required: bool,
+    is_option: bool,
 }
 
 fn option_attr(attrs: &Vec<Attribute>) -> OptAttr {
@@ -180,6 +181,7 @@ fn option_attr(attrs: &Vec<Attribute>) -> OptAttr {
             continue;
         }
 
+        arg_attr.is_option = true;
         let _ = attr.parse_args_with(|input: ParseStream| {
             while let Some(token) = input.parse()? {
                 if let TokenTree::Ident(value) = token {
@@ -209,13 +211,17 @@ fn option_attr(attrs: &Vec<Attribute>) -> OptAttr {
     arg_attr
 }
 
-fn handle_option(field: &Field) -> Opt {
+fn handle_option(field: &Field) -> Option<Opt> {
     let Some(ref ident) = field.ident else {
         panic!("tuple structs are not supported");
     };
 
     let mut tokens = vec![];
     let attrs = option_attr(&field.attrs);
+    if !attrs.is_option {
+        return None;
+    }
+
     if attrs.short.0 {
         tokens.push(derive_short(ident, &attrs.short.1).to_string());
     }
@@ -237,14 +243,14 @@ fn handle_option(field: &Field) -> Opt {
         .arg_name
         .map_or_else(|| "arg".to_string(), |v| v.value());
 
-    Opt {
+    Some(Opt {
         tokens,
         comment: doc_attr(&field.attrs),
         arg_name,
         kind,
         required: attrs.required,
         positional: attrs.positional,
-    }
+    })
 }
 
 fn enum_command(input: &DataEnum, attrs: &Vec<Attribute>) -> proc_macro2::TokenStream {
@@ -283,11 +289,12 @@ fn struct_command(input: &DataStruct, attrs: &Vec<Attribute>) -> proc_macro2::To
     let mut positionals = false;
 
     for field in &input.fields {
-        let option = handle_option(field);
-        if option.positional {
-            positionals = true;
-        } else {
-            options.push(option);
+        if let Some(option) = handle_option(field) {
+            if option.positional {
+                positionals = true;
+            } else {
+                options.push(option);
+            }
         }
     }
 
@@ -341,6 +348,11 @@ fn struct_parse(input: &DataStruct) -> proc_macro2::TokenStream {
     for field in &input.fields {
         let ident = field.ident.as_ref().unwrap();
         let attrs = option_attr(&field.attrs);
+
+        if !attrs.is_option {
+            continue;
+        }
+
         let tree = if attrs.positional {
             quote! {
                 #ident: if result.positionals().is_empty() {
@@ -369,6 +381,7 @@ fn struct_parse(input: &DataStruct) -> proc_macro2::TokenStream {
         let default = Self::default();
         Self {
             #stream
+            ..default
         }
     }
 }

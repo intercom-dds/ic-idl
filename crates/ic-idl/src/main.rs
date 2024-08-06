@@ -32,10 +32,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context};
-use config::{Options, Unstable};
+use config::{CodegenOptions, Options, Unstable};
 use ic_cli::color::Colorize;
-use ic_cli::Command;
-use ic_preproc::preprocess;
+use ic_cli::{Command, Opt};
+// use ic_preproc::preprocess;
 
 mod config;
 mod info;
@@ -51,7 +51,14 @@ macro_rules! error {
 }
 
 fn main() {
-    let options = Options::parse();
+    let result = Options::command()
+        .section("backends", CodegenOptions::command())
+        .parse();
+
+    let options = Options {
+        codegen: CodegenOptions::from_result(&result),
+        ..Options::from_result(&result)
+    };
 
     if options.version {
         println!("{}", info::version());
@@ -213,27 +220,27 @@ fn try_ptree(options: &Options) -> anyhow::Result<Vec<String>> {
     }
 
     let mut generated = vec![];
-    if let Some(dir) = &options.csharp_out {
+    if let Some(dir) = &options.codegen.csharp_out {
         let res = ic_ptree::codegen_csharp(&merged, dir);
         generated.extend(res);
     }
 
-    if let Some(dir) = &options.cpp_out {
+    if let Some(dir) = &options.codegen.cpp_out {
         let res = ic_ptree::codegen_cpp(&merged, dir);
         generated.extend(res);
     }
 
-    if let Some(dir) = &options.java_out {
+    if let Some(dir) = &options.codegen.java_out {
         let res = ic_ptree::codegen_java(&merged, dir);
         generated.extend(res);
     }
 
-    if let Some(dir) = &options.proto_out {
+    if let Some(dir) = &options.codegen.proto_out {
         let res = ic_ptree::codegen_proto(&merged, dir);
         generated.extend(res);
     }
 
-    if let Some(dir) = &options.python_out {
+    if let Some(dir) = &options.codegen.python_out {
         let res = ic_ptree::codegen_python(&merged, dir);
         generated.extend(res);
     }

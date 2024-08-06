@@ -159,7 +159,6 @@ where
         } else if let Some(cmd) = context
             .subcommands
             .values_mut()
-            .iter_mut()
             .flat_map(|c| c.iter_mut())
             .find(|v| v.name == arg)
         {

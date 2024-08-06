@@ -31,39 +31,6 @@ use std::path::{Path, PathBuf};
 
 use ic_cli::Command;
 
-#[derive(Command, Default)]
-struct PpOptions {
-    /// Only preprocess the files
-    #[option(short = 'E', long)]
-    preprocessor_only: bool,
-
-    /// Do not preprocess the files
-    #[option(short = 'X', long)]
-    preprocessor_skip: bool,
-
-    /// Add directory to include search paths
-    #[option(short = 'I', long, arg = "dir")]
-    include: Vec<PathBuf>,
-
-    /// Define <def> to <val> (or 1 if <val> is omitted)
-    #[option(short = 'D', long, arg = "def>=<val")]
-    define: Vec<String>,
-}
-
-#[derive(Command, Default)]
-struct ParseOptions {
-    /// Do not generate code for included files
-    #[option(short = 'H', long)]
-    no_header_follow: bool,
-
-    /// Enable specified warning
-    #[option(short = 'W', long, arg = "lint")]
-    warn: Vec<String>,
-
-    #[option(positional)]
-    _files: Vec<PathBuf>,
-}
-
 intercom_cts::bitmask! {
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub Warnings: u32 {
@@ -74,75 +41,6 @@ intercom_cts::bitmask! {
         ERROR = 1 << 4,
         HELP = 1 << 5,
     }
-}
-
-#[derive(Command, Default)]
-#[allow(clippy::struct_field_names)]
-struct CodegenOptions {
-    /// Generate C++ files
-    #[option(long, arg = "dir")]
-    cpp_out: PathBuf,
-
-    /// Generate Rust files
-    #[option(long, arg = "dir")]
-    rust_out: PathBuf,
-
-    /// Generate Protobuf files
-    #[option(long, arg = "dir")]
-    proto_out: PathBuf,
-
-    /// Generate Python files
-    #[option(long, arg = "dir")]
-    python_out: PathBuf,
-
-    /// Generate IDL files
-    #[option(long, arg = "dir")]
-    idl_out: PathBuf,
-
-    /// Generate JSON files
-    #[option(long, arg = "dir")]
-    json_out: PathBuf,
-
-    /// Generate JSON Schema files
-    #[option(long, arg = "dir")]
-    schema_out: PathBuf,
-
-    /// Generate TypeScript files
-    #[option(long, arg = "dir")]
-    ts_out: PathBuf,
-
-    /// Generate XML schema files
-    #[option(long, arg = "dir")]
-    xml_out: PathBuf,
-}
-
-#[derive(Command, Default)]
-struct GlobalOptions {
-    // #[option(merge)]
-    // preprocessor: PpOptions,
-
-    // #[option(merge)]
-    // parser: ParseOptions,
-
-    // #[option(merge)]
-    // codegen: CodegenOptions,
-    /// Output list of files to be generated
-    #[option(short, long)]
-    list: bool,
-
-    /// Empty output directories before emitting code
-    #[option(long)]
-    purge_dirs: bool,
-
-    /// Display version information
-    #[option(short = 'V', long)]
-    version: bool,
-
-    /// Unstable flags, see `-Z help` for details
-    // TODO: trait Parseable? So that we can manually impl that for UnstableFlags
-    // and make the parser accept T: Parseable types.
-    #[option(short = 'Z', arg = "flag")]
-    unstable: Vec<String>,
 }
 
 /// Generic IDL code generator
@@ -196,9 +94,27 @@ pub struct Options {
     #[option(short = 'V', long)]
     pub version: bool,
 
-    /// Generate Protobuf files in <dir>
+    #[option(positional)]
+    pub files: Vec<PathBuf>,
+
+    // #[section = "backends"]
+    pub codegen: CodegenOptions,
+}
+
+#[derive(Command, Default)]
+#[allow(clippy::struct_field_names)]
+pub struct CodegenOptions {
+    /// Generate C++ files in <dir>
     #[option(long, arg = "dir")]
-    pub proto_out: Option<PathBuf>,
+    pub cpp_out: Option<PathBuf>,
+
+    /// Generate C++11 files in <dir>
+    #[option(long, arg = "dir")]
+    pub cpp11_out: Option<PathBuf>,
+
+    /// Generate Rust files in <dir>
+    #[option(long, arg = "dir")]
+    pub rust_out: Option<PathBuf>,
 
     /// Generate Java files in <dir>
     #[option(long, arg = "dir")]
@@ -208,28 +124,29 @@ pub struct Options {
     #[option(long, arg = "dir")]
     pub csharp_out: Option<PathBuf>,
 
-    /// Generate C++ files in <dir>
-    #[option(long, arg = "dir")]
-    pub cpp_out: Option<PathBuf>,
-
-    /// Generate C++11 files in <dir>
-    #[option(long, arg = "dir")]
-    pub cpp11_out: Option<PathBuf>,
-
     /// Generate Python files in <dir>
     #[option(long, arg = "dir")]
     pub python_out: Option<PathBuf>,
-
-    /// Generate Rust files in <dir>
-    #[option(long, arg = "dir")]
-    pub rust_out: Option<PathBuf>,
 
     /// Generate IDL files in <dir>
     #[option(long, arg = "dir")]
     pub idl_out: Option<PathBuf>,
 
-    #[option(positional)]
-    pub files: Vec<PathBuf>,
+    /// Generate Protobuf files in <dir>
+    #[option(long, arg = "dir")]
+    pub proto_out: Option<PathBuf>,
+
+    /// Generate JSON files in <dir>
+    #[option(long, arg = "dir")]
+    pub json_out: Option<PathBuf>,
+
+    /// Generate JSON Schema files in <dir>
+    #[option(long, arg = "dir")]
+    pub json_schema_out: Option<PathBuf>,
+
+    /// Generate XML files in <dir>
+    #[option(long, arg = "dir")]
+    pub xml_out: Option<PathBuf>,
 }
 
 #[derive(Command, Default)]

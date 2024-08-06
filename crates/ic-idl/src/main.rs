@@ -34,7 +34,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context};
 use config::{CodegenOptions, Options, Unstable};
 use ic_cli::color::Colorize;
-use ic_cli::{Command, Opt};
+use ic_cli::Command;
+use ic_ptree::ParseResult;
 // use ic_preproc::preprocess;
 
 mod config;
@@ -196,6 +197,22 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     Ok(vec![])
 }
 
+fn invoke<T>(
+    options: &Options,
+    result: &ParseResult,
+    dir: &Path,
+    backend: fn(&ParseResult, &Path) -> T,
+) -> anyhow::Result<T> {
+    if options.purge_dirs {
+        if let Ok(v) = std::fs::metadata(dir) {
+            if v.is_dir() {
+                std::fs::remove_dir_all(dir)?;
+            }
+        }
+    }
+    Ok(backend(result, dir))
+}
+
 fn try_ptree(options: &Options) -> anyhow::Result<Vec<String>> {
     let preprocessed = options
         .files
@@ -221,27 +238,27 @@ fn try_ptree(options: &Options) -> anyhow::Result<Vec<String>> {
 
     let mut generated = vec![];
     if let Some(dir) = &options.codegen.csharp_out {
-        let res = ic_ptree::codegen_csharp(&merged, dir);
+        let res = invoke(options, &merged, dir, ic_ptree::codegen_csharp)?;
         generated.extend(res);
     }
 
     if let Some(dir) = &options.codegen.cpp_out {
-        let res = ic_ptree::codegen_cpp(&merged, dir);
+        let res = invoke(options, &merged, dir, ic_ptree::codegen_cpp)?;
         generated.extend(res);
     }
 
     if let Some(dir) = &options.codegen.java_out {
-        let res = ic_ptree::codegen_java(&merged, dir);
+        let res = invoke(options, &merged, dir, ic_ptree::codegen_java)?;
         generated.extend(res);
     }
 
     if let Some(dir) = &options.codegen.proto_out {
-        let res = ic_ptree::codegen_proto(&merged, dir);
+        let res = invoke(options, &merged, dir, ic_ptree::codegen_proto)?;
         generated.extend(res);
     }
 
     if let Some(dir) = &options.codegen.python_out {
-        let res = ic_ptree::codegen_python(&merged, dir);
+        let res = invoke(options, &merged, dir, ic_ptree::codegen_python)?;
         generated.extend(res);
     }
 

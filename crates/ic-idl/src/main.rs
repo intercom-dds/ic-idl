@@ -28,8 +28,10 @@
 #![allow(unused)]
 
 use std::collections::HashSet;
+use std::io;
 use std::path::{Path, PathBuf};
 
+use anyhow::{bail, Context};
 use config::{Options, Unstable};
 use ic_cli::color::Colorize;
 use ic_cli::Command;
@@ -108,41 +110,80 @@ fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
     Ok(input)
 }
 
-fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
-    let input = options.files.iter().next().unwrap();
-    let input = std::fs::read_to_string(input)?;
-    let ast = ic_parse::from_str(&input);
+fn collect_files<'a, I>(paths: I) -> anyhow::Result<HashSet<PathBuf>>
+where
+    I: IntoIterator<Item = &'a PathBuf>,
+{
+    fn collect(p: &Path, files: &mut HashSet<PathBuf>) -> anyhow::Result<()> {
+        let meta = std::fs::metadata(p)?;
+        if meta.is_dir() {
+            let iter = match std::fs::read_dir(p) {
+                Ok(v) => v,
+                Err(e) => bail!("couldn't open {}: {e}", p.display()),
+            };
 
-    match ast {
-        Ok(v) => {
-            // Lower the AST to a HIR
-            let hir = ic_hir::lower_ast(&v.tree);
-
-            // If lowering succeeded, lint the syntax tree and the HIR
-            let report = ic_lint::lint_syntax(&v.tree);
-            dbg!(&report);
-
-            for diag in &report.diagnostics {
-                let mut buf = String::new();
-                ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
-                eprintln!("{buf}");
+            for file in std::fs::read_dir(p).unwrap().flatten() {
+                collect(&file.path(), files);
             }
-
-            if options.hir_dump {
-                println!("{hir:#?}");
-            }
-
-            if options.ast_dump {
-                println!("{:#?}", v.tree);
+        } else if let Some(ext) = p.extension() {
+            if ext.eq_ignore_ascii_case("idl") {
+                files.insert(p.to_owned());
             }
         }
-        Err(e) => {
-            pretty::emit_errors(&input, &e);
-            error!(
-                "aborting due to {} previous error{}",
-                e.len(),
-                if e.len() > 1 { "s" } else { "" },
-            );
+        Ok(())
+    }
+
+    let mut files = HashSet::new();
+    for path in paths.into_iter() {
+        if std::fs::metadata(&path)?.is_dir() {
+            collect(&path, &mut files)?;
+        } else {
+            files.insert(path.to_path_buf());
+        }
+    }
+    Ok(files)
+}
+
+fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
+    let files = collect_files(&options.files)?;
+    for file in files {
+        let input = match std::fs::read_to_string(&file) {
+            Ok(v) => v,
+            Err(e) => bail!("couldn't read {}: {e}", file.display()),
+        };
+        let ast = ic_parse::from_str(&input);
+
+        match ast {
+            Ok(v) => {
+                // Lower the AST to a HIR
+                let hir = ic_hir::lower_ast(&v.tree);
+
+                // If lowering succeeded, lint the syntax tree and the HIR
+                let report = ic_lint::lint_syntax(&v.tree);
+                dbg!(&report);
+
+                for diag in &report.diagnostics {
+                    let mut buf = String::new();
+                    ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
+                    eprintln!("{buf}");
+                }
+
+                if options.hir_dump {
+                    println!("{hir:#?}");
+                }
+
+                if options.ast_dump {
+                    println!("{:#?}", v.tree);
+                }
+            }
+            Err(e) => {
+                pretty::emit_errors(&input, &e);
+                error!(
+                    "aborting due to {} previous error{}",
+                    e.len(),
+                    if e.len() > 1 { "s" } else { "" },
+                );
+            }
         }
     }
     Ok(vec![])

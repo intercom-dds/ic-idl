@@ -27,7 +27,6 @@
 
 #![allow(unused)]
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use ic_cli::Command;
@@ -62,7 +61,7 @@ struct ParseOptions {
     warn: Vec<String>,
 
     #[option(positional)]
-    _files: HashSet<PathBuf>,
+    _files: Vec<PathBuf>,
 }
 
 intercom_cts::bitmask! {
@@ -230,7 +229,7 @@ pub struct Options {
     pub idl_out: Option<PathBuf>,
 
     #[option(positional)]
-    pub files: HashSet<PathBuf>,
+    pub files: Vec<PathBuf>,
 }
 
 #[derive(Command, Default)]

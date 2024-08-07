@@ -43,88 +43,6 @@ pub enum Case {
     Kebab,
 }
 
-struct Converter {
-    first: bool,
-    case: Case,
-    delim: char,
-}
-
-fn is_delim(c: char) -> bool {
-    c.is_whitespace() || c.is_ascii_punctuation()
-}
-
-impl Converter {
-    fn append(&mut self, word: &str, buffer: &mut String) {
-        if !word.is_empty() {
-            match self.case {
-                Case::Pascal => Self::to_pascal(word, buffer),
-                Case::Camel => self.to_camel(word, buffer),
-                Case::Snake | Case::Kebab => self.snake_delim(word, buffer),
-            }
-        }
-        self.first = false;
-    }
-
-    fn snake_delim(&self, word: &str, buffer: &mut String) {
-        if !self.first {
-            buffer.push(self.delim);
-        }
-        *buffer += &word.to_lowercase();
-    }
-
-    fn to_pascal(word: &str, buffer: &mut String) {
-        let mut iter = word.chars();
-        if let Some(c) = iter.next() {
-            buffer.extend(c.to_uppercase());
-        }
-        buffer.extend(iter.flat_map(char::to_lowercase));
-    }
-
-    fn to_camel(&self, word: &str, buffer: &mut String) {
-        let mut iter = word.chars();
-        if let Some(c) = iter.next() {
-            if self.first {
-                buffer.extend(c.to_lowercase());
-            } else {
-                buffer.extend(c.to_uppercase());
-            }
-        }
-        buffer.extend(iter.flat_map(char::to_lowercase));
-    }
-
-    fn convert(mut self, input: &str) -> String {
-        let mut start = 0;
-        let mut was_upper = false;
-        let mut iter = input.chars().enumerate().peekable();
-        let mut buffer = String::with_capacity(input.len() + 5);
-
-        while let Some((i, c)) = iter.next() {
-            if is_delim(c) {
-                if i == start {
-                    start += 1;
-                }
-                continue;
-            }
-
-            if let Some((_, peek)) = iter.peek() {
-                let len = i - start;
-
-                if is_delim(*peek) || (c.is_lowercase() && peek.is_uppercase()) {
-                    self.append(&input[start..=(start + len)], &mut buffer);
-                    start = i + 1;
-                } else if was_upper && c.is_uppercase() && peek.is_lowercase() {
-                    self.append(&input[start..start + len], &mut buffer);
-                    start = i;
-                }
-            } else {
-                self.append(&input[start..], &mut buffer);
-            }
-            was_upper = c.is_uppercase();
-        }
-        buffer
-    }
-}
-
 /// Converts the given string to the specified capitalization.
 ///
 /// Whitespace and ASCII punctuation characters are treated as delimiters
@@ -214,6 +132,88 @@ pub fn pascal<A: AsRef<str>>(input: A) -> String {
 /// ````
 pub fn kebab<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Kebab)
+}
+
+struct Converter {
+    first: bool,
+    case: Case,
+    delim: char,
+}
+
+fn is_delim(c: char) -> bool {
+    c.is_whitespace() || c.is_ascii_punctuation()
+}
+
+impl Converter {
+    fn append(&mut self, word: &str, buffer: &mut String) {
+        if !word.is_empty() {
+            match self.case {
+                Case::Pascal => Self::to_pascal(word, buffer),
+                Case::Camel => self.to_camel(word, buffer),
+                Case::Snake | Case::Kebab => self.snake_delim(word, buffer),
+            }
+        }
+        self.first = false;
+    }
+
+    fn snake_delim(&self, word: &str, buffer: &mut String) {
+        if !self.first {
+            buffer.push(self.delim);
+        }
+        *buffer += &word.to_lowercase();
+    }
+
+    fn to_pascal(word: &str, buffer: &mut String) {
+        let mut iter = word.chars();
+        if let Some(c) = iter.next() {
+            buffer.extend(c.to_uppercase());
+        }
+        buffer.extend(iter.flat_map(char::to_lowercase));
+    }
+
+    fn to_camel(&self, word: &str, buffer: &mut String) {
+        let mut iter = word.chars();
+        if let Some(c) = iter.next() {
+            if self.first {
+                buffer.extend(c.to_lowercase());
+            } else {
+                buffer.extend(c.to_uppercase());
+            }
+        }
+        buffer.extend(iter.flat_map(char::to_lowercase));
+    }
+
+    fn convert(mut self, input: &str) -> String {
+        let mut start = 0;
+        let mut was_upper = false;
+        let mut iter = input.chars().enumerate().peekable();
+        let mut buffer = String::with_capacity(2 * input.len());
+
+        while let Some((i, c)) = iter.next() {
+            if is_delim(c) {
+                if i == start {
+                    start += 1;
+                }
+                continue;
+            }
+
+            if let Some((_, peek)) = iter.peek() {
+                let len = i - start;
+
+                if is_delim(*peek) || (c.is_lowercase() && peek.is_uppercase()) {
+                    self.append(&input[start..=(start + len)], &mut buffer);
+                    start = i + 1;
+                } else if was_upper && c.is_uppercase() && peek.is_lowercase() {
+                    self.append(&input[start..start + len], &mut buffer);
+                    start = i;
+                }
+            } else {
+                self.append(&input[start..], &mut buffer);
+            }
+            was_upper = c.is_uppercase();
+        }
+        buffer
+    }
 }
 
 #[cfg(test)]

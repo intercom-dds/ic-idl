@@ -29,30 +29,25 @@
 
 use std::path::{Path, PathBuf};
 
-use ic_cli::Command;
+use ic_cli::{convert, Command};
 
 intercom_cts::bitmask! {
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub Warnings: u32 {
+    #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+    pub WarningBits: u32 {
         DEPRECATED = 1 << 0,
         ANNOTATION = 1 << 1,
         UNKNOWN_ANNOTATION = 1 << 2,
         PEDANTIC = 1 << 3,
         ERROR = 1 << 4,
-        HELP = 1 << 5,
     }
 }
 
 /// Generic IDL code generator
 #[derive(Command, Default)]
 pub struct Options {
-    /// Only preprocess the files
+    /// Only run the preprocessor
     #[option(short = 'E', long)]
     pub preprocessor_only: bool,
-
-    /// Do not preprocess the files
-    #[option(short = 'X', long)]
-    pub preprocessor_skip: bool,
 
     /// Do not generate code for included files
     #[option(short = 'H', long)]
@@ -74,7 +69,7 @@ pub struct Options {
     #[option(short = 'D', long, arg = "def>=<val")]
     pub define: Vec<String>,
 
-    /// Enable specified warning
+    /// Enable the specified warning, see `-W help` for details
     #[option(short = 'W', long, arg = "lint")]
     pub warn: Vec<String>,
 
@@ -166,4 +161,36 @@ pub struct Unstable {
     /// Dump the ptree as JSON
     #[option(long)]
     pub ptree_json: bool,
+}
+
+impl convert::Convert for WarningBits {
+    fn from_result(input: &[String]) -> convert::Result<Self> {
+        let mut bits = WarningBits::nil();
+
+        for arg in input {
+            let (arg, is_negated) = if let Some(arg) = arg.strip_prefix("no-") {
+                (arg, true)
+            } else {
+                (arg.as_str(), false)
+            };
+
+            let bit = match arg {
+                "deprecated" => WarningBits::DEPRECATED,
+                "annotation" => WarningBits::ANNOTATION,
+                "unknown-annotation" => WarningBits::UNKNOWN_ANNOTATION,
+                "pedantic" => WarningBits::PEDANTIC,
+                "ERROR" => WarningBits::ERROR,
+                _ => Err(convert::ConvertError::InvalidValue(format!(
+                    "unknown warning '{arg}'"
+                )))?,
+            };
+
+            if is_negated {
+                bits.set(bit);
+            } else {
+                bits.unset(bit);
+            }
+        }
+        Ok(bits)
+    }
 }

@@ -109,12 +109,8 @@ impl std::fmt::Display for File {
 }
 
 fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
-    let input = if options.preprocessor_skip {
-        std::fs::read_to_string(path)?
-    } else {
-        preprocess(path, &options.define, &options.include)?
-    };
-
+    let input = std::fs::read_to_string(path)?;
+    // preprocess(path, &options.define, &options.include)?
     Ok(input)
 }
 

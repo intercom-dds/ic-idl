@@ -127,6 +127,16 @@ macro_rules! bitmask {
                 (self.0 & rhs.0) != 0
             }
 
+            /// Sets the specified bits in the bitmask.
+            pub fn set(&mut self, rhs: Self) {
+                self.0 |= rhs.0
+            }
+
+            /// Clears the specified bits in the bitmask.
+            pub fn unset(&mut self, rhs: Self) {
+                self.0 &= !rhs.0;
+            }
+
             /// Clears the bitmask.
             #[inline]
             pub fn clear(&mut self) {

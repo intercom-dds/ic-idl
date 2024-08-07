@@ -30,5 +30,6 @@
 /cidl
 *.orig
 *.new
+tools/fuzz/corpus
 tools/explorer/dist
 .jj

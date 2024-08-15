@@ -360,7 +360,7 @@ pub struct DeclTy {
 
 #[derive(Debug, PartialEq)]
 pub enum Numeric {
-    Boolean(bool),
+    Bool(bool),
     Char(char),
     Int8(i8),
     Octet(u8),

@@ -60,7 +60,7 @@ impl Interp<'_> {
         match num {
             // Use the NOT operator for unsigned numbers to simulate an
             // unsigned overflow
-            Numeric::Boolean(v) => Numeric::Int8(i8::from(v).not()),
+            Numeric::Bool(v) => Numeric::Int8(i8::from(v).not()),
             Numeric::Octet(v) => Numeric::Octet(v.not()),
             Numeric::UInt16(v) => Numeric::UInt16(v.not()),
             Numeric::UInt32(v) => Numeric::UInt32(v.not()),
@@ -81,7 +81,7 @@ impl Interp<'_> {
 
     fn not_num(&mut self, mut num: Numeric) -> Numeric {
         match &mut num {
-            Numeric::Boolean(v) => *v = v.not(),
+            Numeric::Bool(v) => *v = v.not(),
             Numeric::Octet(v) => *v = v.not(),
             Numeric::UInt16(v) => *v = v.not(),
             Numeric::UInt32(v) => *v = v.not(),
@@ -168,7 +168,7 @@ impl Interp<'_> {
 
         match expr {
             Expr::Literal(v) => match v.kind {
-                LitKind::LitBool(v) => Numeric::Boolean(v),
+                LitKind::LitBool(v) => Numeric::Bool(v),
                 LitKind::LitInt(v) => Numeric::from(T::try_from(v as i64).unwrap()),
                 LitKind::LitString(ref v) => Numeric::String(v.clone()),
                 _ => todo!(),
@@ -593,7 +593,7 @@ impl<'a> Lower<'a> {
             syn::Item::EnumValue(v) => Item::Adt(self.lower_enum(v)),
             syn::Item::ConstValue(v) => Item::Const(self.lower_const(v)),
             syn::Item::TypedefValue(v) => Item::Adt(self.lower_alias(v)),
-            syn::Item::InterfaceValue(_) => todo!(),
+            // syn::Item::InterfaceValue(v) => Item::Interface(self.lower_interface(v)),
             syn::Item::ValuetypeValue(_) => todo!(),
             // syn::Item::DeclValue(v) => Item::Decl(self.lower_decl(v)),
             syn::Item::BitsetValue(_) => return None,

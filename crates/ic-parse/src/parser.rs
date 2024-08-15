@@ -228,10 +228,11 @@ fn const_dcl() -> impl IdlParser<Item> {
 // InterCOM extension for complex constants
 fn complex_const_expr() -> impl IdlParser<Expr> {
     recursive(|state| {
-        // TODO: can be `{}` too?
         let basic = const_expr();
-        let named = ident()
-            .ignore_then(just(Kind::Eq))
+        let named = just(Kind::Period)
+            .or_not()
+            .then(ident())
+            .then(just(Kind::Eq))
             .ignore_then(state.clone());
 
         let complex = state

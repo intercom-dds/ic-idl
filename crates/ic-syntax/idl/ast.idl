@@ -599,8 +599,14 @@ case ITEM_DECL:
 };
 
 @nested
+struct NamedExpr {
+    @optional Ident ident;
+    Expr value;
+};
+
+@nested
 struct InitList {
-    sequence<Expr> values;
+    sequence<NamedExpr> values;
 };
 
 @nested

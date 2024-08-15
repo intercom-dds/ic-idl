@@ -165,6 +165,10 @@ pub enum Kind {
     #[token(",")]
     Comma,
 
+    /// `.`
+    #[token(".")]
+    Period,
+
     /// `:`
     #[token(":")]
     Colon,
@@ -349,6 +353,7 @@ impl fmt::Display for Kind {
             Kind::Eq => write!(f, "`=`"),
             Kind::Semi => write!(f, "`;`"),
             Kind::Comma => write!(f, "`,`"),
+            Kind::Period => write!(f, "`.`"),
             Kind::Less => write!(f, "`<`"),
             Kind::Greater => write!(f, "`>`"),
             Kind::LBrace => write!(f, "`{{`"),

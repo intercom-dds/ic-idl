@@ -273,7 +273,10 @@ pub struct ResolvedGraph {
     pub order: Vec<TypeId>,
 }
 
-pub fn lower_ast(ast: &[Item]) -> ResolvedGraph {
+pub fn lower_ast<I>(ast: I) -> ResolvedGraph
+where
+    I: IntoIterator<Item = ic_syntax::Item>,
+{
     let mut context = Context::new();
     let mut resolver = Resolver::default();
     let order = lower::from_ast(&mut context, ast);

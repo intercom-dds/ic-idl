@@ -163,12 +163,16 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 
         match ast {
             Ok(v) => {
-                // Lower the AST to a HIR
-                let hir = ic_hir::lower_ast(&v.tree);
-
-                // If lowering succeeded, lint the syntax tree and the HIR
+                // Lint the AST
                 let report = ic_lint::lint_syntax(&v.tree);
                 dbg!(&report);
+
+                if options.ast_dump {
+                    println!("{:#?}", v.tree);
+                }
+
+                // Lower the AST to a HIR
+                let hir = ic_hir::lower_ast(v.tree);
 
                 for diag in &report.diagnostics {
                     let mut buf = String::new();
@@ -178,10 +182,6 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 
                 if options.hir_dump {
                     println!("{hir:#?}");
-                }
-
-                if options.ast_dump {
-                    println!("{:#?}", v.tree);
                 }
             }
             Err(e) => {

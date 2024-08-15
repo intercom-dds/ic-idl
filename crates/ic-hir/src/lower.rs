@@ -405,7 +405,7 @@ impl<'a> Lower<'a> {
     // ID of the definition. When we encounter the definition, we will mutate
     // the existing entry. Once construction of the HIR is done, we'll check
     // that all types have been defined.
-    fn lower_decl(&mut self, symbol: &ic_syntax::Decl) -> TypeId {
+    fn lower_decl(&mut self, symbol: ic_syntax::Decl) -> TypeId {
         self.ctx.arena.alloc_with_id(|id| {
             Type::Decl(DeclTy {
                 ident: symbol.name.clone(),
@@ -414,12 +414,17 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_const(&mut self, symbol: &ic_syntax::ConstDef) -> ConstTy {
+    fn lower_const(&mut self, symbol: ic_syntax::ConstDef) -> ConstTy {
         let ty = self.ctx.resolve_type(&symbol.ty);
-        let value = self.eval_expr(&symbol.value);
+        let value = match symbol.value {
+            ic_syntax::Expr::InitList(v) => {
+                Numeric::InitList(v.iter().map(|v| self.eval_expr(v)).collect())
+            }
+            v => self.eval_expr(&v),
+        };
 
         ConstTy {
-            ident: symbol.name.clone(),
+            ident: symbol.name,
             span: symbol.span,
             ty,
             value,
@@ -428,7 +433,7 @@ impl<'a> Lower<'a> {
 
     // A typedef with multiple declarators will be expanded to multiple,
     // individual typedefs, each with one declarator.
-    fn lower_alias(&mut self, symbol: &ic_syntax::Typedef) -> TypeId {
+    fn lower_alias(&mut self, symbol: ic_syntax::Typedef) -> TypeId {
         let ty = self.ctx.resolve_type(&symbol.ty);
         let id = self.ctx.arena.alloc_with_id(|id| {
             Type::Alias(AliasTy {
@@ -443,17 +448,17 @@ impl<'a> Lower<'a> {
         id
     }
 
-    fn lower_mod(&mut self, symbol: &ic_syntax::ModuleDef) -> ModuleTy {
+    fn lower_mod(&mut self, symbol: ic_syntax::ModuleDef) -> ModuleTy {
         let definitions = symbol
             .definitions
-            .iter()
+            .into_iter()
             .filter_map(|v| self.lower_item(v))
             .collect();
 
         // self.ctx.items.alloc_with_id(|id| {
         ModuleTy {
             // id,
-            ident: symbol.name.clone(),
+            ident: symbol.name,
             span: symbol.span,
             definitions,
         }
@@ -462,7 +467,7 @@ impl<'a> Lower<'a> {
 
     // Members with multiple declarators are expanded into multiple members,
     // each with a single declarator.
-    fn lower_struct(&mut self, symbol: &ic_syntax::StructDef) -> TypeId {
+    fn lower_struct(&mut self, symbol: ic_syntax::StructDef) -> TypeId {
         let mut members = vec![];
         for mem in &symbol.members {
             assert!(
@@ -492,15 +497,15 @@ impl<'a> Lower<'a> {
                 flags: TyFlags::nil(),
             })
         });
-        self.register_type(symbol.name.name.clone(), id);
+        self.register_type(symbol.name.name, id);
         id
     }
 
-    fn lower_except(&mut self, _: &ic_syntax::ExceptDef) -> TypeId {
+    fn lower_except(&mut self, _: ic_syntax::ExceptDef) -> TypeId {
         todo!()
     }
 
-    fn lower_union(&mut self, symbol: &ic_syntax::UnionDef) -> TypeId {
+    fn lower_union(&mut self, symbol: ic_syntax::UnionDef) -> TypeId {
         let disc = hir::Discriminator {
             ty: self.ctx.resolve_type(&symbol.disc.ty),
             span: ic_syntax::util::ty_span(&symbol.disc.ty),
@@ -532,7 +537,7 @@ impl<'a> Lower<'a> {
         self.ctx.arena.alloc_with_id(|id| {
             Type::Union(UnionTy {
                 id,
-                ident: symbol.name.clone(),
+                ident: symbol.name,
                 span: symbol.span,
                 disc,
                 variants,
@@ -540,12 +545,12 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_bitmask(&mut self, symbol: &ic_syntax::BitmaskDef) -> TypeId {
+    fn lower_bitmask(&mut self, symbol: ic_syntax::BitmaskDef) -> TypeId {
         let bits = symbol.bits.iter().cloned().map(|v| (v.name, 0)).collect();
         self.ctx.arena.alloc_with_id(|id| {
             Type::Bitmask(BitmaskTy {
                 id,
-                ident: symbol.name.clone(),
+                ident: symbol.name,
                 span: symbol.span,
                 ty: PrimitiveTy::UInt32,
                 bits,
@@ -553,7 +558,7 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_enum(&mut self, symbol: &ic_syntax::EnumDef) -> TypeId {
+    fn lower_enum(&mut self, symbol: ic_syntax::EnumDef) -> TypeId {
         let mut last_value = 0;
         let mut enumerators = vec![];
 
@@ -574,7 +579,7 @@ impl<'a> Lower<'a> {
         self.ctx.arena.alloc_with_id(|id| {
             Type::Enum(EnumTy {
                 id,
-                ident: symbol.name.clone(),
+                ident: symbol.name,
                 span: symbol.span,
                 ty: PrimitiveTy::UInt32,
                 enumerators,
@@ -582,7 +587,7 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_item2(&mut self, item: &ic_syntax::Item) -> Option<Item> {
+    fn lower_item2(&mut self, item: ic_syntax::Item) -> Option<Item> {
         use ic_syntax as syn;
 
         Some(match item {
@@ -593,16 +598,18 @@ impl<'a> Lower<'a> {
             syn::Item::EnumValue(v) => Item::Adt(self.lower_enum(v)),
             syn::Item::ConstValue(v) => Item::Const(self.lower_const(v)),
             syn::Item::TypedefValue(v) => Item::Adt(self.lower_alias(v)),
+            syn::Item::ExceptionValue(v) => Item::Adt(self.lower_except(v)),
             // syn::Item::InterfaceValue(v) => Item::Interface(self.lower_interface(v)),
             syn::Item::ValuetypeValue(_) => todo!(),
             // syn::Item::DeclValue(v) => Item::Decl(self.lower_decl(v)),
+            syn::Item::BitmaskValue(v) => Item::Adt(self.lower_bitmask(v)),
             syn::Item::BitsetValue(_) => return None,
-            _ => todo!(),
+            _ => return None,
         })
     }
 
     // TODO: implement as visitor instead?
-    fn lower_item(&mut self, item: &ic_syntax::Item) -> Option<TypeId> {
+    fn lower_item(&mut self, item: ic_syntax::Item) -> Option<TypeId> {
         use ic_syntax::Item;
 
         let ty = match item {
@@ -699,7 +706,10 @@ fn all_unique(types: &[TypeId]) -> bool {
     unique.len() == types.len()
 }
 
-pub fn from_ast(ctx: &mut Context, ast: &[ic_syntax::Item]) -> Vec<TypeId> {
+pub fn from_ast<I>(ctx: &mut Context, ast: I) -> Vec<TypeId>
+where
+    I: IntoIterator<Item = ic_syntax::Item>,
+{
     let mut state = Lower::with_ctx(ctx);
     for item in ast {
         state.lower_item2(item);

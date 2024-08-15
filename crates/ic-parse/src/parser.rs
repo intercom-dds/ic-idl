@@ -790,9 +790,11 @@ fn interface_forward_dcl() -> impl IdlParser<Item> {
 
 // Rule 76
 fn interface_header() -> impl IdlParser<((Option<Span>, Ident), Vec<Path>)> {
-    interface_kind()
-        .then(ident())
-        .then(interface_inheritance_spec())
+    interface_kind().then(ident()).then(
+        interface_inheritance_spec()
+            .or_not()
+            .map(Option::unwrap_or_default),
+    )
 }
 
 // Rule 77 with the rule 121 extension

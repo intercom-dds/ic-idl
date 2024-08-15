@@ -41,8 +41,11 @@ use logos::{Lexer, Logos};
 #[derive(Logos, Clone, Debug, PartialEq, DiscHash)]
 #[logos(skip r"[ \t\r\n\f]+")]
 #[logos(skip r"//[^@][^\r\n]*")]
+#[logos(skip r"/\*[^*!]([^*]|\*[^\/])+\*/")]
 #[logos(subpattern digits = "[0-9][_0-9]*")]
 #[logos(subpattern ident = r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
+#[logos(subpattern block = r#"/\*[\*!]([^*]|\*[^\/])+\*/"#)]
+#[logos(subpattern comment = r#"//[/!][^\r\n]*"#)]
 pub enum Kind {
     #[token("any")]
     Any,
@@ -290,7 +293,7 @@ pub enum Kind {
     Char(Option<char>),
 
     // Preserve documentation comments
-    #[regex(r"//[/!][^\r\n]*", to_owned, priority = 7)]
+    #[regex(r"(?&comment)|(?&block)", to_owned, priority = 7)]
     Comment(String),
 
     /// Fallback for invalid tokens
@@ -307,8 +310,8 @@ impl fmt::Display for Kind {
             Kind::Const => write!(f, "const"),
             Kind::Module => write!(f, "module"),
             Kind::Ident(_) => write!(f, "identifier"),
-            Kind::Case => write!(f, "case label"),
-            Kind::Default => write!(f, "default label"),
+            Kind::Case => write!(f, "case"),
+            Kind::Default => write!(f, "default"),
             Kind::Any => write!(f, "any"),
             Kind::Bitset => write!(f, "bitset"),
             Kind::Bitfield => write!(f, "bitfield"),

@@ -77,6 +77,10 @@ pub struct Options {
     #[option(short = 'Z', arg = "flag")]
     pub unstable: Vec<String>,
 
+    /// Dump out the IDL tokens
+    #[option(long)]
+    pub token_dump: bool,
+
     /// Dump out the AST exactly as it was parsed
     #[option(long)]
     pub ast_dump: bool,

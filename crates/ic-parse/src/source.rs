@@ -33,5 +33,6 @@
 //     pub file: Arena<&'a str>,
 //     pub span: Span,
 // }
-//
-// pub struct SourceMap {}
+
+#[derive(Debug, Default)]
+pub struct SourceMap {}

@@ -157,24 +157,28 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
         };
         let ast = ic_parse::from_str(&input);
 
+        if options.token_dump {
+            println!("{:#?}", ic_parse::lexer::scan(&input));
+        }
+
         match ast {
             Ok(v) => {
-                // Lower the AST to a HIR
-                let hir = ic_hir::lower_ast(&v.tree);
-
-                // If lowering succeeded, lint the syntax tree and the HIR
-                let report = ic_lint::lint_syntax(&v.tree);
-                dbg!(&report);
-
-                for diag in &report.diagnostics {
-                    let mut buf = String::new();
-                    ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
-                    eprintln!("{buf}");
-                }
-
-                if options.hir_dump {
-                    println!("{hir:#?}");
-                }
+                // // Lower the AST to a HIR
+                // let hir = ic_hir::lower_ast(&v.tree);
+                //
+                // // If lowering succeeded, lint the syntax tree and the HIR
+                // let report = ic_lint::lint_syntax(&v.tree);
+                // dbg!(&report);
+                //
+                // for diag in &report.diagnostics {
+                //     let mut buf = String::new();
+                //     ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
+                //     eprintln!("{buf}");
+                // }
+                //
+                // if options.hir_dump {
+                //     println!("{hir:#?}");
+                // }
 
                 if options.ast_dump {
                     println!("{:#?}", v.tree);

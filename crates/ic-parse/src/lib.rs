@@ -79,6 +79,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_syntax::{Item, Span};
 use lexer::{Kind, Token};
+use source::SourceMap;
 
 pub mod lexer;
 pub mod source;
@@ -88,6 +89,7 @@ mod parser;
 #[derive(Debug)]
 pub struct ParseResult {
     pub tree: Vec<Item>,
+    pub sources: SourceMap,
 }
 
 #[derive(Clone, Debug)]
@@ -160,7 +162,10 @@ pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
         .parse(tokens)
         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
 
-    Ok(ParseResult { tree })
+    Ok(ParseResult {
+        tree,
+        sources: SourceMap::default(),
+    })
 }
 
 /// Constructs an AST from the given token iterator.
@@ -180,5 +185,8 @@ where
         .parse(stream)
         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
 
-    Ok(ParseResult { tree })
+    Ok(ParseResult {
+        tree,
+        sources: SourceMap::default(),
+    })
 }

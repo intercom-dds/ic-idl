@@ -86,6 +86,7 @@ struct LitBool {
     boolean value;
 };
 
+@nested
 union LiteralValue switch(LitKind) {
 case LIT_BOOL:
      LitBool bool;
@@ -257,22 +258,16 @@ struct Stmt {
 };
 
 enum AnnotationFieldKind {
-    FIELD_ENUM,
-    FIELD_BITMASK,
-    FIELD_CONST,
-    FIELD_ARG
+    FIELD_DEFINITION,
+    FIELD_MEMBER
 };
 
 @nested
 union AnnotationField switch(AnnotationFieldKind) {
-case FIELD_ENUM:
-    @external EnumDef _enum;
-case FIELD_BITMASK:
-    @external BitmaskDef _bitmask;
-case FIELD_CONST:
-    @external ConstDef _const;
-case FIELD_ARG:
-    @external Field arg;
+case FIELD_DEFINITION:
+    @external Item item;
+case FIELD_MEMBER:
+    @external Field member;
 };
 
 @nested
@@ -694,6 +689,7 @@ enum InterfaceMemberKind {
     INTERFACE_ITEM
 };
 
+@nested
 union InterfaceMember switch(InterfaceMemberKind) {
 case INTERFACE_ATTRIBUTE:
     /// An interface attribute.

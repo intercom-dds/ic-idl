@@ -30,10 +30,11 @@
 use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_syntax::{
-    AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind, Declarator,
-    Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident, InterfaceMember, Item,
-    Label, LitKind, Literal, MapType, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType,
-    Span, StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
+    AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind,
+    Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident,
+    InterfaceMember, Item, Label, LitKind, Literal, MapType, Op, OpKind, Param, ParamKind, Path,
+    Prototype, SequenceType, Span, StringType, Type, Unary, UnionElement, UnionField, UnionMember,
+    UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -1208,22 +1209,25 @@ fn annotation_header() -> impl IdlParser<Ident> {
 }
 
 // Rule 221
-fn annotation_body() -> impl IdlParser<Vec<()>> {
-    let defs = choice((
-        annotation_member(),
-        enum_dcl().ignored(),
-        const_dcl().ignored(),
-        typedef_dcl().ignored(),
-    ));
-    defs.repeated()
+fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
+    choice((
+        annotation_member().map(|v| AnnotationField::Arg(Box::new(v))),
+        // enum_dcl().map(|v| AnnotationField::Enum(Box::new(v))),
+        // const_dcl().map(|v| AnnotationField::Const(Box::new(v))),
+        // typedef_dcl().map(|v| AnnotationField::Alias(Box::new(v))),
+    ))
+    .repeated()
 }
 
 // Rule 222
-fn annotation_member() -> impl IdlParser<()> {
+fn annotation_member() -> impl IdlParser<Field> {
     let param = annotation_member_type().then(simple_declarator());
-    let default = just(Kind::Default).then(ident()).ignored();
-    let body = param.then(default.or_not()).ignored();
-    body.then(just(Kind::Semi)).ignored()
+    let default = just(Kind::Default).ignore_then(ident());
+    let def = param.then(default.or_not()).then_ignore(just(Kind::Semi));
+    def.map(|((ty, decl), _default)| Field {
+        names: vec![decl],
+        ty,
+    })
 }
 
 // Rule 223

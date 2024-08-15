@@ -113,6 +113,19 @@ fn line_span(input: &str, offset: usize) -> Range<usize> {
     Range { start, end }
 }
 
+/// If the given span contains a newline, it will truncate the span to the
+/// first line.
+fn line_or_span(input: &str, span: &Range<usize>) -> Range<usize> {
+    let end = input[span.start..span.end]
+        .find('\n')
+        .map_or(span.end, |v| span.start + v);
+
+    Range {
+        start: span.start,
+        end,
+    }
+}
+
 struct Formatter<'a> {
     filename: Option<&'a str>,
     source: &'a str,
@@ -196,10 +209,10 @@ impl<'a> Formatter<'a> {
             // Determine the indentation needed to reach the highlighted region
             let indent = " ".repeat(label.span.start.saturating_sub(last_idx));
 
-            // Emit the highlight
-            let len = self.source[label.span.start..label.span.end]
-                .chars()
-                .count();
+            // Emit the highlight. If the label spans multiple lines, we
+            // should only emit highlights for the first line.
+            let line = line_or_span(&self.source, &label.span);
+            let len = self.source[line].chars().count();
 
             write!(
                 f,

@@ -51,6 +51,14 @@ macro_rules! error {
     }}
 }
 
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => {{
+        use ic_cli::color::Colorize as _;
+        eprintln!("{} {}", "warning:".yellow().bold(), format!($($arg)*));
+    }}
+}
+
 fn main() {
     let result = Options::command()
         .section("backends", CodegenOptions::command())

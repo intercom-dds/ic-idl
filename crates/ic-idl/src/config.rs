@@ -33,7 +33,7 @@ use ic_cli::{convert, Command};
 
 intercom_cts::bitmask! {
     #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-    pub WarningBits: u32 {
+    pub Warnings: u32 {
         DEPRECATED = 1 << 0,
         ANNOTATION = 1 << 1,
         UNKNOWN_ANNOTATION = 1 << 2,
@@ -71,7 +71,7 @@ pub struct Options {
 
     /// Enable the specified warning, see `-W help` for details
     #[option(short = 'W', long, arg = "lint")]
-    pub warn: Vec<String>,
+    pub warn: Warnings,
 
     /// Unstable flags, see `-Z help` for details
     #[option(short = 'Z', arg = "flag")]
@@ -167,9 +167,9 @@ pub struct Unstable {
     pub ptree_json: bool,
 }
 
-impl convert::Convert for WarningBits {
+impl convert::Convert for Warnings {
     fn from_result(input: &[String]) -> convert::Result<Self> {
-        let mut bits = WarningBits::nil();
+        let mut bits = Warnings::nil();
 
         for arg in input {
             let (arg, is_negated) = if let Some(arg) = arg.strip_prefix("no-") {
@@ -179,20 +179,21 @@ impl convert::Convert for WarningBits {
             };
 
             let bit = match arg {
-                "deprecated" => WarningBits::DEPRECATED,
-                "annotation" => WarningBits::ANNOTATION,
-                "unknown-annotation" => WarningBits::UNKNOWN_ANNOTATION,
-                "pedantic" => WarningBits::PEDANTIC,
-                "ERROR" => WarningBits::ERROR,
-                _ => Err(convert::ConvertError::InvalidValue(format!(
-                    "unknown warning '{arg}'"
-                )))?,
+                "deprecated" => Warnings::DEPRECATED,
+                "annotation" => Warnings::ANNOTATION,
+                "unknown-annotation" => Warnings::UNKNOWN_ANNOTATION,
+                "pedantic" => Warnings::PEDANTIC,
+                "error" => Warnings::ERROR,
+                _ => {
+                    warn!("unknown warning '{arg}'");
+                    continue;
+                }
             };
 
             if is_negated {
-                bits.set(bit);
-            } else {
                 bits.unset(bit);
+            } else {
+                bits.set(bit);
             }
         }
         Ok(bits)

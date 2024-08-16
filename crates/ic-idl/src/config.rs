@@ -31,6 +31,8 @@ use std::path::{Path, PathBuf};
 
 use ic_cli::{convert, Command};
 
+use crate::warn;
+
 intercom_cts::bitmask! {
     #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
     pub Warnings: u32 {
@@ -179,6 +181,7 @@ impl convert::Convert for Warnings {
             };
 
             let bit = match arg {
+                "all" => Warnings::all(),
                 "deprecated" => Warnings::DEPRECATED,
                 "annotation" => Warnings::ANNOTATION,
                 "unknown-annotation" => Warnings::UNKNOWN_ANNOTATION,

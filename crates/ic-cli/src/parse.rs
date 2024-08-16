@@ -255,7 +255,3 @@ where
     parser.parse(cmd)?;
     Ok(parser.result)
 }
-
-pub fn from_env(cmd: &mut CommandLine) -> Result<ParseResult, ParseError> {
-    from_args(std::env::args().skip(1), cmd)
-}

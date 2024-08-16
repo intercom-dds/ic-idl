@@ -34,7 +34,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context};
 use config::{CodegenOptions, Options, Unstable};
 use ic_cli::color::Colorize;
-use ic_cli::Command;
+use ic_cli::{Command, ParseError};
 use ic_ptree::ParseResult;
 // use ic_preproc::preprocess;
 
@@ -54,7 +54,18 @@ macro_rules! error {
 fn main() {
     let result = Options::command()
         .section("backends", CodegenOptions::command())
-        .parse();
+        .try_parse();
+
+    let result = match result {
+        Ok(v) => v,
+        Err(e) => {
+            match e {
+                ParseError::Help(v) => println!("{v}"),
+                ParseError::Status(v) => error!("{v}"),
+            }
+            std::process::exit(1);
+        }
+    };
 
     let options = Options {
         codegen: CodegenOptions::from_result(&result),

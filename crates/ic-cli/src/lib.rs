@@ -185,19 +185,18 @@ impl CommandLine {
     ///
     /// May fail due to syntax errors in the input.
     pub fn try_parse(self) -> Result<ParseResult, ParseError> {
-        parse::from_env(&mut self.default_opts())
+        self.try_parse_args(std::env::args().skip(1))
     }
 
     pub fn parse(self) -> ParseResult {
         self.parse_args(std::env::args().skip(1))
     }
 
-    pub fn parse_args<I>(mut self, iter: I) -> ParseResult
+    pub fn parse_args<I>(self, iter: I) -> ParseResult
     where
         I: Iterator<Item = String>,
     {
-        self = self.default_opts();
-        let result = match parse::from_args(iter, &mut self) {
+        match self.try_parse_args(iter) {
             Ok(v) => v,
             Err(e) => {
                 match e {
@@ -209,14 +208,22 @@ impl CommandLine {
                 };
                 std::process::exit(1);
             }
-        };
+        }
+    }
+
+    pub fn try_parse_args<I>(mut self, iter: I) -> Result<ParseResult, ParseError>
+    where
+        I: Iterator<Item = String>,
+    {
+        self = self.default_opts();
+        let result = parse::from_args(iter, &mut self)?;
 
         if !self.subcommands.is_empty() && result.subcommand().is_none() {
-            println!("{}", self.help());
-            std::process::exit(0);
+            Err(ParseError::Help(self.help()))
+        } else {
+            Self::validate(&result);
+            Ok(result)
         }
-        Self::validate(&result);
-        result
     }
 
     #[must_use]

@@ -41,18 +41,18 @@ struct EntityId_t {
 @final @nested
 struct GUID_t {
     GuidPrefix_t guid_prefix;
-    EntityId_t   entity_id;
+    EntityId_t entity_id;
 };
 
 @final @nested
 struct SequenceNumber_t {
-    long          high;
+    long high;
     unsigned long low;
 };
 
 @final @nested
 struct SampleIdentity_t {
-    GUID_t      writer_guid;
+    GUID_t writer_guid;
     SequenceNumber_t sequence_number;
 };
 

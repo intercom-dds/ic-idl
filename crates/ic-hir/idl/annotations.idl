@@ -32,6 +32,9 @@
 
 #pragma once
 
+module intercom {
+module annotations {
+
 @annotation id {
     unsigned long value;
 };
@@ -153,7 +156,6 @@
     string qosprofile default "";
     string partition default "";
     long long domain default -1;
-    string udpmessage default "";
     string platform default "*";
 };
 
@@ -359,3 +361,5 @@ module ext {
         string name;
     };
 }; // module ext
+}; // module annotations
+}; // module intercom

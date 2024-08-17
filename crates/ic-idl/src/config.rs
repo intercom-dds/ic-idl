@@ -64,16 +64,20 @@ pub struct Options {
     #[option(long)]
     pub purge_dirs: bool,
 
+    /// Do not parse Doxy-like comments
+    #[option(long)]
+    pub ignore_comments: bool,
+
     /// Add directory to include search paths
     #[option(short = 'I', long, arg = "dir")]
     pub include: Vec<String>,
 
-    /// Define <def> to <val> (or 1 if <val> is omitted)
+    /// Define preprocessor directive <def> to <val>
     #[option(short = 'D', long, arg = "def>=<val")]
     pub define: Vec<String>,
 
     /// Enable the specified warning, see `-W help` for details
-    #[option(short = 'W', long, arg = "lint")]
+    #[option(short = 'W', arg = "lint")]
     pub warn: Warnings,
 
     /// Unstable flags, see `-Z help` for details
@@ -89,6 +93,33 @@ pub struct Options {
 
     // #[section = "backends"]
     pub codegen: CodegenOptions,
+}
+
+#[derive(Command, Default)]
+pub struct CppOptions {
+    /// Do not generate ostream operators for serialization
+    #[option(long)]
+    no_stream_op: bool,
+
+    /// Generate includes compatible with other vendors
+    #[option(long)]
+    vendor_compatibility: bool,
+
+    /// Use UTF-8 string types
+    #[option(long)]
+    string_utf8: bool,
+
+    /// Use CORBA string, sequence and array types
+    #[option(long)]
+    corba_types: bool,
+
+    /// Use std::wstring for wide-character strings
+    #[option(long)]
+    use_wstring: bool,
+
+    /// Generate formatting specializations for fmtlib
+    #[option(long)]
+    use_fmt: bool,
 }
 
 #[derive(Command, Default)]
@@ -139,7 +170,7 @@ pub struct CodegenOptions {
     pub xml_out: Option<PathBuf>,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct Unstable {
     /// Dump out the AST exactly as it was parsed
     #[option(long)]

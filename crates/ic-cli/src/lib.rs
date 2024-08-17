@@ -275,18 +275,23 @@ impl CommandLine {
 
         {
             // Group options by their section
-            let mut sections = HashMap::<_, Vec<_>>::new();
+            // let mut sections = HashMap::<_, Vec<_>>::new();
+            let mut sections = IndexMap::<_, Vec<_>>::new();
             let options = self.options.values().iter();
             for opt in options {
                 if let Some(v) = &opt.section {
-                    sections.entry(v.to_string()).or_default().push(opt);
+                    if let Some(v) = sections.get_mut(v) {
+                        v.push(opt);
+                    } else {
+                        sections.insert(vec![v.to_string()], vec![opt]);
+                    }
                 }
             }
 
-            for section in sections {
+            for section in sections.iter() {
                 let flags = self.format_args(|v| {
                     if let Some(name) = &v.section {
-                        *name == section.0
+                        name == section.0
                     } else {
                         false
                     }

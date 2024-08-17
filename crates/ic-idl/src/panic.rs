@@ -28,7 +28,7 @@
 use std::panic::PanicHookInfo;
 use std::{backtrace, panic};
 
-use ic_cli::color::Colorize;
+use crate::error;
 
 fn dump_backtrace(info: &PanicHookInfo) {
     let thread = std::thread::current();
@@ -43,17 +43,16 @@ fn dump_backtrace(info: &PanicHookInfo) {
             .map_or("<null>", |s| &**s),
     };
 
-    eprint!("{} ", "error:".red().bold());
     match info.location() {
         Some(loc) => {
-            eprintln!(
+            error!(
                 "thread '{thread}' panicked at '{msg}', {}:{}",
                 loc.file(),
                 loc.line(),
             );
         }
         None => {
-            eprintln!("thread '{thread}' panicked at '{msg}'");
+            error!("thread '{thread}' panicked at '{msg}'");
         }
     }
 

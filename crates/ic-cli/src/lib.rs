@@ -275,7 +275,6 @@ impl CommandLine {
 
         {
             // Group options by their section
-            // let mut sections = HashMap::<_, Vec<_>>::new();
             let mut sections = IndexMap::<_, Vec<_>>::new();
             let options = self.options.values().iter();
             for opt in options {

@@ -68,6 +68,10 @@ pub struct Options {
     #[option(long)]
     pub ignore_comments: bool,
 
+    /// Do not rename generated types
+    #[option(long)]
+    pub no_rename: bool,
+
     /// Add directory to include search paths
     #[option(short = 'I', long, arg = "dir")]
     pub include: Vec<String>,
@@ -97,6 +101,10 @@ pub struct Options {
 
 #[derive(Command, Default)]
 pub struct CppOptions {
+    /// Use access functions instead of direct member access
+    #[option(long)]
+    access_functions: bool,
+
     /// Do not generate ostream operators for serialization
     #[option(long)]
     no_stream_op: bool,
@@ -120,6 +128,22 @@ pub struct CppOptions {
     /// Generate formatting specializations for fmtlib
     #[option(long)]
     use_fmt: bool,
+
+    /// Use dllexp symbol
+    #[option(long, arg = "sym")]
+    dll_export: Option<String>,
+
+    /// Use postfix for C++ headers
+    #[option(long, arg = "postfix")]
+    header_postfix: Option<String>,
+
+    /// Append file prefix for C++ files
+    #[option(long, arg = "prefix")]
+    file_perfix: Option<String>,
+
+    /// Store header files inside a subfolder
+    #[option(long, arg = "dir")]
+    header_subfolder: Option<String>,
 }
 
 #[derive(Command, Default)]

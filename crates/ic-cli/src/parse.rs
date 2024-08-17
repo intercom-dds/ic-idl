@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::color::Colorize;
 use crate::index::IndexMap;
 use crate::{CommandLine, Opt, Value};
 
@@ -154,7 +155,7 @@ where
             if context.positionals {
                 self.result().positionals.push(arg.to_string());
             } else {
-                return Err(format!("unexpected value: '{arg}'").into());
+                return Err(format!("unexpected value: '{}'", arg.yellow()).into());
             }
         } else if let Some(cmd) = context
             .subcommands
@@ -166,7 +167,7 @@ where
             self.result().subcommand = Some(Box::new(result));
             self.parse(cmd)?;
         } else {
-            return Err(format!("unknown subcommand '{arg}'").into());
+            return Err(format!("unknown subcommand '{}'", arg.yellow()).into());
         }
         Ok(())
     }
@@ -175,10 +176,10 @@ where
         let arg = self
             .iter
             .next()
-            .ok_or_else(|| format!("argument to '{name}' is missing"))?;
+            .ok_or_else(|| format!("argument to '{}' is missing", name.yellow()))?;
 
         if arg.starts_with('-') {
-            Err(format!("expected value, found '{arg}'").into())
+            Err(format!("expected value, found '{}'", arg.yellow()).into())
         } else {
             Ok(arg)
         }
@@ -190,10 +191,9 @@ where
         name: &str,
         value: Option<String>,
     ) -> Result<(), ParseError> {
-        let opt = context
-            .options
-            .get_mut(name)
-            .ok_or_else(|| format!("unknown option '{name}'"))?;
+        let Some(opt) = context.options.get_mut(name) else {
+            return Err(did_you_mean(name, context.options.values()));
+        };
 
         if name == "h" || name == "help" {
             return Err(ParseError::Help(context.help()));
@@ -254,4 +254,76 @@ where
     };
     parser.parse(cmd)?;
     Ok(parser.result)
+}
+
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+
+    let len_a = a.len();
+    let len_b = b.len();
+    let mut column = vec![0; len_a];
+
+    for i in 0..=len_a {
+        column.push(i);
+    }
+
+    for x in 1..=len_b {
+        column[0] = x;
+        let mut last_diag = x.saturating_sub(1);
+
+        for y in 1..=len_a {
+            let old_diag = column[y];
+            let eq = a[y - 1] != b[x - 1];
+            let ins_cost = column[y] + 1;
+            let sub_cost = column[y - 1] + 1;
+            let del_cost = last_diag + eq as usize;
+
+            let min = ins_cost.min(sub_cost);
+            column[y] = min.min(del_cost);
+            last_diag = old_diag;
+        }
+    }
+    column[len_a]
+}
+
+fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
+    let mut min = usize::MAX;
+    let mut closest = None;
+
+    let iter = options
+        .iter()
+        .map(|v| v.tokens.iter())
+        .flatten()
+        .map(|v| v.as_str())
+        .filter(|v| v.len() > 1);
+
+    for tok in iter {
+        let dist = levenshtein(input, &tok);
+        if dist < min {
+            min = dist;
+
+            let len = input.len();
+            let range = (2 * tok.len()).saturating_div(3);
+            let suggested = tok.len();
+
+            if min <= range && suggested - range <= len && len <= suggested + range {
+                closest = Some(tok);
+            }
+        }
+    }
+    closest
+}
+
+fn did_you_mean<'a>(input: &str, options: &'a [Opt]) -> ParseError {
+    let err = if let Some(v) = closest_match(input, options) {
+        format!(
+            "unknown option '{}', did you mean '{}'?",
+            input.yellow(),
+            v.yellow(),
+        )
+    } else {
+        format!("unknown option '{}'", input.yellow())
+    };
+    ParseError::Status(err)
 }

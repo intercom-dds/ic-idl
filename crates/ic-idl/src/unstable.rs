@@ -30,7 +30,7 @@ use ic_cli::Command;
 
 use crate::config::Unstable;
 
-fn unstable_help() {
+pub fn unstable_help() -> ! {
     let command = Unstable::command();
     let flags = command.format_args(|_| true).join("\n");
 
@@ -41,9 +41,5 @@ fn unstable_help() {
         "{} unstable flags may change at any time in backward-incompatible ways",
         "warning:".yellow(),
     );
-}
-
-pub fn parse(_: &[String]) {
-    unstable_help();
-    std::process::exit(1);
+    std::process::exit(0);
 }

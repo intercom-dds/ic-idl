@@ -25,7 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::struct_excessive_bools)]
+#![allow(
+    clippy::struct_excessive_bools,
+    clippy::print_stdout,
+    clippy::print_stderr
+)]
 
 use std::collections::HashMap;
 use std::env;
@@ -202,7 +206,7 @@ impl CommandLine {
                 match e {
                     ParseError::Help(msg) => println!("{msg}"),
                     ParseError::Status(msg) => {
-                        let error = "error:".red();
+                        let error = "error:".red().bold();
                         eprintln!("{error} {msg}");
                     }
                 };
@@ -390,7 +394,7 @@ impl CommandLine {
         for opt in result.options.values() {
             if let Some(token) = opt.tokens.last() {
                 if opt.required && result.get_vec(token).is_none() {
-                    let error = "error:".red();
+                    let error = "error:".red().bold();
                     eprintln!("{error} required option '{token}' was not specified");
                     std::process::exit(1);
                 }

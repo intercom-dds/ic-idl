@@ -64,7 +64,7 @@ pub fn convert_exit<T: Convert>(input: &[String]) -> T {
     match T::from_result(input) {
         Ok(v) => v,
         Err(e) => {
-            let err = "error:".red();
+            let err = "error:".red().bold();
             eprintln!("{err} {e}");
             std::process::exit(1);
         }

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused)]
+#![allow(unused, clippy::print_stdout, clippy::print_stderr)]
 
 use std::collections::HashSet;
 use std::io;
@@ -35,6 +35,7 @@ use anyhow::{bail, Context};
 use config::{CodegenOptions, Options, Unstable};
 use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
+use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
 // use ic_preproc::preprocess;
 
@@ -44,6 +45,7 @@ mod panic;
 mod pretty;
 mod unstable;
 
+#[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => {{
         use ic_cli::color::Colorize as _;
@@ -66,11 +68,12 @@ fn main() {
 
     let result = match result {
         Ok(v) => v,
-        Err(e) => {
-            match e {
-                ParseError::Help(v) => println!("{v}"),
-                ParseError::Status(v) => error!("{v}"),
-            }
+        Err(ParseError::Help(v)) => {
+            println!("{v}");
+            return;
+        }
+        Err(ParseError::Status(v)) => {
+            error!("{v}");
             std::process::exit(1);
         }
     };
@@ -82,11 +85,6 @@ fn main() {
 
     if options.version {
         println!("{}", info::version());
-        return;
-    }
-
-    if !options.unstable.is_empty() {
-        unstable::parse(&options.unstable);
         return;
     }
 
@@ -176,7 +174,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
         };
         let ast = ic_parse::from_str(&input);
 
-        if options.token_dump {
+        if options.unstable.token_dump {
             println!("{:#?}", ic_parse::lexer::scan(&input));
         }
 
@@ -186,7 +184,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 let report = ic_lint::lint_syntax(&v.tree);
                 dbg!(&report);
 
-                if options.ast_dump {
+                if options.unstable.ast_dump {
                     println!("{:#?}", v.tree);
                 }
 
@@ -199,7 +197,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                     eprintln!("{buf}");
                 }
 
-                if options.hir_dump {
+                if options.unstable.hir_dump {
                     println!("{hir:#?}");
                 }
             }
@@ -251,7 +249,7 @@ fn try_ptree(options: &Options) -> anyhow::Result<Vec<String>> {
 
     let merged = ic_ptree::merge_trees(&parsed);
 
-    if options.ast_dump {
+    if options.unstable.ast_dump {
         ic_ptree::ast_dump(&merged);
     }
 

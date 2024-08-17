@@ -29,7 +29,8 @@
 
 use std::path::{Path, PathBuf};
 
-use ic_cli::{convert, Command};
+use ic_cli::convert::{self, ConvertError};
+use ic_cli::Command;
 
 use crate::warn;
 
@@ -77,19 +78,7 @@ pub struct Options {
 
     /// Unstable flags, see `-Z help` for details
     #[option(short = 'Z', arg = "flag")]
-    pub unstable: Vec<String>,
-
-    /// Dump out the IDL tokens
-    #[option(long)]
-    pub token_dump: bool,
-
-    /// Dump out the AST exactly as it was parsed
-    #[option(long)]
-    pub ast_dump: bool,
-
-    /// Dump out the type-resolved IR
-    #[option(long)]
-    pub hir_dump: bool,
+    pub unstable: Unstable,
 
     /// Display version information
     #[option(short = 'V', long)]
@@ -152,21 +141,42 @@ pub struct CodegenOptions {
 
 #[derive(Command, Default)]
 pub struct Unstable {
-    /// Print the HIR in a tree-like format
-    #[option(long)]
-    pub hir_pretty: bool,
-
     /// Dump out the AST exactly as it was parsed
     #[option(long)]
     pub ast_dump: bool,
+
+    /// Dump out the type-resolved IR
+    #[option(long)]
+    pub hir_dump: bool,
 
     /// Print the ptree in a tree-like format
     #[option(long)]
     pub ptree_dump: bool,
 
-    /// Dump the ptree as JSON
+    /// Dump out the IDL tokens
     #[option(long)]
-    pub ptree_json: bool,
+    pub token_dump: bool,
+}
+
+impl convert::Convert for Unstable {
+    fn from_result(input: &[String]) -> convert::Result<Self> {
+        let mut this = Self::default();
+        for arg in input {
+            match arg.as_str() {
+                "ast-dump" => this.ast_dump = true,
+                "hir-dump" => this.hir_dump = true,
+                "ptree-dump" => this.ptree_dump = true,
+                "token-dump" => this.token_dump = true,
+                "help" => crate::unstable::unstable_help(),
+                _ => {
+                    return Err(ConvertError::InvalidValue(format!(
+                        "unknown unstable option '-Z{arg}'"
+                    )));
+                }
+            };
+        }
+        Ok(this)
+    }
 }
 
 impl convert::Convert for Warnings {
@@ -187,6 +197,7 @@ impl convert::Convert for Warnings {
                 "unknown-annotation" => Warnings::UNKNOWN_ANNOTATION,
                 "pedantic" => Warnings::PEDANTIC,
                 "error" => Warnings::ERROR,
+                "help" => todo!(),
                 _ => {
                     warn!("unknown warning '{arg}'");
                     continue;

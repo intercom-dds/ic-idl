@@ -80,7 +80,7 @@ pub struct Options {
     #[option(short = 'D', long, arg = "def>=<val")]
     pub define: Vec<String>,
 
-    /// Enable the specified warning, see `-W help` for details
+    /// Enable a warning, see `-W help` for details
     #[option(short = 'W', arg = "lint")]
     pub warn: Warnings,
 
@@ -137,13 +137,13 @@ pub struct CppOptions {
     #[option(long, arg = "postfix")]
     header_postfix: Option<String>,
 
-    /// Append file prefix for C++ files
-    #[option(long, arg = "prefix")]
-    file_perfix: Option<String>,
-
     /// Store header files inside a subfolder
     #[option(long, arg = "dir")]
     header_subfolder: Option<String>,
+
+    /// Add a filename prefix to generated files
+    #[option(long, arg = "prefix")]
+    file_prefix: Option<String>,
 }
 
 #[derive(Command, Default)]

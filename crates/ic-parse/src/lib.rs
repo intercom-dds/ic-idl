@@ -78,11 +78,10 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_syntax::{Item, Span};
+use ic_vfs::SourceMap;
 use lexer::{Kind, Token};
-use source::SourceMap;
 
 pub mod lexer;
-pub mod source;
 
 mod parser;
 

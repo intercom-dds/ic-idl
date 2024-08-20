@@ -37,6 +37,12 @@ union Expr;
 
 union InterfaceMember;
 
+struct Unary;
+
+struct Binary;
+
+struct NamedExpr;
+
 struct EnumDef;
 
 struct BitmaskDef;
@@ -148,12 +154,6 @@ struct Op {
     OpKind kind;
 };
 
-@nested
-struct Unary {
-    Op op;
-    Expr expr;
-};
-
 enum ExprKind {
     /// A single literal like `1` or `"foo"`
     EXPR_LITERAL,
@@ -172,10 +172,8 @@ enum ExprKind {
 };
 
 @nested
-struct Binary {
-    Expr lhs;
-    Op op;
-    Expr rhs;
+struct InitList {
+    sequence<NamedExpr> values;
 };
 
 @nested
@@ -190,6 +188,100 @@ case EXPR_BINARY:
     @external Binary binary;
 case EXPR_INIT_LIST:
     InitList init_list;
+};
+
+@nested
+struct NamedExpr {
+    @optional Ident ident;
+    Expr value;
+};
+
+@nested
+struct Unary {
+    Op op;
+    Expr expr;
+};
+
+@nested
+struct Binary {
+    Expr lhs;
+    Op op;
+    Expr rhs;
+};
+
+@nested
+struct AnyType {
+    Span span;
+};
+
+@nested
+struct SequenceType {
+    @external Type ty;
+    @optional Expr bound;
+    Span span;
+};
+
+@nested
+struct StringType {
+    boolean wide;
+    @optional Expr bound;
+    Span span;
+};
+
+@nested
+struct MapType {
+    @external Type key;
+    @external Type value;
+    @optional Expr bound;
+    Span span;
+};
+
+@nested
+struct Fixed {
+    Expr total;
+    Expr fractional;
+};
+
+@nested
+struct FixedType {
+    Span span;
+    @optional Fixed bounds;
+};
+
+enum TypeKind {
+    TYPE_ANY,
+    TYPE_SEQUENCE,
+    TYPE_STRING,
+    TYPE_MAP,
+    TYPE_FIXED,
+    TYPE_PATH
+};
+
+@nested
+union Type switch(TypeKind) {
+case TYPE_ANY:
+    /// The `any` type.
+    AnyType _any;
+
+case TYPE_SEQUENCE:
+    /// Sequence of another type, e.g. `sequence<string>`.
+    SequenceType _sequence;
+
+case TYPE_STRING:
+    /// A possibly bounded string.
+    StringType _string;
+
+case TYPE_MAP:
+    /// (key, value) pair of types, e.g. `map<string, string>`.
+    MapType _map;
+
+case TYPE_FIXED:
+    /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
+    FixedType _fixed;
+
+case TYPE_PATH:
+    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
+    Path path;
 };
 
 enum DeclaratorKind {
@@ -407,6 +499,7 @@ struct BitmaskDef : Stmt {
 @nested
 struct Bitfield : Stmt {
     Expr size;
+    @optional Type ty;
 };
 
 @nested
@@ -596,92 +689,6 @@ case ITEM_VALUETYPE:
 case ITEM_DECL:
     /// A forward declaration
     Decl decl_value;
-};
-
-@nested
-struct NamedExpr {
-    @optional Ident ident;
-    Expr value;
-};
-
-@nested
-struct InitList {
-    sequence<NamedExpr> values;
-};
-
-@nested
-struct AnyType {
-    Span span;
-};
-
-@nested
-struct SequenceType {
-    @external Type ty;
-    @optional Expr bound;
-    Span span;
-};
-
-@nested
-struct StringType {
-    boolean wide;
-    @optional Expr bound;
-    Span span;
-};
-
-@nested
-struct MapType {
-    @external Type key;
-    @external Type value;
-    @optional Expr bound;
-    Span span;
-};
-
-@nested
-struct Fixed {
-    Expr total;
-    Expr fractional;
-};
-
-@nested
-struct FixedType {
-    Span span;
-    @optional Fixed bounds;
-};
-
-enum TypeKind {
-    TYPE_ANY,
-    TYPE_SEQUENCE,
-    TYPE_STRING,
-    TYPE_MAP,
-    TYPE_FIXED,
-    TYPE_PATH
-};
-
-@nested
-union Type switch(TypeKind) {
-case TYPE_ANY:
-    /// The `any` type.
-    AnyType _any;
-
-case TYPE_SEQUENCE:
-    /// Sequence of another type, e.g. `sequence<string>`.
-    SequenceType _sequence;
-
-case TYPE_STRING:
-    /// A possibly bounded string.
-    StringType _string;
-
-case TYPE_MAP:
-    /// (key, value) pair of types, e.g. `map<string, string>`.
-    MapType _map;
-
-case TYPE_FIXED:
-    /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
-    FixedType _fixed;
-
-case TYPE_PATH:
-    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
-    Path path;
 };
 
 enum InterfaceMemberKind {

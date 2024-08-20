@@ -29,6 +29,7 @@
 
 use std::path::{Path, PathBuf};
 
+use ic_cli::color::Colorize;
 use ic_cli::convert::{self, ConvertError};
 use ic_cli::Command;
 
@@ -225,7 +226,8 @@ impl convert::Convert for Unstable {
                 "help" => crate::unstable::unstable_help(),
                 _ => {
                     return Err(ConvertError::InvalidValue(format!(
-                        "unknown unstable option '-Z{arg}'"
+                        "unknown unstable option '{}'",
+                        format!("-Z{arg}").yellow(),
                     )));
                 }
             };
@@ -254,7 +256,7 @@ impl convert::Convert for Warnings {
                 "error" => Warnings::ERROR,
                 "help" => todo!(),
                 _ => {
-                    warn!("unknown warning '{arg}'");
+                    warn!("unknown warning '{}'", format!("-W{arg}").yellow());
                     continue;
                 }
             };

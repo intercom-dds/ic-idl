@@ -198,9 +198,12 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                     eprintln!("{buf}");
                 }
 
-                if options.unstable.hir_dump {
-                    println!("{hir:#?}");
-                }
+                // if options.unstable.hir_dump {
+                //     println!("{hir:#?}");
+                // }
+
+                let ptree = ic_ptree::lower_ast(&v.tree);
+                try_ptree(&options, ptree)?;
             }
             Err(e) => {
                 pretty::emit_errors(&input, &e);
@@ -231,26 +234,26 @@ fn invoke<T>(
     Ok(backend(result, dir))
 }
 
-fn try_ptree(options: &Options) -> anyhow::Result<Vec<String>> {
-    let preprocessed = options
-        .files
-        .iter()
-        .map(|f| parse_file(options, f))
-        .collect::<Result<Vec<_>, _>>()?;
+fn try_ptree(options: &Options, merged: ParseResult) -> anyhow::Result<Vec<String>> {
+    // let preprocessed = options
+    //     .files
+    //     .iter()
+    //     .map(|f| parse_file(options, f))
+    //     .collect::<Result<Vec<_>, _>>()?;
 
-    if options.preprocessor_only {
-        println!("{}", preprocessed.join("\n"));
-        return Ok(vec![]);
-    }
+    // if options.preprocessor_only {
+    //     println!("{}", preprocessed.join("\n"));
+    //     return Ok(vec![]);
+    // }
 
-    let parsed = preprocessed
-        .iter()
-        .map(|v| ic_ptree::parse_idl(v))
-        .collect::<Result<Vec<_>, _>>()?;
+    // let parsed = preprocessed
+    //     .iter()
+    //     .map(|v| ic_ptree::parse_idl(v))
+    //     .collect::<Result<Vec<_>, _>>()?;
 
-    let merged = ic_ptree::merge_trees(&parsed);
+    // let merged = ic_ptree::merge_trees(&parsed);
 
-    if options.unstable.ast_dump {
+    if options.unstable.ptree_dump {
         ic_ptree::ast_dump(&merged);
     }
 

@@ -25,74 +25,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[workspace]
-resolver = "2"
-members = [
-    "crates/ic-alloc",
-    "crates/ic-cli",
-    "crates/ic-cli-derive",
-    "crates/ic-cmake",
-    "crates/ic-codegen-cxx",
-    "crates/ic-codegen-idl",
-    "crates/ic-codegen-protobuf",
-    "crates/ic-codegen-python",
-    "crates/ic-codegen-rust",
-    "crates/ic-diagnostic",
-    "crates/ic-emit",
-    "crates/ic-hir",
-    "crates/ic-idl",
-    "crates/ic-lint",
-    "crates/ic-macros",
-    "crates/ic-parse",
-    "crates/ic-preproc",
-    "crates/ic-ptree",
-    "crates/ic-syntax",
-    "crates/ic-vfs",
-    "tools/xtask",
-]
-exclude = [
-    "crates/ic-bootstrap",
-    "tools/bindgen",
-    "tools/explorer",
-    "tools/fuzz",
-    "tools/idlpp",
-]
-default-members = ["crates/ic-idl"]
-
-[workspace.package]
-rust-version = "1.80"
+[package]
+name = "idlpp"
+version = "0.0.0"
+edition = "2021"
 publish = false
 
-[workspace.dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "2.0"
-
-intercom-cts = { path = "library/rust/intercom-cts", features = ["derive"] }
-
-[workspace.lints.rust]
-future_incompatible = "deny"
-nonstandard_style = "warn"
-
-[workspace.lints.clippy]
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-cargo = { level = "warn", priority = -1 }
-
-# We don't want to use these in production code
-todo = "warn"
-dbg_macro = "warn"
-
-# Only the main `ic-idl` crate is allowed to use stdio
-print_stdout = "warn"
-print_stderr = "warn"
-
-# Disable some annoying style lints
-module_name_repetitions = "allow"
-struct_excessive_bools = "allow"
-ignored_unit_patterns = "allow"
-
-[profile.release]
-lto = true
-opt-level = "s"
-codegen-units = 1
+[dependencies]
+ic-cli = { path = "../../crates/ic-cli" }
+ic-preproc = { path = "../../crates/ic-preproc" }
+ic-vfs = { path = "../../crates/ic-vfs" }

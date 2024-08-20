@@ -117,6 +117,7 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
     ParseResult { inner }
 }
 
+#[allow(clippy::ptr_as_ptr)]
 pub fn lower_ast(mut ast: &[Item]) -> ParseResult {
     let ptr = std::ptr::addr_of_mut!(ast) as _;
     let inner = unsafe { ffi::ic_parse_w_state(lower::callback, ptr) };

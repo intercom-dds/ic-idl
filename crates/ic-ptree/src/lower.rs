@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_wrap, clippy::too_many_lines)]
+
 use std::ffi::{self, CString};
 
 use ic_syntax::{DeclKind, Declarator, Expr, Item, LitKind, Op, OpKind, ParamKind, Path, Type};
@@ -49,7 +51,7 @@ fn op_kind(op: Op) -> ffi::c_char {
         OpKind::OpOr => b'|',
         OpKind::OpXor => b'^',
         OpKind::OpAnd => b'&',
-        OpKind::OpNot => b'|',
+        OpKind::OpNot => b'~',
     };
     c as ffi::c_char
 }
@@ -140,7 +142,7 @@ unsafe fn lower_ty(ty: &Type) -> *mut node {
 unsafe fn lower_expr(num: &Expr) -> *const ptree::numeric {
     match num {
         Expr::Literal(v) => match v.kind.clone() {
-            LitKind::LitBool(v) => ptree::create_bool(v as ffi::c_int),
+            LitKind::LitBool(v) => ptree::create_bool(ffi::c_int::from(v)),
             LitKind::LitInt(v) => ptree::create_i64(v as i64, 10),
             LitKind::LitFloat(v) => ptree::create_double(v),
             LitKind::LitChar(v) => ptree::create_char(v as ffi::c_char),
@@ -290,7 +292,7 @@ unsafe fn lower_item(item: &Item) -> *mut node {
             ptree::create_interface_start(
                 ident,
                 std::ptr::null_mut(),
-                v.local.is_some() as ffi::c_int,
+                ffi::c_int::from(v.local.is_some()),
             );
 
             let mut list = std::ptr::null_mut();
@@ -305,6 +307,8 @@ unsafe fn lower_item(item: &Item) -> *mut node {
 
                         // TODO: does this need to be a declarator?? can't it
                         // be an identifier??
+                        // TODO: check the spec. can arrays be used as params
+                        // in an interface?
                         let dcl = ptree::create_param_dcl(ident, ty, kind);
                         params = ptree::append_node(params, dcl);
                     }

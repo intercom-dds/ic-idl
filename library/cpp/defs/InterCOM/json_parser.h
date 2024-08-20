@@ -38,8 +38,6 @@
 #  include <string>
 #  include <vector>
 
-#  include "InterCOM/CORBA.h"
-
 #  ifdef _MSC_VER
 #    pragma warning(push)
 #    pragma warning(disable : 4251)
@@ -101,7 +99,7 @@ struct JsonData {
         return {str_, pos_, prev.pos_, prev.line_};
     }
 
-    Char32 read_unicode();
+    char32_t read_unicode();
 
   private:
     const char* str_;
@@ -168,7 +166,7 @@ class JsonNode {
   public:
     JsonNode() : m_type(JSON_NULL), m_data(nullptr, 0), m_value_count(0) {}
 
-    JsonNode(JsonType type, intercom::string_view str)
+    JsonNode(JsonType type, std::string_view str)
         : m_type(type), m_data(str.data(), str.length()), m_value_count(0) {}
 
     JsonNode(JsonType type, const JsonData& data) : m_type(type), m_data(data), m_value_count(0) {}
@@ -176,7 +174,7 @@ class JsonNode {
     JsonNode(JsonType type, const JsonData& data, size_t value_count)
         : m_type(type), m_data(data), m_value_count(value_count) {}
 
-    static JsonNode from_data(intercom::string_view str);
+    static JsonNode from_data(std::string_view str);
 
     static JsonNode from_data(JsonData& data);
 
@@ -191,7 +189,7 @@ class JsonNode {
             value.clear();
             JsonData data(m_data.str(), m_data.length());
             while (data.pos() < m_data.length()) {
-                Char32 code = data.read_unicode();
+                char32_t code = data.read_unicode();
                 character_type buf[4] = {0};
                 int len = writeCharCode<encoding_type::kind>(buf, code);
                 for (int i = 0; i < len; ++i) {
@@ -201,28 +199,6 @@ class JsonNode {
             return true;
         }
         return false;
-    }
-
-    template <CharacterEncoding ENCODING>
-    bool get_string(corba::TString_var<ENCODING>& value) const {
-        using value_type = typename corba::TString_var<ENCODING>::value_type;
-        if (m_type == JSON_STRING) {
-            corba::Sequence<value_type> str;
-            JsonData data(m_data.str(), m_data.length());
-            while (data.pos() < m_data.length()) {
-                Char32 code = data.read_unicode();
-                value_type buf[4] = {0};
-                int len = writeCharCode<ENCODING>(buf, code);
-                for (int i = 0; i < len; ++i) {
-                    str.push_back(buf[i]);
-                }
-            }
-            str.push_back(0);
-            value = str.get_buffer(true);
-            return true;
-        } else {
-            return false;
-        }
     }
 
     bool get_array(std::vector<JsonNode>& value) const;
@@ -287,9 +263,9 @@ class JsonNode {
 
 class JsonReader : public dcps::cts::GenericReader {
   public:
-    explicit JsonReader(intercom::string_view a_text, SerializerFlags a_flags = 0);
+    explicit JsonReader(std::string_view a_text, SerializerFlags a_flags = 0);
 
-    JsonReader(const char* a_text, ULong a_length, SerializerFlags a_flags = 0);
+    JsonReader(const char* a_text, uint32_t a_length, SerializerFlags a_flags = 0);
 
     explicit JsonReader(std::istream& a_stream, SerializerFlags a_flags = 0);
 
@@ -301,7 +277,7 @@ class JsonReader : public dcps::cts::GenericReader {
 
     void end_type() override;
 
-    ULong type_level() override;
+    uint32_t type_level() override;
 
     bool find_member(const MemberInfo& a_member) override;
 
@@ -309,15 +285,7 @@ class JsonReader : public dcps::cts::GenericReader {
 
     bool can_skip_type() override;
 
-    ULong read_length() override;
-
-    void read(corba::EightBitString_var& a_value) override;
-
-    void read(corba::Utf8String_var& a_value) override;
-
-    void read(corba::Utf16String_var& a_value) override;
-
-    void read(corba::Utf32String_var& a_value) override;
+    uint32_t read_length() override;
 
     void read(std::string& a_value) override;
 
@@ -325,35 +293,35 @@ class JsonReader : public dcps::cts::GenericReader {
 
     void read(std::u16string& a_value) override;
 
-    void read(Boolean* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(bool* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Int8* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(UInt8* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Int16* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(UInt16* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Int32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(UInt32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Int64* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(UInt64* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Float32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(float* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Float64* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(double* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Float128* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(long double* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Char8* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(char* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Char16* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(Char32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
     void add_const_value(const std::string& a_name, const JsonNode& value);
 
@@ -370,14 +338,14 @@ class JsonReader : public dcps::cts::GenericReader {
         std::map<std::string, JsonNode> current_map;
         std::set<std::string> consumed_keys;
         std::string current_string;
-        ULong count{0};
+        uint32_t count{0};
 
         void next_value();
     };
     std::unique_ptr<JsonData> m_data;
     std::unique_ptr<JsonStream> m_stream;
     SerializerFlags m_flags{0};
-    ULong m_level{0};
+    uint32_t m_level{0};
     std::map<std::string, JsonNode> m_const_map;
     Stack m_type_stack[dcps::cts::MAX_NESTED_DEPTH];
 };
@@ -399,7 +367,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void end_type() override;
 
-    ULong type_level() override;
+    uint32_t type_level() override;
 
     bool is_relevant(const MemberInfo& a_member) override;
 
@@ -409,15 +377,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void end_member() override;
 
-    void write_length(ULong a_length) override;
-
-    void write(const corba::EightBitString_var& a_value) override;
-
-    void write(const corba::Utf8String_var& a_value) override;
-
-    void write(const corba::Utf16String_var& a_value) override;
-
-    void write(const corba::Utf32String_var& a_value) override;
+    void write_length(uint32_t a_length) override;
 
     void write(const std::string& a_value) override;
 
@@ -425,35 +385,35 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void write(const std::u16string& a_value) override;
 
-    void write(const Boolean* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const bool* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Int8* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const UInt8* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Int16* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const UInt16* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Int32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const UInt32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Int64* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const UInt64* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Float32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const float* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Float64* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const double* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Float128* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const long double* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Char8* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const char* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Char16* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void write(const Char32* a_values, ULong a_count, const TypeInfo& a_info) override;
+    void write(const char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
     void reset(int indentLevel = 0);
 
@@ -495,29 +455,6 @@ class JsonWriter : public dcps::cts::GenericWriter {
     void writeString(const std::wstring& value);
 
     void writeString(const std::u16string& value);
-
-    template <CharacterEncoding ENCODING>
-    void writeString(const corba::TString_var<ENCODING>& value) {
-        using value_type = typename corba::TString_var<ENCODING>::value_type;
-        maybeComma();
-        put('"');
-        const value_type* str = value.in();
-        while (*str) {
-            Char32 code = 0;
-            str += readCharCode<ENCODING>(code, str);
-            char buf[4];
-            int len = writeCharCode<UTF8>(buf, code);
-            if (len == 1) {
-                putEscaped(buf[0]);
-            } else {
-                for (int i = 0; i < len; ++i) {
-                    put(buf[i]);
-                }
-            }
-        }
-        put('"');
-        m_needComma = true;
-    }
 
     template <typename T>
     void writeInteger(T value) {
@@ -570,23 +507,23 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void write(char value);
 
-    void write(UShort value);
+    void write(uint16_t value);
 
-    void write(Short value);
+    void write(int16_t value);
 
-    void write(ULong value);
+    void write(uint32_t value);
 
-    void write(Long value);
+    void write(int32_t value);
 
-    void write(ULongLong value);
+    void write(uint64_t value);
 
-    void write(LongLong value);
+    void write(int64_t value);
 
-    void write(Float value);
+    void write(float value);
 
-    void write(Double value);
+    void write(double value);
 
-    void write(LongDouble value);
+    void write(long double value);
 
     void write(const JsonNode& node);
 
@@ -612,18 +549,18 @@ class JsonWriter : public dcps::cts::GenericWriter {
         TypeInfo info;
         std::unique_ptr<std::stringstream> tmp_out;
         bool tmp_is_new_line{false};
-        ULong pos{0};
+        uint32_t pos{0};
         bool is_object{false};
     };
 
     std::ostream& m_out;
     SerializerFlags m_flags{0};
-    ULong m_indentStep{2U};
-    ULong m_indentLevel{0U};
+    uint32_t m_indentStep{2U};
+    uint32_t m_indentLevel{0U};
     bool m_is_new_line{false};
     bool m_needComma{false};
     Stack m_type_stack[dcps::cts::MAX_NESTED_DEPTH]{{}};
-    ULong m_level{0};
+    uint32_t m_level{0};
 };
 
 }  // namespace intercom

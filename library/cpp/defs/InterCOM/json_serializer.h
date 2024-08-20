@@ -31,8 +31,7 @@
 
 #include "InterCOM/cdr_serializer.h"
 #include "InterCOM/json_parser.h"
-#include "InterCOM/optional.h"
-#include "InterCOM/serialization_support.h"
+#include "InterCOM/serialization.h"
 
 namespace intercom {
 namespace dcps {
@@ -52,25 +51,8 @@ std::ostream& marshal_json(std::ostream& stream, const T& value, bool pretty = f
     return stream;
 }
 
-template <>
-inline std::ostream&
-marshal_json(std::ostream& stream, const dcps::DynamicDataPtr& value, bool pretty) {
-    SerializerFlags flags = pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{};
-    JsonWriter writer(stream, flags);
-    dcps::cts::GenericMarshal(writer).io(value);
-    return stream;
-}
-
 template <typename T>
 std::ostream& marshal_json(std::ostream& stream, const T& value, SerializerFlags flags) {
-    JsonWriter writer(stream, flags);
-    dcps::cts::GenericMarshal(writer).io(value);
-    return stream;
-}
-
-template <>
-inline std::ostream&
-marshal_json(std::ostream& stream, const dcps::DynamicDataPtr& value, SerializerFlags flags) {
     JsonWriter writer(stream, flags);
     dcps::cts::GenericMarshal(writer).io(value);
     return stream;

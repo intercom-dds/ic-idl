@@ -77,20 +77,20 @@ inline SerializerFlags encodingForEncapsulation(EncapsulationSchemeIdentifier a_
 }
 
 inline void readEncapsulation(
-    intercom::span<const Octet> a_data,
+    intercom::span<const uint8_t> a_data,
     SerializerFlags& a_encoding,
-    ULong& a_data_length
+    uint32_t& a_data_length
 ) {
     if (a_data.size() < 4) {
         throw std::runtime_error("Buffer too short in readEncapsulation");
     }
     auto scheme = static_cast<EncapsulationSchemeIdentifier>(a_data[1]);
-    ULong padding = a_data[3] & 3U;
+    uint32_t padding = a_data[3] & 3U;
     if (a_data.size() < 4 + padding) {
         throw std::runtime_error("Buffer too short for padding in readEncapsulation");
     }
     a_encoding = encodingForEncapsulation(scheme);
-    a_data_length = static_cast<ULong>(a_data.size()) - 4 - padding;
+    a_data_length = static_cast<uint32_t>(a_data.size()) - 4 - padding;
 }
 
 inline void
@@ -118,7 +118,7 @@ writeEncapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo&
     }
     a_buffer.reserve_write(4);
     a_buffer.m_write_pointer[0] = 0;
-    a_buffer.m_write_pointer[1] = static_cast<Octet>(scheme);
+    a_buffer.m_write_pointer[1] = static_cast<uint8_t>(scheme);
     a_buffer.m_write_pointer[2] = 0;
     a_buffer.m_write_pointer[3] = 0;
     a_buffer.advance_write(4);
@@ -143,7 +143,7 @@ inline bool has_xcdr2_dheader(const TypeInfo* a_type_info) {
     }
 }
 
-inline ULong get_xcdr2_dheader_lc(const TypeInfo* a_type_info) {
+inline uint32_t get_xcdr2_dheader_lc(const TypeInfo* a_type_info) {
     switch (a_type_info->kind) {
     case xtypes::TK_SEQUENCE:
         if (a_type_info->element_type->kind == xtypes::TK_CHAR8 ||
@@ -170,17 +170,17 @@ inline ULong get_xcdr2_dheader_lc(const TypeInfo* a_type_info) {
 }
 
 template <>
-inline void CdrWriter::reserve<UInt8>(ULong a_count) {
-    ULong totalLength = a_count + m_buffer.write_index();
+inline void CdrWriter::reserve<uint8_t>(uint32_t a_count) {
+    uint32_t totalLength = a_count + m_buffer.write_index();
     if (totalLength > m_buffer.length()) {
         m_buffer.reserve_write(totalLength - m_buffer.write_index());
     }
 }
 
 template <>
-inline void CdrWriter::reserve<UShort>(ULong a_count) {
-    ULong to_pad = (m_buffer.write_index() - align_base()) & 1u;
-    ULong totalLength = a_count * sizeof(UShort) + to_pad + m_buffer.write_index();
+inline void CdrWriter::reserve<uint16_t>(uint32_t a_count) {
+    uint32_t to_pad = (m_buffer.write_index() - align_base()) & 1u;
+    uint32_t totalLength = a_count * sizeof(uint16_t) + to_pad + m_buffer.write_index();
     if (totalLength > m_buffer.length()) {
         m_buffer.reserve_write(totalLength - m_buffer.write_index());
     }
@@ -190,10 +190,10 @@ inline void CdrWriter::reserve<UShort>(ULong a_count) {
 }
 
 template <>
-inline void CdrWriter::reserve<ULong>(ULong a_count) {
-    ULong to_pad =
-        (sizeof(ULong) - (m_buffer.write_index() - align_base()) % sizeof(ULong)) % sizeof(ULong);
-    ULong totalLength = a_count * sizeof(ULong) + to_pad + m_buffer.write_index();
+inline void CdrWriter::reserve<uint32_t>(uint32_t a_count) {
+    uint32_t to_pad = (sizeof(uint32_t) - (m_buffer.write_index() - align_base()) % sizeof(uint32_t)) %
+                      sizeof(uint32_t);
+    uint32_t totalLength = a_count * sizeof(uint32_t) + to_pad + m_buffer.write_index();
     if (totalLength > m_buffer.length()) {
         m_buffer.reserve_write(totalLength - m_buffer.write_index());
     }
@@ -203,10 +203,10 @@ inline void CdrWriter::reserve<ULong>(ULong a_count) {
 }
 
 template <>
-inline void CdrWriter::reserve<ULongLong>(ULong a_count) {
-    const ULong align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
-    ULong to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
-    ULong totalLength = a_count * sizeof(ULongLong) + to_pad + m_buffer.write_index();
+inline void CdrWriter::reserve<uint64_t>(uint32_t a_count) {
+    const uint32_t align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    uint32_t to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
+    uint32_t totalLength = a_count * sizeof(uint64_t) + to_pad + m_buffer.write_index();
     if (totalLength > m_buffer.length()) {
         m_buffer.reserve_write(totalLength - m_buffer.write_index());
     }
@@ -216,10 +216,10 @@ inline void CdrWriter::reserve<ULongLong>(ULong a_count) {
 }
 
 template <>
-inline void CdrWriter::reserve<LongDouble>(ULong a_count) {
-    const ULong align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
-    ULong to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
-    ULong totalLength = a_count * 16 + to_pad + m_buffer.write_index();
+inline void CdrWriter::reserve<long double>(uint32_t a_count) {
+    const uint32_t align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    uint32_t to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
+    uint32_t totalLength = a_count * 16 + to_pad + m_buffer.write_index();
     if (totalLength > m_buffer.length()) {
         m_buffer.reserve_write(totalLength - m_buffer.write_index());
     }
@@ -228,12 +228,12 @@ inline void CdrWriter::reserve<LongDouble>(ULong a_count) {
     }
 }
 
-inline ULong CdrWriter::align_base() const {
+inline uint32_t CdrWriter::align_base() const {
     return m_type_stack[m_level].align_base;
 }
 
 template <typename T>
-void CdrWriter::write_value(Octet* buf, T value) {
+void CdrWriter::write_value(uint8_t* buf, T value) {
     using value_type = typename unsigned_type_of<T>::type;
     const char* bytes = reinterpret_cast<const char*>(&value);
     if (flags() & CDR_BIG_ENDIAN) {
@@ -244,19 +244,19 @@ void CdrWriter::write_value(Octet* buf, T value) {
 }
 
 template <typename T>
-void CdrWriter::write_values(const T* a_values, ULong a_count) {
+void CdrWriter::write_values(const T* a_values, uint32_t a_count) {
     using value_type = typename unsigned_type_of<T>::type;
     reserve<value_type>(a_count);
     const char* bytes = reinterpret_cast<const char*>(a_values);
-    Octet* ptr = m_buffer.m_write_pointer;
+    uint8_t* ptr = m_buffer.m_write_pointer;
     if (flags() & CDR_BIG_ENDIAN) {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             put_uint<BigEndian, value_type>(ptr, *reinterpret_cast<const value_type*>(bytes));
             bytes += sizeof(T);
             ptr += sizeof(T);
         }
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             put_uint<LittleEndian, value_type>(ptr, *reinterpret_cast<const value_type*>(bytes));
             bytes += sizeof(T);
             ptr += sizeof(T);
@@ -271,8 +271,8 @@ inline void CdrWriter::begin_type(const TypeInfo& a_type_info) {
     }
     TypeStackElement& element = m_type_stack[m_level + 1];
     if ((flags() & CDR_XCDR2) != 0 && has_xcdr2_dheader(&a_type_info)) {
-        reserve<ULong>(1);
-        m_buffer.m_write_pointer += sizeof(ULong);
+        reserve<uint32_t>(1);
+        m_buffer.m_write_pointer += sizeof(uint32_t);
     }
     element.type_base = m_buffer.write_index();
     element.align_base = align_base();
@@ -284,17 +284,17 @@ inline void CdrWriter::begin_type(const TypeInfo& a_type_info) {
 inline void CdrWriter::end_type() {
     TypeStackElement& element = m_type_stack[m_level];
     if ((flags() & CDR_XCDR2) != 0 && has_xcdr2_dheader(element.type_info)) {
-        ULong offset = element.type_base - sizeof(ULong);
-        write_value<ULong>(m_buffer.pointer(offset), m_buffer.write_index() - element.type_base);
+        uint32_t offset = element.type_base - sizeof(uint32_t);
+        write_value<uint32_t>(m_buffer.pointer(offset), m_buffer.write_index() - element.type_base);
     }
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
         (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
-        reserve<ULong>(1);
-        UShort pid =
+        reserve<uint32_t>(1);
+        uint16_t pid =
             (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
         write_value(m_buffer.m_write_pointer, pid);
-        write_value(m_buffer.m_write_pointer + 2, static_cast<UShort>(0));
-        m_buffer.m_write_pointer += sizeof(ULong);
+        write_value(m_buffer.m_write_pointer + 2, static_cast<uint16_t>(0));
+        m_buffer.m_write_pointer += sizeof(uint32_t);
     }
     --m_level;
 }
@@ -306,8 +306,8 @@ inline bool CdrWriter::begin_member(const MemberInfo& a_member_info) {
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
         ((element.type_info->flags & xtypes::IS_MUTABLE) != 0 ||
          (a_member_info.flags & xtypes::IS_OPTIONAL) != 0)) {
-        reserve<ULong>(1);
-        m_buffer.m_write_pointer += sizeof(ULong);
+        reserve<uint32_t>(1);
+        m_buffer.m_write_pointer += sizeof(uint32_t);
         m_type_stack[m_level].align_base = m_buffer.write_index();
     } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
         begin_mutable_member_v2();
@@ -343,50 +343,14 @@ inline void CdrWriter::end_member() {
     element.member_info = nullptr;
 }
 
-inline void CdrWriter::write_length(ULong a_length) {
-    reserve<ULong>(1);
+inline void CdrWriter::write_length(uint32_t a_length) {
+    reserve<uint32_t>(1);
     write_value(m_buffer.m_write_pointer, a_length);
-    m_buffer.m_write_pointer += sizeof(ULong);
-}
-
-inline void CdrWriter::write(const corba::EightBitString_var& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
-    if (size > 0) {
-        write_length(size + 1);
-        write_values(a_value.in(), size + 1);
-    } else {
-        write_length(0);
-    }
-}
-
-inline void CdrWriter::write(const corba::Utf8String_var& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
-    if (size > 0) {
-        write_length(size + 1);
-        write_values(a_value.in(), size + 1);
-    } else {
-        write_length(0);
-    }
-}
-
-inline void CdrWriter::write(const corba::Utf16String_var& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
-    write_length(size * sizeof(UInt16));
-    if (size > 0) {
-        write_values(a_value.in(), size);
-    }
-}
-
-inline void CdrWriter::write(const corba::Utf32String_var& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
-    write_length(size * sizeof(UInt32));
-    if (size > 0) {
-        write_values(a_value.in(), size);
-    }
+    m_buffer.m_write_pointer += sizeof(uint32_t);
 }
 
 inline void CdrWriter::write(const std::string& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
+    auto size = static_cast<uint32_t>(a_value.size());
     if (size > 0) {
         write_length(size + 1);
         write_values(a_value.c_str(), size + 1);
@@ -396,22 +360,22 @@ inline void CdrWriter::write(const std::string& a_value) {
 }
 
 inline void CdrWriter::write(const std::u16string& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
-    write_length(size * sizeof(UInt16));
-    reserve<UShort>(size);
-    for (ULong i = 0; i < size; ++i) {
-        write_value(m_buffer.m_write_pointer, static_cast<UShort>(a_value[i]));
-        m_buffer.m_write_pointer += sizeof(UShort);
+    auto size = static_cast<uint32_t>(a_value.size());
+    write_length(size * sizeof(uint16_t));
+    reserve<uint16_t>(size);
+    for (uint32_t i = 0; i < size; ++i) {
+        write_value(m_buffer.m_write_pointer, static_cast<uint16_t>(a_value[i]));
+        m_buffer.m_write_pointer += sizeof(uint16_t);
     }
 }
 
 inline void CdrWriter::write(const std::wstring& a_value) {
-    auto size = static_cast<ULong>(a_value.size());
-    write_length(size * sizeof(UInt16));
-    reserve<UShort>(size);
-    for (ULong i = 0; i < size; ++i) {
-        write_value(m_buffer.m_write_pointer, static_cast<UShort>(a_value[i]));
-        m_buffer.m_write_pointer += sizeof(UShort);
+    auto size = static_cast<uint32_t>(a_value.size());
+    write_length(size * sizeof(uint16_t));
+    reserve<uint16_t>(size);
+    for (uint32_t i = 0; i < size; ++i) {
+        write_value(m_buffer.m_write_pointer, static_cast<uint16_t>(a_value[i]));
+        m_buffer.m_write_pointer += sizeof(uint16_t);
     }
 }
 
@@ -419,7 +383,7 @@ inline SerializerFlags CdrWriter::flags() const {
     return m_flags;
 }
 
-inline ULong CdrWriter::type_level() {
+inline uint32_t CdrWriter::type_level() {
     return m_level;
 }
 
@@ -448,63 +412,66 @@ inline CdrReader::CdrReader(const CdrReader& a_other, SerializerFlags a_flags)
     : CdrReader(a_other.m_buffer, a_flags) {}
 
 template <>
-inline void CdrReader::reserve<UInt8>(ULong a_count) {
+inline void CdrReader::reserve<uint8_t>(uint32_t a_count) {
     if (m_buffer.read_index() + a_count > available_bytes()) {
         throw std::runtime_error("Attempting to read past end of available data");
     }
 }
 
 template <>
-inline void CdrReader::reserve<UShort>(ULong a_count) {
-    ULong to_pad = (m_buffer.read_index() - align_base()) & 1u;
-    if (m_buffer.read_index() + to_pad + sizeof(UShort) * a_count > available_bytes()) {
+inline void CdrReader::reserve<uint16_t>(uint32_t a_count) {
+    uint32_t to_pad = (m_buffer.read_index() - align_base()) & 1u;
+    if (m_buffer.read_index() + to_pad + sizeof(uint16_t) * a_count > available_bytes()) {
         throw std::runtime_error("Attempting to read past end of available data");
     }
     m_buffer.advance_read(to_pad);
 }
 
 template <>
-inline void CdrReader::reserve<ULong>(ULong a_count) {
-    const ULong align_size = sizeof(ULong);
-    ULong to_pad = (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
-    if (m_buffer.read_index() + to_pad + sizeof(ULong) * a_count > available_bytes()) {
+inline void CdrReader::reserve<uint32_t>(uint32_t a_count) {
+    const uint32_t align_size = sizeof(uint32_t);
+    uint32_t to_pad =
+        (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
+    if (m_buffer.read_index() + to_pad + sizeof(uint32_t) * a_count > available_bytes()) {
         throw std::runtime_error("Attempting to read past end of available data");
     }
     m_buffer.advance_read(to_pad);
 }
 
 template <>
-inline void CdrReader::reserve<ULongLong>(ULong a_count) {
-    const ULong align_size = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
-    ULong to_pad = (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
-    if (m_buffer.read_index() + to_pad + sizeof(ULongLong) * a_count > available_bytes()) {
+inline void CdrReader::reserve<uint64_t>(uint32_t a_count) {
+    const uint32_t align_size = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    uint32_t to_pad =
+        (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
+    if (m_buffer.read_index() + to_pad + sizeof(uint64_t) * a_count > available_bytes()) {
         throw std::runtime_error("Attempting to read past end of available data");
     }
     m_buffer.advance_read(to_pad);
 }
 
 template <>
-inline void CdrReader::reserve<LongDouble>(ULong a_count) {
-    const ULong align_size = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
-    ULong to_pad = (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
+inline void CdrReader::reserve<long double>(uint32_t a_count) {
+    const uint32_t align_size = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
+    uint32_t to_pad =
+        (align_size - (m_buffer.read_index() - align_base()) % align_size) % align_size;
     if (m_buffer.read_index() + to_pad + 16 * a_count > available_bytes()) {
         throw std::runtime_error("Attempting to read past end of available data");
     }
     m_buffer.advance_read(to_pad);
 }
 
-inline ULong CdrReader::available_bytes() const {
+inline uint32_t CdrReader::available_bytes() const {
     const TypeStackElement& element = m_type_stack[m_level];
     const auto bytes = element.member_base + element.member_length;
     return std::min(bytes, m_buffer.readable_length());
 }
 
-inline ULong CdrReader::align_base() const {
+inline uint32_t CdrReader::align_base() const {
     return m_type_stack[m_level].align_base;
 }
 
 template <typename T>
-void CdrReader::read_value(const Octet* buf, T& value) {
+void CdrReader::read_value(const uint8_t* buf, T& value) {
     using value_type = typename unsigned_type_of<T>::type;
     char* bytes = reinterpret_cast<char*>(&value);
     if (flags() & CDR_BIG_ENDIAN) {
@@ -515,19 +482,19 @@ void CdrReader::read_value(const Octet* buf, T& value) {
 }
 
 template <typename T>
-void CdrReader::read_values(T* a_values, ULong a_count) {
+void CdrReader::read_values(T* a_values, uint32_t a_count) {
     using value_type = typename unsigned_type_of<T>::type;
     reserve<value_type>(a_count);
     char* bytes = reinterpret_cast<char*>(a_values);
-    const Octet* ptr = m_buffer.m_read_pointer;
+    const uint8_t* ptr = m_buffer.m_read_pointer;
     if (flags() & CDR_BIG_ENDIAN) {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             get_uint<BigEndian, value_type>(ptr, *reinterpret_cast<value_type*>(bytes));
             bytes += sizeof(T);
             ptr += sizeof(T);
         }
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             get_uint<LittleEndian, value_type>(ptr, *reinterpret_cast<value_type*>(bytes));
             bytes += sizeof(T);
             ptr += sizeof(T);
@@ -555,7 +522,7 @@ inline void CdrReader::begin_type(const TypeInfo& a_info) {
         element.type_length = read_length();
     } else if ((flags() & CDR_XCDR_PLAIN) == 0 && (a_info.flags & xtypes::IS_MUTABLE) != 0) {
         // Mutable type, header starts at four byte alignment
-        reserve<ULong>(0);
+        reserve<uint32_t>(0);
     }
     element.type_base = m_buffer.read_index();
     if (element.type_length + element.type_base > parent.member_base + parent.member_length) {
@@ -582,11 +549,11 @@ inline void CdrReader::end_type() {
             element.align_base = m_type_stack[m_level - 1].align_base;
         }
         xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
-        UShort sentinel =
+        uint16_t sentinel =
             (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
-        while (curr != sentinel && available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
-            ULong curr_flag;
-            ULong length;
+        while (curr != sentinel && available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
+            uint32_t curr_flag;
+            uint32_t length;
             read_param_header_v1(curr, curr_flag, length);
             m_buffer.advance_read(length);
         }
@@ -622,16 +589,16 @@ inline SerializerFlags CdrReader::flags() const {
     return m_flags;
 }
 
-inline ULong CdrReader::read_length() {
-    ULong len = 0;
-    reserve<ULong>(0);
+inline uint32_t CdrReader::read_length() {
+    uint32_t len = 0;
+    reserve<uint32_t>(0);
     if (available_bytes() > m_buffer.read_index()) {
-        ULong unread_bytes = available_bytes() - m_buffer.read_index();
-        if (unread_bytes < sizeof(ULong)) {
+        uint32_t unread_bytes = available_bytes() - m_buffer.read_index();
+        if (unread_bytes < sizeof(uint32_t)) {
             throw std::runtime_error("Index out of bounds in CdrReader::read_length");
         }
         read_value(m_buffer.m_read_pointer, len);
-        m_buffer.m_read_pointer += sizeof(ULong);
+        m_buffer.m_read_pointer += sizeof(uint32_t);
         if (len > m_buffer.unread_bytes()) {
             // Sanity check, shortest possible element size is one byte
             throw std::runtime_error("Invalid length in CdrReader");
@@ -640,60 +607,8 @@ inline ULong CdrReader::read_length() {
     return len;
 }
 
-inline void CdrReader::read(corba::EightBitString_var& a_value) {
-    ULong len = read_length();
-    if (len > 0) {
-        --len;
-        a_value.reserve(len);
-        if (len > 0) {
-            read_values(&a_value[0], len);
-        }
-        m_buffer.m_read_pointer++;
-    } else {
-        a_value.clear();
-    }
-}
-
-inline void CdrReader::read(corba::Utf8String_var& a_value) {
-    ULong len = read_length();
-    if (len > 0) {
-        --len;
-        a_value.reserve(len);
-        if (len > 0) {
-            read_values(&a_value[0], len);
-        }
-        m_buffer.m_read_pointer++;
-    } else {
-        a_value.clear();
-    }
-}
-
-inline void CdrReader::read(corba::Utf16String_var& a_value) {
-    ULong len = read_length() / sizeof(UInt16);
-    if (len > 0) {
-        a_value.reserve(len);
-        if (len > 0) {
-            read_values(&a_value[0], len);
-        }
-    } else {
-        a_value.clear();
-    }
-}
-
-inline void CdrReader::read(corba::Utf32String_var& a_value) {
-    ULong len = read_length() / sizeof(UInt32);
-    if (len > 0) {
-        a_value.reserve(len);
-        if (len > 0) {
-            read_values(&a_value[0], len);
-        }
-    } else {
-        a_value.clear();
-    }
-}
-
 inline void CdrReader::read(std::string& a_value) {
-    ULong len = read_length();
+    uint32_t len = read_length();
     if (len > 0) {
         --len;
         a_value.resize(len);
@@ -707,15 +622,15 @@ inline void CdrReader::read(std::string& a_value) {
 }
 
 inline void CdrReader::read(std::wstring& a_value) {
-    ULong len = read_length() / sizeof(UInt16);
+    uint32_t len = read_length() / sizeof(uint16_t);
     if (len > 0) {
-        reserve<UShort>(len);
+        reserve<uint16_t>(len);
         a_value.resize(len);
-        for (ULong i = 0; i < len; ++i) {
-            UShort char_value;
+        for (uint32_t i = 0; i < len; ++i) {
+            uint16_t char_value;
             read_value(m_buffer.m_read_pointer, char_value);
             a_value[i] = static_cast<std::wstring::value_type>(char_value);
-            m_buffer.m_read_pointer += sizeof(UShort);
+            m_buffer.m_read_pointer += sizeof(uint16_t);
         }
     } else {
         a_value.clear();
@@ -723,22 +638,22 @@ inline void CdrReader::read(std::wstring& a_value) {
 }
 
 inline void CdrReader::read(std::u16string& a_value) {
-    ULong len = read_length() / sizeof(UInt16);
+    uint32_t len = read_length() / sizeof(uint16_t);
     if (len > 0) {
-        reserve<UShort>(len);
+        reserve<uint16_t>(len);
         a_value.resize(len);
-        for (ULong i = 0; i < len; ++i) {
-            UShort char_value;
+        for (uint32_t i = 0; i < len; ++i) {
+            uint16_t char_value;
             read_value(m_buffer.m_read_pointer, char_value);
             a_value[i] = static_cast<std::u16string::value_type>(char_value);
-            m_buffer.m_read_pointer += sizeof(UShort);
+            m_buffer.m_read_pointer += sizeof(uint16_t);
         }
     } else {
         a_value.clear();
     }
 }
 
-inline ULong CdrReader::type_level() {
+inline uint32_t CdrReader::type_level() {
     return m_level;
 }
 
@@ -761,18 +676,18 @@ inline CdrWriter::CdrWriter(Buffer& a_out, SerializerFlags a_flags)
 inline void CdrWriter::end_mutable_member_v1() {
     TypeStackElement& element = m_type_stack[m_level];
     if ((flags() & CDR_XCDR_BUILTIN) != 0) {
-        reserve<ULong>(0);
+        reserve<uint32_t>(0);
     }
-    ULong written = m_buffer.write_index() - element.align_base;
+    uint32_t written = m_buffer.write_index() - element.align_base;
     if ((element.member_info->id != PID_LIST_END && element.member_info->id >= PID_EXTENDED) ||
         written > 0xFFFF) {
-        reserve<ULong>(2);
-        Octet* head = m_buffer.pointer(element.align_base - sizeof(ULong));
-        memmove(head + 3 * sizeof(ULong), head + sizeof(ULong), written);
-        m_buffer.m_write_pointer += 2 * sizeof(ULong);
+        reserve<uint32_t>(2);
+        uint8_t* head = m_buffer.pointer(element.align_base - sizeof(uint32_t));
+        memmove(head + 3 * sizeof(uint32_t), head + sizeof(uint32_t), written);
+        m_buffer.m_write_pointer += 2 * sizeof(uint32_t);
 
-        UShort pid = PID_EXTENDED;
-        UShort length = 2 * sizeof(ULong);
+        uint16_t pid = PID_EXTENDED;
+        uint16_t length = 2 * sizeof(uint32_t);
         if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
             pid |= PID_FLAG_MUST_UNDERSTAND;
         }
@@ -784,9 +699,9 @@ inline void CdrWriter::end_mutable_member_v1() {
         write_value(head + 4, element.member_info->id);
         write_value(head + 8, written);
     } else {
-        Octet* head = m_buffer.pointer(element.align_base - sizeof(ULong));
-        auto pid = static_cast<UShort>(element.member_info->id);
-        auto length = static_cast<UShort>(written);
+        uint8_t* head = m_buffer.pointer(element.align_base - sizeof(uint32_t));
+        auto pid = static_cast<uint16_t>(element.member_info->id);
+        auto length = static_cast<uint16_t>(written);
         if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
             pid |= PID_FLAG_MUST_UNDERSTAND;
         }
@@ -801,33 +716,33 @@ inline void CdrWriter::end_mutable_member_v1() {
 
 inline void CdrWriter::begin_mutable_member_v2() {
     TypeStackElement& element = m_type_stack[m_level];
-    reserve<ULong>(2);
-    ULong lc = get_xcdr2_dheader_lc(element.member_info->type);
-    m_buffer.m_write_pointer += sizeof(ULong);
+    reserve<uint32_t>(2);
+    uint32_t lc = get_xcdr2_dheader_lc(element.member_info->type);
+    m_buffer.m_write_pointer += sizeof(uint32_t);
     if (lc == 4) {
-        m_buffer.m_write_pointer += sizeof(ULong);
+        m_buffer.m_write_pointer += sizeof(uint32_t);
     }
     element.align_base = m_buffer.write_index();
 }
 
 inline void CdrWriter::end_mutable_member_v2() {
     TypeStackElement& element = m_type_stack[m_level];
-    ULong lc = get_xcdr2_dheader_lc(element.member_info->type);
-    ULong element_header = 0;
+    uint32_t lc = get_xcdr2_dheader_lc(element.member_info->type);
+    uint32_t element_header = 0;
     if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
         element_header |= (1 << 31);
     }
     element_header |= element.member_info->id & 0x0fffffff;
     if (lc == 4) {
         // Eight bytes reserved for header
-        ULong written = m_buffer.write_index() - element.align_base;
+        uint32_t written = m_buffer.write_index() - element.align_base;
         if (written == 1 || written == 2 || written == 4 || written == 8) {
             memmove(
-                m_buffer.pointer(element.align_base - sizeof(ULong)),
+                m_buffer.pointer(element.align_base - sizeof(uint32_t)),
                 m_buffer.pointer(element.align_base),
                 written
             );
-            m_buffer.write_index(m_buffer.write_index() - sizeof(ULong));
+            m_buffer.write_index(m_buffer.write_index() - sizeof(uint32_t));
             switch (written) {
             case 1:
                 element_header |= (0 << 28);
@@ -842,32 +757,36 @@ inline void CdrWriter::end_mutable_member_v2() {
                 element_header |= (3 << 28);
                 break;
             }
-            write_value(m_buffer.pointer(element.align_base - 2 * sizeof(ULong)), element_header);
+            write_value(
+                m_buffer.pointer(element.align_base - 2 * sizeof(uint32_t)), element_header
+            );
         } else {
             element_header |= (lc << 28);
-            write_value(m_buffer.pointer(element.align_base - 2 * sizeof(ULong)), element_header);
-            write_value(m_buffer.pointer(element.align_base - sizeof(ULong)), written);
+            write_value(
+                m_buffer.pointer(element.align_base - 2 * sizeof(uint32_t)), element_header
+            );
+            write_value(m_buffer.pointer(element.align_base - sizeof(uint32_t)), written);
         }
     } else {
         element_header |= (lc << 28);
-        write_value(m_buffer.pointer(element.align_base - sizeof(ULong)), element_header);
+        write_value(m_buffer.pointer(element.align_base - sizeof(uint32_t)), element_header);
     }
     element.align_base = m_type_stack[m_level - 1].align_base;
 }
 
 inline bool CdrReader::begin_mutable_member_v1(const MemberInfo& a_member) {
     TypeStackElement& element = m_type_stack[m_level];
-    UShort sentinel =
+    uint16_t sentinel =
         (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
-    ULong search_start = m_buffer.read_index();
+    uint32_t search_start = m_buffer.read_index();
     for (int attempt = 0; attempt < 2; ++attempt) {
         xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
-        while (curr != sentinel && available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+        while (curr != sentinel && available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
             if (attempt == 1 && m_buffer.read_index() > search_start) {
                 return false;
             }
-            ULong curr_flag;
-            ULong length;
+            uint32_t curr_flag;
+            uint32_t length;
             read_param_header_v1(curr, curr_flag, length);
             if (curr == a_member.id && length > 0 &&
                 (curr_flag & xtypes::IS_VENDOR_EXTENSION) ==
@@ -888,15 +807,15 @@ inline bool CdrReader::begin_mutable_member_v1(const MemberInfo& a_member) {
 
 inline bool CdrReader::begin_mutable_member_v2(const MemberInfo& a_member) {
     TypeStackElement& element = m_type_stack[m_level];
-    ULong search_start = m_buffer.read_index();
+    uint32_t search_start = m_buffer.read_index();
     for (int attempt = 0; attempt < 2; ++attempt) {
-        while (available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+        while (available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
             if (attempt == 1 && m_buffer.read_index() > search_start) {
                 return false;
             }
             xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
-            ULong curr_flag;
-            ULong length;
+            uint32_t curr_flag;
+            uint32_t length;
             read_param_header_v2(curr, curr_flag, length);
             if (curr == a_member.id && length > 0) {
                 element.member_base = m_buffer.read_index();
@@ -916,10 +835,10 @@ inline bool CdrReader::begin_mutable_member_v2(const MemberInfo& a_member) {
 inline bool CdrReader::begin_optional_member(const MemberInfo& a_member) {
     TypeStackElement& element = m_type_stack[m_level];
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0) {
-        if (available_bytes() >= sizeof(ULong) + m_buffer.read_index()) {
+        if (available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
             xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
-            ULong curr_flag;
-            ULong length;
+            uint32_t curr_flag;
+            uint32_t length;
             read_param_header_v1(curr, curr_flag, length);
             if (curr == a_member.id && length > 0) {
                 element.member_base = m_buffer.read_index();
@@ -938,9 +857,9 @@ inline bool CdrReader::begin_optional_member(const MemberInfo& a_member) {
     return false;
 }
 
-inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, ULong& flag, ULong& length) {
-    reserve<ULong>(1);
-    UShort header[2];
+inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
+    reserve<uint32_t>(1);
+    uint16_t header[2];
     read_values(header, 2);
     flag = 0;
     flag |= (header[0] & PID_FLAG_MUST_UNDERSTAND) ? xtypes::IS_MUST_UNDERSTAND
@@ -948,13 +867,13 @@ inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, ULong& flag, U
     flag |= (header[0] & PID_FLAG_IMPL_EXTENSION) ? xtypes::IS_VENDOR_EXTENSION
                                                   : xtypes::MemberFlagExtendedBits{};
     if ((header[0] & PID_PID_MASK) == PID_EXTENDED) {
-        ULong extended[2];
+        uint32_t extended[2];
         read_values(extended, 2);
         id = extended[0] & 0xFFFFFFF;  // Upper 4 bits are reserved for future use
         length = extended[1];
-        if (header[1] > 2 * sizeof(ULong)) {
-            reserve<UInt8>(header[1] - 2 * sizeof(ULong));
-            m_buffer.advance_read(header[1] - 2 * sizeof(ULong));
+        if (header[1] > 2 * sizeof(uint32_t)) {
+            reserve<uint8_t>(header[1] - 2 * sizeof(uint32_t));
+            m_buffer.advance_read(header[1] - 2 * sizeof(uint32_t));
         }
     } else {
         id = header[0] & PID_PID_MASK;
@@ -965,11 +884,11 @@ inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, ULong& flag, U
     }
 }
 
-inline void CdrReader::read_param_header_v2(xtypes::MemberId& id, ULong& flag, ULong& length) {
+inline void CdrReader::read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
     read_values(&id, 1);
     flag = 0;
     flag |= (id & (1 << 31)) ? xtypes::IS_MUST_UNDERSTAND : 0;
-    ULong lc = (id >> 28) & 0x7;
+    uint32_t lc = (id >> 28) & 0x7;
     id &= 0x0fffffff;
     switch (lc) {
     case 0:
@@ -988,19 +907,19 @@ inline void CdrReader::read_param_header_v2(xtypes::MemberId& id, ULong& flag, U
         length = read_length();
         break;
     case 5:
-        reserve<ULong>(1);
-        length = read_length() + sizeof(ULong);
-        m_buffer.m_read_pointer -= sizeof(ULong);
+        reserve<uint32_t>(1);
+        length = read_length() + sizeof(uint32_t);
+        m_buffer.m_read_pointer -= sizeof(uint32_t);
         break;
     case 6:
-        reserve<ULong>(1);
-        length = 4 * read_length() + sizeof(ULong);
-        m_buffer.m_read_pointer -= sizeof(ULong);
+        reserve<uint32_t>(1);
+        length = 4 * read_length() + sizeof(uint32_t);
+        m_buffer.m_read_pointer -= sizeof(uint32_t);
         break;
     case 7:
-        reserve<ULong>(1);
-        length = 8 * read_length() + sizeof(ULong);
-        m_buffer.m_read_pointer -= sizeof(ULong);
+        reserve<uint32_t>(1);
+        length = 8 * read_length() + sizeof(uint32_t);
+        m_buffer.m_read_pointer -= sizeof(uint32_t);
         break;
     }
     if (length > available_bytes() || m_buffer.read_index() + length > available_bytes()) {

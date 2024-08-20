@@ -37,10 +37,9 @@
 #include <string>
 #include <vector>
 
+#include "InterCOM/character_encoding.h"
 #include "InterCOM/dds_xtypes_constants.h"
-#include "InterCOM/intercom_dcps.h"
 #include "InterCOM/member_info.h"
-#include "InterCOM/platform_config.h"
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(push)
@@ -62,7 +61,7 @@ namespace cts {
 template <typename T>
 struct unsigned_type_of;
 
-const ULong MAX_NESTED_DEPTH = 64;
+const uint32_t MAX_NESTED_DEPTH = 64;
 
 class GenericWriter {
   public:
@@ -70,35 +69,31 @@ class GenericWriter {
     virtual SerializerFlags flags() const = 0;
     virtual void begin_type(const TypeInfo& a_info) = 0;
     virtual void end_type() = 0;
-    virtual ULong type_level() = 0;
+    virtual uint32_t type_level() = 0;
     virtual bool is_relevant(const MemberInfo& a_member) = 0;
     virtual bool begin_member(const MemberInfo& a_member) = 0;
     virtual bool begin_optional_member(const MemberInfo& a_member, bool a_present) = 0;
     virtual void end_member() = 0;
-    virtual void write_length(ULong a_length) = 0;
+    virtual void write_length(uint32_t a_length) = 0;
 
-    virtual void write(const corba::EightBitString_var& a_value) = 0;
-    virtual void write(const corba::Utf8String_var& a_value) = 0;
-    virtual void write(const corba::Utf16String_var& a_value) = 0;
-    virtual void write(const corba::Utf32String_var& a_value) = 0;
     virtual void write(const std::string& a_value) = 0;
     virtual void write(const std::wstring& a_value) = 0;
     virtual void write(const std::u16string& a_value) = 0;
-    virtual void write(const Boolean* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Int8* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const UInt8* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Int16* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const UInt16* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Int32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const UInt32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Int64* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const UInt64* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Float32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Float64* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Float128* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Char8* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Char16* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const Char32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const bool* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const float* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const double* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const long double* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const char* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void write(const char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
 };
 
 class GenericReader {
@@ -107,35 +102,31 @@ class GenericReader {
     virtual SerializerFlags flags() const = 0;
     virtual void begin_type(const TypeInfo& a_info) = 0;
     virtual void end_type() = 0;
-    virtual ULong type_level() = 0;
+    virtual uint32_t type_level() = 0;
     virtual bool find_member(const MemberInfo& a_member) = 0;
     virtual void end_member() = 0;
     virtual bool can_skip_type() = 0;
 
-    virtual ULong read_length() = 0;
+    virtual uint32_t read_length() = 0;
 
-    virtual void read(corba::EightBitString_var& a_value) = 0;
-    virtual void read(corba::Utf8String_var& a_value) = 0;
-    virtual void read(corba::Utf16String_var& a_value) = 0;
-    virtual void read(corba::Utf32String_var& a_value) = 0;
     virtual void read(std::string& a_value) = 0;
     virtual void read(std::wstring& a_value) = 0;
     virtual void read(std::u16string& a_value) = 0;
-    virtual void read(Boolean* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Int8* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(UInt8* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Int16* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(UInt16* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Int32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(UInt32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Int64* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(UInt64* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Float32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Float64* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Float128* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Char8* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Char16* a_values, ULong a_count, const TypeInfo& a_info) = 0;
-    virtual void read(Char32* a_values, ULong a_count, const TypeInfo& a_info) = 0;
+    virtual void read(bool* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(float* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(double* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(long double* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(char* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
+    virtual void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
 };
 
 class EmptyWriter : public GenericWriter {
@@ -148,7 +139,7 @@ class EmptyWriter : public GenericWriter {
 
     void end_type() override {}
 
-    ULong type_level() override {
+    uint32_t type_level() override {
         return 0;
     }
 
@@ -166,15 +157,7 @@ class EmptyWriter : public GenericWriter {
 
     void end_member() override {}
 
-    void write_length(ULong) override {}
-
-    void write(const corba::EightBitString_var&) override {}
-
-    void write(const corba::Utf8String_var&) override {}
-
-    void write(const corba::Utf16String_var&) override {}
-
-    void write(const corba::Utf32String_var&) override {}
+    void write_length(uint32_t) override {}
 
     void write(const std::string&) override {}
 
@@ -182,35 +165,35 @@ class EmptyWriter : public GenericWriter {
 
     void write(const std::u16string&) override {}
 
-    void write(const Boolean*, ULong, const TypeInfo&) override {}
+    void write(const bool*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Int8*, ULong, const TypeInfo&) override {}
+    void write(const int8_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const UInt8*, ULong, const TypeInfo&) override {}
+    void write(const uint8_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Int16*, ULong, const TypeInfo&) override {}
+    void write(const int16_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const UInt16*, ULong, const TypeInfo&) override {}
+    void write(const uint16_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Int32*, ULong, const TypeInfo&) override {}
+    void write(const int32_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const UInt32*, ULong, const TypeInfo&) override {}
+    void write(const uint32_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Int64*, ULong, const TypeInfo&) override {}
+    void write(const int64_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const UInt64*, ULong, const TypeInfo&) override {}
+    void write(const uint64_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Float32*, ULong, const TypeInfo&) override {}
+    void write(const float*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Float64*, ULong, const TypeInfo&) override {}
+    void write(const double*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Float128*, ULong, const TypeInfo&) override {}
+    void write(const long double*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Char8*, ULong, const TypeInfo&) override {}
+    void write(const char*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Char16*, ULong, const TypeInfo&) override {}
+    void write(const char16_t*, uint32_t, const TypeInfo&) override {}
 
-    void write(const Char32*, ULong, const TypeInfo&) override {}
+    void write(const char32_t*, uint32_t, const TypeInfo&) override {}
 };
 
 class EmptyReader : public GenericReader {
@@ -226,7 +209,7 @@ class EmptyReader : public GenericReader {
 
     void end_type() override {}
 
-    ULong type_level() override {
+    uint32_t type_level() override {
         return 0;
     }
 
@@ -240,24 +223,8 @@ class EmptyReader : public GenericReader {
         return true;
     }
 
-    ULong read_length() override {
+    uint32_t read_length() override {
         return 0;
-    }
-
-    void read(corba::EightBitString_var& a_value) override {
-        a_value.clear();
-    }
-
-    void read(corba::Utf8String_var& a_value) override {
-        a_value.clear();
-    }
-
-    void read(corba::Utf16String_var& a_value) override {
-        a_value.clear();
-    }
-
-    void read(corba::Utf32String_var& a_value) override {
-        a_value.clear();
     }
 
     void read(std::string& a_value) override {
@@ -272,64 +239,64 @@ class EmptyReader : public GenericReader {
         a_value.clear();
     }
 
-    void read(Boolean* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Boolean));
+    void read(bool* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(bool));
     }
 
-    void read(Int8* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Int8));
+    void read(int8_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(int8_t));
     }
 
-    void read(UInt8* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(UInt8));
+    void read(uint8_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(uint8_t));
     }
 
-    void read(Int16* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Int16));
+    void read(int16_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(int16_t));
     }
 
-    void read(UInt16* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(UInt16));
+    void read(uint16_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(uint16_t));
     }
 
-    void read(Int32* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Int32));
+    void read(int32_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(int32_t));
     }
 
-    void read(UInt32* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(UInt32));
+    void read(uint32_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(uint32_t));
     }
 
-    void read(Int64* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Int64));
+    void read(int64_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(int64_t));
     }
 
-    void read(UInt64* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(UInt64));
+    void read(uint64_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(uint64_t));
     }
 
-    void read(Float32* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Float32));
+    void read(float* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(float));
     }
 
-    void read(Float64* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Float64));
+    void read(double* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(double));
     }
 
-    void read(Float128* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Float128));
+    void read(long double* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(long double));
     }
 
-    void read(Char8* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Char8));
+    void read(char* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(char));
     }
 
-    void read(Char16* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Char16));
+    void read(char16_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(char16_t));
     }
 
-    void read(Char32* a_values, ULong a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(Char32));
+    void read(char32_t* a_values, uint32_t a_count, const TypeInfo&) override {
+        memset(a_values, 0, a_count * sizeof(char32_t));
     }
 
   private:
@@ -345,7 +312,7 @@ class KeyOnlyWriter : public GenericWriter {
         return m_delegate.flags() | SERIALIZER_KEY_ONLY;
     }
 
-    ULong type_level() override {
+    uint32_t type_level() override {
         return m_delegate.type_level();
     }
 
@@ -381,22 +348,10 @@ class KeyOnlyWriter : public GenericWriter {
         m_delegate.end_member();
     }
 
-    void write_length(ULong a_length) override {
+    void write_length(uint32_t a_length) override {
         m_delegate.write_length(a_length);
     }
 
-    void write(const corba::EightBitString_var& a_value) override {
-        m_delegate.write(a_value);
-    }
-    void write(const corba::Utf8String_var& a_value) override {
-        m_delegate.write(a_value);
-    }
-    void write(const corba::Utf16String_var& a_value) override {
-        m_delegate.write(a_value);
-    }
-    void write(const corba::Utf32String_var& a_value) override {
-        m_delegate.write(a_value);
-    }
     void write(const std::string& a_value) override {
         m_delegate.write(a_value);
     }
@@ -406,49 +361,49 @@ class KeyOnlyWriter : public GenericWriter {
     void write(const std::u16string& a_value) override {
         m_delegate.write(a_value);
     }
-    void write(const Boolean* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const bool* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Int8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const UInt8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Int16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const UInt16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Int32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const UInt32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Int64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const UInt64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Float32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const float* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Float64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const double* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Float128* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const long double* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Char8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const char* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Char16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const Char32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void write(const char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
 
@@ -465,7 +420,7 @@ class KeyOnlyReader : public GenericReader {
         return m_delegate.flags() | SERIALIZER_KEY_ONLY;
     }
 
-    ULong type_level() override {
+    uint32_t type_level() override {
         return m_delegate.type_level();
     }
 
@@ -495,22 +450,10 @@ class KeyOnlyReader : public GenericReader {
         return m_delegate.can_skip_type();
     }
 
-    ULong read_length() override {
+    uint32_t read_length() override {
         return m_delegate.read_length();
     }
 
-    void read(corba::EightBitString_var& a_value) override {
-        m_delegate.read(a_value);
-    }
-    void read(corba::Utf8String_var& a_value) override {
-        m_delegate.read(a_value);
-    }
-    void read(corba::Utf16String_var& a_value) override {
-        m_delegate.read(a_value);
-    }
-    void read(corba::Utf32String_var& a_value) override {
-        m_delegate.read(a_value);
-    }
     void read(std::string& a_value) override {
         m_delegate.read(a_value);
     }
@@ -520,49 +463,49 @@ class KeyOnlyReader : public GenericReader {
     void read(std::u16string& a_value) override {
         m_delegate.read(a_value);
     }
-    void read(Boolean* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(bool* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Float32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(float* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Float64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(double* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Float128* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(long double* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Char8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(char* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Char16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Char32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
 
@@ -580,7 +523,7 @@ class FilterMemberReader : public GenericReader {
         return m_delegate.flags();
     }
 
-    ULong type_level() override {
+    uint32_t type_level() override {
         return m_delegate.type_level();
     }
 
@@ -620,22 +563,10 @@ class FilterMemberReader : public GenericReader {
         return m_delegate.can_skip_type();
     }
 
-    ULong read_length() override {
+    uint32_t read_length() override {
         return m_delegate.read_length();
     }
 
-    void read(corba::EightBitString_var& a_value) override {
-        m_delegate.read(a_value);
-    }
-    void read(corba::Utf8String_var& a_value) override {
-        m_delegate.read(a_value);
-    }
-    void read(corba::Utf16String_var& a_value) override {
-        m_delegate.read(a_value);
-    }
-    void read(corba::Utf32String_var& a_value) override {
-        m_delegate.read(a_value);
-    }
     void read(std::string& a_value) override {
         m_delegate.read(a_value);
     }
@@ -645,49 +576,49 @@ class FilterMemberReader : public GenericReader {
     void read(std::u16string& a_value) override {
         m_delegate.read(a_value);
     }
-    void read(Boolean* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(bool* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Int64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(UInt64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Float32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(float* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Float64* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(double* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Float128* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(long double* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Char8* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(char* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Char16* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
-    void read(Char32* a_values, ULong a_count, const TypeInfo& a_info) override {
+    void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
 
@@ -740,7 +671,7 @@ class TGenericMarshalBase {
         }
 
         template <typename T>
-        void io(const MemberInfo& a_member_info, const optional<T>& value) {
+        void io(const MemberInfo& a_member_info, const std::optional<T>& value) {
             if (skip_member(a_member_info)) {
                 return;
             }
@@ -773,14 +704,14 @@ class TGenericMarshalBase {
 
         template <typename VECTOR>
         void io(const VECTOR& value) {
-            auto len = static_cast<ULong>(value.size());
+            auto len = static_cast<uint32_t>(value.size());
             m_marshal.writer().write_length(len);
             if (len > 0) {
                 io(&value[0], len);
             }
         }
 
-        void io(const T* value, ULong value_count) {
+        void io(const T* value, uint32_t value_count) {
             Serializer<MARSHAL, T*> serialize;
             serialize(m_marshal, const_cast<T*>(value), value_count, m_type_info.element_type);
         }
@@ -805,7 +736,7 @@ class TGenericMarshalBase {
 
         template <typename T>
         void io(const T& value) {
-            auto len = static_cast<ULong>(value.size());
+            auto len = static_cast<uint32_t>(value.size());
             m_marshal.writer().write_length(len);
             Serializer<MARSHAL, K> keySerialize;
             Serializer<MARSHAL, V> valueSerialize;
@@ -817,11 +748,11 @@ class TGenericMarshalBase {
 
         template <typename VECTOR>
         void io(const VECTOR& keys, const VECTOR& values) {
-            auto len = static_cast<ULong>(values.size());
+            auto len = static_cast<uint32_t>(values.size());
             m_marshal.writer().write_length(len);
             Serializer<MARSHAL, K> keySerialize;
             Serializer<MARSHAL, V> valueSerialize;
-            for (ULong i = 0; i < len; ++i) {
+            for (uint32_t i = 0; i < len; ++i) {
                 keySerialize(m_marshal, *const_cast<K*>(&keys[i]), m_type_info.key_type);
                 valueSerialize(m_marshal, *const_cast<V*>(&values[i]), m_type_info.element_type);
             }
@@ -869,8 +800,11 @@ class TGenericMarshalBase {
     }
 
     template <typename T>
-    void
-    primitive_io(const T* value, ULong value_count, const TypeInfo* a_info = nullptr)  //!< \private
+    void primitive_io(
+        const T* value,
+        uint32_t value_count,
+        const TypeInfo* a_info = nullptr
+    )  //!< \private
     {
         writer().write(value, value_count, a_info ? *a_info : Null_type_info);
     }
@@ -916,7 +850,7 @@ class TGenericUnmarshalBase {
         void io(const MemberInfo& a_member_info, T& value);
 
         template <typename T>
-        void io(const MemberInfo& a_member_info, optional<T>& value);
+        void io(const MemberInfo& a_member_info, std::optional<T>& value);
 
       protected:
         UNMARSHAL& m_unmarshal;
@@ -938,14 +872,14 @@ class TGenericUnmarshalBase {
 
         template <typename VECTOR>
         void io(VECTOR& value) {
-            ULong len = m_unmarshal.reader().read_length();
+            uint32_t len = m_unmarshal.reader().read_length();
             value.resize(len);
             if (len > 0) {
                 io(&value[0], len);
             }
         }
 
-        void io(T* value, ULong value_count) {
+        void io(T* value, uint32_t value_count) {
             Serializer<UNMARSHAL, T*> serialize;
             serialize(m_unmarshal, value, value_count, m_type_info.element_type);
         }
@@ -970,12 +904,12 @@ class TGenericUnmarshalBase {
 
         template <typename T>
         void io(T& value) {
-            ULong len = m_unmarshal.reader().read_length();
+            uint32_t len = m_unmarshal.reader().read_length();
             value.clear();
             Serializer<UNMARSHAL, K> keySerialize;
             Serializer<UNMARSHAL, V> valueSerialize;
             K key = K();
-            for (ULong i = 0; i < len; ++i) {
+            for (uint32_t i = 0; i < len; ++i) {
                 keySerialize(m_unmarshal, key, m_type_info.key_type);
                 valueSerialize(m_unmarshal, value[key], m_type_info.element_type);
             }
@@ -983,12 +917,12 @@ class TGenericUnmarshalBase {
 
         template <typename VECTOR>
         void io(VECTOR& keys, VECTOR& values) {
-            ULong len = m_unmarshal.reader().read_length();
+            uint32_t len = m_unmarshal.reader().read_length();
             keys.resize(len);
             values.resize(len);
             Serializer<UNMARSHAL, K> keySerialize;
             Serializer<UNMARSHAL, V> valueSerialize;
-            for (ULong i = 0; i < len; ++i) {
+            for (uint32_t i = 0; i < len; ++i) {
                 keySerialize(m_unmarshal, keys[i], m_type_info.key_type);
                 valueSerialize(m_unmarshal, values[i], m_type_info.element_type);
             }
@@ -1002,7 +936,7 @@ class TGenericUnmarshalBase {
     template <CharacterEncoding ENCODING>
     class StringValue  //!< \private
     {
-        using value_type = typename corba::TString_var<ENCODING>::value_type;
+        using value_type = typename character_type_of<ENCODING>::type;
 
       public:
         StringValue(UNMARSHAL& a_unmarshal, const TypeInfo* a_info)
@@ -1037,7 +971,7 @@ class TGenericUnmarshalBase {
     }
 
     template <typename T>
-    void primitive_io(T* value, ULong value_count, const TypeInfo* a_info = nullptr) {
+    void primitive_io(T* value, uint32_t value_count, const TypeInfo* a_info = nullptr) {
         reader().read(value, value_count, a_info ? *a_info : Null_type_info);
     }
 

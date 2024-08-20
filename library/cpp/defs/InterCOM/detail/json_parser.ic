@@ -29,6 +29,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdarg>
 #include <cstdio>
 
 #include "InterCOM/dds_xtypes_constants.h"
@@ -44,8 +45,8 @@ inline JsonNode json_error(const T& node, const char* str) {
 }
 
 template <typename T>
-inline Char32 read_hex(T& reader) {
-    Char32 code = 0;
+inline char32_t read_hex(T& reader) {
+    char32_t code = 0;
     for (int i = 0; i < 4; ++i) {
         int c = reader.getc();
         if (c >= '0' && c <= '9') {
@@ -72,8 +73,8 @@ inline char hex_character(int value) {
 }
 
 template <typename T>
-inline Char32 read_unicode(T& reader) {
-    Char32 code = 0;
+inline char32_t read_unicode(T& reader) {
+    char32_t code = 0;
     int c = reader.getc();
     if (c == '\\') {
         c = reader.getc();
@@ -81,9 +82,9 @@ inline Char32 read_unicode(T& reader) {
             code = read_hex(reader);
             if ((code & ~0x7FF) == 0xD800) {  // Surrogate pair
                 if (reader.getc() == '\\' && reader.getc() == 'u') {
-                    Char16 pair[2];
-                    pair[0] = static_cast<UShort>(code);
-                    pair[1] = static_cast<UShort>(read_hex(reader));
+                    char16_t pair[2];
+                    pair[0] = static_cast<uint16_t>(code);
+                    pair[1] = static_cast<uint16_t>(read_hex(reader));
                     readCharCode<UTF16>(code, pair);
                 } else {
                     code = UNICODE_INVALID;
@@ -125,19 +126,19 @@ inline Char32 read_unicode(T& reader) {
         if ((c & 0x80) == 0) {
             extra_bytes = 0;
             // code_min = 0x20;
-            code = static_cast<Char32>(c);
+            code = static_cast<char32_t>(c);
         } else if ((c & 0xE0) == 0xC0) {
             extra_bytes = 1;
             // code_min = 0x80;
-            code = static_cast<Char32>(c & 0x1F);
+            code = static_cast<char32_t>(c & 0x1F);
         } else if ((c & 0xF0) == 0xE0) {
             extra_bytes = 2;
             // code_min = 0x800;
-            code = static_cast<Char32>(c & 0x0F);
+            code = static_cast<char32_t>(c & 0x0F);
         } else if ((c & 0xF8) == 0xF0) {
             extra_bytes = 3;
             // code_min = 0x10000;
-            code = static_cast<Char32>(c & 0x07);
+            code = static_cast<char32_t>(c & 0x07);
         } else if ((c & 0xC0) == 0x80) {
             while ((reader.peek() & 0xC0) == 0x80) {
                 reader.getc();
@@ -147,7 +148,7 @@ inline Char32 read_unicode(T& reader) {
         for (int i = 1; i <= extra_bytes; ++i) {
             c = reader.getc();
             if ((c & 0xC0) == 0x80) {
-                code = (code << 6) + static_cast<Char32>(c & 0x3F);
+                code = (code << 6) + static_cast<char32_t>(c & 0x3F);
             } else {
                 code = UNICODE_INVALID;
                 break;
@@ -429,7 +430,7 @@ inline JsonNode json_consume_string(T& data) {
     data.getc();
     typename T::state_type start_pos = data.current();
     while (data.peek() != JSON_QUOTE) {
-        Char32 code = read_unicode(data);
+        char32_t code = read_unicode(data);
         if (code == UNICODE_INVALID) {
             return json_error(start_pos, "Illegal value in string");
         }
@@ -440,7 +441,7 @@ inline JsonNode json_consume_string(T& data) {
 }
 
 inline bool
-string_to_double_in_string_sequence(intercom::string_view text, double& value, int* end_ptr) {
+string_to_double_in_string_sequence(std::string_view text, double& value, int* end_ptr) {
     bool result = true;  // Assume all will be well.
     value = 0.0;
     std::istringstream iss((std::string(text)));
@@ -479,11 +480,11 @@ inline std::string stdprintf(const char* format, ...) {
 }
 }  // namespace detail
 
-inline Char32 JsonData::read_unicode() {
+inline char32_t JsonData::read_unicode() {
     return detail::read_unicode(*this);
 }
 
-inline JsonNode JsonNode::from_data(intercom::string_view str) {
+inline JsonNode JsonNode::from_data(std::string_view str) {
     JsonData data(str.data(), str.length());
     return detail::json_parse(data);
 }
@@ -586,7 +587,7 @@ inline bool JsonNode::get_bool(bool& value) const {
     return true;
 }
 
-inline bool JsonNode::get_number(Double& value) const {
+inline bool JsonNode::get_number(double& value) const {
     if (m_type != JSON_INTEGER && m_type != JSON_FLOAT) {
         return false;
     }
@@ -688,16 +689,16 @@ inline void JsonWriter::writeNull() {
         }                                                                           \
     }
 
-NUM_WRITER(Float, "%.7e");
+NUM_WRITER(float, "%.7e");
 
-NUM_WRITER(Double, "%.16e");
+NUM_WRITER(double, "%.16e");
 
 inline void JsonWriter::writeString(const std::string& value) {
     maybeComma();
     put('"');
     const char* str = value.c_str();
     while (*str) {
-        Char32 code = 0;
+        char32_t code = 0;
         str += readCharCode<UTF8>(code, str);
         char buf[4];
         int len = writeCharCode<DEFAULT_ENCODING>(buf, code);
@@ -718,7 +719,7 @@ inline void JsonWriter::writeString(const std::u16string& value) {
     put('"');
     const char16_t* str = value.c_str();
     while (*str) {
-        Char32 code = 0;
+        char32_t code = 0;
         str += readCharCode(code, str);
         char buf[4];
         int len = writeCharCode<UTF8>(buf, code);
@@ -739,7 +740,7 @@ inline void JsonWriter::writeString(const std::wstring& value) {
     put('"');
     const wchar_t* str = value.c_str();
     while (*str) {
-        Char32 code = 0;
+        char32_t code = 0;
         str += readCharCode(code, str);
         char buf[4];
         int len = writeCharCode<UTF8>(buf, code);
@@ -755,7 +756,7 @@ inline void JsonWriter::writeString(const std::wstring& value) {
     m_needComma = true;
 }
 
-inline void JsonWriter::write(LongDouble value) {
+inline void JsonWriter::write(long double value) {
     write(static_cast<double>(value));
 }
 
@@ -770,41 +771,41 @@ inline void JsonWriter::write(char value) {
     writeString(str);
 }
 
-inline void JsonWriter::write(UShort value) {
+inline void JsonWriter::write(uint16_t value) {
     writeUnsigned(value);
 }
 
-inline void JsonWriter::write(Short value) {
+inline void JsonWriter::write(int16_t value) {
     writeInteger(value);
 }
 
-inline void JsonWriter::write(ULong value) {
+inline void JsonWriter::write(uint32_t value) {
     writeUnsigned(value);
 }
 
-inline void JsonWriter::write(Long value) {
+inline void JsonWriter::write(int32_t value) {
     writeInteger(value);
 }
 
-inline void JsonWriter::write(ULongLong value) {
+inline void JsonWriter::write(uint64_t value) {
     writeUnsigned(value);
 }
 
-inline void JsonWriter::write(LongLong value) {
+inline void JsonWriter::write(int64_t value) {
     writeInteger(value);
 }
 
 inline void JsonWriter::write(const JsonNode& node) {
     switch (node.get_type()) {
     case JSON_FLOAT: {
-        Double value;
+        double value;
         if (node.get_number(value)) {
             write(value);
         }
         break;
     }
     case JSON_INTEGER: {
-        LongLong value;
+        int64_t value;
         if (node.get_integer(value)) {
             write(value);
         }
@@ -960,7 +961,7 @@ inline void JsonWriter::putEscaped(char c) {
 
 inline void JsonWriter::put(char c) {
     if (isPretty() && m_is_new_line) {  // Indent line before writing character
-        for (ULong i = 0; i < m_indentLevel * m_indentStep; ++i) {
+        for (uint32_t i = 0; i < m_indentLevel * m_indentStep; ++i) {
             stream().put(' ');
         }
         m_is_new_line = false;
@@ -977,7 +978,7 @@ inline void JsonWriter::begin_type(const TypeInfo& a_info) {
     switch (a_info.kind) {
     case dcps::xtypes::TK_STRUCTURE:
     case dcps::xtypes::TK_UNION:
-        if (a_info.name != intercom::string_view("intercom::JsonValue")) {
+        if (a_info.name != std::string_view("intercom::JsonValue")) {
             startObject();
         }
         is_object = true;
@@ -1014,7 +1015,7 @@ inline void JsonWriter::end_type() {
     switch (stack.info.kind) {
     case dcps::xtypes::TK_STRUCTURE:
     case dcps::xtypes::TK_UNION:
-        if (stack.info.name != intercom::string_view("intercom::JsonValue")) {
+        if (stack.info.name != std::string_view("intercom::JsonValue")) {
             endObject();
         }
         break;
@@ -1033,7 +1034,7 @@ inline void JsonWriter::end_type() {
     }
 }
 
-inline ULong JsonWriter::type_level() {
+inline uint32_t JsonWriter::type_level() {
     return m_level;
 }
 
@@ -1043,8 +1044,8 @@ inline bool JsonWriter::is_relevant(const MemberInfo&) {
 
 inline bool JsonWriter::begin_member(const MemberInfo& a_member) {
     if (m_type_stack[m_level].info.kind == dcps::xtypes::TK_UNION) {
-        if (a_member.name == intercom::string_view("_d")) {
-            if (m_type_stack[m_level].info.name != intercom::string_view("intercom::JsonValue")) {
+        if (a_member.name == std::string_view("_d")) {
+            if (m_type_stack[m_level].info.name != std::string_view("intercom::JsonValue")) {
                 writeKey("$discriminator");
             } else {
                 m_type_stack[m_level].pos++;
@@ -1056,7 +1057,7 @@ inline bool JsonWriter::begin_member(const MemberInfo& a_member) {
                 m_type_stack[m_level].pos = 0;
                 m_is_new_line = m_type_stack[m_level].tmp_is_new_line;
             }
-            if (m_type_stack[m_level].info.name != intercom::string_view("intercom::JsonValue")) {
+            if (m_type_stack[m_level].info.name != std::string_view("intercom::JsonValue")) {
                 writeKey(a_member.name);
             } else {
                 m_type_stack[m_level].pos++;
@@ -1074,23 +1075,7 @@ inline bool JsonWriter::begin_optional_member(const MemberInfo& a_member, bool a
 
 inline void JsonWriter::end_member() {}
 
-inline void JsonWriter::write_length(ULong) {}
-
-inline void JsonWriter::write(const corba::EightBitString_var& a_value) {
-    writeString(a_value);
-}
-
-inline void JsonWriter::write(const corba::Utf8String_var& a_value) {
-    writeString(a_value);
-}
-
-inline void JsonWriter::write(const corba::Utf16String_var& a_value) {
-    writeString(a_value);
-}
-
-inline void JsonWriter::write(const corba::Utf32String_var& a_value) {
-    writeString(a_value);
-}
+inline void JsonWriter::write_length(uint32_t) {}
 
 inline void JsonWriter::write(const std::string& a_value) {
     writeString(a_value);
@@ -1104,130 +1089,103 @@ inline void JsonWriter::write(const std::u16string& a_value) {
     writeString(a_value);
 }
 
-inline void JsonWriter::write(const Boolean* a_values, ULong a_count, const TypeInfo&) {
+inline void JsonWriter::write(const bool* a_values, uint32_t a_count, const TypeInfo&) {
     maybeComma();
     if (is_key() && a_count == 1) {
         put('"');
         write(a_values[0]);
         put('"');
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             write(a_values[i]);
         }
     }
 }
 
-inline void JsonWriter::write(const Int8* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const UInt8* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const Int16* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const UInt16* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const Int32* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const UInt32* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const Int64* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const UInt64* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonWriter::write(const uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         write_integer(a_values[i], a_info);
     }
 }
 
-inline void JsonWriter::write(const Float32* a_values, ULong a_count, const TypeInfo&) {
+inline void JsonWriter::write(const float* a_values, uint32_t a_count, const TypeInfo&) {
     maybeComma();
     if (is_key() && a_count == 1) {
         put('"');
         write(a_values[0]);
         put('"');
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             write(a_values[i]);
         }
     }
 }
 
-inline void JsonWriter::write(const Float64* a_values, ULong a_count, const TypeInfo&) {
+inline void JsonWriter::write(const double* a_values, uint32_t a_count, const TypeInfo&) {
     maybeComma();
     if (is_key() && a_count == 1) {
         put('"');
         write(a_values[0]);
         put('"');
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             write(a_values[i]);
         }
     }
 }
 
-inline void JsonWriter::write(const Float128* a_values, ULong a_count, const TypeInfo&) {
+inline void JsonWriter::write(const long double* a_values, uint32_t a_count, const TypeInfo&) {
     maybeComma();
     if (is_key() && a_count == 1) {
         put('"');
         write(a_values[0]);
         put('"');
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             write(a_values[i]);
         }
-    }
-}
-
-inline void JsonWriter::write(const Char8* a_values, ULong a_count, const TypeInfo&) {
-    corba::Utf8String_var str;
-    str.reserve(1);
-    for (ULong i = 0; i < a_count; ++i) {
-        str[0] = a_values[i];
-        write(str);
-    }
-}
-
-inline void JsonWriter::write(const Char16* a_values, ULong a_count, const TypeInfo&) {
-    corba::Utf16String_var str;
-    str.reserve(1);
-    for (ULong i = 0; i < a_count; ++i) {
-        str[0] = a_values[i];
-        write(str);
-    }
-}
-
-inline void JsonWriter::write(const Char32* a_values, ULong a_count, const TypeInfo&) {
-    corba::Utf16String_var str;
-    str.reserve(1);
-    for (ULong i = 0; i < a_count; ++i) {
-        str[0] = static_cast<corba::Utf16String_var::value_type>(a_values[i]);
-        write(str);
     }
 }
 
@@ -1238,7 +1196,7 @@ inline void JsonWriter::write_integer(T& a_value, const TypeInfo& a_info) {
         std::string str;
         if (enumToString(str, a_value, &a_info)) {
             if (m_type_stack[m_level].info.name != nullptr &&
-                m_type_stack[m_level].info.name == intercom::string_view("intercom::JsonValue") &&
+                m_type_stack[m_level].info.name == std::string_view("intercom::JsonValue") &&
                 str == "JSON_VALUE_NULL") {
                 writeNull();
             } else {
@@ -1273,7 +1231,7 @@ inline void JsonReader::begin_type(const TypeInfo& a_info) {
         current.get_object(m_type_stack[m_level].current_map);
         break;
     case dcps::xtypes::TK_UNION:
-        if (a_info.name != intercom::string_view("intercom::JsonValue")) {
+        if (a_info.name != std::string_view("intercom::JsonValue")) {
             current.get_object(m_type_stack[m_level].current_map);
         } else {
             switch (current.get_type()) {
@@ -1362,7 +1320,7 @@ inline void JsonReader::end_type() {
     m_type_stack[m_level].next_value();
 }
 
-inline ULong JsonReader::type_level() {
+inline uint32_t JsonReader::type_level() {
     return m_level;
 }
 
@@ -1374,11 +1332,11 @@ inline bool JsonReader::find_member(const MemberInfo& a_member) {
     // If not found, see if the only key in the map matches a known member, and if so
     // add its case value as an implicit discriminator.
     if (it == stack.current_map.end() && stack.info.kind == dcps::xtypes::TK_UNION &&
-        a_member.name == intercom::string_view("_d")) {
+        a_member.name == std::string_view("_d")) {
         it = stack.current_map.find("$discriminator");
         if (it == stack.current_map.end() && stack.current_map.size() == 1) {
             auto key = stack.current_map.begin()->first;
-            for (ULong i = 0; i < stack.info.member_count; ++i) {
+            for (uint32_t i = 0; i < stack.info.member_count; ++i) {
                 if (stack.info.members[i].name == key && stack.info.members[i].case_labels) {
                     stack.current_string = std::to_string(stack.info.members[i].case_labels[1]);
                     stack.current = JsonNode(JSON_INTEGER, stack.current_string);
@@ -1406,40 +1364,12 @@ inline bool JsonReader::can_skip_type() {
     return false;
 }
 
-inline ULong JsonReader::read_length() {
+inline uint32_t JsonReader::read_length() {
     Stack& stack = m_type_stack[m_level];
     if (stack.info.kind == dcps::xtypes::TK_MAP) {
-        return static_cast<ULong>(stack.current_vec.size() / 2);
+        return static_cast<uint32_t>(stack.current_vec.size() / 2);
     }
-    return static_cast<ULong>(stack.current_vec.size());
-}
-
-inline void JsonReader::read(corba::EightBitString_var& a_value) {
-    if (!m_type_stack[m_level].current.get_string(a_value)) {
-        throw std::runtime_error("Cannot deserialize type, failed to read string");
-    }
-    m_type_stack[m_level].next_value();
-}
-
-inline void JsonReader::read(corba::Utf8String_var& a_value) {
-    if (!m_type_stack[m_level].current.get_string(a_value)) {
-        throw std::runtime_error("Cannot deserialize type, failed to read string");
-    }
-    m_type_stack[m_level].next_value();
-}
-
-inline void JsonReader::read(corba::Utf16String_var& a_value) {
-    if (!m_type_stack[m_level].current.get_string(a_value)) {
-        throw std::runtime_error("Cannot deserialize type, failed to read string");
-    }
-    m_type_stack[m_level].next_value();
-}
-
-inline void JsonReader::read(corba::Utf32String_var& a_value) {
-    if (!m_type_stack[m_level].current.get_string(a_value)) {
-        throw std::runtime_error("Cannot deserialize type, failed to read string");
-    }
-    m_type_stack[m_level].next_value();
+    return static_cast<uint32_t>(stack.current_vec.size());
 }
 
 inline void JsonReader::read(std::string& a_value) {
@@ -1463,8 +1393,8 @@ inline void JsonReader::read(std::u16string& a_value) {
     m_type_stack[m_level].next_value();
 }
 
-inline void JsonReader::read(Boolean* a_values, ULong a_count, const TypeInfo&) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(bool* a_values, uint32_t a_count, const TypeInfo&) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         if (!m_type_stack[m_level].current.get_bool(a_values[i])) {
             std::string str;
             int64_t int_val;
@@ -1496,103 +1426,105 @@ inline void JsonReader::read(Boolean* a_values, ULong a_count, const TypeInfo&) 
     }
 }
 
-inline void JsonReader::read(Int8* a_values, ULong a_count, const TypeInfo& a_info) {
+inline void JsonReader::read(int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
     if (m_type_stack[m_level].current.get_type() == JSON_STRING &&
         (m_type_stack[m_level].info.kind == dcps::xtypes::TK_SEQUENCE ||
          m_type_stack[m_level].info.kind == dcps::xtypes::TK_ARRAY) &&
         (m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_BYTE ||
          m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_INT8)) {
-        corba::String_var val;
-        m_type_stack[m_level].current.get_string(val);
-        if (val.size() != a_count) {
-            throw std::runtime_error("Unexpected string length for byte array");
-        }
-        memcpy(a_values, val.in(), a_count);
-        m_type_stack[m_level].next_value();
+        // TODO(idarcar):
+        // corba::String_var val;
+        // m_type_stack[m_level].current.get_string(val);
+        // if (val.size() != a_count) {
+        //     throw std::runtime_error("Unexpected string length for byte array");
+        // }
+        // memcpy(a_values, val.in(), a_count);
+        // m_type_stack[m_level].next_value();
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             read_integer(a_values[i], a_info);
             m_type_stack[m_level].next_value();
         }
     }
 }
 
-inline void JsonReader::read(UInt8* a_values, ULong a_count, const TypeInfo& a_info) {
+inline void JsonReader::read(uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
     if (m_type_stack[m_level].current.get_type() == JSON_STRING &&
         (m_type_stack[m_level].info.kind == dcps::xtypes::TK_SEQUENCE ||
          m_type_stack[m_level].info.kind == dcps::xtypes::TK_ARRAY) &&
         (m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_BYTE ||
          m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_UINT8)) {
-        corba::String_var val;
-        m_type_stack[m_level].current.get_string(val);
-        if (val.size() != a_count) {
-            throw std::runtime_error("Unexpected string length for byte array");
-        }
-        memcpy(a_values, val.in(), a_count);
-        m_type_stack[m_level].next_value();
+        // TODO(idarcar):
+        // corba::String_var val;
+        // m_type_stack[m_level].current.get_string(val);
+        // if (val.size() != a_count) {
+        //     throw std::runtime_error("Unexpected string length for byte array");
+        // }
+        // memcpy(a_values, val.in(), a_count);
+        // m_type_stack[m_level].next_value();
     } else {
-        for (ULong i = 0; i < a_count; ++i) {
+        for (uint32_t i = 0; i < a_count; ++i) {
             read_integer(a_values[i], a_info);
             m_type_stack[m_level].next_value();
         }
     }
 }
 
-inline void JsonReader::read(Int16* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(int16_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         read_integer(a_values[i], a_info);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(UInt16* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(uint16_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         read_integer(a_values[i], a_info);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(Int32* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(int32_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         read_integer(a_values[i], a_info);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(UInt32* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(uint32_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         read_integer(a_values[i], a_info);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(Int64* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(int64_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         read_integer(a_values[i], a_info);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(UInt64* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(uint64_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         read_integer(a_values[i], a_info);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(Float32* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(float* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         double x;
         if (!m_type_stack[m_level].current.get_number(x) && !read_from_string(x, a_info)) {
             throw std::runtime_error("Cannot deserialize type, failed to read float");
         }
-        a_values[i] = static_cast<Float32>(x);
+        a_values[i] = static_cast<float>(x);
         m_type_stack[m_level].next_value();
     }
 }
 
-inline void JsonReader::read(Float64* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(double* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         if (!m_type_stack[m_level].current.get_number(a_values[i]) &&
             !read_from_string(a_values[i], a_info)) {
             throw std::runtime_error("Cannot deserialize type, failed to read float");
@@ -1601,38 +1533,14 @@ inline void JsonReader::read(Float64* a_values, ULong a_count, const TypeInfo& a
     }
 }
 
-inline void JsonReader::read(Float128* a_values, ULong a_count, const TypeInfo& a_info) {
-    for (ULong i = 0; i < a_count; ++i) {
+inline void JsonReader::read(long double* a_values, uint32_t a_count, const TypeInfo& a_info) {
+    for (uint32_t i = 0; i < a_count; ++i) {
         double x;
         if (!m_type_stack[m_level].current.get_number(x) && !read_from_string(x, a_info)) {
             throw std::runtime_error("Cannot deserialize type, failed to read float");
         }
         a_values[i] = x;
         m_type_stack[m_level].next_value();
-    }
-}
-
-inline void JsonReader::read(Char8* a_values, ULong a_count, const TypeInfo&) {
-    for (ULong i = 0; i < a_count; ++i) {
-        corba::Utf8String_var str;
-        read(str);
-        a_values[i] = str[0];
-    }
-}
-
-inline void JsonReader::read(Char16* a_values, ULong a_count, const TypeInfo&) {
-    for (ULong i = 0; i < a_count; ++i) {
-        corba::Utf16String_var str;
-        read(str);
-        a_values[i] = str[0];
-    }
-}
-
-inline void JsonReader::read(Char32* a_values, ULong a_count, const TypeInfo&) {
-    for (ULong i = 0; i < a_count; ++i) {
-        corba::Utf32String_var str;
-        read(str);
-        a_values[i] = str[0];
     }
 }
 
@@ -1651,7 +1559,7 @@ inline bool JsonReader::read_from_string(T& a_value, const TypeInfo&) {
                     return true;
                 }
                 // Attempt to parse string as integer
-                JsonReader reader(str.c_str(), static_cast<ULong>(str.size()));
+                JsonReader reader(str.c_str(), static_cast<uint32_t>(str.size()));
                 reader.m_const_map = m_const_map;
                 dcps::cts::GenericUnmarshal(reader).io(a_value);
                 return true;
@@ -1668,26 +1576,26 @@ inline void JsonReader::read_integer(T& a_value, const TypeInfo& a_info) {
     if (current_node.get_integer(a_value)) {
         return;
     }
-    if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
-        a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
-        corba::String_var str;
-        ULongLong uval;
-        if (current_node.get_string(str) && stringToEnum(uval, str.c_str(), &a_info)) {
-            a_value = static_cast<T>(uval);
-            return;
-        }
-        throw std::runtime_error("Unknown enumeration value in json unmarshal");
-    }
+    // if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
+    //     a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
+    //     corba::String_var str;
+    //     Uint64_t uval;
+    //     if (current_node.get_string(str) && stringToEnum(uval, str.c_str(), &a_info)) {
+    //         a_value = static_cast<T>(uval);
+    //         return;
+    //     }
+    //     throw std::runtime_error("Unknown enumeration value in json unmarshal");
+    // }
     if (read_from_string(a_value, a_info)) {
         return;
     }
     throw std::runtime_error("Failed to read integer value");
 }
 
-inline JsonReader::JsonReader(intercom::string_view a_text, SerializerFlags a_flags)
-    : JsonReader(a_text.data(), static_cast<ULong>(a_text.length()), a_flags) {}
+inline JsonReader::JsonReader(std::string_view a_text, SerializerFlags a_flags)
+    : JsonReader(a_text.data(), static_cast<uint32_t>(a_text.length()), a_flags) {}
 
-inline JsonReader::JsonReader(const char* a_text, ULong a_length, SerializerFlags a_flags)
+inline JsonReader::JsonReader(const char* a_text, uint32_t a_length, SerializerFlags a_flags)
     : m_data(new JsonData(a_text, a_length)), m_flags(a_flags) {
     m_type_stack[0].current = JsonNode::from_data(*m_data);
     m_type_stack[0].info = Null_type_info;

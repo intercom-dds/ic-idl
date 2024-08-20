@@ -25,7 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <allocator>
+#pragma once
+
+#include <cstring>
+#include <memory>
 
 #include "InterCOM/buffer.h"
 
@@ -50,7 +53,7 @@ inline Buffer::Buffer(size_t a_length)
     allocate(a_length);
 }
 
-inline Buffer::Buffer(Octet* pointer, size_t a_length)
+inline Buffer::Buffer(uint8_t* pointer, size_t a_length)
     : m_read_pointer(nullptr),
       m_write_pointer(nullptr),
       m_pointer(nullptr),
@@ -60,7 +63,7 @@ inline Buffer::Buffer(Octet* pointer, size_t a_length)
     set_buffer(pointer, a_length);
 }
 
-inline Buffer::Buffer(const Octet* pointer, size_t a_length)
+inline Buffer::Buffer(const uint8_t* pointer, size_t a_length)
     : m_read_pointer(nullptr),
       m_write_pointer(nullptr),
       m_pointer(nullptr),
@@ -103,20 +106,20 @@ inline bool Buffer::operator!=(const Buffer& a_other) const {
     return !operator==(a_other);
 }
 
-inline void Buffer::set_buffer(Octet* pointer, size_t a_length) {
+inline void Buffer::set_buffer(uint8_t* pointer, size_t a_length) {
     free_buffer();
     m_pointer = pointer;
     m_write_pointer = m_pointer + a_length;
     m_read_pointer = m_pointer;
-    m_length = static_cast<ULong>(a_length);
+    m_length = static_cast<uint32_t>(a_length);
     m_owned = false;
     m_writeable = true;
 }
 
-inline void Buffer::set_buffer(const Octet* pointer, size_t a_length) {
+inline void Buffer::set_buffer(const uint8_t* pointer, size_t a_length) {
     free_buffer();
-    m_pointer = const_cast<Octet*>(pointer);
-    m_length = static_cast<ULong>(a_length);
+    m_pointer = const_cast<uint8_t*>(pointer);
+    m_length = static_cast<uint32_t>(a_length);
     m_write_pointer = m_pointer + a_length;
     m_read_pointer = m_pointer;
     m_owned = false;
@@ -132,7 +135,7 @@ inline void Buffer::reset() const {
     set_read(nullptr);
 }
 
-inline void Buffer::set_read(const Octet* newPosition) const {
+inline void Buffer::set_read(const uint8_t* newPosition) const {
     m_read_pointer = newPosition ? newPosition : m_pointer;
 }
 
@@ -143,17 +146,17 @@ inline void Buffer::advance_read(size_t bytes) const {
     m_read_pointer += m_read_pointer ? bytes : 0;
 }
 
-inline ULong Buffer::read_index(ULong index) const {
-    auto rval = ULong(m_read_pointer - m_pointer);
+inline uint32_t Buffer::read_index(uint32_t index) const {
+    auto rval = uint32_t(m_read_pointer - m_pointer);
     m_read_pointer = m_pointer + index;
     return rval;
 }
 
-inline ULong Buffer::read_index() const {
-    return ULong(m_read_pointer - m_pointer);
+inline uint32_t Buffer::read_index() const {
+    return uint32_t(m_read_pointer - m_pointer);
 }
 
-inline void Buffer::set_write(Octet* newPosition) {
+inline void Buffer::set_write(uint8_t* newPosition) {
     if (!m_writeable) {
         throw std::runtime_error("Cannot advance the write-pointer of a non-writeable buffer");
     }
@@ -167,14 +170,14 @@ inline void Buffer::advance_write(size_t bytes) {
     m_write_pointer += m_write_pointer ? bytes : 0;
 }
 
-inline ULong Buffer::write_index(size_t index) {
-    auto rval = ULong(m_write_pointer - m_pointer);
+inline uint32_t Buffer::write_index(size_t index) {
+    auto rval = uint32_t(m_write_pointer - m_pointer);
     m_write_pointer = m_pointer + index;
     return rval;
 }
 
-inline ULong Buffer::write_index() const {
-    return ULong(m_write_pointer - m_pointer);
+inline uint32_t Buffer::write_index() const {
+    return uint32_t(m_write_pointer - m_pointer);
 }
 
 inline void Buffer::reserve_write(size_t bytes) {
@@ -186,44 +189,44 @@ inline void Buffer::reserve_write(size_t bytes) {
         if (!m_owned) {
             throw std::runtime_error("The amount cannot be reserved, data not owned");
         }
-        allocate(static_cast<ULong>(totalLength));
+        allocate(static_cast<uint32_t>(totalLength));
     }
 }
 
-inline const Octet* Buffer::end_pointer() const {
+inline const uint8_t* Buffer::end_pointer() const {
     return m_pointer + m_length;
 }
 
-inline const Octet* Buffer::start_pointer() const {
+inline const uint8_t* Buffer::start_pointer() const {
     return m_pointer;
 }
 
-inline const Octet* Buffer::data() const {
+inline const uint8_t* Buffer::data() const {
     return m_pointer;
 }
 
-inline Octet* Buffer::pointer(ULong index) {
+inline uint8_t* Buffer::pointer(uint32_t index) {
     return &(m_pointer[index]);
 }
 
-inline const Octet* Buffer::pointer(ULong index) const {
+inline const uint8_t* Buffer::pointer(uint32_t index) const {
     return &(m_pointer[index]);
 }
 
-inline ULong Buffer::length() const {
+inline uint32_t Buffer::length() const {
     return m_length;
 }
 
-inline ULong Buffer::readable_length() const {
-    return ULong(m_write_pointer - m_pointer);
+inline uint32_t Buffer::readable_length() const {
+    return uint32_t(m_write_pointer - m_pointer);
 }
 
-inline ULong Buffer::unread_bytes() const {
-    return ULong(m_write_pointer > m_read_pointer ? m_write_pointer - m_read_pointer : 0);
+inline uint32_t Buffer::unread_bytes() const {
+    return uint32_t(m_write_pointer > m_read_pointer ? m_write_pointer - m_read_pointer : 0);
 }
 
-inline ULong Buffer::writable_bytes() const {
-    return ULong(m_pointer + m_length - m_write_pointer);
+inline uint32_t Buffer::writable_bytes() const {
+    return uint32_t(m_pointer + m_length - m_write_pointer);
 }
 
 inline bool Buffer::empty() const {
@@ -234,24 +237,24 @@ inline bool Buffer::owned() const {
     return m_owned;
 }
 
-inline intercom::span<const Octet> Buffer::span() const {
-    return intercom::span<const Octet>(m_read_pointer, readable_length());
+inline intercom::span<const uint8_t> Buffer::span() const {
+    return intercom::span<const uint8_t>(m_read_pointer, readable_length());
 }
 
-inline intercom::span<const Octet> Buffer::subspan(size_t pos, size_t length) const {
-    return intercom::span<const Octet>(m_read_pointer + pos, length);
+inline intercom::span<const uint8_t> Buffer::subspan(size_t pos, size_t length) const {
+    return intercom::span<const uint8_t>(m_read_pointer + pos, length);
 }
 
 inline bool Buffer::writeable() const {
     return m_writeable;
 }
 
-inline void Buffer::write(intercom::span<const Octet> a_data) {
-    write(a_data.data(), static_cast<ULong>(a_data.size()));
+inline void Buffer::write(intercom::span<const uint8_t> a_data) {
+    write(a_data.data(), static_cast<uint32_t>(a_data.size()));
 }
 
 inline void Buffer::write(const Buffer& a_data) {
-    ULong length = a_data.unread_bytes();
+    uint32_t length = a_data.unread_bytes();
     if (length != 0) {
         reserve_write(length);
         memcpy(m_write_pointer, a_data.m_read_pointer, length);
@@ -260,7 +263,7 @@ inline void Buffer::write(const Buffer& a_data) {
     }
 }
 
-inline void Buffer::write(const Octet* a_data, size_t a_length) {
+inline void Buffer::write(const uint8_t* a_data, size_t a_length) {
     if (a_length > 0) {
         reserve_write(a_length);
         memcpy(m_write_pointer, a_data, a_length);
@@ -268,7 +271,7 @@ inline void Buffer::write(const Octet* a_data, size_t a_length) {
     }
 }
 
-inline void Buffer::read(Octet* a_destination, size_t a_length) const {
+inline void Buffer::read(uint8_t* a_destination, size_t a_length) const {
     memcpy(a_destination, m_read_pointer, a_length);
     advance_read(a_length);
 }
@@ -285,8 +288,8 @@ inline void Buffer::duplicate(const Buffer& a_data) {
     }
 }
 
-inline Octet* Buffer::get_buffer(bool orphan) {
-    Octet* ret = m_pointer;
+inline uint8_t* Buffer::get_buffer(bool orphan) {
+    uint8_t* ret = m_pointer;
     if (orphan) {
         if (m_owned) {
             m_owned = false;
@@ -297,7 +300,7 @@ inline Octet* Buffer::get_buffer(bool orphan) {
     return ret;
 }
 
-inline Octet Buffer::at(ULong index) const {
+inline uint8_t Buffer::at(uint32_t index) const {
     if (index >= readable_length()) {
         throw std::runtime_error("index out of range");
     }
@@ -318,13 +321,13 @@ inline void Buffer::allocate(size_t a_new_length) {
         // Do nothing
     } else if (m_pointer == nullptr || !m_owned) {
         m_pointer = allocator.allocate(a_new_length);
-        m_length = static_cast<ULong>(a_new_length);
+        m_length = static_cast<uint32_t>(a_new_length);
         m_owned = true;
         m_writeable = true;
         m_write_pointer = m_pointer;
         m_read_pointer = m_pointer;
     } else if (m_length < a_new_length) {
-        ULong min_length = (m_length * 3) / 2;
+        uint32_t min_length = (m_length * 3) / 2;
         min_length = (min_length < 64) ? 64 : min_length;
         if (a_new_length < min_length) {
             a_new_length = min_length;
@@ -337,7 +340,7 @@ inline void Buffer::allocate(size_t a_new_length) {
         memcpy(new_pointer, m_pointer, to_copy);
         free_buffer();
         m_pointer = new_pointer;
-        m_length = static_cast<ULong>(a_new_length);
+        m_length = static_cast<uint32_t>(a_new_length);
         m_write_pointer = m_pointer + m_write_pointer_index;
         m_read_pointer = m_pointer + m_read_pointer_index;
     }

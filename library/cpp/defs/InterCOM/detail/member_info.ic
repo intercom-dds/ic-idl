@@ -1,0 +1,371 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include "InterCOM/integer_types.h"
+#include "InterCOM/member_info.h"
+
+namespace intercom {
+const TypeInfo Null_type_info = {
+    "NULL",
+    0 /* xtypes::TK_NONE */,
+    0,
+    8,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    &Null_type_info,
+    &Null_type_info,
+    0,
+    nullptr
+};
+
+const TypeInfo Boolean_type_info = {
+    "Boolean",
+    1 /* xtypes::TK_BOOLEAN */,
+    0,
+    8,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Octet_type_info = {
+    "Octet",
+    2 /* xtypes::TK_BYTE */,
+    0,
+    8,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Int8_type_info = {
+    "int8",
+    12 /* xtypes::TK_INT8 */,
+    0,
+    8,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Uint8_type_info = {
+    "uint8",
+    13 /* xtypes::TK_UINT8 */,
+    0,
+    8,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Short_type_info = {
+    "Short",
+    3 /* xtypes::TK_INT16 */,
+    0,
+    16,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo UShort_type_info = {
+    "UShort",
+    6 /* xtypes::TK_UINT16 */,
+    0,
+    16,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Long_type_info = {
+    "Long",
+    4 /* xtypes::TK_INT32 */,
+    0,
+    32,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo ULong_type_info = {
+    "ULong",
+    7 /* xtypes::TK_UINT32 */,
+    0,
+    32,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo LongLong_type_info = {
+    "LongLong",
+    5 /* xtypes::TK_INT64 */,
+    0,
+    64,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo ULongLong_type_info = {
+    "ULongLong",
+    8 /* xtypes::TK_UINT64 */,
+    0,
+    64,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr,
+};
+
+const TypeInfo Float_type_info = {
+    "Float",
+    9 /* xtypes::TK_FLOAT32 */,
+    0,
+    32,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Double_type_info = {
+    "Double",
+    10 /* xtypes::TK_FLOAT64 */,
+    0,
+    64,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo LongDouble_type_info = {
+    "LongDouble",
+    11 /* xtypes::TK_FLOAT128 */,
+    0,
+    128,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Char_type_info = {
+    "Char",
+    16 /* xtypes::TK_CHAR8 */,
+    0,
+    8,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Char16_type_info = {
+    "Char16",
+    17 /* xtypes::TK_CHAR16 */,
+    0,
+    16,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Char32_type_info = {
+    "Char32",
+    0 /* xtypes::TK_NONE */,
+    0,
+    32,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    0,
+    nullptr
+};
+
+const TypeInfo Null_seq_type_info = {
+    "NullSequence",
+    0x60 /* xtypes::TK_SEQUENCE */,
+    0,
+    32,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    &Null_type_info,
+    0,
+    nullptr
+};
+
+const TypeInfo Null_map_type_info = {
+    "NullMap",
+    0x62 /* xtypes::TK_MAP */,
+    0,
+    32,
+    0,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    &Null_type_info,
+    &Null_type_info,
+    0,
+    nullptr
+};
+
+const Long* MemberInfo_empty_case_labels = {nullptr};
+
+const TypeInfo TypeTraits<bool>::type_info = Boolean_type_info;
+const TypeInfo TypeTraits<char>::type_info = Char_type_info;
+const TypeInfo TypeTraits<char16_t>::type_info = Char16_type_info;
+const TypeInfo TypeTraits<char32_t>::type_info = Char32_type_info;
+const TypeInfo TypeTraits<int8_t>::type_info = Int8_type_info;
+const TypeInfo TypeTraits<uint8_t>::type_info = Uint8_type_info;
+const TypeInfo TypeTraits<int16_t>::type_info = Short_type_info;
+const TypeInfo TypeTraits<uint16_t>::type_info = UShort_type_info;
+const TypeInfo TypeTraits<int32_t>::type_info = Long_type_info;
+const TypeInfo TypeTraits<uint32_t>::type_info = ULong_type_info;
+const TypeInfo TypeTraits<int64_t>::type_info = LongLong_type_info;
+const TypeInfo TypeTraits<uint64_t>::type_info = ULongLong_type_info;
+const TypeInfo TypeTraits<float>::type_info = Float_type_info;
+const TypeInfo TypeTraits<double>::type_info = Double_type_info;
+const TypeInfo TypeTraits<long double>::type_info = LongDouble_type_info;
+
+void TypeInfoDeleter::operator()(const TypeInfo* info) {
+    for (ULong i = 0; i < info->member_count; ++i) {
+        corba::string_free(info->members[i].name);
+        corba::string_free(info->members[i].default_value);
+        if (info->members[i].case_labels &&
+            info->members[i].case_labels != MemberInfo_empty_case_labels) {
+            lib_free(const_cast<Long*>(info->members[i].case_labels));
+        }
+    }
+    lib_free(info->min_value);
+    lib_free(info->max_value);
+    lib_free(info->default_value);
+    lib_free(info->members);
+    corba::string_free(info->name);
+    delete info;
+}
+
+}  // namespace intercom

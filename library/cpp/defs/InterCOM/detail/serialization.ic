@@ -42,12 +42,12 @@ template <typename T>
 inline bool enumToString(std::string& res, T value, const TypeInfo* type) {
     if (type) {
         if (type->kind == dcps::xtypes::TK_ENUM) {
-            auto uvalue = static_cast<ULong>(value);
+            auto uvalue = static_cast<uint32_t>(value);
             if (uvalue < type->member_count && type->members[uvalue].id == uvalue) {
                 res = type->members[uvalue].name;
                 return true;
             }
-            for (ULong i = 0; i < type->member_count; ++i) {
+            for (uint32_t i = 0; i < type->member_count; ++i) {
                 if (uvalue == type->members[i].id) {
                     res = type->members[i].name;
                     return true;
@@ -56,7 +56,7 @@ inline bool enumToString(std::string& res, T value, const TypeInfo* type) {
         } else if (type->kind == dcps::xtypes::TK_BITMASK) {
             std::ostringstream stream;
             bool empty = true;
-            for (ULong i = 0; i < type->member_count; ++i) {
+            for (uint32_t i = 0; i < type->member_count; ++i) {
                 if ((1ULL << type->members[i].id) & value) {
                     if (!empty) {
                         stream << "|";
@@ -75,51 +75,52 @@ inline bool enumToString(std::string& res, T value, const TypeInfo* type) {
     return false;
 }
 
-template <typename T>
-inline bool stringToEnum(T& value, const char* string, const TypeInfo* type) {
-    if (type) {
-        if (type->kind == dcps::xtypes::TK_ENUM) {
-            for (ULong i = 0; i < type->member_count; ++i) {
-                if (strcmp(string, type->members[i].name) == 0) {
-                    value = static_cast<T>(type->members[i].id);
-                    return true;
-                }
-            }
-        } else if (type->kind == dcps::xtypes::TK_BITMASK) {
-            bool res = true;
-            ULongLong uvalue = 0;
-            corba::String_var copy = string;
-            char* ptr = copy.inout();
-            while (ptr) {
-                char* end = ptr;
-                while (*end && *end != '|' && *end != ' ') {
-                    ++end;
-                }
-                char* next = *end ? end + 1 : nullptr;
-                *end = '\0';
-                if (ptr != end) {
-                    bool found = false;
-                    for (ULong i = 0; i < type->member_count; ++i) {
-                        if (strcmp(ptr, type->members[i].name) == 0) {
-                            uvalue |= (1ULL << type->members[i].id);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        res = false;
-                    }
-                }
-                ptr = next;
-            }
-            if (res) {
-                value = static_cast<T>(uvalue);
-            }
-            return res;
-        }
-    }
-    return false;
-}
+// TODO(idarcar):
+// template <typename T>
+// inline bool stringToEnum(T& value, const char* string, const TypeInfo* type) {
+//     if (type) {
+//         if (type->kind == dcps::xtypes::TK_ENUM) {
+//             for (uint32_t i = 0; i < type->member_count; ++i) {
+//                 if (strcmp(string, type->members[i].name) == 0) {
+//                     value = static_cast<T>(type->members[i].id);
+//                     return true;
+//                 }
+//             }
+//         } else if (type->kind == dcps::xtypes::TK_BITMASK) {
+//             bool res = true;
+//             uint64_t uvalue = 0;
+//             corba::String_var copy = string;
+//             char* ptr = copy.inout();
+//             while (ptr) {
+//                 char* end = ptr;
+//                 while (*end && *end != '|' && *end != ' ') {
+//                     ++end;
+//                 }
+//                 char* next = *end ? end + 1 : nullptr;
+//                 *end = '\0';
+//                 if (ptr != end) {
+//                     bool found = false;
+//                     for (uint32_t i = 0; i < type->member_count; ++i) {
+//                         if (strcmp(ptr, type->members[i].name) == 0) {
+//                             uvalue |= (1ULL << type->members[i].id);
+//                             found = true;
+//                             break;
+//                         }
+//                     }
+//                     if (!found) {
+//                         res = false;
+//                     }
+//                 }
+//                 ptr = next;
+//             }
+//             if (res) {
+//                 value = static_cast<T>(uvalue);
+//             }
+//             return res;
+//         }
+//     }
+//     return false;
+// }
 
 #define CTS_DEFINE_PRIMITIVE_TYPE(type)                                                          \
     template <class Archive>                                                                     \
@@ -160,13 +161,13 @@ inline bool stringToEnum(T& value, const char* string, const TypeInfo* type) {
     };                                                                                           \
     template <class Archive>                                                                     \
     struct Serializer<Archive, type*> {                                                          \
-        void operator()(Archive& a, type* value, ULong count, const TypeInfo* type_info) {       \
+        void operator()(Archive& a, type* value, uint32_t count, const TypeInfo* type_info) {    \
             a.primitive_io(value, count, type_info);                                             \
             if (Archive::IS_READER && type_info &&                                               \
                 (type_info->flags & (dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT |                \
                                      dcps::xtypes::IS_DISCARD_TRY_CONSTRUCT)) != 0) {            \
                 if (type_info->min_value) {                                                      \
-                    for (ULong i = 0; i < count; ++i) {                                          \
+                    for (uint32_t i = 0; i < count; ++i) {                                       \
                         if (value[i] < *static_cast<type*>(type_info->min_value)) {              \
                             if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) { \
                                 if (type_info->default_value) {                                  \
@@ -181,7 +182,7 @@ inline bool stringToEnum(T& value, const char* string, const TypeInfo* type) {
                     }                                                                            \
                 }                                                                                \
                 if (type_info->max_value) {                                                      \
-                    for (ULong i = 0; i < count; ++i) {                                          \
+                    for (uint32_t i = 0; i < count; ++i) {                                       \
                         if (value[i] > *static_cast<type*>(type_info->max_value)) {              \
                             if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) { \
                                 if (type_info->default_value) {                                  \
@@ -198,29 +199,6 @@ inline bool stringToEnum(T& value, const char* string, const TypeInfo* type) {
             }                                                                                    \
         }                                                                                        \
     };  // end of CTS_DEFINE_PRIMITIVE_TYPE
-
-template <class Archive, typename T>
-struct Serializer<Archive, T*> {
-    void operator()(Archive& a, T* value, ULong count, const TypeInfo* type_info) {
-        Serializer<Archive, T> serialize;
-        for (ULong i = 0; i < count; ++i) {
-            serialize(a, value[i], type_info);
-        }
-    }
-    void operator()(Archive& a, T*& value, const TypeInfo*) {
-        dcps::ReferableEntity::handle_t handle =
-            Archive::IS_WRITER && value ? value->handle() : HANDLE_NIL_NATIVE;
-        a.io(handle);
-        if (Archive::IS_READER) {
-            value = handle != HANDLE_NIL_NATIVE
-                        ? dynamic_cast<T*>(dcps::ReferableEntity::get(handle))
-                        : nullptr;
-            if (value == nullptr && handle != HANDLE_NIL_NATIVE) {
-                throw std::runtime_error("Invalid handle while reading CDR data");
-            }
-        }
-    }
-};
 
 template <class Archive>
 struct Serializer<Archive, std::string> {
@@ -297,7 +275,7 @@ template <class Archive, typename T, size_t N>
 struct Serializer<Archive, std::array<T, N>> {
     void operator()(Archive& a, std::array<T, N>& value, const TypeInfo* type_info) {
         typename Archive::template VectorValue<T> serializer(a, type_info);
-        serializer.io(value.data(), static_cast<ULong>(N));
+        serializer.io(value.data(), static_cast<uint32_t>(N));
     }
 };
 
@@ -305,41 +283,42 @@ template <class Archive, typename T>
 struct Serializer<Archive, intercom::span<T>> {
     void operator()(Archive& a, intercom::span<T>& value, const TypeInfo* type_info) {
         typename Archive::template VectorValue<T> serializer(a, type_info);
-        serializer.io(value.data(), static_cast<ULong>(value.size()));
+        serializer.io(value.data(), static_cast<uint32_t>(value.size()));
     }
 };
 
+// TODO(idarcar):
 // vector<bool> is special, but should be serialized as a sequence of bytes
-template <class Archive>
-struct Serializer<Archive, std::vector<bool>> {
-    void operator()(Archive& a, std::vector<bool>& value, const TypeInfo* type_info) {
-        typename Archive::template VectorValue<Boolean> serializer(a, type_info);
-        corba::Sequence<Boolean> copy;
-        if (Archive::IS_WRITER) {
-            copy.reserve(static_cast<ULong>(value.size()));
-            for (auto elem : value) {
-                copy.push_back(elem != 0);
-            }
-        }
-        serializer.io(copy);
-        if (Archive::IS_READER) {
-            value.clear();
-            value.reserve(copy.size());
-            for (auto elem : copy) {
-                value.push_back(elem != 0);
-            }
-        }
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
-            if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
-                value.resize(type_info->max_length);
-            } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
-                value.clear();
-            } else {
-                throw std::runtime_error("Sequence length out of bounds in vector serializer");
-            }
-        }
-    }
-};
+// template <class Archive>
+// struct Serializer<Archive, std::vector<bool>> {
+//     void operator()(Archive& a, std::vector<bool>& value, const TypeInfo* type_info) {
+//         typename Archive::template VectorValue<bool> serializer(a, type_info);
+//         corba::Sequence<bool> copy;
+//         if (Archive::IS_WRITER) {
+//             copy.reserve(static_cast<uint32_t>(value.size()));
+//             for (auto elem : value) {
+//                 copy.push_back(elem != 0);
+//             }
+//         }
+//         serializer.io(copy);
+//         if (Archive::IS_READER) {
+//             value.clear();
+//             value.reserve(copy.size());
+//             for (auto elem : copy) {
+//                 value.push_back(elem != 0);
+//             }
+//         }
+//         if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+//             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
+//                 value.resize(type_info->max_length);
+//             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
+//                 value.clear();
+//             } else {
+//                 throw std::runtime_error("Sequence length out of bounds in vector serializer");
+//             }
+//         }
+//     }
+// };
 
 template <class Archive>
 struct Serializer<Archive, std::wstring> {
@@ -360,36 +339,6 @@ struct Serializer<Archive, std::wstring> {
                 throw std::runtime_error("String length out of bounds");
             }
         }
-    }
-};
-
-template <class Archive, CharacterEncoding E>
-struct Serializer<Archive, intercom::corba::TString_var<E>> {
-    using value_type = typename corba::TString_var<E>::value_type;
-    void operator()(Archive& a, corba::TString_var<E>& value, const TypeInfo* type_info) {
-        typename Archive::template StringValue<E> serializer(a, type_info);
-        serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
-            if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
-                value.reserve(type_info->max_length);
-            } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
-                if (type_info->default_value) {
-                    value = static_cast<value_type*>(type_info->default_value);
-                } else {
-                    value.clear();
-                }
-            } else {
-                throw std::runtime_error("String length out of bounds");
-            }
-        }
-    }
-};
-
-template <class Archive, CharacterEncoding E, ULong N>
-struct Serializer<Archive, intercom::corba::BoundedTString_var<E, N>> {
-    void operator()(Archive& a, corba::TString_var<E>& value, const TypeInfo* type_info) {
-        Serializer<Archive, corba::TString_var<E>> serializer;
-        serializer(a, value, type_info);
     }
 };
 
@@ -418,48 +367,6 @@ struct Serializer<Archive, bounded_vector<T, L>> {
     }
 };
 
-template <class Archive, typename T, ULong N>
-struct Serializer<Archive, intercom::corba::Array<T, N>> {
-    void operator()(Archive& a, corba::Array<T, N>& value, const TypeInfo* type_info) {
-        typename Archive::template VectorValue<T> serializer(a, type_info);
-        serializer.io(value.data(), N);
-    }
-};
-
-template <class Archive, typename T, class Allocator>
-struct Serializer<Archive, intercom::corba::Sequence<T, Allocator>> {
-    void operator()(Archive& a, corba::Sequence<T, Allocator>& value, const TypeInfo* type_info) {
-        typename Archive::template VectorValue<T> serializer(a, type_info);
-        serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
-            if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
-                value.resize(type_info->max_length);
-            } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
-                value.clear();
-            } else {
-                throw std::runtime_error("Sequence length out of bounds in sequence serializer");
-            }
-        }
-    }
-};
-
-template <class Archive, typename T, ULong L>
-struct Serializer<Archive, intercom::corba::BoundedSequence<T, L>> {
-    void operator()(Archive& a, corba::BoundedSequence<T, L>& value, const TypeInfo* type_info) {
-        typename Archive::template VectorValue<T> serializer(a, type_info);
-        serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
-            if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
-                value.resize(type_info->max_length);
-            } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
-                value.clear();
-            } else {
-                throw std::runtime_error("Sequence length out of bounds in sequence serializer");
-            }
-        }
-    }
-};
-
 template <typename Archive, typename K, typename V, typename Comparator, typename Allocator>
 struct Serializer<Archive, std::map<K, V, Comparator, Allocator>> {
     void operator()(
@@ -479,32 +386,11 @@ struct Serializer<Archive, std::map<K, V, Comparator, Allocator>> {
     }
 };
 
-template <typename Archive, typename K, typename V, ULong N>
+template <typename Archive, typename K, typename V, uint32_t N>
 struct Serializer<Archive, bounded_map<K, V, N>> {
     void operator()(Archive& a, std::map<K, V>& value, const TypeInfo* type_info) {
         Serializer<Archive, std::map<K, V>> serializer;
         serializer(a, value, type_info);
-    }
-};
-
-// Use pair of pointers here because gcc <= 4.3 gets confused by pair of references
-template <typename Archive, typename K, typename V, typename Allocator>
-struct Serializer<
-    Archive,
-    std::pair<corba::Sequence<K, Allocator>*, corba::Sequence<V, Allocator>*>> {
-    void operator()(
-        Archive& a,
-        std::pair<corba::Sequence<K, Allocator>*, corba::Sequence<V, Allocator>*>& value,
-        const TypeInfo* type_info
-    ) {
-        typename Archive::template MapValue<K, V> serializer(a, type_info);
-        serializer.io(*value.first, *value.second);
-        if (type_info && type_info->max_length > 0 && value.first->size() > type_info->max_length) {
-            throw std::runtime_error("Map length out of bounds");
-        }
-        if (value.first->size() != value.second->size()) {
-            throw std::runtime_error("Map key and value length inconsistent");
-        }
     }
 };
 
@@ -535,101 +421,86 @@ struct Serializer<Archive, std::vector<bool>::reference> {
     }
 };
 
-// TODO(idarcar):
-// template <>
-// struct Serializer<dcps::cts::GenericMarshal, std::shared_ptr<intercom::dcps::DynamicData>> {
-//     INTERCOM_PUBLIC void
-//     operator()(dcps::cts::GenericMarshal& a, const std::shared_ptr<intercom::dcps::DynamicData>&
-//     value, const TypeInfo*);
-// };
-// template <>
-// struct Serializer<dcps::cts::GenericUnmarshal, std::shared_ptr<intercom::dcps::DynamicData>> {
-//     INTERCOM_PUBLIC void
-//     operator()(dcps::cts::GenericUnmarshal& a, const
-//     std::shared_ptr<intercom::dcps::DynamicData>& value, const TypeInfo*);
-// };
-
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Boolean);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Char);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Octet);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Short);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::UShort);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Long);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::ULong);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::LongLong);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::ULongLong);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Float);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Double);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::LongDouble);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Int8);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Char16);
-CTS_DEFINE_PRIMITIVE_TYPE(intercom::Char32);
+CTS_DEFINE_PRIMITIVE_TYPE(bool);
+CTS_DEFINE_PRIMITIVE_TYPE(char);
+CTS_DEFINE_PRIMITIVE_TYPE(int8_t);
+CTS_DEFINE_PRIMITIVE_TYPE(uint8_t);
+CTS_DEFINE_PRIMITIVE_TYPE(int16_t);
+CTS_DEFINE_PRIMITIVE_TYPE(uint16_t);
+CTS_DEFINE_PRIMITIVE_TYPE(int32_t);
+CTS_DEFINE_PRIMITIVE_TYPE(uint32_t);
+CTS_DEFINE_PRIMITIVE_TYPE(int64_t);
+CTS_DEFINE_PRIMITIVE_TYPE(uint64_t);
+CTS_DEFINE_PRIMITIVE_TYPE(float);
+CTS_DEFINE_PRIMITIVE_TYPE(double);
+CTS_DEFINE_PRIMITIVE_TYPE(char16_t);
+CTS_DEFINE_PRIMITIVE_TYPE(char32_t);
 
 namespace dcps::cts {
 
 template <>
-struct unsigned_type_of<Boolean> {
-    using type = Octet;
+struct unsigned_type_of<bool> {
+    using type = uint8_t;
 };
 template <>
-struct unsigned_type_of<Int8> {
-    using type = Octet;
+struct unsigned_type_of<int8_t> {
+    using type = uint8_t;
 };
 template <>
-struct unsigned_type_of<UInt8> {
-    using type = Octet;
+struct unsigned_type_of<uint8_t> {
+    using type = uint8_t;
 };
 template <>
-struct unsigned_type_of<Int16> {
-    using type = UShort;
+struct unsigned_type_of<int16_t> {
+    using type = uint16_t;
 };
 template <>
-struct unsigned_type_of<UInt16> {
-    using type = UShort;
+struct unsigned_type_of<uint16_t> {
+    using type = uint16_t;
 };
 template <>
-struct unsigned_type_of<Int32> {
-    using type = ULong;
+struct unsigned_type_of<int32_t> {
+    using type = uint32_t;
 };
 template <>
-struct unsigned_type_of<UInt32> {
-    using type = ULong;
+struct unsigned_type_of<uint32_t> {
+    using type = uint32_t;
 };
 template <>
-struct unsigned_type_of<Int64> {
-    using type = ULongLong;
+struct unsigned_type_of<int64_t> {
+    using type = uint64_t;
 };
 template <>
-struct unsigned_type_of<UInt64> {
-    using type = ULongLong;
+struct unsigned_type_of<uint64_t> {
+    using type = uint64_t;
 };
 template <>
-struct unsigned_type_of<Float32> {
-    using type = ULong;
+struct unsigned_type_of<float> {
+    using type = uint32_t;
 };
 template <>
-struct unsigned_type_of<Float64> {
-    using type = ULongLong;
+struct unsigned_type_of<double> {
+    using type = uint64_t;
 };
 template <>
-struct unsigned_type_of<Float128> {
-    using type = LongDouble;
+struct unsigned_type_of<long double> {
+    using type = long double;
 };
 template <>
-struct unsigned_type_of<Char8> {
-    using type = Octet;
+struct unsigned_type_of<char> {
+    using type = uint8_t;
 };
 template <>
-struct unsigned_type_of<Char16> {
-    using type = UShort;
+struct unsigned_type_of<char16_t> {
+    using type = uint16_t;
 };
 template <>
-struct unsigned_type_of<Char32> {
-    using type = ULong;
+struct unsigned_type_of<char32_t> {
+    using type = uint32_t;
 };
 template <>
 struct unsigned_type_of<wchar_t> {
-    using type = UShort;
+    using type = uint16_t;
 };
 
 template <typename READER, typename UNMARSHAL>
@@ -667,7 +538,8 @@ inline void TGenericUnmarshalBase<READER, UNMARSHAL>::StructValue::io(
     } else if ((m_unmarshal.reader().flags() & SERIALIZER_SKIP_MISSING) == 0) {
         if (a_member_info.default_value) {
             JsonReader reader(
-                a_member_info.default_value, static_cast<ULong>(strlen(a_member_info.default_value))
+                a_member_info.default_value,
+                static_cast<uint32_t>(strlen(a_member_info.default_value))
             );
             dcps::cts::GenericUnmarshal(reader).io(value);
         } else {
@@ -682,7 +554,7 @@ template <typename READER, typename UNMARSHAL>
 template <typename T>
 inline void TGenericUnmarshalBase<READER, UNMARSHAL>::StructValue::io(
     const MemberInfo& a_member_info,
-    optional<T>& value
+    std::optional<T>& value
 ) {
     if (skip_member(a_member_info)) {
         return;
@@ -726,25 +598,25 @@ inline T copyValue(WRITER& writer, READER& reader, const TypeInfo& type_info) {
 }
 
 template <typename WRITER, typename READER>
-inline ULongLong copyPrimitive(WRITER& writer, READER& reader, const TypeInfo& type_info) {
+inline uint64_t copyPrimitive(WRITER& writer, READER& reader, const TypeInfo& type_info) {
     if (type_info.bit_size == 0 || type_info.bit_size > 64) {
         throw std::runtime_error("Invalid primitive size");
     } else if (type_info.bit_size <= 8) {
-        return copyValue<Octet>(writer, reader, type_info);
+        return copyValue<uint8_t>(writer, reader, type_info);
     } else if (type_info.bit_size <= 16) {
-        return copyValue<UShort>(writer, reader, type_info);
+        return copyValue<uint16_t>(writer, reader, type_info);
     } else if (type_info.bit_size <= 32) {
-        return copyValue<ULong>(writer, reader, type_info);
+        return copyValue<uint32_t>(writer, reader, type_info);
     } else {
-        return copyValue<ULongLong>(writer, reader, type_info);
+        return copyValue<uint64_t>(writer, reader, type_info);
     }
 }
 
 template <typename WRITER, typename READER>
 inline bool
-copyDiscriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, dcps::Long& a_idx) {
+copyDiscriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, int32_t& a_idx) {
     const MemberInfo* member_info = &type_info.members[0];
-    ULongLong discr;
+    uint64_t discr;
     bool reader_has_member = reader.find_member(*member_info);
     if (reader_has_member) {
         if (writer.begin_member(*member_info)) {
@@ -757,7 +629,7 @@ copyDiscriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, dcp
         reader.end_member();
     } else {
         discr = type_info.member_count != 0 ? type_info.members[1].case_labels[0] : 0;
-        for (ULong i = 1; i < type_info.member_count; ++i) {
+        for (uint32_t i = 1; i < type_info.member_count; ++i) {
             if ((type_info.members[i].flags & dcps::xtypes::IS_DEFAULT) != 0) {
                 discr = type_info.members[i].case_labels[0];
                 break;
@@ -767,16 +639,16 @@ copyDiscriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, dcp
             if (type_info.bit_size == 0 || type_info.bit_size > 64) {
                 throw std::runtime_error("Invalid primitive size");
             } else if (type_info.bit_size <= 8) {
-                auto value = static_cast<Octet>(discr);
+                auto value = static_cast<uint8_t>(discr);
                 writer.write(&value, 1, type_info);
             } else if (type_info.bit_size <= 16) {
-                auto value = static_cast<UShort>(discr);
+                auto value = static_cast<uint16_t>(discr);
                 writer.write(&value, 1, type_info);
             } else if (type_info.bit_size <= 32) {
-                auto value = static_cast<ULong>(discr);
+                auto value = static_cast<uint32_t>(discr);
                 writer.write(&value, 1, type_info);
             } else {
-                auto value = static_cast<ULongLong>(discr);
+                auto value = static_cast<uint64_t>(discr);
                 writer.write(&value, 1, type_info);
             }
             writer.end_member();
@@ -784,12 +656,12 @@ copyDiscriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, dcp
     }
     int default_member = 0;
     a_idx = 0;
-    for (ULong i = 1; a_idx == 0 && i < type_info.member_count; ++i) {
+    for (uint32_t i = 1; a_idx == 0 && i < type_info.member_count; ++i) {
         if ((type_info.members[i].flags & dcps::xtypes::IS_DEFAULT) != 0) {
             default_member = i;
         }
-        for (Long j = 0; j < type_info.members[i].case_labels[0]; ++j) {
-            if (discr == static_cast<ULongLong>(type_info.members[i].case_labels[j + 1])) {
+        for (int32_t j = 0; j < type_info.members[i].case_labels[0]; ++j) {
+            if (discr == static_cast<uint64_t>(type_info.members[i].case_labels[j + 1])) {
                 a_idx = i;
                 break;
             }
@@ -837,7 +709,7 @@ inline void copyMember(WRITER& writer, READER& reader, const MemberInfo& member_
                 if (member_info.default_value) {
                     JsonReader jsonReader(
                         member_info.default_value,
-                        static_cast<ULong>(strlen(member_info.default_value))
+                        static_cast<uint32_t>(strlen(member_info.default_value))
                     );
                     transform(writer, jsonReader, *member_info.type);
                 } else {
@@ -852,7 +724,7 @@ inline void copyMember(WRITER& writer, READER& reader, const MemberInfo& member_
 
 template <typename WRITER, typename READER>
 inline void copyUnion(WRITER& writer, READER& reader, const TypeInfo& type_info) {
-    Long idx;
+    int32_t idx;
     bool reader_has_value = copyDiscriminator(writer, reader, type_info, idx);
     if (idx > 0) {
         if (reader_has_value) {
@@ -866,13 +738,13 @@ inline void copyUnion(WRITER& writer, READER& reader, const TypeInfo& type_info)
 
 template <typename WRITER, typename READER>
 inline void copyStruct(WRITER& writer, READER& reader, const TypeInfo& type_info) {
-    ULong last_member = type_info.member_count;
+    uint32_t last_member = type_info.member_count;
     if (reader.type_level() <= 1 && writer.type_level() <= 1) {
         while (last_member > 0 && !writer.is_relevant(type_info.members[last_member - 1])) {
             --last_member;
         }
     }
-    for (ULong i = 0; i < last_member; ++i) {
+    for (uint32_t i = 0; i < last_member; ++i) {
         copyMember(writer, reader, type_info.members[i]);
     }
 }
@@ -895,7 +767,7 @@ template <typename WRITER, typename READER>
 inline void copyMap(WRITER& writer, READER& reader, const TypeInfo& type_info) {
     auto length = reader.read_length();
     writer.write_length(length);
-    for (ULong i = 0; i < length; ++i) {
+    for (uint32_t i = 0; i < length; ++i) {
         transform(writer, reader, *type_info.key_type);
         transform(writer, reader, *type_info.element_type);
     }
@@ -905,64 +777,65 @@ template <typename WRITER, typename READER>
 inline void copySequence(WRITER& writer, READER& reader, const TypeInfo& type_info) {
     auto length = reader.read_length();
     writer.write_length(length);
-    for (ULong i = 0; i < length; ++i) {
+    for (uint32_t i = 0; i < length; ++i) {
         transform(writer, reader, *type_info.element_type);
     }
 }
 
-template <typename T, typename WRITER, typename READER>
-inline void transform(WRITER& writer, READER& reader) {
-    transform(writer, reader, TypeTraits<T>::type_info);
-}
+// TODO(idarcar);
+// template <typename T, typename WRITER, typename READER>
+// inline void transform(WRITER& writer, READER& reader) {
+//     transform(writer, reader, TypeTraits<T>::type_info);
+// }
 
 template <typename WRITER, typename READER>
 inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info) {
     // Primitive types are handle without begin_type/end_type
     switch (type_info.kind) {
     case dcps::xtypes::TK_BOOLEAN:
-        copyValue<Boolean>(writer, reader, Boolean_type_info);
+        copyValue<bool>(writer, reader, Boolean_type_info);
         return;
     case dcps::xtypes::TK_BYTE:
-        copyValue<Octet>(writer, reader, Octet_type_info);
+        copyValue<uint8_t>(writer, reader, Octet_type_info);
         return;
     case dcps::xtypes::TK_CHAR8:
-        copyValue<Char>(writer, reader, Char_type_info);
+        copyValue<char>(writer, reader, Char_type_info);
         return;
     case dcps::xtypes::TK_INT8:
-        copyValue<Int8>(writer, reader, Int8_type_info);
+        copyValue<int8_t>(writer, reader, Int8_type_info);
         return;
     case dcps::xtypes::TK_UINT8:
-        copyValue<Octet>(writer, reader, Octet_type_info);
+        copyValue<uint8_t>(writer, reader, Octet_type_info);
         return;
 
     case dcps::xtypes::TK_INT16:
-        copyValue<Short>(writer, reader, Short_type_info);
+        copyValue<int16_t>(writer, reader, Short_type_info);
         return;
     case dcps::xtypes::TK_UINT16:
-        copyValue<UShort>(writer, reader, UShort_type_info);
+        copyValue<uint16_t>(writer, reader, UShort_type_info);
         return;
     case dcps::xtypes::TK_CHAR16:
-        copyValue<Char16>(writer, reader, Char16_type_info);
+        copyValue<char16_t>(writer, reader, Char16_type_info);
         return;
 
     case dcps::xtypes::TK_INT32:
-        copyValue<Long>(writer, reader, Long_type_info);
+        copyValue<int32_t>(writer, reader, Long_type_info);
         return;
     case dcps::xtypes::TK_UINT32:
-        copyValue<ULong>(writer, reader, ULong_type_info);
+        copyValue<uint32_t>(writer, reader, ULong_type_info);
         return;
     case dcps::xtypes::TK_FLOAT32:
-        copyValue<Float>(writer, reader, Float_type_info);
+        copyValue<float>(writer, reader, Float_type_info);
         return;
 
     case dcps::xtypes::TK_INT64:
-        copyValue<LongLong>(writer, reader, LongLong_type_info);
+        copyValue<int64_t>(writer, reader, LongLong_type_info);
         return;
     case dcps::xtypes::TK_UINT64:
-        copyValue<ULongLong>(writer, reader, ULongLong_type_info);
+        copyValue<uint64_t>(writer, reader, ULongLong_type_info);
         return;
     case dcps::xtypes::TK_FLOAT64:
-        copyValue<Double>(writer, reader, Double_type_info);
+        copyValue<double>(writer, reader, Double_type_info);
         return;
     default:
         break;
@@ -983,7 +856,7 @@ inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info)
         break;
 
     case dcps::xtypes::TK_ARRAY:
-        for (ULong i = 0; i < type_info.max_length; ++i) {
+        for (uint32_t i = 0; i < type_info.max_length; ++i) {
             transform(writer, reader, *type_info.element_type);
         }
         break;

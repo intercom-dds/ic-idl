@@ -28,13 +28,16 @@
 use std::ffi::{CStr, CString, NulError};
 use std::path::Path;
 
+use ic_syntax::Item;
+
 mod ffi;
+mod lower;
 pub mod ptree;
 
 #[must_use]
 #[derive(Debug)]
 pub struct ParseResult {
-    inner: *mut ffi::parse_result,
+    pub inner: *mut ffi::parse_result,
 }
 
 impl ParseResult {
@@ -111,6 +114,12 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
 
     let inner = unsafe { ffi::ic_ptree_merge(trees.as_mut_ptr()) };
     debug_assert!(!inner.is_null());
+    ParseResult { inner }
+}
+
+pub fn lower_ast(mut ast: &[Item]) -> ParseResult {
+    let ptr = std::ptr::addr_of_mut!(ast) as _;
+    let inner = unsafe { ffi::ic_parse_w_state(lower::callback, ptr) };
     ParseResult { inner }
 }
 

@@ -28,7 +28,6 @@
 #include "cidl/ptree_builder.h"
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstring>
 #include <iostream>
@@ -38,9 +37,7 @@
 #include <utility>
 #include <vector>
 
-#include "cidl/commandline.h"
 #include "cidl/constants.h"
-#include "cidl/hdrs.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"

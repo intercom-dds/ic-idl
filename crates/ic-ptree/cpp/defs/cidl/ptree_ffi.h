@@ -35,6 +35,12 @@ extern "C" {
 
 struct ic_parse_result_t;
 
+struct ptree;
+
+typedef ptree* (*ic_parser_callback_t)(void*);
+
+ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data);
+
 uint32_t ic_error_count(const ic_parse_result_t* result);
 
 const char* ic_parse_error(const ic_parse_result_t* result);

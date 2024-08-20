@@ -92,3 +92,10 @@ void ic_codegen_json_schema(const ic_parse_result_t* result, const char* destina
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
     intercom::cidl::code_gen_json_schema(res);
 }
+
+ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data) {
+    intercom::cidl::IdlParser parser;
+    parser.run([=]() { return callback(user_data); });
+    auto res = new intercom::cidl::parse_result(parser.result());
+    return reinterpret_cast<ic_parse_result_t*>(res);
+}

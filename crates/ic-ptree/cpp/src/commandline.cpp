@@ -31,34 +31,10 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <vector>
-
-#include "utils/string_utils.h"
 
 using namespace intercom::cidl;
 
-namespace {
-struct CurrentOptionsT : public intercom::cidl::Config {
-    bool intercom_build = false;
-    bool do_suppress_deprecated = false;
-    bool use_fmtlib = false;
-    bool use_wstring = false;
-    bool no_typesupport = false;
-
-    std::string copyright_notice;
-    std::string json_target_directory;
-    std::string json_schema_target_directory;
-    std::string rust_target_directory;
-    std::string python_global_postfix;
-    std::string ada_target_directory;
-    std::string idl_target_directory;
-    std::string xml_target_directory;
-    std::string toml_target_directory;
-    std::vector<std::string> input_list;
-    std::vector<std::string> include_directories{"."};
-    std::vector<std::string> pp_parameters;
-} g_CurrentOptions;
-}  // namespace
+static Config g_CurrentOptions{};
 
 static const char* strptr_or_null(const std::string& value) {
     if (value.empty()) {

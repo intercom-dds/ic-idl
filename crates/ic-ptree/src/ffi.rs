@@ -29,12 +29,16 @@
 use std::ffi;
 use std::marker::{PhantomData, PhantomPinned};
 
+use crate::ptree::ptree;
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct parse_result {
     _unused: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
+
+type ic_parser_callback_t = extern "C" fn(*mut ffi::c_void) -> *mut ptree;
 
 extern "C" {
     pub fn ic_parse_idl(input: *const ffi::c_char) -> *mut parse_result;
@@ -44,6 +48,10 @@ extern "C" {
     pub fn ic_warning_count(result: *const parse_result) -> u32;
     pub fn ic_error_count(result: *const parse_result) -> u32;
     pub fn ic_parse_error(result: *const parse_result) -> *const ffi::c_char;
+    pub fn ic_parse_w_state(
+        callback: ic_parser_callback_t,
+        user_data: *mut ffi::c_void,
+    ) -> *mut parse_result;
 
     pub fn ic_codegen_cpp(result: *const parse_result, destination: *const ffi::c_char);
     pub fn ic_codegen_csharp(result: *const parse_result, destination: *const ffi::c_char);

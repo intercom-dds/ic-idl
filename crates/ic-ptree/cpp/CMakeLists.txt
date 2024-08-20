@@ -60,16 +60,17 @@ target_include_directories(ic_parser PUBLIC
 )
 
 add_library(ic_ptree STATIC
+    src/ast.cpp
     src/ast_dump.cpp
     src/code_gen.cpp
+    src/commandline.cpp
     src/constants.cpp
+    src/memf.cpp
     src/pragma_builder.cpp
     src/ptree_builder.cpp
     src/ptree_ffi.cpp
     src/ptree_helpers.cpp
     src/symbols.cpp
-    src/commandline.cpp
-    src/memf.cpp
 
     ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
     ../../ic-codegen-java/cpp/src/java_code_gen.cpp

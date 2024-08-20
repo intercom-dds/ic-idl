@@ -28,6 +28,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace intercom::cidl {
 
@@ -46,6 +47,11 @@ struct Config {
     bool legacy_idl = false;
     bool generate_default_literals = false;
     bool cpp_no_stream_op = false;
+    bool intercom_build = false;
+    bool do_suppress_deprecated = false;
+    bool use_fmtlib = false;
+    bool use_wstring = false;
+    bool no_typesupport = false;
 
     std::string cpp_header_postfix = "h";
     std::string c_file_prefix;
@@ -58,6 +64,18 @@ struct Config {
     std::string python_target_directory;
     std::string cs_target_directory;
     std::string c_target_directory;
+    std::string copyright_notice;
+    std::string json_target_directory;
+    std::string json_schema_target_directory;
+    std::string rust_target_directory;
+    std::string python_global_postfix;
+    std::string ada_target_directory;
+    std::string idl_target_directory;
+    std::string xml_target_directory;
+    std::string toml_target_directory;
+    std::vector<std::string> input_list;
+    std::vector<std::string> include_directories{"."};
+    std::vector<std::string> pp_parameters;
 };
 
 }  // namespace intercom::cidl

@@ -755,6 +755,7 @@ fn except_dcl() -> impl IdlParser<Item> {
     just(Kind::Exception)
         .ignore_then(ident())
         .then(body)
+        .then_ignore(just(Kind::Semi))
         .map_with_span(|(i, mem), span| Item::def_exception(i, mem, span))
 }
 

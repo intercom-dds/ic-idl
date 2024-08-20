@@ -78,11 +78,27 @@ unsafe fn create_ident(name: &str) -> ptree::identifier {
     ptree::create_identifier(name.as_ptr())
 }
 
-unsafe fn create_decl(_names: &[Declarator], _annotations: *mut node) -> *mut ptree::declarator {
-    // let mut list = std::ptr::null_mut();
-    // let ident = create_ident(name);
-    // ptree::create_decl(ident, annotations)
-    std::ptr::null_mut()
+unsafe fn create_decl(names: &[Declarator], _annotations: *mut node) -> *mut ptree::declarator {
+    let mut list = std::ptr::null_mut();
+    for name in names {
+        let decl = match name {
+            Declarator::Simple(v) => {
+                let ident = create_ident(&v.name);
+                ptree::create_decl(ident, std::ptr::null_mut())
+            }
+            Declarator::Array(v) => {
+                let ident = create_ident(&v.ident.name);
+                let mut decl = ptree::create_decl(ident, std::ptr::null_mut());
+                for bound in &v.bounds {
+                    let expr = lower_expr(bound);
+                    decl = ptree::append_array_size(decl, expr);
+                }
+                decl
+            }
+        };
+        list = ptree::append_decl(list, decl);
+    }
+    list
 }
 
 // TODO: accept closure instead? so we can replace logic in StructValue

@@ -1,3 +1,4 @@
+// @generated
 // Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without

@@ -29,7 +29,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -38,9 +37,7 @@
 #include <sstream>
 #include <string>
 
-#include "cidl/commandline.h"
 #include "cidl/constants.h"
-// #include "cidl/idl_rpc_gen.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
@@ -292,8 +289,7 @@ static std::map<std::string, ptree**> initialize_builtin_annotation_map() {
     return res;
 }
 
-static std::map<std::string, ptree**> g_builtin_annotation_map =
-    initialize_builtin_annotation_map();
+std::map<std::string, ptree**> g_builtin_annotation_map = initialize_builtin_annotation_map();
 
 static void reset_top_level() {
     g_top_level = ptree();

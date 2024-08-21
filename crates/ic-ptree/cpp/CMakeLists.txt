@@ -41,22 +41,9 @@ add_compile_definitions(
     INTERCOM_FMTLIB
 )
 
-include_directories(
-    ../../../external/fmt/defs
-)
-
 add_subdirectory(
     ../../../external/utils
     ${CMAKE_CURRENT_BINARY_DIR}/utils
-)
-
-add_library(ic_parser OBJECT
-    src/idl_parser.cpp
-)
-
-target_include_directories(ic_parser PUBLIC
-    defs
-    ../../../library/cpp/defs
 )
 
 add_library(ic_ptree STATIC
@@ -65,6 +52,7 @@ add_library(ic_ptree STATIC
     src/code_gen.cpp
     src/commandline.cpp
     src/constants.cpp
+    src/idl_parser.cpp
     src/memf.cpp
     src/pragma_builder.cpp
     src/ptree_builder.cpp
@@ -82,20 +70,16 @@ add_library(ic_ptree STATIC
 
 target_compile_definitions(ic_ptree PRIVATE CIDL_BOOTSTRAP)
 
-target_include_directories(ic_ptree PUBLIC defs)
-
-target_include_directories(ic_ptree PRIVATE
-    ../../../library/cpp/defs
+target_include_directories(ic_ptree
+    PUBLIC defs
+    PRIVATE ../../../library/cpp/defs
 )
 
 target_include_directories(ic_ptree SYSTEM PRIVATE
     ../../../external/fmt/defs
 )
 
-target_link_libraries(ic_ptree PRIVATE
-    ic_parser
-    ic_utils
-)
+target_link_libraries(ic_ptree PRIVATE ic_utils)
 
 install(
     TARGETS ic_ptree

@@ -104,47 +104,35 @@ pub struct Options {
 pub struct CppOptions {
     /// Use access functions instead of direct member access
     #[option(long)]
-    access_functions: bool,
+    pub access_functions: bool,
 
     /// Do not generate ostream operators for serialization
     #[option(long)]
-    no_stream_op: bool,
-
-    /// Generate includes compatible with other vendors
-    #[option(long)]
-    vendor_compatibility: bool,
-
-    /// Use UTF-8 string types
-    #[option(long)]
-    string_utf8: bool,
+    pub no_stream_op: bool,
 
     /// Use CORBA string, sequence and array types
     #[option(long)]
-    corba_types: bool,
-
-    /// Use std::wstring for wide-character strings
-    #[option(long)]
-    use_wstring: bool,
+    pub corba_types: bool,
 
     /// Generate formatting specializations for fmtlib
     #[option(long)]
-    use_fmt: bool,
+    pub use_fmt: bool,
 
     /// Use dllexp symbol
     #[option(long, arg = "sym")]
-    dll_export: Option<String>,
+    pub dll_export: Option<String>,
 
     /// Use postfix for C++ headers
     #[option(long, arg = "postfix")]
-    header_postfix: Option<String>,
+    pub header_postfix: Option<String>,
 
     /// Store header files inside a subfolder
     #[option(long, arg = "dir")]
-    header_subfolder: Option<String>,
+    pub header_subfolder: Option<String>,
 
     /// Add a filename prefix to generated files
     #[option(long, arg = "prefix")]
-    file_prefix: Option<String>,
+    pub file_prefix: Option<String>,
 }
 
 #[derive(Command, Default)]

@@ -29,7 +29,10 @@
 
 use std::ffi::{self, CString};
 
-use ic_syntax::{DeclKind, Declarator, Expr, Item, LitKind, Op, OpKind, ParamKind, Path, Type};
+use ic_syntax::{
+    DeclKind, Declarator, Expr, Field, Item, Label, LitKind, Op, OpKind, Param, ParamKind, Path,
+    Type, UnionElement,
+};
 
 use crate::ptree::{self, ptree as node};
 
@@ -103,14 +106,9 @@ unsafe fn create_decl(names: &[Declarator], _annotations: *mut node) -> *mut ptr
     list
 }
 
-// TODO: accept closure instead? so we can replace logic in StructValue
-unsafe fn lower_list(items: &[Item]) -> *mut node {
-    let mut list = std::ptr::null_mut();
-    for item in items {
-        let item = lower_item(item);
-        list = ptree::append_node(list, item);
-    }
-    list
+unsafe fn lower_item_list(items: &[Item]) -> *mut node {
+    // TODO: we need to add info about includes
+    collect_with(ptree::append_node, items, |v| unsafe { lower_item(v) })
 }
 
 unsafe fn lower_ty(ty: &Type) -> *mut node {
@@ -119,18 +117,26 @@ unsafe fn lower_ty(ty: &Type) -> *mut node {
         Type::Fixed(_) => std::ptr::addr_of_mut!(ptree::fixed_type),
         Type::Sequence(v) => {
             let ty = lower_ty(&v.ty);
-            ptree::create_sequence(ty, std::ptr::null_mut())
+            let bound = v.bound.as_ref().map_or(std::ptr::null(), |e| lower_expr(e));
+            ptree::create_sequence(ty, bound)
         }
         Type::String_(v) => match &v.bound {
-            Some(_) if v.wide => todo!(),
-            Some(_) => todo!(),
+            Some(bound) => {
+                let bound = lower_expr(bound);
+                if v.wide {
+                    ptree::create_wstring(bound)
+                } else {
+                    ptree::create_string(bound)
+                }
+            }
             None if v.wide => std::ptr::addr_of_mut!(ptree::unbounded_wstring_type),
             None => std::ptr::addr_of_mut!(ptree::unbounded_string_type),
         },
         Type::Map(v) => {
             let key = lower_ty(&v.key);
             let elem = lower_ty(&v.value);
-            ptree::create_map(key, elem, std::ptr::null_mut())
+            let bound = v.bound.as_ref().map_or(std::ptr::null(), |e| lower_expr(e));
+            ptree::create_map(key, elem, bound)
         }
         Type::Path(v) => {
             let ident = create_ident(&path_str(v));
@@ -163,10 +169,26 @@ unsafe fn lower_expr(num: &Expr) -> *const ptree::numeric {
             let op = op_kind(v.op);
             ptree::expr_binary(op, lower_expr(&v.lhs), lower_expr(&v.rhs))
         }
-        Expr::InitList(_) => {
-            // create_const_node(decl, type_, value)
-            todo!()
+        Expr::InitList(v) => {
+            let mut list = std::ptr::null_mut();
+            for expr in v {
+                let val = ptree::create_const_node(
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    lower_expr(expr),
+                );
+                list = ptree::append_node(list, val);
+            }
+            ptree::create_value_node(std::ptr::addr_of_mut!(ptree::num_undef), list)
         }
+    }
+}
+
+fn lower_field(field: &Field) -> *mut node {
+    unsafe {
+        let ty = lower_ty(&field.ty);
+        let decls = create_decl(&field.names, std::ptr::null_mut());
+        ptree::create_member(decls, ty, std::ptr::null_mut())
     }
 }
 
@@ -176,77 +198,45 @@ unsafe fn lower_item(item: &Item) -> *mut node {
         Item::ModuleValue(v) => {
             let ident = create_ident(&v.name.name);
             ptree::create_module_start(ident);
-
-            let members = lower_list(&v.definitions);
+            let members = lower_item_list(&v.definitions);
             ptree::create_module_finish(members, POS)
         }
         Item::StructValue(v) => {
-            let ident = create_ident(&v.name.name);
             // TODO: parent
+            let ident = create_ident(&v.name.name);
             ptree::create_struct_start(ident, std::ptr::null_mut());
-            let mut list = std::ptr::null_mut();
-
-            for mem in &v.members {
-                let ty = lower_ty(&mem.ty);
-                let decls = create_decl(&mem.names, std::ptr::null_mut());
-                let mem = ptree::create_member(decls, ty, std::ptr::null_mut());
-                list = ptree::append_node(list, mem);
-            }
-            ptree::create_struct_finish(list, POS)
+            let members = collect_with(ptree::append_node, &v.members, lower_field);
+            ptree::create_struct_finish(members, POS)
         }
-        Item::UnionValue(_) => todo!(),
+        Item::ExceptionValue(v) => {
+            let ident = create_ident(&v.name.name);
+            ptree::create_exception_start(ident);
+            let members = collect_with(ptree::append_node, &v.members, lower_field);
+            ptree::create_exception_finish(members, POS)
+        }
         Item::EnumValue(v) => {
-            // TODO: what about collecting "into" a list?
-            // let values = v
-            //     .fields
-            //     .iter()
-            //     .map(|v| {
-            //         let ident = create_ident(&v.name.name);
-            //         // TODO: update value
-            //         ptree::create_enum_value(ident, std::ptr::null_mut())
-            //     })
-            //     .collect();
-
-            let mut values = std::ptr::null_mut();
-            for field in &v.fields {
+            let values = collect_with(ptree::append_enum_node, &v.fields, |field| {
                 let ident = create_ident(&field.name.name);
                 let expr = field
                     .value
                     .as_ref()
                     .map_or(std::ptr::null(), |v| lower_expr(v));
-
-                let val = ptree::create_enum_value(ident, expr);
-                values = ptree::append_enum_node(values, val);
-            }
+                ptree::create_enum_value(ident, expr)
+            });
 
             let ident = create_ident(&v.name.name);
             ptree::create_enum(ident, values, POS)
         }
-        Item::ExceptionValue(v) => {
-            let ident = create_ident(&v.name.name);
-            ptree::create_exception_start(ident);
-            let mut list = std::ptr::null_mut();
-
-            for mem in &v.members {
-                let ty = lower_ty(&mem.ty);
-                let decls = create_decl(&mem.names, std::ptr::null_mut());
-                let mem = ptree::create_member(decls, ty, std::ptr::null_mut());
-                list = ptree::append_node(list, mem);
-            }
-            ptree::create_struct_finish(list, POS)
-        }
         Item::BitmaskValue(v) => {
-            let mut values = std::ptr::null_mut();
-            for bit in &v.bits {
+            let values = collect_with(ptree::append_node, &v.bits, |bit| {
                 let ident = create_ident(&bit.name.name);
                 let expr = bit
                     .value
                     .as_ref()
                     .map_or(std::ptr::null(), |v| lower_expr(v));
 
-                let val = ptree::create_bitmask_value(ident, expr);
-                values = ptree::append_node(values, val);
-            }
+                ptree::create_bitmask_value(ident, expr)
+            });
 
             let ident = create_ident(&v.name.name);
             ptree::create_bitmask(ident, values, POS)
@@ -274,17 +264,13 @@ unsafe fn lower_item(item: &Item) -> *mut node {
             }
         }
         Item::BitsetValue(v) => {
-            let mut list = std::ptr::null_mut();
-            for field in &v.fields {
-                let decl = std::ptr::null_mut();
+            let bitfields = collect_with(ptree::append_node, &v.fields, |field| {
                 let size = lower_expr(&field.size);
-                let ty = std::ptr::null_mut();
-                let bitfield = ptree::create_bitfield(decl, size, ty);
-                list = ptree::append_node(list, bitfield);
-            }
+                ptree::create_bitfield(std::ptr::null_mut(), size, std::ptr::null_mut())
+            });
 
             let ident = create_ident(&v.name.name);
-            ptree::create_bitset(ident, list, std::ptr::null_mut(), POS)
+            ptree::create_bitset(ident, bitfields, std::ptr::null_mut(), POS)
         }
         Item::InterfaceValue(v) => {
             // TODO: parents
@@ -295,46 +281,76 @@ unsafe fn lower_item(item: &Item) -> *mut node {
                 ffi::c_int::from(v.local.is_some()),
             );
 
-            let mut list = std::ptr::null_mut();
-            for proto in &v.prototypes {
-                let ident = create_ident(&proto.name.name);
-                let params = {
-                    let mut params = std::ptr::null_mut();
-                    for p in &proto.params {
-                        let ty = lower_ty(&p.ty);
-                        let ident = std::ptr::null_mut();
-                        let kind = param_kind(p.kind);
-
-                        // TODO: does this need to be a declarator?? can't it
-                        // be an identifier??
-                        // TODO: check the spec. can arrays be used as params
-                        // in an interface?
-                        let dcl = ptree::create_param_dcl(ident, ty, kind);
-                        params = ptree::append_node(params, dcl);
-                    }
-                    params
+            let param = |param: &Param| {
+                let ty = lower_ty(&param.ty);
+                let kind = param_kind(param.kind);
+                let decl = {
+                    let ident = create_ident(&param.name.name);
+                    ptree::create_decl(ident, std::ptr::null_mut())
                 };
+                ptree::create_param_dcl(decl, ty, kind)
+            };
 
+            let prototypes = collect_with(ptree::append_node, &v.prototypes, |proto| {
+                let ident = create_ident(&proto.name.name);
+                let params = collect_with(ptree::append_node, &proto.params, param);
                 // TODO: retval, raises
-                let dcl = ptree::create_interface_op(
+                ptree::create_interface_op(
                     ident,
                     params,
                     std::ptr::null_mut(),
                     std::ptr::null_mut(),
-                );
-                list = ptree::append_node(list, dcl);
-            }
-            list
+                )
+            });
+            ptree::create_interface_finish(prototypes, POS)
+        }
+        Item::UnionValue(v) => {
+            let ident = create_ident(&v.name.name);
+            ptree::create_union_start(ident);
+
+            let label = |label: &Label| match label {
+                Label::Case(v) => {
+                    let expr = lower_expr(v);
+                    ptree::create_case_label(expr)
+                }
+                Label::Default(_) => ptree::create_default_case(),
+            };
+
+            let members = collect_with(ptree::append_node, &v.fields, |var| {
+                let value = match &var.field {
+                    UnionElement::Member(v) => lower_ty(&v.ty),
+                    UnionElement::Null(_) => ptree::create_null_node(),
+                };
+                let labels = collect_with(ptree::append_node, &var.labels, label);
+                ptree::create_union_member(value, labels, std::ptr::null_mut())
+            });
+
+            let decl = ptree::create_decl(create_ident("_d"), std::ptr::null_mut());
+            let disc = ptree::create_member(decl, lower_ty(&v.disc.ty), std::ptr::null_mut());
+            ptree::create_union_finish(disc, members, POS)
         }
         Item::ValuetypeValue(_) => todo!(),
     }
 }
 
-pub extern "C" fn callback(ptr: *mut ffi::c_void) -> *mut node {
-    unsafe {
-        let ast = ptr.cast::<&[Item]>();
+type Appender = unsafe extern "C" fn(*mut node, *mut node) -> *mut node;
 
-        // TODO: we need to add info about includes
-        lower_list(*ast)
+unsafe fn collect_with<I, C, T>(appender: Appender, iter: I, cb: C) -> *mut node
+where
+    I: IntoIterator<Item = T>,
+    C: Fn(T) -> *mut node,
+{
+    let mut list = std::ptr::null_mut();
+    unsafe {
+        for elem in iter.into_iter() {
+            let node = cb(elem);
+            list = appender(list, node);
+        }
     }
+    list
+}
+
+pub extern "C" fn callback(ptr: *mut ffi::c_void) -> *mut node {
+    let ast = ptr.cast::<&[Item]>();
+    unsafe { lower_item_list(*ast) }
 }

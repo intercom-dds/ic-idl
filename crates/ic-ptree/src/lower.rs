@@ -34,7 +34,7 @@ use ic_syntax::{
     Type, UnionElement,
 };
 
-use crate::ptree::{self, ptree as node};
+use crate::ptree::{self, create_member, ptree as node};
 
 // TODO: refactor ptree to use span instead of position
 const POS: ptree::position = ptree::position {
@@ -83,24 +83,28 @@ unsafe fn create_ident(name: &str) -> ptree::identifier {
     ptree::create_identifier(name.as_ptr())
 }
 
-unsafe fn create_decl(names: &[Declarator], _annotations: *mut node) -> *mut ptree::declarator {
+unsafe fn create_decl(name: &Declarator, _annotations: *mut node) -> *mut ptree::declarator {
+    match name {
+        Declarator::Simple(v) => {
+            let ident = create_ident(&v.name);
+            ptree::create_decl(ident, std::ptr::null_mut())
+        }
+        Declarator::Array(v) => {
+            let ident = create_ident(&v.ident.name);
+            let mut decl = ptree::create_decl(ident, std::ptr::null_mut());
+            for bound in &v.bounds {
+                let expr = lower_expr(bound);
+                decl = ptree::append_array_size(decl, expr);
+            }
+            decl
+        }
+    }
+}
+
+unsafe fn create_decl_list(names: &[Declarator], annotations: *mut node) -> *mut ptree::declarator {
     let mut list = std::ptr::null_mut();
     for name in names {
-        let decl = match name {
-            Declarator::Simple(v) => {
-                let ident = create_ident(&v.name);
-                ptree::create_decl(ident, std::ptr::null_mut())
-            }
-            Declarator::Array(v) => {
-                let ident = create_ident(&v.ident.name);
-                let mut decl = ptree::create_decl(ident, std::ptr::null_mut());
-                for bound in &v.bounds {
-                    let expr = lower_expr(bound);
-                    decl = ptree::append_array_size(decl, expr);
-                }
-                decl
-            }
-        };
+        let decl = create_decl(name, annotations);
         list = ptree::append_decl(list, decl);
     }
     list
@@ -187,7 +191,7 @@ unsafe fn lower_expr(num: &Expr) -> *const ptree::numeric {
 fn lower_field(field: &Field) -> *mut node {
     unsafe {
         let ty = lower_ty(&field.ty);
-        let decls = create_decl(&field.names, std::ptr::null_mut());
+        let decls = create_decl_list(&field.names, std::ptr::null_mut());
         ptree::create_member(decls, ty, std::ptr::null_mut())
     }
 }
@@ -317,12 +321,17 @@ unsafe fn lower_item(item: &Item) -> *mut node {
             };
 
             let members = collect_with(ptree::append_node, &v.fields, |var| {
-                let value = match &var.field {
-                    UnionElement::Member(v) => lower_ty(&v.ty),
+                let mem = match &var.field {
+                    UnionElement::Member(v) => {
+                        let ty = lower_ty(&v.ty);
+                        let decl = create_decl(&v.decl, std::ptr::null_mut());
+                        create_member(decl, ty, std::ptr::null_mut())
+                    }
                     UnionElement::Null(_) => ptree::create_null_node(),
                 };
+
                 let labels = collect_with(ptree::append_node, &var.labels, label);
-                ptree::create_union_member(value, labels, std::ptr::null_mut())
+                ptree::create_union_member(mem, labels, std::ptr::null_mut())
             });
 
             let decl = ptree::create_decl(create_ident("_d"), std::ptr::null_mut());

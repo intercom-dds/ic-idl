@@ -29,6 +29,7 @@
 
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
+#include "cidl/ptree_builder.h"
 
 uint32_t ic_error_count(const ic_parse_result_t* result) {
     return reinterpret_cast<const intercom::cidl::parse_result*>(result)->error_count;
@@ -93,9 +94,34 @@ void ic_codegen_json_schema(const ic_parse_result_t* result, const char* destina
     intercom::cidl::code_gen_json_schema(res);
 }
 
+static void register_primitives() {
+    register_node(&any_type);
+    register_node(&object_type);
+    register_node(&boolean_type);
+    register_node(&int8_type);
+    register_node(&octet_type);
+    register_node(&char_type);
+    register_node(&wchar_type);
+    register_node(&short_type);
+    register_node(&ushort_type);
+    register_node(&long_type);
+    register_node(&ulong_type);
+    register_node(&longlong_type);
+    register_node(&ulonglong_type);
+    register_node(&float_type);
+    register_node(&double_type);
+    register_node(&ldouble_type);
+    register_node(&fixed_type);
+    register_node(&unbounded_string_type);
+    register_node(&unbounded_wstring_type);
+}
+
 ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data) {
     intercom::cidl::IdlParser parser;
-    parser.run([=]() { return callback(user_data); });
+    parser.run([=]() {
+        register_primitives();
+        return callback(user_data);
+    });
     auto res = new intercom::cidl::parse_result(parser.result());
     return reinterpret_cast<ic_parse_result_t*>(res);
 }

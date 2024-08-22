@@ -34,13 +34,7 @@ use ic_syntax::{
     Type, UnionElement,
 };
 
-use crate::ptree::{self, create_member, ptree as node};
-
-// TODO: refactor ptree to use span instead of position
-const POS: ptree::position = ptree::position {
-    line: -1,
-    column: -1,
-};
+use crate::sys::{self, ptree};
 
 fn op_kind(op: Op) -> ffi::c_char {
     let c = match op.kind {
@@ -61,9 +55,9 @@ fn op_kind(op: Op) -> ffi::c_char {
 
 fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
     let c = match kind {
-        Some(ParamKind::ParamOut) => ptree::OPT_OUT,
-        Some(ParamKind::ParamInout) => ptree::OPT_INOUT,
-        _ => ptree::OPT_IN,
+        Some(ParamKind::ParamOut) => sys::OPT_OUT,
+        Some(ParamKind::ParamInout) => sys::OPT_INOUT,
+        _ => sys::OPT_IN,
     };
     c as ffi::c_int
 }
@@ -78,208 +72,208 @@ fn path_str(path: &Path) -> String {
     str.join("")
 }
 
-unsafe fn create_ident(name: &str) -> ptree::identifier {
+unsafe fn create_ident(name: &str) -> sys::identifier {
     let name = CString::new(name).unwrap();
-    ptree::create_identifier(name.as_ptr())
+    sys::create_identifier(name.as_ptr())
 }
 
-unsafe fn create_decl(name: &Declarator, _annotations: *mut node) -> *mut ptree::declarator {
+unsafe fn create_decl(name: &Declarator, _annotations: *mut ptree) -> *mut sys::declarator {
     match name {
         Declarator::Simple(v) => {
             let ident = create_ident(&v.name);
-            ptree::create_decl(ident, std::ptr::null_mut())
+            sys::create_decl(ident, std::ptr::null_mut())
         }
         Declarator::Array(v) => {
             let ident = create_ident(&v.ident.name);
-            let mut decl = ptree::create_decl(ident, std::ptr::null_mut());
+            let mut decl = sys::create_decl(ident, std::ptr::null_mut());
             for bound in &v.bounds {
                 let expr = lower_expr(bound);
-                decl = ptree::append_array_size(decl, expr);
+                decl = sys::append_array_size(decl, expr);
             }
             decl
         }
     }
 }
 
-unsafe fn create_decl_list(names: &[Declarator], annotations: *mut node) -> *mut ptree::declarator {
+unsafe fn create_decl_list(names: &[Declarator], annotations: *mut ptree) -> *mut sys::declarator {
     let mut list = std::ptr::null_mut();
     for name in names {
         let decl = create_decl(name, annotations);
-        list = ptree::append_decl(list, decl);
+        list = sys::append_decl(list, decl);
     }
     list
 }
 
-unsafe fn lower_item_list(items: &[Item]) -> *mut node {
+unsafe fn lower_item_list(items: &[Item]) -> *mut ptree {
     // TODO: we need to add info about includes
-    collect_with(ptree::append_node, items, |v| unsafe { lower_item(v) })
+    collect_with(sys::append_node, items, |v| unsafe { lower_item(v) })
 }
 
-unsafe fn lower_ty(ty: &Type) -> *mut node {
+unsafe fn lower_ty(ty: &Type) -> *mut ptree {
     match ty {
-        Type::Any(_) => std::ptr::addr_of_mut!(ptree::any_type),
-        Type::Fixed(_) => std::ptr::addr_of_mut!(ptree::fixed_type),
+        Type::Any(_) => std::ptr::addr_of_mut!(sys::any_type),
+        Type::Fixed(_) => std::ptr::addr_of_mut!(sys::fixed_type),
         Type::Sequence(v) => {
             let ty = lower_ty(&v.ty);
             let bound = v.bound.as_ref().map_or(std::ptr::null(), |e| lower_expr(e));
-            ptree::create_sequence(ty, bound)
+            sys::create_sequence(ty, bound)
         }
         Type::String_(v) => match &v.bound {
             Some(bound) => {
                 let bound = lower_expr(bound);
                 if v.wide {
-                    ptree::create_wstring(bound)
+                    sys::create_wstring(bound)
                 } else {
-                    ptree::create_string(bound)
+                    sys::create_string(bound)
                 }
             }
-            None if v.wide => std::ptr::addr_of_mut!(ptree::unbounded_wstring_type),
-            None => std::ptr::addr_of_mut!(ptree::unbounded_string_type),
+            None if v.wide => std::ptr::addr_of_mut!(sys::unbounded_wstring_type),
+            None => std::ptr::addr_of_mut!(sys::unbounded_string_type),
         },
         Type::Map(v) => {
             let key = lower_ty(&v.key);
             let elem = lower_ty(&v.value);
             let bound = v.bound.as_ref().map_or(std::ptr::null(), |e| lower_expr(e));
-            ptree::create_map(key, elem, bound)
+            sys::create_map(key, elem, bound)
         }
         Type::Path(v) => {
             let ident = create_ident(&path_str(v));
-            ptree::lookup_type(ident)
+            sys::lookup_type(ident)
         }
     }
 }
 
-unsafe fn lower_expr(num: &Expr) -> *const ptree::numeric {
+unsafe fn lower_expr(num: &Expr) -> *const sys::numeric {
     match num {
         Expr::Literal(v) => match v.kind.clone() {
-            LitKind::LitBool(v) => ptree::create_bool(ffi::c_int::from(v)),
-            LitKind::LitInt(v) => ptree::create_i64(v as i64, 10),
-            LitKind::LitFloat(v) => ptree::create_double(v),
-            LitKind::LitChar(v) => ptree::create_char(v as ffi::c_char),
+            LitKind::LitBool(v) => sys::create_bool(ffi::c_int::from(v)),
+            LitKind::LitInt(v) => sys::create_i64(v as i64, 10),
+            LitKind::LitFloat(v) => sys::create_double(v),
+            LitKind::LitChar(v) => sys::create_char(v as ffi::c_char),
             LitKind::LitString(v) => {
                 let str = CString::new(v).unwrap();
-                ptree::create_str(str.as_ptr())
+                sys::create_str(str.as_ptr())
             }
         },
         Expr::Path(v) => {
             let ident = create_ident(&path_str(v));
-            ptree::lookup_value(ident)
+            sys::lookup_value(ident)
         }
         Expr::Unary(v) => {
             let op = op_kind(v.op);
-            ptree::expr_unary(op, lower_expr(&v.expr))
+            sys::expr_unary(op, lower_expr(&v.expr))
         }
         Expr::Binary(v) => {
             let op = op_kind(v.op);
-            ptree::expr_binary(op, lower_expr(&v.lhs), lower_expr(&v.rhs))
+            sys::expr_binary(op, lower_expr(&v.lhs), lower_expr(&v.rhs))
         }
         Expr::InitList(v) => {
             let mut list = std::ptr::null_mut();
             for expr in v {
-                let val = ptree::create_const_node(
+                let val = sys::create_const_node(
                     std::ptr::null_mut(),
                     std::ptr::null_mut(),
                     lower_expr(expr),
                 );
-                list = ptree::append_node(list, val);
+                list = sys::append_node(list, val);
             }
-            ptree::create_value_node(std::ptr::addr_of_mut!(ptree::num_undef), list)
+            sys::create_value_node(std::ptr::addr_of_mut!(sys::num_undef), list)
         }
     }
 }
 
-fn lower_field(field: &Field) -> *mut node {
+fn lower_field(field: &Field) -> *mut ptree {
     unsafe {
         let ty = lower_ty(&field.ty);
         let decls = create_decl_list(&field.names, std::ptr::null_mut());
-        ptree::create_member(decls, ty, std::ptr::null_mut())
+        sys::create_member(decls, ty, std::ptr::null_mut())
     }
 }
 
-unsafe fn lower_item(item: &Item) -> *mut node {
+unsafe fn lower_item(item: &Item) -> *mut ptree {
     match item {
         Item::AnnotationValue(_) => todo!(),
         Item::ModuleValue(v) => {
             let ident = create_ident(&v.name.name);
-            ptree::create_module_start(ident);
+            sys::create_module_start(ident);
             let members = lower_item_list(&v.definitions);
-            ptree::create_module_finish(members, POS)
+            sys::create_module_finish(members)
         }
         Item::StructValue(v) => {
             // TODO: parent
             let ident = create_ident(&v.name.name);
-            ptree::create_struct_start(ident, std::ptr::null_mut());
-            let members = collect_with(ptree::append_node, &v.members, lower_field);
-            ptree::create_struct_finish(members, POS)
+            sys::create_struct_start(ident, std::ptr::null_mut());
+            let members = collect_with(sys::append_node, &v.members, lower_field);
+            sys::create_struct_finish(members)
         }
         Item::ExceptionValue(v) => {
             let ident = create_ident(&v.name.name);
-            ptree::create_exception_start(ident);
-            let members = collect_with(ptree::append_node, &v.members, lower_field);
-            ptree::create_exception_finish(members, POS)
+            sys::create_exception_start(ident);
+            let members = collect_with(sys::append_node, &v.members, lower_field);
+            sys::create_exception_finish(members)
         }
         Item::EnumValue(v) => {
-            let values = collect_with(ptree::append_enum_node, &v.fields, |field| {
+            let values = collect_with(sys::append_enum_node, &v.fields, |field| {
                 let ident = create_ident(&field.name.name);
                 let expr = field
                     .value
                     .as_ref()
                     .map_or(std::ptr::null(), |v| lower_expr(v));
-                ptree::create_enum_value(ident, expr)
+                sys::create_enum_value(ident, expr)
             });
 
             let ident = create_ident(&v.name.name);
-            ptree::create_enum(ident, values, POS)
+            sys::create_enum(ident, values)
         }
         Item::BitmaskValue(v) => {
-            let values = collect_with(ptree::append_node, &v.bits, |bit| {
+            let values = collect_with(sys::append_node, &v.bits, |bit| {
                 let ident = create_ident(&bit.name.name);
                 let expr = bit
                     .value
                     .as_ref()
                     .map_or(std::ptr::null(), |v| lower_expr(v));
 
-                ptree::create_bitmask_value(ident, expr)
+                sys::create_bitmask_value(ident, expr)
             });
 
             let ident = create_ident(&v.name.name);
-            ptree::create_bitmask(ident, values, POS)
+            sys::create_bitmask(ident, values)
         }
         Item::ConstValue(v) => {
             let ty = lower_ty(&v.ty);
             let decl = std::ptr::null_mut();
             let expr = lower_expr(&v.value);
-            ptree::create_const_node(decl, ty, expr)
+            sys::create_const_node(decl, ty, expr)
         }
         Item::TypedefValue(v) => {
             let ty = lower_ty(&v.ty);
             let _ident = create_ident(&v.name.name);
             // ...declarators...
-            ptree::create_type(std::ptr::null_mut(), ty)
+            sys::create_type(std::ptr::null_mut(), ty)
         }
         Item::DeclValue(v) => {
             let ident = create_ident(&v.name.name);
             match v.kind {
-                DeclKind::DeclStruct => ptree::create_struct_dcl(ident),
-                DeclKind::DeclUnion => ptree::create_union_dcl(ident),
-                DeclKind::DeclNative => ptree::create_native_type(ident),
-                DeclKind::DeclInterface => ptree::create_interface_dcl(ident, 0),
-                DeclKind::DeclValuetype => ptree::create_valuetype_dcl(ident),
+                DeclKind::DeclStruct => sys::create_struct_dcl(ident),
+                DeclKind::DeclUnion => sys::create_union_dcl(ident),
+                DeclKind::DeclNative => sys::create_native_type(ident),
+                DeclKind::DeclInterface => sys::create_interface_dcl(ident, 0),
+                DeclKind::DeclValuetype => sys::create_valuetype_dcl(ident),
             }
         }
         Item::BitsetValue(v) => {
-            let bitfields = collect_with(ptree::append_node, &v.fields, |field| {
+            let bitfields = collect_with(sys::append_node, &v.fields, |field| {
                 let size = lower_expr(&field.size);
-                ptree::create_bitfield(std::ptr::null_mut(), size, std::ptr::null_mut())
+                sys::create_bitfield(std::ptr::null_mut(), size, std::ptr::null_mut())
             });
 
             let ident = create_ident(&v.name.name);
-            ptree::create_bitset(ident, bitfields, std::ptr::null_mut(), POS)
+            sys::create_bitset(ident, bitfields, std::ptr::null_mut())
         }
         Item::InterfaceValue(v) => {
             // TODO: parents
             let ident = create_ident(&v.name.name);
-            ptree::create_interface_start(
+            sys::create_interface_start(
                 ident,
                 std::ptr::null_mut(),
                 ffi::c_int::from(v.local.is_some()),
@@ -290,64 +284,59 @@ unsafe fn lower_item(item: &Item) -> *mut node {
                 let kind = param_kind(param.kind);
                 let decl = {
                     let ident = create_ident(&param.name.name);
-                    ptree::create_decl(ident, std::ptr::null_mut())
+                    sys::create_decl(ident, std::ptr::null_mut())
                 };
-                ptree::create_param_dcl(decl, ty, kind)
+                sys::create_param_dcl(decl, ty, kind)
             };
 
-            let prototypes = collect_with(ptree::append_node, &v.prototypes, |proto| {
+            let prototypes = collect_with(sys::append_node, &v.prototypes, |proto| {
                 let ident = create_ident(&proto.name.name);
-                let params = collect_with(ptree::append_node, &proto.params, param);
+                let params = collect_with(sys::append_node, &proto.params, param);
                 // TODO: retval, raises
-                ptree::create_interface_op(
-                    ident,
-                    params,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                )
+                sys::create_interface_op(ident, params, std::ptr::null_mut(), std::ptr::null_mut())
             });
-            ptree::create_interface_finish(prototypes, POS)
+            sys::create_interface_finish(prototypes)
         }
         Item::UnionValue(v) => {
             let ident = create_ident(&v.name.name);
-            ptree::create_union_start(ident);
+            sys::create_union_start(ident);
 
             let label = |label: &Label| match label {
                 Label::Case(v) => {
                     let expr = lower_expr(v);
-                    ptree::create_case_label(expr)
+                    sys::create_case_label(expr)
                 }
-                Label::Default(_) => ptree::create_default_case(),
+                Label::Default(_) => sys::create_default_case(),
             };
 
-            let members = collect_with(ptree::append_node, &v.fields, |var| {
+            let members = collect_with(sys::append_node, &v.fields, |var| {
                 let mem = match &var.field {
                     UnionElement::Member(v) => {
                         let ty = lower_ty(&v.ty);
                         let decl = create_decl(&v.decl, std::ptr::null_mut());
-                        create_member(decl, ty, std::ptr::null_mut())
+                        sys::create_member(decl, ty, std::ptr::null_mut())
                     }
-                    UnionElement::Null(_) => ptree::create_null_node(),
+                    UnionElement::Null(_) => sys::create_null_node(),
                 };
 
-                let labels = collect_with(ptree::append_node, &var.labels, label);
-                ptree::create_union_member(mem, labels, std::ptr::null_mut())
+                let labels = collect_with(sys::append_node, &var.labels, label);
+                sys::create_union_member(mem, labels, std::ptr::null_mut())
             });
 
-            let decl = ptree::create_decl(create_ident("_d"), std::ptr::null_mut());
-            let disc = ptree::create_member(decl, lower_ty(&v.disc.ty), std::ptr::null_mut());
-            ptree::create_union_finish(disc, members, POS)
+            let decl = sys::create_decl(create_ident("_d"), std::ptr::null_mut());
+            let disc = sys::create_member(decl, lower_ty(&v.disc.ty), std::ptr::null_mut());
+            sys::create_union_finish(disc, members)
         }
         Item::ValuetypeValue(_) => todo!(),
     }
 }
 
-type Appender = unsafe extern "C" fn(*mut node, *mut node) -> *mut node;
+type Appender = unsafe extern "C" fn(*mut ptree, *mut ptree) -> *mut ptree;
 
-unsafe fn collect_with<I, C, T>(appender: Appender, iter: I, cb: C) -> *mut node
+unsafe fn collect_with<I, C, T>(appender: Appender, iter: I, cb: C) -> *mut ptree
 where
     I: IntoIterator<Item = T>,
-    C: Fn(T) -> *mut node,
+    C: Fn(T) -> *mut ptree,
 {
     let mut list = std::ptr::null_mut();
     unsafe {
@@ -359,7 +348,7 @@ where
     list
 }
 
-pub extern "C" fn callback(ptr: *mut ffi::c_void) -> *mut node {
+pub extern "C" fn callback(ptr: *mut ffi::c_void) -> *mut ptree {
     let ast = ptr.cast::<&[Item]>();
     unsafe { lower_item_list(*ast) }
 }

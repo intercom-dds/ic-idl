@@ -33,6 +33,7 @@ fn main() {
     // Generate bindings for `ptree_builder`
     let bindings = bindgen::builder()
         .header(format!("{PTREE}/cidl/ptree_builder.h"))
+        .header(format!("{PTREE}/cidl/ptree_ffi.h"))
         .clang_args(["-I", PTREE])
         .allowlist_file(".*cidl/.*")
         .prepend_enum_name(false)

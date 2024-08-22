@@ -37,29 +37,29 @@ struct ic_parse_result_t;
 
 struct ptree;
 
-typedef ptree* (*ic_parser_callback_t)(void*);
+typedef struct ptree* (*ic_parser_callback_t)(void*);
 
-ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data);
+struct ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data);
 
-uint32_t ic_error_count(const ic_parse_result_t* result);
+uint32_t ic_error_count(const struct ic_parse_result_t* result);
 
-const char* ic_parse_error(const ic_parse_result_t* result);
+const char* ic_parse_error(const struct ic_parse_result_t* result);
 
-void ic_parse_free(ic_parse_result_t* result);
+void ic_parse_free(struct ic_parse_result_t* result);
 
-ic_parse_result_t* ic_ptree_merge(const ic_parse_result_t** result);
+struct ic_parse_result_t* ic_ptree_merge(const struct ic_parse_result_t** result);
 
-void ic_ast_dump(const ic_parse_result_t* result);
+void ic_ast_dump(const struct ic_parse_result_t* result);
 
-void ic_codegen_proto(const ic_parse_result_t* result, const char* destination);
+void ic_codegen_proto(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_java(const ic_parse_result_t* result, const char* destination);
+void ic_codegen_java(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_csharp(const ic_parse_result_t* result, const char* destination);
+void ic_codegen_csharp(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_cpp(const ic_parse_result_t* result, const char* destination);
+void ic_codegen_cpp(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_python(const ic_parse_result_t* result, const char* destination);
+void ic_codegen_python(const struct ic_parse_result_t* result, const char* destination);
 
 #ifdef __cplusplus
 }

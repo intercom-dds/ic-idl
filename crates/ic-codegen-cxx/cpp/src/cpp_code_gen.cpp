@@ -53,13 +53,6 @@ static void cgcpl_recurs(const ptree* obj);
 void emit_docs(struct memf* f, const ptree* obj);
 void emit_post_docs(struct memf* f, const ptree* obj);
 
-void cpl_rpc_service_gen(
-    const ptree* a_node,
-    struct memf* a_memf_head,
-    struct memf* a_memf_body,
-    const ptree* current_include
-);
-
 static memf g_hd_file;
 static memf g_tbd_file;
 static memf g_hd_ts_file;
@@ -136,36 +129,38 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
 
     std::stringstream out;
     if (node == &boolean_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Boolean" : "bool");
+        out << "bool";
     } else if (node == &int8_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Int8" : "int8_t");
+        out << "int8_t";
     } else if (node == &octet_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::UInt8" : "uint8_t");
+        out << "uint8_t";
     } else if (node == &char_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Char" : "char");
+        out << "char";
     } else if (node == &wchar_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Char16" : "char16_t");
+        out << "char16_t";
     } else if (node == &short_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Int16" : "int16_t");
+        out << "int16_t";
     } else if (node == &ushort_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::UInt16" : "uint16_t");
+        out << "uint16_t";
     } else if (node == &long_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Int32" : "int32_t");
+        out << "int32_t";
     } else if (node == &ulong_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::UInt32" : "uint32_t");
+        out << "uint32_t";
     } else if (node == &longlong_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Int64" : "int64_t");
+        out << "int64_t";
     } else if (node == &ulonglong_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::UInt64" : "uint64_t");
+        out << "uint64_t";
     } else if (node == &float_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Float" : "float");
+        out << "float";
     } else if (node == &double_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::Double" : "double");
+        out << "double";
     } else if (node == &ldouble_type) {
-        out << (CommandLineOption::corba_types() ? "::intercom::corba::LongDouble" : "long double");
+        out << "long double";
     } else if (node == &any_type) {
+        // TODO(idarcar):
         out << "::intercom::corba::Any";
     } else if (node == &object_type) {
+        // TODO(idarcar):
         out << "::intercom::corba::Object";
     } else if (node->kind == N_ARRAY) {
         cpp_array_name_rec(node, context, 0, out);
@@ -3658,35 +3653,6 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
             "{}.{}",
             module.c_str()
         );
-
-        if (CommandLineOption::compatibility()) {
-            mreset(&pk_file);
-            mprintf(&pk_file, "#include \"{}.h\"\n", module);
-            savememf(
-                &pk_file,
-                nullptr,
-                CommandLineOption::c_target_directory(),
-                "",
-                "{}Support.h",
-                module.c_str()
-            );
-            savememf(
-                &pk_file,
-                nullptr,
-                CommandLineOption::c_target_directory(),
-                "",
-                "ccpp_{}.h",
-                module.c_str()
-            );
-            savememf(
-                &pk_file,
-                nullptr,
-                CommandLineOption::c_target_directory(),
-                "",
-                "{}Dcps_impl.h",
-                module.c_str()
-            );
-        }
         mreset(&pk_file);
     }
 
@@ -3707,8 +3673,6 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
         std::string file_name = trim_include_name(include->name, true);
-        // TODO(idarcar);
-        // cpl_rpc_service_gen(result->tree, &g_hd_rpc_file, &g_tbd_file, g_current_include);
         cpl_saveit(result->tree, file_name, include->name);
     }
 }

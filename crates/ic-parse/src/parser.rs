@@ -121,6 +121,16 @@ fn rshift() -> impl IdlParser<Op> {
         })
 }
 
+fn primitive_type(name: &str, span: Span) -> Type {
+    Type::Path(Path {
+        leading_colons: None,
+        segments: vec![Ident {
+            name: name.to_string(),
+            span,
+        }],
+    })
+}
+
 // Handles bounds for collections types
 fn bound() -> impl IdlParser<Option<Expr>> {
     just(Kind::Comma).ignore_then(positive_int_const()).or_not()
@@ -254,6 +264,7 @@ fn complex_const_expr() -> impl IdlParser<Expr> {
 // Rule 6
 fn const_type() -> impl IdlParser<Type> {
     choice((
+        integer_type(),
         template_type_spec(),
         scoped_name().map(Type::Path),
         fixed_pt_const_type(),
@@ -397,7 +408,55 @@ fn base_type_spec() -> impl IdlParser<Type> {
     // Minor deviation: we do not treat primitive types as keywords for the
     // sole reason that it serves no purpose other than further complicating
     // the grammar.
-    choice((any_type(), scoped_name().map(Type::Path)))
+    choice((integer_type(), any_type(), scoped_name().map(Type::Path)))
+}
+
+// Rule 25
+fn integer_type() -> impl IdlParser<Type> {
+    choice((signed_int(), unsigned_int()))
+}
+
+// Rule 26
+fn signed_int() -> impl IdlParser<Type> {
+    choice((signed_long_int(), signed_short_int()))
+}
+
+/// Rule 27
+fn signed_short_int() -> impl IdlParser<Type> {
+    just(Kind::Short).map_with_span(|_, span| primitive_type("int16", span))
+}
+
+// Rule 28, 29
+//
+// Merged to provide better error messages.
+fn signed_long_int() -> impl IdlParser<Type> {
+    just(Kind::Long)
+        .ignore_then(just(Kind::Long).or_not())
+        .map_with_span(|v, span| {
+            if v.is_some() {
+                primitive_type("int64", span)
+            } else {
+                primitive_type("int32", span)
+            }
+        })
+}
+
+// Rule 30, 31, 32, 33
+//
+// Merged to provide better error messages.
+fn unsigned_int() -> impl IdlParser<Type> {
+    just(Kind::Unsigned).ignore_then(choice((
+        just(Kind::Long)
+            .ignore_then(just(Kind::Long).or_not())
+            .map_with_span(|v, span| {
+                if v.is_some() {
+                    primitive_type("uint64", span)
+                } else {
+                    primitive_type("uint32", span)
+                }
+            }),
+        just(Kind::Short).map_with_span(|_, span| primitive_type("uint16", span)),
+    )))
 }
 
 // Rule 38 with the rule 197 extension
@@ -557,9 +616,9 @@ fn union_def() -> impl IdlParser<Item> {
     // `switch(foo)`
     let disc = just(Kind::Switch)
         .ignore_then(switch_type_spec().parenthesized())
-        .map(|path| Discriminator {
+        .map(|ty| Discriminator {
             annotations: vec![],
-            ty: Type::Path(path),
+            ty,
         });
 
     // Case labels + members
@@ -576,8 +635,9 @@ fn union_def() -> impl IdlParser<Item> {
 }
 
 // Rule 51
-fn switch_type_spec() -> impl IdlParser<Path> {
-    scoped_name()
+fn switch_type_spec() -> impl IdlParser<Type> {
+    // TODO: boolean_type, char_type
+    choice((integer_type(), scoped_name().map(Type::Path)))
 }
 
 // Rule 52
@@ -1143,12 +1203,12 @@ fn bitfield() -> impl IdlParser<Bitfield> {
         ident,
         size,
         span,
-        ty: todo!(),
+        ty,
     })
 }
 
 // Rule 202
-fn bitfield_spec() -> impl IdlParser<(Expr, Option<Ident>)> {
+fn bitfield_spec() -> impl IdlParser<(Expr, Option<Type>)> {
     just(Kind::Bitfield).ignore_then(
         positive_int_const()
             .then(just(Kind::Comma).ignore_then(destination_type()).or_not())
@@ -1157,9 +1217,9 @@ fn bitfield_spec() -> impl IdlParser<(Expr, Option<Ident>)> {
 }
 
 // Rule 203
-fn destination_type() -> impl IdlParser<Ident> {
-    // TOOD: primitive types only
-    ident()
+fn destination_type() -> impl IdlParser<Type> {
+    // TODO: boolean_type, octet_type
+    integer_type()
 }
 
 // Rule 204

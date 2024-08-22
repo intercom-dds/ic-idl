@@ -28,11 +28,11 @@
 use crate::hir::{Item, StructTy};
 
 pub trait Fold {
-    fn fold_item(item: Item) -> Item {
+    fn fold_item(&mut self, item: Item) -> Item {
         item
     }
 
-    fn fold_struct(ty: StructTy) -> StructTy {
+    fn fold_struct(&mut self, ty: StructTy) -> StructTy {
         ty
     }
 }

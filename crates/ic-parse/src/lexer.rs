@@ -161,6 +161,15 @@ pub enum Kind {
     #[token("wstring")]
     WString,
 
+    #[token("unsigned")]
+    Unsigned,
+
+    #[token("short")]
+    Short,
+
+    #[token("long")]
+    Long,
+
     /// `,`
     #[token(",")]
     Comma,
@@ -377,6 +386,9 @@ impl fmt::Display for Kind {
             Kind::Octal(_) | Kind::Decimal(_) | Kind::Hex(_) => write!(f, "number"),
             Kind::Comment(_) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
+            Kind::Unsigned => write!(f, "unsigned"),
+            Kind::Short => write!(f, "short"),
+            Kind::Long => write!(f, "long"),
         }
     }
 }

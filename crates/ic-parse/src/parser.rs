@@ -1084,8 +1084,8 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
     })
 }
 
-// Rule 119
-// TODO: lint for oneway + raises + out/inout params
+// Rule 119, 120, 121
+//
 // We reuse `op_dcl` here and instead perform some additional validation in
 // later stages. There's a `@oneway` annotation that poses the same
 // restrictions, so there's really no need for the parser to enforce them.
@@ -1097,19 +1097,6 @@ fn op_oneway_dcl() -> impl IdlParser<Prototype> {
             proto.oneway = Some(span);
             proto
         })
-}
-
-// Rule 120
-fn in_parameter_dcls() -> impl IdlParser<()> {
-    in_param_dcl().separated_by(just(Kind::Comma)).ignored()
-}
-
-// Rule 121
-fn in_param_dcl() -> impl IdlParser<()> {
-    just(Kind::In)
-        .then(type_spec())
-        .then(simple_declarator())
-        .ignored()
 }
 
 // Rule 199

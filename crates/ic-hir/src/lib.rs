@@ -53,7 +53,6 @@ use hir::{
 };
 
 mod embedded {
-    pub const RPC_TYPES: &str = include_str!("../idl/rpc_types.idl");
     pub const ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 }
 

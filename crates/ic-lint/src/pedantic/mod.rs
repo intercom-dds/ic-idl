@@ -28,8 +28,8 @@
 //! Collection of lints that are guarded behind the `-Wpedantic` flag.
 
 pub mod assign_expr;
-pub mod complex_default;
 pub mod complex_key;
+pub mod complex_lit;
 pub mod empty_mod;
 pub mod lowercase_bool;
 pub mod null;

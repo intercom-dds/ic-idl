@@ -34,9 +34,9 @@ use crate::{Category, Lint};
 /// Warns when an initializer list is used, e.g. for complex constants or
 /// complex default values.
 #[derive(Default)]
-pub struct ComplexDefaultValue(Vec<Diag>);
+pub struct ComplexLit(Vec<Diag>);
 
-impl ComplexDefaultValue {
+impl ComplexLit {
     fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
         let diag = Diag::warning("complex literals are an InterCOM extension")
             .label(Label::new(diag).message(msg).color(Color::Yellow))
@@ -47,7 +47,7 @@ impl ComplexDefaultValue {
     }
 }
 
-impl<'a> Visitor<'a> for ComplexDefaultValue {
+impl<'a> Visitor<'a> for ComplexLit {
     fn visit_annotation_appl(&mut self, def: &'a ic_syntax::AnnotationAppl) {
         for arg in &def.args {
             if let Expr::InitList(_) = &arg.value {
@@ -87,7 +87,7 @@ impl<'a> Visitor<'a> for ComplexDefaultValue {
     }
 }
 
-impl Lint for ComplexDefaultValue {
+impl Lint for ComplexLit {
     fn new() -> Box<dyn Lint>
     where
         Self: Sized,

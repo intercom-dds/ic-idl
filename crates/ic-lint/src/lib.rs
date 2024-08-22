@@ -48,7 +48,7 @@ macro_rules! lints {
 
 lints! {
     pedantic::assign_expr::AssignExpr,
-    pedantic::complex_default::ComplexDefaultValue,
+    pedantic::complex_lit::ComplexLit,
     pedantic::empty_mod::EmptyMod,
     pedantic::null::NullVariant,
     pedantic::omitted_in::OmittedIn,

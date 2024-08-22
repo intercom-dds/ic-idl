@@ -110,10 +110,6 @@ pub struct CppOptions {
     #[option(long)]
     pub no_stream_op: bool,
 
-    /// Use CORBA string, sequence and array types
-    #[option(long)]
-    pub corba_types: bool,
-
     /// Generate formatting specializations for fmtlib
     #[option(long)]
     pub use_fmt: bool,

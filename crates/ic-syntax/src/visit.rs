@@ -28,10 +28,10 @@
 #![allow(unused, dead_code)]
 
 use crate::{
-    AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Binary, Bit, Bitfield,
+    AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Binary, Bit, Bitfield,
     BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Ident, InitList, InterfaceDef, Item, ItemKind, Label, Literal, ModuleDef, Param,
-    Prototype, Span, StructDef, Type, Typedef, Unary, UnionDef, UnionElement, UnionField,
+    Field, Ident, InitList, InterfaceDef, InterfaceMember, Item, ItemKind, Label, Literal,
+    ModuleDef, Param, Prototype, Span, StructDef, Type, Unary, UnionDef, UnionElement, UnionField,
     UnionMember, UnionNull, ValuetypeDef,
 };
 
@@ -126,7 +126,7 @@ pub trait Visitor<'a> {
         visit_const(self, def);
     }
 
-    fn visit_typedef(&mut self, def: &'a Typedef) {
+    fn visit_typedef(&mut self, def: &'a AliasDef) {
         visit_typedef(self, def);
     }
 
@@ -176,7 +176,7 @@ where
         Item::BitmaskValue(v) => visitor.visit_bitmask(v),
         Item::BitsetValue(v) => visitor.visit_bitset(v),
         Item::ConstValue(v) => visitor.visit_const(v),
-        Item::TypedefValue(v) => visitor.visit_typedef(v),
+        Item::AliasValue(v) => visitor.visit_typedef(v),
         Item::DeclValue(v) => visitor.visit_decl(v),
         Item::InterfaceValue(v) => visitor.visit_interface(v),
         Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
@@ -187,7 +187,7 @@ pub fn visit_module<'a, V>(visitor: &mut V, module: &'a ModuleDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&module.name);
+    visitor.visit_ident(&module.ident);
     for def in &module.definitions {
         visitor.visit_item(def);
     }
@@ -197,7 +197,7 @@ pub fn visit_struct<'a, V>(visitor: &mut V, def: &'a StructDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     for mem in &def.members {
         visitor.visit_struct_field(mem);
     }
@@ -217,7 +217,7 @@ pub fn visit_union<'a, V>(visitor: &mut V, def: &'a UnionDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     visitor.visit_discriminant(&def.disc);
     for mem in &def.fields {
         visitor.visit_union_variant(mem);
@@ -257,7 +257,7 @@ pub fn visit_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     for var in &def.fields {
         visitor.visit_enum_variant(var);
     }
@@ -267,7 +267,7 @@ pub fn visit_enum_variant<'a, V>(visitor: &mut V, def: &'a Enumerator)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     if let Some(expr) = &def.value {
         visitor.visit_expr(expr);
     }
@@ -277,7 +277,7 @@ pub fn visit_exception<'a, V>(visitor: &mut V, def: &'a ExceptDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     for member in &def.members {
         visitor.visit_struct_field(member);
     }
@@ -287,10 +287,14 @@ pub fn visit_interface<'a, V>(visitor: &mut V, def: &'a InterfaceDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     // TODO: inherit? attributes?
-    for proto in &def.prototypes {
-        visitor.visit_prototype(proto);
+    for proto in &def.members {
+        match proto {
+            InterfaceMember::Attr(_) => todo!(),
+            InterfaceMember::Proto(v) => visitor.visit_prototype(v),
+            InterfaceMember::Item(v) => visitor.visit_item(v),
+        }
     }
 }
 
@@ -298,7 +302,7 @@ pub fn visit_valuetype<'a, V>(visitor: &mut V, def: &'a ValuetypeDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
 
     for proto in &def.prototypes {
         visitor.visit_prototype(proto);
@@ -314,7 +318,7 @@ pub fn visit_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     for param in &def.params {
         visitor.visit_prototype_param(param);
     }
@@ -325,14 +329,14 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
 }
 
 pub fn visit_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     for bit in &def.bits {
         visitor.visit_bitmask_bit(bit);
     }
@@ -342,7 +346,7 @@ pub fn visit_bitmask_bit<'a, V>(visitor: &mut V, def: &'a Bit)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     if let Some(expr) = &def.value {
         visitor.visit_expr(expr);
     }
@@ -352,7 +356,7 @@ pub fn visit_bitset<'a, V>(visitor: &mut V, def: &'a BitsetDef)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     for bitfield in &def.fields {
         visitor.visit_bitfield(bitfield);
     }
@@ -363,11 +367,11 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    visitor.visit_ident(&def.name);
+    visitor.visit_ident(&def.ident);
     visitor.visit_expr(&def.value);
 }
 
-pub fn visit_typedef<'a, V>(visitor: &mut V, def: &'a Typedef)
+pub fn visit_typedef<'a, V>(visitor: &mut V, def: &'a AliasDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -410,7 +414,7 @@ impl Visit for Item {
             Item::BitmaskValue(v) => visitor.visit_bitmask(v),
             Item::BitsetValue(v) => visitor.visit_bitset(v),
             Item::ConstValue(v) => visitor.visit_const(v),
-            Item::TypedefValue(v) => visitor.visit_typedef(v),
+            Item::AliasValue(v) => visitor.visit_typedef(v),
             Item::DeclValue(v) => visitor.visit_decl(v),
             Item::InterfaceValue(v) => visitor.visit_interface(v),
             Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
@@ -423,7 +427,7 @@ impl Visit for ModuleDef {
     where
         V: Visitor<'a> + ?Sized,
     {
-        visitor.visit_ident(&self.name);
+        visitor.visit_ident(&self.ident);
         for item in &self.definitions {
             visitor.visit_item(item);
         }

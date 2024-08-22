@@ -200,20 +200,21 @@ impl Resolver {
 /// doesn't clarify what "consistent" means, but I've interpreted it as the two
 /// definitions being identical.
 fn is_consistent(ctx: &mut Context, lhs: &AnnotationDef, rhs: &AnnotationDef) -> bool {
-    if !lhs.name.name.eq_ignore_ascii_case(&rhs.name.name) || lhs.params.len() != rhs.params.len() {
+    if !lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name) || lhs.params.len() != rhs.params.len()
+    {
         return false;
     }
 
     lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
-        (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
-            decl_consistent(ctx, &lhs.names, &rhs.names)
-                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
-        }
-        (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
-            // TODO: check value
-            lhs.name.name.eq_ignore_ascii_case(&rhs.name.name)
-                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
-        }
+        // (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
+        //     decl_consistent(ctx, &lhs.names, &rhs.names)
+        //         && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+        // }
+        // (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
+        //     // TODO: check value
+        //     lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name)
+        //         && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+        // }
         (lhs, rhs) => lhs.disc() == rhs.disc(),
     })
 }

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::{CStr, CString, NulError};
+use std::ffi::{CStr, NulError};
 use std::path::Path;
 
 use ic_syntax::Item;
@@ -36,7 +36,7 @@ mod sys;
 #[must_use]
 #[derive(Debug)]
 pub struct ParseResult {
-    pub inner: *mut sys::ic_parse_result_t,
+    inner: *mut sys::ic_parse_result_t,
 }
 
 impl ParseResult {

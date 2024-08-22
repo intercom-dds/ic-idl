@@ -31,10 +31,10 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_syntax::{
     AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind,
-    Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident,
-    InterfaceMember, Item, Label, LitKind, Literal, MapType, Op, OpKind, Param, ParamKind, Path,
-    Prototype, SequenceType, Span, StringType, Type, Unary, UnionElement, UnionField, UnionMember,
-    UnionNull,
+    Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident, InitList,
+    InterfaceMember, Item, Label, LitBool, LitKind, Literal, LiteralValue, MapType, NamedExpr, Op,
+    OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type, Unary,
+    UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -75,7 +75,7 @@ fn integer_literal() -> impl IdlParser<Literal> {
     };
     lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitInt(v),
+        value: LiteralValue::Int(v),
     })
 }
 
@@ -83,7 +83,7 @@ fn floating_pt_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::Float(v) => v };
     lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitFloat(v),
+        value: todo!(),
     })
 }
 
@@ -91,7 +91,7 @@ fn character_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::Char(v) => v };
     lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitChar(v.unwrap_or_default()),
+        value: LiteralValue::Char(v.unwrap_or_default()),
     })
 }
 
@@ -99,7 +99,7 @@ fn string_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::StringLit(v) => v };
     lit.map_with_span(|v, span| Literal {
         span,
-        kind: LitKind::LitString(v),
+        value: LiteralValue::String_(v),
     })
 }
 
@@ -238,7 +238,14 @@ fn complex_const_expr() -> impl IdlParser<Expr> {
         let complex = state
             .separated_by(just(Kind::Comma))
             .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
-            .map(Expr::InitList);
+            .map(|iter| {
+                Expr::InitList(InitList {
+                    values: iter
+                        .into_iter()
+                        .map(|value| NamedExpr { ident: None, value })
+                        .collect(),
+                })
+            });
 
         choice((named, complex, basic))
     })
@@ -350,9 +357,12 @@ fn literal() -> impl IdlParser<Literal> {
 // Rule 18
 fn boolean_literal() -> impl IdlParser<Literal> {
     let val = choice((just(Kind::True).to(true), just(Kind::False).to(false)));
-    val.map_with_span(|v, span| Literal {
+    val.map_with_span(|value, span| Literal {
         span,
-        kind: LitKind::LitBool(v),
+        value: LiteralValue::Bool(LitBool {
+            uppercase: false,
+            value,
+        }),
     })
 }
 
@@ -660,8 +670,8 @@ fn enumerator() -> impl IdlParser<Enumerator> {
     let value = just(Kind::Eq).ignore_then(const_expr()).or_not();
     let def = ident().then(value).labelled("enumerator");
 
-    def.map(|(name, value)| Enumerator {
-        name,
+    def.map(|(ident, value)| Enumerator {
+        ident,
         value,
         annotations: vec![],
     })
@@ -772,8 +782,8 @@ fn interface_def() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(((local, name), inherits), _), span| {
-        Item::interface(name, local, inherits, vec![], span)
+    def.map_with_span(|(((local, name), inherits), protos), span| {
+        Item::interface(name, local, inherits, protos, span)
     })
 }
 
@@ -842,11 +852,12 @@ fn op_dcl() -> impl IdlParser<Prototype> {
         .then(raises_expr().or_not())
         .then_ignore(just(Kind::Semi));
 
-    proto.map(|(((_ret, name), params), raises)| Prototype {
-        name,
+    proto.map(|(((ret, ident), params), raises)| Prototype {
+        ident,
         params,
         raises: raises.unwrap_or_default(),
         oneway: None,
+        ret,
     })
 }
 
@@ -870,7 +881,7 @@ fn param_dcl() -> impl IdlParser<Param> {
         .then(simple_declarator());
 
     param.map(|((kind, ty), decl)| Param {
-        name: match decl {
+        ident: match decl {
             Declarator::Simple(v) => v,
             Declarator::Array(_) => todo!(),
         },
@@ -913,7 +924,7 @@ fn readonly_attr_spec() -> impl IdlParser<Attribute> {
         .then_ignore(just(Kind::Semi));
 
     def.map(|((readonly, ty), _)| Attribute {
-        name: todo!(),
+        ident: todo!(),
         ty,
         readonly: Some(readonly),
     })
@@ -937,7 +948,7 @@ fn attr_spec() -> impl IdlParser<Attribute> {
         .then(attr_declarator());
 
     def.map(|(ty, _)| Attribute {
-        name: Ident::default(),
+        ident: Ident::default(),
         ty,
         readonly: None,
     })
@@ -1082,11 +1093,12 @@ fn op_oneway_dcl() -> impl IdlParser<Prototype> {
         .then(ident())
         .then(params);
 
-    def.map(|(((oneway, _ty), name), _params)| Prototype {
-        name,
+    def.map(|(((oneway, ret), ident), _params)| Prototype {
+        ident,
         params: vec![],
         raises: vec![],
         oneway: Some(oneway),
+        ret: todo!(),
     })
 }
 
@@ -1148,11 +1160,12 @@ fn bitset_dcl() -> impl IdlParser<Item> {
 // Rule 201
 fn bitfield() -> impl IdlParser<Bitfield> {
     let def = bitfield_spec().then(ident()).then_ignore(just(Kind::Semi));
-    def.map_with_span(|((size, _ty), name), span| Bitfield {
+    def.map_with_span(|((size, ty), ident), span| Bitfield {
         annotations: vec![],
-        name,
+        ident,
         size,
         span,
+        ty: todo!(),
     })
 }
 
@@ -1189,8 +1202,8 @@ fn bitmask_dcl() -> impl IdlParser<Item> {
 // Rule 205
 fn bit_value() -> impl IdlParser<Bit> {
     let def = ident().then(just(Kind::Eq).ignore_then(const_expr()).or_not());
-    def.map_with_span(|(name, value), span| Bit {
-        name,
+    def.map_with_span(|(ident, value), span| Bit {
+        ident,
         annotations: vec![],
         value,
         span,
@@ -1214,11 +1227,10 @@ fn annotation_header() -> impl IdlParser<Ident> {
 
 // Rule 221
 fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
+    let defs = choice((enum_dcl(), const_dcl(), type_dcl()));
     choice((
-        annotation_member().map(|v| AnnotationField::Arg(Box::new(v))),
-        // enum_dcl().map(|v| AnnotationField::Enum(Box::new(v))),
-        // const_dcl().map(|v| AnnotationField::Const(Box::new(v))),
-        // typedef_dcl().map(|v| AnnotationField::Alias(Box::new(v))),
+        annotation_member().map(|v| AnnotationField::Member(Box::new(v))),
+        defs.map(|v| AnnotationField::Item(Box::new(v))),
     ))
     .repeated()
 }

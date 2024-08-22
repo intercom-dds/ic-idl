@@ -69,7 +69,7 @@ impl<'a> Visitor<'a> for ComplexDefaultValue {
                     def.value.span(),
                     "complex constants are an InterCOM extension",
                 ),
-                (def.name.span, "const defined here"),
+                (def.ident.span, "const defined here"),
             );
         }
     }

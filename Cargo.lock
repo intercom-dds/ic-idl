@@ -127,12 +127,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-codegen-cxx"
+version = "0.0.0"
+
+[[package]]
+name = "ic-codegen-idl"
+version = "0.1.0"
+
+[[package]]
+name = "ic-codegen-java"
+version = "0.0.0"
+
+[[package]]
 name = "ic-codegen-protobuf"
 version = "0.0.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
 ]
+
+[[package]]
+name = "ic-codegen-python"
+version = "0.0.0"
+
+[[package]]
+name = "ic-codegen-rust"
+version = "0.0.0"
 
 [[package]]
 name = "ic-diagnostic"

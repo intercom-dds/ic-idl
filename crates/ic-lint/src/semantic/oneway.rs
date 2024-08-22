@@ -42,7 +42,7 @@ impl<'a> Visitor<'a> for NonVoidOneway {
         if let Some(oneway) = def.oneway {
             let diag = Diag::error("oneway operations must have a `void` return type")
                 .label(
-                    Label::new(def.name.span)
+                    Label::new(def.ident.span)
                         .message("non-void return type")
                         .color(Color::Cyan),
                 )

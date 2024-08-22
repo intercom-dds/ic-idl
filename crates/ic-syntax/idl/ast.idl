@@ -98,6 +98,8 @@ case LIT_BOOL:
      LitBool bool;
 case LIT_INT:
      uint64 int;
+case LIT_FLOAT:
+     double _float;
 case LIT_CHAR:
      char _char;
 case LIT_STRING:

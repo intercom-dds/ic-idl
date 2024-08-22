@@ -315,7 +315,7 @@ fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
     closest
 }
 
-fn did_you_mean<'a>(input: &str, options: &'a [Opt]) -> ParseError {
+fn did_you_mean(input: &str, options: &[Opt]) -> ParseError {
     let err = if let Some(v) = closest_match(input, options) {
         format!(
             "unknown option '{}', did you mean '{}'?",

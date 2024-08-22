@@ -57,16 +57,16 @@ impl Resolver {
 
 impl<'a> Visitor<'a> for Resolver {
     fn visit_module(&mut self, module: &'a ModuleDef) {
-        self.modules.insert(module.name.name.clone());
+        self.modules.insert(module.ident.name.clone());
         visit_module(self, module);
     }
 
     fn visit_decl(&mut self, decl: &'a Decl) {
-        self.fwd_decls.insert(decl.name.name.clone(), ());
+        self.fwd_decls.insert(decl.ident.name.clone(), ());
     }
 
     fn visit_struct(&mut self, def: &'a StructDef) {
-        self.types.insert(def.name.name.clone(), ());
+        self.types.insert(def.ident.name.clone(), ());
         visit_struct(self, def);
     }
 

@@ -40,7 +40,7 @@ impl<'a> Visitor<'a> for Unsupported {
     fn visit_bitset(&mut self, bitset: &'a ic_syntax::BitsetDef) {
         let diag = warn_span(
             "bitsets are not supported",
-            Label::new(bitset.name.span).message("defined here"),
+            Label::new(bitset.ident.span).message("defined here"),
         )
         .note("the bitset will be skipped during codegen");
 

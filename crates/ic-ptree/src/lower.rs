@@ -30,8 +30,8 @@
 use std::ffi::{self, CString};
 
 use ic_syntax::{
-    DeclKind, Declarator, Expr, Field, Item, Label, LitKind, Op, OpKind, Param, ParamKind, Path,
-    Type, UnionElement,
+    DeclKind, Declarator, Expr, Field, InterfaceMember, Item, Label, LiteralValue, Op, OpKind,
+    Param, ParamKind, Path, Type, UnionElement,
 };
 
 use crate::sys::{self, ptree};
@@ -145,15 +145,16 @@ unsafe fn lower_ty(ty: &Type) -> *mut ptree {
 
 unsafe fn lower_expr(num: &Expr) -> *const sys::numeric {
     match num {
-        Expr::Literal(v) => match v.kind.clone() {
-            LitKind::LitBool(v) => sys::create_bool(ffi::c_int::from(v)),
-            LitKind::LitInt(v) => sys::create_i64(v as i64, 10),
-            LitKind::LitFloat(v) => sys::create_double(v),
-            LitKind::LitChar(v) => sys::create_char(v as ffi::c_char),
-            LitKind::LitString(v) => {
+        Expr::Literal(v) => match v.value.clone() {
+            LiteralValue::Bool(v) => sys::create_bool(ffi::c_int::from(v.value)),
+            LiteralValue::Int(v) => sys::create_i64(v as i64, 10),
+            // LiteralValue::Int(v) => sys::create_double(v),
+            LiteralValue::Char(v) => sys::create_char(v as ffi::c_char),
+            LiteralValue::String_(v) => {
                 let str = CString::new(v).unwrap();
                 sys::create_str(str.as_ptr())
             }
+            LiteralValue::Null => todo!(),
         },
         Expr::Path(v) => {
             let ident = create_ident(&path_str(v));
@@ -169,11 +170,16 @@ unsafe fn lower_expr(num: &Expr) -> *const sys::numeric {
         }
         Expr::InitList(v) => {
             let mut list = std::ptr::null_mut();
-            for expr in v {
+            for expr in &v.values {
+                let declarator = expr.ident.as_ref().map_or(std::ptr::null_mut(), |ident| {
+                    let ident = create_ident(&ident.name);
+                    sys::create_decl(ident, std::ptr::null_mut())
+                });
+
                 let val = sys::create_const_node(
+                    declarator,
                     std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    lower_expr(expr),
+                    lower_expr(&expr.value),
                 );
                 list = sys::append_node(list, val);
             }
@@ -190,31 +196,55 @@ fn lower_field(field: &Field) -> *mut ptree {
     }
 }
 
+fn lower_interface_member(member: &InterfaceMember) -> *mut ptree {
+    unsafe {
+        let param = |param: &Param| {
+            let ty = lower_ty(&param.ty);
+            let kind = param_kind(param.kind);
+            let decl = {
+                let ident = create_ident(&param.ident.name);
+                sys::create_decl(ident, std::ptr::null_mut())
+            };
+            sys::create_param_dcl(decl, ty, kind)
+        };
+
+        match member {
+            InterfaceMember::Attr(_) => todo!(),
+            InterfaceMember::Proto(v) => {
+                let ident = create_ident(&v.ident.name);
+                let params = collect_with(sys::append_node, &v.params, param);
+                sys::create_interface_op(ident, params, std::ptr::null_mut(), std::ptr::null_mut())
+            }
+            InterfaceMember::Item(v) => lower_item(v),
+        }
+    }
+}
+
 unsafe fn lower_item(item: &Item) -> *mut ptree {
     match item {
         Item::AnnotationValue(_) => todo!(),
         Item::ModuleValue(v) => {
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_module_start(ident);
             let members = lower_item_list(&v.definitions);
             sys::create_module_finish(members)
         }
         Item::StructValue(v) => {
             // TODO: parent
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_struct_start(ident, std::ptr::null_mut());
             let members = collect_with(sys::append_node, &v.members, lower_field);
             sys::create_struct_finish(members)
         }
         Item::ExceptionValue(v) => {
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_exception_start(ident);
             let members = collect_with(sys::append_node, &v.members, lower_field);
             sys::create_exception_finish(members)
         }
         Item::EnumValue(v) => {
             let values = collect_with(sys::append_enum_node, &v.fields, |field| {
-                let ident = create_ident(&field.name.name);
+                let ident = create_ident(&field.ident.name);
                 let expr = field
                     .value
                     .as_ref()
@@ -222,12 +252,12 @@ unsafe fn lower_item(item: &Item) -> *mut ptree {
                 sys::create_enum_value(ident, expr)
             });
 
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_enum(ident, values)
         }
         Item::BitmaskValue(v) => {
             let values = collect_with(sys::append_node, &v.bits, |bit| {
-                let ident = create_ident(&bit.name.name);
+                let ident = create_ident(&bit.ident.name);
                 let expr = bit
                     .value
                     .as_ref()
@@ -236,7 +266,7 @@ unsafe fn lower_item(item: &Item) -> *mut ptree {
                 sys::create_bitmask_value(ident, expr)
             });
 
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_bitmask(ident, values)
         }
         Item::ConstValue(v) => {
@@ -245,14 +275,14 @@ unsafe fn lower_item(item: &Item) -> *mut ptree {
             let expr = lower_expr(&v.value);
             sys::create_const_node(decl, ty, expr)
         }
-        Item::TypedefValue(v) => {
+        Item::AliasValue(v) => {
             let ty = lower_ty(&v.ty);
-            let _ident = create_ident(&v.name.name);
+            let _ident = create_ident(&v.ident.name);
             // ...declarators...
             sys::create_type(std::ptr::null_mut(), ty)
         }
         Item::DeclValue(v) => {
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             match v.kind {
                 DeclKind::DeclStruct => sys::create_struct_dcl(ident),
                 DeclKind::DeclUnion => sys::create_union_dcl(ident),
@@ -267,38 +297,25 @@ unsafe fn lower_item(item: &Item) -> *mut ptree {
                 sys::create_bitfield(std::ptr::null_mut(), size, std::ptr::null_mut())
             });
 
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_bitset(ident, bitfields, std::ptr::null_mut())
         }
         Item::InterfaceValue(v) => {
             // TODO: parents
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_interface_start(
                 ident,
                 std::ptr::null_mut(),
                 ffi::c_int::from(v.local.is_some()),
             );
-
-            let param = |param: &Param| {
-                let ty = lower_ty(&param.ty);
-                let kind = param_kind(param.kind);
-                let decl = {
-                    let ident = create_ident(&param.name.name);
-                    sys::create_decl(ident, std::ptr::null_mut())
-                };
-                sys::create_param_dcl(decl, ty, kind)
-            };
-
-            let prototypes = collect_with(sys::append_node, &v.prototypes, |proto| {
-                let ident = create_ident(&proto.name.name);
-                let params = collect_with(sys::append_node, &proto.params, param);
-                // TODO: retval, raises
-                sys::create_interface_op(ident, params, std::ptr::null_mut(), std::ptr::null_mut())
-            });
-            sys::create_interface_finish(prototypes)
+            sys::create_interface_finish(collect_with(
+                sys::append_node,
+                &v.members,
+                lower_interface_member,
+            ))
         }
         Item::UnionValue(v) => {
-            let ident = create_ident(&v.name.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_union_start(ident);
 
             let label = |label: &Label| match label {

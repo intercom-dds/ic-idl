@@ -36,7 +36,7 @@ use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::visit::{visit_item, Visitor};
-use ic_syntax::{Ident, Span};
+use ic_syntax::{Ident, LiteralValue, Span};
 
 use crate::hir::{
     self, AliasTy, BitmaskTy, ConstTy, DeclTy, EnumTy, Enumerator, Item, Member, ModuleTy, Numeric,
@@ -132,12 +132,13 @@ impl Interp<'_> {
         use ic_syntax::{Expr, LitKind};
 
         match expr {
-            Expr::Literal(v) => match &v.kind {
-                LitKind::LitBool(v) => i64::from(*v),
-                LitKind::LitInt(v) => *v as i64,
-                LitKind::LitFloat(_) => todo!(),
-                LitKind::LitChar(_) => todo!(),
-                LitKind::LitString(_) => todo!(),
+            Expr::Literal(v) => match &v.value {
+                LiteralValue::Bool(v) => i64::from(v.value),
+                LiteralValue::Int(v) => *v as i64,
+                // LiteralValue::Float(_) => todo!(),
+                LiteralValue::Char(_) => todo!(),
+                LiteralValue::String_(_) => todo!(),
+                _ => todo!(),
             },
             // ic_syntax::Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
             Expr::Unary(v) => self.eval_unary(v),
@@ -167,10 +168,10 @@ impl Interp<'_> {
         use ic_syntax::{Expr, LitKind};
 
         match expr {
-            Expr::Literal(v) => match v.kind {
-                LitKind::LitBool(v) => Numeric::Bool(v),
-                LitKind::LitInt(v) => Numeric::from(T::try_from(v as i64).unwrap()),
-                LitKind::LitString(ref v) => Numeric::String(v.clone()),
+            Expr::Literal(v) => match &v.value {
+                LiteralValue::Bool(v) => Numeric::Bool(v.value),
+                LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
+                LiteralValue::String_(ref v) => Numeric::String(v.clone()),
                 _ => todo!(),
             },
             Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
@@ -239,24 +240,25 @@ impl<'a> Lower<'a> {
     ) -> bool {
         use ic_syntax::AnnotationField;
 
-        if !lhs.name.name.eq_ignore_ascii_case(&rhs.name.name)
+        if !lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name)
             || lhs.params.len() != rhs.params.len()
         {
             return false;
         }
 
-        lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
-            (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
-                self.check_decl_consistency(&lhs.names, &rhs.names)
-                    && self.check_type_consistency(&lhs.ty, &rhs.ty)
-            }
-            (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
-                lhs.name.name.eq_ignore_ascii_case(&rhs.name.name)
-                    && self.check_type_consistency(&lhs.ty, &rhs.ty)
-                    && self.check_expr_consistency(&lhs.value, &rhs.value)
-            }
-            (lhs, rhs) => lhs.disc() == rhs.disc(),
-        })
+        true
+        // lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
+        //     (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
+        //         self.check_decl_consistency(&lhs.names, &rhs.names)
+        //             && self.check_type_consistency(&lhs.ty, &rhs.ty)
+        //     }
+        //     (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
+        //         lhs.ident.name.eq_ignore_ascii_case(&rhs.name.name)
+        //             && self.check_type_consistency(&lhs.ty, &rhs.ty)
+        //             && self.check_expr_consistency(&lhs.value, &rhs.value)
+        //     }
+        //     (lhs, rhs) => lhs.disc() == rhs.disc(),
+        // })
     }
 
     /// Determines if two sets of declarators are semantically consistent. They
@@ -408,7 +410,7 @@ impl<'a> Lower<'a> {
     fn lower_decl(&mut self, symbol: ic_syntax::Decl) -> TypeId {
         self.ctx.arena.alloc_with_id(|id| {
             Type::Decl(DeclTy {
-                ident: symbol.name.clone(),
+                ident: symbol.ident.clone(),
                 ty: id,
             })
         })
@@ -418,13 +420,14 @@ impl<'a> Lower<'a> {
         let ty = self.ctx.resolve_type(&symbol.ty);
         let value = match symbol.value {
             ic_syntax::Expr::InitList(v) => {
-                Numeric::InitList(v.iter().map(|v| self.eval_expr(v)).collect())
+                todo!()
+                // Numeric::InitList(v.values.iter().map(|v| self.eval_expr(v)).collect())
             }
             v => self.eval_expr(&v),
         };
 
         ConstTy {
-            ident: symbol.name,
+            ident: symbol.ident,
             span: symbol.span,
             ty,
             value,
@@ -433,18 +436,18 @@ impl<'a> Lower<'a> {
 
     // A typedef with multiple declarators will be expanded to multiple,
     // individual typedefs, each with one declarator.
-    fn lower_alias(&mut self, symbol: ic_syntax::Typedef) -> TypeId {
+    fn lower_alias(&mut self, symbol: ic_syntax::AliasDef) -> TypeId {
         let ty = self.ctx.resolve_type(&symbol.ty);
         let id = self.ctx.arena.alloc_with_id(|id| {
             Type::Alias(AliasTy {
                 id,
-                ident: symbol.name.clone(),
+                ident: symbol.ident.clone(),
                 span: symbol.span,
                 ty,
             })
         });
 
-        self.register_type(symbol.name.name.clone(), id);
+        self.register_type(symbol.ident.name.clone(), id);
         id
     }
 
@@ -458,7 +461,7 @@ impl<'a> Lower<'a> {
         // self.ctx.items.alloc_with_id(|id| {
         ModuleTy {
             // id,
-            ident: symbol.name,
+            ident: symbol.ident,
             span: symbol.span,
             definitions,
         }
@@ -491,13 +494,13 @@ impl<'a> Lower<'a> {
         let id = self.ctx.arena.alloc_with_id(|id| {
             Type::Struct(StructTy {
                 id,
-                ident: symbol.name.clone(),
+                ident: symbol.ident.clone(),
                 span: symbol.span,
                 members,
                 flags: TyFlags::nil(),
             })
         });
-        self.register_type(symbol.name.name, id);
+        self.register_type(symbol.ident.name, id);
         id
     }
 
@@ -537,7 +540,7 @@ impl<'a> Lower<'a> {
         self.ctx.arena.alloc_with_id(|id| {
             Type::Union(UnionTy {
                 id,
-                ident: symbol.name,
+                ident: symbol.ident,
                 span: symbol.span,
                 disc,
                 variants,
@@ -546,11 +549,11 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_bitmask(&mut self, symbol: ic_syntax::BitmaskDef) -> TypeId {
-        let bits = symbol.bits.iter().cloned().map(|v| (v.name, 0)).collect();
+        let bits = symbol.bits.iter().cloned().map(|v| (v.ident, 0)).collect();
         self.ctx.arena.alloc_with_id(|id| {
             Type::Bitmask(BitmaskTy {
                 id,
-                ident: symbol.name,
+                ident: symbol.ident,
                 span: symbol.span,
                 ty: PrimitiveTy::UInt32,
                 bits,
@@ -571,7 +574,7 @@ impl<'a> Lower<'a> {
             last_value = value;
 
             enumerators.push(Enumerator {
-                ident: lit.name.clone(),
+                ident: lit.ident.clone(),
                 value,
             });
         }
@@ -579,7 +582,7 @@ impl<'a> Lower<'a> {
         self.ctx.arena.alloc_with_id(|id| {
             Type::Enum(EnumTy {
                 id,
-                ident: symbol.name,
+                ident: symbol.ident,
                 span: symbol.span,
                 ty: PrimitiveTy::UInt32,
                 enumerators,
@@ -597,7 +600,7 @@ impl<'a> Lower<'a> {
             syn::Item::UnionValue(v) => Item::Adt(self.lower_union(v)),
             syn::Item::EnumValue(v) => Item::Adt(self.lower_enum(v)),
             syn::Item::ConstValue(v) => Item::Const(self.lower_const(v)),
-            syn::Item::TypedefValue(v) => Item::Adt(self.lower_alias(v)),
+            syn::Item::AliasValue(v) => Item::Adt(self.lower_alias(v)),
             syn::Item::ExceptionValue(v) => Item::Adt(self.lower_except(v)),
             // syn::Item::InterfaceValue(v) => Item::Interface(self.lower_interface(v)),
             syn::Item::ValuetypeValue(_) => todo!(),
@@ -624,7 +627,7 @@ impl<'a> Lower<'a> {
             Item::ExceptionValue(v) => self.lower_except(v),
             Item::BitmaskValue(v) => self.lower_bitmask(v),
             // Item::ConstValue(v) => self.lower_const(v),
-            Item::TypedefValue(v) => self.lower_alias(v),
+            Item::AliasValue(v) => self.lower_alias(v),
             Item::InterfaceValue(_) => todo!(),
             Item::ValuetypeValue(_) => todo!(),
             Item::DeclValue(v) => self.lower_decl(v),
@@ -682,7 +685,7 @@ impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
     fn visit_decl(&mut self, symbol: &'a ic_syntax::Decl) {
         let id = self.lower.ctx.arena.alloc_with_id(|id| {
             Type::Decl(DeclTy {
-                ident: symbol.name.clone(),
+                ident: symbol.ident.clone(),
                 ty: id,
             })
         });

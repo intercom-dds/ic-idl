@@ -85,8 +85,19 @@ pub fn expr_span(expr: &Expr) -> Span {
             Span { start, end }
         }
         Expr::InitList(v) => {
-            let start = v.first().map(expr_span).unwrap_or_default().start;
-            let end = v.last().map(expr_span).unwrap_or_default().end;
+            let start = v
+                .values
+                .first()
+                .map(|e| expr_span(&e.value))
+                .unwrap_or_default()
+                .start;
+
+            let end = v
+                .values
+                .last()
+                .map(|e| expr_span(&e.value))
+                .unwrap_or_default()
+                .end;
             Span { start, end }
         }
     }
@@ -145,7 +156,7 @@ named_item! {
     crate::ExceptDef: "exception",
     crate::BitmaskDef: "bitmask",
     crate::BitsetDef: "bitset",
-    crate::Typedef: "typedef",
+    crate::AliasDef: "typedef",
     crate::ConstDef: "const",
 }
 

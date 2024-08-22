@@ -39,7 +39,7 @@ impl<'a> Visitor<'a> for EmptyMod {
     fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
         if def.definitions.is_empty() {
             let diag = warn_span(
-                "empty module declarations are not allowed",
+                "empty module declarations are not standard",
                 Label::new(def.span),
             )
             .help("either remove the declaration or add an item to it");

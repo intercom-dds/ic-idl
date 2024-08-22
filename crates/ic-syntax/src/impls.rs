@@ -28,17 +28,17 @@
 use std::ops::Range;
 
 use crate::{
-    AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, DeclKind,
-    Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Ident, InterfaceDef,
-    Item, ModuleDef, Path, Prototype, Span, StructDef, Type, Typedef, UnionDef, UnionField,
-    ValueMember, ValuetypeDef,
+    AliasDef, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl,
+    DeclKind, Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Ident,
+    InterfaceDef, InterfaceMember, Item, ModuleDef, Path, Span, StructDef, Type, UnionDef,
+    UnionField, ValueMember, ValuetypeDef,
 };
 
 impl Item {
     #[must_use]
-    pub fn def_module(name: Ident, defs: Vec<Item>, span: Span) -> Self {
+    pub fn def_module(ident: Ident, defs: Vec<Item>, span: Span) -> Self {
         Self::ModuleValue(ModuleDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             definitions: defs,
@@ -46,9 +46,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_struct(name: Ident, members: Vec<Field>, parent: Option<Path>, span: Span) -> Self {
+    pub fn def_struct(ident: Ident, members: Vec<Field>, parent: Option<Path>, span: Span) -> Self {
         Self::StructValue(StructDef {
-            name,
+            ident,
             span,
             members,
             parent,
@@ -57,9 +57,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_exception(name: Ident, members: Vec<Field>, span: Span) -> Self {
+    pub fn def_exception(ident: Ident, members: Vec<Field>, span: Span) -> Self {
         Self::ExceptionValue(ExceptDef {
-            name,
+            ident,
             span,
             members,
             annotations: vec![],
@@ -68,13 +68,13 @@ impl Item {
 
     #[must_use]
     pub fn def_union(
-        name: Ident,
+        ident: Ident,
         disc: Discriminator,
         fields: Vec<UnionField>,
         span: Span,
     ) -> Self {
         Self::UnionValue(UnionDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             disc,
@@ -83,9 +83,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_enum(name: Ident, fields: Vec<Enumerator>, span: Span) -> Self {
+    pub fn def_enum(ident: Ident, fields: Vec<Enumerator>, span: Span) -> Self {
         Self::EnumValue(EnumDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             fields,
@@ -93,9 +93,11 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_const(name: Ident, ty: Type, value: Expr, span: Span) -> Self {
+    pub fn def_const(ident: Ident, ty: Type, value: Expr, span: Span) -> Self {
         Self::ConstValue(ConstDef {
-            name,
+            ident,
+            // TODO(idarcar): use this
+            decl: Declarator::default(),
             span,
             value,
             ty,
@@ -104,9 +106,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_annotation(name: Ident, params: Vec<AnnotationField>, span: Span) -> Self {
+    pub fn def_annotation(ident: Ident, params: Vec<AnnotationField>, span: Span) -> Self {
         Self::AnnotationValue(AnnotationDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             params,
@@ -115,17 +117,17 @@ impl Item {
 
     #[must_use]
     pub fn interface(
-        name: Ident,
+        ident: Ident,
         local: Option<Span>,
         inherits: Vec<Path>,
-        prototypes: Vec<Prototype>,
+        members: Vec<InterfaceMember>,
         span: Span,
     ) -> Self {
         Self::InterfaceValue(InterfaceDef {
-            name,
+            ident,
             span,
             annotations: vec![],
-            prototypes,
+            members,
             inherits,
             local,
         })
@@ -133,14 +135,14 @@ impl Item {
 
     #[must_use]
     pub fn valuetype(
-        name: Ident,
+        ident: Ident,
         members: Vec<ValueMember>,
         inherits: Option<Path>,
         supports: Option<Path>,
         span: Span,
     ) -> Self {
         Self::ValuetypeValue(ValuetypeDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             prototypes: vec![],
@@ -151,9 +153,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn bitmask(name: Ident, flags: Vec<Bit>, span: Span) -> Self {
+    pub fn bitmask(ident: Ident, flags: Vec<Bit>, span: Span) -> Self {
         Self::BitmaskValue(BitmaskDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             bits: flags,
@@ -161,9 +163,14 @@ impl Item {
     }
 
     #[must_use]
-    pub fn bitset(name: Ident, parent: Option<Path>, bitfields: Vec<Bitfield>, span: Span) -> Self {
+    pub fn bitset(
+        ident: Ident,
+        parent: Option<Path>,
+        bitfields: Vec<Bitfield>,
+        span: Span,
+    ) -> Self {
         Self::BitsetValue(BitsetDef {
-            name,
+            ident,
             span,
             annotations: vec![],
             parent,
@@ -172,9 +179,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn typedef(name: Ident, ty: Type, span: Span) -> Self {
-        Self::TypedefValue(Typedef {
-            name,
+    pub fn typedef(ident: Ident, ty: Type, span: Span) -> Self {
+        Self::AliasValue(AliasDef {
+            ident,
             span,
             annotations: vec![],
             decl: vec![],
@@ -183,9 +190,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn decl(name: Declarator, kind: DeclKind, span: Span) -> Self {
+    pub fn decl(ident: Declarator, kind: DeclKind, span: Span) -> Self {
         Self::DeclValue(Decl {
-            name: match name {
+            ident: match ident {
                 Declarator::Simple(v) => v,
                 Declarator::Array(v) => v.ident,
             },

@@ -33,18 +33,15 @@ pub struct LowercaseBool<'a>(&'a str);
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
     fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
-        if let ic_syntax::LitKind::LitBool(_) = &num.kind {
-            let range = num.span.start as usize..num.span.start as usize;
-            if let Some(span) = self.0.get(range) {
-                if span.chars().any(char::is_lowercase) {
-                    eprintln!(
-                        "{}:{}: boolean literals must be written in uppercase",
-                        num.span.start,
-                        num.span.end + num.span.start,
-                    );
-                    eprintln!(" = help: lowercase literals are an InterCOM extension");
-                    eprintln!(" = note: warning produced by -Wpedantic");
-                }
+        if let ic_syntax::LiteralValue::Bool(lit) = &num.value {
+            if !lit.uppercase {
+                eprintln!(
+                    "{}:{}: boolean literals must be written in uppercase",
+                    num.span.start,
+                    num.span.end + num.span.start,
+                );
+                eprintln!(" = help: lowercase literals are an InterCOM extension");
+                eprintln!(" = note: warning produced by -Wpedantic");
             }
         }
     }

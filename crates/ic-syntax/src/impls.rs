@@ -190,12 +190,9 @@ impl Item {
     }
 
     #[must_use]
-    pub fn decl(ident: Declarator, kind: DeclKind, span: Span) -> Self {
+    pub fn decl(ident: Ident, kind: DeclKind, span: Span) -> Self {
         Self::DeclValue(Decl {
-            ident: match ident {
-                Declarator::Simple(v) => v,
-                Declarator::Array(v) => v.ident,
-            },
+            ident,
             span,
             annotations: vec![],
             kind,

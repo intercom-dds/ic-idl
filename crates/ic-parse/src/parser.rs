@@ -544,9 +544,7 @@ fn struct_forward_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|name, span| {
-        Item::decl(Declarator::Simple(name), DeclKind::DeclStruct, span)
-    })
+    decl.map_with_span(|name, span| Item::decl(name, DeclKind::DeclStruct, span))
 }
 
 // Rule 49
@@ -643,7 +641,7 @@ fn union_forward_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|name, span| Item::decl(Declarator::Simple(name), DeclKind::DeclUnion, span))
+    decl.map_with_span(|name, span| Item::decl(name, DeclKind::DeclUnion, span))
 }
 
 // Rule 57
@@ -693,7 +691,7 @@ fn fixed_array_size() -> impl IdlParser<Expr> {
 // Rule 61
 fn native_dcl() -> impl IdlParser<Item> {
     just(Kind::Native)
-        .ignore_then(simple_declarator())
+        .ignore_then(ident())
         .map_with_span(|name, span| Item::decl(name, DeclKind::DeclNative, span))
 }
 
@@ -794,9 +792,7 @@ fn interface_forward_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|ident, span| {
-        Item::decl(Declarator::Simple(ident), DeclKind::DeclInterface, span)
-    })
+    def.map_with_span(|ident, span| Item::decl(ident, DeclKind::DeclInterface, span))
 }
 
 // Rule 76
@@ -1079,9 +1075,7 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|name, span| {
-        Item::decl(Declarator::Simple(name), DeclKind::DeclValuetype, span)
-    })
+    def.map_with_span(|name, span| Item::decl(name, DeclKind::DeclValuetype, span))
 }
 
 // Rule 119, 120, 121

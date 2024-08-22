@@ -258,18 +258,8 @@ fn try_ptree(options: &Options, merged: ParseResult) -> anyhow::Result<Vec<Strin
     }
 
     let mut generated = vec![];
-    if let Some(dir) = &options.codegen.csharp_out {
-        let res = invoke(options, &merged, dir, ic_ptree::codegen_csharp)?;
-        generated.extend(res);
-    }
-
     if let Some(dir) = &options.codegen.cpp_out {
         let res = invoke(options, &merged, dir, ic_ptree::codegen_cpp)?;
-        generated.extend(res);
-    }
-
-    if let Some(dir) = &options.codegen.java_out {
-        let res = invoke(options, &merged, dir, ic_ptree::codegen_java)?;
         generated.extend(res);
     }
 

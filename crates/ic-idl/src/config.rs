@@ -102,6 +102,10 @@ pub struct Options {
 
 #[derive(Command, Default)]
 pub struct CppOptions {
+    /// Generate scoped enums
+    #[option(long)]
+    pub scoped_enums: bool,
+
     /// Use access functions instead of direct member access
     #[option(long)]
     pub access_functions: bool,
@@ -138,21 +142,9 @@ pub struct CodegenOptions {
     #[option(long, arg = "dir")]
     pub cpp_out: Option<PathBuf>,
 
-    /// Generate C++11 files in <dir>
-    #[option(long, arg = "dir")]
-    pub cpp11_out: Option<PathBuf>,
-
     /// Generate Rust files in <dir>
     #[option(long, arg = "dir")]
     pub rust_out: Option<PathBuf>,
-
-    /// Generate Java files in <dir>
-    #[option(long, arg = "dir")]
-    pub java_out: Option<PathBuf>,
-
-    /// Generate C# files in <dir>
-    #[option(long, arg = "dir")]
-    pub csharp_out: Option<PathBuf>,
 
     /// Generate Python files in <dir>
     #[option(long, arg = "dir")]

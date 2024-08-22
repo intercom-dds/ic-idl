@@ -44,7 +44,7 @@ impl<'a> Visitor<'a> for OmittedIn {
                 Label::new(ty_span(&def.ty))
                     .message("expected parameter specifier before this type"),
             )
-            .help("prefix the paramter with `in`");
+            .help("prefix the parameter with `in`");
 
             self.0.push(diag);
         }

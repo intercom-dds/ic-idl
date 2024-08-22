@@ -1085,21 +1085,18 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
 }
 
 // Rule 119
+// TODO: lint for oneway + raises + out/inout params
+// We reuse `op_dcl` here and instead perform some additional validation in
+// later stages. There's a `@oneway` annotation that poses the same
+// restrictions, so there's really no need for the parser to enforce them.
 fn op_oneway_dcl() -> impl IdlParser<Prototype> {
-    let params = in_parameter_dcls().parenthesized();
-    let def = just(Kind::Oneway)
+    just(Kind::Oneway)
         .map_with_span(|_, span| span)
-        .then(ty())
-        .then(ident())
-        .then(params);
-
-    def.map(|(((oneway, ret), ident), _params)| Prototype {
-        ident,
-        params: vec![],
-        raises: vec![],
-        oneway: Some(oneway),
-        ret: todo!(),
-    })
+        .then(op_dcl())
+        .map(|(span, mut proto)| {
+            proto.oneway = Some(span);
+            proto
+        })
 }
 
 // Rule 120

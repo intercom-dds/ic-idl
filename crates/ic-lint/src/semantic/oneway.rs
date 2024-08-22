@@ -27,31 +27,82 @@
 
 use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{util, Item, UnionNull};
+use ic_syntax::{util, Item, ParamKind, Prototype, Type, UnionNull};
 
 use crate::{Category, Lint};
 
-/// Checks that all prototypes marked as `oneway` also have a `void` return
-/// type.
-// TODO: this does not account for the @oneway annotation
+/// Checks that all prototypes marked as `oneway` have:
+///   1. A `void` return type.
+///   2. No exception specifications.
+///   3. No out/inout parameters.
 #[derive(Default)]
 pub struct NonVoidOneway(Vec<Diag>);
 
-impl<'a> Visitor<'a> for NonVoidOneway {
-    fn visit_prototype(&mut self, def: &'a ic_syntax::Prototype) {
-        if let Some(oneway) = def.oneway {
+impl NonVoidOneway {
+    fn chk_return_ty(&mut self, proto: &Prototype) {
+        if util::type_name(&proto.ret) != "void" {
             let diag = Diag::error("oneway operations must have a `void` return type")
                 .label(
-                    Label::new(def.ident.span)
+                    Label::new(util::ty_span(&proto.ret))
                         .message("non-void return type")
-                        .color(Color::Cyan),
+                        .color(Color::Blue),
                 )
                 .label(
-                    Label::new(oneway)
+                    Label::new(proto.oneway.unwrap())
                         .message("declared as oneway here")
                         .color(Color::Red),
                 )
                 .help("change the return type to `void`");
+
+            self.0.push(diag);
+        }
+    }
+
+    fn chk_exception(&mut self, proto: &Prototype) {
+        if let Some(raises) = proto.raises.first() {
+            let diag = Diag::error("oneway operations cannot have exception specifiers")
+                .label(
+                    Label::new(util::path_span(raises))
+                        .message("exception specifier")
+                        .color(Color::Blue),
+                )
+                .label(
+                    Label::new(proto.oneway.unwrap())
+                        .message("declared as oneway here")
+                        .color(Color::Red),
+                );
+
+            self.0.push(diag);
+        }
+    }
+
+    fn chk_out_params(&mut self, proto: &Prototype) {
+        for param in &proto.params {
+            if let Some(ParamKind::ParamOut | ParamKind::ParamInout) = param.kind {
+                let diag = Diag::error("oneway operations cannot have `out` parameters")
+                    .label(
+                        Label::new(param.ident.span)
+                            .message("`out` parameter")
+                            .color(Color::Blue),
+                    )
+                    .label(
+                        Label::new(proto.oneway.unwrap())
+                            .message("declared as oneway here")
+                            .color(Color::Red),
+                    );
+
+                self.0.push(diag);
+            }
+        }
+    }
+}
+
+impl<'a> Visitor<'a> for NonVoidOneway {
+    fn visit_prototype(&mut self, def: &'a ic_syntax::Prototype) {
+        if let Some(oneway) = def.oneway {
+            self.chk_return_ty(def);
+            self.chk_exception(def);
+            self.chk_out_params(def);
         }
     }
 }

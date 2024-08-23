@@ -315,8 +315,6 @@ static void init_parser_state(const std::shared_ptr<parser>& state) {
         g_rpc_initial_state = std::make_shared<parser>(*initial);
         g_state = g_rpc_initial_state;
         reset_top_level();
-        // TODO(idarcar):
-        // scan_string(g_rpc_types);
         assert(g_parse_result.error_count == 0 && "parsing built-in IDL failed");
         return initial;
     }();

@@ -1276,8 +1276,10 @@ fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
 // Rule 222
 fn annotation_member() -> impl IdlParser<Field> {
     let param = annotation_member_type().then(simple_declarator());
-    let default = just(Kind::Default).ignore_then(ident());
+    let default = just(Kind::Default).ignore_then(const_expr());
     let def = param.then(default.or_not()).then_ignore(just(Kind::Semi));
+
+    // TODO: what should we do with the default value?
     def.map(|((ty, decl), _default)| Field {
         names: vec![decl],
         ty,

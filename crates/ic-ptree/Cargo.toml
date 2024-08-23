@@ -40,4 +40,5 @@ workspace = true
 cmake = "0.1"
 
 [dependencies]
+ic-parse = { path = "../ic-parse" }
 ic-syntax = { path = "../ic-syntax" }

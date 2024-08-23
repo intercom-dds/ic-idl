@@ -233,6 +233,7 @@ name = "ic-ptree"
 version = "0.0.0"
 dependencies = [
  "cmake",
+ "ic-parse",
  "ic-syntax",
 ]
 

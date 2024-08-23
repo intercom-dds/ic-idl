@@ -30,11 +30,13 @@
 use std::ffi::{self, CString};
 
 use ic_syntax::{
-    DeclKind, Declarator, Expr, Field, InterfaceMember, Item, Label, LiteralValue, Op, OpKind,
-    Param, ParamKind, Path, Type, UnionElement,
+    AnnotationField, DeclKind, Declarator, Expr, Field, InterfaceMember, Item, Label, LiteralValue,
+    Op, OpKind, Param, ParamKind, Path, Type, UnionElement,
 };
 
 use crate::sys::{self, ptree};
+
+const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 
 fn op_kind(op: Op) -> ffi::c_char {
     let c = match op.kind {
@@ -222,7 +224,15 @@ fn lower_interface_member(member: &InterfaceMember) -> *mut ptree {
 
 unsafe fn lower_item(item: &Item) -> *mut ptree {
     match item {
-        Item::AnnotationValue(_) => todo!(),
+        Item::AnnotationValue(v) => {
+            let ident = create_ident(&v.ident.name);
+            sys::create_annotation_dcl_start(ident);
+            let params = collect_with(sys::append_node, &v.params, |param| match param {
+                AnnotationField::Item(v) => lower_item(v),
+                AnnotationField::Member(v) => lower_field(v),
+            });
+            sys::create_annotation_finish(params)
+        }
         Item::ModuleValue(v) => {
             let ident = create_ident(&v.ident.name);
             sys::create_module_start(ident);
@@ -365,7 +375,20 @@ where
     list
 }
 
+unsafe fn inject_builtin() {
+    let builtin =
+        ic_parse::from_str(BUILTIN_ANNOTATIONS).expect("failed to parse built-in annotations");
+
+    // Discard the generated nodes -- we don't want to include the built-in
+    // types in the tree. They just need to be registered in the symbol map with
+    // their respective definitions.
+    lower_item_list(&builtin.tree);
+}
+
 pub extern "C" fn callback(ptr: *mut ffi::c_void) -> *mut ptree {
     let ast = ptr.cast::<&[Item]>();
-    unsafe { lower_item_list(*ast) }
+    unsafe {
+        inject_builtin();
+        lower_item_list(*ast)
+    }
 }

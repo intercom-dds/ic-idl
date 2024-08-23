@@ -592,9 +592,14 @@ bool is_ref(const numeric& value) {
            !value.val.node()->name.empty();
 }
 
-ptree* update_value_type_struct_rec(const ptree* type, ptree* value_elem);
+ptree* update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem);
 
-void update_value_type_array_rec(numeric& value, const ptree* array, size_t depth = 0);
+void update_value_type_array_rec(
+    parser_state* state,
+    numeric& value,
+    const ptree* array,
+    size_t depth = 0
+);
 
 void update_value_type(parser_state* state, numeric& value, const ptree* type) {
     if (is_ref(value)) {
@@ -611,7 +616,7 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
         const_cast<ptree*>(value.val.node())->type = const_cast<ptree*>(type);
         // update nested types
         if (type->kind == N_ARRAY) {
-            update_value_type_array_rec(value, type);
+            update_value_type_array_rec(state, value, type);
         } else if (type->kind == N_MAP) {
             for (ptree* pair : value.val.node()->members) {
                 if (pair->value.kind() != PTREE_KIND || !pair->value.val.node()->members) {
@@ -642,7 +647,7 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
 
         if (type->kind == N_STRUCT) {
             ptree* value_elem = value.val.node()->members;
-            value_elem = update_value_type_struct_rec(type, value_elem);
+            value_elem = update_value_type_struct_rec(state, type, value_elem);
             if (value_elem != nullptr) {
                 ERR << "Too many values supplied for type \"" << idl_scoped_name(type, nullptr)
                     << "\"";
@@ -653,7 +658,7 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
 
 ptree* update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem) {
     for (auto parent : type->parents) {
-        value_elem = update_value_type_struct_rec(parent, value_elem);
+        value_elem = update_value_type_struct_rec(state, parent, value_elem);
     }
     ptree* type_elem = type->members;
     std::set<std::string> type_names;
@@ -690,7 +695,7 @@ void update_value_type_array_rec(
         ptree* sub_array_type = create_sub_array_value_type(state, array, depth + 1U);
         unsigned long sub_arrays = 0UL;
         for (ptree* member : array_members) {
-            update_value_type_array_rec(member->value, array, depth + 1U);
+            update_value_type_array_rec(state, member->value, array, depth + 1U);
             member->type = sub_array_type;
             sub_arrays++;
         }

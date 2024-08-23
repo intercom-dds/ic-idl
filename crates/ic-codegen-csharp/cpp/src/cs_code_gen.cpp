@@ -1636,7 +1636,9 @@ static bool cs_type_is_nullable(const ptree* member) {
 
 void intercom::cidl::code_gen_cs(const parse_result* result) {
     ModuleMap out;
-    const ptree* mapping = lookup_node(create_identifier("INTERCOM_CS_NAME_MAPPING"));
+    const ptree* mapping = lookup_node(
+        result->state.get(), create_identifier(result->state.get(), "INTERCOM_CS_NAME_MAPPING")
+    );
     if (mapping && mapping->value.kind() == PTREE_KIND) {
         const_cast<ptree*>(mapping)->flags &= ~OPT_EMIT_CODE;
         for (const ptree* value = mapping->value.val.node()->members; value && value->next;

@@ -94,32 +94,32 @@ void ic_codegen_json_schema(const ic_parse_result_t* result, const char* destina
     intercom::cidl::code_gen_json_schema(res);
 }
 
-static void register_primitives() {
-    register_node(&any_type);
-    register_node(&object_type);
-    register_node(&boolean_type);
-    register_node(&int8_type);
-    register_node(&octet_type);
-    register_node(&char_type);
-    register_node(&wchar_type);
-    register_node(&short_type);
-    register_node(&ushort_type);
-    register_node(&long_type);
-    register_node(&ulong_type);
-    register_node(&longlong_type);
-    register_node(&ulonglong_type);
-    register_node(&float_type);
-    register_node(&double_type);
-    register_node(&ldouble_type);
-    register_node(&fixed_type);
-    register_node(&unbounded_string_type);
-    register_node(&unbounded_wstring_type);
+static void register_primitives(parser_state* state) {
+    register_node(state, &any_type);
+    register_node(state, &object_type);
+    register_node(state, &boolean_type);
+    register_node(state, &int8_type);
+    register_node(state, &octet_type);
+    register_node(state, &char_type);
+    register_node(state, &wchar_type);
+    register_node(state, &short_type);
+    register_node(state, &ushort_type);
+    register_node(state, &long_type);
+    register_node(state, &ulong_type);
+    register_node(state, &longlong_type);
+    register_node(state, &ulonglong_type);
+    register_node(state, &float_type);
+    register_node(state, &double_type);
+    register_node(state, &ldouble_type);
+    register_node(state, &fixed_type);
+    register_node(state, &unbounded_string_type);
+    register_node(state, &unbounded_wstring_type);
 }
 
 ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data) {
     intercom::cidl::IdlParser parser;
-    parser.run([=]() {
-        register_primitives();
+    parser.run([=](auto state) {
+        register_primitives(state);
         return callback(user_data);
     });
     auto res = new intercom::cidl::parse_result(parser.result());

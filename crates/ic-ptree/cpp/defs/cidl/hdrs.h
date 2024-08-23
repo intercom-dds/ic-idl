@@ -30,11 +30,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
-#include <list>
 #include <string_view>
 #include <vector>
 
-#include "cidl/codegen.h"
 #include "cidl/idl_parser.h"
 
 namespace intercom::cidl {
@@ -101,5 +99,7 @@ parse_result clone_tree(const parse_result* result);
 bool write_if_changed(const std::string& file_name, const std::string& content);
 
 std::string copyright_header(const std::string& comment_str = "//");
+
+std::string tolower(std::string res);
 
 }  // namespace intercom::cidl

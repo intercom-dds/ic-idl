@@ -64,7 +64,7 @@ const char* numeric_kind_str(enum numeric_kind val);
 
 struct numeric;
 
-struct parser;
+struct parser_state;
 
 enum node_kind {
     N_UNDEF,
@@ -134,17 +134,7 @@ struct identifier {
 
 struct ptree;
 
-void clear_namespace_nodes(void);
-
-void pragma_arg(const char* pragma);
-
-void pragma_finish(void);
-
-void switch_file(char* filename, char* included_as, int is_system_include);
-
-void add_comment(const char* text);
-
-void reset_comment(void);
+void clear_namespace_nodes(struct parser_state* state);
 
 extern enum node_kind ANY_KIND[];
 
@@ -152,11 +142,17 @@ extern int ZERO_BOUNDS;
 
 extern struct numeric num_undef;
 
-const struct numeric* expr_convert(const struct numeric* value, enum numeric_kind kind);
+const struct numeric*
+expr_convert(struct parser_state* state, const struct numeric* value, enum numeric_kind kind);
 
-const struct numeric* expr_unary(char op, const struct numeric* v);
+const struct numeric* expr_unary(struct parser_state* state, char op, const struct numeric* v);
 
-const struct numeric* expr_binary(char op, const struct numeric* v1, const struct numeric* v2);
+const struct numeric* expr_binary(
+    struct parser_state* state,
+    char op,
+    const struct numeric* v1,
+    const struct numeric* v2
+);
 
 extern const char* current_input_file;
 

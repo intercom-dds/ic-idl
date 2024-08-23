@@ -54,18 +54,17 @@ add_library(ic_ptree STATIC
     src/constants.cpp
     src/idl_parser.cpp
     src/memf.cpp
-    src/pragma_builder.cpp
     src/ptree_builder.cpp
     src/ptree_ffi.cpp
     src/ptree_helpers.cpp
     src/symbols.cpp
 
-    ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
-    ../../ic-codegen-java/cpp/src/java_code_gen.cpp
-    ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
-    ../../ic-codegen-cxx/cpp/src/cpp_typeinfo.cpp
-    ../../ic-codegen-python/cpp/src/python_code_gen.cpp
-    ../../ic-codegen-csharp/cpp/src/cs_code_gen.cpp
+    # ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
+    # ../../ic-codegen-java/cpp/src/java_code_gen.cpp
+    # ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
+    # ../../ic-codegen-cxx/cpp/src/cpp_typeinfo.cpp
+    # ../../ic-codegen-python/cpp/src/python_code_gen.cpp
+    # ../../ic-codegen-csharp/cpp/src/cs_code_gen.cpp
 )
 
 target_compile_definitions(ic_ptree PRIVATE CIDL_BOOTSTRAP)

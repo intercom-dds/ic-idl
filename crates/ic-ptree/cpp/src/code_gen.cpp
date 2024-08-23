@@ -88,8 +88,7 @@ bool write_if_changed(const std::string& file_name, const std::string& content) 
 
 parse_result clone_tree(const parse_result* result) {
     IdlParser parser;
-    parser.run([&] { return duplicate_tree(result->tree); });
-    g_state = parser.state();
+    parser.run([&](auto state) { return duplicate_tree(state, result->tree); });
 
     auto clone = parser.result();
     clone.error_count = result->error_count;
@@ -97,7 +96,7 @@ parse_result clone_tree(const parse_result* result) {
     clone.modules = result->modules;
     clone.msg = result->msg;
     for (auto inc : result->includes) {
-        clone.includes.emplace(duplicate_node(inc));
+        clone.includes.emplace(duplicate_node(clone.state.get(), inc));
     }
     return clone;
 }
@@ -112,6 +111,13 @@ std::string copyright_header(const std::string& comment_str) {
         "{0} explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,\n"
         "{0} must include this legend. (C) {1:%Y} KONGSBERG - All rights reserved\n";
     return fmt::format(header, comment_str, std::chrono::system_clock::now());
+}
+
+std::string tolower(std::string res) {
+    std::transform(res.begin(), res.end(), res.begin(), [](std::string::value_type c) {
+        return static_cast<std::string::value_type>(std::tolower(static_cast<int>(c)));
+    });
+    return res;
 }
 
 }  // namespace intercom::cidl

@@ -47,8 +47,6 @@ using namespace intercom::cidl;
 
 extern "C" {
 
-struct ptree g_top_level;
-
 struct ptree* annotation_type_id;
 struct ptree* annotation_type_autoid;
 struct ptree* annotation_type_optional;
@@ -210,8 +208,6 @@ const char* numeric_kind_str(numeric_kind kind) {
 }
 }
 
-static intercom::cidl::parse_result g_parse_result;
-
 using FileList = std::vector<std::pair<std::filesystem::path, std::filesystem::path>>;
 
 static std::map<std::string, ptree**> initialize_builtin_annotation_map() {
@@ -291,44 +287,23 @@ static std::map<std::string, ptree**> initialize_builtin_annotation_map() {
 
 std::map<std::string, ptree**> g_builtin_annotation_map = initialize_builtin_annotation_map();
 
-static void reset_top_level() {
-    g_top_level = ptree();
-}
-
-static std::shared_ptr<parser> g_rpc_initial_state;
-
-static void init_parser_state(const std::shared_ptr<parser>& state) {
-    static auto s_initial_state = []() -> std::shared_ptr<parser> {
-        auto initial = std::make_shared<parser>();
-        g_state = initial;
+static void init_parser_state(const std::shared_ptr<parser_state>& state) {
+    static auto s_initial_state = []() -> std::shared_ptr<parser_state> {
+        auto initial = std::make_shared<parser_state>();
         current_input_file = "";
-        g_parse_result = parse_result();
-        reset_top_level();
+
         // TODO(idarcar):
         // scan_string(g_builtin_annotations);
-        clear_namespace_nodes();
+        clear_namespace_nodes(initial.get());
         // Everything created up until this point is builtin types
-        for (const auto& node : g_state->allocated_nodes) {
+        for (const auto& node : initial->allocated_nodes) {
             node->flags |= OPT_BUILTIN;
         }
 
-        g_rpc_initial_state = std::make_shared<parser>(*initial);
-        g_state = g_rpc_initial_state;
-        reset_top_level();
-        assert(g_parse_result.error_count == 0 && "parsing built-in IDL failed");
         return initial;
     }();
     *state = *s_initial_state;
-    g_state = state;
     current_input_file = "";
-    g_parse_result = parse_result();
-    reset_top_level();
-}
-
-static void add_rpc_types_to_global_state() {
-    g_state->type_map.insert(
-        g_rpc_initial_state->type_map.begin(), g_rpc_initial_state->type_map.end()
-    );
 }
 
 static void update_incomplete_type(struct ptree* node, struct ptree*& type) {
@@ -371,15 +346,14 @@ static ptree* prune_annotations(struct ptree* node, struct ptree* super = nullpt
     return node;
 }
 
-static void generate_code(struct ptree* node) {
+static void generate_code(parser_state* state, struct ptree* node) {
     while (node) {
-        current_input_file = get_symbol(node->file_name.c_str());
-        g_state->include_context.push_back(node->included_from);
-        // node->generated = append_node(node->generated, generate_rpc_structs(node));
-        push_context(node);
-        generate_code(node->members);
-        g_state->include_context.pop_back();
-        pop_context();
+        current_input_file = get_symbol(state, node->file_name.c_str());
+        state->include_context.push_back(node->included_from);
+        push_context(state, node);
+        generate_code(state, node->members);
+        state->include_context.pop_back();
+        pop_context(state);
         node = node->next;
     }
 }
@@ -432,32 +406,16 @@ static void tree_includes(const ptree* tree, std::set<const ptree*>& includes) {
     }
 }
 
-static void merge_structs(ptree* node) {
-    while (node) {
-        ptree* base = base_type_of(node);
-        if (base->kind == N_STRUCT && !base->original_members /* only merge once */) {
-            if (std::any_of(begin(base->members), end(base->members), [](const ptree* m) {
-                    return is_merged(m) != 0;
-                })) {
-                base->members = merge_members(base, base->members);
-            }
-        }
-        merge_structs(node->members);
-        merge_structs(node->generated);
-        node = node->next;
-    }
-}
-
-static void register_node_in_scope(ptree* node, ptree* scp) {
+static void register_node_in_scope(parser_state* state, ptree* node, ptree* scp) {
     std::swap(node->super, scp);
-    register_node(node);
+    register_node(state, node);
     std::swap(node->super, scp);
 }
 
 /// \brief registers inherited and merged members
 /// \details register_node(..) is usually called during ptree construction, but for forward
 /// declarations it has to happen after
-static void register_inherited_nodes(ptree* node) {
+static void register_inherited_nodes(parser_state* state, ptree* node) {
     if (node->type || (node->kind != N_STRUCT && node->kind != N_INTERFACE)) {
         return;
     }
@@ -465,40 +423,36 @@ static void register_inherited_nodes(ptree* node) {
     for (ptree* parent = node; !parent->parents.empty();) {
         parent = base_type_of(parent->parents.front());
         for (ptree* elem : parent->members) {
-            register_node_in_scope(elem, node);
+            register_node_in_scope(state, elem, node);
         }
     }
     // merge
     for (MergeTrace& trace : get_merge_traces(node)) {
         if (trace.size() > 1U) {
-            register_node_in_scope(const_cast<ptree*>(trace.back()), node);
+            register_node_in_scope(state, const_cast<ptree*>(trace.back()), node);
         }
     }
 }
 
-static parse_result get_parse_result() {
-    resolve_incomplete_types(g_top_level.next);
-    g_top_level.next = prune_annotations(g_top_level.next);
-    format_doxy_comments(g_top_level.next);
-    if (!try_lookup_node("DDS::SampleIdentity_t", ANY_KIND)) {
-        add_rpc_types_to_global_state();
+static parse_result get_parse_result(parser_state* state) {
+    resolve_incomplete_types(state->top_level.next);
+    state->top_level.next = prune_annotations(state->top_level.next);
+    format_doxy_comments(state, state->top_level.next);
+    generate_code(state, state->top_level.next);
+    for (std::shared_ptr<ptree>& node : state->allocated_nodes) {
+        register_inherited_nodes(state, node.get());
     }
-    generate_code(g_top_level.next);
-    merge_structs(g_top_level.next);
-    for (std::shared_ptr<ptree>& node : g_state->allocated_nodes) {
-        register_inherited_nodes(node.get());
-    }
-    validate_tree(g_top_level.next);
-    g_parse_result.tree = g_top_level.next;
+    validate_tree(state, state->top_level.next);
 
-    if (g_top_level.next) {
-        g_top_level.next->state->numeric_map.clear();
+    if (state->top_level.next) {
+        state->top_level.next->state->numeric_map.clear();
     }
 
-    tree_modules(g_top_level.next, g_parse_result.modules);
-    tree_includes(g_top_level.next, g_parse_result.includes);
-
-    return g_parse_result;
+    parse_result result;
+    result.tree = state->top_level.next;
+    tree_modules(state->top_level.next, result.modules);
+    tree_includes(state->top_level.next, result.includes);
+    return result;
 }
 
 static void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
@@ -681,12 +635,9 @@ static void update_ptree_types_after_merge(parse_result& result) {
 namespace intercom::cidl {
 
 parse_result merge_results(std::vector<parse_result>& to_merge) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
     parse_result out;
-    out.state = std::make_shared<parser>();
+    out.state = std::make_shared<parser_state>();
     ptree* new_tree = nullptr;
-
-    g_state = out.state;
 
     std::map<std::string, const ptree*> seen_includes;
 
@@ -754,7 +705,7 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
             auto to_merge_tree = const_cast<ptree*>(to_merge_result.tree);
             to_merge_tree = filter_includes(to_merge_tree);
             update_state_ptr(to_merge_tree);
-            new_tree = append_node(to_merge_tree, new_tree);
+            new_tree = append_node(out.state.get(), to_merge_tree, new_tree);
         }
 
         // Merge errors
@@ -772,20 +723,17 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     tree_includes(out.tree, out.includes);
 
     to_merge.clear();
-    g_state.reset();
     current_input_file = "";
     return out;
 }
 
 struct IdlParserImpl {
     parse_result result;
-    std::shared_ptr<parser> state;
+    std::shared_ptr<parser_state> state;
 };
 
-std::mutex g_parse_mutex;
-
 IdlParser::IdlParser() : m_impl(new IdlParserImpl()) {
-    m_impl->state = std::make_shared<parser>();
+    m_impl->state = std::make_shared<parser_state>();
 }
 
 IdlParser::~IdlParser() = default;
@@ -798,19 +746,14 @@ parse_result& IdlParser::result() {
     return m_impl->result;
 }
 
-void IdlParser::run(const std::function<ptree*()>& input) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
+void IdlParser::run(const std::function<ptree*(parser_state*)>& input) {
     init_parser_state(m_impl->state);
-    auto node = input();
-    g_top_level.state = node->state;
-    g_top_level.next = node;
-    m_impl->result = get_parse_result();
+    auto node = input(m_impl->state.get());
+    m_impl->result = get_parse_result(m_impl->state.get());
     m_impl->result.state = m_impl->state;
-    g_state = std::make_shared<parser>();
-    reset_top_level();
 }
 
-std::shared_ptr<parser> IdlParser::state() {
+std::shared_ptr<parser_state> IdlParser::state() {
     return m_impl->state;
 }
 }  // namespace intercom::cidl

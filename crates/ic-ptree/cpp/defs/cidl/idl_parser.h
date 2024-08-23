@@ -47,7 +47,7 @@ struct parse_result {
     int error_count{0};
     int warning_count{0};
     std::string msg;
-    std::shared_ptr<parser> state;
+    std::shared_ptr<parser_state> state;
 };
 
 struct IdlParserImpl;
@@ -68,9 +68,9 @@ class IdlParser {
     const parse_result& result() const;
     parse_result& result();
 
-    void run(const std::function<ptree*()>& input);
+    void run(const std::function<ptree*(parser_state*)>& input);
 
-    std::shared_ptr<parser> state();
+    std::shared_ptr<parser_state> state();
 
   private:
     std::unique_ptr<IdlParserImpl> m_impl;

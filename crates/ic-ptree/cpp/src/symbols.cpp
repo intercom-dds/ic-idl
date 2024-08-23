@@ -36,6 +36,7 @@
 
 #include "InterCOM/integer_types.h"
 #include "cidl/commandline.h"
+#include "cidl/hdrs.h"
 #include "cidl/keywords.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
@@ -63,7 +64,7 @@ void idl_scoped_name_rec(
 }  // namespace
 
 extern "C" {
-const char* get_symbol(const char* name) {
+const char* get_symbol(struct parser_state* state, const char* name) {
     if (!name || name[0] == '\0') {
         return "";
     }
@@ -71,10 +72,10 @@ const char* get_symbol(const char* name) {
     if (constant_name) {
         return constant_name;
     }
-    auto it = intercom::cidl::g_state->symbol_map.find(name);
-    if (it == intercom::cidl::g_state->symbol_map.end()) {
-        intercom::cidl::g_state->symbol_map.insert(name);
-        it = intercom::cidl::g_state->symbol_map.find(name);
+    auto it = state->symbol_map.find(name);
+    if (it == state->symbol_map.end()) {
+        state->symbol_map.insert(name);
+        it = state->symbol_map.find(name);
     }
     return it->c_str();
 }

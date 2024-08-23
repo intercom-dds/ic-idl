@@ -29,7 +29,6 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <string>
 
 #include "cidl/ptree.h"
@@ -37,14 +36,14 @@
 
 namespace {
 template <typename T>
-numeric* create_numeric(T val);
+numeric* create_numeric(parser_state* state, T val);
 
-#define CREATE_NUMERIC(type_name, enum_kind, name) \
-    template <>                                    \
-    numeric* create_numeric(type_name val) {       \
-        auto n = new_numeric(enum_kind);           \
-        n->val.name(val);                          \
-        return n;                                  \
+#define CREATE_NUMERIC(type_name, enum_kind, name)                \
+    template <>                                                   \
+    numeric* create_numeric(parser_state* state, type_name val) { \
+        auto n = new_numeric(state, enum_kind);                   \
+        n->val.name(val);                                         \
+        return n;                                                 \
     }
 
 CREATE_NUMERIC(bool, BOOLEAN_KIND, b);
@@ -64,35 +63,35 @@ CREATE_NUMERIC(double, DOUBLE_KIND, d);
 CREATE_NUMERIC(std::string, STRING_KIND, str);
 
 template <typename T1, typename T2>
-numeric* expr_binary_t2(char op, T1 v1, T2 v2) {
+numeric* expr_binary_t2(parser_state* state, char op, T1 v1, T2 v2) {
     switch (op) {
     case '<':
-        return create_numeric(v1 << v2);
+        return create_numeric(state, v1 << v2);
     case '>':
-        return create_numeric(v1 >> v2);
+        return create_numeric(state, v1 >> v2);
     case '|':
-        return create_numeric(v1 | v2);
+        return create_numeric(state, v1 | v2);
     case '^':
-        return create_numeric(v1 ^ v2);
+        return create_numeric(state, v1 ^ v2);
     case '&':
-        return create_numeric(v1 & v2);
+        return create_numeric(state, v1 & v2);
     case '+':
-        return create_numeric(v1 + v2);
+        return create_numeric(state, v1 + v2);
     case '-':
-        return create_numeric(v1 - v2);
+        return create_numeric(state, v1 - v2);
     case '*':
-        return create_numeric(v1 * v2);
+        return create_numeric(state, v1 * v2);
     case '%': {
         if (v2 == 0) {
             break;
         }
-        return create_numeric(v1 % v2);
+        return create_numeric(state, v1 % v2);
     }
     case '/': {
         if (v2 == 0) {
             break;
         }
-        return create_numeric(v1 / v2);
+        return create_numeric(state, v1 / v2);
     }
     default:
         break;
@@ -101,16 +100,16 @@ numeric* expr_binary_t2(char op, T1 v1, T2 v2) {
 }
 
 template <typename T1, typename T2>
-numeric* expr_binary_nobitop_t2(char op, T1 v1, T2 v2) {
+numeric* expr_binary_nobitop_t2(parser_state* state, char op, T1 v1, T2 v2) {
     switch (op) {
     case '+':
-        return create_numeric(v1 + v2);
+        return create_numeric(state, v1 + v2);
     case '-':
-        return create_numeric(v1 - v2);
+        return create_numeric(state, v1 - v2);
     case '*':
-        return create_numeric(v1 * v2);
+        return create_numeric(state, v1 * v2);
     case '/':
-        return create_numeric(v1 / v2);
+        return create_numeric(state, v1 / v2);
     default:
         break;
     }
@@ -118,140 +117,140 @@ numeric* expr_binary_nobitop_t2(char op, T1 v1, T2 v2) {
 }
 
 template <typename T>
-numeric* expr_binary_t1(char op, T v1, const numeric& v2) {
+numeric* expr_binary_t1(parser_state* state, char op, T v1, const numeric& v2) {
     switch (v2.kind()) {
     case UNDEF_KIND:
         return &num_undef;
     case BOOLEAN_KIND:
-        return expr_binary_t2(op, v1, v2.val.b());
+        return expr_binary_t2(state, op, v1, v2.val.b());
     case INT8_KIND:
-        return expr_binary_t2(op, v1, v2.val.i8());
+        return expr_binary_t2(state, op, v1, v2.val.i8());
     case OCTET_KIND:
-        return expr_binary_t2(op, v1, v2.val.o());
+        return expr_binary_t2(state, op, v1, v2.val.o());
     case SHORT_KIND:
-        return expr_binary_t2(op, v1, v2.val.s());
+        return expr_binary_t2(state, op, v1, v2.val.s());
     case USHORT_KIND:
-        return expr_binary_t2(op, v1, v2.val.us());
+        return expr_binary_t2(state, op, v1, v2.val.us());
     case LONG_KIND:
-        return expr_binary_t2(op, v1, v2.val.l());
+        return expr_binary_t2(state, op, v1, v2.val.l());
     case ULONG_KIND:
-        return expr_binary_t2(op, v1, v2.val.ul());
+        return expr_binary_t2(state, op, v1, v2.val.ul());
     case LONGLONG_KIND:
-        return expr_binary_t2(op, v1, v2.val.ll());
+        return expr_binary_t2(state, op, v1, v2.val.ll());
     case ULONGLONG_KIND:
-        return expr_binary_t2(op, v1, v2.val.ull());
+        return expr_binary_t2(state, op, v1, v2.val.ull());
     case FLOAT_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.f());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.f());
     case DOUBLE_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.d());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.d());
     case CHAR_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.c());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.c());
     case STRING_KIND:
         return &num_undef;
     case PTREE_KIND:
-        return expr_binary_t1(op, v1, v2.val.node()->value);
+        return expr_binary_t1(state, op, v1, v2.val.node()->value);
     }
     return &num_undef;
 }
 
 template <typename T>
-numeric* expr_binary_nobitop_t1(char op, T v1, const numeric& v2) {
+numeric* expr_binary_nobitop_t1(parser_state* state, char op, T v1, const numeric& v2) {
     switch (v2.kind()) {
     case UNDEF_KIND:
         return &num_undef;
     case BOOLEAN_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.b());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.b());
     case INT8_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.i8());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.i8());
     case OCTET_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.o());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.o());
     case SHORT_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.s());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.s());
     case USHORT_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.us());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.us());
     case LONG_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.l());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.l());
     case ULONG_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.ul());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.ul());
     case LONGLONG_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.ll());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.ll());
     case ULONGLONG_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.ull());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.ull());
     case FLOAT_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.f());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.f());
     case DOUBLE_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.d());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.d());
     case CHAR_KIND:
-        return expr_binary_nobitop_t2(op, v1, v2.val.c());
+        return expr_binary_nobitop_t2(state, op, v1, v2.val.c());
     case STRING_KIND:
         return &num_undef;
     case PTREE_KIND:
-        return expr_binary_nobitop_t1(op, v1, v2.val.node()->value);
+        return expr_binary_nobitop_t1(state, op, v1, v2.val.node()->value);
     }
     return &num_undef;
 }
 
 template <typename T>
-numeric* expr_unary(char op, T val) {
+numeric* expr_unary(parser_state* state, char op, T val) {
     if (op == '~') {
-        return create_numeric(~val);
+        return create_numeric(state, ~val);
     }
     if (op == '-') {
-        return create_numeric(-val);
+        return create_numeric(state, -val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char op, unsigned char val) {
+numeric* expr_unary(parser_state* state, char op, unsigned char val) {
     if (op == '-' || op == '~') {
-        return create_numeric(~val);
+        return create_numeric(state, ~val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char op, unsigned short val) {
+numeric* expr_unary(parser_state* state, char op, unsigned short val) {
     if (op == '-' || op == '~') {
-        return create_numeric(~val);
+        return create_numeric(state, ~val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char op, uint32_t val) {
+numeric* expr_unary(parser_state* state, char op, uint32_t val) {
     if (op == '-' || op == '~') {
-        return create_numeric(~val);
+        return create_numeric(state, ~val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char op, uint64_t val) {
+numeric* expr_unary(parser_state* state, char op, uint64_t val) {
     if (op == '-' || op == '~') {
-        return create_numeric(~val);
+        return create_numeric(state, ~val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char op, float val) {
+numeric* expr_unary(parser_state* state, char op, float val) {
     if (op == '-') {
-        return create_numeric(-val);
+        return create_numeric(state, -val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char op, double val) {
+numeric* expr_unary(parser_state* state, char op, double val) {
     if (op == '-') {
-        return create_numeric(-val);
+        return create_numeric(state, -val);
     }
     return &num_undef;
 }
 
 template <>
-numeric* expr_unary(char, std::string) {
+numeric* expr_unary(parser_state* state, char, std::string) {
     return &num_undef;
 }
 }  // namespace
@@ -293,8 +292,8 @@ bool is_unsigned(const numeric& v);
 
 numeric num_undef{};
 
-const numeric* expr_convert(const numeric* v, numeric_kind kind) {
-    auto res = new_numeric(kind);
+const numeric* expr_convert(parser_state* state, const numeric* v, numeric_kind kind) {
+    auto res = new_numeric(state, kind);
     res->base = numeric_base(*v);
     if (kind == UNDEF_KIND || kind == PTREE_KIND || kind == v->kind()) {
         *res = *v;
@@ -347,8 +346,8 @@ const numeric* expr_convert(const numeric* v, numeric_kind kind) {
     return res;
 }
 
-const numeric* expr_unary(char op, const numeric* v) {
-    auto res = new_numeric(v->kind());
+const numeric* expr_unary(parser_state* state, char op, const numeric* v) {
+    auto res = new_numeric(state, v->kind());
     *res = *v;
     if (op == '-') {
         switch (res->kind()) {
@@ -370,46 +369,46 @@ const numeric* expr_unary(char op, const numeric* v) {
         *res = num_undef;
         break;
     case BOOLEAN_KIND:
-        *res = *expr_unary(op, res->val.b());
+        *res = *expr_unary(state, op, res->val.b());
         break;
     case INT8_KIND:
-        *res = *expr_unary(op, res->val.i8());
+        *res = *expr_unary(state, op, res->val.i8());
         break;
     case OCTET_KIND:
-        *res = *expr_unary(op, res->val.o());
+        *res = *expr_unary(state, op, res->val.o());
         break;
     case SHORT_KIND:
-        *res = *expr_unary(op, res->val.s());
+        *res = *expr_unary(state, op, res->val.s());
         break;
     case USHORT_KIND:
-        *res = *expr_unary(op, res->val.us());
+        *res = *expr_unary(state, op, res->val.us());
         break;
     case LONG_KIND:
-        *res = *expr_unary(op, res->val.l());
+        *res = *expr_unary(state, op, res->val.l());
         break;
     case ULONG_KIND:
-        *res = *expr_unary(op, res->val.ul());
+        *res = *expr_unary(state, op, res->val.ul());
         break;
     case LONGLONG_KIND:
-        *res = *expr_unary(op, res->val.ll());
+        *res = *expr_unary(state, op, res->val.ll());
         break;
     case ULONGLONG_KIND:
-        *res = *expr_unary(op, res->val.ull());
+        *res = *expr_unary(state, op, res->val.ull());
         break;
     case FLOAT_KIND:
-        *res = *expr_unary(op, res->val.f());
+        *res = *expr_unary(state, op, res->val.f());
         break;
     case DOUBLE_KIND:
-        *res = *expr_unary(op, res->val.d());
+        *res = *expr_unary(state, op, res->val.d());
         break;
     case CHAR_KIND:
-        *res = *expr_unary(op, res->val.c());
+        *res = *expr_unary(state, op, res->val.c());
         break;
     case STRING_KIND:
-        *res = *expr_unary(op, res->val.str());
+        *res = *expr_unary(state, op, res->val.str());
         break;
     case PTREE_KIND:
-        *res = *expr_unary(op, &res->val.node()->value);
+        *res = *expr_unary(state, op, &res->val.node()->value);
         break;
     }
     if (res->kind() == UNDEF_KIND) {
@@ -421,57 +420,57 @@ const numeric* expr_unary(char op, const numeric* v) {
     return res;
 }
 
-const numeric* expr_binary(char op, const numeric* v1, const numeric* v2) {
-    auto res = new_numeric(UNDEF_KIND);
+const numeric* expr_binary(parser_state* state, char op, const numeric* v1, const numeric* v2) {
+    auto res = new_numeric(state, UNDEF_KIND);
     switch (v1->kind()) {
     case UNDEF_KIND:
         *res = num_undef;
         break;
     case BOOLEAN_KIND:
-        *res = *expr_binary_t1(op, v1->val.b(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.b(), *v2);
         break;
     case INT8_KIND:
-        *res = *expr_binary_t1(op, v1->val.i8(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.i8(), *v2);
         break;
     case OCTET_KIND:
-        *res = *expr_binary_t1(op, v1->val.o(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.o(), *v2);
         break;
     case SHORT_KIND:
-        *res = *expr_binary_t1(op, v1->val.s(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.s(), *v2);
         break;
     case USHORT_KIND:
-        *res = *expr_binary_t1(op, v1->val.us(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.us(), *v2);
         break;
     case LONG_KIND:
-        *res = *expr_binary_t1(op, v1->val.l(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.l(), *v2);
         break;
     case ULONG_KIND:
-        *res = *expr_binary_t1(op, v1->val.ul(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.ul(), *v2);
         break;
     case LONGLONG_KIND:
-        *res = *expr_binary_t1(op, v1->val.ll(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.ll(), *v2);
         break;
     case ULONGLONG_KIND:
-        *res = *expr_binary_t1(op, v1->val.ull(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.ull(), *v2);
         break;
     case FLOAT_KIND:
-        *res = *expr_binary_nobitop_t1(op, v1->val.f(), *v2);
+        *res = *expr_binary_nobitop_t1(state, op, v1->val.f(), *v2);
         break;
     case DOUBLE_KIND:
-        *res = *expr_binary_nobitop_t1(op, v1->val.d(), *v2);
+        *res = *expr_binary_nobitop_t1(state, op, v1->val.d(), *v2);
         break;
     case CHAR_KIND:
-        *res = *expr_binary_t1(op, v1->val.c(), *v2);
+        *res = *expr_binary_t1(state, op, v1->val.c(), *v2);
         break;
     case STRING_KIND:
         if (v2->kind() == STRING_KIND) {
-            *res = *create_numeric(v1->val.str() + v2->val.str());
+            *res = *create_numeric(state, v1->val.str() + v2->val.str());
         } else {
             *res = num_undef;
         }
         break;
     case PTREE_KIND:
-        *res = *expr_binary(op, &v1->val.node()->value, v2);
+        *res = *expr_binary(state, op, &v1->val.node()->value, v2);
         break;
     }
 

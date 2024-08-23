@@ -43,9 +43,6 @@ static const char* strptr_or_null(const std::string& value) {
     return value.c_str();
 }
 
-// Special gloabl to instruct lexer not to emit doxy comments
-extern "C" bool g_ignore_doxy_comments;
-
 bool CommandLineOption::intercom_build() {
     return g_CurrentOptions.intercom_build;
 }

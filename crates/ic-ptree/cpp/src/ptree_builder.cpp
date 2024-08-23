@@ -80,8 +80,6 @@ ptree create_string_node(const char* name, ptree* element_type) {
 }  // namespace
 
 extern "C" {
-int ZERO_BOUNDS = 0;
-
 node_kind ANY_KIND[] = {N_UNDEF};
 
 const char* current_input_file;
@@ -802,18 +800,6 @@ void update_bitmask_values(ptree* node) {
         v.val.ull(1ULL << bit_value);
         m->value = v;
         m->flags |= OPT_ENUMERATED;
-    }
-}
-
-void copy_bounds(int*& target, const int* source) {
-    if (target != &ZERO_BOUNDS) {
-        delete[] target;
-    }
-    if (source == nullptr || source == &ZERO_BOUNDS) {
-        target = &ZERO_BOUNDS;
-    } else {
-        target = new int[source[0] + 1];
-        memcpy(target, source, (source[0] + 1) * sizeof(int));
     }
 }
 

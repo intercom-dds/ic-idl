@@ -138,8 +138,6 @@ void clear_namespace_nodes(struct parser_state* state);
 
 extern enum node_kind ANY_KIND[];
 
-extern int ZERO_BOUNDS;
-
 extern struct numeric num_undef;
 
 const struct numeric*

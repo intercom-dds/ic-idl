@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include "cidl/ptree_builder.h"
 #include "stdint.h"
 
 #ifdef __cplusplus
@@ -37,7 +38,7 @@ struct ic_parse_result_t;
 
 struct ptree;
 
-typedef struct ptree* (*ic_parser_callback_t)(void*);
+typedef struct ptree* (*ic_parser_callback_t)(struct parser_state*, void*);
 
 struct ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data);
 

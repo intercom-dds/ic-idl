@@ -748,6 +748,7 @@ parse_result& IdlParser::result() {
 void IdlParser::run(const std::function<ptree*(parser_state*)>& input) {
     init_parser_state(m_impl->state);
     auto node = input(m_impl->state.get());
+    m_impl->state->top_level.next = node;
     m_impl->result = get_parse_result(m_impl->state.get());
     m_impl->result.state = m_impl->state;
 }

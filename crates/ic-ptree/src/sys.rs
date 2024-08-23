@@ -903,20 +903,14 @@ extern "C" {
         post_comment: ::std::os::raw::c_int,
     ) -> *mut ptree;
 }
-extern "C" {
-    pub fn merge_members(
-        arg1: *mut parser_state,
-        node: *mut ptree,
-        members: *mut ptree,
-    ) -> *mut ptree;
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ic_parse_result_t {
     _unused: [u8; 0],
 }
-pub type ic_parser_callback_t =
-    ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void) -> *mut ptree>;
+pub type ic_parser_callback_t = ::std::option::Option<
+    unsafe extern "C" fn(arg1: *mut parser_state, arg2: *mut ::std::os::raw::c_void) -> *mut ptree,
+>;
 extern "C" {
     pub fn ic_parse_w_state(
         callback: ic_parser_callback_t,

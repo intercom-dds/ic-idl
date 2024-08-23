@@ -120,7 +120,7 @@ ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_da
     intercom::cidl::IdlParser parser;
     parser.run([=](auto state) {
         register_primitives(state);
-        return callback(user_data);
+        return callback(state, user_data);
     });
     auto res = new intercom::cidl::parse_result(parser.result());
     return reinterpret_cast<ic_parse_result_t*>(res);

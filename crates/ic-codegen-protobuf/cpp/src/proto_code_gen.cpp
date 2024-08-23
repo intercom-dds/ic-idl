@@ -126,7 +126,10 @@ static std::string file_name(const ptree* node) {
     }
     file /= proto_name(node);
     file.replace_extension(".proto");
-    return file;
+
+    auto str = file.string();
+    std::replace(str.begin(), str.end(), '/', '\\');
+    return str;
 }
 
 static std::string scoped_name(const ptree* node, const ptree*) {

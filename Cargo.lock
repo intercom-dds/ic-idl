@@ -213,7 +213,6 @@ name = "ic-parse"
 version = "0.0.0"
 dependencies = [
  "chumsky",
- "ic-cli",
  "ic-macros",
  "ic-syntax",
  "ic-vfs",

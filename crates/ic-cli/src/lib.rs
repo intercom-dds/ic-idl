@@ -362,7 +362,7 @@ impl CommandLine {
 
             // 4 is the number of characters that separate short options
             let indent_by = PAD + 4 * (n_short - current_n_short);
-            let width = width + 4 * current_n_short;
+            let width = PAD + width + 4 * current_n_short;
 
             let tokens = opt.formatted();
             let desc = opt.desc.clone().unwrap_or_default();

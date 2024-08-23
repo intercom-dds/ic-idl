@@ -40,7 +40,6 @@ workspace = true
 chumsky = { version = "0.9.3", default-features = false }
 logos = "0.14.0"
 
-ic-cli = { path = "../ic-cli" }
 ic-macros = { path = "../ic-macros" }
 ic-syntax = { path = "../ic-syntax" }
 ic-vfs = { path = "../ic-vfs" }

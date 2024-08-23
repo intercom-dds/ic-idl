@@ -294,7 +294,6 @@ struct ptree* merge_members(struct parser_state*, struct ptree* node, struct ptr
 #  include <list>
 #  include <map>
 #  include <memory>
-#  include <optional>
 #  include <set>
 #  include <string>
 #  include <vector>
@@ -305,19 +304,15 @@ extern "C" struct parser_state {
     ptree* lookup_node(const char* name) const;
 
     long long enum_counter{0};
-    int anonymous_name_count{0};
-    std::optional<ptree*> current_under_documentation;
     std::vector<std::vector<ptree*>> context;
     std::vector<ptree*> include_context;
     std::map<std::string, ptree*> type_map;
     std::map<std::string, ptree*> type_dcl_map;
-    std::string comment_string;
-    ptree top_level;
-
     std::vector<std::shared_ptr<ptree>> allocated_nodes;
     std::vector<std::shared_ptr<declarator>> allocated_decl;
     std::set<std::string> symbol_map;
     std::list<numeric> numeric_map;
+    ptree top_level;
 };
 
 #  define ERR std::cerr

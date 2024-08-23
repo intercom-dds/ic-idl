@@ -1427,46 +1427,16 @@ inline void JsonReader::read(bool* a_values, uint32_t a_count, const TypeInfo&) 
 }
 
 inline void JsonReader::read(int8_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
-    if (m_type_stack[m_level].current.get_type() == JSON_STRING &&
-        (m_type_stack[m_level].info.kind == dcps::xtypes::TK_SEQUENCE ||
-         m_type_stack[m_level].info.kind == dcps::xtypes::TK_ARRAY) &&
-        (m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_BYTE ||
-         m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_INT8)) {
-        // TODO(idarcar):
-        // corba::String_var val;
-        // m_type_stack[m_level].current.get_string(val);
-        // if (val.size() != a_count) {
-        //     throw std::runtime_error("Unexpected string length for byte array");
-        // }
-        // memcpy(a_values, val.in(), a_count);
-        // m_type_stack[m_level].next_value();
-    } else {
-        for (uint32_t i = 0; i < a_count; ++i) {
-            read_integer(a_values[i], a_info);
-            m_type_stack[m_level].next_value();
-        }
+    for (uint32_t i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
     }
 }
 
 inline void JsonReader::read(uint8_t* a_values, uint32_t a_count, const TypeInfo& a_info) {
-    if (m_type_stack[m_level].current.get_type() == JSON_STRING &&
-        (m_type_stack[m_level].info.kind == dcps::xtypes::TK_SEQUENCE ||
-         m_type_stack[m_level].info.kind == dcps::xtypes::TK_ARRAY) &&
-        (m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_BYTE ||
-         m_type_stack[m_level].info.element_type->kind == dcps::xtypes::TK_UINT8)) {
-        // TODO(idarcar):
-        // corba::String_var val;
-        // m_type_stack[m_level].current.get_string(val);
-        // if (val.size() != a_count) {
-        //     throw std::runtime_error("Unexpected string length for byte array");
-        // }
-        // memcpy(a_values, val.in(), a_count);
-        // m_type_stack[m_level].next_value();
-    } else {
-        for (uint32_t i = 0; i < a_count; ++i) {
-            read_integer(a_values[i], a_info);
-            m_type_stack[m_level].next_value();
-        }
+    for (uint32_t i = 0; i < a_count; ++i) {
+        read_integer(a_values[i], a_info);
+        m_type_stack[m_level].next_value();
     }
 }
 

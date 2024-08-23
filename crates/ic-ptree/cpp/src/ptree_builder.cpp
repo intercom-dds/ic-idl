@@ -883,18 +883,6 @@ ptree* append_node(parser_state* state, ptree* list, ptree* node) {
         return list;
     }
 
-    // Special handling of doxy comments inside doc pragma regions
-    if (node->kind == N_ANNOTATION && node->type == annotation_type_doc && state &&
-        state->current_under_documentation.has_value()) {
-        if (*state->current_under_documentation != nullptr) {
-            auto doc = state->current_under_documentation;
-            state->current_under_documentation.reset();
-            (*doc)->annotations = append_node(state, (*doc)->annotations, node);
-            state->current_under_documentation = doc;
-        }
-        return list;
-    }
-
     if (!list) {
         return node;
     }

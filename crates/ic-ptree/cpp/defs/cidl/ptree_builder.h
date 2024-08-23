@@ -285,8 +285,6 @@ struct ptree* create_node(struct parser_state*, enum node_kind kind, struct iden
 
 struct ptree* create_doc(struct parser_state*, struct identifier ident, int post_comment);
 
-struct ptree* merge_members(struct parser_state*, struct ptree* node, struct ptree* members);
-
 #ifdef __cplusplus
 }
 

@@ -193,7 +193,7 @@ const ptree* default_union_member(const ptree* node) {
     return get_default_case(node);
 }
 
-int is_local(const ptree* node) {
+bool is_local(const ptree* node) {
     if (!node) {
         return false;
     }
@@ -203,7 +203,7 @@ int is_local(const ptree* node) {
     return is_local(node->super);
 }
 
-int is_autoid_hash(const ptree* node, AnnotationGetter get) {
+bool is_autoid_hash(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_autoid);
     if (ann) {
         return integer_value(ann->members->value) == 1;
@@ -214,10 +214,10 @@ int is_autoid_hash(const ptree* node, AnnotationGetter get) {
     if (node->super) {
         return is_autoid_hash(node->super);
     }
-    return 0;
+    return false;
 }
 
-int get_member_id(const ptree* member, const ptree* context, int prev_max) {
+uint32_t get_member_id(const ptree* member, const ptree* context, int prev_max) {
     if (context->kind == N_UNION && member == context->discriminator) {
         return 0;
     }
@@ -238,51 +238,51 @@ int get_member_id(const ptree* member, const ptree* context, int prev_max) {
     return prev_max + 1;
 }
 
-int is_key_member(const ptree* node, AnnotationGetter get) {
+bool is_key_member(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_key);
-    return ann ? integer_value(ann->members->value) : 0;
+    return ann ? integer_value(ann->members->value) : false;
 }
 
-int is_shared(const ptree* node, AnnotationGetter get) {
+bool is_shared(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_shared);
     if (!ann) {
         ann = get(node, annotation_type_external);
     }
-    return ann ? integer_value(ann->members->value) : 0;
+    return ann ? integer_value(ann->members->value) : false;
 }
 
-int is_nested(const ptree* node, AnnotationGetter get) {
+bool is_nested(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_nested);
     const ptree* scope = node->super;
     while (scope && !ann) {
         ann = get(scope, annotation_type_default_nested);
         scope = scope->super;
     }
-    return ann ? integer_value(ann->members->value) : 0;
+    return ann ? integer_value(ann->members->value) : false;
 }
 
-int is_optional(const ptree* node, AnnotationGetter get) {
+bool is_optional(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_optional);
-    return ann ? integer_value(ann->members->value) : 0;
+    return ann ? integer_value(ann->members->value) : false;
 }
 
-int is_merged(const ptree* node, AnnotationGetter get) {
+bool is_merged(const ptree* node, AnnotationGetter get) {
     struct ptree* ann = get(node, annotation_type_merge);
     return ann ? integer_value(ann->members->value) : 0;
 }
 
-int is_must_understand(const ptree* node, AnnotationGetter get) {
+bool is_must_understand(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_must_understand);
-    return ann ? integer_value(ann->members->value) : 0;
+    return ann ? integer_value(ann->members->value) : false;
 }
 
-int is_bitmask(const ptree* node) {
+bool is_bitmask(const ptree* node) {
     return node->kind == N_BITMASK;
 }
 
-int is_minimumtypecheck(const ptree* node, AnnotationGetter get) {
+bool is_minimumtypecheck(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_ext_minimum_type_check);
-    return ann ? 1 : 0;
+    return ann;
 }
 
 static bool is_language(const std::string& value, Language lang) {
@@ -311,9 +311,9 @@ static bool is_language(const std::string& value, Language lang) {
     }
 }
 
-int is_emit(const ptree* node, Language lang) {
+bool is_emit(const ptree* node, Language lang) {
     if (!node || (node->flags & OPT_EMIT_CODE) == 0) {
-        return 0;
+        return false;
     }
     if (auto ann = get_direct_annotation(node, annotation_type_ext_suppress)) {
         auto value = string_value(get_annotation_value(ann, "language"));
@@ -324,26 +324,25 @@ int is_emit(const ptree* node, Language lang) {
     return true;
 }
 
-int is_listener(const ptree* node, AnnotationGetter get) {
-    const ptree* ann = get(node, annotation_type_ext_listener);
-    return ann ? 1 : 0;
+bool is_listener(const ptree* node, AnnotationGetter get) {
+    return get(node, annotation_type_ext_listener);
 }
 
-int is_primitive(const ptree* node) {
+bool is_primitive(const ptree* node) {
     return node && (node->kind == N_PRIMITIVE || node == &ldouble_type);
 }
 
-int is_rpc_service(const ptree* node, AnnotationGetter get) {
+bool is_rpc_service(const ptree* node, AnnotationGetter get) {
     return node && node->kind == N_INTERFACE &&
            (get(node, annotation_type_service) != nullptr ||
             get(node, annotation_type_dds_service) != nullptr);
 }
 
-int is_anonymous(const ptree* node) {
+bool is_anonymous(const ptree* node) {
     return node && node->name[0] == '<';
 }
 
-int is_ignored(const ptree* ann) {
+bool is_ignored(const ptree* ann) {
     const bool only_one_member =
         ann->members && !ann->members->next && ann->type->members && !ann->type->members->next;
     const numeric val = base_value_of(get_annotation_value(ann, "value"));
@@ -405,32 +404,32 @@ bool is_decl(const ptree* node) {
     return node->flags & OPT_DECLARATION;
 }
 
-int somehow_contains_interfaces(const ptree* obj) {
+bool somehow_contains_interfaces(const ptree* obj) {
     const ptree* base = base_type_of(obj);
     switch (base->kind) {
     case N_INTERFACE:
-        return 1;
+        return true;
     case N_UNION:
         if (somehow_contains_interfaces(base->discriminator)) {
-            return 1;
+            return true;
         }
         for (base = base->members; base; base = base->next) {
             if (somehow_contains_interfaces(base)) {
-                return 1;
+                return true;
             }
         }
         break;
     case N_STRUCT:
         for (base = base->members; base; base = base->next) {
             if (somehow_contains_interfaces(base)) {
-                return 1;
+                return true;
             }
         }
         break;
     default:
         break;
     }
-    return 0;
+    return false;
 }
 
 ptree* get_direct_annotation(const ptree* node, const ptree* annot_type) {

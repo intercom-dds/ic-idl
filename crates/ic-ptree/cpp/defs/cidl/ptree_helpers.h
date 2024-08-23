@@ -38,52 +38,64 @@ using AnnotationGetter = ptree* (*)(const ptree*, const ptree*);
 
 ptree* get_annotation(const ptree* node, const ptree* annot_type);
 ptree* get_direct_annotation(const ptree* node, const ptree* annot_type);
-int is_local(const ptree* node);
-int is_autoid_hash(const ptree* node, AnnotationGetter get = get_annotation);
-int get_member_id(const ptree* member, const ptree* context, int prevMax);
-int is_key_member(const ptree* node, AnnotationGetter get = get_annotation);
-int is_shared(const ptree* node, AnnotationGetter get = get_annotation);
-int is_nested(const ptree* node, AnnotationGetter get = get_annotation);
-int is_optional(const ptree* node, AnnotationGetter get = get_annotation);
-int is_merged(const ptree* node, AnnotationGetter get = get_annotation);
-int is_must_understand(const ptree* node, AnnotationGetter get = get_annotation);
-int is_bitmask(const ptree* node);
-int is_minimumtypecheck(const ptree* node, AnnotationGetter get = get_annotation);
-int is_emit(const ptree* node, Language lang);
-int is_listener(const ptree* node, AnnotationGetter get = get_annotation);
-int is_primitive(const ptree* node);
-int is_rpc_service(const ptree* node, AnnotationGetter get = get_annotation);
-int is_anonymous(const ptree* node);
+
+bool is_local(const ptree* node);
+bool is_autoid_hash(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_key_member(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_shared(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_nested(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_optional(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_merged(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_must_understand(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_bitmask(const ptree* node);
+bool is_minimumtypecheck(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_emit(const ptree* node, Language lang);
+bool is_listener(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_primitive(const ptree* node);
+bool is_rpc_service(const ptree* node, AnnotationGetter get = get_annotation);
+bool is_anonymous(const ptree* node);
 bool is_non_serialized(const ptree* node, AnnotationGetter get = get_annotation);
-int is_ignored(const ptree* ann);
-int get_extensibility(const ptree* node);
-const char* get_extensibility_name(const ptree* node);
+bool is_ignored(const ptree* ann);
 bool is_wstring(const ptree* node);
 bool is_decl(const ptree* node);
-int get_bit_bound(const ptree* node);
-bool has_default_value(const ptree* node);
-numeric get_default_value(const ptree* node);
-bool has_default_case(const ptree* node);
-const ptree* get_default_case(const ptree* node);
-const ptree* default_union_member(const ptree* node);
-bool has_min_value(const ptree* node, AnnotationGetter get = get_annotation);
-numeric get_min_value(const ptree* node, AnnotationGetter get = get_annotation);
-bool has_max_value(const ptree* node, AnnotationGetter get = get_annotation);
-numeric get_max_value(const ptree* node, AnnotationGetter get = get_annotation);
-std::string default_topic_name(const ptree* node);
-int somehow_contains_interfaces(const ptree* obj);
-const ptree* base_type_of(const ptree*);
-ptree* base_type_of(ptree*);
-numeric get_annotation_value(const ptree* ann, std::string_view name = "value");
-std::string get_root_filename(const ptree* node);
-const ptree* original_node(const ptree* node);
 bool is_signed(const ptree* node);
 bool is_unsigned(const ptree* node);
+
+bool has_default_value(const ptree* node);
+bool has_max_value(const ptree* node, AnnotationGetter get = get_annotation);
+bool has_default_case(const ptree* node);
+bool has_min_value(const ptree* node, AnnotationGetter get = get_annotation);
+
+uint32_t get_member_id(const ptree* member, const ptree* context, int prev_max);
+int get_extensibility(const ptree* node);
+const char* get_extensibility_name(const ptree* node);
+int get_bit_bound(const ptree* node);
+numeric get_default_value(const ptree* node);
+const ptree* get_default_case(const ptree* node);
+numeric get_min_value(const ptree* node, AnnotationGetter get = get_annotation);
+numeric get_max_value(const ptree* node, AnnotationGetter get = get_annotation);
+numeric get_annotation_value(const ptree* ann, std::string_view name = "value");
+std::string get_root_filename(const ptree* node);
+
+std::string default_topic_name(const ptree* node);
+
+bool somehow_contains_interfaces(const ptree* obj);
+
+ptree* base_type_of(ptree*);
+
+const ptree* base_type_of(const ptree*);
+
+const ptree* original_node(const ptree* node);
+
+const ptree* default_union_member(const ptree* node);
+
 /// \returns #nodes in linked list
 size_t list_len(const ptree* list);
+
 size_t exception_count(const ptree* node);
 
 int get_bit_size(const ptree* elem);
+
 /// returns number of bits reserved for node's type
 /// \n returns 0 if unknown
 int get_bit_size_of_type(const ptree* node);

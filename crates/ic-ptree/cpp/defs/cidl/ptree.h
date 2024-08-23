@@ -167,15 +167,10 @@ struct ptree {
 };
 
 struct declarator {
-    declarator() {
-        ident.name = "";
-        annotations = nullptr;
-        next = nullptr;
-    }
-    struct identifier ident {};
+    identifier ident;
     std::vector<numeric> bounds;
-    struct ptree* annotations;
-    struct declarator* next;
+    ptree* annotations = nullptr;
+    declarator* next = nullptr;
 };
 
 inline ptree::iterator begin(ptree* node) {

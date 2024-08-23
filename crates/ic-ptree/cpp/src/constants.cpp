@@ -344,29 +344,6 @@ const numeric* expr_convert(const numeric* v, numeric_kind kind) {
             break;
         }
     }
-    // doesn't catch overflow/underflow in v
-    numeric minus1;
-    minus1.val.i8(-1);
-    const auto res_ll = value<int64_t>(*res);
-    const auto res_ull = value<uint64_t>(*res);
-    const auto v_ll = value<int64_t>(*v);
-    const auto v_ull = value<uint64_t>(*v);
-    if (is_unsigned(*v)) {
-        if (is_unsigned(*res) && res_ull < v_ull) {
-            ERR << "Value is too large for type (unsigned to unsigned overflow)";
-        } else if (is_signed(*res) && (v_ull & (1ULL << 63ULL) || res_ll < v_ll)) {
-            ERR << "Value is too large for type (unsigned to signed overflow)";
-        }
-    } else if (is_signed(*v)) {
-        if (is_unsigned(*res) && v_ll < -1) {
-            const auto res_max = value<uint64_t>(*expr_convert(&minus1, res->kind()));
-            if (static_cast<uint64_t>(-v_ll) > res_max) {
-                ERR << "Value is way too small for type (signed to unsigned underflow goes to or beyond 0)";
-            }
-        } else if (is_signed(*res) && res_ll > v_ll) {
-            ERR << "Value is too small for type (signed to signed underflow)";
-        }
-    }
     return res;
 }
 
@@ -505,51 +482,5 @@ const numeric* expr_binary(char op, const numeric* v1, const numeric* v2) {
         res->base = numeric_base(*v1);
     }
     return res;
-}
-
-bool is_signed(const numeric& v) {
-    switch (v.kind()) {
-    case BOOLEAN_KIND:
-    case OCTET_KIND:
-    case ULONGLONG_KIND:
-    case USHORT_KIND:
-    case ULONG_KIND:
-        return false;
-    case INT8_KIND:
-    case SHORT_KIND:
-    case LONG_KIND:
-    case LONGLONG_KIND:
-    case FLOAT_KIND:
-    case DOUBLE_KIND:
-    case CHAR_KIND:
-        return true;
-    case STRING_KIND:
-        return value<int64_t>(v) < 0;  // won't overflow
-    default:
-        return false;
-    }
-}
-
-bool is_unsigned(const numeric& v) {
-    switch (v.kind()) {
-    case BOOLEAN_KIND:
-    case OCTET_KIND:
-    case ULONGLONG_KIND:
-    case USHORT_KIND:
-    case ULONG_KIND:
-        return true;
-    case INT8_KIND:
-    case SHORT_KIND:
-    case LONG_KIND:
-    case LONGLONG_KIND:
-    case FLOAT_KIND:
-    case DOUBLE_KIND:
-    case CHAR_KIND:
-        return false;
-    case STRING_KIND:
-        return value<int64_t>(v) > 0;  // won't overflow
-    default:
-        return false;
-    }
 }
 }

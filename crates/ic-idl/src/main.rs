@@ -158,7 +158,7 @@ where
 
     let mut files = HashSet::new();
     for path in paths {
-        if std::fs::metadata(path)?.is_dir() {
+        if std::fs::metadata(path).map_or(false, |v| v.is_dir()) {
             collect(path, &mut files)?;
         } else {
             files.insert(path.clone());
@@ -172,7 +172,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     for file in files {
         let input = match std::fs::read_to_string(&file) {
             Ok(v) => v,
-            Err(e) => bail!("couldn't read {}: {e}", file.display()),
+            Err(e) => bail!("couldn't read '{}': {e}", file.display().yellow()),
         };
         let ast = ic_parse::from_str(&input);
 

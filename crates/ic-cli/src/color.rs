@@ -120,19 +120,7 @@ pub trait Colorize: Display {
     }
 }
 
-impl Colorize for &str {}
-
-impl Colorize for String {}
-
-impl Colorize for u8 {}
-
-impl Colorize for u16 {}
-
-impl Colorize for u32 {}
-
-impl Colorize for u64 {}
-
-impl Colorize for usize {}
+impl<T: Display> Colorize for T {}
 
 fn fmt_ansi<T: Display>(code: &str, input: T) -> String {
     if has_colors() {

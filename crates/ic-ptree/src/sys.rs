@@ -931,7 +931,7 @@ extern "C" {
     pub fn ic_ptree_merge(result: *mut *const ic_parse_result_t) -> *mut ic_parse_result_t;
 }
 extern "C" {
-    pub fn ic_ast_dump(result: *const ic_parse_result_t);
+    pub fn ic_ptree_dump(result: *const ic_parse_result_t);
 }
 extern "C" {
     pub fn ic_codegen_proto(

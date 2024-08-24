@@ -48,13 +48,13 @@ add_subdirectory(
 
 add_library(ic_ptree STATIC
     src/ast.cpp
-    src/ast_dump.cpp
     src/code_gen.cpp
     src/commandline.cpp
     src/constants.cpp
     src/idl_parser.cpp
     src/memf.cpp
     src/ptree_builder.cpp
+    src/ptree_dump.cpp
     src/ptree_ffi.cpp
     src/ptree_helpers.cpp
     src/symbols.cpp

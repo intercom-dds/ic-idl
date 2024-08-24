@@ -238,7 +238,7 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<Stri
     // let merged = ic_ptree::merge_trees(&parsed);
 
     if options.unstable.ptree_dump {
-        ic_ptree::ast_dump(merged);
+        ic_ptree::ptree_dump(merged);
     }
 
     let backends: &[(_, fn(_, _) -> _)] = &[

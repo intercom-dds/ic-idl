@@ -50,7 +50,7 @@ void ic_parse_free(struct ic_parse_result_t* result);
 
 struct ic_parse_result_t* ic_ptree_merge(const struct ic_parse_result_t** result);
 
-void ic_ast_dump(const struct ic_parse_result_t* result);
+void ic_ptree_dump(const struct ic_parse_result_t* result);
 
 void ic_codegen_proto(const struct ic_parse_result_t* result, const char* destination);
 

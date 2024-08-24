@@ -45,7 +45,7 @@ enum ExtensibilityKind {
 
 std::string trim_include_name(std::filesystem::path name, bool trim_absolute);
 
-void ast_dump(const parse_result* result);
+void ptree_dump(const parse_result* result);
 
 void code_gen_cs(const parse_result* result);
 

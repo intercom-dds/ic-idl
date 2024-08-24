@@ -98,9 +98,9 @@ pub fn lower_ast(mut ast: &[Item]) -> ParseResult {
 }
 
 /// Dumps the ptree to `stdout` in a tree-like format.
-pub fn ast_dump(result: &ParseResult) {
+pub fn ptree_dump(result: &ParseResult) {
     unsafe {
-        sys::ic_ast_dump(result.inner);
+        sys::ic_ptree_dump(result.inner);
     }
 }
 

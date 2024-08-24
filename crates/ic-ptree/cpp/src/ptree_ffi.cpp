@@ -54,9 +54,9 @@ ic_parse_result_t* ic_ptree_merge(const ic_parse_result_t** result) {
     return reinterpret_cast<ic_parse_result_t*>(merged);
 }
 
-void ic_ast_dump(const ic_parse_result_t* result) {
+void ic_ptree_dump(const ic_parse_result_t* result) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    ast_dump(res);
+    ptree_dump(res);
 }
 
 void ic_codegen_proto(const ic_parse_result_t* result, const char* destination) {

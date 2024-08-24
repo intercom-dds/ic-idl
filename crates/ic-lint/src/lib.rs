@@ -50,6 +50,7 @@ lints! {
     pedantic::assign_expr::AssignExpr,
     pedantic::complex_lit::ComplexLit,
     pedantic::empty_mod::EmptyMod,
+    pedantic::lowercase_bool::LowercaseBool,
     pedantic::null::NullVariant,
     pedantic::omitted_in::OmittedIn,
     semantic::oneway::NonVoidOneway,
@@ -96,6 +97,7 @@ pub trait Lint {
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
+    #[must_use]
     fn check_hir(
         self: Box<Self>,
         context: &ic_hir::Context,

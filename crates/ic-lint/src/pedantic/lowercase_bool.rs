@@ -25,25 +25,49 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::visit::Visitor;
+use ic_diagnostic::{warn_span, Diag, Label};
+use ic_syntax::visit::{visit_tree, Visitor};
+use ic_syntax::{Item, Literal, LiteralValue};
+
+use crate::{Category, Lint};
 
 /// Lint that checks for uses of lowercase `true` or `false`, neither of which
 /// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
-pub struct LowercaseBool<'a>(&'a str);
+#[derive(Default)]
+pub struct LowercaseBool(Vec<Diag>);
 
-impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
-        if let ic_syntax::LiteralValue::Bool(lit) = &num.value {
+impl<'a> Visitor<'a> for LowercaseBool {
+    fn visit_literal(&mut self, num: &'a Literal) {
+        if let LiteralValue::Bool(lit) = &num.value {
             if !lit.uppercase {
-                eprintln!(
-                    "{}:{}: boolean literals must be written in uppercase",
-                    num.span.start,
-                    num.span.end + num.span.start,
-                );
-                eprintln!(" = help: lowercase literals are an InterCOM extension");
-                eprintln!(" = note: warning produced by -Wpedantic");
+                let fixed = lit.value.to_string().to_uppercase();
+                let diag = warn_span(
+                    "lowercase literals are InterCOM extension",
+                    Label::new(num.span).message("lowercase boolean literal"),
+                )
+                .help(format!("use `{fixed}` instead"));
+
+                self.0.push(diag);
             }
         }
+    }
+}
+
+impl Lint for LowercaseBool {
+    fn new() -> Box<dyn Lint>
+    where
+        Self: Sized,
+    {
+        Box::<Self>::default()
+    }
+
+    fn category(&self) -> Category {
+        Category::Pedantic
+    }
+
+    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
+        visit_tree(&mut *self, ast);
+        self.0
     }
 }
 

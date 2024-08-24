@@ -313,15 +313,14 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
         }
         Item::ConstValue(v) => {
             let ty = lower_ty(state, &v.ty);
-            let decl = std::ptr::null_mut();
+            let decl = create_decl(state, &v.decl, std::ptr::null_mut());
             let expr = lower_expr(state, &v.value);
             sys::create_const_node(state, decl, ty, expr)
         }
         Item::AliasValue(v) => {
             let ty = lower_ty(state, &v.ty);
-            let _ident = create_ident(state, &v.ident.name);
-            // ...declarators...
-            sys::create_type(state, std::ptr::null_mut(), ty)
+            let decls = create_decl_list(state, &v.decl, std::ptr::null_mut());
+            sys::create_type(state, decls, ty)
         }
         Item::DeclValue(v) => {
             let ident = create_ident(state, &v.ident.name);

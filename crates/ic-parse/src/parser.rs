@@ -226,13 +226,7 @@ fn const_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|((ty, name), val), span| {
-        let name = match name {
-            Declarator::Simple(v) => v,
-            Declarator::Array(v) => v.ident,
-        };
-        Item::def_const(name, ty, val, span)
-    })
+    def.map_with_span(|((ty, decl), val), span| Item::def_const(decl, ty, val, span))
 }
 
 // InterCOM extension for complex constants
@@ -756,7 +750,6 @@ fn native_dcl() -> impl IdlParser<Item> {
 }
 
 // Rule 62
-// TODO: should this return Ident instead?
 fn simple_declarator() -> impl IdlParser<Declarator> {
     ident().map(Declarator::Simple)
 }
@@ -768,17 +761,7 @@ fn typedef_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ty, decls), span| {
-        Item::typedef(
-            Ident {
-                // TODO: fix this
-                name: ic_syntax::util::decl_name(&decls[0]).to_string(),
-                span: Span::default(),
-            },
-            ty,
-            span,
-        )
-    })
+    def.map_with_span(|(ty, decls), span| Item::typedef(decls, ty, span))
 }
 
 // Rule 64
@@ -791,7 +774,7 @@ fn type_declarator() -> impl IdlParser<(Type, Vec<Declarator>)> {
 
 // Rule 65
 fn any_declarators() -> impl IdlParser<Vec<Declarator>> {
-    any_declarator().repeated().at_least(1)
+    any_declarator().separated_by(just(Kind::Comma)).at_least(1)
 }
 
 // Rule 66

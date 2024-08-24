@@ -93,11 +93,11 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_const(ident: Ident, ty: Type, value: Expr, span: Span) -> Self {
+    pub fn def_const(decl: Declarator, ty: Type, value: Expr, span: Span) -> Self {
         Self::ConstValue(ConstDef {
-            ident,
-            // TODO(idarcar): use this
-            decl: Declarator::default(),
+            // TODO(idarcar): remove ident
+            ident: Ident::default(),
+            decl,
             span,
             value,
             ty,
@@ -179,12 +179,13 @@ impl Item {
     }
 
     #[must_use]
-    pub fn typedef(ident: Ident, ty: Type, span: Span) -> Self {
+    pub fn typedef(decl: Vec<Declarator>, ty: Type, span: Span) -> Self {
         Self::AliasValue(AliasDef {
-            ident,
+            // TODO(idarcar): remove ident
+            ident: Ident::default(),
+            decl,
             span,
             annotations: vec![],
-            decl: vec![],
             ty,
         })
     }

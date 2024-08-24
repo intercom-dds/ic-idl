@@ -218,22 +218,6 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     Ok(vec![])
 }
 
-fn invoke<T>(
-    options: &Options,
-    result: &ParseResult,
-    dir: &Path,
-    backend: fn(&ParseResult, &Path) -> T,
-) -> anyhow::Result<T> {
-    if options.purge_dirs {
-        if let Ok(v) = std::fs::metadata(dir) {
-            if v.is_dir() {
-                std::fs::remove_dir_all(dir)?;
-            }
-        }
-    }
-    Ok(backend(result, dir))
-}
-
 fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<String>> {
     // let preprocessed = options
     //     .files
@@ -257,21 +241,29 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<Stri
         ic_ptree::ast_dump(merged);
     }
 
+    let backends: &[(_, fn(_, _) -> _)] = &[
+        (&options.codegen.cpp_out, ic_ptree::codegen_cpp),
+        (&options.codegen.idl_out, ic_ptree::codegen_idl),
+        (&options.codegen.json_out, ic_ptree::codegen_json),
+        (&options.codegen.proto_out, ic_ptree::codegen_proto),
+        (&options.codegen.python_out, ic_ptree::codegen_python),
+        (&options.codegen.rust_out, ic_ptree::codegen_rust),
+    ];
+
     let mut generated = vec![];
-    if let Some(dir) = &options.codegen.cpp_out {
-        let res = invoke(options, merged, dir, ic_ptree::codegen_cpp)?;
-        generated.extend(res);
+    for (dir, backend) in backends
+        .into_iter()
+        .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
+    {
+        if options.purge_dirs {
+            if let Ok(v) = std::fs::metadata(dir) {
+                if v.is_dir() {
+                    std::fs::remove_dir_all(dir)?;
+                }
+            }
+        }
+        let files = backend(merged, dir);
+        generated.extend(files);
     }
-
-    if let Some(dir) = &options.codegen.proto_out {
-        let res = invoke(options, merged, dir, ic_ptree::codegen_proto)?;
-        generated.extend(res);
-    }
-
-    if let Some(dir) = &options.codegen.python_out {
-        let res = invoke(options, merged, dir, ic_ptree::codegen_python)?;
-        generated.extend(res);
-    }
-
     Ok(generated)
 }

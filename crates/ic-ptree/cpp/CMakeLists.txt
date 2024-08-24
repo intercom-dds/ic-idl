@@ -65,6 +65,9 @@ add_library(ic_ptree STATIC
     ../../ic-codegen-json/cpp/src/json_code_gen.cpp
     ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
     ../../ic-codegen-python/cpp/src/python_code_gen.cpp
+    ../../ic-codegen-rust/cpp/src/rust_code_gen.cpp
+    ../../ic-codegen-rust/cpp/src/rust_common.cpp
+    ../../ic-codegen-rust/cpp/src/rust_transform.cpp
 )
 
 target_compile_definitions(ic_ptree PRIVATE CIDL_BOOTSTRAP)

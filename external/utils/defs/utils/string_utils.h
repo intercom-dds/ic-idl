@@ -231,6 +231,10 @@ unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_defa
 /// @return An html representation of a_src.
 std::string to_html_encoding(const std::string& a_src);
 
+bool starts_with(std::string_view str, std::string_view prefix);
+
+bool ends_with(std::string_view str, std::string_view suffix);
+
 }  // namespace string_utils
 
 #include "string_utils.ic"

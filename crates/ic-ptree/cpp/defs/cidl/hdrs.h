@@ -67,7 +67,7 @@ void code_gen_python(const parse_result* result);
 
 void code_gen_python(const parse_result* result, const char* destination);
 
-void code_gen_rust(const parse_result* result);
+void code_gen_rust(const parse_result* result, const char* destination);
 
 void code_gen_proto(const parse_result* result);
 

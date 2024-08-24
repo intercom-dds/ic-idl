@@ -25,18 +25,20 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "cidl/rust_common.h"
+#include "rust_common.h"
 
 #include <string>
+#include <string_view>
 
-#include "InterCOM/string_view.h"
 #include "cidl/commandline.h"
 #include "cidl/constants.h"
+#include "cidl/hdrs.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "icgen/template/casing.h"
+#include "utils/string_utils.h"
 
 using namespace intercom::cidl;
 
@@ -54,7 +56,7 @@ static void qos_name(const ptree* node, std::string& name) {
             }
         }
     } else if (node->kind == N_CONST && node->super && node->super->kind == N_ENUM) {
-        if (intercom::string_view(node->name).ends_with("_QOS")) {
+        if (string_utils::ends_with(node->name, "_QOS")) {
             size_t pos = name.rfind('_', name.length() - 5);
             name.erase(pos);
         }
@@ -72,8 +74,9 @@ std::string conv_name(const ptree* node, intercom::icgen::Case casing) {
     // Strip "_t" and "_e" suffixes, then convert the name
     if (!CommandLineOption::no_rename()) {
         std::string lower = tolower(name);
-        intercom::string_view view(lower);
-        if (view.length() > 2 && (view.ends_with("_t") || view.ends_with("_e"))) {
+        std::string_view view(lower);
+        if (view.length() > 2 &&
+            (string_utils::ends_with(view, "_t") || string_utils::ends_with(view, "_e"))) {
             name = name.substr(0, name.length() - 2);
         }
         intercom::icgen::CaseConverter conv(casing);

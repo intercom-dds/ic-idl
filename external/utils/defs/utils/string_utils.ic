@@ -551,4 +551,13 @@ inline std::string to_html_encoding(const std::string& a_src) {
     return os.str();
 }
 
+inline bool starts_with(std::string_view str, std::string_view suffix) {
+    return str.substr(0, suffix.size()) == suffix;
+}
+
+inline bool ends_with(std::string_view str, std::string_view suffix) {
+    return str.size() >= suffix.size() &&
+           str.compare(str.size() - suffix.size(), std::string_view::npos, suffix) == 0;
+}
+
 }  // namespace string_utils

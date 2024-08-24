@@ -38,10 +38,16 @@
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_helpers.h"
-#include "cidl/rust_common.h"
 #include "cidl/symbols.h"
+#include "rust_common.h"
+
+// TODO(idarcar): fix before release
+#define INTERCOM_VERSION_MAJOR 0
+#define INTERCOM_VERSION_MINOR 0
+#define INTERCOM_VERSION_PATCH 0
 
 using namespace intercom::rust;
+using namespace intercom::cidl;
 
 namespace {
 class NumSep : public std::numpunct<char> {
@@ -1452,7 +1458,6 @@ static void recurse_node(Twine& out, const ptree* node) {
         emit_default_impl(out, node);
         emit_marshal(out, node);
         emit_unmarshal(out, node);
-        emit_ts(out, node);
         break;
 
     case N_UNION:
@@ -1462,7 +1467,6 @@ static void recurse_node(Twine& out, const ptree* node) {
         emit_default_impl(out, node);
         emit_marshal(out, node);
         emit_unmarshal(out, node);
-        emit_ts(out, node);
         break;
 
     case N_ENUM:
@@ -1473,14 +1477,12 @@ static void recurse_node(Twine& out, const ptree* node) {
         emit_marshal(out, node);
         emit_unmarshal(out, node);
         emit_visitor(out, node);
-        emit_ts(out, node);
         break;
 
     case N_BITMASK:
         emit_bitmask_def(out, node);
         emit_bitmask_impl(out, node);
         emit_default_impl(out, node);
-        emit_ts(out, node);
         break;
 
     case N_ALIAS:
@@ -1550,7 +1552,8 @@ static void emit_crate(const ptree* node, P predicate) {
     emit_module(out.modules());
 }
 
-void code_gen_rust(const parse_result* result) {
+void code_gen_rust(const parse_result* result, const char* destination) {
+    intercom::cidl::CommandLineOption::get_instance().rust_target_directory = destination;
     auto cloned = clone_tree(result);
     transform_rust(&cloned);
     emit_crate(cloned.tree, [&](const ptree* node) { return is_emit(node, LANG_RUST); });

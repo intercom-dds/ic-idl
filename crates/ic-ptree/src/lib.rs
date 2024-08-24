@@ -122,4 +122,4 @@ define_backend!(codegen_idl, ic_codegen_idl);
 define_backend!(codegen_json, ic_codegen_json);
 define_backend!(codegen_proto, ic_codegen_proto);
 define_backend!(codegen_python, ic_codegen_python);
-define_backend!(codegen_rust, ic_codegen_cpp);
+define_backend!(codegen_rust, ic_codegen_rust);

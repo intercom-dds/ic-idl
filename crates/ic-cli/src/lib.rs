@@ -54,6 +54,7 @@ pub struct CommandLine {
     desc: String,
     version: Option<String>,
     options: IndexMap<String, Opt>,
+    split_flags: bool,
     hide_flags: bool,
     hide_options: bool,
     arg_name: Option<String>,
@@ -71,6 +72,7 @@ impl CommandLine {
             desc: String::new(),
             version: None,
             options: IndexMap::new(),
+            split_flags: false,
             hide_flags: false,
             hide_options: false,
             arg_name: None,
@@ -152,6 +154,11 @@ impl CommandLine {
 
     pub fn external(mut self, external: bool) -> Self {
         self.external = external;
+        self
+    }
+
+    pub fn split_flags(mut self, split_flags: bool) -> Self {
+        self.split_flags = split_flags;
         self
     }
 
@@ -257,16 +264,27 @@ impl CommandLine {
         }
         lines.push(usage);
 
-        if !self.hide_flags {
-            let flags = self.format_args(|v| v.kind == Value::Flag && v.section.is_none());
-            if !flags.is_empty() {
-                lines.push("\nflags:".yellow());
-                lines.extend(flags);
+        if self.split_flags {
+            if !self.hide_flags {
+                let flags = self.format_args(|v| v.kind == Value::Flag && v.section.is_none());
+                if !flags.is_empty() {
+                    lines.push("\nflags:".yellow());
+                    lines.extend(flags);
+                }
             }
-        }
-
-        if !self.hide_options {
-            let options = self.format_args(|v| v.kind != Value::Flag && v.section.is_none());
+            if !self.hide_options {
+                let options = self.format_args(|v| v.kind != Value::Flag && v.section.is_none());
+                if !options.is_empty() {
+                    lines.push("\noptions:".yellow());
+                    lines.extend(options);
+                }
+            }
+        } else {
+            let options = self.format_args(|v| {
+                ((!self.hide_flags && v.kind == Value::Flag)
+                    || (!self.hide_options && v.kind != Value::Flag))
+                    && v.section.is_none()
+            });
             if !options.is_empty() {
                 lines.push("\noptions:".yellow());
                 lines.extend(options);

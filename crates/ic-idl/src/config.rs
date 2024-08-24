@@ -57,6 +57,14 @@ pub struct Options {
     #[option(short = 'H', long)]
     pub no_header_follow: bool,
 
+    /// Add directory to include search paths
+    #[option(short = 'I', long, arg = "dir")]
+    pub include: Vec<String>,
+
+    /// Define preprocessor directive <def> to <val>
+    #[option(short = 'D', long, arg = "def>=<val")]
+    pub define: Vec<String>,
+
     /// Output list of files to be generated
     #[option(short, long)]
     pub list: bool,
@@ -72,14 +80,6 @@ pub struct Options {
     /// Do not rename generated types
     #[option(long)]
     pub no_rename: bool,
-
-    /// Add directory to include search paths
-    #[option(short = 'I', long, arg = "dir")]
-    pub include: Vec<String>,
-
-    /// Define preprocessor directive <def> to <val>
-    #[option(short = 'D', long, arg = "def>=<val")]
-    pub define: Vec<String>,
 
     /// Enable a warning, see `-W help` for details
     #[option(short = 'W', arg = "lint")]

@@ -63,6 +63,7 @@ macro_rules! warn {
 
 fn main() {
     let result = Options::command()
+        .split_flags(false)
         .section("c++ options", CppOptions::command())
         .section("backends", CodegenOptions::command())
         .try_parse();

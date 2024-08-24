@@ -263,12 +263,12 @@ pub enum Kind {
     Modulo,
 
     /// `TRUE`
-    #[regex("true|TRUE")]
-    True,
+    #[regex("true|TRUE", is_uppercase)]
+    True(bool),
 
     /// `FALSE`
-    #[regex("false|FALSE")]
-    False,
+    #[regex("false|FALSE", is_uppercase)]
+    False(bool),
 
     /// Octal number, e.g. `0123`.
     #[regex("0[1-7][0-7]*", |v| integer_lit(v, 8))]
@@ -371,8 +371,8 @@ impl fmt::Display for Kind {
             Kind::RParen => write!(f, "`)`"),
             Kind::LBracket => write!(f, "`[`"),
             Kind::RBracket => write!(f, "`]`"),
-            Kind::True => write!(f, "`TRUE`"),
-            Kind::False => write!(f, "`FALSE`"),
+            Kind::True(_) => write!(f, "`TRUE`"),
+            Kind::False(_) => write!(f, "`FALSE`"),
             Kind::BitAnd => write!(f, "`&`"),
             Kind::BitOr => write!(f, "`|`"),
             Kind::BitXor => write!(f, "`^`"),
@@ -426,6 +426,10 @@ fn string_lit(lex: &mut Lexer<Kind>) -> String {
     iter.next();
     iter.next_back();
     iter.as_str().to_string()
+}
+
+fn is_uppercase(lex: &mut Lexer<Kind>) -> bool {
+    lex.slice().chars().next().map_or(false, char::is_uppercase)
 }
 
 fn to_owned(lex: &mut Lexer<Kind>) -> String {

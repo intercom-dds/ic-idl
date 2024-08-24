@@ -361,13 +361,14 @@ fn literal() -> impl IdlParser<Literal> {
 
 // Rule 18
 fn boolean_literal() -> impl IdlParser<Literal> {
-    let val = choice((just(Kind::True).to(true), just(Kind::False).to(false)));
-    val.map_with_span(|value, span| Literal {
+    let val = select! {
+        Kind::True(v) => (true, v),
+        Kind::False(v) => (false, v),
+    };
+
+    val.map_with_span(|(value, uppercase), span| Literal {
         span,
-        value: LiteralValue::Bool(LitBool {
-            uppercase: false,
-            value,
-        }),
+        value: LiteralValue::Bool(LitBool { uppercase, value }),
     })
 }
 

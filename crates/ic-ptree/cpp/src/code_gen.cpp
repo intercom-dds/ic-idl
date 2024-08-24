@@ -36,7 +36,9 @@
 #include <iostream>
 
 #include "cidl/hdrs.h"
+#include "cidl/memf.h"
 #include "cidl/ptree_builder.h"
+#include "cidl/ptree_helpers.h"
 
 static bool is_path_sep(char c) {
 #ifdef INTERCOM_PLATFORM_WINDOWS
@@ -118,6 +120,80 @@ std::string tolower(std::string res) {
         return static_cast<std::string::value_type>(std::tolower(static_cast<int>(c)));
     });
     return res;
+}
+
+static void
+print_doc_annotation(struct memf* f, const ptree* doc_annotation, const bool& print_as_post_doc) {
+    const ptree* elem;
+    const char* docs = nullptr;
+    for (elem = doc_annotation->members; elem; elem = elem->next) {
+        if (elem->name == "text") {
+            docs = elem->value.val.str().c_str();
+            break;
+        }
+    }
+    MemfIndentScopeLock indent_lk(f);  // comments should not affect indentation
+    if (docs) {
+        const int post_padding = 2;
+        std::string line_start = print_as_post_doc ? "//!" : " * ";
+        std::string newline_padding;
+        if (print_as_post_doc) {
+            int spaces = std::max(f->column + post_padding - f->indent, 0);
+            newline_padding += std::string(spaces, ' ');
+        }
+        int start_of_line = 1;
+        const char* pp;
+        if (print_as_post_doc) {
+            mprintf(f, std::string(post_padding, ' '));
+        } else {
+            mprintf(f, "/**\n");
+        }
+        for (pp = docs; *pp; pp++) {
+            if (start_of_line) {
+                if (pp != docs) {
+                    mprintf(f, "{}", newline_padding);
+                }
+                mprintf(f, "{}", line_start);
+            }
+            if (*pp) {
+                start_of_line = *pp == '\n';
+                mprintf(f, "{}", start_of_line ? '\n' : *pp);
+            }
+        }
+        if (!start_of_line) {
+            mprintf(f, "\n");
+        }
+        if (!print_as_post_doc) {
+            mprintf(f, " */\n");
+        }
+    }
+}
+
+void emit_docs(struct memf* f, const ptree* obj) {
+    if (!f || !obj) {
+        return;
+    }
+    for (const ptree* ann : obj->annotations) {
+        if (is_pre_doc(ann)) {
+            print_doc_annotation(f, ann, false);
+        }
+    }
+}
+
+void emit_post_docs(struct memf* f, const ptree* obj) {
+    if (!f || !obj) {
+        return;
+    }
+    bool no_comments = true;
+    for (const ptree* ann : obj->annotations) {
+        if (is_post_doc(ann)) {
+            print_doc_annotation(f, ann, true);
+            no_comments = false;
+        }
+    }
+    if (no_comments) {
+        mprintf(f, "\n");
+    }
 }
 
 }  // namespace intercom::cidl

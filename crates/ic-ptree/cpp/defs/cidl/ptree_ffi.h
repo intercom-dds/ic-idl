@@ -54,13 +54,15 @@ void ic_ast_dump(const struct ic_parse_result_t* result);
 
 void ic_codegen_proto(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_java(const struct ic_parse_result_t* result, const char* destination);
-
-void ic_codegen_csharp(const struct ic_parse_result_t* result, const char* destination);
-
 void ic_codegen_cpp(const struct ic_parse_result_t* result, const char* destination);
 
 void ic_codegen_python(const struct ic_parse_result_t* result, const char* destination);
+
+void ic_codegen_rust(const struct ic_parse_result_t* result, const char* destination);
+
+void ic_codegen_idl(const struct ic_parse_result_t* result, const char* destination);
+
+void ic_codegen_json(const struct ic_parse_result_t* result, const char* destination);
 
 #ifdef __cplusplus
 }

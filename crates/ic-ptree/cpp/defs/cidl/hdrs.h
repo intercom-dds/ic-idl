@@ -51,7 +51,7 @@ void code_gen_cs(const parse_result* result);
 
 void code_gen_cs(const parse_result* result, const char* destination);
 
-void code_gen_json(const parse_result* result, bool listonly);
+void code_gen_json(const parse_result* result, const char* destination);
 
 void code_gen_json_schema(const parse_result* result);
 
@@ -73,9 +73,15 @@ void code_gen_proto(const parse_result* result);
 
 void code_gen_proto(const parse_result* result, const char* destination);
 
+void code_gen_idl(const parse_result* result, const char* destination);
+
 void code_gen_xml(const parse_result* result);
 
 void generate_json_type(std::ostream& stream, const ptree* tree);
+
+void emit_docs(struct memf* f, const ptree* obj);
+
+void emit_post_docs(struct memf* f, const ptree* obj);
 
 std::string cpp_type_name(const ptree* node, const ptree* context);
 

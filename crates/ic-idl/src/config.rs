@@ -96,6 +96,9 @@ pub struct Options {
     #[option(positional)]
     pub files: Vec<PathBuf>,
 
+    // #[section = "c++ options"]
+    pub cpp: CppOptions,
+
     // #[section = "backends"]
     pub codegen: CodegenOptions,
 }
@@ -167,7 +170,7 @@ pub struct CodegenOptions {
     pub json_schema_out: Option<PathBuf>,
 }
 
-#[derive(Command, Debug, Default)]
+#[derive(Command, Default)]
 pub struct Unstable {
     /// Dump out the AST exactly as it was parsed
     #[option(long)]

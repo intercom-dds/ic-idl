@@ -82,6 +82,7 @@ fn main() {
 
     let options = Options {
         codegen: CodegenOptions::from_result(&result),
+        cpp: CppOptions::from_result(&result),
         ..Options::from_result(&result)
     };
 

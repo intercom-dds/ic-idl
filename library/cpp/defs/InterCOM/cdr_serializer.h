@@ -145,10 +145,6 @@ class CdrWriter : public GenericWriter {
         write_values(a_values, a_count);
     }
 
-    void write(const char32_t* a_values, uint32_t a_count, const TypeInfo&) override {
-        write_values(a_values, a_count);
-    }
-
   private:
     struct TypeStackElement {
         uint32_t type_base{0};
@@ -255,10 +251,6 @@ class CdrReader : public GenericReader {
     }
 
     void read(char16_t* a_values, uint32_t a_count, const TypeInfo&) override {
-        read_values(a_values, a_count);
-    }
-
-    void read(char32_t* a_values, uint32_t a_count, const TypeInfo&) override {
         read_values(a_values, a_count);
     }
 

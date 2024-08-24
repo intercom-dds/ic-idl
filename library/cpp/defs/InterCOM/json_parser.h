@@ -321,8 +321,6 @@ class JsonReader : public dcps::cts::GenericReader {
 
     void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
-
     void add_const_value(const std::string& a_name, const JsonNode& value);
 
   private:
@@ -412,8 +410,6 @@ class JsonWriter : public dcps::cts::GenericWriter {
     void write(const char* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
     void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
-
-    void write(const char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
     void reset(int indentLevel = 0);
 

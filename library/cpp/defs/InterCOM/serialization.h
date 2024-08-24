@@ -93,7 +93,6 @@ class GenericWriter {
     virtual void write(const long double* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
     virtual void write(const char* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
     virtual void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
-    virtual void write(const char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
 };
 
 class GenericReader {
@@ -126,7 +125,6 @@ class GenericReader {
     virtual void read(long double* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
     virtual void read(char* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
     virtual void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
-    virtual void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) = 0;
 };
 
 class EmptyWriter : public GenericWriter {
@@ -192,8 +190,6 @@ class EmptyWriter : public GenericWriter {
     void write(const char*, uint32_t, const TypeInfo&) override {}
 
     void write(const char16_t*, uint32_t, const TypeInfo&) override {}
-
-    void write(const char32_t*, uint32_t, const TypeInfo&) override {}
 };
 
 class EmptyReader : public GenericReader {
@@ -293,10 +289,6 @@ class EmptyReader : public GenericReader {
 
     void read(char16_t* a_values, uint32_t a_count, const TypeInfo&) override {
         memset(a_values, 0, a_count * sizeof(char16_t));
-    }
-
-    void read(char32_t* a_values, uint32_t a_count, const TypeInfo&) override {
-        memset(a_values, 0, a_count * sizeof(char32_t));
     }
 
   private:
@@ -403,9 +395,6 @@ class KeyOnlyWriter : public GenericWriter {
     void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.write(a_values, a_count, a_info);
     }
-    void write(const char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
-        m_delegate.write(a_values, a_count, a_info);
-    }
 
   private:
     DELEGATE& m_delegate;
@@ -503,9 +492,6 @@ class KeyOnlyReader : public GenericReader {
         m_delegate.read(a_values, a_count, a_info);
     }
     void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
-        m_delegate.read(a_values, a_count, a_info);
-    }
-    void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
 
@@ -616,9 +602,6 @@ class FilterMemberReader : public GenericReader {
         m_delegate.read(a_values, a_count, a_info);
     }
     void read(char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
-        m_delegate.read(a_values, a_count, a_info);
-    }
-    void read(char32_t* a_values, uint32_t a_count, const TypeInfo& a_info) override {
         m_delegate.read(a_values, a_count, a_info);
     }
 

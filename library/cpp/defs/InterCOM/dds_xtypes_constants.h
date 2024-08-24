@@ -35,7 +35,6 @@
 #endif
 
 #include <InterCOM/bounded.h>
-#include <InterCOM/cdr_serializer.h>
 #include <InterCOM/span.h>
 
 #include <functional>

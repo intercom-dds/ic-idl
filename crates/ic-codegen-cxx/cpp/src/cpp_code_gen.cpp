@@ -50,9 +50,6 @@ using namespace intercom::cidl;
 
 static void cgcpl_recurs(const ptree* obj);
 
-void emit_docs(struct memf* f, const ptree* obj);
-void emit_post_docs(struct memf* f, const ptree* obj);
-
 static memf g_hd_file;
 static memf g_tbd_file;
 static memf g_hd_ts_file;

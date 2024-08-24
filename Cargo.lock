@@ -135,10 +135,6 @@ name = "ic-codegen-idl"
 version = "0.1.0"
 
 [[package]]
-name = "ic-codegen-java"
-version = "0.0.0"
-
-[[package]]
 name = "ic-codegen-protobuf"
 version = "0.0.0"
 dependencies = [

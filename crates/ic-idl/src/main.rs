@@ -157,11 +157,11 @@ where
     }
 
     let mut files = HashSet::new();
-    for path in paths.into_iter() {
-        if std::fs::metadata(&path)?.is_dir() {
-            collect(&path, &mut files)?;
+    for path in paths {
+        if std::fs::metadata(path)?.is_dir() {
+            collect(path, &mut files)?;
         } else {
-            files.insert(path.to_path_buf());
+            files.insert(path.clone());
         }
     }
     Ok(files)
@@ -184,7 +184,6 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
             Ok(v) => {
                 // Lint the AST
                 let report = ic_lint::lint_syntax(&v.tree);
-                dbg!(&report);
 
                 if options.unstable.ast_dump {
                     println!("{:#?}", v.tree);
@@ -204,7 +203,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 // }
 
                 let ptree = ic_ptree::lower_ast(&v.tree);
-                try_ptree(&options, ptree)?;
+                try_ptree(options, &ptree)?;
             }
             Err(e) => {
                 pretty::emit_errors(&input, &e);
@@ -235,7 +234,7 @@ fn invoke<T>(
     Ok(backend(result, dir))
 }
 
-fn try_ptree(options: &Options, merged: ParseResult) -> anyhow::Result<Vec<String>> {
+fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<String>> {
     // let preprocessed = options
     //     .files
     //     .iter()
@@ -255,22 +254,22 @@ fn try_ptree(options: &Options, merged: ParseResult) -> anyhow::Result<Vec<Strin
     // let merged = ic_ptree::merge_trees(&parsed);
 
     if options.unstable.ptree_dump {
-        ic_ptree::ast_dump(&merged);
+        ic_ptree::ast_dump(merged);
     }
 
     let mut generated = vec![];
     if let Some(dir) = &options.codegen.cpp_out {
-        let res = invoke(options, &merged, dir, ic_ptree::codegen_cpp)?;
+        let res = invoke(options, merged, dir, ic_ptree::codegen_cpp)?;
         generated.extend(res);
     }
 
     if let Some(dir) = &options.codegen.proto_out {
-        let res = invoke(options, &merged, dir, ic_ptree::codegen_proto)?;
+        let res = invoke(options, merged, dir, ic_ptree::codegen_proto)?;
         generated.extend(res);
     }
 
     if let Some(dir) = &options.codegen.python_out {
-        let res = invoke(options, &merged, dir, ic_ptree::codegen_python)?;
+        let res = invoke(options, merged, dir, ic_ptree::codegen_python)?;
         generated.extend(res);
     }
 

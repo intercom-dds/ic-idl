@@ -277,7 +277,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
             let eq = a[y - 1] != b[x - 1];
             let ins_cost = column[y] + 1;
             let sub_cost = column[y - 1] + 1;
-            let del_cost = last_diag + eq as usize;
+            let del_cost = last_diag + usize::from(eq);
 
             let min = ins_cost.min(sub_cost);
             column[y] = min.min(del_cost);
@@ -293,13 +293,12 @@ fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
 
     let iter = options
         .iter()
-        .map(|v| v.tokens.iter())
-        .flatten()
-        .map(|v| v.as_str())
+        .flat_map(|v| v.tokens.iter())
+        .map(String::as_str)
         .filter(|v| v.len() > 1);
 
     for tok in iter {
-        let dist = levenshtein(input, &tok);
+        let dist = levenshtein(input, tok);
         if dist < min {
             min = dist;
 

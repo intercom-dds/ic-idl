@@ -124,13 +124,9 @@ impl CommandLine {
         self
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn merge(self, command: CommandLine) -> Self {
         self.opts(command.options.values().iter().cloned())
-    }
-
-    pub fn subcommand(self, command: CommandLine) -> Self {
-        drop(command);
-        todo!();
     }
 
     pub fn category(mut self, category: Category) -> Self {
@@ -222,6 +218,10 @@ impl CommandLine {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if parsing failed due to a syntactic error, or if one
+    /// of the help flags (e.g. `-h`) were specified by the user.
     pub fn try_parse_args<I>(mut self, iter: I) -> Result<ParseResult, ParseError>
     where
         I: Iterator<Item = String>,
@@ -400,7 +400,7 @@ impl CommandLine {
             .max()
             .unwrap_or(0);
 
-        for (section, cmds) in self.subcommands.iter() {
+        for (section, cmds) in &self.subcommands {
             lines.push(format!("\n{section}:").yellow());
 
             let width = width + PAD;

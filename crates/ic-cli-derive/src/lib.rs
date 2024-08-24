@@ -404,6 +404,7 @@ pub fn derive_cli(input: TokenStream) -> TokenStream {
                 #command
             }
 
+            #[allow(clippy::needless_update)]
             fn from_result(result: &::ic_cli::ParseResult) -> Self {
                 #parse
             }

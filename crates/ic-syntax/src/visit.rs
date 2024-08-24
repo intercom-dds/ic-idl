@@ -28,11 +28,11 @@
 #![allow(unused, dead_code)]
 
 use crate::{
-    AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Binary, Bit, Bitfield,
-    BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Ident, InitList, InterfaceDef, InterfaceMember, Item, ItemKind, Label, Literal,
-    ModuleDef, Param, Prototype, Span, StructDef, Type, Unary, UnionDef, UnionElement, UnionField,
-    UnionMember, UnionNull, ValuetypeDef,
+    AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Attribute, Binary,
+    Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator,
+    ExceptDef, Expr, Field, Ident, InitList, InterfaceDef, InterfaceMember, Item, ItemKind, Label,
+    Literal, ModuleDef, Param, Prototype, Span, StructDef, Type, Unary, UnionDef, UnionElement,
+    UnionField, UnionMember, UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -100,6 +100,10 @@ pub trait Visitor<'a> {
         visit_valuetype(self, def);
     }
 
+    fn visit_attribute(&mut self, def: &'a Attribute) {
+        visit_attribute(self, def);
+    }
+
     fn visit_prototype(&mut self, def: &'a Prototype) {
         visit_prototype(self, def);
     }
@@ -134,7 +138,9 @@ pub trait Visitor<'a> {
         match expr {
             Expr::Unary(v) => self.visit_expr_unary(v),
             Expr::Binary(v) => self.visit_expr_binary(v),
-            _ => (),
+            Expr::Literal(v) => self.visit_literal(v),
+            Expr::InitList(v) => self.visit_expr_init_list(v),
+            Expr::Path(_) => todo!(),
         }
     }
 
@@ -288,10 +294,10 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_ident(&def.ident);
-    // TODO: inherit? attributes?
+    // TODO: inheritance
     for proto in &def.members {
         match proto {
-            InterfaceMember::Attr(_) => todo!(),
+            InterfaceMember::Attr(v) => visitor.visit_attribute(v),
             InterfaceMember::Proto(v) => visitor.visit_prototype(v),
             InterfaceMember::Item(v) => visitor.visit_item(v),
         }
@@ -307,11 +313,14 @@ where
     for proto in &def.prototypes {
         visitor.visit_prototype(proto);
     }
+}
 
-    // TODO:
-    // for proto in &def.members {
-    //     visitor.visit_valuetype_member(&proto);
-    // }
+pub fn visit_attribute<'a, V>(visitor: &mut V, def: &'a Attribute)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
+    visitor.visit_ident(&def.ident);
 }
 
 pub fn visit_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)

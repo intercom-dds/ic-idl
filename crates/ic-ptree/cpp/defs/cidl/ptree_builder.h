@@ -212,12 +212,12 @@ struct ptree* create_bitset(
     struct parser_state*,
     struct identifier ident,
     struct ptree* fields,
-    struct ptree* type
+    struct ptree* parent
 );
 
 struct ptree* create_bitfield(
     struct parser_state*,
-    struct declarator* declarators,
+    struct identifier ident,
     const struct numeric* bits,
     struct ptree* type
 );

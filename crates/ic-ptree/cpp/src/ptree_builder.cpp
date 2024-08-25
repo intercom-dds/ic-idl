@@ -1969,18 +1969,11 @@ ptree* create_bitset(parser_state* state, identifier ident, ptree* fields, ptree
     return node;
 }
 
-ptree*
-create_bitfield(parser_state* state, declarator* declarators, const numeric* bits, ptree* type) {
-    ptree* res = nullptr;
-    while (declarators) {
-        ptree* node = create_node(state, N_CONST, declarators->ident);
-        node->value = *bits;
-        node->type = type ? type : &long_type;
-        node->annotations = declarators->annotations;
-        res = append_node(state, res, node);
-        declarators = declarators->next;
-    }
-    return res;
+ptree* create_bitfield(parser_state* state, identifier ident, const numeric* bits, ptree* type) {
+    ptree* node = create_node(state, N_CONST, ident);
+    node->value = *bits;
+    node->type = type ? type : &long_type;
+    return node;
 }
 
 ptree* create_enum(parser_state* state, identifier ident, ptree* values) {

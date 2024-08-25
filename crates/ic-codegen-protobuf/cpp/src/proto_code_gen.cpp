@@ -360,10 +360,10 @@ static void recurse_node(Printer& out, const ptree* node) {
 }
 
 // TODO(idarcar): not used anywhere after refactoring
-void validate_proto(const ptree* node) {
+void validate_proto(parser_state* state, const ptree* node) {
     if (node->kind == N_ENUM) {
         if (long_long_value(node->members->value) != 0) {
-            ERR << "The first enum value must be zero in proto3";
+            state->error() << "The first enum value must be zero in proto3";
         }
     }
 }

@@ -256,7 +256,7 @@ std::vector<ptree*> create_node_list(parser_state* state, declarator* decl, node
         for (declarator* d = decl; d; d = d->next) {
             ptree* node = lookup_node(state, d->ident);
             if (!node || node->kind != kind) {
-                ERR << "invalid parent type";
+                state->error() << "invalid parent type in node " << node;
                 return {};
             }
             res.push_back(node);
@@ -270,7 +270,7 @@ bool is_int(const std::string& str) {
     return std::all_of(str.begin() + is_negative, str.end(), isdigit);
 }
 
-numeric lookup_member_value(const numeric& value, const ptree* type) {
+numeric lookup_member_value(parser_state* state, const numeric& value, const ptree* type) {
     for (ptree* member : type->members) {
         // Match if name is equal or numeric value is equal
         bool is_enum = value.kind() == STRING_KIND && member->name == value.val.str();
@@ -282,7 +282,7 @@ numeric lookup_member_value(const numeric& value, const ptree* type) {
             return num;
         }
     }
-    ERR << "invalid enum value";
+    state->error() << "invalid parent type in node " << type;
     return value;
 }
 
@@ -599,7 +599,7 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
     }
     type = base_type_of(type);
     if (type->kind == N_ENUM && value.kind() != PTREE_KIND) {
-        value = lookup_member_value(value, type);
+        value = lookup_member_value(state, value, type);
     } else if (type->kind == N_STRING) {
         value = *expr_convert(state, &value, STRING_KIND);
     } else if (value.kind() != PTREE_KIND) {
@@ -612,17 +612,20 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
         } else if (type->kind == N_MAP) {
             for (ptree* pair : value.val.node()->members) {
                 if (pair->value.kind() != PTREE_KIND || !pair->value.val.node()->members) {
-                    ERR << "Missing key value in map initializer. Expected {key, elem} pair";
+                    state->error()
+                        << "Missing key value in map initializer. Expected {key, elem} pair";
                     return;
                 }
                 ptree* key = pair->value.val.node()->members;
                 ptree* elem = key->next;
                 if (!elem) {
-                    ERR << "Missing element value in map initializer. Expected {key, elem} pair";
+                    state->error()
+                        << "Missing element value in map initializer. Expected {key, elem} pair";
                     return;
                 }
                 if (elem->next) {
-                    ERR << "Too many values in map initializer. Expected {key, elem} pair";
+                    state->error()
+                        << "Too many values in map initializer. Expected {key, elem} pair";
                     return;
                 }
                 key->type = type->key_type;
@@ -641,8 +644,8 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
             ptree* value_elem = value.val.node()->members;
             value_elem = update_value_type_struct_rec(state, type, value_elem);
             if (value_elem != nullptr) {
-                ERR << "Too many values supplied for type \"" << idl_scoped_name(type, nullptr)
-                    << "\"";
+                state->error() << "Too many values supplied for type \""
+                               << idl_scoped_name(type, nullptr) << "\"";
             }
         }
     }
@@ -667,7 +670,7 @@ ptree* update_value_type_struct_rec(parser_state* state, const ptree* type, ptre
         value_elem = value_elem->next;
     }
     if (type_elem != nullptr) {
-        ERR << "Not enough values supplied for type \"" << idl_scoped_name(type, nullptr) << "\"";
+        state->error() << "Not enough values supplied for type \"" << type << "\"";
     }
     return value_elem;
 }
@@ -692,8 +695,8 @@ void update_value_type_array_rec(
             sub_arrays++;
         }
         if (sub_arrays != bound) {
-            ERR << "Expected " << bound << " subarray" << (bound > 1U ? "s" : "") << ", but got "
-                << sub_arrays;
+            state->error() << "Expected " << bound << " subarray" << (bound > 1U ? "s" : "")
+                           << ", but got " << sub_arrays;
         }
     } else {  // base element
         unsigned long members = 0UL;
@@ -703,8 +706,8 @@ void update_value_type_array_rec(
             members++;
         }
         if (members != bound) {
-            ERR << "Expected " << bound << ' ' << array->element_type << (bound > 1U ? "s" : "")
-                << " in array, but got " << members;
+            state->error() << "Expected " << bound << ' ' << array->element_type
+                           << (bound > 1U ? "s" : "") << " in array, but got " << members;
         }
     }
 }
@@ -1024,13 +1027,14 @@ declarator* create_decl(parser_state* state, identifier ident, ptree* annotation
 int register_node(parser_state* state, ptree* p) {
     std::string lc_name = lc_scoped_name(p);
     if (state->type_map.find(lc_name) != state->type_map.end()) {
-        ERR << "duplicate registration of name \"" << idl_scoped_name(p, nullptr) << "\"";
+        state->error() << "duplicate registration of name \"" << idl_scoped_name(p, nullptr)
+                       << "\"";
         return false;
     }
     if (state->type_dcl_map.find(lc_name) != state->type_dcl_map.end() &&
         state->type_dcl_map[lc_name]->kind != p->kind) {
-        ERR << "inconsistent kind for previously declared type \"" << idl_scoped_name(p, nullptr)
-            << "\" ";
+        state->error() << "inconsistent kind for previously declared type \""
+                       << idl_scoped_name(p, nullptr) << "\" ";
         return false;
     }
     state->type_map[lc_name] = p;
@@ -1052,7 +1056,7 @@ int register_node_dcl(parser_state* state, ptree* p) {
 ptree* lookup_node(parser_state* state, identifier ident) {
     ptree* type = try_lookup_node(state, ident.name, ANY_KIND);
     if (!type) {
-        ERR << "unknown node \"" << ident.name << "\"";
+        state->error() << "unknown node \"" << ident.name << "\"";
     }
     return type;
 }
@@ -1060,7 +1064,7 @@ ptree* lookup_node(parser_state* state, identifier ident) {
 ptree* lookup_type(parser_state* state, identifier ident) {
     ptree* type = try_lookup_node(state, ident.name, TYPE_KIND);
     if (!type) {
-        ERR << "unknown type \"" << ident.name << "\"";
+        state->error() << "unknown type \"" << ident.name << "\"";
     }
     return type;
 }
@@ -1219,7 +1223,7 @@ const numeric* lookup_value(parser_state* state, identifier ident) {
         n->val.str(ident.name);
         return n;
     }
-    ERR << "unknown value \"" << ident.name << "\"";
+    state->error() << "unknown value \"" << ident.name << "\"";
     return new_numeric(state, UNDEF_KIND);
 }
 
@@ -1239,16 +1243,17 @@ const numeric* create_value_node(parser_state* state, const numeric* value, ptre
     return num;
 }
 
-static void validate_const_value_type(identifier ident, const ptree* complex_value) {
+static void
+validate_const_value_type(parser_state* state, identifier ident, const ptree* complex_value) {
     for (const auto node : complex_value) {
         if (node->kind == N_CONST && node->value->_d() == PTREE_KIND) {
             auto val = node->value->node();
             if (!is_primitive(val) && val->kind != N_STRING && val->kind != N_CONST) {
-                ERR << "Cannot assign " << val << " of type " << val->kind << " to const "
-                    << ident.name;
+                state->error() << "Cannot assign " << val << " of type " << val->kind
+                               << " to const " << ident.name;
             }
         }
-        validate_const_value_type(ident, node->members);
+        validate_const_value_type(state, ident, node->members);
     }
 }
 
@@ -1271,7 +1276,7 @@ ptree* create_const_node(parser_state* state, declarator* decl, ptree* type, con
         p->flags |= OPT_DECLARATION;
     }
     if (num.kind() == PTREE_KIND) {
-        validate_const_value_type(ident, num->node());
+        validate_const_value_type(state, ident, num->node());
     }
     if (type && decl) {
         register_node(state, p);
@@ -1389,8 +1394,8 @@ ptree* create_struct_start(parser_state* state, identifier ident, ptree* parent)
 
     auto type = create_context_node(state, N_STRUCT, ident, parents);
     if (parent && (parent->flags & OPT_DECLARATION) != 0) {
-        ERR << "Structs can only inherit from previously defined types. Type " << type
-            << " inherits from " << parent << " which has only been declared";
+        state->error() << "Structs can only inherit from previously defined types. Type " << type
+                       << " inherits from " << parent << " which has only been declared";
     }
     return type;
 }
@@ -1430,7 +1435,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                 // default:
                 if (c->flags & OPT_DEFAULT) {
                     if (default_case) {
-                        ERR << "union has multiple default cases";
+                        state->error() << "union has multiple default cases";
                     }
                     default_case = c;
                     default_label_group = label_group;
@@ -1440,12 +1445,12 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                 // case:
                 prev_case = c;
                 if (c->type->kind == N_ENUM && c->value.kind() != PTREE_KIND) {
-                    c->value = lookup_member_value(c->value, discriminator->type);
+                    c->value = lookup_member_value(state, c->value, discriminator->type);
                 }
                 if (c->value.kind() != PTREE_KIND) {
                     c->value = *expr_convert(state, &c->value, c->type->value.kind());
                 } else if (base_type_of(c->value.val.node()->type) != base_type_of(c->type)) {
-                    ERR << fmt::format(
+                    state->error() << fmt::format(
                         "union case type ({}) differs from union's discriminator type ({})",
                         idl_scoped_name(c->value.val.node()->type, nullptr),
                         idl_scoped_name(c->type, nullptr)
@@ -1565,7 +1570,7 @@ create_member(parser_state* state, declarator* declarators, ptree* type, ptree* 
             declarators = declarators->next;
         }
     } else {
-        ERR << "unknown type for member " << declarators->ident.name;
+        state->error() << "unknown type for member " << declarators->ident.name;
     }
     return res;
 }
@@ -1773,7 +1778,7 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                 ann->members->value = ann->value;
             }
             if (ann->type == annotation_type_merge && base_type_of(node)->kind != N_STRUCT) {
-                ERR << "@merge on non struct " << node << " is not allowed";
+                state->error() << "@merge on non struct " << node << " is not allowed";
             }
             ann->super = ann->scope = node;
             ann = ann->next;
@@ -2260,7 +2265,7 @@ declarator* append_array_size(parser_state* state, declarator* decl, const numer
         decl = create_decl(state, create_identifier(state, nullptr), nullptr);
     }
     if (integer_value(*value) <= 0) {
-        ERR << "Invalid array index";
+        state->error() << "Invalid array index";
         return decl;
     }
     decl->bounds.push_back(*value);
@@ -2272,7 +2277,7 @@ declarator* set_array_bounds(parser_state* state, declarator* decl, declarator* 
     return decl;
 }
 
-void validate_node(ptree* node) {
+void validate_node(parser_state* state, ptree* node) {
     node_kind has_members[] = {
         N_MODULE,
         N_INCLUDE,
@@ -2303,73 +2308,76 @@ void validate_node(ptree* node) {
 
         // All nodes have names
         if (node->name.empty()) {
-            ERR << "Unnamed node in scope " << node->super;
+            state->error() << "Unnamed node in scope " << node->super;
         }
 
         // If node has members, it must be a type with members
         if (node->members && !is_of_type(node, has_members)) {
-            ERR << "Unexpected members in node " << node << " with kind " << node->kind;
+            state->error() << "Unexpected members in node " << node << " with kind " << node->kind;
         }
 
         // Only nodes with subtype shall have an element type, and they must have one
         if (node->element_type && !is_of_type(node, has_subtype)) {
-            ERR << "Unexpected element type in node " << node << " with kind " << node->kind;
+            state->error() << "Unexpected element type in node " << node << " with kind "
+                           << node->kind;
         } else if (!node->element_type && is_of_type(node, has_subtype)) {
-            ERR << "Missing element type in node " << node << " with kind " << node->kind;
+            state->error() << "Missing element type in node " << node << " with kind "
+                           << node->kind;
         }
 
         // Only declarable nodes can have a declaration
         if ((node->flags & OPT_DECLARATION) && !is_of_type(node, can_declare)) {
-            ERR << "Unexpected declaration of " << node << " with kind " << node->kind;
+            state->error() << "Unexpected declaration of " << node << " with kind " << node->kind;
         }
 
         if (node->type) {
             // All types have names
             if (node->type->name.empty()) {
-                ERR << "Unnamed type for node " << node;
+                state->error() << "Unnamed type for node " << node;
             }
 
             // Declarations points to their definition through type.
             if (!is_of_type(node, has_type) && !(node->flags & OPT_DECLARATION)) {
-                ERR << "Unexpected type in node " << node << " with kind " << node->kind;
+                state->error() << "Unexpected type in node " << node << " with kind " << node->kind;
             }
 
             // Type shall never point to a declaration
             if (node->type->flags & OPT_DECLARATION) {
-                ERR << "Type " << node->type << " for node " << node << " with kind " << node->kind
-                    << " only declared, not defined";
+                state->error() << "Type " << node->type << " for node " << node << " with kind "
+                               << node->kind << " only declared, not defined";
             }
 
             // Some kinds (such as include and module) cannot be a type
             if (is_of_type(node->type, illegal_types)) {
-                ERR << "Type " << node->type << " with kind " << node->type->kind << " for node "
-                    << node << " with kind " << node->kind << " is not a legal type kind";
+                state->error() << "Type " << node->type << " with kind " << node->type->kind
+                               << " for node " << node << " with kind " << node->kind
+                               << " is not a legal type kind";
             }
         }
         // Prototypes may have a null (return) type, others must have a non-null type
         else if (is_of_type(node, has_type) && node->kind != N_PROTOTYPE) {
-            ERR << "Missing type in node " << node << " with kind " << node->kind;
+            state->error() << "Missing type in node " << node << " with kind " << node->kind;
         }
 
         // Members must be scoped inside a node that can hold members
         if (is_of_type(node, is_member) && !is_of_type(node->super, has_members)) {
-            ERR << "Unexpected scope " << node->super << " for member " << node;
+            state->error() << "Unexpected scope " << node->super << " for member " << node;
         }
 
         // Anonymous structs or unions are not supported
         if (is_anonymous(node)) {
-            ERR << "Anonymous structs and unions are not supported";
+            state->error() << "Anonymous structs and unions are not supported";
         }
 
         if (is_key_member(node)) {
             // Keys cannot be optional
             if (is_optional(node)) {
-                ERR << "Optional members cannot be used as keys";
+                state->error() << "Optional members cannot be used as keys";
             }
 
             // Disallow using merged members as keys
             if (is_merged(node)) {
-                ERR << "Merged members cannot be used as keys";
+                state->error() << "Merged members cannot be used as keys";
             }
         }
 
@@ -2386,15 +2394,18 @@ void validate_node(ptree* node) {
             }
             if (has_all_type_values(node->discriminator->type, case_values) &&
                 has_default_case(node)) {
-                ERR << "Default labels are not allowed when all possible discriminator values are "
-                       "covered in union "
-                    << node;
+                state->error(
+                ) << "Default labels are not allowed when all possible discriminator values are "
+                     "covered in union "
+                  << node;
             }
 
             // Discirminators may not be annotated with @id or @hashid
             if (get_annotation(node->discriminator, annotation_type_id) ||
                 get_annotation(node->discriminator, annotation_type_hashid)) {
-                ERR << "Discriminators cannot be annotated with @id or @hashid for union " << node;
+                state->error(
+                ) << "Discriminators cannot be annotated with @id or @hashid for union "
+                  << node;
             }
         }
 
@@ -2403,13 +2414,13 @@ void validate_node(ptree* node) {
             if (!(node->flags & OPT_DECLARATION) &&
                 (node->value.kind() == UNDEF_KIND ||
                  (node->value.kind() == PTREE_KIND && node->value.val.node() == nullptr))) {
-                ERR << "Undefined constant value " << node;
+                state->error() << "Undefined constant value " << node;
             }
             // Bounded type must not exceed bound
             if (!base_type->bounds.empty()) {
                 unsigned long bound = unsigned_value(base_type->bounds.back());
                 if (value_len(node) > bound) {
-                    ERR << "Value for " << node << " exceeds bound of " << bound;
+                    state->error() << "Value for " << node << " exceeds bound of " << bound;
                 }
             }
         }
@@ -2417,32 +2428,33 @@ void validate_node(ptree* node) {
         // All annotations must be N_ANNOTATION
         for (auto ann : node->annotations) {
             if (ann->kind != N_ANNOTATION) {
-                ERR << "Illegal annotation " << ann << " on node " << node;
+                state->error() << "Illegal annotation " << ann << " on node " << node;
             }
         }
 
         // All exceptions must be of N_EXCEPTION kind
         for (auto except = node->getraises.begin(); except != node->getraises.end(); ++except) {
             if ((*except)->kind != N_EXCEPTION) {
-                ERR << "Illegal exception " << (*except) << " on node " << node;
+                state->error() << "Illegal exception " << (*except) << " on node " << node;
             }
         }
         for (auto except = node->setraises.begin(); except != node->setraises.end(); ++except) {
             if ((*except)->kind != N_EXCEPTION) {
-                ERR << "Illegal exception " << (*except) << " on node " << node;
+                state->error() << "Illegal exception " << (*except) << " on node " << node;
             }
         }
         for (auto parent = node->parents.begin(); parent != node->parents.end(); ++parent) {
             // All parents must be of same kind as child
             if ((*parent)->kind != node->kind) {
-                ERR << "Illegal parent " << (*parent) << " for node " << node;
+                state->error() << "Illegal parent " << (*parent) << " for node " << node;
             }
 
             // All parents must have the same extensibility
             if (get_extensibility(*parent) != get_extensibility(node)) {
-                ERR << "Illegal extensibility on " << (*parent) << " for node " << node
-                    << ": derived types may not differ in extensibility. Parent is "
-                    << get_extensibility(*parent) << ", child is " << get_extensibility(node);
+                state->error() << "Illegal extensibility on " << (*parent) << " for node " << node
+                               << ": derived types may not differ in extensibility. Parent is "
+                               << get_extensibility(*parent) << ", child is "
+                               << get_extensibility(node);
             }
         }
 
@@ -2450,15 +2462,15 @@ void validate_node(ptree* node) {
         if (!node->parents.empty()) {
             for (auto member : node->members) {
                 if (is_key_member(member)) {
-                    ERR << "Derived types may not define any key fields: field " << member
-                        << " in node " << node;
+                    state->error() << "Derived types may not define any key fields: field "
+                                   << member << " in node " << node;
                 }
             }
         }
 
-        validate_node(node->type);
-        validate_node(node->key_type);
-        validate_node(node->element_type);
+        validate_node(state, node->type);
+        validate_node(state, node->key_type);
+        validate_node(state, node->element_type);
     }
 }
 
@@ -2487,17 +2499,17 @@ void validate_tree(parser_state* state, ptree* node) {
     while (node) {
         // Node found in traversal must be one of the valid tree types
         if (!is_of_type(node, tree_types)) {
-            ERR << "Unexpected node " << node << " of type " << node->kind << " in tree";
+            state->error() << "Unexpected node " << node << " of type " << node->kind << " in tree";
         }
 
-        validate_node(node);
+        validate_node(state, node);
 
         // validate node's original_members that are not in node's members
         for (ptree* original_member : node->original_members) {
             if (is_merged(original_member) &&
                 std::find(begin(node->members), end(node->members), original_member) ==
                     end(node->members)) {
-                validate_node(original_member);
+                validate_node(state, original_member);
             }
         }
         validate_tree(state, node->members);
@@ -2528,4 +2540,8 @@ void format_doxy_comments(parser_state* state, ptree* tree) {
 ptree* parser_state::lookup_node(const char* a_name) const {
     auto it = type_map.find(std::string("::") + tolower(a_name));
     return it != type_map.end() ? it->second : nullptr;
+}
+
+parser_state::error_stream parser_state::error() {
+    return parser_state::error_stream(this);
 }

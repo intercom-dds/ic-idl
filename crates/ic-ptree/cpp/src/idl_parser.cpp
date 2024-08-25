@@ -301,7 +301,7 @@ static void init_parser_state(const std::shared_ptr<parser_state>& state) {
     *state = *s_initial_state;
 }
 
-static void update_incomplete_type(struct ptree* node, struct ptree*& type) {
+static void update_incomplete_type(parser_state* state, struct ptree* node, struct ptree*& type) {
     if (type) {
         if (type->flags & OPT_DECLARATION) {
             if (type->type) {
@@ -311,19 +311,19 @@ static void update_incomplete_type(struct ptree* node, struct ptree*& type) {
                 std::stringstream stream;
                 stream << "type \"" << type->name << "\" declared only (as \"" << node->name
                        << "\")";
-                ERR << stream.str().c_str();
+                state->error() << stream.str().c_str();
             }
         }
-        update_incomplete_type(node, type->type);
-        update_incomplete_type(node, type->element_type);
-        update_incomplete_type(node, type->key_type);
+        update_incomplete_type(state, node, type->type);
+        update_incomplete_type(state, node, type->element_type);
+        update_incomplete_type(state, node, type->key_type);
     }
 }
 
-static void resolve_incomplete_types(struct ptree* node) {
+static void resolve_incomplete_types(parser_state* state, struct ptree* node) {
     while (node) {
-        update_incomplete_type(node, node->type);
-        resolve_incomplete_types(node->members);
+        update_incomplete_type(state, node, node->type);
+        resolve_incomplete_types(state, node->members);
         node = node->next;
     }
 }
@@ -430,7 +430,7 @@ static void register_inherited_nodes(parser_state* state, ptree* node) {
 }
 
 static parse_result get_parse_result(parser_state* state) {
-    resolve_incomplete_types(state->top_level.next);
+    resolve_incomplete_types(state, state->top_level.next);
     state->top_level.next = prune_annotations(state->top_level.next);
     format_doxy_comments(state, state->top_level.next);
     generate_code(state, state->top_level.next);

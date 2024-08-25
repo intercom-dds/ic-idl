@@ -288,18 +288,22 @@ struct ptree* create_doc(struct parser_state*, struct identifier ident, int post
 #ifdef __cplusplus
 }
 
-#  include <iostream>
 #  include <list>
 #  include <map>
 #  include <memory>
 #  include <set>
+#  include <sstream>
 #  include <string>
 #  include <vector>
 
 #  include "cidl/ptree.h"
+#  include "cidl/symbols.h"
 
 extern "C" struct parser_state {
+    struct error_stream;  // NOLINT
+
     ptree* lookup_node(const char* name) const;
+    error_stream error();
 
     long long enum_counter{0};
     std::vector<std::vector<ptree*>> context;
@@ -311,9 +315,34 @@ extern "C" struct parser_state {
     std::set<std::string> symbol_map;
     std::list<numeric> numeric_map;
     std::string current_input_file;
+    std::vector<std::string> errors;
     ptree top_level;
 };
 
-#  define ERR std::cerr
+struct parser_state::error_stream {
+    explicit error_stream(parser_state* parent) : m_parent(parent) {
+        m_index = parent->errors.size();
+        parent->errors.emplace_back();
+    }
+
+    ~error_stream() {
+        m_parent->errors[m_index] = m_stream.str();
+    }
+
+    template <typename T>
+    error_stream& operator<<(const T& src) {
+        m_stream << src;
+        return *this;
+    }
+
+    error_stream& operator<<(const ptree* node) {
+        m_stream << intercom::cidl::idl_scoped_name(node, nullptr);
+        return *this;
+    }
+
+    parser_state* m_parent;
+    size_t m_index;
+    std::stringstream m_stream;
+};
 
 #endif

@@ -191,8 +191,9 @@ inline void CdrWriter::reserve<uint16_t>(uint32_t a_count) {
 
 template <>
 inline void CdrWriter::reserve<uint32_t>(uint32_t a_count) {
-    uint32_t to_pad = (sizeof(uint32_t) - (m_buffer.write_index() - align_base()) % sizeof(uint32_t)) %
-                      sizeof(uint32_t);
+    uint32_t to_pad =
+        (sizeof(uint32_t) - (m_buffer.write_index() - align_base()) % sizeof(uint32_t)) %
+        sizeof(uint32_t);
     uint32_t totalLength = a_count * sizeof(uint32_t) + to_pad + m_buffer.write_index();
     if (totalLength > m_buffer.length()) {
         m_buffer.reserve_write(totalLength - m_buffer.write_index());
@@ -857,7 +858,8 @@ inline bool CdrReader::begin_optional_member(const MemberInfo& a_member) {
     return false;
 }
 
-inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
+inline void
+CdrReader::read_param_header_v1(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
     reserve<uint32_t>(1);
     uint16_t header[2];
     read_values(header, 2);
@@ -884,7 +886,8 @@ inline void CdrReader::read_param_header_v1(xtypes::MemberId& id, uint32_t& flag
     }
 }
 
-inline void CdrReader::read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
+inline void
+CdrReader::read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
     read_values(&id, 1);
     flag = 0;
     flag |= (id & (1 << 31)) ? xtypes::IS_MUST_UNDERSTAND : 0;

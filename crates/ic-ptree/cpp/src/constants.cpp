@@ -412,7 +412,7 @@ const numeric* expr_unary(parser_state* state, char op, const numeric* v) {
         break;
     }
     if (res->kind() == UNDEF_KIND) {
-        ERR << "Invalid unary operator";
+        state->error() << "Invalid unary operator";
     }
     if (numeric_base(*v) != 0) {
         res->base = numeric_base(*v);
@@ -475,7 +475,7 @@ const numeric* expr_binary(parser_state* state, char op, const numeric* v1, cons
     }
 
     if (res->kind() == UNDEF_KIND) {
-        ERR << "Invalid binary operator";
+        state->error() << "Invalid binary operator";
     }
     if (numeric_base(*v1) == numeric_base(*v2) && numeric_base(*v1) != 0) {
         res->base = numeric_base(*v1);

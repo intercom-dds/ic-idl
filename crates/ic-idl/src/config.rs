@@ -77,10 +77,6 @@ pub struct Options {
     #[option(long)]
     pub ignore_comments: bool,
 
-    /// Do not rename generated types
-    #[option(long)]
-    pub no_rename: bool,
-
     /// Enable a warning, see `-W help` for details
     #[option(short = 'W', arg = "lint")]
     pub warn: Warnings,
@@ -98,6 +94,9 @@ pub struct Options {
 
     // #[section = "c++ options"]
     pub cpp: CppOptions,
+
+    // #[section = "rust options"]
+    pub rust: CppOptions,
 
     // #[section = "backends"]
     pub codegen: CodegenOptions,
@@ -136,6 +135,17 @@ pub struct CppOptions {
     /// Add a filename prefix to generated files
     #[option(long, arg = "prefix")]
     pub file_prefix: Option<String>,
+}
+
+#[derive(Command, Default)]
+pub struct RustOptions {
+    /// Do not rename generated types
+    #[option(long)]
+    pub no_rename: bool,
+
+    /// Annotate all generated with `#[must_use]`
+    #[option(long)]
+    pub must_use: bool,
 }
 
 #[derive(Command, Default)]

@@ -31,8 +31,8 @@ use crate::{
     AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Attribute, Binary,
     Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator,
     ExceptDef, Expr, Field, Ident, InitList, InterfaceDef, InterfaceMember, Item, ItemKind, Label,
-    Literal, ModuleDef, Param, Prototype, Span, StructDef, Type, Unary, UnionDef, UnionElement,
-    UnionField, UnionMember, UnionNull, ValuetypeDef,
+    Literal, ModuleDef, Param, Path, Prototype, Span, StructDef, Type, Unary, UnionDef,
+    UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -140,7 +140,7 @@ pub trait Visitor<'a> {
             Expr::Binary(v) => self.visit_expr_binary(v),
             Expr::Literal(v) => self.visit_literal(v),
             Expr::InitList(v) => self.visit_expr_init_list(v),
-            Expr::Path(_) => todo!(),
+            Expr::Path(v) => self.visit_path(v),
         }
     }
 
@@ -153,6 +153,10 @@ pub trait Visitor<'a> {
     fn visit_decl(&mut self, decl: &'a Decl) {}
 
     fn visit_ident(&mut self, ident: &'a Ident) {}
+
+    fn visit_path(&mut self, path: &'a Path) {
+        visit_path(self, path);
+    }
 
     fn visit_type(&mut self, ident: &'a Type) {}
 
@@ -389,6 +393,15 @@ where
     // for decl in &def.decl {
     //     visitor.visit_decl(decl);
     // }
+}
+
+pub fn visit_path<'a, V>(visitor: &mut V, path: &'a Path)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for p in &path.segments {
+        visitor.visit_ident(p);
+    }
 }
 
 pub trait Visit {

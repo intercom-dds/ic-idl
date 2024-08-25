@@ -704,7 +704,6 @@ fn enum_dcl() -> impl IdlParser<Item> {
     let enumerators = enumerator()
         .annotated()
         .separated_by(just(Kind::Comma))
-        .allow_trailing()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
     let def = just(Kind::Enum)

@@ -203,9 +203,6 @@ extern "C" {
     ) -> *const numeric;
 }
 extern "C" {
-    pub static mut current_input_file: *const ::std::os::raw::c_char;
-}
-extern "C" {
     pub static mut boolean_type: ptree;
 }
 extern "C" {
@@ -777,13 +774,13 @@ extern "C" {
         arg1: *mut parser_state,
         ident: identifier,
         fields: *mut ptree,
-        type_: *mut ptree,
+        parent: *mut ptree,
     ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_bitfield(
         arg1: *mut parser_state,
-        declarators: *mut declarator,
+        ident: identifier,
         bits: *const numeric,
         type_: *mut ptree,
     ) -> *mut ptree;

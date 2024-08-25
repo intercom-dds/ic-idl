@@ -28,15 +28,19 @@
 #![allow(clippy::cast_possible_wrap, clippy::too_many_lines)]
 
 use std::ffi::{self, CString};
+use std::ptr;
 
 use ic_syntax::{
     AnnotationField, DeclKind, Declarator, Expr, Field, InterfaceMember, Item, Label, LiteralValue,
     Op, OpKind, Param, ParamKind, Path, Type, UnionElement,
 };
 
-use crate::sys::{self, ptree};
+use crate::sys;
 
 const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
+
+#[allow(unused_unsafe)]
+static mut NUM_UNDEF: *const sys::numeric = unsafe { ptr::addr_of!(sys::num_undef) };
 
 fn op_kind(op: Op) -> ffi::c_char {
     let c = match op.kind {
@@ -74,6 +78,11 @@ fn path_str(path: &Path) -> String {
     str.join("")
 }
 
+fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {
+    path.as_ref()
+        .map_or(ptr::null_mut(), |p| lower_path(state, p))
+}
+
 unsafe fn create_ident(state: *mut sys::parser_state, name: &str) -> sys::identifier {
     let name = CString::new(name).unwrap();
     sys::create_identifier(state, name.as_ptr())
@@ -82,16 +91,16 @@ unsafe fn create_ident(state: *mut sys::parser_state, name: &str) -> sys::identi
 unsafe fn create_decl(
     state: *mut sys::parser_state,
     name: &Declarator,
-    _annotations: *mut ptree,
+    _annotations: *mut sys::ptree,
 ) -> *mut sys::declarator {
     match name {
         Declarator::Simple(v) => {
             let ident = create_ident(state, &v.name);
-            sys::create_decl(state, ident, std::ptr::null_mut())
+            sys::create_decl(state, ident, ptr::null_mut())
         }
         Declarator::Array(v) => {
             let ident = create_ident(state, &v.ident.name);
-            let mut decl = sys::create_decl(state, ident, std::ptr::null_mut());
+            let mut decl = sys::create_decl(state, ident, ptr::null_mut());
             for bound in &v.bounds {
                 let expr = lower_expr(state, bound);
                 decl = sys::append_array_size(state, decl, expr);
@@ -104,9 +113,9 @@ unsafe fn create_decl(
 unsafe fn create_decl_list(
     state: *mut sys::parser_state,
     names: &[Declarator],
-    annotations: *mut ptree,
+    annotations: *mut sys::ptree,
 ) -> *mut sys::declarator {
-    let mut list = std::ptr::null_mut();
+    let mut list = ptr::null_mut();
     for name in names {
         let decl = create_decl(state, name, annotations);
         list = sys::append_decl(list, decl);
@@ -114,23 +123,20 @@ unsafe fn create_decl_list(
     list
 }
 
-unsafe fn lower_item_list(state: *mut sys::parser_state, items: &[Item]) -> *mut ptree {
+unsafe fn lower_item_list(state: *mut sys::parser_state, items: &[Item]) -> *mut sys::ptree {
     // TODO: we need to add info about includes
     collect_with(state, sys::append_node, items, |v| unsafe {
         lower_item(state, v)
     })
 }
 
-unsafe fn lower_ty(state: *mut sys::parser_state, ty: &Type) -> *mut ptree {
+unsafe fn lower_ty(state: *mut sys::parser_state, ty: &Type) -> *mut sys::ptree {
     match ty {
-        Type::Any(_) => std::ptr::addr_of_mut!(sys::any_type),
-        Type::Fixed(_) => std::ptr::addr_of_mut!(sys::fixed_type),
+        Type::Any(_) => ptr::addr_of_mut!(sys::any_type),
+        Type::Fixed(_) => ptr::addr_of_mut!(sys::fixed_type),
         Type::Sequence(v) => {
             let ty = lower_ty(state, &v.ty);
-            let bound = v
-                .bound
-                .as_ref()
-                .map_or(std::ptr::null(), |e| lower_expr(state, e));
+            let bound = v.bound.as_ref().map_or(NUM_UNDEF, |e| lower_expr(state, e));
             sys::create_sequence(state, ty, bound)
         }
         Type::String_(v) => match &v.bound {
@@ -142,22 +148,16 @@ unsafe fn lower_ty(state: *mut sys::parser_state, ty: &Type) -> *mut ptree {
                     sys::create_string(state, bound)
                 }
             }
-            None if v.wide => std::ptr::addr_of_mut!(sys::unbounded_wstring_type),
-            None => std::ptr::addr_of_mut!(sys::unbounded_string_type),
+            None if v.wide => ptr::addr_of_mut!(sys::unbounded_wstring_type),
+            None => ptr::addr_of_mut!(sys::unbounded_string_type),
         },
         Type::Map(v) => {
             let key = lower_ty(state, &v.key);
             let elem = lower_ty(state, &v.value);
-            let bound = v
-                .bound
-                .as_ref()
-                .map_or(std::ptr::null(), |e| lower_expr(state, e));
+            let bound = v.bound.as_ref().map_or(NUM_UNDEF, |e| lower_expr(state, e));
             sys::create_map(state, key, elem, bound)
         }
-        Type::Path(v) => {
-            let ident = create_ident(state, &path_str(v));
-            sys::lookup_type(state, ident)
-        }
+        Type::Path(v) => lower_path(state, v),
     }
 }
 
@@ -192,42 +192,52 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
             )
         }
         Expr::InitList(v) => {
-            let mut list = std::ptr::null_mut();
+            let mut list = ptr::null_mut();
             for expr in &v.values {
-                let declarator = expr.ident.as_ref().map_or(std::ptr::null_mut(), |ident| {
+                let declarator = expr.ident.as_ref().map_or(ptr::null_mut(), |ident| {
                     let ident = create_ident(state, &ident.name);
-                    sys::create_decl(state, ident, std::ptr::null_mut())
+                    sys::create_decl(state, ident, ptr::null_mut())
                 });
 
                 let val = sys::create_const_node(
                     state,
                     declarator,
-                    std::ptr::null_mut(),
+                    ptr::null_mut(),
                     lower_expr(state, &expr.value),
                 );
                 list = sys::append_node(state, list, val);
             }
-            sys::create_value_node(state, std::ptr::addr_of_mut!(sys::num_undef), list)
+            sys::create_value_node(state, NUM_UNDEF, list)
         }
     }
 }
 
-fn lower_field(state: *mut sys::parser_state, field: &Field) -> *mut ptree {
+fn lower_path(state: *mut sys::parser_state, path: &Path) -> *mut sys::ptree {
     unsafe {
-        let ty = lower_ty(state, &field.ty);
-        let decls = create_decl_list(state, &field.names, std::ptr::null_mut());
-        sys::create_member(state, decls, ty, std::ptr::null_mut())
+        let ident = create_ident(state, &path_str(path));
+        sys::lookup_type(state, ident)
     }
 }
 
-fn lower_interface_member(state: *mut sys::parser_state, member: &InterfaceMember) -> *mut ptree {
+fn lower_field(state: *mut sys::parser_state, field: &Field) -> *mut sys::ptree {
+    unsafe {
+        let ty = lower_ty(state, &field.ty);
+        let decls = create_decl_list(state, &field.names, ptr::null_mut());
+        sys::create_member(state, decls, ty, ptr::null_mut())
+    }
+}
+
+fn lower_interface_member(
+    state: *mut sys::parser_state,
+    member: &InterfaceMember,
+) -> *mut sys::ptree {
     unsafe {
         let param = |param: &Param| {
             let ty = lower_ty(state, &param.ty);
             let kind = param_kind(param.kind);
             let decl = {
                 let ident = create_ident(state, &param.ident.name);
-                sys::create_decl(state, ident, std::ptr::null_mut())
+                sys::create_decl(state, ident, ptr::null_mut())
             };
             sys::create_param_dcl(state, decl, ty, kind)
         };
@@ -237,20 +247,14 @@ fn lower_interface_member(state: *mut sys::parser_state, member: &InterfaceMembe
             InterfaceMember::Proto(v) => {
                 let ident = create_ident(state, &v.ident.name);
                 let params = collect_with(state, sys::append_node, &v.params, param);
-                sys::create_interface_op(
-                    state,
-                    ident,
-                    params,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                )
+                sys::create_interface_op(state, ident, params, ptr::null_mut(), ptr::null_mut())
             }
             InterfaceMember::Item(v) => lower_item(state, v),
         }
     }
 }
 
-unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
+unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::ptree {
     match item {
         Item::AnnotationValue(v) => {
             let ident = create_ident(state, &v.ident.name);
@@ -270,7 +274,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
         Item::StructValue(v) => {
             // TODO: parent
             let ident = create_ident(state, &v.ident.name);
-            sys::create_struct_start(state, ident, std::ptr::null_mut());
+            sys::create_struct_start(state, ident, ptr::null_mut());
             let members = collect_with(state, sys::append_node, &v.members, |v| {
                 lower_field(state, v)
             });
@@ -290,7 +294,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
                 let expr = field
                     .value
                     .as_ref()
-                    .map_or(std::ptr::null(), |v| lower_expr(state, v));
+                    .map_or(NUM_UNDEF, |v| lower_expr(state, v));
                 sys::create_enum_value(state, ident, expr)
             });
 
@@ -303,7 +307,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
                 let expr = bit
                     .value
                     .as_ref()
-                    .map_or(std::ptr::null(), |v| lower_expr(state, v));
+                    .map_or(NUM_UNDEF, |v| lower_expr(state, v));
 
                 sys::create_bitmask_value(state, ident, expr)
             });
@@ -313,13 +317,13 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
         }
         Item::ConstValue(v) => {
             let ty = lower_ty(state, &v.ty);
-            let decl = create_decl(state, &v.decl, std::ptr::null_mut());
+            let decl = create_decl(state, &v.decl, ptr::null_mut());
             let expr = lower_expr(state, &v.value);
             sys::create_const_node(state, decl, ty, expr)
         }
         Item::AliasValue(v) => {
             let ty = lower_ty(state, &v.ty);
-            let decls = create_decl_list(state, &v.decl, std::ptr::null_mut());
+            let decls = create_decl_list(state, &v.decl, ptr::null_mut());
             sys::create_type(state, decls, ty)
         }
         Item::DeclValue(v) => {
@@ -334,12 +338,18 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
         }
         Item::BitsetValue(v) => {
             let bitfields = collect_with(state, sys::append_node, &v.fields, |field| {
+                let ident = create_ident(state, &v.ident.name);
                 let size = lower_expr(state, &field.size);
-                sys::create_bitfield(state, std::ptr::null_mut(), size, std::ptr::null_mut())
+                let ty = field
+                    .ty
+                    .as_ref()
+                    .map_or(ptr::null_mut(), |v| lower_ty(state, v));
+                sys::create_bitfield(state, ident, size, ty)
             });
 
+            let parent = path_or_null(state, &v.parent);
             let ident = create_ident(state, &v.ident.name);
-            sys::create_bitset(state, ident, bitfields, std::ptr::null_mut())
+            sys::create_bitset(state, ident, bitfields, parent)
         }
         Item::InterfaceValue(v) => {
             // TODO: parents
@@ -347,7 +357,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
             sys::create_interface_start(
                 state,
                 ident,
-                std::ptr::null_mut(),
+                ptr::null_mut(),
                 ffi::c_int::from(v.local.is_some()),
             );
             sys::create_interface_finish(
@@ -373,45 +383,52 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut ptree {
                 let mem = match &var.field {
                     UnionElement::Member(v) => {
                         let ty = lower_ty(state, &v.ty);
-                        let decl = create_decl(state, &v.decl, std::ptr::null_mut());
-                        sys::create_member(state, decl, ty, std::ptr::null_mut())
+                        let decl = create_decl(state, &v.decl, ptr::null_mut());
+                        sys::create_member(state, decl, ty, ptr::null_mut())
                     }
                     UnionElement::Null(_) => sys::create_null_node(state),
                 };
 
                 let labels =
                     collect_with(state, sys::append_node, &var.labels, |v| label(state, v));
-                sys::create_union_member(state, mem, labels, std::ptr::null_mut())
+                sys::create_union_member(state, mem, labels, ptr::null_mut())
             });
 
-            let decl = sys::create_decl(state, create_ident(state, "_d"), std::ptr::null_mut());
-            let disc = sys::create_member(
-                state,
-                decl,
-                lower_ty(state, &v.disc.ty),
-                std::ptr::null_mut(),
-            );
+            let decl = sys::create_decl(state, create_ident(state, "_d"), ptr::null_mut());
+            let disc =
+                sys::create_member(state, decl, lower_ty(state, &v.disc.ty), ptr::null_mut());
             sys::create_union_finish(state, disc, members)
         }
-        Item::ValuetypeValue(_) => todo!(),
+        Item::ValuetypeValue(v) => {
+            let ident = create_ident(state, &v.ident.name);
+            let parent = path_or_null(state, &v.inherits);
+            let supports = path_or_null(state, &v.supports);
+            sys::create_valuetype_start(state, ident, parent, supports);
+            // TODO: members
+            sys::create_valuetype_finish(state, ptr::null_mut())
+        }
     }
 }
 
-type Appender = unsafe extern "C" fn(*mut sys::parser_state, *mut ptree, *mut ptree) -> *mut ptree;
+type Appender = unsafe extern "C" fn(
+    *mut sys::parser_state,
+    *mut sys::ptree,
+    *mut sys::ptree,
+) -> *mut sys::ptree;
 
 unsafe fn collect_with<I, C, T>(
     state: *mut sys::parser_state,
     appender: Appender,
     iter: I,
     cb: C,
-) -> *mut ptree
+) -> *mut sys::ptree
 where
     I: IntoIterator<Item = T>,
-    C: Fn(T) -> *mut ptree,
+    C: Fn(T) -> *mut sys::ptree,
 {
-    let mut list = std::ptr::null_mut();
+    let mut list = ptr::null_mut();
     unsafe {
-        for elem in iter.into_iter() {
+        for elem in iter {
             let node = cb(elem);
             list = appender(state, list, node);
         }
@@ -429,7 +446,10 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     lower_item_list(state, &builtin.tree);
 }
 
-pub extern "C" fn callback(state: *mut sys::parser_state, ptr: *mut ffi::c_void) -> *mut ptree {
+pub extern "C" fn callback(
+    state: *mut sys::parser_state,
+    ptr: *mut ffi::c_void,
+) -> *mut sys::ptree {
     let ast = ptr.cast::<&[Item]>();
     unsafe {
         inject_builtin(state);

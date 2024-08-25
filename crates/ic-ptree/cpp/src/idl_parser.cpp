@@ -289,11 +289,8 @@ std::map<std::string, ptree**> g_builtin_annotation_map = initialize_builtin_ann
 static void init_parser_state(const std::shared_ptr<parser_state>& state) {
     static auto s_initial_state = []() -> std::shared_ptr<parser_state> {
         auto initial = std::make_shared<parser_state>();
-        current_input_file = "";
-
-        // TODO(idarcar):
-        // scan_string(g_builtin_annotations);
         clear_namespace_nodes(initial.get());
+
         // Everything created up until this point is builtin types
         for (const auto& node : initial->allocated_nodes) {
             node->flags |= OPT_BUILTIN;
@@ -302,7 +299,6 @@ static void init_parser_state(const std::shared_ptr<parser_state>& state) {
         return initial;
     }();
     *state = *s_initial_state;
-    current_input_file = "";
 }
 
 static void update_incomplete_type(struct ptree* node, struct ptree*& type) {
@@ -347,7 +343,7 @@ static ptree* prune_annotations(struct ptree* node, struct ptree* super = nullpt
 
 static void generate_code(parser_state* state, struct ptree* node) {
     while (node) {
-        current_input_file = get_symbol(state, node->file_name.c_str());
+        state->current_input_file = node->file_name;
         state->include_context.push_back(node->included_from);
         push_context(state, node);
         generate_code(state, node->members);
@@ -721,7 +717,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     tree_includes(out.tree, out.includes);
 
     to_merge.clear();
-    current_input_file = "";
     return out;
 }
 

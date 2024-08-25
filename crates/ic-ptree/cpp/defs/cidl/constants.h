@@ -152,8 +152,6 @@ const struct numeric* expr_binary(
     const struct numeric* v2
 );
 
-extern const char* current_input_file;
-
 extern struct ptree boolean_type;
 extern struct ptree int8_type;
 extern struct ptree octet_type;

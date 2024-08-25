@@ -79,8 +79,6 @@ ptree create_string_node(const char* name, ptree* element_type) {
 extern "C" {
 node_kind ANY_KIND[] = {N_UNDEF};
 
-const char* current_input_file;
-
 ptree boolean_type = create_primitive_node("boolean", BOOLEAN_KIND);
 ptree int8_type = create_primitive_node("int8", INT8_KIND);
 ptree octet_type = create_primitive_node("uint8", OCTET_KIND);
@@ -432,7 +430,7 @@ ptree* create_node(parser_state* state, node_kind kind, identifier ident) {
     }
     p->super = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];
     p->scope = p->super;
-    p->file_name = current_input_file;
+    p->file_name = state->current_input_file;
     p->flags |= OPT_EMIT_CODE;
     if (!state->include_context.empty()) {
         p->included_from = state->include_context[state->include_context.size() - 1];

@@ -310,6 +310,7 @@ extern "C" struct parser_state {
     std::vector<std::shared_ptr<declarator>> allocated_decl;
     std::set<std::string> symbol_map;
     std::list<numeric> numeric_map;
+    std::string current_input_file;
     ptree top_level;
 };
 

@@ -444,7 +444,7 @@ static parse_result get_parse_result(parser_state* state) {
     validate_tree(state, state->top_level.next);
 
     if (state->top_level.next) {
-        state->top_level.next->state->numeric_map.clear();
+        state->numeric_map.clear();
     }
 
     parse_result result;
@@ -670,7 +670,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     // type map
     std::function<void(ptree*)> update_state_ptr = [&](ptree* tree) {
         for (auto node : tree) {
-            node->state = out.state.get();
             update_state_ptr(node->members);
             update_state_ptr(node->generated);
             update_state_ptr(node->original_members);

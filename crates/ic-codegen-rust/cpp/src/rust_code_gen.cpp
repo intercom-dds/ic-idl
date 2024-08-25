@@ -258,7 +258,7 @@ static std::ostream& cts_prefix(std::ostream& out) {
     return out;
 }
 
-std::string rust_name(const ptree* node) {
+std::string intercom::cidl::rust_name(const ptree* node) {
     switch (node->kind) {
     case N_PRIMITIVE:
     case N_SEQUENCE:
@@ -1552,7 +1552,7 @@ static void emit_crate(const ptree* node, P predicate) {
     emit_module(out.modules());
 }
 
-void code_gen_rust(const parse_result* result, const char* destination) {
+void intercom::cidl::code_gen_rust(const parse_result* result, const char* destination) {
     intercom::cidl::CommandLineOption::get_instance().rust_target_directory = destination;
     auto cloned = clone_tree(result);
     transform_rust(&cloned);

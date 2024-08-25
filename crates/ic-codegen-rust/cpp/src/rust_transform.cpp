@@ -121,12 +121,13 @@ static void flag_trivial_ord(ptree* node) {
 
 /// Removes duplicate modules and squashes them into one. This will also remove
 /// any non-emit modules from the tree.
-static ptree* squash_modules(ptree* node, std::map<std::string, ptree*>& modules) {
+static ptree*
+squash_modules(parser_state* state, ptree* node, std::map<std::string, ptree*>& modules) {
     ptree* list = node;
     while (node) {
         ptree* next = node->next;
         if (node->kind == N_MODULE && is_emit(node, LANG_RUST)) {
-            node->members = squash_modules(node->members, modules);
+            node->members = squash_modules(state, node->members, modules);
 
             auto it = modules.find(lc_scoped_name(node));
             if (it == modules.end() && node->members) {
@@ -140,7 +141,7 @@ static ptree* squash_modules(ptree* node, std::map<std::string, ptree*>& modules
                     next_mem = mem->next;
                     mem->next = nullptr;
                     mem->scope = mem->super = target;
-                    target->members = append_node(node->state, target->members, mem);
+                    target->members = append_node(state, target->members, mem);
                 }
             }
         }
@@ -149,7 +150,7 @@ static ptree* squash_modules(ptree* node, std::map<std::string, ptree*>& modules
     return list;
 }
 
-static void move_nested(ptree* node, ptree* scope, std::set<ptree*>& moved) {
+static void move_nested(parser_state* state, ptree* node, ptree* scope, std::set<ptree*>& moved) {
     if (can_have_subtype(node) && node->kind != N_MODULE) {
         for (auto mem = node->members; mem;) {
             ptree* next = mem->next;
@@ -158,10 +159,8 @@ static void move_nested(ptree* node, ptree* scope, std::set<ptree*>& moved) {
                 node->members = remove_node(node->members, mem);
 
                 // 2. Create an appropriate module for the type and rescope the type
-                create_module_start(
-                    node->state, create_identifier(node->state, mod_name(node).c_str())
-                );
-                auto mod = create_module_finish(node->state, mem);
+                create_module_start(state, create_identifier(state, mod_name(node).c_str()));
+                auto mod = create_module_finish(state, mem);
                 mem->scope = mem->super = mod;
 
                 // 3. Move the newly created module to the parent scope
@@ -174,7 +173,7 @@ static void move_nested(ptree* node, ptree* scope, std::set<ptree*>& moved) {
                 }
 
                 // 4. Continue traversal the moved node
-                move_nested(mem, mod, moved);
+                move_nested(state, mem, mod, moved);
                 moved.insert(mem);
             }
             mem = next;
@@ -183,7 +182,7 @@ static void move_nested(ptree* node, ptree* scope, std::set<ptree*>& moved) {
 
     if (can_have_subtype(node)) {
         for (auto mem : node->members) {
-            move_nested(mem, node, moved);
+            move_nested(state, mem, node, moved);
         }
     }
 }
@@ -208,17 +207,16 @@ static void rescope_dds(ptree* node) {
     }
 }
 
-static void replace_native(ptree* tree) {
+static void replace_native(parser_state* state, ptree* tree) {
     // `InstanceHandle` in Rust is a tuple struct. Since bitmasks are also
     // tuple structs, we can transform `InstanceHandle_t` into a bitmask so
     // that the generated code treats it accordingly. The node is then suppressed
     // since it's already defined in the API (and it's not really a bitmask).
     auto to_bitmask = [&](const char* name, const char* new_name) {
-        if (auto node = tree->state->lookup_node(name)) {
-            auto handle =
-                create_bitmask(tree->state, create_identifier(tree->state, new_name), nullptr);
-            create_annotation_start(tree->state, create_identifier(tree->state, "@ext::suppress"));
-            annotate(tree->state, handle, create_annotation_finish(tree->state, nullptr));
+        if (auto node = state->lookup_node(name)) {
+            auto handle = create_bitmask(state, create_identifier(state, new_name), nullptr);
+            create_annotation_start(state, create_identifier(state, "@ext::suppress"));
+            annotate(state, handle, create_annotation_finish(state, nullptr));
 
             auto next = node->next;
             *node = *handle;
@@ -226,7 +224,7 @@ static void replace_native(ptree* tree) {
         }
     };
 
-    create_module_start(tree->state, create_identifier(tree->state, "core"));
+    create_module_start(state, create_identifier(state, "core"));
     to_bitmask("DDS::InstanceHandle_t", "InstanceHandle");
     to_bitmask("DDS::SampleStateKind", "SampleState");
     to_bitmask("DDS::SampleStateMask", "SampleState");
@@ -234,11 +232,11 @@ static void replace_native(ptree* tree) {
     to_bitmask("DDS::InstanceStateMask", "InstanceState");
     to_bitmask("DDS::ViewStateKind", "ViewState");
     to_bitmask("DDS::ViewStateMask", "ViewState");
-    create_module_finish(tree->state, nullptr);
+    create_module_finish(state, nullptr);
 }
 
-static void modify_typeid(ptree* tree) {
-    if (auto node = tree->state->lookup_node("DDS::XTypes::TypeIdentifier")) {
+static void modify_typeid(parser_state* state, ptree* tree) {
+    if (auto node = state->lookup_node("DDS::XTypes::TypeIdentifier")) {
         for (auto mem : node->members) {
             if (mem->name == "primitive") {
                 mem->kind = N_NULL;
@@ -322,18 +320,18 @@ void intercom::rust::transform_rust(parse_result* result) {
     // precedence.
     std::set<ptree*> moved;
     for (auto node = tree; node; node = node->next) {
-        move_nested(node, tree, moved);
+        move_nested(result->state.get(), node, tree, moved);
     }
 
     // Squash duplicate modules into one
     std::map<std::string, ptree*> modules;
-    result->tree = tree = squash_modules(tree, modules);
+    result->tree = tree = squash_modules(result->state.get(), tree, modules);
 
     // Replace some DDS types with their native Rust equivalents
-    replace_native(tree);
+    replace_native(result->state.get(), tree);
 
     // Turn `TypeIdentifier::Empty` into N_NULL
-    modify_typeid(tree);
+    modify_typeid(result->state.get(), tree);
 
     // Give select modules more suitable names
     rescope_dds(tree);

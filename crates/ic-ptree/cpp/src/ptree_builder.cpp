@@ -51,14 +51,11 @@ extern std::map<std::string, ptree**> g_builtin_annotation_map;
 
 namespace {
 
-parser_state g_primitive_state;
-
 ptree create_primitive_node(const char* name, numeric_kind num_kind) {
     ptree node;
     node.kind = N_PRIMITIVE;
     node.name = name;
     node.value.val._d(num_kind);
-    node.state = &g_primitive_state;
     node.flags |= OPT_BUILTIN;
     node.file_name = "";
     return node;
@@ -442,7 +439,6 @@ ptree* create_node(parser_state* state, node_kind kind, identifier ident) {
     }
 
     state->allocated_nodes.push_back(p);
-    p->state = state;
     return p.get();
 }
 
@@ -480,9 +476,7 @@ deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, p
     auto p = std::make_shared<ptree>();
     alloc[node] = p.get();
     alloc[p.get()] = p.get();
-
-    p->state = state;
-    p->state->allocated_nodes.emplace_back(p);
+    state->allocated_nodes.emplace_back(p);
 
     p->kind = node->kind;
     p->name = node->name;
@@ -540,9 +534,9 @@ deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, p
     };
 
     if (p->flags & OPT_DECLARATION) {
-        p->state->type_dcl_map[scoped_name] = p.get();
+        state->type_dcl_map[scoped_name] = p.get();
     } else if (is_of_type(node, types)) {
-        p->state->type_map[scoped_name] = p.get();
+        state->type_map[scoped_name] = p.get();
     }
     return p.get();
 }

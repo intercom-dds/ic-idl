@@ -163,7 +163,6 @@ struct ptree {
     unsigned int flags{0};
     std::string file_name;
     numeric value;
-    parser_state* state{};
 };
 
 struct declarator {

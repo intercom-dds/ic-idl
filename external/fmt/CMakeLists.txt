@@ -28,3 +28,8 @@
 add_library(fmt INTERFACE)
 
 target_include_directories(fmt SYSTEM INTERFACE defs)
+
+add_compile_definitions(
+    FMT_HEADER_ONLY
+    FMT_CONSTEVAL=
+)

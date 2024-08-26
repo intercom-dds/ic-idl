@@ -44,7 +44,6 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl)
 add_compile_definitions(
     FMT_HEADER_ONLY
     FMT_CONSTEVAL=
-    INTERCOM_FMTLIB
 )
 
 include_directories(library/cpp/defs)

@@ -1,0 +1,363 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//! Definitions for the compiler's built-in annotations. These are injected
+//! into the HIR's internal state prior to performing type resolution.
+//! Definitions for these types will not be generated, as they are not intended
+//! to be used outside of the compiler.
+
+module intercom {
+module annotations {
+
+@annotation id {
+    unsigned long value;
+};
+
+@annotation autoid {
+    enum AutoidKind {
+        SEQUENTIAL,
+        HASH
+    };
+    AutoidKind value default HASH;
+};
+
+@annotation optional {
+    boolean value default TRUE;
+};
+
+@annotation position {
+    unsigned short value;
+};
+
+@annotation value {
+    any value;
+};
+
+@annotation empty {};
+
+@annotation extensibility {
+    enum ExtensibilityKind {
+         FINAL,
+         APPENDABLE,
+         MUTABLE,
+         EXTENSIBLE = APPENDABLE,
+         FINAL_EXTENSIBILITY = FINAL,
+         APPENDABLE_EXTENSIBILITY = APPENDABLE,
+         MUTABLE_EXTENSIBILITY = MUTABLE,
+         EXTENSIBLE_EXTENSIBILITY = APPENDABLE
+    };
+    ExtensibilityKind value;
+};
+
+@annotation final {};
+
+@annotation mutable {};
+
+@annotation appendable {};
+
+@annotation shared {
+    boolean value default TRUE;
+};
+
+@annotation key {
+    boolean value default TRUE;
+};
+
+@annotation must_understand {
+    boolean value default TRUE;
+};
+
+@annotation _default {
+    any value;
+};
+
+@annotation default_literal {};
+
+@annotation range {
+    any min;
+    any max;
+};
+
+@annotation min {
+    any value;
+};
+
+@annotation max {
+    any value;
+};
+
+@annotation unit {
+    string value;
+};
+
+@annotation bit_bound {
+    unsigned short value;
+};
+
+@annotation external {
+    boolean value default TRUE;
+};
+
+@annotation nested {
+    boolean value default TRUE;
+};
+
+@annotation verbatim {
+    enum PlacementKind {
+        BEGIN_FILE,
+        BEFORE_DECLARATION,
+        BEGIN_DECLARATION,
+        END_DECLARATION,
+        AFTER_DECLARATION,
+        END_FILE
+    };
+    string language default "*";
+    PlacementKind placement default BEFORE_DECLARATION;
+    string text;
+};
+
+@annotation service {
+    string platform default "*";
+    string name default "";
+    string request_topic default "";
+    string reply_topic default "";
+};
+
+@annotation topic {
+    string name default "";
+    string class default "";
+    string namespace default "";
+    string qosprofile default "";
+    string partition default "";
+    long long domain default -1;
+    string platform default "*";
+};
+
+@annotation qoslibrary {
+    string name;
+};
+
+@annotation DDSService {
+    string name default "";
+};
+
+@annotation DDSRequestTopic {
+    string name;
+};
+
+@annotation DDSReplyTopic {
+    string name;
+};
+
+@annotation _oneway {
+    boolean value default TRUE;
+};
+
+@annotation ami {
+    boolean value default TRUE;
+};
+
+// Old annotation for bitmask
+@annotation _bitset {};
+
+// Old name for bit_bound
+@annotation bitbound {
+    unsigned short value;
+};
+
+// Old name for must_understand
+@annotation mustunderstand {
+    boolean value default TRUE;
+};
+
+// Old name for minimum_type_check
+@annotation minimumtypecheck {
+    boolean value default TRUE;
+};
+
+@annotation hashid {
+    string value default "";
+};
+
+@annotation default_nested {
+    boolean value default TRUE;
+};
+
+@annotation ignore_literal_names {
+    boolean value default TRUE;
+};
+
+@annotation try_construct {
+    enum TryConstructFailAction {
+        USE_DEFAULT,
+        DISCARD,
+        TRIM
+    };
+    TryConstructFailAction value default USE_DEFAULT;
+};
+
+@annotation non_serialized {
+    boolean value default TRUE;
+};
+
+@annotation data_representation {
+    bitmask DataRepresentationMask {
+        XCDR1,
+        XML,
+        XCDR2
+    };
+    DataRepresentationMask allowed_kinds;
+};
+
+@annotation jaus {
+    string id default "";
+    string name default "";
+    string version default "";
+    string assumptions default "";
+    string inherits_from default "";
+};
+
+@annotation doc {
+    enum PlacementKind {
+        BEGIN_FILE,
+        BEFORE_DECLARATION,
+        BEGIN_DECLARATION,
+        END_DECLARATION,
+        AFTER_DECLARATION,
+        END_FILE
+    };
+    string text;
+    PlacementKind placement default BEFORE_DECLARATION;
+};
+
+@annotation merge {
+    boolean value default TRUE;
+};
+
+@annotation static {
+    boolean value default TRUE;
+};
+
+@annotation _const {
+    boolean value default TRUE;
+};
+
+@annotation derive {
+    string value;
+};
+
+module ext {
+    @annotation doc {
+        enum PlacementKind {
+            BEGIN_FILE,
+            BEFORE_DECLARATION,
+            BEGIN_DECLARATION,
+            END_DECLARATION,
+            AFTER_DECLARATION,
+            END_FILE
+        };
+        string text;
+        PlacementKind placement default BEFORE_DECLARATION;
+    };
+
+    @annotation minimum_type_check {
+        boolean value default TRUE;
+    };
+
+    @annotation suppress {
+        boolean value default TRUE;
+        string language default "*";
+    };
+
+    @annotation no_constructor {
+        boolean value default TRUE;
+    };
+
+    @annotation no_serializer {
+        boolean value default TRUE;
+    };
+
+    @annotation listener {
+        boolean value default TRUE;
+    };
+
+    @annotation length_bit_bound {
+        unsigned short value;
+    };
+
+    @annotation value_offset {
+        long value;
+    };
+
+    @annotation length_value_offset {
+        long value;
+    };
+
+    @annotation repeat_count {
+        any value;
+    };
+
+    @annotation vmf_xri {
+        boolean value default TRUE;
+    };
+
+    @annotation vmf_decimal {
+        long chars default 0;
+        long decimal_bits;
+    };
+
+    @annotation jaus_presence_vector {
+        long value;
+    };
+
+    @annotation jaus_integer {
+        boolean value default TRUE;
+    };
+
+    @annotation jaus_integer_function {
+        boolean value default TRUE;
+    };
+
+    @annotation rename {
+        string name;
+    };
+
+    @annotation builder {
+        string name default "";
+    };
+
+    @annotation string_constants {
+        boolean value default TRUE;
+        string namespace;
+    };
+
+    @annotation protobuf_type {
+        string name;
+    };
+}; // module ext
+}; // module annotations
+}; // module intercom

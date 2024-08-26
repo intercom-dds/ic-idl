@@ -25,13 +25,37 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_library(ic_codegen_cxx OBJECT
-    src/cpp_code_gen.cpp
-    src/cpp_typeinfo.cpp
+# Note: this file is only useful for generating a `compile_commands.json` file.
+# It is not used by Cargo, and anything compiled using this manifest will not
+# be used in the compiled ic-idl binary.
+
+cmake_minimum_required(VERSION 3.20)
+
+project(
+    ic-idl
+    VERSION 0.1
+    LANGUAGES CXX
 )
 
-target_link_libraries(ic_codegen_cxx PUBLIC
-    fmt
-    ic_ptree
-    ic_utils
+set(CMAKE_CXX_STANDARD 17)
+
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl)
+
+add_compile_definitions(
+    FMT_HEADER_ONLY
+    FMT_CONSTEVAL=
+    INTERCOM_FMTLIB
 )
+
+include_directories(library/cpp/defs)
+
+add_subdirectory(external/utils)
+add_subdirectory(external/fmt)
+
+add_subdirectory(crates/ic-ptree/cpp)
+add_subdirectory(crates/ic-codegen-cxx/cpp)
+add_subdirectory(crates/ic-codegen-idl/cpp)
+add_subdirectory(crates/ic-codegen-json/cpp)
+add_subdirectory(crates/ic-codegen-protobuf/cpp)
+add_subdirectory(crates/ic-codegen-python/cpp)
+add_subdirectory(crates/ic-codegen-rust/cpp)

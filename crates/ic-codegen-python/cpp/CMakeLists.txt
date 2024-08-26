@@ -24,3 +24,13 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+add_library(ic_codegen_python OBJECT
+    src/python_code_gen.cpp
+)
+
+target_link_libraries(ic_codegen_python PUBLIC
+    fmt
+    ic_ptree
+    ic_utils
+)

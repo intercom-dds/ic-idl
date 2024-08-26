@@ -25,30 +25,27 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::env;
+#include <string>
 
-#[cfg(debug_assertions)]
-const MSVCRT_LIB: &str = "msvcrtd";
+#include "cidl/idl_parser.h"
+#include "cidl/ptree.h"
 
-#[cfg(not(debug_assertions))]
-const MSVCRT_LIB: &str = "msvcrt";
+#pragma once
 
-fn main() {
-    // Build the C++ module
-    let dst = cmake::build("cpp");
+namespace intercom::rust {
 
-    println!("cargo:rustc-link-search=native={}/lib", dst.display());
-    println!("cargo:rustc-link-lib=static=ic_core");
-    emit_link_cxx();
-}
+std::string const_name(const ptree* node);
 
-fn emit_link_cxx() {
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let flavor = match (target_os.as_str(), target_env.as_str()) {
-        ("linux", _) | ("windows", "gnu") => "stdc++",
-        ("windows", _) => MSVCRT_LIB,
-        _ => panic!("unsupported platform"),
-    };
-    println!("cargo:rustc-link-lib={flavor}");
-}
+std::string fn_name(const ptree* node);
+
+std::string mod_name(const ptree* node);
+
+std::string type_name(const ptree* node);
+
+std::string member_name(const ptree* node);
+
+std::string seri_name(const ptree* node);
+
+void transform_rust(cidl::parse_result* node);
+
+};  // namespace intercom::rust

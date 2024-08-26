@@ -31,8 +31,6 @@ project(ic-ptree VERSION 0.1)
 
 set(CMAKE_CXX_STANDARD 17)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_MODULES}/cmake")
-
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl)
 
 add_compile_definitions(
@@ -41,12 +39,13 @@ add_compile_definitions(
     INTERCOM_FMTLIB
 )
 
-add_subdirectory(
-    ../../../external/utils
-    ${CMAKE_CURRENT_BINARY_DIR}/utils
+include_directories(
+    ../../../external/utils/defs
+    ../../../external/fmt/defs
+    ../../../library/cpp/defs
 )
 
-add_library(ic_ptree STATIC
+add_library(ic_ptree OBJECT
     src/ast.cpp
     src/code_gen.cpp
     src/commandline.cpp
@@ -58,19 +57,37 @@ add_library(ic_ptree STATIC
     src/ptree_ffi.cpp
     src/ptree_helpers.cpp
     src/symbols.cpp
-
-    ../../ic-codegen-cxx/cpp/src/cpp_code_gen.cpp
-    ../../ic-codegen-cxx/cpp/src/cpp_typeinfo.cpp
-    ../../ic-codegen-idl/cpp/src/idl_code_gen.cpp
-    ../../ic-codegen-json/cpp/src/json_code_gen.cpp
-    ../../ic-codegen-protobuf/cpp/src/proto_code_gen.cpp
-    ../../ic-codegen-python/cpp/src/python_code_gen.cpp
-    ../../ic-codegen-rust/cpp/src/rust_code_gen.cpp
-    ../../ic-codegen-rust/cpp/src/rust_common.cpp
-    ../../ic-codegen-rust/cpp/src/rust_transform.cpp
 )
 
-target_compile_definitions(ic_ptree PRIVATE CIDL_BOOTSTRAP)
+if (PROJECT_IS_TOP_LEVEL)
+    add_subdirectory(
+        ../../ic-codegen-cxx/cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-cxx
+    )
+    add_subdirectory(
+        ../../ic-codegen-idl/cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-idl
+    )
+    add_subdirectory(
+        ../../ic-codegen-json/cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-json
+    )
+    add_subdirectory(
+        ../../ic-codegen-protobuf/cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-protobuf
+    )
+    add_subdirectory(
+        ../../ic-codegen-python/cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-python
+    )
+    add_subdirectory(
+        ../../ic-codegen-rust/cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-rust
+    )
+endif()
+
+target_compile_definitions(ic_ptree PRIVATE
+    CIDL_BOOTSTRAP)
 
 target_include_directories(ic_ptree
     PUBLIC defs
@@ -81,10 +98,18 @@ target_include_directories(ic_ptree SYSTEM PRIVATE
     ../../../external/fmt/defs
 )
 
-target_link_libraries(ic_ptree PRIVATE ic_utils)
+add_library(ic_core STATIC
+    $<TARGET_OBJECTS:ic_ptree>
+    $<TARGET_OBJECTS:ic_codegen_cxx>
+    $<TARGET_OBJECTS:ic_codegen_idl>
+    $<TARGET_OBJECTS:ic_codegen_json>
+    $<TARGET_OBJECTS:ic_codegen_protobuf>
+    $<TARGET_OBJECTS:ic_codegen_python>
+    $<TARGET_OBJECTS:ic_codegen_rust>
+)
 
 install(
-    TARGETS ic_ptree
+    TARGETS ic_core
     DESTINATION lib
 )
 

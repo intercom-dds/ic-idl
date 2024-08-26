@@ -25,12 +25,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_library(ic_codegen_cxx OBJECT
-    src/cpp_code_gen.cpp
-    src/cpp_typeinfo.cpp
+add_library(ic_codegen_rust OBJECT
+    src/rust_code_gen.cpp
+    src/rust_common.cpp
+    src/rust_transform.cpp
 )
 
-target_link_libraries(ic_codegen_cxx PUBLIC
+target_link_libraries(ic_codegen_rust PUBLIC
     fmt
     ic_ptree
     ic_utils

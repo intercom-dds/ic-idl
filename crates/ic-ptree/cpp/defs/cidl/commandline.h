@@ -27,9 +27,6 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
 #include "cidl/codegen.h"
 
 namespace intercom::cidl {

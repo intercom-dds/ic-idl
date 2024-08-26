@@ -160,6 +160,17 @@ pub struct PythonOptions {
 }
 
 #[derive(Command, Default)]
+pub struct IdlOptions {
+    /// Output Doxygen-compatible IDL files
+    #[option(long)]
+    pub idl_doxygen: bool,
+
+    /// Expand @DDSService interfaces
+    #[option(long)]
+    pub idl_expand: bool,
+}
+
+#[derive(Command, Default)]
 #[allow(clippy::struct_field_names)]
 pub struct CodegenOptions {
     /// Generate C++ files in <dir>

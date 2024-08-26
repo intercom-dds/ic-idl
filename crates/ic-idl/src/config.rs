@@ -124,9 +124,9 @@ pub struct CppOptions {
     #[option(long, arg = "sym")]
     pub dll_export: Option<String>,
 
-    /// Use postfix for C++ headers
-    #[option(long, arg = "sym")]
-    pub header_postfix: Option<String>,
+    /// Use <ext> as file extension for C++ headers
+    #[option(long, arg = "ext")]
+    pub header_ext: Option<String>,
 
     /// Store header files inside a subfolder
     #[option(long, arg = "dir")]

@@ -96,12 +96,12 @@ impl CommandLine {
         self
     }
 
-    pub fn section(mut self, section: impl Into<String>, mut options: CommandLine) -> Self {
+    pub fn section(mut self, section: impl Into<String>, mut cmd: CommandLine) -> Self {
         let section = section.into();
-        for opt in options.options.values_mut() {
+        for opt in cmd.options.values_mut() {
             opt.section = Some(section.clone());
         }
-        self = self.opts(options.options.values().iter().cloned());
+        self = self.opts(cmd.options.values().iter().cloned());
         self
     }
 

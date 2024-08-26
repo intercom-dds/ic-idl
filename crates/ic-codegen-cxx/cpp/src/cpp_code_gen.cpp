@@ -327,7 +327,7 @@ static bool has_multiple_cases(const ptree* elem) {
 static std::string
 cplpl_member_type(const ptree* elem, const ptree* context, bool suppress_indirection) {
     if (is_optional(elem, get_direct_annotation)) {
-        return fmt::format("::intercom::optional<{}>", scoped_name(elem->type, context));
+        return fmt::format("::std::optional<{}>", scoped_name(elem->type, context));
     }
     if (!suppress_indirection && is_shared(elem, get_direct_annotation)) {
         return fmt::format("::std::unique_ptr<{}>", scoped_name(elem->type, context));
@@ -743,11 +743,8 @@ static void cpl_gen_hash(const ptree* obj) {
         return;
     }
 
-    if (mempty(&g_hd_hash_file)) {
-        mprintf(&g_hd_hash_file, "namespace std {{\n");
-    }
-
-    mprintf(&g_hd_hash_file, "template<> struct hash<{}> {{\n", scoped_name(obj, nullptr));
+    mprintf(&g_hd_hash_file, "template<>\n");
+    mprintf(&g_hd_hash_file, "struct std::hash<{}> {{\n", scoped_name(obj, nullptr));
     mprintf(&g_hd_hash_file, "using argument_type = {};\n", scoped_name(obj, nullptr));
     mprintf(&g_hd_hash_file, "using result_type = std::size_t;\n");
     dll_export(&g_hd_hash_file, obj);
@@ -973,28 +970,6 @@ static void cpl_conv_gen(const ptree* obj) {
 
     if ((obj->kind == N_STRUCT || obj->kind == N_UNION || obj->kind == N_VALUETYPE) &&
         !get_annotation(obj, annotation_type_ext_suppress) && !is_nested(obj)) {
-#ifndef CIDL_BOOTSTRAP
-        mprintf(
-            &g_hd_file,
-            "\nusing {}TypeSupport = ::intercom::dcps::TTypeSupport<{}>;\n",
-            name(obj),
-            name(obj)
-        );
-
-        mprintf(
-            &g_hd_file,
-            "using {}DataWriter = ::intercom::dcps::DataWriterTemplate<{}>;\n",
-            name(obj),
-            name(obj)
-        );
-
-        mprintf(
-            &g_hd_file,
-            "using {}DataReader = ::intercom::dcps::DataReaderTemplate<{}>;\n",
-            name(obj),
-            name(obj)
-        );
-
         has_seq_type = true;
 
         if (CommandLineOption::corba_types()) {
@@ -1004,16 +979,12 @@ static void cpl_conv_gen(const ptree* obj) {
         } else {
             mprintf(&g_hd_file, "using {}Seq = ::std::vector<{}>;\n", name(obj), name(obj));
         }
-#endif
     }
 
-    if (mempty(&g_hd_ts_file)) {
-        mprintf(&g_hd_ts_file, "namespace intercom {{\n");
-    }
-
+    mprintf(&g_hd_ts_file, "template <>\n");
     mprintf(
         &g_hd_ts_file,
-        "template <>\nstruct TypeTraits<{}{}> {{ //< \\private\n",
+        "struct intercom::TypeTraits<{}{}> {{ //< \\private\n",
         objname,
         is_bitmask(obj) ? "Bits" : ""
     );
@@ -1028,14 +999,8 @@ static void cpl_conv_gen(const ptree* obj) {
     }
     dll_export(&g_hd_ts_file, obj);
     mprintf(&g_hd_ts_file, "static const TypeInfo type_info;\n");
-#ifndef CIDL_BOOTSTRAP
-    dll_export(&g_hd_ts_file, obj);
-    mprintf(&g_hd_ts_file, "static intercom::dcps::xtypes::TypeIdentifier type_identifier();\n");
-    dll_export(&g_hd_ts_file, obj);
-    mprintf(
-        &g_hd_ts_file, "static void register_type(intercom::dcps::TypeRepository* a_repository);\n"
-    );
 
+#ifndef CIDL_BOOTSTRAP
     if ((obj->kind == N_STRUCT || obj->kind == N_UNION || obj->kind == N_VALUETYPE) &&
         !is_nested(obj)) {
         mprintf(&g_hd_ts_file, "using reader_type = {}DataReader;\n", objname);
@@ -1068,56 +1033,13 @@ static void cpl_conv_gen(const ptree* obj) {
 #endif
     mprintf(&g_hd_ts_file, "}};\n");
 
-#ifndef CIDL_BOOTSTRAP
-    {
-        mprintf(
-            &g_tbd_file,
-            "intercom::dcps::xtypes::TypeIdentifier intercom::TypeTraits< {}{} >::type_identifier() {{\n",
-            objname,
-            is_bitmask(obj) ? "Bits" : ""
-        );
-
-        gen_cpp_type_definition(&g_tbd_file, obj);
-
-        mprintf(
-            &g_tbd_file,
-            "void intercom::TypeTraits<{}{}>::register_type(intercom::dcps::TypeRepository* a_repository) {{\n",
-            objname,
-            is_bitmask(obj) ? "Bits" : ""
-        );
-
-        gen_cpp_type_registration(&g_tbd_file, obj, no_struct_or_enum_filter);
-
-        mprintf(&g_tbd_file, "}}\n\n");
-    }
-#endif
-
-    // load_type_object implementation
-    if ((obj->kind == N_STRUCT || obj->kind == N_UNION || obj->kind == N_VALUETYPE) &&
-        !is_nested(obj)) {
-#ifndef CIDL_BOOTSTRAP
-        mprintf(
-            &g_tbd_file,
-            "const char* intercom::TypeTraits< {} >::default_topic_name = \"{}\";\n\n",
-            objname,
-            default_topic_name(obj)
-        );
-        mprintf(
-            &g_tbd_file,
-            "const char* intercom::TypeTraits< {} >::intercom_type_identifier = \"{}\";\n\n",
-            objname,
-            get_type_id(obj)
-        );
-#endif
-    }
-
     // TypeInfo implementation
     gen_cpp_type_info(&g_tbd_file, obj, funcname);
 
     if ((obj->kind == N_ENUM || obj->kind == N_BITMASK) && !is_non_serialized(obj)) {
         mprintf(
             &g_hd_ts_file,
-            "template <class Archive>\nstruct Serializer<Archive, {}{}> {{\n",
+            "template <class Archive>\nstruct intercom::Serializer<Archive, {}{}> {{\n",
             objname,
             is_bitmask(obj) ? "Bits" : ""
         );
@@ -1292,7 +1214,7 @@ static void cpl_gen_member_swap(struct memf* mfil, const ptree* obj) {
     }
 }
 
-std::string combine_conds(
+static std::string combine_conds(
     const std::vector<std::string>& conditions,
     const std::string& sep,
     const bool& invert = false
@@ -1311,13 +1233,13 @@ std::string combine_conds(
     return exp.str();
 }
 
-std::string opt_ternary(const std::string& expression, const std::string& on_true) {
+static std::string opt_ternary(const std::string& expression, const std::string& on_true) {
     return expression.empty() ? expression : fmt::format("{} ? {} : ", expression, on_true);
 }
 
 /// \param suppress_indirection parameter only
 /// \returns expression to read merged member
-std::string safe_read(
+static std::string safe_read(
     const std::string& parameter_name,
     bool suppress_indirection,
     const MergeTrace& trace,
@@ -1341,7 +1263,7 @@ std::string safe_read(
 
 /// \param suppress_indirection parameter only
 /// \returns expression to copy merged member
-std::string safe_copy(
+static std::string safe_copy(
     const std::string& parameter_name,
     bool suppress_indirection,
     const MergeTrace& trace,
@@ -1372,7 +1294,7 @@ std::string safe_copy(
 
 /// \param suppress_indirection parameter only
 /// \returns expression to copy merged member
-std::string
+static std::string
 safe_copy(const std::string& parameter_name, bool suppress_indirection, const MergeTrace& trace) {
     const ptree* elem = trace.back();
     std::vector<std::string> fail_conditions{};
@@ -1384,7 +1306,7 @@ safe_copy(const std::string& parameter_name, bool suppress_indirection, const Me
 
 /// \param suppress_indirection parameter only
 /// \returns expression to move merged member
-std::string
+static std::string
 safe_move(const std::string& parameter_name, bool suppress_indirection, const MergeTrace& trace) {
     const ptree* elem = trace.back();
     std::vector<std::string> fail_conditions{};
@@ -1450,9 +1372,10 @@ static void cpl_gen_member_copy_ctor(
 }
 
 /// \breif one external parameter to many internal members
-/// the traces in \param members must all derive from the same member, i.e. .front() is identical
-/// for all traces.
-void emit_merged_getters_and_setters(const ptree* obj, const std::vector<MergeTrace>& members) {
+/// the traces in \param members must all derive from the same member, i.e. .front() is
+/// identical for all traces.
+static void
+emit_merged_getters_and_setters(const ptree* obj, const std::vector<MergeTrace>& members) {
     const ptree* parameter = members.front().front();
     emit_docs(&g_hd_file, parameter);
 
@@ -1470,8 +1393,8 @@ void emit_merged_getters_and_setters(const ptree* obj, const std::vector<MergeTr
             end(parameter_members),
             [&elem](const ptree* needle) { return elem->name == needle->name; }
         );
-        // get [\note this has to copy elem into parameter (inverted), and therefore can not rely on
-        // safe_copy() & co.]
+        // get [\note this has to copy elem into parameter (inverted), and therefore can not
+        // rely on safe_copy() & co.]
         std::vector<std::string> preconditions{};
         std::string copy_exp;
         if (is_shared(elem) && !is_shared(elem_in_parameter_type)) {
@@ -1522,7 +1445,7 @@ void emit_merged_getters_and_setters(const ptree* obj, const std::vector<MergeTr
     );
 }
 
-void emit_getters_and_setters(const ptree* obj, const ptree* parameter) {
+static void emit_getters_and_setters(const ptree* obj, const ptree* parameter) {
     emit_docs(&g_hd_file, parameter);
 
     std::string parameter_name = cplpl_param_name(obj, name(parameter));
@@ -1610,7 +1533,7 @@ void emit_getters_and_setters(const ptree* obj, const ptree* parameter) {
     }
 }
 
-void cpl_gen_access_functions(const ptree* obj) {
+static void cpl_gen_access_functions(const ptree* obj) {
     struct AccessSignature {
         const ptree* parameter;                //!< external facade
         std::vector<MergeTrace> merge_traces;  //!< actual internal data members
@@ -1950,7 +1873,7 @@ static void cpl_iostream_def(const ptree* obj) {
         if (CommandLineOption::use_fmtlib()) {
             mprintf(
                 &g_hd_fmt_file,
-                "template <> struct formatter<{}> : ostream_formatter {{}};\n",
+                "template <> struct fmt::formatter<{}> : fmt::ostream_formatter {{}};\n",
                 cpp_type_name(obj, nullptr)
             );
         }
@@ -2609,167 +2532,12 @@ static std::string str_to_upper(std::string val) {
     return val;
 };
 
-/// \n will print namespaces with names defined using annotation \@ext::rename
-/// \nb hardcodes a lot of values
-static void cpl_property_value_constants_rec(
-    const ptree* obj,
-    std::deque<const ptree*>& member_trace,
-    const std::string& initial_namespace
-) {
-    // backwards compatability
-    auto hardcode_namespace = [](const std::string& node_name) -> std::string {
-        static const std::map<std::string, std::string> s_replacements{
-            {"sockets", "Socket"}, {"dds", ""}, {"persistence", ""}
-        };
-        auto rep = s_replacements.find(node_name);
-        if (rep != s_replacements.end()) {
-            return rep->second;
-        }
-        std::string name = node_name;
-        if (!name.empty()) {  // capitalize first letter
-            name.front() = static_cast<char>(std::toupper(static_cast<int>(name.front())));
-        }
-        return name;
-    };
-    // backwards compatability
-    auto hardcode_variable_name = [&member_trace](const std::string& node_name) -> std::string {
-        using KeyT = std::pair<std::string, std::string>;  // {parent_name, variable_name}
-        static const std::map<KeyT, std::string> s_replacements{
-            {{"persistence", "location"}, "persistence_location"},
-            {{"DomainParticipant", "viewer_access"}, "viewersupport"}
-        };
-        const std::string parent =
-            member_trace.size() > 1 ? renamed_name(member_trace[member_trace.size() - 2]) : "";
-        auto rep = s_replacements.find(KeyT{parent, node_name});
-        if (rep != s_replacements.end()) {
-            return rep->second;
-        }
-        return node_name;
-    };
-    auto emit_value = [&member_trace, &hardcode_namespace, &initial_namespace](
-                          const std::string& variable_name, const std::string& value
-                      ) -> void {
-        const std::string type =
-            CommandLineOption::cpp_gen_cpp11() ? "const std::string" : "const char*";
-        mprintf(&g_hd_file, INTERCOM_PUBLIC_MACRO_NAME " extern {} {};\n", type, variable_name);
-        mprintf(&g_tbd_file, "{} {}::", type, initial_namespace);
-        for (const auto& trace : member_trace) {
-            if (base_type_of(trace)->kind != N_STRUCT && base_type_of(trace)->kind != N_UNION) {
-                continue;
-            }
-            std::string name = hardcode_namespace(renamed_name(trace));
-            if (!name.empty()) {
-                mprintf(&g_tbd_file, "{}::", name);
-            }
-        }
-        mprintf(&g_tbd_file, "{} = \"{}\";\n", variable_name, value);
-    };
-    // backwards compatability
-    auto hardcode_extra_values = [&emit_value](const std::string& node_name) -> void {
-        using ValueT = std::pair<std::string, std::string>;  // {variable_name, value}
-        static const std::map<std::string, std::vector<ValueT>> s_extra_values{
-            // note: the dds namespace is squashed in hardcode_namespace()
-            {"dds", {{"GROUP", "PROPERTIES.GROUP"}}},
-            {"checksum",
-             {{"VALUE_METHOD_NONE", "none"},
-              {"VALUE_METHOD_SIMPLE", "simple"},
-              {"VALUE_METHOD_MD5", "md5"},
-              {"VALUE_METHOD_CRC32", "crc32"},
-              {"VALUE_METHOD_CRC32C", "crc32c"},
-              {"VALUE_METHOD_CRC64", "crc64"},
-              {"VALUE_REQUIRED", "true"},
-              {"VALUE_OPTIONAL", "false"}}},
-            {"security",
-             {{"AUTH_IDENTITY_CA", "dds.sec.auth.identity_ca"},
-              {"AUTH_IDENTITY_CERTIFICATE", "dds.sec.auth.identity_certificate"},
-              {"AUTH_PRIVATE_KEY", "dds.sec.auth.private_key"},
-              {"AUTH_PASSWORD", "dds.sec.auth.password"},
-              {"ACCESS_PERMISSIONS_CA", "dds.sec.access.permissions_ca"},
-              {"ACCESS_PERMISSIONS", "dds.sec.access.permissions"},
-              {"ACCESS_GOVERNANCE", "dds.sec.access.governance"}}}
-        };
-        auto values = s_extra_values.find(node_name);
-        if (values == s_extra_values.end()) {
-            return;
-        }
-        for (const ValueT& val : values->second) {
-            emit_value(val.first, val.second);
-        }
-    };
-    const ptree* base_type = base_type_of(obj);
-    switch (obj->kind) {
-    case N_STRUCT:
-    case N_UNION:
-        for (const ptree* member : obj->members) {
-            cpl_property_value_constants_rec(member, member_trace, initial_namespace);
-        }
-        break;
-    case N_MEMBER:
-        member_trace.push_back(obj);
-        if (base_type->kind == N_STRUCT || base_type->kind == N_UNION) {
-            const std::string node_name = renamed_name(obj);
-            std::string name = hardcode_namespace(node_name);
-            if (!name.empty()) {
-                mprintf(&g_hd_file, "namespace {} {{\n", name);
-            }
-            cpl_property_value_constants_rec(base_type, member_trace, initial_namespace);
-            hardcode_extra_values(node_name);
-            if (!name.empty()) {
-                mprintf(&g_hd_file, "}} // namespace {}\n", name);
-            }
-        } else {
-            const std::string node_name = renamed_name(obj);
-            const std::string variable_name = str_to_upper(hardcode_variable_name(node_name));
-            std::stringstream value{};
-            for (auto step = member_trace.begin(); step != member_trace.end() - 1; step++) {
-                value << str_to_upper(renamed_name(*step)) << '.';
-            }
-            value << str_to_upper(node_name);
-            emit_value(variable_name, value.str());
-        }
-        member_trace.pop_back();
-        break;
-    default:
-        break;
-    }
-}
-
-inline void cpl_property_value_constants_def(const ptree* obj) {
-    // catch up tbd_file's namespace with hd_file's
-    std::string tbd_namespace = idl_scoped_name(obj, nullptr);
-    tbd_namespace = tbd_namespace.substr(0, tbd_namespace.rfind("::"));
-
-    const ptree* ann = get_annotation(obj, annotation_type_ext_string_constants);
-    // extract namespace(s)
-    numeric ann_module = get_annotation_value(ann, "namespace");
-    std::vector<std::string> prop_namespaces{};
-    if (ann_module.kind() == STRING_KIND && !ann_module.val.str().empty()) {
-        string_utils::split_string(prop_namespaces, ann_module.val.str(), "::", true);
-    }
-
-    for (const auto& prop_namespace : prop_namespaces) {
-        mprintf(&g_hd_file, "namespace {} {{\n", prop_namespace);
-        tbd_namespace += std::string("::") + prop_namespace;
-    }
-    std::deque<const ptree*> member_trace;
-    // actual string constants
-    cpl_property_value_constants_rec(obj, member_trace, tbd_namespace);
-    for (const auto& prop_namespace : prop_namespaces) {
-        mprintf(&g_hd_file, "}} // namespace {}\n", prop_namespace);
-    }
-    mprintfl(g_hd_tbd_files, "\n");
-}
-
 static void cpl_struct_c_def(const ptree* obj) {
     int number_of_elems = original_member_count(obj);
     auto body_name = scoped_name(obj, namespace_of(obj));
     auto param = cplpl_param_name(obj, "other");
     auto p_first = cplpl_param_name(obj, "first");
     auto p_second = cplpl_param_name(obj, "second");
-
-    if (get_annotation(obj, annotation_type_ext_string_constants)) {
-        cpl_property_value_constants_def(obj);
-    }
 
     mprintf(&g_hd_file, "struct {}", name(obj));
     if (!obj->parents.empty()) {
@@ -3400,11 +3168,9 @@ static void cgcpl_recurs(const ptree* obj) {
         case N_MODULE:
             emit_docs(&g_hd_file, obj);
             if (idl_scoped_name(obj, nullptr) == "DDS") {
-                mprintfl(g_all_headers, "namespace intercom {{\n");
-                mprintfl(g_all_headers, "namespace dcps {{\n");
+                mprintfl(g_all_headers, "namespace intercom::dcps {{\n");
                 cgcpl_recurs(obj->members);
-                mprintfl(g_all_headers, "}} // namespace dcps\n");
-                mprintfl(g_all_headers, "}} // namespace intercom\n");
+                mprintfl(g_all_headers, "}} // namespace intercom::dcps\n");
             } else if (idl_scoped_name(obj, nullptr) == "DDS::Security") {
                 mprintfl(g_all_headers, "namespace security {{\n");
                 cgcpl_recurs(obj->members);
@@ -3478,8 +3244,13 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
             strcmp(CommandLineOption::dll_exp_sym(), INTERCOM_PUBLIC_MACRO_NAME) != 0) {
             mprintf(
                 &pk_file,
-                "#ifndef {}\n#ifdef _WIN32\n#define {} __declspec(dllimport)\n#else\n#define "
-                "{}\n#endif\n#endif\n\n",
+                "#ifndef {}\n"
+                "#ifdef _WIN32\n"
+                "#define {} __declspec(dllimport)\n"
+                "#else\n"
+                "#define {}\n"
+                "#endif\n"
+                "#endif\n\n ",
                 CommandLineOption::dll_exp_sym(),
                 CommandLineOption::dll_exp_sym(),
                 CommandLineOption::dll_exp_sym()
@@ -3520,38 +3291,12 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
             mprintf(&pk_file, "#include <InterCOM/rpc.h>\n");
         }
 
-        if (CommandLineOption::cpp_gen_cpp11()) {
-            if (!mempty(&g_hd_hash_file)) {
-                if (!mempty(&g_hd_rpc_file)) {
-                    mprintf(&pk_file, "#include <dds/dds.hpp>\n");
-                    mprintf(&pk_file, "#include <dds/rpc/rpc.hpp>\n");
-                    mprintf(&pk_file, "#include <dds/rpc/rpc_types.hpp>\n");
-                }
-            }
-        }
         mprintf(&pk_file, "#include <InterCOM/optional.h>\n");
         mprintf(&pk_file, "#include <InterCOM/span.h>\n");
-
-        if (CommandLineOption::intercom_build()) {
-#ifndef CIDL_BOOTSTRAP
-            mprintf(&pk_file, "#define INTERCOM_TYPESUPPORT_INTERFACE_ONLY\n");
-            mprintf(&pk_file, "#include <InterCOM/TypeSupport.h>\n");
-            mprintf(&pk_file, "#undef INTERCOM_TYPESUPPORT_INTERFACE_ONLY\n");
-#else
-            mprintf(&pk_file, "#include <InterCOM/intercom_dcps.h>\n");
-#endif
-            mprintf(&pk_file, "#include <InterCOM/MemberInfo.h>\n");
-        } else {
-            mprintf(&pk_file, "#include <InterCOM/CdrSerializer.h>\n");
-            mprintf(&pk_file, "#include <InterCOM/TypeSupport.h>\n");
-        }
-
-        if (has_rpc_service(tree)) {
-            mprintf(&pk_file, "#include <InterCOM/dds_curr_rpc.h>\n");
-        }
+        mprintf(&pk_file, "#include <InterCOM/cdr_serializer.h>\n");
 
         if (module != "dds_xtypes_constants") {
-            mprintf(&pk_file, "#include <InterCOM/JsonSerializer.h>\n");
+            mprintf(&pk_file, "#include <InterCOM/json_serializer.h>\n");
         }
 
         if (has_exceptions(tree)) {
@@ -3562,38 +3307,18 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
         include_dependencies(&pk_file, tree, g_current_include);
 
         if (CommandLineOption::use_fmtlib()) {
-            if (CommandLineOption::intercom_build()) {
-                mprintf(&pk_file, "#ifdef INTERCOM_FMTLIB\n");
-            }
             mprintf(&pk_file, "#include <fmt/ostream.h>\n");
-            if (CommandLineOption::intercom_build()) {
-                mprintf(&pk_file, "#endif\n");
-            }
         }
         mprintf(&pk_file, "\n");
 
         memfcat(&pk_file, &g_hd_file);
-        if (!mempty(&g_hd_hash_file)) {
-            mprintf(&g_hd_hash_file, "}}\n");
-            memfcat(&pk_file, &g_hd_hash_file);
-        }
-        if (!mempty(&g_hd_ts_file)) {
-            mprintf(&g_hd_ts_file, "}}\n");
-            memfcat(&pk_file, &g_hd_ts_file);
-        }
+        memfcat(&pk_file, &g_hd_hash_file);
+        memfcat(&pk_file, &g_hd_ts_file);
         memfcat(&pk_file, &g_hd_impl_file);
         memfcat(&pk_file, &g_hd_rpc_file);
         memfcat(&pk_file, &g_hd_json_file);
         if (!mempty(&g_hd_fmt_file)) {
-            if (CommandLineOption::intercom_build()) {
-                mprintf(&pk_file, "#ifdef INTERCOM_FMTLIB\n");
-            }
-            mprintf(&pk_file, "namespace fmt {{\n");
             memfcat(&pk_file, &g_hd_fmt_file);
-            mprintf(&pk_file, "}} // namespace fmt\n");
-            if (CommandLineOption::intercom_build()) {
-                mprintf(&pk_file, "#endif // INTERCOM_FMTLIB\n");
-            }
         }
         mprintf(
             &pk_file,
@@ -3608,12 +3333,7 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
         }
 
         mprintf(&g_prebd_file, "\n");
-#ifdef CIDL_BOOTSTRAP
         mprintf(&g_prebd_file, "#include <InterCOM/dds_xtypes_constants.h>\n");
-#else
-        mprintf(&g_prebd_file, "#include <InterCOM/dds_curr_xtypes.h>\n");
-        mprintf(&g_prebd_file, "#include <InterCOM/TypeSupport.h>\n\n");
-#endif
 
         mprintf(
             &g_prebd_file,

@@ -143,7 +143,7 @@ pub struct RustOptions {
     #[option(long)]
     pub no_rename: bool,
 
-    /// Annotate all generated with `#[must_use]`
+    /// Annotate all types with `#[must_use]`
     #[option(long)]
     pub must_use: bool,
 }

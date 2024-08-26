@@ -392,12 +392,13 @@ impl CommandLine {
             let current_n_short = opt.tokens.iter().filter(|v| v.len() == 1).count();
 
             // 4 is the number of characters that separate short options
-            let indent_by = PAD + 4 * (n_short - current_n_short);
-            let width = PAD + width + 4 * current_n_short;
+            let current_width = 4 * (n_short - current_n_short);
+            let indent_by = PAD + current_width;
+            let width = 2 + PAD + width - opt.formatted().len() - current_width;
 
             let tokens = opt.formatted();
             let desc = opt.desc.clone().unwrap_or_default();
-            let line = format!("{:indent_by$}{tokens:width$}{desc}", " ");
+            let line = format!("{:indent_by$}{tokens}{}{desc}", " ", " ".repeat(width));
             lines.push(line);
         }
         lines

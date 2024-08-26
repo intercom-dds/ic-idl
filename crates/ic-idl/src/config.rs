@@ -125,7 +125,7 @@ pub struct CppOptions {
     pub dll_export: Option<String>,
 
     /// Use postfix for C++ headers
-    #[option(long, arg = "postfix")]
+    #[option(long, arg = "sym")]
     pub header_postfix: Option<String>,
 
     /// Store header files inside a subfolder
@@ -133,7 +133,7 @@ pub struct CppOptions {
     pub header_subfolder: Option<String>,
 
     /// Add a filename prefix to generated files
-    #[option(long, arg = "prefix")]
+    #[option(long, arg = "sym")]
     pub file_prefix: Option<String>,
 }
 
@@ -146,6 +146,17 @@ pub struct RustOptions {
     /// Annotate all types with `#[must_use]`
     #[option(long)]
     pub must_use: bool,
+}
+
+#[derive(Command, Default)]
+pub struct PythonOptions {
+    /// Rename all types to conform to PEP-8
+    #[option(long)]
+    pub use_pep8: bool,
+
+    /// Postfix to use for global modules
+    #[option(long)]
+    pub global_postfix: Option<String>,
 }
 
 #[derive(Command, Default)]

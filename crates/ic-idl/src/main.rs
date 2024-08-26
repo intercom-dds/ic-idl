@@ -32,7 +32,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context};
-use config::{CodegenOptions, CppOptions, Options, RustOptions, Unstable};
+use config::{CodegenOptions, CppOptions, Options, PythonOptions, RustOptions, Unstable};
 use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
 use ic_preproc::ProcArgs;
@@ -64,8 +64,10 @@ macro_rules! warn {
 fn main() {
     let result = Options::command()
         .split_flags(false)
+        .align_sections(true)
         .section("c++ options", CppOptions::command())
         .section("rust options", RustOptions::command())
+        .section("python options", PythonOptions::command())
         .section("backends", CodegenOptions::command())
         .try_parse();
 

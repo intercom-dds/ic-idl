@@ -57,6 +57,7 @@ pub struct CommandLine {
     split_flags: bool,
     hide_flags: bool,
     hide_options: bool,
+    align_sections: bool,
     arg_name: Option<String>,
     after_help: Option<String>,
     positionals: bool,
@@ -75,6 +76,7 @@ impl CommandLine {
             split_flags: false,
             hide_flags: false,
             hide_options: false,
+            align_sections: false,
             arg_name: None,
             after_help: None,
             external: false,
@@ -161,6 +163,11 @@ impl CommandLine {
     pub fn hide_flags(mut self, hide_flags: bool, hide_options: bool) -> Self {
         self.hide_flags = hide_flags;
         self.hide_options = hide_options;
+        self
+    }
+
+    pub fn align_sections(mut self, align_sections: bool) -> Self {
+        self.align_sections = align_sections;
         self
     }
 
@@ -366,14 +373,20 @@ impl CommandLine {
             .max()
             .unwrap_or(0);
 
-        let width = matches
-            .iter()
-            .map(|v| {
-                let _short = v.tokens.iter().filter(|v| v.len() == 1).count();
-                v.formatted().len() // + 4 * short
-            })
-            .max()
-            .unwrap_or(0);
+        let width = if self.align_sections {
+            self.options
+                .values()
+                .iter()
+                .map(|v| v.formatted().len())
+                .max()
+                .unwrap_or(0)
+        } else {
+            matches
+                .iter()
+                .map(|v| v.formatted().len())
+                .max()
+                .unwrap_or(0)
+        };
 
         for opt in matches {
             let current_n_short = opt.tokens.iter().filter(|v| v.len() == 1).count();

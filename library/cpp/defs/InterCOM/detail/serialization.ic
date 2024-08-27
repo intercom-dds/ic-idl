@@ -630,11 +630,11 @@ copy_discriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, in
     bool reader_has_member = reader.find_member(*member_info);
     if (reader_has_member) {
         if (writer.begin_member(*member_info)) {
-            discr = copyPrimitive(writer, reader, *member_info->type);
+            discr = copy_primitive(writer, reader, *member_info->type);
             writer.end_member();
         } else {
             EmptyWriter empty_writer;
-            discr = copyPrimitive(empty_writer, reader, *member_info->type);
+            discr = copy_primitive(empty_writer, reader, *member_info->type);
         }
         reader.end_member();
     } else {
@@ -736,13 +736,13 @@ inline void copy_member(WRITER& writer, READER& reader, const MemberInfo& member
 template <typename WRITER, typename READER>
 inline void copy_union(WRITER& writer, READER& reader, const TypeInfo& type_info) {
     int32_t idx;
-    bool reader_has_value = copyDiscriminator(writer, reader, type_info, idx);
+    bool reader_has_value = copy_discriminator(writer, reader, type_info, idx);
     if (idx > 0) {
         if (reader_has_value) {
-            copyMember(writer, reader, type_info.members[idx]);
+            copy_member(writer, reader, type_info.members[idx]);
         } else {
             EmptyReader empty_reader(false);
-            copyMember(writer, empty_reader, type_info.members[idx]);
+            copy_member(writer, empty_reader, type_info.members[idx]);
         }
     }
 }
@@ -756,7 +756,7 @@ inline void copy_struct(WRITER& writer, READER& reader, const TypeInfo& type_inf
         }
     }
     for (uint32_t i = 0; i < last_member; ++i) {
-        copyMember(writer, reader, type_info.members[i]);
+        copy_member(writer, reader, type_info.members[i]);
     }
 }
 
@@ -859,7 +859,7 @@ inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info)
     case dcps::xtypes::TK_BITSET:
     case dcps::xtypes::TK_BITMASK:
     case dcps::xtypes::TK_ENUM:
-        copyPrimitive(writer, reader, type_info);
+        copy_primitive(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_ALIAS:
@@ -873,27 +873,27 @@ inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info)
         break;
 
     case dcps::xtypes::TK_UNION:
-        copyUnion(writer, reader, type_info);
+        copy_union(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_STRUCTURE:
-        copyStruct(writer, reader, type_info);
+        copy_struct(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_STRING8:
-        copyString8(writer, reader, type_info);
+        copy_string8(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_STRING16:
-        copyString16(writer, reader, type_info);
+        copy_string16(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_MAP:
-        copyMap(writer, reader, type_info);
+        copy_map(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_SEQUENCE:
-        copySequence(writer, reader, type_info);
+        copy_sequence(writer, reader, type_info);
         break;
 
     case dcps::xtypes::TK_NONE:

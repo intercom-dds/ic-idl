@@ -34,6 +34,7 @@
 #  include <cstring>
 #  include <limits>
 #  include <map>
+#  include <memory>
 #  include <ostream>
 #  include <string>
 #  include <vector>
@@ -330,7 +331,7 @@ class JsonReader : public dcps::cts::GenericReader {
     bool read_from_string(T& a_value, const TypeInfo& a_info);
 
     struct Stack {
-        TypeInfo info;
+        TypeInfo info{};
         JsonNode current;
         std::vector<JsonNode> current_vec;
         std::map<std::string, JsonNode> current_map;
@@ -353,11 +354,11 @@ class JsonWriter : public dcps::cts::GenericWriter {
     explicit JsonWriter(
         std::ostream& out,
         SerializerFlags flags = 0,
-        int indentStep = 2,
-        int indentLevel = 0
+        int indent_step = 2,
+        int indent_level = 0
     );
 
-    JsonWriter(std::ostream& out, bool pretty, int indentStep = 2, int indentLevel = 0);
+    JsonWriter(std::ostream& out, bool pretty, int indent_step = 2, int indent_level = 0);
 
     SerializerFlags flags() const override;
 
@@ -411,20 +412,20 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void write(const char16_t* a_values, uint32_t a_count, const TypeInfo& a_info) override;
 
-    void reset(int indentLevel = 0);
+    void reset(int indent_level = 0);
 
-    void startObject();
+    void start_object();
 
-    void endObject();
+    void end_object();
 
-    void startArray();
+    void start_array();
 
-    void endArray();
+    void end_array();
 
     std::ostream& stream();
 
     template <typename T>
-    void writeKey(const T& key) {
+    void write_key(const T& key) {
         writeString(key);
         if (!is_key()) {
             put(':');

@@ -31,6 +31,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <memory>
 
 #include "InterCOM/dds_xtypes_constants.h"
 #include "InterCOM/json_parser.h"
@@ -533,10 +534,10 @@ inline bool JsonNode::get_object(std::map<std::string, JsonNode>& value) const {
             }
             JsonNode key = detail::json_parse(data);
             detail::json_consume_separator(data, detail::JSON_COLON);
-            JsonNode valueNode = detail::json_parse(data);
-            std::string keyString;
-            if (key.get_string(keyString)) {
-                value[keyString] = valueNode;
+            JsonNode value_node = detail::json_parse(data);
+            std::string key_string;
+            if (key.get_string(key_string)) {
+                value[key_string] = value_node;
             }
         }
         return true;
@@ -553,8 +554,8 @@ inline bool JsonNode::get_object(std::vector<std::pair<JsonNode, JsonNode>>& val
             }
             JsonNode key = detail::json_parse(data);
             detail::json_consume_separator(data, detail::JSON_COLON);
-            JsonNode valueNode = detail::json_parse(data);
-            value.emplace_back(key, valueNode);
+            JsonNode value_node = detail::json_parse(data);
+            value.emplace_back(key, value_node);
         }
         return true;
     }
@@ -570,9 +571,9 @@ inline bool JsonNode::get_object_as_vector(std::vector<JsonNode>& value) const {
             }
             JsonNode key = detail::json_parse(data);
             detail::json_consume_separator(data, detail::JSON_COLON);
-            JsonNode valueNode = detail::json_parse(data);
+            JsonNode value_node = detail::json_parse(data);
             value.push_back(key);
-            value.push_back(valueNode);
+            value.push_back(value_node);
         }
         return true;
     }
@@ -613,7 +614,7 @@ inline void JsonWriter::reset(int indent_level) {
     m_needComma = false;
 }
 
-inline void JsonWriter::startObject() {
+inline void JsonWriter::start_object() {
     maybeComma();
     put('{');
     newline();
@@ -621,7 +622,7 @@ inline void JsonWriter::startObject() {
     m_needComma = false;
 }
 
-inline void JsonWriter::endObject() {
+inline void JsonWriter::end_object() {
     --m_indentLevel;
     if (m_needComma) {
         newline();
@@ -630,7 +631,7 @@ inline void JsonWriter::endObject() {
     m_needComma = true;
 }
 
-inline void JsonWriter::startArray() {
+inline void JsonWriter::start_array() {
     maybeComma();
     put('[');
     newline();
@@ -638,7 +639,7 @@ inline void JsonWriter::startArray() {
     m_needComma = false;
 }
 
-inline void JsonWriter::endArray() {
+inline void JsonWriter::end_array() {
     --m_indentLevel;
     if (m_needComma) {
         newline();
@@ -821,24 +822,24 @@ inline void JsonWriter::write(const JsonNode& node) {
     case JSON_ARRAY: {
         std::vector<JsonNode> nodes;
         if (node.get_array(nodes)) {
-            startArray();
+            start_array();
             {
                 for (auto& n : nodes) {
                     write(n);
                 }
             }
-            endArray();
+            end_array();
         }
         break;
     }
     case JSON_OBJECT: {
         std::vector<JsonNode> nodes;
-        std::string keyString;
+        std::string key_string;
         if (node.get_object_as_vector(nodes)) {
-            startObject();
+            start_object();
             for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-                if (it->get_string(keyString)) {
-                    writeKey(keyString);
+                if (it->get_string(key_string)) {
+                    write_key(key_string);
                     ++it;
                     if (it != nodes.end()) {
                         write(*it);
@@ -846,7 +847,7 @@ inline void JsonWriter::write(const JsonNode& node) {
                 }
             }
         }
-        endObject();
+        end_object();
         break;
     }
     case JSON_BOOL: {
@@ -979,17 +980,17 @@ inline void JsonWriter::begin_type(const TypeInfo& a_info) {
     case dcps::xtypes::TK_STRUCTURE:
     case dcps::xtypes::TK_UNION:
         if (a_info.name != std::string_view("intercom::JsonValue")) {
-            startObject();
+            start_object();
         }
         is_object = true;
         break;
     case dcps::xtypes::TK_MAP:
-        startObject();
+        start_object();
         is_object = true;
         break;
     case dcps::xtypes::TK_SEQUENCE:
     case dcps::xtypes::TK_ARRAY:
-        startArray();
+        start_array();
         break;
     default:
         break;
@@ -999,7 +1000,7 @@ inline void JsonWriter::begin_type(const TypeInfo& a_info) {
     m_type_stack[m_level].is_object = is_object;
     m_type_stack[m_level].pos = 0;
     if (m_type_stack[m_level - 1].tmp_out || a_info.kind == dcps::xtypes::TK_UNION) {
-        m_type_stack[m_level].tmp_out.reset(new std::stringstream());
+        m_type_stack[m_level].tmp_out = std::make_unique<std::stringstream>();
         m_type_stack[m_level].tmp_is_new_line = m_is_new_line;
     }
 }
@@ -1016,15 +1017,15 @@ inline void JsonWriter::end_type() {
     case dcps::xtypes::TK_STRUCTURE:
     case dcps::xtypes::TK_UNION:
         if (stack.info.name != std::string_view("intercom::JsonValue")) {
-            endObject();
+            end_object();
         }
         break;
     case dcps::xtypes::TK_MAP:
-        endObject();
+        end_object();
         break;
     case dcps::xtypes::TK_SEQUENCE:
     case dcps::xtypes::TK_ARRAY:
-        endArray();
+        end_array();
         break;
     default:
         break;
@@ -1046,25 +1047,25 @@ inline bool JsonWriter::begin_member(const MemberInfo& a_member) {
     if (m_type_stack[m_level].info.kind == dcps::xtypes::TK_UNION) {
         if (a_member.name == std::string_view("_d")) {
             if (m_type_stack[m_level].info.name != std::string_view("intercom::JsonValue")) {
-                writeKey("$discriminator");
+                write_key("$discriminator");
             } else {
                 m_type_stack[m_level].pos++;
             }
         } else {
             if (a_member.case_labels && a_member.case_labels[0] == 1) {
-                m_type_stack[m_level].tmp_out.reset(new std::stringstream());
+                m_type_stack[m_level].tmp_out = std::make_unique<std::stringstream>();
                 m_needComma = false;
                 m_type_stack[m_level].pos = 0;
                 m_is_new_line = m_type_stack[m_level].tmp_is_new_line;
             }
             if (m_type_stack[m_level].info.name != std::string_view("intercom::JsonValue")) {
-                writeKey(a_member.name);
+                write_key(a_member.name);
             } else {
                 m_type_stack[m_level].pos++;
             }
         }
     } else {
-        writeKey(a_member.name);
+        write_key(a_member.name);
     }
     return true;
 }

@@ -426,10 +426,10 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     template <typename T>
     void write_key(const T& key) {
-        writeString(key);
+        write_string(key);
         if (!is_key()) {
             put(':');
-            if (isPretty()) {
+            if (is_pretty()) {
                 put(' ');
             }
             m_needComma = false;
@@ -437,8 +437,8 @@ class JsonWriter : public dcps::cts::GenericWriter {
     }
 
     template <typename T>
-    void writeJson(const T& value) {
-        maybeComma();
+    void write_json(const T& value) {
+        maybe_comma();
         std::stringstream str;
         str << value;
         for (auto c : str.str()) {
@@ -447,15 +447,15 @@ class JsonWriter : public dcps::cts::GenericWriter {
         m_needComma = true;
     }
 
-    void writeString(const std::string& value);
+    void write_string(const std::string& value);
 
-    void writeString(const std::wstring& value);
+    void write_string(const std::wstring& value);
 
-    void writeString(const std::u16string& value);
+    void write_string(const std::u16string& value);
 
     template <typename T>
-    void writeInteger(T value) {
-        maybeComma();
+    void write_integer(T value) {
+        maybe_comma();
         if (value == 0) {
             put('0');
         } else {
@@ -479,7 +479,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     template <typename T>
     void writeUnsigned(T value) {
-        maybeComma();
+        maybe_comma();
         if (value == 0) {
             put('0');
         } else {
@@ -498,7 +498,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void write(bool value);
 
-    void writeNull();
+    void write_null();
 
     void write(unsigned char value);
 
@@ -524,9 +524,9 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     void write(const JsonNode& node);
 
-    bool isPretty() const;
+    bool is_pretty() const;
 
-    void setPretty(bool pretty);
+    void set_pretty(bool pretty);
 
   private:
     template <typename T>
@@ -534,11 +534,11 @@ class JsonWriter : public dcps::cts::GenericWriter {
 
     bool is_key() const;
 
-    void maybeComma();
+    void maybe_comma();
 
     void newline();
 
-    void putEscaped(char c);
+    void put_escaped(char c);
 
     void put(char c);
 

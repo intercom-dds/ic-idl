@@ -25,10 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <fstream>
-
 #include "InterCOM/json_parser.h"
-#include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree.h"
@@ -41,18 +38,18 @@ static void print_json(intercom::JsonWriter& writer, const ptree* obj);
 
 static void print_annotations(intercom::JsonWriter& writer, const ptree* obj) {
     if (obj) {
-        writer.writeKey("annotations");
-        writer.startObject();
+        writer.write_key("annotations");
+        writer.start_object();
         for (const auto& ann : obj) {
             print_json(writer, ann);
         }
-        writer.endObject();
+        writer.end_object();
     }
 }
 
 static void print_kind(intercom::JsonWriter& writer, const std::string& kind) {
-    writer.writeKey("kind");
-    writer.writeString(kind);
+    writer.write_key("kind");
+    writer.write_string(kind);
 }
 
 static void print_json_type(intercom::JsonWriter& writer, const ptree* type, const ptree* context) {
@@ -64,40 +61,40 @@ static void print_json_type(intercom::JsonWriter& writer, const ptree* type, con
     case N_STRING:
         print_kind(writer, type->element_type == &char_type ? "string" : "wstring");
         if (!type->bounds.empty()) {
-            writer.writeKey("string_max_length");
-            writer.writeJson(json_value(type->bounds[0], context));
+            writer.write_key("string_max_length");
+            writer.write_json(json_value(type->bounds[0], context));
         }
         break;
     case N_SEQUENCE:
         print_kind(writer, "sequence");
-        writer.writeKey("type");
-        writer.writeString(idl_scoped_name(type->element_type, context));
+        writer.write_key("type");
+        writer.write_string(idl_scoped_name(type->element_type, context));
         if (!type->bounds.empty()) {
-            writer.writeKey("sequence_max_length");
-            writer.writeJson(json_value(type->bounds[0], context));
+            writer.write_key("sequence_max_length");
+            writer.write_json(json_value(type->bounds[0], context));
         }
         break;
     case N_MAP:
         print_kind(writer, "map");
-        writer.writeKey("key_type");
-        writer.writeString(idl_scoped_name(type->key_type, context));
-        writer.writeKey("value_type");
-        writer.writeString(idl_scoped_name(type->element_type, context));
+        writer.write_key("key_type");
+        writer.write_string(idl_scoped_name(type->key_type, context));
+        writer.write_key("value_type");
+        writer.write_string(idl_scoped_name(type->element_type, context));
         if (!type->bounds.empty()) {
-            writer.writeKey("map_max_length");
-            writer.writeJson(json_value(type->bounds[0], context));
+            writer.write_key("map_max_length");
+            writer.write_json(json_value(type->bounds[0], context));
         }
         break;
     case N_ARRAY:
         print_kind(writer, "array");
-        writer.writeKey("type");
-        writer.writeString(idl_scoped_name(type->element_type, context));
-        writer.writeKey("array_dimensions");
-        writer.startArray();
+        writer.write_key("type");
+        writer.write_string(idl_scoped_name(type->element_type, context));
+        writer.write_key("array_dimensions");
+        writer.start_array();
         for (const auto& b : type->bounds) {
-            writer.writeJson(json_value(b, context));
+            writer.write_json(json_value(b, context));
         }
-        writer.endArray();
+        writer.end_array();
         break;
     case N_EXCEPTION:
         print_kind(writer, "exception");
@@ -135,33 +132,33 @@ static void print_json_type(intercom::JsonWriter& writer, const ptree* type, con
         break;
     }
     if (print_type) {
-        writer.writeKey("type");
-        writer.writeString(idl_scoped_name(type, context));
+        writer.write_key("type");
+        writer.write_string(idl_scoped_name(type, context));
     }
 }
 
 static void print_json_member(intercom::JsonWriter& writer, const ptree* member) {
     if (member->kind == N_MEMBER) {
-        writer.startObject();
+        writer.start_object();
         for (auto cas : member->members) {
-            writer.writeKey("case");
+            writer.write_key("case");
             if (cas->next && cas->next != member) {
-                writer.startArray();
+                writer.start_array();
                 for (auto c = cas; c && c != member; c = c->next) {
-                    writer.writeJson(json_value(c->value, member->super));
+                    writer.write_json(json_value(c->value, member->super));
                 }
-                writer.endArray();
+                writer.end_array();
             } else if (cas->flags & OPT_DEFAULT) {
-                writer.writeString("default");
+                writer.write_string("default");
             } else {
-                writer.writeJson(json_value(cas->value, member->super));
+                writer.write_json(json_value(cas->value, member->super));
             }
         }
-        writer.writeKey("name");
-        writer.writeString(member->name);
+        writer.write_key("name");
+        writer.write_string(member->name);
         print_annotations(writer, member->annotations);
         print_json_type(writer, member->type, member->super);
-        writer.endObject();
+        writer.end_object();
     } else if (member->kind == N_PROTOTYPE) {
     }
 }
@@ -170,28 +167,28 @@ static void print_json(intercom::JsonWriter& writer, const ptree* obj) {
     if (obj->flags & OPT_DECLARATION) {
         switch (obj->kind) {
         case N_STRUCT:
-            writer.writeKey(obj->name);
-            writer.startObject();
+            writer.write_key(obj->name);
+            writer.start_object();
             print_kind(writer, "struct");
-            writer.endObject();
+            writer.end_object();
             break;
         case N_UNION:
-            writer.writeKey(obj->name);
-            writer.startObject();
+            writer.write_key(obj->name);
+            writer.start_object();
             print_kind(writer, "union");
-            writer.endObject();
+            writer.end_object();
             break;
         case N_VALUETYPE:
-            writer.writeKey(obj->name);
-            writer.startObject();
+            writer.write_key(obj->name);
+            writer.start_object();
             print_kind(writer, "valuetype");
-            writer.endObject();
+            writer.end_object();
             break;
         case N_INTERFACE:
-            writer.writeKey(obj->name);
-            writer.startObject();
+            writer.write_key(obj->name);
+            writer.start_object();
             print_kind(writer, "interface");
-            writer.endObject();
+            writer.end_object();
             break;
         default:
             break;
@@ -200,241 +197,241 @@ static void print_json(intercom::JsonWriter& writer, const ptree* obj) {
     }
     switch (obj->kind) {
     case N_MODULE:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "module");
         print_annotations(writer, obj->annotations);
         for (const auto& elem : obj->members) {
             print_json(writer, elem);
         }
-        writer.endObject();
+        writer.end_object();
         break;
     case N_STRUCT:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "struct");
         print_annotations(writer, obj->annotations);
         if (!obj->parents.empty()) {
-            writer.writeKey("base_type");
-            writer.startObject();
+            writer.write_key("base_type");
+            writer.start_object();
             print_json_type(writer, obj->parents[0], obj->super);
-            writer.endObject();
+            writer.end_object();
         }
-        writer.writeKey("members");
-        writer.startArray();
+        writer.write_key("members");
+        writer.start_array();
         for (const auto& elem : obj->members) {
             print_json_member(writer, elem);
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_UNION:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "union");
         print_annotations(writer, obj->annotations);
-        writer.writeKey("discriminator");
-        writer.startObject();
+        writer.write_key("discriminator");
+        writer.start_object();
         print_annotations(writer, obj->discriminator->annotations);
         print_json_type(writer, obj->discriminator->type, obj->super);
-        writer.endObject();
-        writer.writeKey("cases");
-        writer.startArray();
+        writer.end_object();
+        writer.write_key("cases");
+        writer.start_array();
         for (const auto& elem : obj->members) {
             print_json_member(writer, elem);
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_VALUETYPE:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "valuetype");
         print_annotations(writer, obj->annotations);
         if (!obj->parents.empty()) {
-            writer.writeKey("base_type");
-            writer.startObject();
+            writer.write_key("base_type");
+            writer.start_object();
             print_json_type(writer, obj->parents[0], obj->super);
-            writer.endObject();
+            writer.end_object();
         }
         if (obj->type) {
-            writer.writeKey("interface");
-            writer.startObject();
+            writer.write_key("interface");
+            writer.start_object();
             print_json_type(writer, obj->type, obj->super);
-            writer.endObject();
+            writer.end_object();
         }
-        writer.writeKey("attributes");
-        writer.startArray();
+        writer.write_key("attributes");
+        writer.start_array();
         for (const auto& elem : obj->members) {
             if (obj->kind == N_MEMBER) {
                 print_json_member(writer, elem);
             }
         }
-        writer.endArray();
-        writer.writeKey("methods");
-        writer.startArray();
+        writer.end_array();
+        writer.write_key("methods");
+        writer.start_array();
         for (const auto& elem : obj->members) {
             if (obj->kind == N_PROTOTYPE) {
                 print_json_member(writer, elem);
             }
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_INTERFACE:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "interface");
         print_annotations(writer, obj->annotations);
         if (!obj->parents.empty()) {
-            writer.writeKey("base_type");
+            writer.write_key("base_type");
             if (obj->parents.size() > 1) {
-                writer.startArray();
+                writer.start_array();
                 for (auto parent : obj->parents) {
-                    writer.startObject();
+                    writer.start_object();
                     print_json_type(writer, parent, obj->super);
-                    writer.endObject();
+                    writer.end_object();
                 }
-                writer.endArray();
+                writer.end_array();
             } else {
-                writer.startObject();
+                writer.start_object();
                 print_json_type(writer, obj->parents[0], obj->super);
-                writer.endObject();
+                writer.end_object();
             }
         }
-        writer.writeKey("members");
-        writer.startArray();
+        writer.write_key("members");
+        writer.start_array();
         for (const auto& elem : obj->members) {
             print_json_member(writer, elem);
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_EXCEPTION:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "exception");
         print_annotations(writer, obj->annotations);
         if (!obj->parents.empty()) {
-            writer.writeKey("base_type");
-            writer.startObject();
+            writer.write_key("base_type");
+            writer.start_object();
             print_json_type(writer, obj->parents[0], obj->super);
-            writer.endObject();
+            writer.end_object();
         }
-        writer.writeKey("members");
-        writer.startArray();
+        writer.write_key("members");
+        writer.start_array();
         for (const auto& elem : obj->members) {
             print_json_member(writer, elem);
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_ENUM:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "enum");
         print_annotations(writer, obj->annotations);
-        writer.writeKey("enumerators");
-        writer.startArray();
+        writer.write_key("enumerators");
+        writer.start_array();
         for (const auto& elem : obj->members) {
-            writer.startObject();
-            writer.writeKey("name");
-            writer.writeString(elem->name);
+            writer.start_object();
+            writer.write_key("name");
+            writer.write_string(elem->name);
             if (elem->flags & OPT_ENUMERATED) {
-                writer.writeKey("value");
-                writer.writeJson(json_value(elem->value, obj));
+                writer.write_key("value");
+                writer.write_json(json_value(elem->value, obj));
             }
             if (get_annotation(elem, annotation_type_default_literal) != nullptr) {
-                writer.writeKey("default");
+                writer.write_key("default");
                 writer.write(true);
             }
-            writer.endObject();
+            writer.end_object();
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_BITSET:
         break;
     case N_BITMASK:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_kind(writer, "bitmask");
         print_annotations(writer, obj->annotations);
-        writer.writeKey("flags");
-        writer.startArray();
+        writer.write_key("flags");
+        writer.start_array();
         for (const auto& elem : obj->members) {
-            writer.startObject();
-            writer.writeKey("name");
-            writer.writeString(elem->name);
+            writer.start_object();
+            writer.write_key("name");
+            writer.write_string(elem->name);
             if (elem->flags & OPT_ENUMERATED) {
-                writer.writeKey("position");
-                writer.writeJson(json_value(elem->value, obj));
+                writer.write_key("position");
+                writer.write_json(json_value(elem->value, obj));
             }
-            writer.endObject();
+            writer.end_object();
         }
-        writer.endArray();
-        writer.endObject();
+        writer.end_array();
+        writer.end_object();
         break;
     case N_ALIAS:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_annotations(writer, obj->annotations);
         print_kind(writer, "typedef");
-        writer.writeKey("type");
-        writer.startObject();
+        writer.write_key("type");
+        writer.start_object();
         print_json_type(writer, obj->type, obj->super);
-        writer.endObject();
-        writer.endObject();
+        writer.end_object();
+        writer.end_object();
         break;
     case N_CONST:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_annotations(writer, obj->annotations);
         print_kind(writer, "const");
-        writer.writeKey("type");
-        writer.startObject();
+        writer.write_key("type");
+        writer.start_object();
         print_json_type(writer, obj->type, obj->super);
-        writer.endObject();
-        writer.writeKey("value");
-        writer.writeJson(json_value(obj->value, obj));
-        writer.endObject();
+        writer.end_object();
+        writer.write_key("value");
+        writer.write_json(json_value(obj->value, obj));
+        writer.end_object();
         break;
     case N_ANNOTATION_DEF:
-        writer.writeKey(obj->name);
-        writer.startObject();
+        writer.write_key(obj->name);
+        writer.start_object();
         print_annotations(writer, obj->annotations);
         print_kind(writer, "annotation");
         if (obj->members) {
-            writer.writeKey("members");
-            writer.startObject();
+            writer.write_key("members");
+            writer.start_object();
             for (const auto* elem : obj->members) {
-                writer.writeKey(elem->name);
-                writer.startObject();
+                writer.write_key(elem->name);
+                writer.start_object();
                 print_json_type(writer, elem->type, obj);
                 if (elem->value.kind() != UNDEF_KIND) {
-                    writer.writeKey("default");
-                    writer.writeJson(json_value(elem->value, obj));
+                    writer.write_key("default");
+                    writer.write_json(json_value(elem->value, obj));
                 }
-                writer.endObject();
+                writer.end_object();
             }
-            writer.endObject();
+            writer.end_object();
         }
-        writer.endObject();
+        writer.end_object();
         break;
     case N_ANNOTATION:
-        writer.writeKey(idl_scoped_name(obj, namespace_of(annotation_type_key)));
+        writer.write_key(idl_scoped_name(obj, namespace_of(annotation_type_key)));
         if (obj->members && obj->members->next) {
-            writer.startObject();
+            writer.start_object();
             for (const auto& elem : obj->members) {
-                writer.writeKey(elem->name);
-                writer.writeJson(json_value(elem->value, obj->type));
+                writer.write_key(elem->name);
+                writer.write_json(json_value(elem->value, obj->type));
             }
-            writer.endObject();
+            writer.end_object();
         } else if (obj->members) {
-            writer.writeJson(json_value(obj->members->value, obj->type));
+            writer.write_json(json_value(obj->members->value, obj->type));
         } else {
-            writer.startObject();
-            writer.endObject();
+            writer.start_object();
+            writer.end_object();
         }
         break;
     default:
@@ -450,7 +447,7 @@ static void print_node(
 ) {
     switch (value.kind()) {
     case UNDEF_KIND:
-        writer.writeNull();
+        writer.write_null();
         break;
     case BOOLEAN_KIND:
         writer.write(value.val.b() != 0);
@@ -486,37 +483,37 @@ static void print_node(
         writer.write(value.val.d());
         break;
     case STRING_KIND:
-        writer.writeString(value.val.str());
+        writer.write_string(value.val.str());
         break;
     case CHAR_KIND: {
         // TODO(idarcar);
         // intercom::corba::WString_var str;
         // str.reserve(1);
         // str[0] = static_cast<intercom::corba::WString_var::value_type>(value.val.c());
-        // writer.writeString(str);
+        // writer.write_string(str);
     } break;
     case PTREE_KIND: {
         if (value.val.node()->members) {
             if (base_type_of(value.val.node())->kind == N_STRUCT) {
-                writer.startObject();
+                writer.start_object();
                 for (auto p : value.val.node()->members) {
-                    writer.writeKey(p->name);
+                    writer.write_key(p->name);
                     print_node(writer, p->value, context, value_flag);
                 }
-                writer.endObject();
+                writer.end_object();
             } else {
-                bool was_pretty = writer.isPretty();
-                writer.setPretty(false);
-                writer.startArray();
+                bool was_pretty = writer.is_pretty();
+                writer.set_pretty(false);
+                writer.start_array();
                 for (auto p : value.val.node()->members) {
                     print_node(writer, p->value, context, value_flag);
                 }
-                writer.endArray();
-                writer.setPretty(was_pretty);
+                writer.end_array();
+                writer.set_pretty(was_pretty);
             }
         } else {
             if (!value.val.node()->name.empty() && !value_flag) {
-                writer.writeString(idl_scoped_name(value.val.node(), context));
+                writer.write_string(idl_scoped_name(value.val.node(), context));
             } else {
                 print_node(writer, value.val.node()->value, context, value_flag);
             }
@@ -527,79 +524,79 @@ static void print_node(
 
 static void print_node(intercom::JsonWriter& writer, const ptree* node) {
     if (!node) {
-        writer.writeNull();
+        writer.write_null();
         return;
     }
 
-    writer.startObject();
-    writer.writeKey("kind");
-    writer.writeString(node_kind_str(node->kind));
+    writer.start_object();
+    writer.write_key("kind");
+    writer.write_string(node_kind_str(node->kind));
     if (!node->name.empty()) {
-        writer.writeKey("name");
-        writer.writeString(node->name);
+        writer.write_key("name");
+        writer.write_string(node->name);
     }
     if (node->type) {
-        writer.writeKey("type");
-        writer.writeString(idl_name(node->type));
+        writer.write_key("type");
+        writer.write_string(idl_name(node->type));
         if (!node->type->bounds.empty()) {
-            writer.writeKey("bounds");
-            writer.startArray();
+            writer.write_key("bounds");
+            writer.start_array();
             for (const auto& bound : node->type->bounds) {
                 writer.write(integer_value(bound));
             }
-            writer.endArray();
+            writer.end_array();
         }
     }
     if (node->element_type) {
-        writer.writeKey("element_type");
-        writer.writeString(idl_name(node->element_type));
+        writer.write_key("element_type");
+        writer.write_string(idl_name(node->element_type));
     }
     if (node->key_type) {
-        writer.writeKey("key_type");
-        writer.writeString(idl_name(node->key_type));
+        writer.write_key("key_type");
+        writer.write_string(idl_name(node->key_type));
     }
     if (node->annotations) {
-        writer.writeKey("annotations");
-        writer.startArray();
+        writer.write_key("annotations");
+        writer.start_array();
         print_node(writer, node->annotations);
-        writer.endArray();
+        writer.end_array();
     }
     if (node->members) {
-        writer.writeKey("members");
-        writer.startArray();
+        writer.write_key("members");
+        writer.start_array();
         print_node(writer, node->members);
-        writer.endArray();
+        writer.end_array();
     }
     if (!node->parents.empty()) {
-        writer.writeKey("parents");
-        writer.startArray();
+        writer.write_key("parents");
+        writer.start_array();
         for (auto parent : node->parents) {
-            writer.writeString(idl_name(parent));
+            writer.write_string(idl_name(parent));
         }
-        writer.endArray();
+        writer.end_array();
     }
     if (!node->getraises.empty()) {
-        writer.writeKey("getraises");
-        writer.startArray();
+        writer.write_key("getraises");
+        writer.start_array();
         for (auto getraise : node->getraises) {
-            writer.writeString(idl_name(getraise));
+            writer.write_string(idl_name(getraise));
         }
-        writer.endArray();
+        writer.end_array();
     }
     if (!node->setraises.empty()) {
-        writer.writeKey("setraises");
-        writer.startArray();
+        writer.write_key("setraises");
+        writer.start_array();
         for (auto setraise : node->setraises) {
-            writer.writeString(idl_name(setraise));
+            writer.write_string(idl_name(setraise));
         }
-        writer.endArray();
+        writer.end_array();
     }
     if (node->value.kind() != UNDEF_KIND) {
-        writer.writeKey("value");
+        writer.write_key("value");
         print_node(writer, node->value, node->super);
     }
     if (node->flags) {
-        writer.writeKey("flags");
+        writer.write_key("flags");
         std::vector<std::string> flags;
         if (node->flags & OPT_DECLARATION) {
             flags.emplace_back("OPT_DECLARATION");
@@ -629,9 +626,9 @@ static void print_node(intercom::JsonWriter& writer, const ptree* node) {
             }
             str += flag;
         }
-        writer.writeString(str);
+        writer.write_string(str);
     }
-    writer.endObject();
+    writer.end_object();
 }
 
 std::string intercom::cidl::json_value(const numeric& value, const ptree* context, int flags) {
@@ -641,7 +638,7 @@ std::string intercom::cidl::json_value(const numeric& value, const ptree* contex
     if (flags & int(JsonValueFlags::FLAG_ESCAPED)) {
         std::stringstream escape_out;
         intercom::JsonWriter escape_writer(escape_out);
-        escape_writer.writeString(out.str());
+        escape_writer.write_string(out.str());
         return escape_out.str();
     }
     return out.str();
@@ -662,13 +659,13 @@ void intercom::cidl::code_gen_json(const parse_result* result, const char* desti
         std::stringstream file;
         {
             intercom::JsonWriter writer(file, true);
-            writer.startObject();
+            writer.start_object();
             for (const auto& obj : result->tree) {
                 if (is_emit(obj, LANG_NONE) && obj->included_from == include) {
                     print_json(writer, obj);
                 }
             }
-            writer.endObject();
+            writer.end_object();
         }
         if (!file.str().empty()) {
             write_if_changed(filepath, file.str());
@@ -678,7 +675,7 @@ void intercom::cidl::code_gen_json(const parse_result* result, const char* desti
 
 void intercom::cidl::generate_json_type(std::ostream& stream, const ptree* tree) {
     intercom::JsonWriter writer(stream, true);
-    writer.startObject();
+    writer.start_object();
     print_json(writer, tree);
-    writer.endObject();
+    writer.end_object();
 }

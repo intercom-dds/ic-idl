@@ -25,13 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <array>
 #include <cassert>
 #include <cctype>
-#include <cstdint>
 #include <cstring>
-#include <deque>
-#include <memory>
 
 #include "InterCOM/version.h"
 #include "cidl/commandline.h"
@@ -39,10 +35,8 @@
 #include "cidl/hdrs.h"
 #include "cidl/memf.h"
 #include "cidl/ptree.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "utils/string_utils.h"
 
 #define INTERCOM_PUBLIC_MACRO_NAME "INTERCOM_PUBLIC"
 
@@ -518,7 +512,7 @@ static void emit_const_value(
 }
 
 std::string get_const_value(const numeric& value, const ptree* scope) {
-    struct memf tmp;
+    struct memf tmp {};
     memset(&tmp, 0, sizeof(struct memf));
     mreset(&tmp);
     emit_const_value(&tmp, value, scope, scope);
@@ -1082,7 +1076,7 @@ static void cpl_conv_gen(const ptree* obj) {
     if ((obj->kind == N_STRUCT || obj->kind == N_UNION || obj->kind == N_VALUETYPE ||
          obj->kind == N_EXCEPTION) &&
         !is_non_serialized(obj)) {
-        int memberIndex = 0;
+        int member_index = 0;
 
         auto p_value = cplpl_param_name(obj, "value");
         auto p_archive = cplpl_param_name_force(obj, "archive");
@@ -1118,11 +1112,11 @@ static void cpl_conv_gen(const ptree* obj) {
                     scoped_name(obj->discriminator->type, nullptr),
                     p_value
                 );
-                cpl_gen_marshal_member(memberIndex++, "discriminator", "discr", p_info, 0);
+                cpl_gen_marshal_member(member_index++, "discriminator", "discr", p_info, 0);
                 mprintf(&g_hd_ts_file, "switch (discr) {{\n");
             }
 
-            cpl_gen_marshal_members(obj, p_info, memberIndex);
+            cpl_gen_marshal_members(obj, p_info, member_index);
 
             if (obj->kind == N_UNION) {
                 mprintf(&g_hd_ts_file, "}}\n");
@@ -3206,17 +3200,17 @@ static void
 cpl_saveit(const ptree* tree, const std::string& module, const std::string& source_name) {
     auto include_prefix = CommandLineOption::header_subfolder();
     if (!module.empty()) {
-        static struct memf pk_file;
-        mreset(&pk_file);
+        static struct memf s_pk_file;
+        mreset(&s_pk_file);
 
         if (CommandLineOption::copyright_notice()) {
-            mprintf(&pk_file, "{}", CommandLineOption::copyright_notice());
+            mprintf(&s_pk_file, "{}", CommandLineOption::copyright_notice());
         }
 
-        mprintf(&pk_file, "#pragma once\n");
+        mprintf(&s_pk_file, "#pragma once\n");
 
         mprintf(
-            &pk_file,
+            &s_pk_file,
             "#include <InterCOM/version.h>\n"
             "#ifndef INTERCOM_VERSION_" INTERCOM_VERSION_S
             "\n"
@@ -3225,7 +3219,7 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
             "#endif // INTERCOM_VERSION_" INTERCOM_VERSION_S "\n\n"
         );
         mprintf(
-            &pk_file,
+            &s_pk_file,
             "#ifdef _WIN32\n"
             "#pragma warning(push)\n"
             "#pragma warning(disable:4065)\n"
@@ -3235,15 +3229,15 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
 
         // This must come before the other includes
         if (CommandLineOption::corba_types()) {
-            mprintf(&pk_file, "#ifndef INTERCOM_CORBA_TYPES\n");
-            mprintf(&pk_file, "#define INTERCOM_CORBA_TYPES\n");
-            mprintf(&pk_file, "#endif\n\n");
+            mprintf(&s_pk_file, "#ifndef INTERCOM_CORBA_TYPES\n");
+            mprintf(&s_pk_file, "#define INTERCOM_CORBA_TYPES\n");
+            mprintf(&s_pk_file, "#endif\n\n");
         }
 
         if (CommandLineOption::dll_exp_sym() &&
             strcmp(CommandLineOption::dll_exp_sym(), INTERCOM_PUBLIC_MACRO_NAME) != 0) {
             mprintf(
-                &pk_file,
+                &s_pk_file,
                 "#ifndef {}\n"
                 "#ifdef _WIN32\n"
                 "#define {} __declspec(dllimport)\n"
@@ -3288,40 +3282,40 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
         }
 
         if (!mempty(&g_hd_rpc_file) && !CommandLineOption::cpp_gen_cpp11()) {
-            mprintf(&pk_file, "#include <InterCOM/rpc.h>\n");
+            mprintf(&s_pk_file, "#include <InterCOM/rpc.h>\n");
         }
 
-        mprintf(&pk_file, "#include <InterCOM/optional.h>\n");
-        mprintf(&pk_file, "#include <InterCOM/span.h>\n");
-        mprintf(&pk_file, "#include <InterCOM/cdr_serializer.h>\n");
+        mprintf(&s_pk_file, "#include <InterCOM/optional.h>\n");
+        mprintf(&s_pk_file, "#include <InterCOM/span.h>\n");
+        mprintf(&s_pk_file, "#include <InterCOM/cdr_serializer.h>\n");
 
         if (module != "dds_xtypes_constants") {
-            mprintf(&pk_file, "#include <InterCOM/json_serializer.h>\n");
+            mprintf(&s_pk_file, "#include <InterCOM/json_serializer.h>\n");
         }
 
         if (has_exceptions(tree)) {
-            mprintf(&pk_file, "#include <stdexcept>\n");
+            mprintf(&s_pk_file, "#include <stdexcept>\n");
         }
-        mprintf(&pk_file, "#include <functional>\n");
+        mprintf(&s_pk_file, "#include <functional>\n");
 
-        include_dependencies(&pk_file, tree, g_current_include);
+        include_dependencies(&s_pk_file, tree, g_current_include);
 
         if (CommandLineOption::use_fmtlib()) {
-            mprintf(&pk_file, "#include <fmt/ostream.h>\n");
+            mprintf(&s_pk_file, "#include <fmt/ostream.h>\n");
         }
-        mprintf(&pk_file, "\n");
+        mprintf(&s_pk_file, "\n");
 
-        memfcat(&pk_file, &g_hd_file);
-        memfcat(&pk_file, &g_hd_hash_file);
-        memfcat(&pk_file, &g_hd_ts_file);
-        memfcat(&pk_file, &g_hd_impl_file);
-        memfcat(&pk_file, &g_hd_rpc_file);
-        memfcat(&pk_file, &g_hd_json_file);
+        memfcat(&s_pk_file, &g_hd_file);
+        memfcat(&s_pk_file, &g_hd_hash_file);
+        memfcat(&s_pk_file, &g_hd_ts_file);
+        memfcat(&s_pk_file, &g_hd_impl_file);
+        memfcat(&s_pk_file, &g_hd_rpc_file);
+        memfcat(&s_pk_file, &g_hd_json_file);
         if (!mempty(&g_hd_fmt_file)) {
-            memfcat(&pk_file, &g_hd_fmt_file);
+            memfcat(&s_pk_file, &g_hd_fmt_file);
         }
         mprintf(
-            &pk_file,
+            &s_pk_file,
             "#ifdef _WIN32\n"
             "#pragma warning(pop)\n"
             "#endif\n\n"
@@ -3363,14 +3357,14 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
             cname.c_str()
         );
         savememf(
-            &pk_file,
+            &s_pk_file,
             nullptr,
             CommandLineOption::c_target_directory(),
             include_prefix,
             "{}.{}",
             module.c_str()
         );
-        mreset(&pk_file);
+        mreset(&s_pk_file);
     }
 
     mreset(&g_hd_file);

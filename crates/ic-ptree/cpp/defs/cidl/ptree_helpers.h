@@ -66,7 +66,7 @@ bool has_max_value(const ptree* node, AnnotationGetter get = get_annotation);
 bool has_default_case(const ptree* node);
 bool has_min_value(const ptree* node, AnnotationGetter get = get_annotation);
 
-uint32_t get_member_id(const ptree* member, const ptree* context, int prev_max);
+int get_member_id(const ptree* member, const ptree* context, int prev_max);
 int get_extensibility(const ptree* node);
 const char* get_extensibility_name(const ptree* node);
 int get_bit_bound(const ptree* node);

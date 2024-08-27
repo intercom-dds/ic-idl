@@ -28,7 +28,6 @@
 #include <iostream>
 #include <optional>
 
-#include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"

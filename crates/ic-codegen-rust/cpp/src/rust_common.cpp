@@ -34,7 +34,6 @@
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"
 #include "cidl/ptree.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "icgen/template/casing.h"
@@ -42,8 +41,7 @@
 
 using namespace intercom::cidl;
 
-namespace intercom {
-namespace rust {
+namespace intercom::rust {
 
 static void qos_name(const ptree* node, std::string& name) {
     if (node->kind == N_ENUM || node->kind == N_STRUCT) {
@@ -118,5 +116,4 @@ std::string seri_name(const ptree* node) {
     return original_node(node)->name;
 }
 
-}  // namespace rust
-}  // namespace intercom
+}  // namespace intercom::rust

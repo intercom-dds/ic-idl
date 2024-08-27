@@ -217,7 +217,7 @@ bool is_autoid_hash(const ptree* node, AnnotationGetter get) {
     return false;
 }
 
-uint32_t get_member_id(const ptree* member, const ptree* context, int prev_max) {
+int get_member_id(const ptree* member, const ptree* context, int prev_max) {
     if (context->kind == N_UNION && member == context->discriminator) {
         return 0;
     }
@@ -230,10 +230,10 @@ uint32_t get_member_id(const ptree* member, const ptree* context, int prev_max) 
         if (ann) {
             struct numeric str = get_annotation_value(ann, "value");
             if (!string_value(str).empty()) {
-                return member_name_hash_id(string_value(str));
+                return static_cast<int>(member_name_hash_id(string_value(str)));
             }
         }
-        return member_name_hash_id(member->name);
+        return static_cast<int>(member_name_hash_id(member->name));
     }
     return prev_max + 1;
 }
@@ -268,7 +268,7 @@ bool is_optional(const ptree* node, AnnotationGetter get) {
 
 bool is_merged(const ptree* node, AnnotationGetter get) {
     struct ptree* ann = get(node, annotation_type_merge);
-    return ann ? integer_value(ann->members->value) : 0;
+    return ann ? integer_value(ann->members->value) : false;
 }
 
 bool is_must_understand(const ptree* node, AnnotationGetter get) {

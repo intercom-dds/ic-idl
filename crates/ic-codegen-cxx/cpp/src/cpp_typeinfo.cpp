@@ -615,9 +615,9 @@ void intercom::cidl::gen_cpp_type_info(
     std::string_view funcname
 ) {
     std::vector<const ptree*> members = compound_members(obj);
-    int memberId = 0;
+    int member_id = 0;
     int index = 0;
-    int prevMax = -1;
+    int prev_max = -1;
     auto objname = cpp_type_name(obj, nullptr);
     std::string min_value_name = "nullptr";
     std::string max_value_name = "nullptr";
@@ -743,8 +743,8 @@ void intercom::cidl::gen_cpp_type_info(
             for (auto it = members.begin(); it != members.end(); ++it, ++index) {
                 auto name = member_name(*it);
                 std::string flag = get_member_flag_name(*it);
-                memberId = get_member_id(*it, obj, prevMax);
-                prevMax = prevMax > memberId ? prevMax : memberId;
+                member_id = get_member_id(*it, obj, prev_max);
+                prev_max = prev_max > member_id ? prev_max : member_id;
                 if ((*it)->name.compare(0, 35, "void_void_void_dummy_skipped_in_air") == 0) {
                     add_flag(flag, "intercom::dcps::xtypes::IS_AIR_DUMMY");
                 }
@@ -763,7 +763,7 @@ void intercom::cidl::gen_cpp_type_info(
                 mprintf(
                     memf,
                     "{{ {}, \"{}\", {}, {}, {}, ",
-                    memberId,
+                    member_id,
                     name,
                     flag,
                     case_label_names[index],

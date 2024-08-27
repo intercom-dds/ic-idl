@@ -32,8 +32,6 @@
 
 #include <string_view>
 
-#include "cidl/codegen.h"
-
 namespace intercom::cidl {
 
 enum lang_kind_t { ADA_FILE = 1, C_JAVA_FILE };

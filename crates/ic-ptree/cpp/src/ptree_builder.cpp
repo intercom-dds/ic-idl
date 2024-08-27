@@ -191,7 +191,8 @@ ptree* lookup_name(
     ptree* res = nullptr;
     std::map<std::string, ptree*>::const_iterator it;
     if (name[0] == ':') {
-        if ((it = lookup.find(name)) != lookup.end() && is_of_type(it->second, kind)) {
+        it = lookup.find(name);
+        if (it != lookup.end() && is_of_type(it->second, kind)) {
             res = it->second;
         }
     } else {
@@ -208,9 +209,11 @@ ptree* lookup_name(
             if (res == nullptr) {
                 res = lookup_name(state, name, lookup, kind, level - 1);
             }
-        } else if ((it = lookup.find("::" + name)) != lookup.end() &&
-                   is_of_type(it->second, kind)) {
-            res = it->second;
+        } else {
+            it = lookup.find("::" + name);
+            if (it != lookup.end() && is_of_type(it->second, kind)) {
+                res = it->second;
+            }
         }
     }
     return res;
@@ -1691,7 +1694,7 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                     } else if (m->value.kind() != PTREE_KIND) {
                         m->value =
                             *expr_convert(state, &m->value, base_type_of(node)->value.kind());
-                        m->type = const_cast<ptree*>(base_type_of(node));
+                        m->type = base_type_of(node);
                     }
                     if (m->value.kind() == PTREE_KIND) {
                         m->type = m->value.val.node()->type;

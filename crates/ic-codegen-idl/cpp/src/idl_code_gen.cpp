@@ -32,14 +32,12 @@
 #include <map>
 #include <set>
 
-#include "InterCOM/integer_types.h"
 #include "cidl/commandline.h"
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "utils/md5.h"

@@ -505,14 +505,14 @@ static void print_node(
                 }
                 writer.endObject();
             } else {
-                bool wasPretty = writer.isPretty();
+                bool was_pretty = writer.isPretty();
                 writer.setPretty(false);
                 writer.startArray();
                 for (auto p : value.val.node()->members) {
                     print_node(writer, p->value, context, value_flag);
                 }
                 writer.endArray();
-                writer.setPretty(wasPretty);
+                writer.setPretty(was_pretty);
             }
         } else {
             if (!value.val.node()->name.empty() && !value_flag) {

@@ -40,7 +40,6 @@
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -83,7 +82,7 @@ std::string python_type_name(const ptree* node, const ptree* context, ModuleCont
 std::string python_class_type(const ptree* node, const ptree* context, ModuleContext* module);
 
 // TOOD(idarcar):
-inline std::string extract_file_name(std::string file_name) {
+inline std::string extract_file_name(const std::string& file_name) {
     return std::filesystem::path(file_name).stem().string();
     // std::replace(file_name.begin(), file_name.end(), '/', '_');
     // intercom::corba::String_var to_trim = file_name.c_str();
@@ -253,7 +252,7 @@ python_member_type_name(const ptree* node, ModuleContext* module, bool list_prot
     }
     if (base_type_of(node)->kind == N_ARRAY) {  // Array type
         std::string list_string;
-        unsigned list_depth = unsigned(base_type_of(node)->bounds.size());
+        auto list_depth = unsigned(base_type_of(node)->bounds.size());
         if (list_depth) {
             module->imports.insert("__typing__");
         }
@@ -748,7 +747,7 @@ void code_gen_python_cdr(const ptree* obj, ModuleContext* module) {
     }
     *module << endl << end("") << "])" << endl << end("");
 
-    free(cdr);
+    // free(cdr);
 }
 
 std::string get_bit_bound_type(const ptree* obj) {
@@ -883,7 +882,7 @@ void code_gen_python_write_cdr(
         *module << "ctx.write_" << get_bit_bound_type(base_type_of(obj)) << "(int(" << variable
                 << "))" << endl;
     } else if (obj->kind == N_ARRAY) {
-        unsigned list_depth = unsigned(obj->bounds.size());
+        auto list_depth = unsigned(obj->bounds.size());
         for (unsigned i = 0; i < list_depth; ++i) {
             *module << "for __x" << depth_value + i + 1 << " in "
                     << (i == 0 ? variable : "__x" + std::to_string(depth_value + i)) << ":"

@@ -40,8 +40,8 @@ struct Config {
     bool proxies = false;
     bool compatibility = false;
     bool no_corba_dependency = false;
-    bool cpp_gen_cpp11 = false;
     bool cpp_access_functions = false;
+    bool cpp_scoped_enums = false;
     bool doxy_compatible_output = false;
     bool expand_idl = false;
     bool legacy_idl = false;

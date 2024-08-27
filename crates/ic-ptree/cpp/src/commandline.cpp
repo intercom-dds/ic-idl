@@ -64,8 +64,8 @@ bool CommandLineOption::compatibility() {
 bool CommandLineOption::no_corba_dependency() {
     return g_CurrentOptions.no_corba_dependency;
 }
-bool CommandLineOption::cpp_gen_cpp11() {
-    return g_CurrentOptions.cpp_gen_cpp11;
+bool CommandLineOption::cpp_scoped_enums() {
+    return g_CurrentOptions.cpp_scoped_enums;
 }
 bool CommandLineOption::cpp_no_stream_op() {
     return g_CurrentOptions.cpp_no_stream_op;

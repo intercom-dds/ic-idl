@@ -40,7 +40,7 @@ class CommandLineOption {
     static bool proxies();
     static bool compatibility();
     static bool no_corba_dependency();
-    static bool cpp_gen_cpp11();
+    static bool cpp_scoped_enums();
     static bool cpp_no_stream_op();
     static bool cpp_access_functions();
     static bool doxy_compatible_output();

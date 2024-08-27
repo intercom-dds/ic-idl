@@ -71,7 +71,7 @@ static void
 cpp_scoped_name_rec(const ptree* node, const ptree* common_parent, std::stringstream& out) {
     if (node) {
         ptree* scope = node->super;
-        const bool skip_enum_scp = !CommandLineOption::cpp_gen_cpp11();
+        const bool skip_enum_scp = !CommandLineOption::cpp_scoped_enums();
         if (scope && (scope->kind == N_BITMASK || (skip_enum_scp && scope->kind == N_ENUM))) {
             scope = scope->super;  // skip cpp enum scope
         }
@@ -2822,7 +2822,7 @@ static void cpl_struct_enum_def(const ptree* obj) {
             scoped_name(obj->element_type, namespace_of(obj))
         );
     } else {
-        if (CommandLineOption::cpp_gen_cpp11()) {
+        if (CommandLineOption::cpp_scoped_enums()) {
             mprintf(
                 &g_hd_file,
                 "enum class {} : {} {{",
@@ -3281,7 +3281,7 @@ cpl_saveit(const ptree* tree, const std::string& module, const std::string& sour
             );
         }
 
-        if (!mempty(&g_hd_rpc_file) && !CommandLineOption::cpp_gen_cpp11()) {
+        if (!mempty(&g_hd_rpc_file)) {
             mprintf(&s_pk_file, "#include <InterCOM/rpc.h>\n");
         }
 

@@ -937,9 +937,50 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ic_codegen_cpp(
+    pub fn ic_codegen_json(
         result: *const ic_parse_result_t,
         destination: *const ::std::os::raw::c_char,
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct python_options_t {
+    pub use_pep8: u8,
+    pub global_postfix: *const ::std::os::raw::c_char,
+}
+#[test]
+fn bindgen_test_layout_python_options_t() {
+    const UNINIT: ::std::mem::MaybeUninit<python_options_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<python_options_t>(),
+        16usize,
+        concat!("Size of: ", stringify!(python_options_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<python_options_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(python_options_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).use_pep8) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(python_options_t),
+            "::",
+            stringify!(use_pep8)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).global_postfix) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(python_options_t),
+            "::",
+            stringify!(global_postfix)
+        )
     );
 }
 extern "C" {
@@ -948,10 +989,92 @@ extern "C" {
         destination: *const ::std::os::raw::c_char,
     );
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct rust_options_t {
+    pub no_rename: u8,
+    pub must_use: u8,
+}
+#[test]
+fn bindgen_test_layout_rust_options_t() {
+    const UNINIT: ::std::mem::MaybeUninit<rust_options_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<rust_options_t>(),
+        2usize,
+        concat!("Size of: ", stringify!(rust_options_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<rust_options_t>(),
+        1usize,
+        concat!("Alignment of ", stringify!(rust_options_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).no_rename) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(rust_options_t),
+            "::",
+            stringify!(no_rename)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).must_use) as usize - ptr as usize },
+        1usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(rust_options_t),
+            "::",
+            stringify!(must_use)
+        )
+    );
+}
 extern "C" {
     pub fn ic_codegen_rust(
         result: *const ic_parse_result_t,
         destination: *const ::std::os::raw::c_char,
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct idl_options_t {
+    pub doxygen: u8,
+    pub expand: u8,
+}
+#[test]
+fn bindgen_test_layout_idl_options_t() {
+    const UNINIT: ::std::mem::MaybeUninit<idl_options_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<idl_options_t>(),
+        2usize,
+        concat!("Size of: ", stringify!(idl_options_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<idl_options_t>(),
+        1usize,
+        concat!("Alignment of ", stringify!(idl_options_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).doxygen) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(idl_options_t),
+            "::",
+            stringify!(doxygen)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).expand) as usize - ptr as usize },
+        1usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(idl_options_t),
+            "::",
+            stringify!(expand)
+        )
     );
 }
 extern "C" {
@@ -960,9 +1083,117 @@ extern "C" {
         destination: *const ::std::os::raw::c_char,
     );
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cpp_options_t {
+    pub header_postfix: *const ::std::os::raw::c_char,
+    pub header_ext: *const ::std::os::raw::c_char,
+    pub dll_export: *const ::std::os::raw::c_char,
+    pub file_prefix: *const ::std::os::raw::c_char,
+    pub scoped_enums: u8,
+    pub access_functions: u8,
+    pub no_stream_op: u8,
+    pub use_fmt: u8,
+}
+#[test]
+fn bindgen_test_layout_cpp_options_t() {
+    const UNINIT: ::std::mem::MaybeUninit<cpp_options_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<cpp_options_t>(),
+        40usize,
+        concat!("Size of: ", stringify!(cpp_options_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<cpp_options_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(cpp_options_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).header_postfix) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(header_postfix)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).header_ext) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(header_ext)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).dll_export) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(dll_export)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).file_prefix) as usize - ptr as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(file_prefix)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).scoped_enums) as usize - ptr as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(scoped_enums)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).access_functions) as usize - ptr as usize },
+        33usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(access_functions)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).no_stream_op) as usize - ptr as usize },
+        34usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(no_stream_op)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).use_fmt) as usize - ptr as usize },
+        35usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cpp_options_t),
+            "::",
+            stringify!(use_fmt)
+        )
+    );
+}
 extern "C" {
-    pub fn ic_codegen_json(
+    pub fn ic_codegen_cpp(
         result: *const ic_parse_result_t,
+        options: cpp_options_t,
         destination: *const ::std::os::raw::c_char,
     );
 }

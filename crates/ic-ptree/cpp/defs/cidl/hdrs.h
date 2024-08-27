@@ -33,6 +33,7 @@
 #include <string_view>
 #include <vector>
 
+#include "cidl/codegen.h"
 #include "cidl/idl_parser.h"
 
 namespace intercom::cidl {
@@ -57,7 +58,7 @@ void code_gen_json_schema(const parse_result* result);
 
 void code_gen_dds_cplpl(const parse_result* result);
 
-void code_gen_dds_cplpl(const parse_result* result, const char* destination);
+void code_gen_dds_cplpl(const parse_result* result, const Config& options, const char* destination);
 
 void code_gen_java(const parse_result* result);
 

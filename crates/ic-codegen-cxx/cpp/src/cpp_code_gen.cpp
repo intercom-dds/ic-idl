@@ -30,6 +30,7 @@
 #include <cstring>
 
 #include "InterCOM/version.h"
+#include "cidl/codegen.h"
 #include "cidl/commandline.h"
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"
@@ -3388,7 +3389,13 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
     }
 }
 
-void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, const char* destination) {
-    CommandLineOption::get_instance().c_target_directory = destination;
+void intercom::cidl::code_gen_dds_cplpl(
+    const parse_result* result,
+    const Config& options,
+    const char* destination
+) {
+    auto& config = CommandLineOption::get_instance();
+    config = options;
+    config.c_target_directory = destination;
     code_gen_dds_cplpl(result);
 }

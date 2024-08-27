@@ -54,15 +54,45 @@ void ic_ptree_dump(const struct ic_parse_result_t* result);
 
 void ic_codegen_proto(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_cpp(const struct ic_parse_result_t* result, const char* destination);
+void ic_codegen_json(const struct ic_parse_result_t* result, const char* destination);
+
+struct python_options_t {
+    uint8_t use_pep8;
+    const char* global_postfix;
+};
 
 void ic_codegen_python(const struct ic_parse_result_t* result, const char* destination);
 
+struct rust_options_t {
+    uint8_t no_rename;
+    uint8_t must_use;
+};
+
 void ic_codegen_rust(const struct ic_parse_result_t* result, const char* destination);
+
+struct idl_options_t {
+    uint8_t doxygen;
+    uint8_t expand;
+};
 
 void ic_codegen_idl(const struct ic_parse_result_t* result, const char* destination);
 
-void ic_codegen_json(const struct ic_parse_result_t* result, const char* destination);
+struct cpp_options_t {
+    const char* header_postfix;
+    const char* header_ext;
+    const char* dll_export;
+    const char* file_prefix;
+    uint8_t scoped_enums;
+    uint8_t access_functions;
+    uint8_t no_stream_op;
+    uint8_t use_fmt;
+};
+
+void ic_codegen_cpp(
+    const struct ic_parse_result_t* result,
+    struct cpp_options_t options,
+    const char* destination
+);
 
 #ifdef __cplusplus
 }

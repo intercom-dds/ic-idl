@@ -117,9 +117,28 @@ macro_rules! define_backend {
     };
 }
 
-define_backend!(codegen_cpp, ic_codegen_cpp);
 define_backend!(codegen_idl, ic_codegen_idl);
 define_backend!(codegen_json, ic_codegen_json);
 define_backend!(codegen_proto, ic_codegen_proto);
 define_backend!(codegen_python, ic_codegen_python);
 define_backend!(codegen_rust, ic_codegen_rust);
+
+#[must_use]
+pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<String> {
+    let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
+    let options = sys::cpp_options_t {
+        header_postfix: std::ptr::null(),
+        header_ext: std::ptr::null(),
+        dll_export: std::ptr::null(),
+        file_prefix: std::ptr::null(),
+        scoped_enums: 0,
+        access_functions: 0,
+        no_stream_op: 0,
+        use_fmt: 0,
+    };
+
+    unsafe {
+        sys::ic_codegen_cpp(result.inner, options, dir.as_ptr());
+    }
+    vec![]
+}

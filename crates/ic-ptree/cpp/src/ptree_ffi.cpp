@@ -27,6 +27,7 @@
 
 #include "cidl/ptree_ffi.h"
 
+#include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree_builder.h"
@@ -64,9 +65,31 @@ void ic_codegen_proto(const ic_parse_result_t* result, const char* destination) 
     intercom::cidl::code_gen_proto(res, destination);
 }
 
-void ic_codegen_cpp(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_cpp(
+    const ic_parse_result_t* result,
+    struct cpp_options_t options,
+    const char* destination
+) {
+    intercom::cidl::Config config;
+    if (options.header_ext) {
+        config.header_subfolder = options.header_ext;
+    }
+    if (options.header_postfix) {
+        config.cpp_header_postfix = options.header_postfix;
+    }
+    if (options.dll_export) {
+        config.dll_exp_sym = options.dll_export;
+    }
+    if (options.file_prefix) {
+        config.c_file_prefix = options.file_prefix;
+    }
+    config.cpp_scoped_enums = options.scoped_enums;
+    config.cpp_access_functions = options.access_functions;
+    config.cpp_no_stream_op = options.no_stream_op;
+    config.use_fmtlib = options.use_fmt;
+
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    intercom::cidl::code_gen_dds_cplpl(res, destination);
+    intercom::cidl::code_gen_dds_cplpl(res, config, destination);
 }
 
 void ic_codegen_python(const ic_parse_result_t* result, const char* destination) {

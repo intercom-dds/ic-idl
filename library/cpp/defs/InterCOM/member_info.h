@@ -27,12 +27,7 @@
 
 #pragma once
 
-#include <array>
-#include <type_traits>
-#include <vector>
-
-#include "InterCOM/bounded.h"
-#include "InterCOM/integer_types.h"
+#include <cstdint>
 
 namespace intercom {
 

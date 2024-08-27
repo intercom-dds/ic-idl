@@ -27,7 +27,9 @@
 
 #pragma once
 
-static const char* CPP_KEYWORDS[] = {
+const char* const cpp_keywords[] = {};
+
+const char* const CPP_KEYWORDS[] = {
     "alignas",       "alignof",      "and",       "and_eq",    "asm",  //
     "auto",          "bitand",       "bitor",     "bool",      "break",        "case",
     "catch",         "char",         "char16_t",  "char32_t",  "char8_t",      "class",
@@ -47,7 +49,7 @@ static const char* CPP_KEYWORDS[] = {
     nullptr
 };
 
-static const char* IDL_KEYWORDS[] = {
+const char* const IDL_KEYWORDS[] = {
     "abstract",  "any",       "alias",      "attribute",  "bitfield",  "bitmask",   "bitset",
     "boolean",   "case",      "char",       "component",  "connector", "const",     "consumes",
     "context",   "custom",    "default",    "double",     "exception", "emits",     "enum",
@@ -62,7 +64,7 @@ static const char* IDL_KEYWORDS[] = {
     "int16",     "int32",     "int64",      "uint16",     "uint32",    "uint64",    nullptr
 };
 
-static const char* JAVA_KEYWORDS[] = {
+const char* const JAVA_KEYWORDS[] = {
     "abstract",     "default",   "if",     "private",    "throw",    "boolean",  "do",
     "implements",   "protected", "throws", "break",      "double",   "import",   "public",
     "transient",    "byte",      "else",   "instanceof", "return",   "try",      "case",
@@ -74,7 +76,7 @@ static const char* JAVA_KEYWORDS[] = {
     "notifyAll",    "toString",  "wait",   nullptr
 };
 
-static const char* ADA_KEYWORDS[] = {
+const char* const ADA_KEYWORDS[] = {
     "abort",   "abs",        "abstract",  "accept",    "access",  "aliased",      "all",
     "and",     "array",      "at",        "begin",     "body",    "case",         "constant",
     "declare", "delay",      "delta",     "digits",    "do",      "else",         "elsif",
@@ -88,7 +90,7 @@ static const char* ADA_KEYWORDS[] = {
     "while",   "with",       "xor",       nullptr
 };
 
-static const char* CS_KEYWORDS[] = {
+const char* const CS_KEYWORDS[] = {
     "abstract", "as",         "base",    "bool",     "break",     "byte",     "case",
     "catch",    "char",       "checked", "class",    "const",     "continue", "decimal",
     "default",  "delegate",   "do",      "double",   "else",      "enum",     "event",
@@ -103,7 +105,7 @@ static const char* CS_KEYWORDS[] = {
     "volatile", "while",      nullptr
 };
 
-static const char* PYTHON_KEYWORDS[] = {
+const char* const PYTHON_KEYWORDS[] = {
     "and",        "as",       "assert",   "break",     "class",        "continue", "def",
     "del",        "elif",     "else",     "except",    "False",        "finally",  "for",
     "from",       "global",   "if",       "import",    "in",           "is",       "lambda",
@@ -121,7 +123,7 @@ static const char* PYTHON_KEYWORDS[] = {
     "super",      "tuple",    "type",     "vars",      "zip",          nullptr
 };
 
-static const char* RUST_KEYWORDS[] = {
+const char* const RUST_KEYWORDS[] = {
     "as",
     "break",
     "const",
@@ -181,7 +183,7 @@ static const char* RUST_KEYWORDS[] = {
     nullptr
 };
 
-static const char* PROTO_KEYWORDS[] = {
+const char* const PROTO_KEYWORDS[] = {
     "syntax",   "map",      "int32",   "import",   "extensions", "int64",    "weak",
     "reserved", "uint32",   "public",  "rpc",      "uint64",     "package",  "stream",
     "sint32",   "option",   "returns", "sint64",   "inf",        "to",       "fixed32",

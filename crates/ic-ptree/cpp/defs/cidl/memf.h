@@ -34,10 +34,12 @@
 
 namespace intercom::cidl {
 
+// NOLINTNEXTLINE
 enum lang_kind_t { ADA_FILE = 1, C_JAVA_FILE };
 
 #define MEMF_MAX_STATEMENTS 50
 
+// NOLINTNEXTLINE
 struct memf {
     char* memp;
     char* memfile;

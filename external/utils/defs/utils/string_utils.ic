@@ -140,8 +140,8 @@ inline bool wild_card_match(
             a_string_ptr++;
             break;
         case '[': {
-            const char* endRange = strchr(a_pattern_ptr, ']');
-            if (endRange == nullptr) {
+            const char* end_range = strchr(a_pattern_ptr, ']');
+            if (end_range == nullptr) {
                 if (a_pattern_ptr[0] != a_string_ptr[0]) {
                     return false;
                 }
@@ -149,11 +149,11 @@ inline bool wild_card_match(
                 a_string_ptr++;
             } else {
                 if (!detail::is_in_range(
-                        a_string_ptr[0], &(a_pattern_ptr[1]), endRange, case_insensitive
+                        a_string_ptr[0], &(a_pattern_ptr[1]), end_range, case_insensitive
                     )) {
                     return false;
                 }
-                a_pattern_ptr = endRange + 1;
+                a_pattern_ptr = end_range + 1;
                 a_string_ptr++;
             }
         } break;
@@ -204,7 +204,7 @@ inline void split_string(
     // strtok is destructive, so start by copying input string
     std::string copy(str);
     char* strtok_state;
-    char* token = string_utils::strtok_r(&copy[0], delim, &strtok_state);
+    char* token = string_utils::strtok_r(copy.data(), delim, &strtok_state);
     while (token) {
         if (trim_whitespace) {
             while (*token == ' ' || *token == '\t') {
@@ -278,7 +278,7 @@ string_to_double_in_string_sequence(std::string_view text, double& value, int* e
     return result;
 }
 
-inline bool stringToFloatInStringSequence(std::string_view text, float& value, int* end_ptr) {
+inline bool string_to_float_in_string_sequence(std::string_view text, float& value, int* end_ptr) {
     bool result = true;  // Assume all will be well.
     value = 0.0;
     std::istringstream iss((std::string(text)));
@@ -299,82 +299,6 @@ inline bool stringToFloatInStringSequence(std::string_view text, float& value, i
         result = false;
     }
     return result;
-}
-
-inline bool
-partitionMatch(const std::vector<std::string>& a_pub, const std::vector<std::string>& a_sub) {
-    bool partition_matched = false;
-
-    // see if the writer is in the same partition
-    if (a_sub.empty() && a_pub.empty()) {
-        partition_matched = true;
-    }
-
-    // Non-standard special case: The exact string "*" matches anything, even other wildcards.
-    // The expression "**" can be used to match everything except other wildcard expressions.
-    for (const auto& i : a_pub) {
-        if (i == "*") {
-            partition_matched = true;
-            break;
-        }
-    }
-    for (const auto& i : a_sub) {
-        if (i == "*") {
-            partition_matched = true;
-            break;
-        }
-    }
-
-    if (!partition_matched) {
-        std::vector<std::string> p1;
-        std::vector<std::string> p2;
-
-        if (a_pub.empty()) {
-            p1.emplace_back("");
-        } else {
-            p1 = a_pub;
-        }
-
-        if (a_sub.empty()) {
-            p2.emplace_back("");
-        } else {
-            p2 = a_sub;
-        }
-
-        for (unsigned int a = 0; a < p1.size() && !partition_matched; a++) {
-            if (nullptr == p1[a].c_str())  // Robust check
-            {
-                continue;
-            }
-            bool p1_is_wild = detail::is_wild(p1[a].c_str());
-
-            for (auto& b : p2) {
-                if (nullptr == b.c_str())  // Robust check
-                {
-                    continue;
-                }
-                bool p2_is_wild = detail::is_wild(b.c_str());
-
-                // Spec says two partition names with wildcards don't match
-                if (p1_is_wild && p2_is_wild) {
-                    continue;
-                }
-                if (p1_is_wild && string_utils::wild_card_match(p1[a], b)) {
-                    partition_matched = true;
-                    break;
-                }
-                if (p2_is_wild && string_utils::wild_card_match(b, p1[a])) {
-                    partition_matched = true;
-                    break;
-                }
-                if (p1[a] == b) {
-                    partition_matched = true;
-                    break;
-                }
-            }
-        }
-    }
-    return partition_matched;
 }
 
 // Can't use toupper directly in std::transform because of the downcast warning.
@@ -420,9 +344,8 @@ inline bool to_boolean(const std::string& a_str, const bool& a_default) {
     }
     if ("false" == trimed_str) {
         return false;
-    } else {
-        return a_default;
     }
+    return a_default;
 }
 
 inline int to_octal(const std::string& a_str, const int& a_default) {

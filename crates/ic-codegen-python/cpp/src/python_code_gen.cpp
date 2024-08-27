@@ -1722,18 +1722,22 @@ void code_gen_python_simple_type_check(
 
     // isinstance
     if (base_type->kind == N_STRUCT || base_type->kind == N_UNION) {
-        return code_gen_python_check_isinstance(
+        code_gen_python_check_isinstance(
             module, var_name, python_class_type(base_type, context, module)
         );
+        return;
     }
     if (base_type->kind == N_SEQUENCE || base_type->kind == N_ARRAY) {
-        return code_gen_python_check_isinstance(module, var_name, "list");
+        code_gen_python_check_isinstance(module, var_name, "list");
+        return;
     }
     if (base_type->kind == N_MAP) {
-        return code_gen_python_check_isinstance(module, var_name, "dict");
+        code_gen_python_check_isinstance(module, var_name, "dict");
+        return;
     }
     if (base_type->kind == N_STRING) {
-        return code_gen_python_check_isinstance(module, var_name, "str");
+        code_gen_python_check_isinstance(module, var_name, "str");
+        return;
     }
     if (base_type->kind == N_ENUM) {
         // TODO

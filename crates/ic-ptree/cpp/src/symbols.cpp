@@ -91,7 +91,7 @@ std::string safe_name(const ptree* node, const std::string& name, Language lang)
         transform(lcname.begin(), lcname.end(), lcname.begin(), ::tolower);
         lookup = lcname;
     }
-    const char** keywords = nullptr;
+    const char* const* keywords = nullptr;
     switch (lang) {
     case LANG_CPP:
         keywords = CPP_KEYWORDS;
@@ -121,7 +121,7 @@ std::string safe_name(const ptree* node, const std::string& name, Language lang)
         break;
     }
     if (keywords) {
-        for (const char** keyword = keywords; *keyword; ++keyword) {
+        for (auto keyword = keywords; *keyword; ++keyword) {
             if (*keyword == lookup) {
                 std::string safe_name = name;
                 switch (lang) {

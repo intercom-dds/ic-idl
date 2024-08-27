@@ -27,15 +27,9 @@
 
 #pragma once
 
-#include <array>
 #include <cstring>
-#include <map>
-#include <memory>
 #include <set>
-#include <sstream>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 #include "InterCOM/character_encoding.h"
 #include "InterCOM/dds_xtypes_constants.h"
@@ -51,13 +45,12 @@
 namespace intercom {
 
 template <typename T>
-bool enumToString(std::string& res, T value, const TypeInfo* type);
+bool enum_to_string(std::string& res, T value, const TypeInfo* type);
 
 template <typename T>
-bool stringToEnum(T& value, const char* string, const TypeInfo* type);
+bool string_to_enum(T& value, const char* string, const TypeInfo* type);
 
-namespace dcps {
-namespace cts {
+namespace dcps::cts {
 template <typename T>
 struct unsigned_type_of;
 
@@ -323,7 +316,8 @@ class KeyOnlyWriter : public GenericWriter {
     bool begin_member(const MemberInfo& a_member) override {
         if (a_member.flags & xtypes::IS_KEY) {
             return m_delegate.begin_member(a_member);
-        } else if (type_level() > 1 && a_member.flags & xtypes::IS_IMPLICIT_KEY) {
+        }
+        if (type_level() > 1 && a_member.flags & xtypes::IS_IMPLICIT_KEY) {
             return m_delegate.begin_member(a_member);
         }
         return false;
@@ -424,11 +418,11 @@ class KeyOnlyReader : public GenericReader {
     bool find_member(const MemberInfo& a_member) override {
         if (a_member.flags & xtypes::IS_KEY) {
             return m_delegate.find_member(a_member);
-        } else if (type_level() > 1 && a_member.flags & xtypes::IS_IMPLICIT_KEY) {
-            return m_delegate.find_member(a_member);
-        } else {
-            return false;
         }
+        if (type_level() > 1 && a_member.flags & xtypes::IS_IMPLICIT_KEY) {
+            return m_delegate.find_member(a_member);
+        }
+        return false;
     }
 
     void end_member() override {
@@ -527,18 +521,19 @@ class FilterMemberReader : public GenericReader {
     bool find_member(const MemberInfo& a_member) override {
         if (type_level() != 1) {
             return m_delegate.find_member(a_member);
-        } else if (m_members.find(a_member.name) != m_members.end()) {
+        }
+        if (m_members.find(a_member.name) != m_members.end()) {
             m_seen.insert(a_member.name);
             return m_delegate.find_member(a_member);
-        } else if (type_level() != 1 || m_seen.size() < m_members.size()) {
+        }
+        if (type_level() != 1 || m_seen.size() < m_members.size()) {
             if (m_delegate.find_member(a_member)) {
-                EmptyWriter emptyWriter;
-                transform(emptyWriter, m_delegate, *a_member.type);
+                EmptyWriter empty_writer;
+                transform(empty_writer, m_delegate, *a_member.type);
             }
             return false;
-        } else {
-            return false;
         }
+        return false;
     }
 
     void end_member() override {
@@ -630,15 +625,12 @@ class TGenericMarshalBase {
 
         bool skip_member(const MemberInfo& a_member) {
             if (m_marshal.writer().flags() & SERIALIZER_KEY_ONLY) {
-                if (a_member.flags & xtypes::IS_KEY || (m_marshal.writer().type_level() > 1 &&
-                                                        a_member.flags & xtypes::IS_IMPLICIT_KEY)) {
-                    return false;
-                } else {
-                    return true;
-                }
-            } else {
-                return false;
+                return (
+                    a_member.flags & xtypes::IS_KEY || (m_marshal.writer().type_level() > 1 &&
+                                                        a_member.flags & xtypes::IS_IMPLICIT_KEY)
+                );
             }
+            return false;
         }
 
         template <typename T>
@@ -721,11 +713,11 @@ class TGenericMarshalBase {
         void io(const T& value) {
             auto len = static_cast<uint32_t>(value.size());
             m_marshal.writer().write_length(len);
-            Serializer<MARSHAL, K> keySerialize;
-            Serializer<MARSHAL, V> valueSerialize;
+            Serializer<MARSHAL, K> key_serialize;
+            Serializer<MARSHAL, V> value_serialize;
             for (auto it = value.begin(); it != value.end(); ++it) {
-                keySerialize(m_marshal, *const_cast<K*>(&it->first), m_type_info.key_type);
-                valueSerialize(m_marshal, *const_cast<V*>(&it->second), m_type_info.element_type);
+                key_serialize(m_marshal, *const_cast<K*>(&it->first), m_type_info.key_type);
+                value_serialize(m_marshal, *const_cast<V*>(&it->second), m_type_info.element_type);
             }
         }
 
@@ -733,11 +725,11 @@ class TGenericMarshalBase {
         void io(const VECTOR& keys, const VECTOR& values) {
             auto len = static_cast<uint32_t>(values.size());
             m_marshal.writer().write_length(len);
-            Serializer<MARSHAL, K> keySerialize;
-            Serializer<MARSHAL, V> valueSerialize;
+            Serializer<MARSHAL, K> key_serialize;
+            Serializer<MARSHAL, V> value_serialize;
             for (uint32_t i = 0; i < len; ++i) {
-                keySerialize(m_marshal, *const_cast<K*>(&keys[i]), m_type_info.key_type);
-                valueSerialize(m_marshal, *const_cast<V*>(&values[i]), m_type_info.element_type);
+                key_serialize(m_marshal, *const_cast<K*>(&keys[i]), m_type_info.key_type);
+                value_serialize(m_marshal, *const_cast<V*>(&values[i]), m_type_info.element_type);
             }
         }
 
@@ -818,15 +810,12 @@ class TGenericUnmarshalBase {
 
         bool skip_member(const MemberInfo& a_member) {
             if (m_unmarshal.reader().flags() & SERIALIZER_KEY_ONLY) {
-                if (a_member.flags & xtypes::IS_KEY || (m_unmarshal.reader().type_level() > 1 &&
-                                                        a_member.flags & xtypes::IS_IMPLICIT_KEY)) {
-                    return false;
-                } else {
-                    return true;
-                }
-            } else {
-                return false;
+                return (
+                    a_member.flags & xtypes::IS_KEY || (m_unmarshal.reader().type_level() > 1 &&
+                                                        a_member.flags & xtypes::IS_IMPLICIT_KEY)
+                );
             }
+            return false;
         }
 
         template <typename T>
@@ -889,12 +878,12 @@ class TGenericUnmarshalBase {
         void io(T& value) {
             uint32_t len = m_unmarshal.reader().read_length();
             value.clear();
-            Serializer<UNMARSHAL, K> keySerialize;
-            Serializer<UNMARSHAL, V> valueSerialize;
+            Serializer<UNMARSHAL, K> key_serialize;
+            Serializer<UNMARSHAL, V> value_serialize;
             K key = K();
             for (uint32_t i = 0; i < len; ++i) {
-                keySerialize(m_unmarshal, key, m_type_info.key_type);
-                valueSerialize(m_unmarshal, value[key], m_type_info.element_type);
+                key_serialize(m_unmarshal, key, m_type_info.key_type);
+                value_serialize(m_unmarshal, value[key], m_type_info.element_type);
             }
         }
 
@@ -903,11 +892,11 @@ class TGenericUnmarshalBase {
             uint32_t len = m_unmarshal.reader().read_length();
             keys.resize(len);
             values.resize(len);
-            Serializer<UNMARSHAL, K> keySerialize;
-            Serializer<UNMARSHAL, V> valueSerialize;
+            Serializer<UNMARSHAL, K> key_serialize;
+            Serializer<UNMARSHAL, V> value_serialize;
             for (uint32_t i = 0; i < len; ++i) {
-                keySerialize(m_unmarshal, keys[i], m_type_info.key_type);
-                valueSerialize(m_unmarshal, values[i], m_type_info.element_type);
+                key_serialize(m_unmarshal, keys[i], m_type_info.key_type);
+                value_serialize(m_unmarshal, values[i], m_type_info.element_type);
             }
         }
 
@@ -1001,8 +990,7 @@ void transform(WRITER& writer, READER& reader);
 template <typename WRITER, typename READER>
 void transform(WRITER& writer, READER& reader, const TypeInfo& type_info);
 
-}  // namespace cts
-}  // namespace dcps
+}  // namespace dcps::cts
 }  // namespace intercom
 
 #ifdef INTERCOM_COMPILER_MICROSOFT

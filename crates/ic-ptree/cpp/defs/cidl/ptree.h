@@ -73,6 +73,7 @@ struct ptree {
         value = num_undef;
     }
 
+    // NOLINTNEXTLINE
     struct iterator {
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
@@ -107,6 +108,7 @@ struct ptree {
         value_type m_node;
     };
 
+    // NOLINTNEXTLINE
     struct const_iterator {
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
@@ -165,6 +167,7 @@ struct ptree {
     numeric value;
 };
 
+// NOLINTNEXTLINE
 struct declarator {
     identifier ident;
     std::vector<numeric> bounds;

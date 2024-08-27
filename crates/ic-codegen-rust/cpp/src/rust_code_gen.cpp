@@ -42,7 +42,11 @@
 #include "rust_common.h"
 
 // TODO(idarcar): fix before release
-enum { INTERCOM_VERSION_MAJOR = 0, INTERCOM_VERSION_MINOR = 0, INTERCOM_VERSION_PATCH = 0 };
+enum : uint8_t {
+    INTERCOM_VERSION_MAJOR = 0,
+    INTERCOM_VERSION_MINOR = 0,
+    INTERCOM_VERSION_PATCH = 0
+};
 
 using namespace intercom::rust;
 using namespace intercom::cidl;

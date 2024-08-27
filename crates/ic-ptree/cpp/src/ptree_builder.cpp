@@ -1424,7 +1424,6 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
     if (discriminator) {
         ptree* prev_case = nullptr;
         ptree* default_case = nullptr;
-        ptree* default_member = nullptr;
         int label_group = 0;
         int default_label_group = 0;
 
@@ -1442,7 +1441,6 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                     }
                     default_case = c;
                     default_label_group = label_group;
-                    default_member = mem;
                     continue;
                 }
                 // case:
@@ -1468,13 +1466,12 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                     default_case->value = prev_case->value;
                 }
             }
-            prev_case = mem;
             ++label_group;
         }
         if (!default_case && !has_all_type_values(discriminator->type, case_values)) {
             default_case = create_default_case(state);
             default_case->type = discriminator->type;
-            default_member =
+            auto default_member =
                 create_union_member(state, create_null_node(state), default_case, nullptr);
             append_node(state, members, default_member);
         }
@@ -1835,8 +1832,6 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                              // ptree validation
                 numeric rpl = gt ? max : min;
                 if (val.has_val()) {
-                    std::string from = min.has_val() ? "[" + string_value(min) : "<-inf";
-                    std::string to = max.has_val() ? string_value(max) + "]" : "inf>";
                     val = rpl;
                 } else if (!is_optional(node)) {
                     ptree* param = create_node(state, N_CONST, create_identifier(state, "value"));

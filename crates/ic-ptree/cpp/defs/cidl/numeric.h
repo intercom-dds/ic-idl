@@ -42,6 +42,7 @@ constexpr T* construct_at(T* ptr, Args&&... args) {
 
 namespace cidl {
 
+// NOLINTNEXTLINE
 struct numeric_storage {
     numeric_storage();
     numeric_storage(const numeric_storage& a_other);

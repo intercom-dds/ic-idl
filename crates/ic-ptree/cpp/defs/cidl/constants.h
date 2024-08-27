@@ -136,9 +136,9 @@ struct ptree;
 
 void clear_namespace_nodes(struct parser_state* state);
 
-extern enum node_kind ANY_KIND[];
+extern enum node_kind ANY_KIND[];  // NOLINT
 
-extern struct numeric num_undef;
+extern struct numeric num_undef;  // NOLINT
 
 const struct numeric*
 expr_convert(struct parser_state* state, const struct numeric* value, enum numeric_kind kind);
@@ -152,6 +152,7 @@ const struct numeric* expr_binary(
     const struct numeric* v2
 );
 
+// NOLINTBEGIN(readability-identifier-naming)
 extern struct ptree boolean_type;
 extern struct ptree int8_type;
 extern struct ptree octet_type;
@@ -237,6 +238,7 @@ extern struct ptree* annotation_type_ext_jaus_integer;
 extern struct ptree* annotation_type_ext_jaus_integer_function;
 extern struct ptree* annotation_type_ext_protobuf_type;
 extern struct ptree* annotation_type_jaus;
+// NOLINTEND(readability-identifier-naming)
 
 #ifdef __cplusplus
 };  // extern C

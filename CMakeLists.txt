@@ -58,3 +58,21 @@ add_subdirectory(crates/ic-codegen-json/cpp)
 add_subdirectory(crates/ic-codegen-protobuf/cpp)
 add_subdirectory(crates/ic-codegen-python/cpp)
 add_subdirectory(crates/ic-codegen-rust/cpp)
+
+if (CLANG_TIDY)
+    find_program(
+        TIDY_EXE REQUIRED
+        NAMES clang-tidy
+    )
+
+    set(TIDY_INVOCATION
+        "clang-tidy"
+        "--use-color"
+        "--header-filter=.*"
+        "--warnings-as-errors='*"
+        "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
+    )
+
+    set(CMAKE_C_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
+endif()

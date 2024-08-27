@@ -42,7 +42,7 @@ template <typename T>
 class span {
   public:
     using element_type = T;
-    using value_type = typename std::remove_cv<T>::type;
+    using value_type = typename std::remove_cv_t<T>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using pointer = T*;
@@ -71,13 +71,13 @@ class span {
     template <typename U, std::size_t N>
     constexpr span(const std::array<U, N>& array) noexcept : span(array.data(), N) {}
 
-    template <typename U, typename = typename std::enable_if<!std::is_const<T>::value, U>::type>
+    template <typename U, typename = typename std::enable_if_t<!std::is_const_v<T>, U>>
     constexpr span(U& value) noexcept : m_data(value.data()), m_size(value.size()) {}
 
-    template <typename U, typename = typename std::enable_if<std::is_const<T>::value, U>::type>
+    template <typename U, typename = typename std::enable_if_t<std::is_const_v<T>, U>>
     constexpr span(const U& value) noexcept : m_data(value.data()), m_size(value.size()) {}
 
-    template <typename U = T, typename = typename std::enable_if<std::is_const<T>::value, U>::type>
+    template <typename U = T, typename = typename std::enable_if_t<std::is_const_v<T>, U>>
     constexpr span(std::initializer_list<U> value) : span(value.begin(), value.size()) {}
 
     span& operator=(const span&) noexcept = default;

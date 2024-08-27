@@ -43,6 +43,7 @@ Checks: 'modernize-*,
          -readability-identifier-length,
          -readability-suspicious-call-argument,
          -performance-avoid-endl,
+         -performance-enum-size,
          -modernize-use-trailing-return-type,
          -modernize-avoid-c-arrays,
          -modernize-use-nodiscard,
@@ -54,13 +55,11 @@ Checks: 'modernize-*,
          -hicpp-avoid-c-arrays,
          -performance-inefficient-string-concatenation,
          -bugprone-easily-swappable-parameters,
-         -bugprone-reserved-identifier'
+         -bugprone-reserved-identifier,
+         -bugprone-macro-parentheses'
 
 CheckOptions:
    - { key: readability-identifier-naming.NamespaceCase,        value: lower_case }
-   - { key: readability-identifier-naming.ClassCase,            value: CamelCase  }
-   - { key: readability-identifier-naming.StructCase,           value: CamelCase  }
-   - { key: readability-identifier-naming.EnumCase,             value: CamelCase  }
    - { key: readability-identifier-naming.FunctionCase,         value: lower_case }
    - { key: readability-identifier-naming.VariableCase,         value: lower_case }
    - { key: readability-identifier-naming.ParameterCase,        value: lower_case }
@@ -68,7 +67,6 @@ CheckOptions:
    - { key: readability-identifier-naming.GlobalConstantCase,   value: UPPER_CASE }
    - { key: readability-identifier-naming.PrivateMemberPrefix,  value: m_         }
    - { key: readability-identifier-naming.GlobalVariablePrefix, value: g_         }
-   - { key: readability-identifier-naming.GlobalConstantPrefix, value:            }
 
 WarningsAsErrors: ''
 

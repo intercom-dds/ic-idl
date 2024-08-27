@@ -411,7 +411,6 @@ static void code_gen_idl_comments(const ptree* obj, ModuleMap& out) {
                     } else {
                         stream << idl_const_value(case_value, case_value);
                     }
-                    case_value = case_value->next;
                 }
                 brief_lines.push_back(stream.str());
             }

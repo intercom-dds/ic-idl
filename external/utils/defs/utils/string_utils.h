@@ -237,4 +237,4 @@ bool ends_with(std::string_view str, std::string_view suffix);
 
 }  // namespace string_utils
 
-#include "string_utils.ic"
+#include "string_utils.ic"  // IWYU pragma: export

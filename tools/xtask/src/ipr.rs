@@ -54,10 +54,6 @@ use ic_cli::color::Colorize;
 #[derive(ic_cli::Command, Default)]
 pub struct Options;
 
-// Files to exclude from the IPR check.
-// All paths are relative from the root of the Git repository.
-const WHITELIST: &[&str] = &[".json$", "^external/fmt/", "Cargo.lock", ".snap$"];
-
 fn git_root() -> PathBuf {
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
@@ -88,20 +84,22 @@ fn check_file(contents: &str) -> bool {
         .any(|v| v.contains("Copyright") && v.contains("KONGSBERG"))
 }
 
+fn whitelist(name: &str) -> bool {
+    !name.ends_with(".json")
+        && !name.ends_with(".snap")
+        && !name.starts_with("external/fmt")
+        && !name.contains("Cargo.lock")
+}
+
 fn find_missing() -> (HashSet<PathBuf>, usize) {
     let root = git_root();
     let files = tracked_files();
-    let regexes: Vec<_> = WHITELIST
-        .iter()
-        .map(|v| regex_lite::Regex::new(v).unwrap())
-        .collect();
-
     let mut missing = HashSet::new();
-    for f in &files {
-        let path = root.join(f);
 
+    for f in files.iter().filter(|v| whitelist(v)) {
+        let path = root.join(f);
         if let Ok(contents) = std::fs::read_to_string(&path) {
-            if !regexes.iter().any(|v| v.is_match(f)) && !check_file(&contents) {
+            if !check_file(&contents) {
                 missing.insert(path);
             }
         }

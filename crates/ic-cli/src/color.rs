@@ -138,18 +138,28 @@ pub fn has_colors() -> bool {
 
 #[cfg(windows)]
 fn virtual_term() -> bool {
-    use windows::Win32::System::Console;
+    extern "C" {
+        fn GetStdHandle(handle: u32) -> isize;
+        fn GetConsoleMode(handle: isize, lp_mode: *mut u32) -> i32;
+        fn SetConsoleMode(handle: isize, dw_mode: u32) -> i32;
+    }
+
+    const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 4;
+    const STD_ERROR_HANDLE: u32 = 0xFFFF_FFF4;
+    const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
 
     let enable_virt = |handle| unsafe {
-        let handle = Console::GetStdHandle(handle)?;
-        let mut dw_mode = Console::CONSOLE_MODE(0);
-        Console::GetConsoleMode(handle, std::ptr::addr_of_mut!(dw_mode))?;
-        dw_mode |= Console::ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        Console::SetConsoleMode(handle, dw_mode)
-    };
+        let handle = GetStdHandle(handle);
+        if handle == 0 || handle == -1 {
+            return false;
+        }
 
-    enable_virt(Console::STD_OUTPUT_HANDLE).is_ok()
-        && enable_virt(Console::STD_ERROR_HANDLE).is_ok()
+        let mut dw_mode: u32 = 0;
+        GetConsoleMode(handle, std::ptr::addr_of_mut!(dw_mode));
+        dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(handle, dw_mode) != 0
+    };
+    enable_virt(STD_OUTPUT_HANDLE) && enable_virt(STD_ERROR_HANDLE)
 }
 
 #[cfg(not(windows))]

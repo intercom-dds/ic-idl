@@ -45,7 +45,6 @@ include_directories(
 )
 
 add_library(ic_ptree OBJECT
-    src/ast.cpp
     src/code_gen.cpp
     src/commandline.cpp
     src/constants.cpp

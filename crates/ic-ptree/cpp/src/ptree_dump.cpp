@@ -28,6 +28,7 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 
+#include <array>
 #include <iostream>
 
 #include "cidl/hdrs.h"

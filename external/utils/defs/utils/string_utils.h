@@ -34,27 +34,6 @@
 /// Contains internal string utilities
 namespace string_utils {
 
-/// Matches a string against a pattern containing wildcards.
-/// This function should match the syntax and functionality of 'fnmatch'
-///
-/// pattern syntax: string := [token]*
-/// [token] := [literal | '*' | '?' | range]
-/// [literal] := [ character | '\'any_character ]
-/// [range] := '[' [ character | character'-'character ]* ']'
-///
-/// @param pattern The pattern to use, may contain '*', '?', '[]' and/or '\'
-/// @param str The string to match against the pattern. This string may not contain pattern codes,
-/// but can contain escape codes.
-/// @param case_insensitive If true, comparision is case insensitive.
-/// @param terminator Char that marks end of str (not the pattern) - in addition to '\0'.
-/// @return true if str matches pattern, false otherwise.
-bool wild_card_match(
-    std::string_view pattern,
-    std::string_view str,
-    bool case_insensitive = false,
-    char terminator = '\0'
-);
-
 /// Tokenizes a string exactly like strtok_r(3C)
 ///
 /// This methods maps to the correct method on different platforms.

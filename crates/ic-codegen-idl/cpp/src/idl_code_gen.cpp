@@ -886,7 +886,7 @@ static void code_gen_idl_write(
     } else {
         filepath = filename;
     }
-    filepath = std::filesystem::path(filepath).replace_extension(".idl");
+    filepath = std::filesystem::path(filepath).replace_extension(".idl").string();
 
     auto content = code_gen_idl_content(out, name, filename, includes);
 

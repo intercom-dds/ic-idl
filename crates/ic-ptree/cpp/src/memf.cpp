@@ -34,7 +34,11 @@
 
 enum { MAX_LINE_LENGTH = 90000 };
 
-#define CMP(str) (strncmp(str, ppp, sizeof(str) - 1) == 0)
+#ifdef _WIN32
+#  define CMP(str) (strncmp(str, ppp.operator->(), sizeof(str) - 1) == 0)
+#else
+#  define CMP(str) (strncmp(str, ppp, sizeof(str) - 1) == 0)
+#endif
 
 static const int MAX_STATEMENTS = MEMF_MAX_STATEMENTS - 1;
 

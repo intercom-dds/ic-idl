@@ -54,7 +54,7 @@ void code_gen_cs(const parse_result* result, const char* destination);
 
 void code_gen_json(const parse_result* result, const char* destination);
 
-void code_gen_json_schema(const parse_result* result);
+inline void code_gen_json_schema(const parse_result*) {}
 
 void code_gen_dds_cplpl(const parse_result* result);
 

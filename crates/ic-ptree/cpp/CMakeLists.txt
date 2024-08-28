@@ -40,8 +40,11 @@ add_compile_definitions(
 
 include_directories(
     ../../../external/utils/defs
-    ../../../external/fmt/defs
     ../../../library/cpp/defs
+)
+
+include_directories(SYSTEM
+    ../../../external/fmt/defs
 )
 
 add_library(ic_ptree OBJECT
@@ -90,10 +93,6 @@ target_compile_definitions(ic_ptree PRIVATE
 target_include_directories(ic_ptree
     PUBLIC defs
     PRIVATE ../../../library/cpp/defs
-)
-
-target_include_directories(ic_ptree SYSTEM PRIVATE
-    ../../../external/fmt/defs
 )
 
 add_library(ic_core STATIC

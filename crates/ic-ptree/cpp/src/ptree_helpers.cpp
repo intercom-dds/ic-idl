@@ -27,6 +27,7 @@
 
 #include "cidl/ptree_helpers.h"
 
+#include <array>
 #include <cassert>
 #include <cstring>
 

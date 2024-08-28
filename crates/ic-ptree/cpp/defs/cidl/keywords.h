@@ -27,8 +27,6 @@
 
 #pragma once
 
-const char* const cpp_keywords[] = {};
-
 const char* const CPP_KEYWORDS[] = {
     "alignas",       "alignof",      "and",       "and_eq",    "asm",  //
     "auto",          "bitand",       "bitor",     "bool",      "break",        "case",

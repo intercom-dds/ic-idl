@@ -56,9 +56,9 @@ std::string trim_include_name(std::filesystem::path name, bool trim_absolute) {
     if (trim_absolute && (is_path_sep(native[0]) ||
                           (native[0] != '\0' && native[1] == ':' && is_path_sep(native[2])) ||
                           (native[0] == '.' && native[1] == '.' && is_path_sep(native[2])))) {
-        return file.stem();
+        return file.stem().string();
     }
-    return file;
+    return file.string();
 }
 
 bool write_if_changed(const std::string& file_name, const std::string& content) {

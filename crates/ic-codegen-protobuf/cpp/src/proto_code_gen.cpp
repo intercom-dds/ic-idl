@@ -326,7 +326,7 @@ static void emit_package(const ptree* node, const PrettyPrinter& pkg) {
 
         std::filesystem::path out = CommandLineOption::proto_target_directory();
         out /= file;
-        write_if_changed(out, content.str());
+        write_if_changed(out.string(), content.str());
     }
 }
 

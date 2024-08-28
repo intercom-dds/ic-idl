@@ -453,7 +453,7 @@ static parse_result get_parse_result(parser_state* state) {
 static void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
     std::set<std::string> input_file_set;
     for (auto& file : input_files) {
-        input_file_set.insert(std::filesystem::canonical(file.first));
+        input_file_set.insert(std::filesystem::canonical(file.first).string());
     }
     std::function<void(ptree*)> filter = [&](ptree* tree) {
         if (!tree) {
@@ -475,7 +475,7 @@ static void suppress_content_from_includes(parse_result& result, const FileList&
 static void update_include_paths(parse_result& result, const FileList& input_files) {
     std::map<std::string, std::string> path_map;
     for (auto& file : input_files) {
-        path_map.emplace(std::filesystem::canonical(file.first), file.second);
+        path_map.emplace(std::filesystem::canonical(file.first).string(), file.second.string());
     }
     std::function<void(ptree*)> filter = [&](ptree* tree) {
         if (!tree) {

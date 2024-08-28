@@ -133,7 +133,7 @@ fn fmt_ansi<T: Display>(code: &str, input: T) -> String {
 /// Checks if stdout and stderr are both capable of handling ANSI escape codes.
 pub fn has_colors() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
-    *ENABLED.get_or_init(virtual_term)
+    *ENABLED.get_or_init(is_terminal)
 }
 
 #[cfg(windows)]
@@ -162,8 +162,7 @@ fn virtual_term() -> bool {
     enable_virt(STD_OUTPUT_HANDLE) && enable_virt(STD_ERROR_HANDLE)
 }
 
-#[cfg(not(windows))]
-fn virtual_term() -> bool {
+fn is_terminal() -> bool {
     use std::io::{self, IsTerminal};
 
     let is_dumb = if let Ok(v) = std::env::var("TERM") {
@@ -171,6 +170,11 @@ fn virtual_term() -> bool {
     } else {
         false
     };
+
+    #[cfg(windows)]
+    if !virtual_term() {
+        return false;
+    }
 
     !is_dumb && io::stdin().is_terminal() && io::stdout().is_terminal()
 }

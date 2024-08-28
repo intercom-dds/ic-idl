@@ -29,7 +29,7 @@
 x = "xtask"
 xtask = "run --package xtask --bin xtask --"
 
-[target.x86_64-pc-windows-msvc]
+[target.'cfg(all(windows, target_env = "msvc"))']
 rustflags = ["-C", "target-feature=+crt-static"]
 
 [target.x86_64-unknown-linux-gnu]

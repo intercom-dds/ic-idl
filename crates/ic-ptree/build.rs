@@ -27,12 +27,6 @@
 
 use std::env;
 
-#[cfg(debug_assertions)]
-const MSVCRT_LIB: &str = "msvcrtd";
-
-#[cfg(not(debug_assertions))]
-const MSVCRT_LIB: &str = "msvcrt";
-
 fn main() {
     // Build the C++ module
     let dst = cmake::build("cpp");
@@ -45,10 +39,11 @@ fn main() {
 fn emit_link_cxx() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let flavor = match (target_os.as_str(), target_env.as_str()) {
-        ("linux", _) | ("windows", "gnu") => "stdc++",
-        ("windows", _) => MSVCRT_LIB,
+    match (target_os.as_str(), target_env.as_str()) {
+        ("linux", _) | ("windows", "gnu") => {
+            println!("cargo:rustc-link-lib=stdc++");
+        }
+        ("windows", _) => return,
         _ => panic!("unsupported platform"),
-    };
-    println!("cargo:rustc-link-lib={flavor}");
+    }
 }

@@ -36,6 +36,11 @@ if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif()
 
+if (WIN32)
+    # Statically link VCRT
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 add_compile_definitions(
     FMT_HEADER_ONLY
     FMT_CONSTEVAL=

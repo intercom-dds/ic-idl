@@ -39,8 +39,6 @@ project(
 
 set(CMAKE_CXX_STANDARD 17)
 
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl)
-
 add_compile_definitions(
     FMT_HEADER_ONLY
     FMT_CONSTEVAL=

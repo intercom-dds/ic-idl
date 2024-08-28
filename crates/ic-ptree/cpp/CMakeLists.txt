@@ -31,7 +31,10 @@ project(ic-ptree VERSION 0.1)
 
 set(CMAKE_CXX_STANDARD 17)
 
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen/cidl)
+if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Enable exception support for clang-cl
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+endif()
 
 add_compile_definitions(
     FMT_HEADER_ONLY

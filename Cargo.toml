@@ -56,7 +56,7 @@ exclude = [
 default-members = ["crates/ic-idl"]
 
 [workspace.package]
-rust-version = "1.74"
+rust-version = "1.80"
 publish = false
 
 [workspace.dependencies]

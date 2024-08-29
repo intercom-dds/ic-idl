@@ -120,7 +120,7 @@ pub struct CppOptions {
     #[option(long)]
     pub use_fmt: bool,
 
-    /// Use dllexp symbol
+    /// Use dllexport symbol
     #[option(long, arg = "sym")]
     pub dll_export: Option<String>,
 

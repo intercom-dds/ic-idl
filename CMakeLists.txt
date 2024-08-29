@@ -57,7 +57,7 @@ add_subdirectory(crates/ic-codegen-protobuf/cpp)
 add_subdirectory(crates/ic-codegen-python/cpp)
 add_subdirectory(crates/ic-codegen-rust/cpp)
 
-if (CLANG_TIDY)
+if (IC_TIDY)
     find_program(
         TIDY_EXE REQUIRED
         NAMES clang-tidy

@@ -79,36 +79,52 @@ mod tests {
 
     #[test]
     fn lowercase_lit() {
-        let ident = Literal {
-            kind: LitKind::LitBool(false),
+        let num = Literal {
             span: Span::default(),
+            value: LiteralValue::Bool(LitBool {
+                uppercase: false,
+                value: false,
+            }),
         };
-        let mut lint = LowercaseBool("true");
-        lint.visit_literal(&ident);
+        let mut lint = LowercaseBool::default();
+        lint.visit_literal(&num);
+        assert_eq!(lint.0.len(), 1);
 
-        let ident = Literal {
-            kind: LitKind::LitBool(false),
+        let num = Literal {
             span: Span::default(),
+            value: LiteralValue::Bool(LitBool {
+                uppercase: false,
+                value: false,
+            }),
         };
-        let mut lint = LowercaseBool("false");
-        lint.visit_literal(&ident);
+        let mut lint = LowercaseBool::default();
+        lint.visit_literal(&num);
+        assert_eq!(lint.0.len(), 1);
     }
 
     #[test]
     fn uppercase_lit() {
         // complies with the standard so no warning produced
         let num = Literal {
-            kind: LitKind::LitBool(false),
             span: Span::default(),
+            value: LiteralValue::Bool(LitBool {
+                uppercase: true,
+                value: false,
+            }),
         };
-        let mut lint = LowercaseBool("TRUE");
+        let mut lint = LowercaseBool::default();
         lint.visit_literal(&num);
+        assert!(lint.0.is_empty());
 
         let num = Literal {
-            kind: LitKind::LitBool(false),
             span: Span::default(),
+            value: LiteralValue::Bool(LitBool {
+                uppercase: true,
+                value: false,
+            }),
         };
-        let mut lint = LowercaseBool("FALSE");
+        let mut lint = LowercaseBool::default();
         lint.visit_literal(&num);
+        assert!(lint.0.is_empty());
     }
 }

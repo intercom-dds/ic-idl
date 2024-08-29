@@ -41,7 +41,7 @@ const char* get_symbol(struct parser_state*, const char* name);
 
 struct identifier create_identifier(struct parser_state*, const char* name);
 
-struct ptree* append_node(struct parser_state*, struct ptree* list, struct ptree* node);
+struct ptree* append_node(struct ptree* list, struct ptree* node);
 
 struct ptree* append_enum_node(struct parser_state*, struct ptree* list, struct ptree* node);
 

@@ -41,6 +41,13 @@ if (WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+if (IC_SANITIZE)
+    message(STATUS "Using -fsanitize=${IC_SANITIZE}")
+    add_compile_options(-fsanitize=${IC_SANITIZE})
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
+endif()
+
 add_compile_definitions(
     FMT_HEADER_ONLY
     FMT_CONSTEVAL=

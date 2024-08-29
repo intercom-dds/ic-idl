@@ -75,7 +75,7 @@ lint:tidy:
   stage: lint
   needs: []
   script:
-    - cmake -G"Ninja Multi-Config" . -S build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCLANG_TIDY=1
+    - cmake -G"Ninja Multi-Config" . -S build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -IC_TIDY=1
     - ninja -C build
 
 build:stable:

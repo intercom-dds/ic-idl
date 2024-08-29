@@ -28,12 +28,8 @@
 default:
   image: "alpine:3.19"
   before_script:
-    - mkdir -p /usr/local/share/ca-certificates
-    - cp /etc/gitlab-runner/certs/ca.crt /usr/local/share/ca-certificates/gitlab-runner.crt
-    - cat /etc/gitlab-runner/certs/ca.crt >> /etc/ssl/certs/ca-certificates.crt
     - apk update
-    - apk add ca-certificates rustup cmake clang mold git gcc g++ samurai flex bison musl-dev clang-extra-tools
-    - update-ca-certificates
+    - apk add rustup cmake clang mold git gcc g++ samurai flex bison musl-dev clang-extra-tools
     - rustup-init --profile minimal -y
     - source $HOME/.cargo/env
   tags:

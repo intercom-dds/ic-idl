@@ -315,14 +315,15 @@ fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
 }
 
 fn did_you_mean(input: &str, options: &[Opt]) -> ParseError {
+    let prefix = if input.len() > 1 { "--" } else { "-" }.yellow();
     let err = if let Some(v) = closest_match(input, options) {
         format!(
-            "unknown option '{}', did you mean '{}'?",
+            "unknown option '{prefix}{}', did you mean '{prefix}{}'?",
             input.yellow(),
             v.yellow(),
         )
     } else {
-        format!("unknown option '{}'", input.yellow())
+        format!("unknown option '{prefix}{}'", input.yellow())
     };
     ParseError::Status(err)
 }

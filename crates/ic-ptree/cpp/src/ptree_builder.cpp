@@ -49,9 +49,7 @@ bool string_ends_with(const std::string& pragma, const std::string& end);
 
 extern std::map<std::string, ptree**> g_builtin_annotation_map;
 
-namespace {
-
-ptree create_primitive_node(const char* name, numeric_kind num_kind) {
+static ptree create_primitive_node(const char* name, numeric_kind num_kind) {
     ptree node;
     node.kind = N_PRIMITIVE;
     node.name = name;
@@ -61,20 +59,19 @@ ptree create_primitive_node(const char* name, numeric_kind num_kind) {
     return node;
 }
 
-ptree create_interface_node(const char* name, numeric_kind num_kind) {
+static ptree create_interface_node(const char* name, numeric_kind num_kind) {
     ptree node = create_primitive_node(name, num_kind);
     node.kind = N_INTERFACE;
     return node;
 }
 
-ptree create_string_node(const char* name, ptree* element_type) {
+static ptree create_string_node(const char* name, ptree* element_type) {
     ptree node = create_primitive_node(name, UNDEF_KIND);
     node.kind = N_STRING;
     node.element_type = element_type;
     node.flags |= OPT_BUILTIN;
     return node;
 }
-}  // namespace
 
 extern "C" {
 node_kind ANY_KIND[] = {N_UNDEF};
@@ -103,8 +100,7 @@ ptree any_type = create_primitive_node("any", UNDEF_KIND);
 ptree object_type = create_interface_node("Object", UNDEF_KIND);
 }
 
-namespace {
-bool is_numeric_type(const ptree* node) {
+static bool is_numeric_type(const ptree* node) {
     return node == &boolean_type || node == &int8_type || node == &octet_type ||
            node == &char_type || node == &wchar_type || node == &short_type ||
            node == &ushort_type || node == &long_type || node == &ulong_type ||
@@ -112,7 +108,7 @@ bool is_numeric_type(const ptree* node) {
            node == &double_type || node == &ldouble_type || node == &fixed_type;
 }
 
-const node_kind TYPE_KIND[] = {
+static const node_kind TYPE_KIND[] = {
     N_PRIMITIVE,
     N_NATIVE,
     N_STRUCT,
@@ -132,7 +128,7 @@ const node_kind TYPE_KIND[] = {
     N_UNDEF,
 };
 
-ptree* value_type(const numeric& value) {
+static ptree* value_type(const numeric& value) {
     switch (value.kind()) {
     case BOOLEAN_KIND:
         return &boolean_type;
@@ -166,7 +162,7 @@ ptree* value_type(const numeric& value) {
     }
 }
 
-bool is_of_type(const ptree* node, const node_kind kind[]) {
+static bool is_of_type(const ptree* node, const node_kind kind[]) {
     if (!node) {
         return false;
     }
@@ -181,7 +177,7 @@ bool is_of_type(const ptree* node, const node_kind kind[]) {
     return false;
 }
 
-ptree* lookup_name(
+static ptree* lookup_name(
     parser_state* state,
     const std::string& name,
     const std::map<std::string, ptree*>& lookup,
@@ -220,7 +216,7 @@ ptree* lookup_name(
 }
 
 template <typename T>
-T* append_to_list(T* list, T* node) {
+static T* append_to_list(T* list, T* node) {
     if (!list) {
         return node;
     }
@@ -236,7 +232,7 @@ T* append_to_list(T* list, T* node) {
     return list;
 }
 
-ptree* create_context_node(
+static ptree* create_context_node(
     parser_state* state,
     node_kind kind,
     identifier ident,
@@ -249,7 +245,7 @@ ptree* create_context_node(
     return node;
 }
 
-std::vector<ptree*> create_node_list(parser_state* state, declarator* decl, node_kind kind) {
+static std::vector<ptree*> create_node_list(parser_state* state, declarator* decl, node_kind kind) {
     int len = 0;
     for (declarator* d = decl; d; d = d->next) {
         ++len;
@@ -268,12 +264,12 @@ std::vector<ptree*> create_node_list(parser_state* state, declarator* decl, node
     return res;
 }
 
-bool is_int(const std::string& str) {
+static bool is_int(const std::string& str) {
     int is_negative = !str.empty() && str.front() == '-';
     return std::all_of(str.begin() + is_negative, str.end(), isdigit);
 }
 
-numeric lookup_member_value(parser_state* state, const numeric& value, const ptree* type) {
+static numeric lookup_member_value(parser_state* state, const numeric& value, const ptree* type) {
     for (ptree* member : type->members) {
         // Match if name is equal or numeric value is equal
         bool is_enum = value.kind() == STRING_KIND && member->name == value.val.str();
@@ -289,7 +285,7 @@ numeric lookup_member_value(parser_state* state, const numeric& value, const ptr
     return value;
 }
 
-ptree* find_member(ptree* node, const char* name) {
+static ptree* find_member(ptree* node, const char* name) {
     ptree* member = node ? node->members : nullptr;
     while (member) {
         if (member->name == name) {
@@ -300,7 +296,7 @@ ptree* find_member(ptree* node, const char* name) {
     return member;
 }
 
-std::vector<std::string> split_doc_lines(const char* text, int placement) {
+static std::vector<std::string> split_doc_lines(const char* text, int placement) {
     std::vector<std::string> lines;
     if (!text || !text[0]) {
         return lines;
@@ -373,14 +369,13 @@ std::vector<std::string> split_doc_lines(const char* text, int placement) {
     return lines;
 }
 
-std::string format_docstring(const char* text, int placement) {
+static std::string format_docstring(const char* text, int placement) {
     std::stringstream res;
     for (const auto& line : split_doc_lines(text, placement)) {
         res << line << std::endl;
     }
     return res.str();
 }
-}  // namespace
 
 identifier create_identifier(parser_state* state, const char* name) {
     identifier ident{};

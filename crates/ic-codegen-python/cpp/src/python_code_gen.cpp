@@ -72,32 +72,32 @@ struct ModuleContext {
         pp.set_indent_size(4);
     };
 };
+}  // namespace
 
 using ModuleMap = std::map<std::string, ModuleContext*>;
 using FileMap = std::map<std::string, ModuleMap>;
 
-std::string python_const_value(const numeric& value, const ptree* context, ModuleContext* module);
-std::string python_base_type(const ptree* obj, const ptree* context, ModuleContext* module);
-std::string python_type_name(const ptree* node, const ptree* context, ModuleContext* module);
-std::string python_class_type(const ptree* node, const ptree* context, ModuleContext* module);
+static std::string
+python_const_value(const numeric& value, const ptree* context, ModuleContext* module);
+static std::string python_base_type(const ptree* obj, const ptree* context, ModuleContext* module);
+static std::string python_type_name(const ptree* node, const ptree* context, ModuleContext* module);
+static std::string
+python_class_type(const ptree* node, const ptree* context, ModuleContext* module);
 
 // TOOD(idarcar):
-inline std::string extract_file_name(const std::string& file_name) {
+static std::string extract_file_name(const std::string& file_name) {
     return std::filesystem::path(file_name).stem().string();
     // std::replace(file_name.begin(), file_name.end(), '/', '_');
     // intercom::corba::String_var to_trim = file_name.c_str();
     // return trim_include_name(to_trim.inout(), false);
 }
 
-inline std::string module_file_name(const std::string& file_name) {
+static std::string module_file_name(const std::string& file_name) {
     return "_cidl_" + file_name;
 }
 
-std::string python_variable_name(
-    const ptree* node,
-    const ptree* context,
-    ModuleContext* module
-) {  // Safeguard name and gather imports
+static std::string
+python_variable_name(const ptree* node, const ptree* context, ModuleContext* module) {
     std::stringstream stream;
     std::string var_name = python_name(node);
     if (node->value.kind() == PTREE_KIND) {
@@ -121,7 +121,7 @@ std::string python_variable_name(
 }
 
 // Finds the object path
-std::string python_type_path(const ptree* node, std::string& path, ModuleContext* module) {
+static std::string python_type_path(const ptree* node, std::string& path, ModuleContext* module) {
     std::string ret;
     if (node->super != nullptr) {
         ret += python_type_path(node->super, path, module);
@@ -134,25 +134,25 @@ std::string python_type_path(const ptree* node, std::string& path, ModuleContext
     return ret;
 }
 
-const ptree* python_find_module(const ptree* obj) {  // Finds the object module
+static const ptree* python_find_module(const ptree* obj) {  // Finds the object module
     if (obj == nullptr || obj->kind == N_MODULE) {
         return obj;
     }
     return python_find_module(obj->super);
 }
 
-std::string python_scoped_name(const ptree* obj) {
+static std::string python_scoped_name(const ptree* obj) {
     if (obj == nullptr) {
         return "";
     }
     return python_scoped_name(obj->super) + "_" + obj->name;
 }
 
-bool python_compare_modules(const ptree* obj_1, const ptree* obj_2) {
+static bool python_compare_modules(const ptree* obj_1, const ptree* obj_2) {
     return python_scoped_name(obj_1) == python_scoped_name(obj_2);
 }
 
-void python_emit_docs(const ptree* node, ModuleContext* module) {
+static void python_emit_docs(const ptree* node, ModuleContext* module) {
     for (auto ann : node->annotations) {
         if (ann->type != annotation_type_doc) {
             continue;
@@ -176,7 +176,8 @@ void python_emit_docs(const ptree* node, ModuleContext* module) {
     }
 }
 
-std::string python_class_type(const ptree* node, const ptree* context, ModuleContext* module) {
+static std::string
+python_class_type(const ptree* node, const ptree* context, ModuleContext* module) {
     std::stringstream str;
     if (node->super != nullptr &&
         (node->included_from != context->included_from ||
@@ -201,7 +202,8 @@ std::string python_class_type(const ptree* node, const ptree* context, ModuleCon
 }
 
 // Python type
-std::string python_type_name(const ptree* node, const ptree* context, ModuleContext* module) {
+static std::string
+python_type_name(const ptree* node, const ptree* context, ModuleContext* module) {
     std::stringstream str;
     switch (node->kind) {
     case N_SEQUENCE: {
@@ -236,7 +238,7 @@ std::string python_type_name(const ptree* node, const ptree* context, ModuleCont
     }
 }
 
-std::string
+static std::string
 python_member_type_name(const ptree* node, ModuleContext* module, bool list_protection = false) {
     std::stringstream ret;
     if (list_protection) {
@@ -273,7 +275,7 @@ python_member_type_name(const ptree* node, ModuleContext* module, bool list_prot
     return ret.str();
 }
 
-std::string python_base_type(const ptree* obj, const ptree* context, ModuleContext* module) {
+static std::string python_base_type(const ptree* obj, const ptree* context, ModuleContext* module) {
     const ptree* type_obj = base_type_of(obj);
     if (type_obj->kind == N_STRING) {
         return "str";
@@ -326,7 +328,7 @@ std::string python_base_type(const ptree* obj, const ptree* context, ModuleConte
 }
 
 // Default values
-std::string
+static std::string
 python_default_type_value(const ptree* obj, const ptree* context, ModuleContext* module) {
     if (obj->kind == N_STRING) {
         return "\"\"";
@@ -427,7 +429,8 @@ python_default_type_value(const ptree* obj, const ptree* context, ModuleContext*
 }
 
 /// Looks at annotations and returns the default value for an object.
-std::string python_default_value(const ptree* obj, const ptree* context, ModuleContext* module) {
+static std::string
+python_default_value(const ptree* obj, const ptree* context, ModuleContext* module) {
     if (has_default_value(obj)) {
         const ptree* base_type = base_type_of(obj);
         const ptree* default_value = get_annotation(obj, annotation_type_default);
@@ -489,14 +492,15 @@ std::string python_default_value(const ptree* obj, const ptree* context, ModuleC
     return python_default_type_value(base_type_of(obj), context, module);
 }
 
-std::string python_primitive_cast(const ptree* obj, const ptree* ctx, ModuleContext* module) {
+static std::string
+python_primitive_cast(const ptree* obj, const ptree* ctx, ModuleContext* module) {
     if (base_type_of(obj)->kind == N_ENUM) {
         return python_class_type(base_type_of(obj), ctx, module);
     }
     return python_base_type(obj, ctx, module);
 }
 
-std::string python_discriminator_list(
+static std::string python_discriminator_list(
     const ptree* ctx,
     ModuleContext* module,
     const std::vector<const ptree*>& segment
@@ -512,7 +516,7 @@ std::string python_discriminator_list(
     return out_stream.str();
 }
 
-std::string python_base_type_name(const ptree* obj) {
+static std::string python_base_type_name(const ptree* obj) {
     const ptree* type_obj = base_type_of(obj);
     if (type_obj->kind == N_STRING) {
         return "string";
@@ -565,7 +569,8 @@ std::string python_base_type_name(const ptree* obj) {
     throw std::logic_error("Invalid state when trying to find the base name");
 }
 
-std::string python_const_value(const numeric& value, const ptree* context, ModuleContext* module) {
+static std::string
+python_const_value(const numeric& value, const ptree* context, ModuleContext* module) {
     std::stringstream out;
 
     switch (value.kind()) {
@@ -641,7 +646,7 @@ std::string python_const_value(const numeric& value, const ptree* context, Modul
     return out.str();
 }
 
-std::vector<const ptree*> get_cases(const ptree* obj) {
+static std::vector<const ptree*> get_cases(const ptree* obj) {
     std::vector<const ptree*> cases;
     for (auto cas : obj->members) {
         cases.emplace_back(cas);
@@ -649,17 +654,15 @@ std::vector<const ptree*> get_cases(const ptree* obj) {
     return cases;
 }
 
-}  // namespace
-
-void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& module_map);
-void code_gen_python_full_type_check(
+static void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& module_map);
+static void code_gen_python_full_type_check(
     const ptree* obj,
     const ptree* context,
     ModuleContext* module,
     const std::string& var_name
 );
 
-void code_gen_python_enum_body(const ptree* obj, ModuleContext* module) {  // Enum body
+static void code_gen_python_enum_body(const ptree* obj, ModuleContext* module) {
     *module << begin("") << endl << tab_group;
     python_emit_docs(obj, module);
     if (obj->members == nullptr) {
@@ -684,7 +687,7 @@ void code_gen_python_enum_body(const ptree* obj, ModuleContext* module) {  // En
     *module << end("") << blank_line;
 }
 
-std::string code_gen_python_deserialize_types(
+static std::string code_gen_python_deserialize_types(
     const ptree* obj,
     const ptree* context,
     ModuleContext* module,
@@ -724,7 +727,7 @@ std::string code_gen_python_deserialize_types(
     return stream.str();
 }
 
-void code_gen_python_cdr(const ptree* obj, ModuleContext* module) {
+static void code_gen_python_cdr(const ptree* obj, ModuleContext* module) {
     if (is_nested(obj)) {
         return;
     }
@@ -750,7 +753,7 @@ void code_gen_python_cdr(const ptree* obj, ModuleContext* module) {
     // free(cdr);
 }
 
-std::string get_bit_bound_type(const ptree* obj) {
+static std::string get_bit_bound_type(const ptree* obj) {
     auto bit_bound = get_annotation(obj, annotation_type_bit_bound);
     if (!bit_bound) {
         return "long";
@@ -774,7 +777,7 @@ std::string get_bit_bound_type(const ptree* obj) {
     throw std::invalid_argument("Bit_bound cannot be greater than 64");
 }
 
-void code_gen_python_read_cdr(
+static void code_gen_python_read_cdr(
     const ptree* obj,
     const ptree* context,
     ModuleContext* module,
@@ -855,7 +858,7 @@ void code_gen_python_read_cdr(
         *module << end("");
     }
 }
-void code_gen_python_write_cdr(
+static void code_gen_python_write_cdr(
     const ptree* obj,
     const ptree* context,
     ModuleContext* module,
@@ -924,7 +927,7 @@ void code_gen_python_write_cdr(
     }
 }
 
-void code_gen_python_struct_operators(const ptree* obj, ModuleContext* module) {
+static void code_gen_python_struct_operators(const ptree* obj, ModuleContext* module) {
     /// __eq__
     *module << "def __eq__(self, other: '" << python_name(obj) << "'):" << begin("") << endl
             << tab_group;
@@ -963,7 +966,7 @@ void code_gen_python_struct_operators(const ptree* obj, ModuleContext* module) {
     *module << end("") << blank_line;
 }
 
-void code_gen_python_inherited_arguments(const ptree* obj, std::vector<const ptree*>& vec) {
+static void code_gen_python_inherited_arguments(const ptree* obj, std::vector<const ptree*>& vec) {
     if (!obj->parents.empty()) {
         code_gen_python_inherited_arguments(obj->parents.front(), vec);
     }
@@ -973,7 +976,7 @@ void code_gen_python_inherited_arguments(const ptree* obj, std::vector<const ptr
     }
 }
 
-void code_gen_python_rec(const ptree* obj, ModuleContext* module, FileMap& module_map) {
+static void code_gen_python_rec(const ptree* obj, ModuleContext* module, FileMap& module_map) {
     if (!is_emit(obj, LANG_PYTHON)) {
         return;
     }
@@ -1557,7 +1560,7 @@ void code_gen_python_rec(const ptree* obj, ModuleContext* module, FileMap& modul
     *module << endl;
 }
 
-void code_gen_python_primitive_range_check(
+static void code_gen_python_primitive_range_check(
     const ptree* obj,
     ModuleContext* module,
     const std::string& var_name
@@ -1652,7 +1655,7 @@ void code_gen_python_primitive_range_check(
  * -||- squash_duplicate("value_e1", "_e") => "value_e2"
  * etc.
  */
-std::string squash_duplicate_suffix(const std::string& base, const std::string& appendix) {
+static std::string squash_duplicate_suffix(const std::string& base, const std::string& appendix) {
     size_t suffix_begin = base.rfind(appendix);
     if (suffix_begin == std::string::npos) {
         return base + appendix;
@@ -1666,7 +1669,7 @@ std::string squash_duplicate_suffix(const std::string& base, const std::string& 
     return base.substr(0, suffix_begin) + appendix + str_num;
 }
 
-void code_gen_python_check_castable_to(
+static void code_gen_python_check_castable_to(
     ModuleContext* module,
     const std::string& var_name,
     const std::string& type
@@ -1676,7 +1679,7 @@ void code_gen_python_check_castable_to(
     *module << "except ValueError as e: raise TypeError(str(e))" << endl << tab_group;
 };
 
-void code_gen_python_check_isinstance(
+static void code_gen_python_check_isinstance(
     ModuleContext* module,
     const std::string& var_name,
     const std::initializer_list<std::string>& types
@@ -1694,7 +1697,8 @@ void code_gen_python_check_isinstance(
     }
     *module << ", but got {type(" << var_name << ")}\")" << endl << tab_group;
 };
-void code_gen_python_check_isinstance(
+
+static void code_gen_python_check_isinstance(
     ModuleContext* module,
     const std::string& var_name,
     const std::string& type
@@ -1712,7 +1716,7 @@ void code_gen_python_check_isinstance(
  * @param module
  * @param var_name
  */
-void code_gen_python_simple_type_check(
+static void code_gen_python_simple_type_check(
     const ptree* obj,
     const ptree* context,
     ModuleContext* module,
@@ -1794,7 +1798,7 @@ void code_gen_python_simple_type_check(
  * @param module
  * @param var_name python variable name related to obj
  */
-void code_gen_python_full_type_check(
+static void code_gen_python_full_type_check(
     const ptree* obj,
     const ptree* context,
     ModuleContext* module,
@@ -1873,7 +1877,7 @@ void code_gen_python_full_type_check(
     }
 }
 
-void code_gen_python_getter_and_setter(const ptree* obj, ModuleContext* module) {
+static void code_gen_python_getter_and_setter(const ptree* obj, ModuleContext* module) {
     if (obj == nullptr) {
         return;
     }
@@ -1896,7 +1900,7 @@ void code_gen_python_getter_and_setter(const ptree* obj, ModuleContext* module) 
     return code_gen_python_getter_and_setter(obj->next, module);
 }
 
-void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& module_map) {
+static void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& module_map) {
     if (obj->flags & OPT_DECLARATION) {
         return;
     }
@@ -2077,11 +2081,8 @@ void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& 
     }
 }
 
-void code_gen_python_write(
-    FileMap& file_map,
-    const std::string& name,
-    const std::string& filename
-) {
+static void
+code_gen_python_write(FileMap& file_map, const std::string& name, const std::string& filename) {
     if (file_map.find(filename) == file_map.end()) {
         std::cerr << "COULD NOT FIND FILE: " << name << std::endl;
         return;

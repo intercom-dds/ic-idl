@@ -44,8 +44,7 @@
 
 static const char* get_constant_name(const char* name);
 
-namespace {
-void idl_scoped_name_rec(
+static void idl_scoped_name_rec(
     const ptree* node,
     const ptree* scope,
     const ptree* common_parent,
@@ -61,7 +60,6 @@ void idl_scoped_name_rec(
         out << node->name;
     }
 }
-}  // namespace
 
 extern "C" {
 const char* get_symbol(struct parser_state* state, const char* name) {
@@ -323,7 +321,7 @@ std::string idl_scoped_name(const ptree* node, const ptree* context) {
     return {};
 }
 
-std::string idl_internal_scoped_name(const ptree* node, const ptree* context) {
+static std::string idl_internal_scoped_name(const ptree* node, const ptree* context) {
     return idl_scoped_name_impl(node, node->super, context);
 }
 

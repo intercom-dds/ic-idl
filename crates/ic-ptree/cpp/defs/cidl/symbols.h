@@ -67,10 +67,6 @@ uint32_t member_name_hash_id(const std::string& name);
 /// C's enum paradigm)
 std::string idl_scoped_name(const ptree* node, const ptree* context);
 
-/// same as idl_scoped_name, but does not skip scopes
-/// \note do not use in idl output
-std::string idl_internal_scoped_name(const ptree* node, const ptree* context);
-
 /// \note do not use in idl output
 std::string lc_scoped_name(const ptree* p);
 

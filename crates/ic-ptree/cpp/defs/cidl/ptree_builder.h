@@ -27,7 +27,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <stdint.h>  // NOLINT
 
 #include "cidl/constants.h"
 
@@ -300,7 +300,7 @@ struct ptree* create_doc(struct parser_state*, struct identifier ident, int post
 #  include "cidl/symbols.h"
 
 extern "C" struct parser_state {
-    struct error_stream;  // NOLINT
+    struct error_stream;
 
     ptree* lookup_node(const char* name) const;
     error_stream error();

@@ -34,9 +34,8 @@
 #include "cidl/ptree.h"
 #include "cidl/ptree_builder.h"
 
-namespace {
 template <typename T>
-numeric* create_numeric(parser_state* state, T val);
+static numeric* create_numeric(parser_state* state, T val);
 
 #define CREATE_NUMERIC(type_name, enum_kind, name)                \
     template <>                                                   \
@@ -63,7 +62,7 @@ CREATE_NUMERIC(double, DOUBLE_KIND, d);
 CREATE_NUMERIC(std::string, STRING_KIND, str);
 
 template <typename T1, typename T2>
-numeric* expr_binary_t2(parser_state* state, char op, T1 v1, T2 v2) {
+static numeric* expr_binary_t2(parser_state* state, char op, T1 v1, T2 v2) {
     switch (op) {
     case '<':
         return create_numeric(state, v1 << v2);
@@ -100,7 +99,7 @@ numeric* expr_binary_t2(parser_state* state, char op, T1 v1, T2 v2) {
 }
 
 template <typename T1, typename T2>
-numeric* expr_binary_nobitop_t2(parser_state* state, char op, T1 v1, T2 v2) {
+static numeric* expr_binary_nobitop_t2(parser_state* state, char op, T1 v1, T2 v2) {
     switch (op) {
     case '+':
         return create_numeric(state, v1 + v2);
@@ -117,7 +116,7 @@ numeric* expr_binary_nobitop_t2(parser_state* state, char op, T1 v1, T2 v2) {
 }
 
 template <typename T>
-numeric* expr_binary_t1(parser_state* state, char op, T v1, const numeric& v2) {
+static numeric* expr_binary_t1(parser_state* state, char op, T v1, const numeric& v2) {
     switch (v2.kind()) {
     case UNDEF_KIND:
         return &num_undef;
@@ -154,7 +153,7 @@ numeric* expr_binary_t1(parser_state* state, char op, T v1, const numeric& v2) {
 }
 
 template <typename T>
-numeric* expr_binary_nobitop_t1(parser_state* state, char op, T v1, const numeric& v2) {
+static numeric* expr_binary_nobitop_t1(parser_state* state, char op, T v1, const numeric& v2) {
     switch (v2.kind()) {
     case UNDEF_KIND:
         return &num_undef;
@@ -191,7 +190,7 @@ numeric* expr_binary_nobitop_t1(parser_state* state, char op, T v1, const numeri
 }
 
 template <typename T>
-numeric* expr_unary(parser_state* state, char op, T val) {
+static numeric* expr_unary(parser_state* state, char op, T val) {
     if (op == '~') {
         return create_numeric(state, ~val);
     }
@@ -253,7 +252,6 @@ template <>
 numeric* expr_unary(parser_state* state, char, std::string) {
     return &num_undef;
 }
-}  // namespace
 
 int integer_value(const numeric& v) {
     return value<int>(v);

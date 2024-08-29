@@ -27,9 +27,11 @@
 
 use std::env;
 
+use cmake::Config;
+
 fn main() {
     // Build the C++ module
-    let dst = cmake::build("cpp");
+    let dst = Config::new("cpp").generator("Ninja").build();
 
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=ic_core");

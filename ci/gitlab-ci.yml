@@ -28,8 +28,7 @@
 default:
   image: "alpine:3.19"
   before_script:
-    - apk update
-    - apk add rustup cmake clang mold git gcc g++ samurai flex bison musl-dev clang-extra-tools
+    - apk add --no-cache rustup cmake clang mold git gcc g++ samurai flex bison musl-dev clang-extra-tools
     - rustup-init --profile minimal -y
     - source $HOME/.cargo/env
   tags:

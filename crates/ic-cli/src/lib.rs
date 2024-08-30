@@ -73,7 +73,7 @@ impl CommandLine {
             desc: String::new(),
             version: None,
             options: IndexMap::new(),
-            split_flags: false,
+            split_flags: true,
             hide_flags: false,
             hide_options: false,
             align_sections: false,

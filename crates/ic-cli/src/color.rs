@@ -176,5 +176,5 @@ fn is_terminal() -> bool {
         return false;
     }
 
-    !is_dumb && io::stdin().is_terminal() && io::stdout().is_terminal()
+    !is_dumb && io::stdout().is_terminal() && io::stderr().is_terminal()
 }

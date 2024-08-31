@@ -699,7 +699,7 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
             auto to_merge_tree = const_cast<ptree*>(to_merge_result.tree);
             to_merge_tree = filter_includes(to_merge_tree);
             update_state_ptr(to_merge_tree);
-            new_tree = append_node(to_merge_tree, new_tree);
+            new_tree = append_node(out.state.get(), to_merge_tree, new_tree);
         }
 
         // Merge errors

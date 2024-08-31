@@ -29,6 +29,7 @@
 //! and naming conventions.
 
 /// The supported naming conventions.
+#[derive(Copy, Clone, Debug)]
 pub enum Case {
     /// `snake_case`
     Snake,

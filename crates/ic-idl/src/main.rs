@@ -88,7 +88,9 @@ fn main() {
 
     let options = Options {
         codegen: CodegenOptions::from_result(&result),
-        cpp: CppOptions::from_result(&result),
+        rust: RustOptions::from_result(&result),
+        python: PythonOptions::from_result(&result),
+        idl: IdlOptions::from_result(&result),
         ..Options::from_result(&result)
     };
 
@@ -197,7 +199,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 }
 
                 // Lower the AST to a HIR
-                let hir = ic_hir::lower_ast(v.tree);
+                // let hir = ic_hir::lower_ast(v.tree);
 
                 for diag in &report.diagnostics {
                     let mut buf = String::new();

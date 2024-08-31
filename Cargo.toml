@@ -30,7 +30,8 @@ resolver = "2"
 members = [
     "crates/ic-alloc",
     "crates/ic-cli",
-    "crates/ic-cli-derive", "crates/ic-cmake",
+    "crates/ic-cli-derive",
+    "crates/ic-cmake",
     "crates/ic-codegen-cxx",
     "crates/ic-codegen-idl",
     "crates/ic-codegen-protobuf",
@@ -43,8 +44,10 @@ members = [
     "crates/ic-lint",
     "crates/ic-macros",
     "crates/ic-parse",
+    "crates/ic-preproc",
     "crates/ic-ptree",
     "crates/ic-syntax",
+    "crates/ic-vfs",
     "tools/xtask",
 ]
 exclude = [

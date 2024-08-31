@@ -51,6 +51,9 @@ struct ConstDef;
 
 struct Field;
 
+@ext::suppress
+bitmask FileId { NONE };
+
 @nested
 struct Span {
     /// Byte offset to the start of the span.
@@ -58,6 +61,9 @@ struct Span {
 
     /// Byte offset to the end of the span.
     uint32 end;
+
+    /// The ID of the file from which this span was derived.
+    FileId file_id;
 };
 
 @nested

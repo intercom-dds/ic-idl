@@ -41,7 +41,7 @@ impl ComplexLit {
         let diag = Diag::warning("complex literals are an InterCOM extension")
             .label(Label::new(diag).message(msg).color(Color::Yellow))
             .label(Label::new(label_span).message(label).color(Color::Cyan))
-            .note("only trivial literals are standardized");
+            .note("only literals of trivial types are allowed in standard IDL");
 
         self.0.push(diag);
     }

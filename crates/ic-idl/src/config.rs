@@ -96,7 +96,13 @@ pub struct Options {
     pub cpp: CppOptions,
 
     // #[section = "rust options"]
-    pub rust: CppOptions,
+    pub rust: RustOptions,
+
+    // #[section = "python options"]
+    pub python: PythonOptions,
+
+    // #[section = "idl options"]
+    pub idl: IdlOptions,
 
     // #[section = "backends"]
     pub codegen: CodegenOptions,
@@ -216,7 +222,7 @@ pub struct Unstable {
     #[option(long)]
     pub ptree_dump: bool,
 
-    /// Dump out the IDL tokens
+    /// Dump out the preprocessed IDL tokens
     #[option(long)]
     pub token_dump: bool,
 }

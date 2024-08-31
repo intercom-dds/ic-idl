@@ -39,7 +39,7 @@ use ic_syntax::util::{path_name, type_name};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
 
 // mod annotation;
-mod fold;
+pub mod fold;
 pub mod hir;
 pub mod keywords;
 mod lower;

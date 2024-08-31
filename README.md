@@ -77,3 +77,12 @@ cargo doc --document-private-items --no-deps --workspace
 
 The MSRV may change between minor version releases and is not considered a
 semver-breaking change.
+
+## Known bugs
+
+- Annotations are parsed but not included in the AST.
+- Function macros functions are not supported.
+- Variadic macros are not supported.
+- \_Pragma is not supported.
+- `#line` directives are ignored by the preprocessor.
+- All diagnostics report "unknown" as filename.

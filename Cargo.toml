@@ -39,6 +39,7 @@ members = [
     "crates/ic-codegen-rust",
     "crates/ic-diagnostic",
     "crates/ic-emit",
+    "crates/ic-expr",
     "crates/ic-hir",
     "crates/ic-idl",
     "crates/ic-lint",

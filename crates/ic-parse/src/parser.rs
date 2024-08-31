@@ -416,7 +416,7 @@ fn signed_int() -> impl IdlParser<Type> {
     choice((signed_long_int(), signed_short_int()))
 }
 
-/// Rule 27
+// Rule 27
 fn signed_short_int() -> impl IdlParser<Type> {
     just(Kind::Short).map_with_span(|_, span| primitive_type("int16", span))
 }

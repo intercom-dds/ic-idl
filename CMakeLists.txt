@@ -37,40 +37,4 @@ project(
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17)
-
-add_compile_definitions(
-    FMT_HEADER_ONLY
-    FMT_CONSTEVAL=
-)
-
-include_directories(library/cpp/defs)
-
-add_subdirectory(external/utils)
-add_subdirectory(external/fmt)
-
-add_subdirectory(crates/ic-ptree/cpp)
-add_subdirectory(crates/ic-codegen-cxx/cpp)
-add_subdirectory(crates/ic-codegen-idl/cpp)
-add_subdirectory(crates/ic-codegen-json/cpp)
-add_subdirectory(crates/ic-codegen-protobuf/cpp)
-add_subdirectory(crates/ic-codegen-python/cpp)
-add_subdirectory(crates/ic-codegen-rust/cpp)
-
-if (IC_TIDY)
-    find_program(
-        TIDY_EXE REQUIRED
-        NAMES clang-tidy
-    )
-
-    set(TIDY_INVOCATION
-        "clang-tidy"
-        "--use-color"
-        "--header-filter=.*"
-        "--warnings-as-errors='*"
-        "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
-    )
-
-    set(CMAKE_C_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
-    set(CMAKE_CXX_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
-endif()
+add_subdirectory(crates/ic-cmake/cpp)

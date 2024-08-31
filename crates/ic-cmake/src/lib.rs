@@ -25,13 +25,20 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! The crate used by Cargo to compile all the C++ dependencies. Instead of
+//! having multiple, small CMake projects, we compile them to a single
+//! CMake project and build them all in one go.
+
 use std::env;
 
 use cmake::Config;
 
-fn main() {
+const PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/cpp");
+
+/// Links in `ic_core` and the C++ standard library.
+pub fn link_cxx() {
     // Build the C++ module
-    let dst = Config::new("cpp").generator("Ninja").build();
+    let dst = Config::new(PATH).generator("Ninja").build();
 
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=ic_core");
@@ -40,12 +47,9 @@ fn main() {
 
 fn emit_link_cxx() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    match (target_os.as_str(), target_env.as_str()) {
-        ("linux", _) | ("windows", "gnu") => {
-            println!("cargo:rustc-link-lib=stdc++");
-        }
-        ("windows", _) => return,
+    match target_os.as_str() {
+        "linux" => println!("cargo:rustc-link-lib=stdc++"),
+        "windows" => return,
         _ => panic!("unsupported platform"),
     }
 }

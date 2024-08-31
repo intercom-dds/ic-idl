@@ -26,28 +26,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-idl"
-version = "0.0.0"
+name = "ic-cmake"
+version = "0.1.0"
 edition = "2021"
-
-publish.workspace = true
 rust-version.workspace = true
+publish.workspace = true
 
 [lints]
 workspace = true
 
-[build-dependencies]
-ic-cmake = { path = "../ic-cmake" }
-
 [dependencies]
-anyhow = "1.0"
-
-ic-cli = { path = "../ic-cli" }
-ic-diagnostic = { path = "../ic-diagnostic" }
-ic-hir = { path = "../ic-hir" }
-ic-lint = { path = "../ic-lint" }
-ic-parse = { path = "../ic-parse" }
-ic-preproc = { path = "../ic-preproc" }
-ic-ptree = { path = "../ic-ptree" }
-
-intercom-cts.workspace = true
+cmake = "0.1"

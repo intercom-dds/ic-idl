@@ -58,4 +58,5 @@ fn main() {
         "cargo:rustc-env=BUILD_TARGET={}",
         std::env::var("TARGET").unwrap(),
     );
+    ic_cmake::link_cxx();
 }

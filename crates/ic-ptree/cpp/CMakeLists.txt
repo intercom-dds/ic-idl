@@ -25,43 +25,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.20)
-
-project(ic-ptree VERSION 0.1)
-
-set(CMAKE_CXX_STANDARD 17)
-
-if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    # Enable exception support for clang-cl
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
-endif()
-
-if (WIN32)
-    # Statically link VCRT
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
-if (IC_SANITIZE)
-    message(STATUS "Using -fsanitize=${IC_SANITIZE}")
-    add_compile_options(-fsanitize=${IC_SANITIZE})
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
-endif()
-
-add_compile_definitions(
-    FMT_HEADER_ONLY
-    FMT_CONSTEVAL=
-)
-
-include_directories(
-    ../../../external/utils/defs
-    ../../../library/cpp/defs
-)
-
-include_directories(SYSTEM
-    ../../../external/fmt/defs
-)
-
 add_library(ic_ptree OBJECT
     src/code_gen.cpp
     src/commandline.cpp
@@ -75,54 +38,13 @@ add_library(ic_ptree OBJECT
     src/symbols.cpp
 )
 
-if (PROJECT_IS_TOP_LEVEL)
-    add_subdirectory(
-        ../../ic-codegen-cxx/cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-cxx
-    )
-    add_subdirectory(
-        ../../ic-codegen-idl/cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-idl
-    )
-    add_subdirectory(
-        ../../ic-codegen-json/cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-json
-    )
-    add_subdirectory(
-        ../../ic-codegen-protobuf/cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-protobuf
-    )
-    add_subdirectory(
-        ../../ic-codegen-python/cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-python
-    )
-    add_subdirectory(
-        ../../ic-codegen-rust/cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/ic-codegen-rust
-    )
-endif()
-
 target_compile_definitions(ic_ptree PRIVATE
-    CIDL_BOOTSTRAP)
+    CIDL_BOOTSTRAP
+)
 
 target_include_directories(ic_ptree
     PUBLIC defs
-    PRIVATE ../../../library/cpp/defs
-)
-
-add_library(ic_core STATIC
-    $<TARGET_OBJECTS:ic_ptree>
-    $<TARGET_OBJECTS:ic_codegen_cxx>
-    $<TARGET_OBJECTS:ic_codegen_idl>
-    $<TARGET_OBJECTS:ic_codegen_json>
-    $<TARGET_OBJECTS:ic_codegen_protobuf>
-    $<TARGET_OBJECTS:ic_codegen_python>
-    $<TARGET_OBJECTS:ic_codegen_rust>
-)
-
-install(
-    TARGETS ic_core
-    DESTINATION lib
+    PRIVATE ${PROJECT_ROOT}/library/cpp/defs
 )
 
 install(

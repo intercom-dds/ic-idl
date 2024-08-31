@@ -127,6 +127,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-cmake"
+version = "0.1.0"
+dependencies = [
+ "cmake",
+]
+
+[[package]]
 name = "ic-codegen-cxx"
 version = "0.0.0"
 
@@ -177,6 +184,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "ic-cli",
+ "ic-cmake",
  "ic-diagnostic",
  "ic-hir",
  "ic-lint",
@@ -227,7 +235,6 @@ dependencies = [
 name = "ic-ptree"
 version = "0.0.0"
 dependencies = [
- "cmake",
  "ic-parse",
  "ic-syntax",
 ]

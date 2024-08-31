@@ -30,7 +30,7 @@ resolver = "2"
 members = [
     "crates/ic-alloc",
     "crates/ic-cli",
-    "crates/ic-cli-derive",
+    "crates/ic-cli-derive", "crates/ic-cmake",
     "crates/ic-codegen-cxx",
     "crates/ic-codegen-idl",
     "crates/ic-codegen-protobuf",

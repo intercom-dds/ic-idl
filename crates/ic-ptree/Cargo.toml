@@ -36,9 +36,6 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-[build-dependencies]
-cmake = "0.1"
-
 [dependencies]
 ic-parse = { path = "../ic-parse" }
 ic-syntax = { path = "../ic-syntax" }

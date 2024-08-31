@@ -49,7 +49,7 @@ fn emit_error(input: &str, error: &Error) {
 
             let expected = if let Some(e) = &error.expected {
                 e.iter()
-                    .map(|v| v.to_string().cyan().bold())
+                    .map(|v| v.to_string().yellow().bold())
                     .collect::<Vec<_>>()
                     .join(", ")
             } else {

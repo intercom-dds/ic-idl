@@ -37,8 +37,7 @@
 #include <string_view>
 #include <vector>
 
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 // case-insensitive comparison of keys
 struct kw_comp {
@@ -430,5 +429,4 @@ inline std::string escape_str(std::string_view input) {
     }
     return data;
 }
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen

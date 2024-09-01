@@ -28,17 +28,14 @@
 #pragma once
 
 #include <fstream>
-#include <functional>
 #include <stdexcept>
 #include <string_view>
-#include <unordered_map>
 
 #include "interp.h"
 #include "marshal.h"
 #include "parser.h"
 
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 void add_builtins(class Template& tmpl);
 
@@ -54,7 +51,7 @@ class Template {
 
     ~Template() {
         if (!m_owned) {
-            m_scope.release();
+            m_scope.release();  // NOLINT
         }
     }
 
@@ -173,7 +170,6 @@ class Template {
     bool m_owned{true};
     std::unique_ptr<Scope> m_scope{new Scope()};
 };
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen
 
 #include "builtin.h"

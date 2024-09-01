@@ -34,8 +34,7 @@
 
 #include "parser.h"
 
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 struct TemplateError : public std::runtime_error {
     explicit TemplateError(const std::string& what) : std::runtime_error(what) {}
@@ -502,7 +501,7 @@ class Evaluator : public Visitor {
 
   private:
     Scope* m_scope;
-    Value m_value{};
+    Value m_value;
 };
 
 class Interp : public Visitor {
@@ -621,5 +620,4 @@ class Interp : public Visitor {
     std::ostream& m_stream;
 };
 
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen

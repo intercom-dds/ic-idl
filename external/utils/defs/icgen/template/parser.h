@@ -27,15 +27,11 @@
 
 #pragma once
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cctype>
 #include <cstdio>
-#include <iostream>
-#include <map>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -44,8 +40,7 @@
 
 #include "lexer.h"
 
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 class Visitor {
   public:
@@ -529,5 +524,4 @@ class Parser {
     const std::vector<Token>& m_tokens;
 };
 
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen

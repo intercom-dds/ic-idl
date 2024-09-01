@@ -27,28 +27,18 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
-#include <regex>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 
 #include "casing.h"
 #include "interp.h"
 #include "template.h"
 
-namespace StringUtils {
-INTERCOM_PUBLIC bool wildCardMatch(
-    std::string_view pattern,
-    std::string_view str,
-    bool case_insensitive = false,
-    char terminator = '\0'
-);
-}
-
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 /// A collection of builtin functions that are available to all Template instances.
 namespace builtin {
@@ -154,19 +144,6 @@ inline std::string join_prefix(Scope*, const FunctionData::Args& args) {
         }
     }
     return result;
-}
-
-/// Compares two strings. Supports wildcards.
-/// The optional third parameter specifies if the comparison should
-/// be case insensitive. False by default.
-inline bool match(Scope*, const FunctionData::Args& args) {
-    auto lhs = args.at(0).str();
-    auto rhs = args.at(1).str();
-    bool insensitive = false;
-    if (args.size() > 2) {
-        insensitive = args.at(2).boolean();
-    }
-    return StringUtils::wildCardMatch(rhs, lhs, insensitive);
 }
 
 /// Equvialent to strftime.
@@ -339,7 +316,6 @@ inline void add_builtins(Template& tmpl) {
     tmpl.define("concat", -2, builtin::concat);
     tmpl.define("join", -2, builtin::join);
     tmpl.define("join_prefix", 3, builtin::join_prefix);
-    tmpl.define("match", -2, builtin::match);
     tmpl.define("time", 1, builtin::time);
     tmpl.define("include", 1, builtin::include);
     tmpl.define("reverse", 1, builtin::reverse);
@@ -359,5 +335,4 @@ inline void add_builtins(Template& tmpl) {
     tmpl.define("to_lower", 1, builtin::to_lower);
 }
 
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen

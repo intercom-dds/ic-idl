@@ -28,10 +28,11 @@
 #pragma once
 
 #include <cctype>
+#include <locale>
+#include <string>
 #include <string_view>
 
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 enum class Case {
     Snake,
@@ -181,5 +182,4 @@ inline std::string kebab_case(std::string_view input) {
     return conv.convert(input);
 }
 
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen

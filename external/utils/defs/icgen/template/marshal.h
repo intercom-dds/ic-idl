@@ -27,17 +27,14 @@
 
 #pragma once
 
-#include <stack>
-#include <stdexcept>
+#include <optional>
 
-#include "InterCOM/MemberInfo.h"
-#include "InterCOM/SerializationSupport.h"
 #include "InterCOM/dds_xtypes_constants.h"
-#include "InterCOM/optional.h"
+#include "InterCOM/member_info.h"
+#include "InterCOM/serialization.h"
 #include "interp.h"
 
-namespace intercom {
-namespace icgen {
+namespace intercom::icgen {
 
 class ValueMarshal {
   public:
@@ -57,7 +54,7 @@ class ValueMarshal {
         }
 
         template <typename T>
-        void io(const MemberInfo& info, const optional<T>& value) {
+        void io(const MemberInfo& info, const std::optional<T>& value) {
             if (value) {
                 io(info, *value);
             }
@@ -80,15 +77,15 @@ class ValueMarshal {
         template <typename VECTOR>
         void io(const VECTOR& value) {
             if (!value.empty()) {
-                io(&value[0], static_cast<ULong>(value.size()));
+                io(&value[0], static_cast<uint32_t>(value.size()));
             }
         }
 
-        void io(const T* value, ULong value_count) {
+        void io(const T* value, uint32_t value_count) {
             std::vector<Value> list;
             Serializer<ValueMarshal, T> serialize;
 
-            for (ULong i = 0; i < value_count; i++) {
+            for (uint32_t i = 0; i < value_count; i++) {
                 serialize(m_marshal, const_cast<T&>(value[i]), nullptr);
                 list.emplace_back(std::move(m_marshal.m_value));
             }
@@ -104,8 +101,7 @@ class ValueMarshal {
       public:
         MapValue(ValueMarshal& builder, const TypeInfo*) : m_marshal(builder) {
             static_assert(
-                std::is_integral<K>::value || std::is_same<K, std::string>::value ||
-                    std::is_same<K, corba::String_var>::value,
+                std::is_integral<K>::value || std::is_same<K, std::string>::value,
                 "Only strings and integers as supported as keys in maps"
             );
         }
@@ -134,10 +130,6 @@ class ValueMarshal {
             m_marshal.m_value = value;
         }
 
-        void io(const corba::String_var& value) {
-            m_marshal.m_value = value.c_str();
-        }
-
       private:
         ValueMarshal& m_marshal;
     };
@@ -162,7 +154,7 @@ class ValueMarshal {
     }
 
     template <typename T>
-    void primitive_io(const T* value, ULong count, const TypeInfo*) {
+    void primitive_io(const T* value, uint32_t count, const TypeInfo*) {
         VectorValue<T> ar(*this, nullptr);
         ar.io(value, count);
     }
@@ -179,5 +171,4 @@ class ValueMarshal {
     Value m_value;
 };
 
-}  // namespace icgen
-}  // namespace intercom
+}  // namespace intercom::icgen

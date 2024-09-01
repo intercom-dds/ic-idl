@@ -46,25 +46,47 @@ where
     compiler
         .cpp(true)
         .includes(GLOBAL_INCLUDES)
-        .files(&files)
         .extra_warnings(true)
         .flag_if_supported("-Wpedantic")
+        .files(&files)
         .includes(includes);
 
     for (k, v) in GLOBAL_DEFINES {
         compiler.define(k, *v);
     }
 
+    // Enable exceptions for clang-cl
     if compiler.get_compiler().is_like_msvc() {
         compiler.flag("/EHsc");
     }
 
+    // Upgrade warnings to errors in CI pipelines
+    if is_ci() {
+        compiler.warnings_into_errors(true);
+    }
+
     compiler.compile(env!("CARGO_PKG_NAME"));
 
-    // TODO: use macro instead
-    // panic!(env!("CARGO_PKG_NAME"));
+    // Rerun if toolchain has changed
+    println!("cargo:rerun-if-env-changed=CI");
+    println!("cargo:rerun-if-env-changed=CC");
+    println!("cargo:rerun-if-env-changed=CFLAGS");
+    println!("cargo:rerun-if-env-changed=CXX");
+    println!("cargo:rerun-if-env-changed=CXXFLGAS");
 
     for f in files {
         println!("cargo:rerun-if-changed={}", f.as_ref().display());
+    }
+}
+
+fn is_ci() -> bool {
+    if let Ok(var) = std::env::var("CI") {
+        if let Ok(v) = var.parse::<bool>() {
+            v
+        } else {
+            var.parse::<usize>().unwrap_or(0) != 0
+        }
+    } else {
+        false
     }
 }

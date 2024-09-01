@@ -89,6 +89,7 @@ fn whitelist(name: &str) -> bool {
         && !name.ends_with(".snap")
         && !name.starts_with("external/fmt")
         && !name.contains("Cargo.lock")
+        && name != "LICENSE"
 }
 
 fn find_missing() -> (HashSet<PathBuf>, usize) {

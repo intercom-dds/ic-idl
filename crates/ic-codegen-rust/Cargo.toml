@@ -40,4 +40,4 @@ workspace = true
 ic-ptree = { path = "../ic-ptree" }
 
 [build-dependencies]
-cc = { version = "*", features = ["parallel"] }
+cc.workspace = true

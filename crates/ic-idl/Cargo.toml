@@ -37,7 +37,7 @@ rust-version.workspace = true
 workspace = true
 
 [build-dependencies]
-cc = { version = "*", features = ["parallel"] }
+cc.workspace = true
 
 [dependencies]
 anyhow = "1.0"

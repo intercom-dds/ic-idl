@@ -68,6 +68,7 @@ publish = false
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = "2.0"
+cc = "1.0"
 
 intercom-cts = { path = "library/rust/intercom-cts", features = ["derive"] }
 

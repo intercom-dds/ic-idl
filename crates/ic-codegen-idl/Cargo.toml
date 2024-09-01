@@ -39,4 +39,4 @@ ic-ptree = { path = "../ic-ptree" }
 [lints]
 workspace = true
 [build-dependencies]
-cc = { version = "*", features = ["parallel"] }
+cc.workspace = true

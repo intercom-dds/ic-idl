@@ -249,7 +249,7 @@ numeric* expr_unary(parser_state* state, char op, double val) {
 }
 
 template <>
-numeric* expr_unary(parser_state* state, char, std::string) {
+numeric* expr_unary(parser_state*, char, std::string) {
     return &num_undef;
 }
 

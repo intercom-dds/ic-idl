@@ -56,7 +56,6 @@ static memf g_hd_rpc_file;
 static memf g_hd_fmt_file;
 static memf g_prebd_file;
 static memf* g_all_headers[] = {&g_hd_file, &g_hd_impl_file, &g_hd_json_file, nullptr};
-static memf* g_hd_tbd_files[] = {&g_hd_file, &g_tbd_file, nullptr};
 
 static void cpl_prototype_c_def(const ptree* obj);
 
@@ -2515,18 +2514,6 @@ static void cpl_union_c_def(const ptree* obj) {
     mprintf(&g_hd_file, "}};\n");
 }
 
-static std::string renamed_name(const ptree* obj) {
-    if (auto rename = get_annotation(obj, annotation_type_ext_rename)) {
-        return string_value(get_annotation_value(rename, "name"));
-    }
-    return name(obj);
-}
-
-static std::string str_to_upper(std::string val) {
-    std::transform(val.begin(), val.end(), val.begin(), toupper);
-    return val;
-};
-
 static void cpl_struct_c_def(const ptree* obj) {
     int number_of_elems = original_member_count(obj);
     auto body_name = scoped_name(obj, namespace_of(obj));
@@ -3197,8 +3184,7 @@ static void cgcpl_recurs(const ptree* obj) {
     }
 }
 
-static void
-cpl_saveit(const ptree* tree, const std::string& module, const std::string& source_name) {
+static void cpl_saveit(const ptree* tree, const std::string& module) {
     auto include_prefix = CommandLineOption::header_subfolder();
     if (!module.empty()) {
         static struct memf s_pk_file;
@@ -3385,7 +3371,7 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
         std::string file_name = trim_include_name(include->name, true);
-        cpl_saveit(result->tree, file_name, include->name);
+        cpl_saveit(result->tree, file_name);
     }
 }
 

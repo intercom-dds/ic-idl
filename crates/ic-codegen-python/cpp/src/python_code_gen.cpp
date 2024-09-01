@@ -2133,7 +2133,6 @@ code_gen_python_write(FileMap& file_map, const std::string& name, const std::str
             if (needs_update) {
                 std::stringstream data_stream;
                 data_stream << "from ." << output_name << " import *" << std::endl;
-                bool found = false;
                 std::ofstream init_file;
                 init_file.open(init_filepath.c_str(), std::ios::app);
                 if (init_file.good()) {

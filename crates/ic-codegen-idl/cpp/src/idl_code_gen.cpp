@@ -874,8 +874,7 @@ static void code_gen_idl_write(
     ModuleMap& out,
     const std::string& name,
     const std::string& filename,
-    std::set<ptree*>& includes,
-    const parse_result* result
+    std::set<ptree*>& includes
 ) {
     if (out.find(name) == out.end()) {
         return;
@@ -911,7 +910,7 @@ static void code_gen_idl(const parse_result* result) {
         if (CommandLineOption::list_only()) {
             std::cout << include->name << std::endl;
         } else {
-            code_gen_idl_write(out, include->name, include->name, includes, result);
+            code_gen_idl_write(out, include->name, include->name, includes);
         }
     }
 }

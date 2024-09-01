@@ -181,18 +181,6 @@ std::string safe_name(const ptree* node, const std::string& name, Language lang)
     return res;
 }
 
-static bool is_constant_name(const char* name) {
-    return (
-        name == boolean_type.name || name == octet_type.name || name == int8_type.name ||
-        name == char_type.name || name == wchar_type.name || name == short_type.name ||
-        name == ushort_type.name || name == long_type.name || name == ulong_type.name ||
-        name == longlong_type.name || name == ulonglong_type.name || name == float_type.name ||
-        name == double_type.name || name == ldouble_type.name || name == fixed_type.name ||
-        name == unbounded_string_type.name || name == unbounded_wstring_type.name ||
-        name == any_type.name || name == object_type.name
-    );
-}
-
 std::string cpp_name(const ptree* node) {
     return node ? safe_name(node, node->name, LANG_CPP) : "";
 }

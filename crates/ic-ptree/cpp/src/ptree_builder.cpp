@@ -100,14 +100,6 @@ ptree any_type = create_primitive_node("any", UNDEF_KIND);
 ptree object_type = create_interface_node("Object", UNDEF_KIND);
 }
 
-static bool is_numeric_type(const ptree* node) {
-    return node == &boolean_type || node == &int8_type || node == &octet_type ||
-           node == &char_type || node == &wchar_type || node == &short_type ||
-           node == &ushort_type || node == &long_type || node == &ulong_type ||
-           node == &longlong_type || node == &ulonglong_type || node == &float_type ||
-           node == &double_type || node == &ldouble_type || node == &fixed_type;
-}
-
 static const node_kind TYPE_KIND[] = {
     N_PRIMITIVE,
     N_NATIVE,
@@ -2203,7 +2195,7 @@ declarator* append_array_size(parser_state* state, declarator* decl, const numer
     return decl;
 }
 
-declarator* set_array_bounds(parser_state* state, declarator* decl, declarator* bounds) {
+declarator* set_array_bounds(parser_state*, declarator* decl, declarator* bounds) {
     decl->bounds = bounds->bounds;
     return decl;
 }

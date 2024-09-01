@@ -361,8 +361,8 @@ static std::string scoped_name(const ptree* node, const ptree*) {
     };
 
     auto full_name = idl_scoped_name(node, nullptr);
-    if (!CommandLineOption::intercom_build() && strncmp(full_name.c_str(), "types", 5) == 0 ||
-        strncmp(full_name.c_str(), "core", 4) == 0) {
+    if (!CommandLineOption::intercom_build() && (strncmp(full_name.c_str(), "types", 5) == 0 ||
+                                                 strncmp(full_name.c_str(), "core", 4) == 0)) {
         out("intercom");
     } else {
         out("crate");

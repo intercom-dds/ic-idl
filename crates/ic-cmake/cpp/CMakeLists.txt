@@ -66,6 +66,12 @@ if (IC_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
 endif()
 
+if (MSVC)
+    add_compile_options(/W4 /WX)
+else()
+    add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unused-function)
+endif()
+
 add_compile_definitions(
     FMT_HEADER_ONLY
     FMT_CONSTEVAL=

@@ -112,7 +112,7 @@ void ic_codegen_json(const ic_parse_result_t* result, const char* destination) {
     intercom::cidl::code_gen_json(res, destination);
 }
 
-void ic_codegen_json_schema(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_json_schema(const ic_parse_result_t* result, const char*) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
     intercom::cidl::code_gen_json_schema(res);
 }

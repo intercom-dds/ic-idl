@@ -207,7 +207,7 @@ static void rescope_dds(ptree* node) {
     }
 }
 
-static void replace_native(parser_state* state, ptree* tree) {
+static void replace_native(parser_state* state) {
     // `InstanceHandle` in Rust is a tuple struct. Since bitmasks are also
     // tuple structs, we can transform `InstanceHandle_t` into a bitmask so
     // that the generated code treats it accordingly. The node is then suppressed
@@ -235,7 +235,7 @@ static void replace_native(parser_state* state, ptree* tree) {
     create_module_finish(state, nullptr);
 }
 
-static void modify_typeid(parser_state* state, ptree* tree) {
+static void modify_typeid(parser_state* state) {
     if (auto node = state->lookup_node("DDS::XTypes::TypeIdentifier")) {
         for (auto mem : node->members) {
             if (mem->name == "primitive") {
@@ -328,10 +328,10 @@ void intercom::rust::transform_rust(parse_result* result) {
     result->tree = tree = squash_modules(result->state.get(), tree, modules);
 
     // Replace some DDS types with their native Rust equivalents
-    replace_native(result->state.get(), tree);
+    replace_native(result->state.get());
 
     // Turn `TypeIdentifier::Empty` into N_NULL
-    modify_typeid(result->state.get(), tree);
+    modify_typeid(result->state.get());
 
     // Give select modules more suitable names
     rescope_dds(tree);

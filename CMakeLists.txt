@@ -37,4 +37,66 @@ project(
     LANGUAGES CXX
 )
 
-add_subdirectory(crates/ic-cmake/cpp)
+set(CMAKE_CXX_STANDARD 17)
+
+if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Enable exception support for clang-cl
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+endif()
+
+if (WIN32)
+    # Statically link VCRT
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+if (IC_SANITIZE)
+    message(STATUS "Using -fsanitize=${IC_SANITIZE}")
+    add_compile_options(-fsanitize=${IC_SANITIZE})
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
+endif()
+
+if (IC_TIDY)
+    find_program(
+        TIDY_EXE REQUIRED
+        NAMES clang-tidy
+    )
+
+    set(TIDY_INVOCATION
+        "clang-tidy"
+        "--use-color"
+        "--header-filter=.*"
+        "--warnings-as-errors='*"
+        "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
+    )
+
+    set(CMAKE_C_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
+endif()
+
+add_compile_definitions(
+    FMT_HEADER_ONLY
+    FMT_CONSTEVAL=
+)
+
+include_directories(external/utils/defs)
+
+include_directories(SYSTEM external/fmt/defs)
+
+add_subdirectory(crates/ic-ptree/cpp)
+add_subdirectory(crates/ic-codegen-cxx/cpp)
+add_subdirectory(crates/ic-codegen-idl/cpp)
+add_subdirectory(crates/ic-codegen-json/cpp)
+add_subdirectory(crates/ic-codegen-protobuf/cpp)
+add_subdirectory(crates/ic-codegen-python/cpp)
+add_subdirectory(crates/ic-codegen-rust/cpp)
+
+add_library(ic_core STATIC
+    $<TARGET_OBJECTS:ic_ptree>
+    $<TARGET_OBJECTS:ic_codegen_cxx>
+    $<TARGET_OBJECTS:ic_codegen_idl>
+    $<TARGET_OBJECTS:ic_codegen_json>
+    $<TARGET_OBJECTS:ic_codegen_protobuf>
+    $<TARGET_OBJECTS:ic_codegen_python>
+    $<TARGET_OBJECTS:ic_codegen_rust>
+)

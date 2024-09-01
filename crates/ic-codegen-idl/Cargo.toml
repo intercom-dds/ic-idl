@@ -33,10 +33,11 @@ edition = "2021"
 rust-version.workspace = true
 publish.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 ic-ptree = { path = "../ic-ptree" }
 
-[lints]
-workspace = true
 [build-dependencies]
-cc.workspace = true
+ic-cc = { path = "../ic-cc" }

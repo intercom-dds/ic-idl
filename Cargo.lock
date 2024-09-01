@@ -166,6 +166,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-cc"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "ic-cli"
 version = "0.0.0"
 dependencies = [
@@ -186,7 +193,7 @@ dependencies = [
 name = "ic-codegen-cxx"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-ptree",
 ]
 
@@ -194,7 +201,7 @@ dependencies = [
 name = "ic-codegen-idl"
 version = "0.1.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-ptree",
 ]
 
@@ -202,7 +209,7 @@ dependencies = [
 name = "ic-codegen-json"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-ptree",
 ]
 
@@ -210,7 +217,7 @@ dependencies = [
 name = "ic-codegen-protobuf"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-emit",
  "ic-hir",
  "ic-ptree",
@@ -220,7 +227,7 @@ dependencies = [
 name = "ic-codegen-python"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-ptree",
 ]
 
@@ -228,7 +235,7 @@ dependencies = [
 name = "ic-codegen-rust"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-ptree",
 ]
 
@@ -273,7 +280,6 @@ name = "ic-idl"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "cc",
  "ic-cli",
  "ic-codegen-cxx",
  "ic-codegen-idl",
@@ -335,7 +341,7 @@ dependencies = [
 name = "ic-ptree"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "ic-cc",
  "ic-parse",
  "ic-syntax",
 ]

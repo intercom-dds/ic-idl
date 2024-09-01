@@ -25,21 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+const FILES: &[&str] = &[
+    "cpp/src/rust_code_gen.cpp",
+    "cpp/src/rust_common.cpp",
+    "cpp/src/rust_transform.cpp",
+];
+
 fn main() {
-    cc::Build::new()
-        .cpp(true)
-        .includes([
-            "../ic-ptree/cpp/defs",
-            "../../external/fmt/defs",
-            "../../external/utils/defs",
-            "../../library/cpp/defs",
-        ])
-        .files([
-               "cpp/src/rust_code_gen.cpp",
-               "cpp/src/rust_common.cpp",
-               "cpp/src/rust_transform.cpp",
-        ])
-        .define("FMT_HEADER_ONLY", "1")
-        .define("FMT_CONSTEVAL", "")
-        .compile("ic_codegen_rust");
+    ic_cc::build(FILES, &[]);
 }

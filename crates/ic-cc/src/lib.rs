@@ -25,31 +25,46 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! The crate used by Cargo to compile all the C++ dependencies. Instead of
-//! having multiple, small CMake projects, we compile them to a single
-//! CMake project and build them all in one go.
+use std::path::Path;
 
-use std::env;
+const GLOBAL_INCLUDES: &[&str] = &[
+    "../ic-ptree/cpp/defs",
+    "../../external/fmt/defs",
+    "../../external/utils/defs",
+    "../../library/cpp/defs",
+];
 
-use cmake::Config;
+const GLOBAL_DEFINES: &[(&str, &str)] = &[("FMT_HEADER_ONLY", "1"), ("FMT_CONSTEVAL", "")];
 
-const PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/cpp");
+pub fn build<P>(files: P, includes: P)
+where
+    P: IntoIterator,
+    P::Item: AsRef<Path>,
+{
+    let files: Vec<_> = files.into_iter().collect();
+    let mut compiler = cc::Build::new();
+    compiler
+        .cpp(true)
+        .includes(GLOBAL_INCLUDES)
+        .files(&files)
+        .extra_warnings(true)
+        .flag_if_supported("-Wpedantic")
+        .includes(includes);
 
-/// Links in `ic_core` and the C++ standard library.
-pub fn link_cxx() {
-    // Build the C++ module
-    let dst = Config::new(PATH).generator("Ninja").build();
+    for (k, v) in GLOBAL_DEFINES {
+        compiler.define(k, *v);
+    }
 
-    println!("cargo:rustc-link-search=native={}/lib", dst.display());
-    println!("cargo:rustc-link-lib=static=ic_core");
-    emit_link_cxx();
-}
+    if compiler.get_compiler().is_like_msvc() {
+        compiler.flag("/EHsc");
+    }
 
-fn emit_link_cxx() {
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    match target_os.as_str() {
-        "linux" => println!("cargo:rustc-link-lib=stdc++"),
-        "windows" => return,
-        _ => panic!("unsupported platform"),
+    compiler.compile(env!("CARGO_PKG_NAME"));
+
+    // TODO: use macro instead
+    // panic!(env!("CARGO_PKG_NAME"));
+
+    for f in files {
+        println!("cargo:rerun-if-changed={}", f.as_ref().display());
     }
 }

@@ -41,4 +41,4 @@ ic-parse = { path = "../ic-parse" }
 ic-syntax = { path = "../ic-syntax" }
 
 [build-dependencies]
-cc.workspace = true
+ic-cc = { path = "../ic-cc" }

@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::ffi::{CStr, NulError};
-use std::path::Path;
 
 use ic_syntax::Item;
 

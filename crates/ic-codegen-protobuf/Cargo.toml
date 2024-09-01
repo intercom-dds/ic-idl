@@ -42,4 +42,4 @@ ic-hir = { path = "../ic-hir" }
 ic-ptree = { path = "../ic-ptree" }
 
 [build-dependencies]
-cc.workspace = true
+ic-cc = { path = "../ic-cc" }

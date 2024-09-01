@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-codegen-rust"
+name = "ic-codegen-json"
 version = "0.0.0"
 edition = "2021"
 
@@ -37,3 +37,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+ic-ptree = { path = "../ic-ptree" }
+
+[build-dependencies]
+cc = { version = "*", features = ["parallel"] }

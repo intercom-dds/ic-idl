@@ -58,13 +58,4 @@ fn main() {
         "cargo:rustc-env=BUILD_TARGET={}",
         std::env::var("TARGET").unwrap(),
     );
-
-    println!("cargo:rerun-if-changed=../ic-codegen-cxx");
-    println!("cargo:rerun-if-changed=../ic-codegen-idl");
-    println!("cargo:rerun-if-changed=../ic-codegen-json");
-    println!("cargo:rerun-if-changed=../ic-codegen-protobuf");
-    println!("cargo:rerun-if-changed=../ic-codegen-python");
-    println!("cargo:rerun-if-changed=../ic-codegen-rust");
-    println!("cargo:rerun-if-changed=../ic-ptree");
-    ic_cmake::link_cxx();
 }

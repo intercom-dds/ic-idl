@@ -39,3 +39,7 @@ workspace = true
 [dependencies]
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
+ic-ptree = { path = "../ic-ptree" }
+
+[build-dependencies]
+cc = { version = "*", features = ["parallel"] }

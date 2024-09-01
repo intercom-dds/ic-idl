@@ -31,12 +31,12 @@ use std::path::Path;
 use ic_syntax::Item;
 
 mod lower;
-mod sys;
+pub mod sys;
 
 #[must_use]
 #[derive(Debug)]
 pub struct ParseResult {
-    inner: *mut sys::ic_parse_result_t,
+    pub inner: *mut sys::ic_parse_result_t,
 }
 
 impl ParseResult {
@@ -104,41 +104,16 @@ pub fn ptree_dump(result: &ParseResult) {
     }
 }
 
+#[macro_export]
 macro_rules! define_backend {
     ($fn_name:tt, $ffi_name:tt) => {
         #[must_use]
-        pub fn $fn_name(result: &ParseResult, directory: &Path) -> Vec<String> {
+        pub fn $fn_name(result: &$crate::ParseResult, directory: &std::path::Path) -> Vec<String> {
             let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
             unsafe {
-                sys::$ffi_name(result.inner, dir.as_ptr());
+                $crate::sys::$ffi_name(result.inner, dir.as_ptr());
             }
             vec![]
         }
     };
-}
-
-define_backend!(codegen_idl, ic_codegen_idl);
-define_backend!(codegen_json, ic_codegen_json);
-define_backend!(codegen_proto, ic_codegen_proto);
-define_backend!(codegen_python, ic_codegen_python);
-define_backend!(codegen_rust, ic_codegen_rust);
-
-#[must_use]
-pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<String> {
-    let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
-    let options = sys::cpp_options_t {
-        header_postfix: std::ptr::null(),
-        header_ext: std::ptr::null(),
-        dll_export: std::ptr::null(),
-        file_prefix: std::ptr::null(),
-        scoped_enums: 0,
-        access_functions: 0,
-        no_stream_op: 0,
-        use_fmt: 0,
-    };
-
-    unsafe {
-        sys::ic_codegen_cpp(result.inner, options, dir.as_ptr());
-    }
-    vec![]
 }

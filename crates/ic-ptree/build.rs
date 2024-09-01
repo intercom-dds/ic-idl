@@ -25,6 +25,28 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_ptree::define_backend;
-
-define_backend!(codegen_python, ic_codegen_python);
+fn main() {
+    cc::Build::new()
+        .cpp(true)
+        .includes([
+            "../ic-ptree/cpp/defs",
+            "../../external/fmt/defs",
+            "../../external/utils/defs",
+            "../../library/cpp/defs",
+        ])
+        .define("FMT_HEADER_ONLY", "1")
+        .define("FMT_CONSTEVAL", "")
+        .files([
+            "cpp/src/code_gen.cpp",
+            "cpp/src/commandline.cpp",
+            "cpp/src/constants.cpp",
+            "cpp/src/idl_parser.cpp",
+            "cpp/src/memf.cpp",
+            "cpp/src/ptree_builder.cpp",
+            "cpp/src/ptree_dump.cpp",
+            "cpp/src/ptree_ffi.cpp",
+            "cpp/src/ptree_helpers.cpp",
+            "cpp/src/symbols.cpp",
+        ])
+        .compile("ic_codegen_ptree");
+}

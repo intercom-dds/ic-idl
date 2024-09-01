@@ -25,6 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_ptree::define_backend;
-
-define_backend!(codegen_python, ic_codegen_python);
+fn main() {
+    cc::Build::new()
+        .cpp(true)
+        .includes([
+            "../ic-ptree/cpp/defs",
+            "../../external/fmt/defs",
+            "../../external/utils/defs",
+            "../../library/cpp/defs",
+        ])
+        .files(["cpp/src/cpp_code_gen.cpp", "cpp/src/cpp_typeinfo.cpp"])
+        .compile("ic_codegen_cxx");
+}

@@ -25,13 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[allow(deprecated)]
-use std::panic::PanicInfo;
 use std::{backtrace, panic};
 
 use crate::error;
 
-fn dump_backtrace(info: &PanicInfo) {
+#[allow(deprecated)]
+fn dump_backtrace(info: &std::panic::PanicInfo) {
     let thread = std::thread::current();
     let thread = thread.name().unwrap_or("unknown");
     let trace = backtrace::Backtrace::force_capture();

@@ -267,18 +267,18 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     fn update_builtins(&mut self) {
         // TODO: define __LINE__. Need to track that in iterator.
         // TODO: define __FILE__. need to track current ID in iterator, too.
-        let now = chrono::Local::now();
-        let pairs = [
-            ("__TIME__".to_string(), now.format("%T").to_string()),
-            ("__DATE__".to_string(), now.format("%b %d %Y").to_string()),
-            ("__FILE__".to_string(), "<unknown>".to_string()),
-            ("__LINE__".to_string(), "0".to_string()),
-        ];
-        self.state.defines.extend(
-            pairs
-                .into_iter()
-                .map(|(key, val)| (key, Macro::Builtin(val))),
-        );
+        // let now = chrono::Local::now();
+        // let pairs = [
+        //     ("__TIME__".to_string(), now.format("%T").to_string()),
+        //     ("__DATE__".to_string(), now.format("%b %d %Y").to_string()),
+        //     ("__FILE__".to_string(), "<unknown>".to_string()),
+        //     ("__LINE__".to_string(), "0".to_string()),
+        // ];
+        // self.state.defines.extend(
+        //     pairs
+        //         .into_iter()
+        //         .map(|(key, val)| (key, Macro::Builtin(val))),
+        // );
     }
 
     fn macro_name(&mut self) -> Option<(&'a str, SourceSpan)> {

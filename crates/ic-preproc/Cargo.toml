@@ -36,11 +36,6 @@ publish.workspace = true
 [lints]
 workspace = true
 
-[dependencies.chrono]
-version = "0.4.38"
-default-features = false
-features = ["clock"]
-
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
 ic-expr = { path = "../ic-expr" }

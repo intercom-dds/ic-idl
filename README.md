@@ -30,13 +30,6 @@
 Work in progress. Things are scattered all over the place. Relative paths are
 used everywhere in CMake as a temporary hack to make things work.
 
-## Dependencies
-
-- CMake
-- Ninja or Samurai
-
-Everything else is vendored and/or downloaded automatically during compilation.
-
 ## Building
 
 Building `ic-idl` requires a C++17 toolchain and a Rust 1.80+ toolchain.
@@ -88,7 +81,7 @@ semver-breaking change.
 ## Known bugs
 
 - Annotations are parsed but not included in the AST.
-- Function macros functions are not supported.
+- Preprocessor function macros are not supported.
 - Variadic macros are not supported.
 - \_Pragma is not supported.
 - `#line` directives are ignored by the preprocessor.

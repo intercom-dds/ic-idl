@@ -37,8 +37,15 @@ use crate::ProcArgs;
 
 #[derive(Debug)]
 enum Macro {
-    Function,
-    Object { span: SourceSpan, def: Vec<Token> },
+    Function {
+        span: SourceSpan,
+        args: Vec<Token>,
+        def: Vec<Token>,
+    },
+    Object {
+        span: SourceSpan,
+        def: Vec<Token>,
+    },
 }
 
 type Expr = ic_expr::Expr<Token>;
@@ -371,10 +378,33 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn dir_define(&mut self) -> Option<()> {
         let (name, span) = self.macro_name()?;
-        let def = self.cursor().until_newline();
-        self.state
-            .defines
-            .insert(name.to_string(), Macro::Object { span, def });
+        let is_macro = self.cursor().take_if(Kind::LParen).is_some();
+
+        let definition = if is_macro {
+            let mut args = vec![];
+
+            // Empty function macros are allowed
+            while let Some(c) = self.cursor().peek() {
+                if c == Kind::RParen {
+                    break;
+                }
+
+                let arg = self.expect(Kind::Ident, "invalid token in macro parameter list")?;
+                args.push(arg);
+
+                if self.cursor().take_if(Kind::Comma).is_none() {
+                    self.expect(Kind::RParen, "expected comma or end of parameter list")?;
+                    break;
+                }
+            }
+
+            let def = self.cursor().until_newline();
+            Macro::Function { span, args, def }
+        } else {
+            let def = self.cursor().until_newline();
+            Macro::Object { span, def }
+        };
+        self.state.defines.insert(name.to_string(), definition);
         Some(())
     }
 
@@ -519,6 +549,14 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         }
     }
 
+    // Parse the directive but disregard its contents.
+    fn dir_line(&mut self, span: SourceSpan) -> Option<()> {
+        let _line = self.expect(Kind::Number, "expected line number")?;
+        let _file = self.expect(Kind::String, "expected file name as string literal")?;
+        self.warn_trailing(span, Directive::Line);
+        Some(())
+    }
+
     fn expect(&mut self, kind: Kind, message: &'static str) -> Option<Token> {
         if let Some(tok) = self.cursor().next() {
             if tok.kind == kind {
@@ -532,14 +570,6 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             self.cursor().until_newline();
         }
         None
-    }
-
-    // Parse the directive but disregard its contents.
-    fn dir_line(&mut self, span: SourceSpan) -> Option<()> {
-        let _line = self.expect(Kind::Number, "expected line number")?;
-        let _file = self.expect(Kind::String, "expected file name as string literal")?;
-        self.warn_trailing(span, Directive::Line);
-        Some(())
     }
 
     // TODO: propagate errors up here, then push to error stack here?
@@ -711,7 +741,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             let name = self.source_of(tok.span);
             match self.state.defines.get(name) {
                 Some(v) => match v {
-                    Macro::Function => {
+                    Macro::Function { .. } => {
                         true
                         // self.state.queue.extend(def.iter)
                     }

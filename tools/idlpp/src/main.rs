@@ -60,7 +60,7 @@ fn main() {
     for file in &opts.files {
         let (output, errors) = ic_preproc::to_string(file, &args).unwrap();
         for error in errors {
-            eprintln!("error: {error}");
+            eprintln!("error: {error:?}");
         }
         println!("#line 0 {file:?}\n{output}");
     }

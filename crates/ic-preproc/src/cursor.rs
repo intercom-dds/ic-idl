@@ -484,6 +484,14 @@ impl Cursor {
         }
     }
 
+    pub fn take_if(&mut self, kind: Kind) -> Option<Token> {
+        if self.peek()? == kind {
+            self.next()
+        } else {
+            None
+        }
+    }
+
     pub fn source_of(&self, span: SourceSpan) -> &str {
         &self.chars.as_str()[span.range()]
     }

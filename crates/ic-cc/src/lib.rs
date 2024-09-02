@@ -57,9 +57,12 @@ where
         compiler.define(k, *v);
     }
 
-    // Enable exceptions for clang-cl
+    // Enable exceptions for clang-cl and enable C++17 support
     if compiler.get_compiler().is_like_msvc() {
         compiler.flag("/EHsc");
+        compiler.flag("/std:c++17");
+    } else {
+        compiler.flag("-std=c++17");
     }
 
     // Upgrade warnings to errors in CI pipelines

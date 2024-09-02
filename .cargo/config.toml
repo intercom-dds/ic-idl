@@ -32,10 +32,6 @@ xtask = "run --package xtask --bin xtask --"
 [target.'cfg(all(windows, target_env = "msvc"))']
 rustflags = ["-C", "target-feature=+crt-static"]
 
-[target.'cfg(linux)']
-linker = "clang"
-rustflags = ["-C", "link-args=-fuse-ld=mold"]
-
 [target.x86_64-unknown-linux-musl]
 linker = "clang"
 rustflags = [

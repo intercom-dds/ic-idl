@@ -148,29 +148,31 @@ std::string safe_name(const ptree* node, const std::string& name, Language lang)
     }
 
     if (lang == LANG_ADA) {
-        char* p;
-        const char* cp;
-        char* buf = new char[res.size() + 2];
+        std::string_view view = res;
 
         // Remove any leading underscore
-        for (cp = res.c_str(); *cp == '_'; ++cp) {
-            ;
+        for (auto c : view) {
+            if (c != '_') {
+                break;
+            }
+            view = view.substr(1);
         }
-        memcpy(buf, cp, strlen(cp) + 1);
 
         // Replace any second consecutive underscore with 'U'
-        for (p = buf; *p; ++p) {
-            if (*p == '_' && *(p - 1) == '_') {
-                *p = 'U';
+        std::string buf(view);
+        for (size_t i = 0; i < buf.length(); i++) {
+            if (i < buf.length() + 1) {
+                if (buf[i] == '_' && buf[i + 1] == '_') {
+                    buf[i + 1] = 'U';
+                }
             }
         }
 
         // Add 'U' if ending in underscore
-        if (*(p - 1) == '_') {
-            strcat(buf, "U");
+        if (buf[buf.length() - 1] == '_') {
+            buf += 'U';
         }
         res = buf;
-        delete[] buf;
     } else if (lang == LANG_CPP) {
         // exceptions inherit from std::runtime_error, which defines a virtual `what` function.
         if (node->super && node->super->kind == N_EXCEPTION &&

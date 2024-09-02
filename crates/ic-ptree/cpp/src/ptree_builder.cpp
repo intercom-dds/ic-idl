@@ -1682,10 +1682,8 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                     }
                     node->value = node->element_type->value;
                     for (auto m : node->members) {
-                        int bit_count = 0;
                         auto v = value<uint64_t>(m->value);
                         while (v) {
-                            bit_count++;
                             v >>= 1;
                         }
                         m->value =

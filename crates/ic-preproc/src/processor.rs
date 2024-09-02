@@ -105,29 +105,73 @@ pub enum Error {
     },
 }
 
-// TODO: State pattern?
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 enum IfKind {
-    /// Contains the result of the expression.
-    If {
-        result: bool,
-    },
-
-    /// The result of the evaluated `elif` expression, and whether any of the
-    /// preceeding `if` directives have evaluated to true.
-    Elif {
-        result: bool,
-        evaluated: bool,
-    },
-    Else {
-        evaluated: bool,
-    },
+    If { result: bool },
+    Elif { result: bool },
+    Else,
 }
 
+/// A small state machine for keeping track of the current state of `if`
+/// statements and their expressions.
 #[derive(Debug)]
 struct IfState {
     state: IfKind,
+    evaluated: bool,
     defined: SourceSpan,
+}
+
+impl IfState {
+    fn new_if(result: bool, defined: SourceSpan) -> Self {
+        Self {
+            state: IfKind::If { result },
+            evaluated: false,
+            defined,
+        }
+    }
+
+    fn eval_elif(&mut self, result: bool) -> Result<(), Error> {
+        let was_true = match self.state {
+            IfKind::If { result } | IfKind::Elif { result } => result,
+            IfKind::Else => {
+                self.evaluated = true;
+                Err(Error::Expr {
+                    message: "#elif after #else",
+                })?
+            }
+        };
+
+        self.state = IfKind::Elif { result };
+        self.evaluated = self.evaluated || was_true;
+        Ok(())
+    }
+
+    fn eval_else(&mut self) -> Result<(), Error> {
+        let was_true = match self.state {
+            IfKind::If { result } | IfKind::Elif { result } => result,
+            IfKind::Else => {
+                self.evaluated = true;
+                Err(Error::Expr {
+                    message: "#else after #else",
+                })?
+            }
+        };
+
+        self.state = IfKind::Else;
+        self.evaluated = self.evaluated || was_true;
+        Ok(())
+    }
+
+    fn is_active(&self) -> bool {
+        if self.evaluated {
+            false
+        } else {
+            match self.state {
+                IfKind::Else => true,
+                IfKind::If { result } | IfKind::Elif { result } => result,
+            }
+        }
+    }
 }
 
 // TODO: retain information about the location of a define. we currently
@@ -231,7 +275,7 @@ fn parse_str(str: &str, base: Base) -> Result<i128, Error> {
     let str = match base {
         Base::Octal => {
             if str.len() > 1 {
-                str.trim_start_matches("0")
+                str.trim_start_matches('0')
             } else {
                 str
             }
@@ -375,14 +419,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     /// are currently parsing is active, i.e. whether we should yield tokens
     /// for the current region or if they should be skipped.
     fn is_active(&mut self) -> bool {
-        match self.if_state().last() {
-            Some(v) => match v.state {
-                IfKind::If { result } => result,
-                IfKind::Elif { result, evaluated } => !evaluated && result,
-                IfKind::Else { evaluated } => !evaluated,
-            },
-            None => true,
-        }
+        self.if_state().last().map_or(false, IfState::is_active)
     }
 
     fn dir_include(&mut self, span: SourceSpan) {
@@ -456,57 +493,36 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn dir_if(&mut self, span: SourceSpan) {
-        let state = IfKind::If {
-            result: self.expr_and_eval(),
-        };
-        self.if_state().push(IfState {
-            state,
-            defined: span,
-        });
+        let result = self.expr_and_eval();
+        let state = IfState::new_if(result, span);
+        self.if_state().push(state);
     }
 
     fn dir_ifdef(&mut self, span: SourceSpan) {
         let (name, name_span) = self.macro_name().unwrap();
         self.warn_trailing(name_span, Directive::Ifdef);
 
-        let state = IfKind::If {
-            result: self.is_defined(name),
-        };
-        self.if_state().push(IfState {
-            state,
-            defined: span,
-        });
+        let result = self.is_defined(name);
+        let state = IfState::new_if(result, span);
+        self.if_state().push(state);
     }
 
     fn dir_ifndef(&mut self, span: SourceSpan) {
         let (name, name_span) = self.macro_name().unwrap();
         self.warn_trailing(name_span, Directive::Ifndef);
 
-        let state = IfKind::If {
-            result: !self.is_defined(name),
-        };
-        self.if_state().push(IfState {
-            state,
-            defined: span,
-        });
+        let result = !self.is_defined(name);
+        let state = IfState::new_if(result, span);
+        self.if_state().push(state);
     }
 
     fn dir_else(&mut self, span: SourceSpan) {
         match self.if_state().last_mut() {
-            Some(v) => match v.state {
-                IfKind::If { result: evaluated } => {
-                    v.state = IfKind::Else { evaluated };
+            Some(v) => {
+                if let Err(e) = v.eval_else() {
+                    self.state.errors.push(e);
                 }
-                IfKind::Elif { evaluated, result } => {
-                    v.state = IfKind::Else {
-                        evaluated: evaluated || result,
-                    };
-                }
-                IfKind::Else { .. } => self.state.errors.push(Error::Syntax {
-                    message: "#else after #else",
-                    span,
-                }),
-            },
+            }
             None => self.state.errors.push(Error::Syntax {
                 message: "#else without #if",
                 span,
@@ -514,32 +530,15 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         }
     }
 
-    // TODO: some helper function that validates transitions?
-    // like a state machine, but one that is fallible and reports errors.
-    //
-    // I guess it can be a normal state machine, but keep it separate from the
-    // parser.
     fn dir_elif(&mut self, span: SourceSpan) {
-        let eval = self.expr_and_eval();
+        let result = self.expr_and_eval();
+
         match self.if_state().last_mut() {
-            Some(v) => match v.state {
-                IfKind::If { result } => {
-                    v.state = IfKind::Elif {
-                        result: eval,
-                        evaluated: result,
-                    };
+            Some(v) => {
+                if let Err(e) = v.eval_elif(result) {
+                    self.state.errors.push(e);
                 }
-                IfKind::Elif { result, evaluated } => {
-                    v.state = IfKind::Elif {
-                        result: eval,
-                        evaluated: evaluated || result,
-                    };
-                }
-                IfKind::Else { .. } => self.state.errors.push(Error::Syntax {
-                    message: "#elif after #else",
-                    span,
-                }),
-            },
+            }
             None => self.state.errors.push(Error::Syntax {
                 message: "#elif without #if",
                 span,

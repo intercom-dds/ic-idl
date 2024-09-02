@@ -27,38 +27,38 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-Work in progress. Things are scattered all over the place. Relative paths are
-used everywhere in CMake as a temporary hack to make things work.
+# ic-idl
+
+A generic IDL compiler.
 
 ## Building
 
 Building `ic-idl` requires a C++17 toolchain and a Rust 1.80+ toolchain.
-
-`ic-idl` is bootstrapped. To build a full-fledged version, we first need to
-compile a reduced, C++-only version that is capable of emitting simplified type
-definitions which will be used in the full-fledged version.
-
-The bootstrap process is automated through the `xtask` application. To build a
-full release:
-
-```sh
-cargo xtask release
-```
 
 The system's default C/C++ toolchain will be used unless otherwise is
 specified. This can be overridden by using the `CC` and `CXX` environment
 variables. Custom flags can be specified with `CFLAGS` and `CXXFLAGS`,
 respectively.
 
-### Development
+For working with the C++ code, you can use the top-level `CMakeLists.txt` to
+initialize a project and generate a `compile_commands.json`. The CMake project
+*only* exists to generate said file -- it is not used by Cargo, and any
+artifacts compiled using it will not be included in the `ic-idl` binary.
 
-Build a bootstrapped version first:
+## Installation
+
+To build a full release, you can use `xtask`:
 
 ```sh
-cargo xtask bootstrap
+cargo xtask release
 ```
 
-Once compiled, `cargo` can be invoked as usual, e.g.:
+This will compile a release version of `ic-idl` and create an archive that
+contains the binary and serialization libraries.
+
+## Development
+
+Run all tests:
 
 ```
 cargo test --workspace

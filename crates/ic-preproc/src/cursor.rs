@@ -31,9 +31,7 @@ use std::rc::Rc;
 
 use ic_vfs::FileId;
 
-use crate::iter::OwnedChars;
-
-const EOF: char = '\0';
+use crate::iter::{OwnedChars, EOF};
 
 #[derive(Copy, Clone, Debug)]
 pub struct SourceSpan {
@@ -205,8 +203,8 @@ pub enum Kind {
 
 #[derive(Clone, Debug)]
 pub struct Cursor {
-    pub chars: OwnedChars,
-    pub file_id: FileId,
+    chars: OwnedChars,
+    file_id: FileId,
 }
 
 impl Cursor {
@@ -223,18 +221,14 @@ impl Cursor {
         }
     }
 
-    fn peek_char(&mut self) -> char {
-        self.chars.peek().unwrap_or(EOF)
-    }
-
     fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) -> SourceSpan {
         let start = self.chars.index();
-        while let Some(c) = self.chars.peek() {
-            if predicate(c) {
-                self.chars.next();
-            } else {
+        loop {
+            let c = self.chars.peek();
+            if c == EOF || !predicate(c) {
                 break;
             }
+            self.chars.next();
         }
         self.span_since(start)
     }
@@ -252,7 +246,7 @@ impl Cursor {
         let start = self.chars.index();
         self.eat_while(|v| v.is_numeric());
 
-        if let Some('.' | 'e' | 'E') = self.chars.peek() {
+        if matches!(self.chars.peek(), '.' | 'e' | 'E') {
             self.eat_while(|v| v.is_numeric());
         }
 
@@ -277,7 +271,7 @@ impl Cursor {
             match c {
                 '\\' => {
                     // TODO: newline??
-                    if self.peek_char() == '"' {
+                    if self.chars.peek() == '"' {
                         _ = self.chars.next();
                     }
                 }
@@ -300,14 +294,14 @@ impl Cursor {
     // Code comments (`//`) are stripped from the output, but documentation
     // comments (`///`) are not.
     fn comment(&mut self) -> (Token, bool) {
-        let is_doc = self.peek_char() == '/';
+        let is_doc = self.chars.peek() == '/';
         let start = self.chars.index();
         // self.until_peek(Kind::Newline);
         // TODO: this fails with floating points
         // let tokens = self.until(Kind::Newline);
         // fixed now, but we need to peek, not consume, so self.until_peek
         // until_peek consumes more characters than it should.
-        while self.peek_char() != '\n' {
+        while self.chars.peek() != '\n' {
             self.chars.next();
         }
 
@@ -324,13 +318,13 @@ impl Cursor {
     // TODO: multi-line doc comments should... you guessed it... be stripped,
     // but be replaced by the correct amount of newlines.
     fn block_comment(&mut self) -> (Token, bool) {
-        let is_doc = matches!(self.peek_char(), '*' | '!');
+        let is_doc = matches!(self.chars.peek(), '*' | '!');
         let start = self.chars.index();
 
         loop {
             match self.chars.next() {
                 Some('*') => {
-                    if self.chars.next().unwrap_or(EOF) == '/' {
+                    if self.chars.next() == Some('/') {
                         break;
                     }
                 }
@@ -350,7 +344,7 @@ impl Cursor {
     }
 
     fn peek_or(&mut self, c: char, a: Kind, b: Kind) -> Kind {
-        if self.chars.peek() == Some(c) {
+        if self.chars.peek() == c {
             _ = self.chars.next();
             a
         } else {
@@ -358,7 +352,7 @@ impl Cursor {
         }
     }
 
-    // TODO: should this stop at newlines? we require so for `dir_include`.
+    /// Advances the iterator until it finds a token with the specified `kind`.
     pub fn until(&mut self, kind: Kind) -> Vec<Token> {
         let mut tokens = vec![];
         while let Some(tok) = self.next() {
@@ -370,6 +364,8 @@ impl Cursor {
         tokens
     }
 
+    /// Advances the iterator until the next, peeked token is equal to the
+    /// specified `kind`.
     pub fn until_peek(&mut self, kind: Kind) -> Vec<Token> {
         let mut tokens = vec![];
         while let Some(tok) = self.peek() {
@@ -408,6 +404,7 @@ impl Cursor {
         tokens
     }
 
+    /// Advances the underlying iterator and yields the next token.
     pub fn next(&mut self) -> Option<Token> {
         loop {
             let start = self.chars.index();
@@ -445,7 +442,7 @@ impl Cursor {
                     Kind::String
                 }
 
-                '/' => match self.peek_char() {
+                '/' => match self.chars.peek() {
                     '/' => {
                         _ = self.chars.next();
                         if self.comment().1 {
@@ -489,92 +486,11 @@ impl Cursor {
         }
     }
 
-    /// Be careful using this, as it will skip whitespace and thus advance the
-    /// inner iterator.
-    //
-    // TODO: remove this. it was a temporary hack.
-    pub fn peek(&mut self) -> Option<Kind> {
-        loop {
-            let kind = match self.chars.next()? {
-                '#' => Kind::Hash,
-                '@' => Kind::At,
-                ',' => Kind::Comma,
-                '.' => Kind::Period,
-                ';' => Kind::Semi,
-                '{' => Kind::LBrace,
-                '}' => Kind::RBrace,
-                '[' => Kind::LBracket,
-                ']' => Kind::RBracket,
-                '(' => Kind::LParen,
-                ')' => Kind::RParen,
-                '+' => Kind::Plus,
-                '-' => Kind::Minus,
-                '*' => Kind::Star,
-                '%' => Kind::Modulo,
-                '?' => Kind::Question,
-                '\n' => Kind::Newline,
-                '\\' => Kind::Backslash,
-                '~' => Kind::BitNot,
-                '^' => Kind::BitXor,
-
-                // TODO: the problem here is that we're already operating on a
-                // peeked token, so the peek_or function won't work.
-                //
-                // The best we can do is probably add a `get()` function that
-                // caches the current token. So we can use "next" here instead,
-                // and then just rely on `get()` so we don't lose the value.
-                '&' => self.peek_or('&', Kind::And, Kind::BitAnd),
-                '|' => self.peek_or('|', Kind::Or, Kind::BitOr),
-                '=' => self.peek_or('=', Kind::EqEq, Kind::Eq),
-                ':' => self.peek_or(':', Kind::DColon, Kind::Colon),
-                '!' => self.peek_or('=', Kind::NotEq, Kind::Unknown),
-                '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
-                '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
-
-                '"' => {
-                    self.string_lit();
-                    Kind::String
-                }
-
-                '/' => match self.peek_char() {
-                    '/' => {
-                        _ = self.chars.next();
-                        if self.comment().1 {
-                            Kind::Comment
-                        } else {
-                            continue;
-                        }
-                    }
-                    '*' => {
-                        _ = self.chars.next();
-                        if self.block_comment().1 {
-                            Kind::Comment
-                        } else {
-                            continue;
-                        }
-                    }
-                    _ => Kind::Slash,
-                },
-
-                c if c.is_numeric() => {
-                    self.number();
-                    Kind::Number
-                }
-
-                c if is_ident(c) => {
-                    self.ident();
-                    Kind::Ident
-                }
-
-                c if c.is_whitespace() => continue,
-
-                v => {
-                    println!("unknown: {v}");
-                    Kind::Unknown
-                }
-            };
-            break Some(kind);
-        }
+    /// Peeks the next token by cloning the underlying iterator. This is
+    /// necessary as we cannot advance the underlying iterator, but we need
+    /// `N` lookup to properly parse expressions.
+    pub fn peek(&self) -> Option<Kind> {
+        self.clone().next().map(|v| v.kind)
     }
 }
 

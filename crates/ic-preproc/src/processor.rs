@@ -88,6 +88,11 @@ pub enum Error {
         message: &'static str,
         span: SourceSpan,
     },
+    // TODO: this should be Syntax, but we don't currently record spans of
+    // expression
+    Expr {
+        message: &'static str,
+    },
 }
 
 impl std::error::Error for Error {}
@@ -95,8 +100,8 @@ impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::Syntax { message, .. } => write!(f, "{message}"),
             Error::Note { .. } | Error::Extraneous { .. } => todo!(),
+            Error::Syntax { message, .. } | Error::Expr { message, .. } => write!(f, "{message}"),
         }
     }
 }
@@ -194,6 +199,28 @@ fn prefix_precedence(kind: Kind) -> u8 {
     match kind {
         Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => 20,
         _ => unreachable!("invalid unary operator {kind:?}"),
+    }
+}
+
+#[inline]
+fn checked_wdiv(lhs: i128, rhs: i128) -> Result<i128, Error> {
+    if rhs == 0 {
+        Err(Error::Expr {
+            message: "attempted to divide by zero",
+        })
+    } else {
+        Ok(lhs.wrapping_div(rhs))
+    }
+}
+
+#[inline]
+fn checked_wmod(lhs: i128, rhs: i128) -> Result<i128, Error> {
+    if rhs == 0 {
+        Err(Error::Expr {
+            message: "attempted to modulo by zero",
+        })
+    } else {
+        Ok(lhs.wrapping_rem(rhs))
     }
 }
 
@@ -297,8 +324,11 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         Some((self.source_of(span), span))
     }
 
+    // TODO: move to File? that way we won't ever have to even touch the stack
+    // and we can avoid the transmute
     fn source_of(&self, span: SourceSpan) -> &'a str {
-        let src = &self.stack.last().as_ref().unwrap().source[span.range()];
+        let range = span.range();
+        let src = &self.stack.last().as_ref().unwrap().source[range];
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 
@@ -369,15 +399,18 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         self.warn_trailing(span, Directive::Undef);
     }
 
-    fn dir_if(&mut self, span: SourceSpan) {
-        let result = match self.expr() {
-            Ok(v) => self.is_true(&v),
+    fn expr_and_eval(&mut self) -> bool {
+        match self.expr().and_then(|v| self.is_true(&v)) {
+            Ok(v) => v,
             Err(e) => {
                 self.state.errors.push(e);
                 false
             }
-        };
+        }
+    }
 
+    fn dir_if(&mut self, span: SourceSpan) {
+        let result = self.expr_and_eval();
         self.if_state().push(IfState {
             state: IfKind::If,
             defined: span,
@@ -437,13 +470,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     // I guess it can be a normal state machine, but keep it separate from the
     // parser.
     fn dir_elif(&mut self, span: SourceSpan) {
-        let result = match self.expr() {
-            Ok(v) => self.is_true(&v),
-            Err(e) => {
-                self.state.errors.push(e);
-                false
-            }
-        };
+        let result = self.expr_and_eval();
 
         match self.if_state().last_mut() {
             Some(v) => match v.state {
@@ -548,7 +575,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             "warning" => self.dir_warning(span),
             "error" => self.dir_error(span),
             "line" => _ = self.dir_line(span),
-            v => panic!("invalid preprocessing directive {v}"),
+            v => panic!("invalid preprocessing directive '{v}'"),
         }
     }
 
@@ -612,12 +639,14 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         Ok(lhs)
     }
 
-    fn eval_expr(&self, expr: &Expr) -> i128 {
-        match expr {
+    fn eval_expr(&self, expr: &Expr) -> Result<i128, Error> {
+        let val = match expr {
             Expr::Lit(v) => {
                 let lit = self.source_of(v.span);
                 match v.kind {
-                    Kind::Number => lit.parse::<i128>().unwrap(),
+                    Kind::Number => lit.parse::<i128>().map_err(|_| Error::Expr {
+                        message: "invalid literal",
+                    })?,
                     Kind::Ident => {
                         if self.is_defined(lit) {
                             // We now have to recursively expand the macro.
@@ -644,7 +673,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 }
             }
             Expr::Unary(v) => {
-                let expr = self.eval_expr(&v.expr);
+                let expr = self.eval_expr(&v.expr)?;
                 match v.op {
                     Op::Add => expr,
                     Op::Sub => -expr,
@@ -653,8 +682,8 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 }
             }
             Expr::Binary(v) => {
-                let lhs = self.eval_expr(&v.lhs);
-                let rhs = self.eval_expr(&v.rhs);
+                let lhs = self.eval_expr(&v.lhs)?;
+                let rhs = self.eval_expr(&v.rhs)?;
                 match v.op {
                     Op::And => i128::from(lhs != 0 && rhs != 0),
                     Op::Or => i128::from(lhs != 0 || rhs != 0),
@@ -670,39 +699,24 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                     Op::Add => lhs.wrapping_add(rhs),
                     Op::Sub => lhs.wrapping_sub(rhs),
                     Op::Mul => lhs.wrapping_mul(rhs),
-                    Op::Div => {
-                        if rhs == 0 {
-                            // self.state.errors.push(Error::Syntax {
-                            //     message: "attempted to divide by zero",
-                            //     span: v.lhs.span,
-                            // });
-                            panic!("attempted to divide by zero");
-                        } else {
-                            lhs.wrapping_div(rhs)
-                        }
-                    }
-                    Op::Mod => {
-                        if rhs == 0 {
-                            panic!("attempted to modulo by zero");
-                        } else {
-                            lhs.wrapping_rem(rhs)
-                        }
-                    }
+                    Op::Div => checked_wdiv(lhs, rhs)?,
+                    Op::Mod => checked_wmod(lhs, rhs)?,
                     v => unreachable!("invalid binary operator: {v:?}"),
                 }
             }
             Expr::Ternary(v) => {
-                if self.is_true(&v.cond) {
-                    self.eval_expr(&v.then)
+                if self.is_true(&v.cond)? {
+                    self.eval_expr(&v.then)?
                 } else {
-                    self.eval_expr(&v.els)
+                    self.eval_expr(&v.els)?
                 }
             }
-        }
+        };
+        Ok(val)
     }
 
-    fn is_true(&self, expr: &Expr) -> bool {
-        self.eval_expr(expr) != 0
+    fn is_true(&self, expr: &Expr) -> Result<bool, Error> {
+        self.eval_expr(expr).map(|v| v != 0)
     }
 
     fn maybe_expand(&mut self, tok: Token) -> bool {
@@ -830,33 +844,12 @@ pub fn to_string<'a, 'ctx>(
 mod tests {
     use super::*;
 
-    fn preload(input: &str) -> State {
-        let cursor = Cursor {
-            chars: input.chars().peekable(),
-            index: 0,
-            file_id,
-        };
-        let mut parser = Parser {
-            state,
-            stack: vec![],
-        };
-
-        // Exhaust the iterator
-        while let Some(_) = parser.next() {}
+    fn preload(_input: &str) -> State {
+        todo!()
     }
 
-    fn expand(state: &mut State, input: &str) -> String {
-        let cursor = Cursor {
-            chars: input.chars().peekable(),
-            index: 0,
-            file_id,
-        };
-        let mut parser = Parser {
-            state,
-            stack: vec![],
-        };
-        while let Some(_) = parser.next() {}
-        String::new()
+    fn expand(_state: &mut State, _input: &str) -> String {
+        todo!()
     }
 
     #[test]

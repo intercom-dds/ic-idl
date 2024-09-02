@@ -29,6 +29,8 @@ use std::iter::Peekable;
 use std::rc::Rc;
 use std::str::Chars;
 
+pub const EOF: char = '\0';
+
 /// Extension trait for iterators.
 pub trait IteratorExt<'a, T>
 where
@@ -101,8 +103,8 @@ impl OwnedChars {
     }
 
     #[inline]
-    pub fn peek(&mut self) -> Option<char> {
-        self.chars.peek().copied()
+    pub fn peek(&mut self) -> char {
+        self.chars.peek().copied().unwrap_or(EOF)
     }
 }
 
@@ -125,7 +127,9 @@ impl Iterator for OwnedChars {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.chars.next()
+        let c = self.chars.next()?;
+        self.index += c.len_utf8() as u32;
+        Some(c)
     }
 
     #[inline]

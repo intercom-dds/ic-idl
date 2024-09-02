@@ -57,6 +57,7 @@ where
 }
 
 /// See [`IteratorExt::take_while_peek`] for details.
+#[must_use]
 pub struct TakeWhilePeek<'a, I, P>
 where
     I: Iterator,
@@ -84,6 +85,7 @@ where
 
 /// An indexed, self-referential version of `std::str::Chars` that owns the
 /// data it iterates over, which lets us bypass the lifetime bound.
+#[must_use]
 #[derive(Clone, Debug)]
 pub struct OwnedChars {
     chars: Peekable<Chars<'static>>,
@@ -126,9 +128,14 @@ impl Iterator for OwnedChars {
     type Item = char;
 
     #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         let c = self.chars.next()?;
         self.index += c.len_utf8() as u32;
+        debug_assert!(
+            u32::try_from(c.len_utf8()).is_ok(),
+            "byte index exceeds u32::MAX",
+        );
         Some(c)
     }
 

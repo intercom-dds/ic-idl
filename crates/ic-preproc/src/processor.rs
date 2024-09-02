@@ -30,7 +30,7 @@ use std::fmt::Write;
 use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
-use ic_vfs::{FileId, SourceMap};
+use ic_vfs::{FileId, Include, SourceMap};
 
 use crate::cursor::{Cursor, Directive, Kind, SourceSpan, Token};
 use crate::ProcArgs;
@@ -39,7 +39,6 @@ use crate::ProcArgs;
 enum Macro {
     Function,
     Object { span: SourceSpan, def: Vec<Token> },
-    Builtin(String),
 }
 
 type Expr = ic_expr::Expr<Token>;
@@ -52,7 +51,7 @@ impl TryFrom<Token> for Op {
             Kind::Not => Op::Not,
             Kind::Or => Op::Or,
             Kind::And => Op::And,
-            Kind::Eq => Op::Eq,
+            Kind::EqEq => Op::EqEq,
             Kind::NotEq => Op::NotEq,
             Kind::BitOr => Op::BitOr,
             Kind::BitAnd => Op::BitAnd,
@@ -67,7 +66,10 @@ impl TryFrom<Token> for Op {
             Kind::Star => Op::Mul,
             Kind::Slash => Op::Div,
             Kind::Modulo => Op::Mod,
-            v => todo!("{v:?}"),
+            _ => Err(Error::Syntax {
+                message: "invalid binary operator",
+                span: value.span,
+            })?,
         };
         Ok(op)
     }
@@ -88,22 +90,12 @@ pub enum Error {
         message: &'static str,
         span: SourceSpan,
     },
-    // TODO: this should be Syntax, but we don't currently record spans of
-    // expression
+
+    // TODO: this should be Error::Syntax, but we don't currently record
+    // spans of expression
     Expr {
         message: &'static str,
     },
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Note { .. } | Error::Extraneous { .. } => todo!(),
-            Error::Syntax { message, .. } | Error::Expr { message, .. } => write!(f, "{message}"),
-        }
-    }
 }
 
 // TODO: State pattern?
@@ -121,11 +113,6 @@ struct IfState {
     // TODO: this can be avoided with IfKInd struct variant
     result: bool,
     was_true: bool,
-}
-
-enum Include {
-    System,
-    Local,
 }
 
 // TODO: retain information about the location of a define. we currently
@@ -183,7 +170,7 @@ const fn infix_precedence(kind: Kind) -> Option<u8> {
         Kind::BitOr => 4,
         Kind::BitXor => 5,
         Kind::BitAnd => 6,
-        Kind::Eq | Kind::NotEq => 7,
+        Kind::EqEq | Kind::NotEq => 7,
         Kind::Lt | Kind::Gt | Kind::LtEq | Kind::GtEq => 8,
         // Kind::LShift | Kind::RShift => 9,
         Kind::Plus | Kind::Minus => 10,
@@ -224,25 +211,22 @@ fn checked_wmod(lhs: i128, rhs: i128) -> Result<i128, Error> {
     }
 }
 
-// TODO: don't need to store source -- Cursor is fine.
+/// State we keep for each file we process. `File`s are not guaranteed to be
+/// unique; multiple includes of the same file create multiple `File` instances
+/// as each has to be parsed separately.
+//
 // TODO: can move all cursor-related functions to this file, and then use
 // parser as a way to manage cursors (so Preprocessor/FileProcessor).
 struct File {
     cursor: Cursor,
-    // TODO: create a different ptr that is tied to 'a, so we don't have to transmute
-    // can be done with a Phantom lifetime... i think.
-    source: Rc<str>,
     current: Vec<IfState>,
 }
 
 impl File {
     pub fn from_src(source: Rc<str>, file_id: FileId) -> Self {
-        let cursor = Cursor::new(source.clone(), file_id);
-        Self {
-            cursor,
-            source,
-            current: vec![],
-        }
+        let cursor = Cursor::new(source, file_id);
+        let current = vec![];
+        Self { cursor, current }
     }
 }
 
@@ -292,7 +276,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         }
     }
 
-    fn update_builtins(&mut self) {
+    fn update_builtins() {
         // TODO: define __LINE__. Need to track that in iterator.
         // TODO: define __FILE__. need to track current ID in iterator, too.
         // let now = chrono::Local::now();
@@ -365,26 +349,24 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn dir_include(&mut self, span: SourceSpan) {
         let cursor = self.cursor();
-        let _kind = match cursor.next().unwrap().kind {
+        let tok = cursor.next().unwrap();
+        let _kind = match tok.kind {
             Kind::Lt => {
                 let _src = cursor.until(Kind::Gt);
                 Include::System
             }
             Kind::String => Include::Local,
-            _ => todo!(),
+            _ => {
+                self.expect(Kind::String, "expected \"file\" or <file>");
+                return;
+            }
         };
         self.warn_trailing(span, Directive::Include);
 
         let include = "inc.idl";
         let (id, source) = self.state.vfs.open(include).expect("couldn't open file");
-        let cursor = Cursor::new(source.clone(), id);
-        let stack = File {
-            cursor,
-            source,
-            current: vec![],
-        };
-
-        self.stack.push(stack);
+        let cursor = File::from_src(source, id);
+        self.stack.push(cursor);
     }
 
     fn dir_define(&mut self) -> Option<()> {
@@ -690,7 +672,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 match v.op {
                     Op::And => i128::from(lhs != 0 && rhs != 0),
                     Op::Or => i128::from(lhs != 0 || rhs != 0),
-                    Op::Eq => i128::from(lhs == rhs),
+                    Op::EqEq => i128::from(lhs == rhs),
                     Op::NotEq => i128::from(lhs != rhs),
                     Op::Gt => i128::from(lhs > rhs),
                     Op::GtEq => i128::from(lhs >= rhs),
@@ -722,17 +704,21 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         self.eval_expr(expr).map(|v| v != 0)
     }
 
+    fn expand_function(&mut self, def: Token) {}
+
     fn maybe_expand(&mut self, tok: Token) -> bool {
         if tok.kind == Kind::Ident {
             let name = self.source_of(tok.span);
             match self.state.defines.get(name) {
                 Some(v) => match v {
-                    Macro::Function => todo!(),
+                    Macro::Function => {
+                        true
+                        // self.state.queue.extend(def.iter)
+                    }
                     Macro::Object { def, .. } => {
                         self.state.queue.extend(def.iter().copied());
                         true
                     }
-                    Macro::Builtin(_) => todo!(),
                 },
                 None => false,
             }
@@ -756,7 +742,8 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                     continue;
                 }
 
-                // ok, now let's expand macros
+                // If the current token is a macro, we expand it and queue up
+                // the expanded macros.
                 if self.maybe_expand(tok) {
                     continue;
                 }
@@ -786,6 +773,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 }
 
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct TokenIter<'a, 'ctx>(Parser<'a, 'ctx>);
 
 impl Iterator for TokenIter<'_, '_> {
@@ -802,6 +790,7 @@ pub fn preprocess<'a, 'ctx>(
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
     let source = state.vfs.source(file_id);
+    source.chars();
     let file = File::from_src(source, file_id);
     let parser = Parser::with_state(file, state);
     TokenIter(parser)
@@ -814,6 +803,7 @@ pub fn preprocess<'a, 'ctx>(
 /// definition, that way we can calculate the whitespace between the last token
 /// and the next. Something like:
 ///
+/// ```rust,ignore
 /// enum Tok {
 ///     Text(Token),
 ///     Expanded {
@@ -821,26 +811,36 @@ pub fn preprocess<'a, 'ctx>(
 ///         original_span: SourceSpan,
 ///     }
 /// }
+/// ```
 ///
 /// But that's not been implemented yet. The C standard doesn't require that
 /// we actually materialize the preprocessed document in any way. We don't need
 /// it either since the preprocessor is effectively a lexer for our IDL parser.
-pub fn to_string<'a, 'ctx>(
-    file_id: FileId,
-    args: &ProcArgs,
-    state: &'a mut State<'ctx>,
-) -> (String, Vec<Error>) {
+pub fn to_string(file_id: FileId, args: &ProcArgs, state: &mut State<'_>) -> (String, Vec<Error>) {
     let src = state.vfs.source(file_id);
     let mut iter = preprocess(file_id, args, state);
     let mut buffer = String::with_capacity(src.len());
 
-    while let Some(tok) = iter.next() {
+    for tok in iter.by_ref() {
         _ = buffer.write_str(&src[tok.span.range()]);
         if tok.kind != Kind::Newline {
             _ = buffer.write_char(' ');
         }
     }
     (buffer, iter.0.state.errors.clone())
+}
+
+/// Formats the given set of tokens as a string.
+pub fn format_tokens(tokens: &[Token], state: &State<'_>) -> String {
+    let mut buffer = String::new();
+    for tok in tokens {
+        let src = state.vfs.source(tok.span.file_id);
+        _ = buffer.write_str(&src[tok.span.range()]);
+        if tok.kind != Kind::Newline {
+            _ = buffer.write_char(' ');
+        }
+    }
+    buffer
 }
 
 #[cfg(test)]

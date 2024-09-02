@@ -153,6 +153,10 @@ pub fn preprocess<'a, 'ctx>(
 }
 
 /// Parses the given file and returns a string of the preprocessed contents.
+///
+/// # Errors
+///
+/// Returns an error if there was an error opening the specified `path`.
 pub fn to_string<P>(path: P, args: &ProcArgs) -> std::io::Result<(String, Vec<Error>)>
 where
     P: AsRef<Path>,

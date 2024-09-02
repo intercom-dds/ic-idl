@@ -201,9 +201,10 @@ pub enum Kind {
     Unknown,
 }
 
+#[must_use]
 #[derive(Clone, Debug)]
 pub struct Cursor {
-    pub chars: OwnedChars,
+    chars: OwnedChars,
     file_id: FileId,
 }
 
@@ -244,10 +245,10 @@ impl Cursor {
 
     fn number(&mut self) -> Token {
         let start = self.chars.index();
-        self.eat_while(|v| v.is_numeric());
+        self.eat_while(char::is_numeric);
 
         if matches!(self.chars.peek(), '.' | 'e' | 'E') {
-            self.eat_while(|v| v.is_numeric());
+            self.eat_while(char::is_numeric);
         }
 
         let span = self.span_since(start);
@@ -474,10 +475,7 @@ impl Cursor {
 
                 c if c.is_whitespace() => continue,
 
-                v => {
-                    println!("unknown: {v}");
-                    Kind::Unknown
-                }
+                v => Kind::Unknown,
             };
 
             let span = self.span_since(start);

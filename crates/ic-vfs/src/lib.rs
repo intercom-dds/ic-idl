@@ -37,8 +37,22 @@ use ic_syntax::Span;
 /// An ID of a file in the [`SourceMap`].
 pub type FileId = Id<FileInfo>;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Include {
+    /// System include, e.g. <foo.idl>
+    System,
+
+    /// Local include, e.g. "foo.idl"
+    Local,
+
+    /// A "static" file is one that was openened in other contexts than
+    /// `#include` directories in the preprocessor, for example if the file was
+    /// specified in the command-line interface of an application.
+    Static,
+}
+
 #[must_use]
+#[derive(Debug)]
 pub struct FileInfo {
     /// Absolute path of the file.
     // TODO: store filename elsewhere?
@@ -55,6 +69,8 @@ pub struct FileInfo {
     /// Populated if this file was included by another file, and if so, the
     /// span of the `#include` directive.
     pub included_from: Option<(FileId, Span)>,
+
+    pub kind: Include,
 }
 
 #[derive(Debug, Default)]
@@ -90,7 +106,6 @@ impl SourceMap {
     /// This may panic if the ID does not exist in the `SourceMap`. This can
     /// only happen if you have mixed up IDs between multiple `SourceMap`
     /// instances.
-    #[must_use]
     pub fn file_info(&self, id: FileId) -> &FileInfo {
         self.sources.get(id).unwrap()
     }
@@ -128,6 +143,7 @@ impl SourceMap {
             span,
             source,
             included_from: None,
+            kind: Include::Local,
         };
 
         let id = self.sources.alloc(info);

@@ -72,7 +72,7 @@ where
     println!("cargo:rerun-if-env-changed=CC");
     println!("cargo:rerun-if-env-changed=CFLAGS");
     println!("cargo:rerun-if-env-changed=CXX");
-    println!("cargo:rerun-if-env-changed=CXXFLGAS");
+    println!("cargo:rerun-if-env-changed=CXXFLAGS");
 
     for f in files {
         println!("cargo:rerun-if-changed={}", f.as_ref().display());

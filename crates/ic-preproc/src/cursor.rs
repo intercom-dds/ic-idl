@@ -225,7 +225,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = (self.index, self.iter.next()?);
-        self.index += 1;
+        self.index += next.1.len_utf8() as u32;
         Some(next)
     }
 }
@@ -250,7 +250,7 @@ impl Cursor {
     // TODO: remove this and hide it. it creates too many possible bugs.
     fn next_tok(&mut self) -> Option<char> {
         let c = self.cursor.next()?;
-        self.index += 1;
+        self.index += c.len_utf8() as u32;
         Some(c)
     }
 

@@ -96,7 +96,7 @@ struct_excessive_bools = "allow"
 ignored_unit_patterns = "allow"
 
 [profile.release]
-lto = true
+lto = "thin"
 opt-level = "s"
 codegen-units = 1
 

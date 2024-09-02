@@ -81,7 +81,6 @@ semver-breaking change.
 ## Known bugs
 
 - Annotations are parsed but not included in the AST.
-- Preprocessor function macros are not supported.
 - Variadic macros are not supported.
 - \_Pragma is not supported.
 - `#line` directives are ignored by the preprocessor.

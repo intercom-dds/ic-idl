@@ -34,6 +34,7 @@ members = [
     "crates/ic-cli-derive",
     "crates/ic-codegen-cxx",
     "crates/ic-codegen-idl",
+    "crates/ic-codegen-json",
     "crates/ic-codegen-protobuf",
     "crates/ic-codegen-python",
     "crates/ic-codegen-rust",

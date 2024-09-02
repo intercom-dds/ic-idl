@@ -80,17 +80,29 @@ where
     }
 }
 
-/// A self-referential version of `std::str::Chars` that owns the data it
-/// iterates over, which lets us bypass the lifetime bound.
-#[derive(Debug)]
+/// An indexed, self-referential version of `std::str::Chars` that owns the
+/// data it iterates over, which lets us bypass the lifetime bound.
+#[derive(Clone, Debug)]
 pub struct OwnedChars {
-    chars: Chars<'static>,
+    chars: Peekable<Chars<'static>>,
     inner: Rc<str>,
+    index: u32,
 }
 
 impl OwnedChars {
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.inner.as_ref()
+    }
+
+    #[inline]
+    pub fn index(&self) -> u32 {
+        self.index
+    }
+
+    #[inline]
+    pub fn peek(&mut self) -> Option<char> {
+        self.chars.peek().copied()
     }
 }
 
@@ -99,8 +111,12 @@ impl From<Rc<str>> for OwnedChars {
         // SAFETY: The pointed-to buffer is already heap allocated and is
         // guaranteed to not move. Since we also hold ownership over the
         // buffer, it will never go out of scope for the lifetime of `Self`.
-        let chars = unsafe { std::mem::transmute::<Chars<'_>, Chars<'_>>(inner.chars()) };
-        Self { chars, inner }
+        let iter = unsafe { std::mem::transmute::<Chars<'_>, Chars<'_>>(inner.chars()) };
+        Self {
+            chars: iter.peekable(),
+            inner,
+            index: 0,
+        }
     }
 }
 

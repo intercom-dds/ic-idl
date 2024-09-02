@@ -832,7 +832,7 @@ mod tests {
 
     fn preload(input: &str) -> State {
         let cursor = Cursor {
-            cursor: input.chars().peekable(),
+            chars: input.chars().peekable(),
             index: 0,
             file_id,
         };
@@ -847,7 +847,7 @@ mod tests {
 
     fn expand(state: &mut State, input: &str) -> String {
         let cursor = Cursor {
-            cursor: input.chars().peekable(),
+            chars: input.chars().peekable(),
             index: 0,
             file_id,
         };

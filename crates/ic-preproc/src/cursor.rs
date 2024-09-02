@@ -203,84 +203,40 @@ pub enum Kind {
     Unknown,
 }
 
-struct CharIdx<I: Iterator<Item = char>> {
-    iter: Peekable<I>,
-    index: u32,
-}
-
-impl<I> CharIdx<I>
-where
-    I: Iterator<Item = char>,
-{
-    fn peek(&mut self) -> Option<&char> {
-        self.iter.peek()
-    }
-}
-
-impl<I> Iterator for CharIdx<I>
-where
-    I: Iterator<Item = char>,
-{
-    type Item = (u32, char);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = (self.index, self.iter.next()?);
-        self.index += next.1.len_utf8() as u32;
-        Some(next)
-    }
-}
-
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Cursor {
-    pub cursor: Peekable<OwnedChars>,
-    pub index: u32,
+    pub chars: OwnedChars,
     pub file_id: FileId,
 }
 
 impl Cursor {
     pub fn new(source: Rc<str>, file_id: FileId) -> Self {
         let chars = OwnedChars::from(source);
-        Cursor {
-            cursor: chars.peekable(),
-            index: 0,
-            file_id,
-        }
+        Cursor { chars, file_id }
     }
 
-    // TODO: remove this and hide it. it creates too many possible bugs.
-    fn next_tok(&mut self) -> Option<char> {
-        let c = self.cursor.next()?;
-        self.index += c.len_utf8() as u32;
-        Some(c)
-    }
-
-    fn span_since(&mut self, start: u32) -> SourceSpan {
+    fn span_since(&self, start: u32) -> SourceSpan {
         SourceSpan {
             start,
-            end: self.index,
+            end: self.chars.index(),
             file_id: self.file_id,
         }
     }
 
     fn peek_char(&mut self) -> char {
-        self.cursor.peek().copied().unwrap_or(EOF)
+        self.chars.peek().unwrap_or(EOF)
     }
 
     fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) -> SourceSpan {
-        let start = self.index;
-        while let Some(c) = self.cursor.peek() {
-            if predicate(*c) {
-                self.next_tok();
+        let start = self.chars.index();
+        while let Some(c) = self.chars.peek() {
+            if predicate(c) {
+                self.chars.next();
             } else {
                 break;
             }
         }
-
-        SourceSpan {
-            start,
-            end: self.index,
-            file_id: self.file_id,
-        }
+        self.span_since(start)
     }
 
     fn ident(&mut self) -> Token {
@@ -293,10 +249,10 @@ impl Cursor {
     }
 
     fn number(&mut self) -> Token {
-        let start = self.index;
+        let start = self.chars.index();
         self.eat_while(|v| v.is_numeric());
 
-        if let Some('.' | 'e' | 'E') = self.cursor.peek() {
+        if let Some('.' | 'e' | 'E') = self.chars.peek() {
             self.eat_while(|v| v.is_numeric());
         }
 
@@ -314,15 +270,15 @@ impl Cursor {
     // yes, we do care. but we still may need a lint.
     fn string_lit(&mut self) -> Token {
         // let span = self.eat_while(|v| v != '"');
-        let start = self.index;
+        let start = self.chars.index();
 
         // TODO: handle unterminated
-        while let Some(c) = self.next_tok() {
+        while let Some(c) = self.chars.next() {
             match c {
                 '\\' => {
                     // TODO: newline??
                     if self.peek_char() == '"' {
-                        _ = self.next_tok();
+                        _ = self.chars.next();
                     }
                 }
                 '\n' => {
@@ -345,14 +301,14 @@ impl Cursor {
     // comments (`///`) are not.
     fn comment(&mut self) -> (Token, bool) {
         let is_doc = self.peek_char() == '/';
-        let start = self.index;
+        let start = self.chars.index();
         // self.until_peek(Kind::Newline);
         // TODO: this fails with floating points
         // let tokens = self.until(Kind::Newline);
         // fixed now, but we need to peek, not consume, so self.until_peek
         // until_peek consumes more characters than it should.
         while self.peek_char() != '\n' {
-            self.next_tok();
+            self.chars.next();
         }
 
         let span = self.span_since(start);
@@ -369,12 +325,12 @@ impl Cursor {
     // but be replaced by the correct amount of newlines.
     fn block_comment(&mut self) -> (Token, bool) {
         let is_doc = matches!(self.peek_char(), '*' | '!');
-        let start = self.index;
+        let start = self.chars.index();
 
         loop {
-            match self.next_tok() {
+            match self.chars.next() {
                 Some('*') => {
-                    if self.next_tok().unwrap_or(EOF) == '/' {
+                    if self.chars.next().unwrap_or(EOF) == '/' {
                         break;
                     }
                 }
@@ -394,8 +350,8 @@ impl Cursor {
     }
 
     fn peek_or(&mut self, c: char, a: Kind, b: Kind) -> Kind {
-        if self.cursor.peek().copied() == Some(c) {
-            _ = self.next_tok();
+        if self.chars.peek() == Some(c) {
+            _ = self.chars.next();
             a
         } else {
             b
@@ -454,8 +410,8 @@ impl Cursor {
 
     pub fn next(&mut self) -> Option<Token> {
         loop {
-            let start = self.index;
-            let kind = match self.next_tok()? {
+            let start = self.chars.index();
+            let kind = match self.chars.next()? {
                 '#' => Kind::Hash,
                 '@' => Kind::At,
                 ',' => Kind::Comma,
@@ -491,7 +447,7 @@ impl Cursor {
 
                 '/' => match self.peek_char() {
                     '/' => {
-                        _ = self.next_tok();
+                        _ = self.chars.next();
                         if self.comment().1 {
                             Kind::Comment
                         } else {
@@ -499,7 +455,7 @@ impl Cursor {
                         }
                     }
                     '*' => {
-                        _ = self.next_tok();
+                        _ = self.chars.next();
                         if self.block_comment().1 {
                             Kind::Comment
                         } else {
@@ -539,7 +495,7 @@ impl Cursor {
     // TODO: remove this. it was a temporary hack.
     pub fn peek(&mut self) -> Option<Kind> {
         loop {
-            let kind = match self.next_tok()? {
+            let kind = match self.chars.next()? {
                 '#' => Kind::Hash,
                 '@' => Kind::At,
                 ',' => Kind::Comma,
@@ -582,7 +538,7 @@ impl Cursor {
 
                 '/' => match self.peek_char() {
                     '/' => {
-                        _ = self.next_tok();
+                        _ = self.chars.next();
                         if self.comment().1 {
                             Kind::Comment
                         } else {
@@ -590,7 +546,7 @@ impl Cursor {
                         }
                     }
                     '*' => {
-                        _ = self.next_tok();
+                        _ = self.chars.next();
                         if self.block_comment().1 {
                             Kind::Comment
                         } else {

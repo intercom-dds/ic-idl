@@ -245,17 +245,24 @@ impl Cursor {
 
     fn number(&mut self) -> Token {
         let start = self.chars.index();
-        self.eat_while(char::is_numeric);
+        self.eat_while(|v| v.is_ascii_digit());
 
-        if matches!(self.chars.peek(), '.' | 'e' | 'E') {
-            self.eat_while(char::is_numeric);
-        }
+        let kind = match self.chars.peek() {
+            '.' | 'e' | 'E' => {
+                _ = self.chars.next();
+                self.eat_while(|v| v.is_ascii_digit());
+                Kind::Float
+            }
+            'x' | 'X' => {
+                _ = self.chars.next();
+                self.eat_while(|v| v.is_ascii_hexdigit());
+                Kind::Number
+            }
+            _ => Kind::Number,
+        };
 
         let span = self.span_since(start);
-        Token {
-            kind: Kind::Number,
-            span,
-        }
+        Token { kind, span }
     }
 
     // TODO: literals can be escaped. Should we care? Support it + add pedantic
@@ -463,7 +470,7 @@ impl Cursor {
                     _ => Kind::Slash,
                 },
 
-                c if c.is_numeric() => {
+                c if c.is_ascii_digit() => {
                     self.number();
                     Kind::Number
                 }

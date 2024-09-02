@@ -31,10 +31,11 @@ use std::path::Path;
 
 const GLOBAL_INCLUDES: &[&str] = &[
     "../ic-ptree/cpp/defs",
-    "../../external/fmt/defs",
     "../../external/utils/defs",
     "../../library/cpp/defs",
 ];
+
+const SYSTEM_INCLUDES: &[&str] = &["../../external/fmt/defs"];
 
 const GLOBAL_DEFINES: &[(&str, &str)] = &[("FMT_HEADER_ONLY", "1"), ("FMT_CONSTEVAL", "")];
 
@@ -55,6 +56,12 @@ where
 
     for (k, v) in GLOBAL_DEFINES {
         compiler.define(k, *v);
+    }
+
+    // Add system includes
+    for sys in SYSTEM_INCLUDES {
+        compiler.flag_if_supported(format!("-isystem{sys}"));
+        compiler.flag_if_supported(format!("/external:I{sys}"));
     }
 
     // Enable exceptions for clang-cl and enable C++17 support

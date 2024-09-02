@@ -203,7 +203,7 @@ pub enum Kind {
 
 #[derive(Clone, Debug)]
 pub struct Cursor {
-    chars: OwnedChars,
+    pub chars: OwnedChars,
     file_id: FileId,
 }
 
@@ -484,6 +484,10 @@ impl Cursor {
             debug_assert_ne!(kind, Kind::Unknown, "unknown character encountered");
             break Some(Token { kind, span });
         }
+    }
+
+    pub fn source_of(&self, span: SourceSpan) -> &str {
+        &self.chars.as_str()[span.range()]
     }
 
     /// Peeks the next token by cloning the underlying iterator. This is

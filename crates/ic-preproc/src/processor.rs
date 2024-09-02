@@ -230,6 +230,7 @@ fn checked_wmod(lhs: i128, rhs: i128) -> Result<i128, Error> {
 struct File {
     cursor: Cursor,
     // TODO: create a different ptr that is tied to 'a, so we don't have to transmute
+    // can be done with a Phantom lifetime... i think.
     source: Rc<str>,
     current: Vec<IfState>,
 }
@@ -327,8 +328,10 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     // TODO: move to File? that way we won't ever have to even touch the stack
     // and we can avoid the transmute
     fn source_of(&self, span: SourceSpan) -> &'a str {
-        let range = span.range();
-        let src = &self.stack.last().as_ref().unwrap().source[range];
+        let Some(file) = self.stack.last() else {
+            unreachable!("cursor stack is empty");
+        };
+        let src = file.cursor.source_of(span);
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 

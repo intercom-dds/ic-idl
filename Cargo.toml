@@ -99,3 +99,6 @@ ignored_unit_patterns = "allow"
 lto = true
 opt-level = "s"
 codegen-units = 1
+
+# Keep symbol information for now
+strip = "debuginfo"

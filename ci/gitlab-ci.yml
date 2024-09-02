@@ -78,11 +78,10 @@ build:stable:
   needs: []
   script:
     - rustc --version && cargo --version
-    - cargo xtask bootstrap
-    - cargo install --path crates/ic-idl --root install
+    - cargo xtask release
   artifacts:
     paths:
-      - "install/bin/"
+      - "install"
 
 test:stable:
   stage: test

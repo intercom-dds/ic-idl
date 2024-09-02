@@ -108,18 +108,26 @@ pub enum Error {
 // TODO: State pattern?
 #[derive(Copy, Clone, Debug)]
 enum IfKind {
-    If,
-    Elif,
-    Else,
+    /// Contains the result of the expression.
+    If {
+        result: bool,
+    },
+
+    /// The result of the evaluated `elif` expression, and whether any of the
+    /// preceeding `if` directives have evaluated to true.
+    Elif {
+        result: bool,
+        evaluated: bool,
+    },
+    Else {
+        evaluated: bool,
+    },
 }
 
 #[derive(Debug)]
 struct IfState {
     state: IfKind,
     defined: SourceSpan,
-    // TODO: this can be avoided with IfKInd struct variant
-    result: bool,
-    was_true: bool,
 }
 
 // TODO: retain information about the location of a define. we currently
@@ -368,7 +376,11 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     /// for the current region or if they should be skipped.
     fn is_active(&mut self) -> bool {
         match self.if_state().last() {
-            Some(v) => v.result,
+            Some(v) => match v.state {
+                IfKind::If { result } => result,
+                IfKind::Elif { result, evaluated } => !evaluated && result,
+                IfKind::Else { evaluated } => !evaluated,
+            },
             None => true,
         }
     }
@@ -444,12 +456,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn dir_if(&mut self, span: SourceSpan) {
-        let result = self.expr_and_eval();
+        let state = IfKind::If {
+            result: self.expr_and_eval(),
+        };
         self.if_state().push(IfState {
-            state: IfKind::If,
+            state,
             defined: span,
-            result,
-            was_true: result,
         });
     }
 
@@ -457,12 +469,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         let (name, name_span) = self.macro_name().unwrap();
         self.warn_trailing(name_span, Directive::Ifdef);
 
-        let result = self.is_defined(name);
+        let state = IfKind::If {
+            result: self.is_defined(name),
+        };
         self.if_state().push(IfState {
-            state: IfKind::If,
+            state,
             defined: span,
-            result,
-            was_true: result,
         });
     }
 
@@ -470,23 +482,27 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         let (name, name_span) = self.macro_name().unwrap();
         self.warn_trailing(name_span, Directive::Ifndef);
 
-        let result = !self.is_defined(name);
+        let state = IfKind::If {
+            result: !self.is_defined(name),
+        };
         self.if_state().push(IfState {
-            state: IfKind::If,
+            state,
             defined: span,
-            result,
-            was_true: result,
         });
     }
 
     fn dir_else(&mut self, span: SourceSpan) {
         match self.if_state().last_mut() {
             Some(v) => match v.state {
-                IfKind::If | IfKind::Elif => {
-                    v.result = !v.was_true;
-                    v.state = IfKind::Else;
+                IfKind::If { result: evaluated } => {
+                    v.state = IfKind::Else { evaluated };
                 }
-                IfKind::Else => self.state.errors.push(Error::Syntax {
+                IfKind::Elif { evaluated, result } => {
+                    v.state = IfKind::Else {
+                        evaluated: evaluated || result,
+                    };
+                }
+                IfKind::Else { .. } => self.state.errors.push(Error::Syntax {
                     message: "#else after #else",
                     span,
                 }),
@@ -504,20 +520,22 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     // I guess it can be a normal state machine, but keep it separate from the
     // parser.
     fn dir_elif(&mut self, span: SourceSpan) {
-        let result = self.expr_and_eval();
-
+        let eval = self.expr_and_eval();
         match self.if_state().last_mut() {
             Some(v) => match v.state {
-                IfKind::If | IfKind::Elif => {
-                    if v.was_true {
-                        v.result = false;
-                    } else {
-                        v.result = result;
-                        v.was_true = result;
-                    }
-                    v.state = IfKind::Elif;
+                IfKind::If { result } => {
+                    v.state = IfKind::Elif {
+                        result: eval,
+                        evaluated: result,
+                    };
                 }
-                IfKind::Else => self.state.errors.push(Error::Syntax {
+                IfKind::Elif { result, evaluated } => {
+                    v.state = IfKind::Elif {
+                        result: eval,
+                        evaluated: evaluated || result,
+                    };
+                }
+                IfKind::Else { .. } => self.state.errors.push(Error::Syntax {
                     message: "#elif after #else",
                     span,
                 }),

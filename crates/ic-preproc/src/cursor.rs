@@ -69,6 +69,13 @@ pub enum Directive {
     Pragma,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Base {
+    Octal = 8,
+    Decimal = 10,
+    Hexadecimal = 16,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Hash)]
 pub enum Kind {
     /// Any valid UAX#31 identifier
@@ -78,7 +85,7 @@ pub enum Kind {
     Comment,
 
     /// Octal, decimal or hexadecimal number
-    Number,
+    Number { base: Base },
 
     /// Floating-point literal
     Float,
@@ -256,9 +263,13 @@ impl Cursor {
             'x' | 'X' => {
                 _ = self.chars.next();
                 self.eat_while(|v| v.is_ascii_hexdigit());
-                Kind::Number
+                Kind::Number {
+                    base: Base::Hexadecimal,
+                }
             }
-            _ => Kind::Number,
+            _ => Kind::Number {
+                base: Base::Decimal,
+            },
         };
 
         let span = self.span_since(start);
@@ -470,10 +481,7 @@ impl Cursor {
                     _ => Kind::Slash,
                 },
 
-                c if c.is_ascii_digit() => {
-                    self.number();
-                    Kind::Number
-                }
+                c if c.is_ascii_digit() => self.number().kind,
 
                 c if is_ident(c) => {
                     self.ident();
@@ -486,6 +494,7 @@ impl Cursor {
             };
 
             let span = self.span_since(start);
+            // TODO: remove this before release, but keep it for now
             debug_assert_ne!(kind, Kind::Unknown, "unknown character encountered");
             break Some(Token { kind, span });
         }

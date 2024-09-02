@@ -32,7 +32,7 @@ use std::rc::Rc;
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_vfs::{FileId, Include, SourceMap};
 
-use crate::cursor::{Cursor, Directive, Kind, SourceSpan, Token};
+use crate::cursor::{Base, Cursor, Directive, Kind, SourceSpan, Token};
 use crate::ProcArgs;
 
 #[derive(Debug)]
@@ -218,6 +218,25 @@ fn checked_wmod(lhs: i128, rhs: i128) -> Result<i128, Error> {
     }
 }
 
+#[inline]
+fn parse_str(str: &str, base: Base) -> Result<i128, Error> {
+    let str = match base {
+        Base::Octal => {
+            if str.len() > 1 {
+                str.trim_start_matches("0")
+            } else {
+                str
+            }
+        }
+        Base::Decimal => str,
+        Base::Hexadecimal => str.trim_start_matches("0x"),
+    };
+
+    i128::from_str_radix(str, base as u32).map_err(|_| Error::Expr {
+        message: "invalid literal",
+    })
+}
+
 /// State we keep for each file we process. `File`s are not guaranteed to be
 /// unique; multiple includes of the same file create multiple `File` instances
 /// as each has to be parsed separately.
@@ -272,7 +291,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         if let Some(tok) = self.cursor().next() {
             match tok.kind {
                 Kind::Ident => self.directive(tok.span),
-                Kind::Number | Kind::Newline => (),
+                Kind::Number { .. } | Kind::Newline => (),
                 _ => {
                     self.state.errors.push(Error::Syntax {
                         message: "invalid preprocessing directive",
@@ -551,7 +570,13 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     // Parse the directive but disregard its contents.
     fn dir_line(&mut self, span: SourceSpan) -> Option<()> {
-        let _line = self.expect(Kind::Number, "expected line number")?;
+        // Only decimal numbers allowed here
+        let _line = self.expect(
+            Kind::Number {
+                base: Base::Decimal,
+            },
+            "expected decimal line number",
+        )?;
         let _file = self.expect(Kind::String, "expected file name as string literal")?;
         self.warn_trailing(span, Directive::Line);
         Some(())
@@ -601,7 +626,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     fn unary_expr(&mut self) -> Result<Expr, Error> {
         let lhs = self.cursor().next().unwrap();
         let expr = match lhs.kind {
-            Kind::Ident | Kind::Number => Expr::Lit(lhs),
+            Kind::Ident | Kind::Number { .. } => Expr::Lit(lhs),
             Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => {
                 let prefix = prefix_precedence(lhs.kind);
                 let expr = self.binary_expr(prefix)?;
@@ -659,9 +684,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             Expr::Lit(v) => {
                 let lit = self.source_of(v.span);
                 match v.kind {
-                    Kind::Number => lit.parse::<i128>().map_err(|_| Error::Expr {
-                        message: "invalid literal",
-                    })?,
+                    Kind::Number { base } => parse_str(lit, base)?,
                     Kind::Ident => {
                         if self.is_defined(lit) {
                             // We now have to recursively expand the macro.

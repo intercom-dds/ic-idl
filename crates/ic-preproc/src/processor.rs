@@ -796,7 +796,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         self.eval_expr(expr).map(|v| v != 0)
     }
 
-    fn expand_function(&mut self, def: Token) {}
+    fn expand_function() {}
 
     /// Expands and enqueues the definition of `tok` if it is a macro.
     /// Returns `true` if the macro was expanded.
@@ -871,6 +871,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 pub struct TokenIter<'a, 'ctx>(Parser<'a, 'ctx>);
 
 impl<'a, 'ctx> TokenIter<'a, 'ctx> {
+    #[must_use]
     pub fn source_of(&self, span: SourceSpan) -> &str {
         self.0.source_of(span)
     }

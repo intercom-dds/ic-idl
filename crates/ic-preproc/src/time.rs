@@ -66,8 +66,8 @@ fn format_date(secs: u64) -> String {
     }
 
     loop {
-        let days_in_mo = DAYS_IN_MONTH[month as usize];
-        let leap_day = if is_leap(year) && month == 1 { 1 } else { 0 };
+        let days_in_mo = DAYS_IN_MONTH[month];
+        let leap_day = u64::from(is_leap(year));
         let delta = days_in_mo + leap_day;
 
         if day >= delta {
@@ -93,7 +93,7 @@ pub fn date() -> String {
     if let Some(secs) = now_secs() {
         format_date(secs)
     } else {
-        format!("<unknown>")
+        "<unknown>".to_string()
     }
 }
 
@@ -102,6 +102,6 @@ pub fn utc_time() -> String {
     if let Some(secs) = now_secs() {
         format_time(secs)
     } else {
-        format!("00:00:00")
+        "00:00:00".to_string()
     }
 }

@@ -33,7 +33,8 @@ use std::path::{Path, PathBuf};
 use std::string::FromUtf8Error;
 
 use ic_vfs::{FileId, SourceMap};
-use processor::{Error, State, TokenIter};
+pub use processor::TokenIter;
+use processor::{Error, State};
 
 mod cursor;
 mod iter;

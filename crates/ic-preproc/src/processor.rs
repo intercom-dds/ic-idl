@@ -174,17 +174,13 @@ impl IfState {
     }
 }
 
-// TODO: retain information about the location of a define. we currently
-// discard it. add a MacroMap or something. SpannedMap, idk.
 #[derive(Debug)]
 pub struct State<'a> {
     defines: HashMap<String, Macro>,
     errors: Vec<Error>,
     warnings: Vec<Error>,
-    pub vfs: &'a mut SourceMap,
-
-    // TODO: per file?
     queue: VecDeque<Token>,
+    vfs: &'a mut SourceMap,
 }
 
 impl<'a> State<'a> {
@@ -292,9 +288,6 @@ fn parse_str(str: &str, base: Base) -> Result<i128, Error> {
 /// State we keep for each file we process. `File`s are not guaranteed to be
 /// unique; multiple includes of the same file create multiple `File` instances
 /// as each has to be parsed separately.
-//
-// TODO: can move all cursor-related functions to this file, and then use
-// parser as a way to manage cursors (so Preprocessor/FileProcessor).
 struct File {
     cursor: Cursor,
     current: Vec<IfState>,
@@ -308,8 +301,6 @@ impl File {
     }
 }
 
-// ...can we instead keep a stack of `Parser`s?
-// that should work, right? then we can move IfState to endif
 struct Parser<'a, 'ctx> {
     stack: Vec<File>,
     state: &'a mut State<'ctx>,
@@ -564,8 +555,6 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn dir_error(&mut self, span: SourceSpan) {
-        // TODO: until_newline consumes the newline. do we want thaT?
-        // no. we do not.
         let tokens = self.cursor().until_newline();
         if self.is_active() {
             self.state.errors.push(Error::Note { span, tokens });
@@ -593,6 +582,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             },
             "expected decimal line number",
         )?;
+
         let _file = self.expect(Kind::String, "expected file name as string literal")?;
         self.warn_trailing(span, Directive::Line);
         Some(())
@@ -613,9 +603,6 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         None
     }
 
-    // TODO: propagate errors up here, then push to error stack here?
-    // ...yeah maybe...
-    // and then we can skip here until newline??
     fn directive(&mut self, span: SourceSpan) {
         match self.source_of(span) {
             "if" => self.dir_if(span),
@@ -631,7 +618,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             "warning" => self.dir_warning(span),
             "error" => self.dir_error(span),
             "line" => _ = self.dir_line(span),
-            v => panic!("invalid preprocessing directive '{v}'"),
+            v => {
+                self.state.errors.push(Error::Syntax {
+                    message: "invalid preprocessing directive",
+                    span,
+                });
+            }
         }
     }
 
@@ -847,6 +839,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct TokenIter<'a, 'ctx>(Parser<'a, 'ctx>);
 
+impl<'a, 'ctx> TokenIter<'a, 'ctx> {
+    pub fn source_of(&self, span: SourceSpan) -> &str {
+        self.0.source_of(span)
+    }
+}
+
 impl Iterator for TokenIter<'_, '_> {
     type Item = Token;
 
@@ -892,8 +890,9 @@ pub fn to_string(file_id: FileId, args: &ProcArgs, state: &mut State<'_>) -> (St
     let mut iter = preprocess(file_id, args, state);
     let mut buffer = String::with_capacity(src.len());
 
-    for tok in iter.by_ref() {
-        _ = buffer.write_str(&src[tok.span.range()]);
+    while let Some(tok) = iter.next() {
+        let slice = iter.source_of(tok.span);
+        _ = buffer.write_str(slice);
         if tok.kind != Kind::Newline {
             _ = buffer.write_char(' ');
         }

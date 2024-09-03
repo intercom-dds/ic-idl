@@ -241,20 +241,15 @@ impl Cursor {
         self.span_since(start)
     }
 
-    fn ident(&mut self) -> Token {
-        let span = self.eat_while(is_ident);
-
-        Token {
-            kind: Kind::Ident,
-            span,
-        }
+    fn ident(&mut self) -> Kind {
+        self.eat_while(is_ident);
+        Kind::Ident
     }
 
-    fn number(&mut self) -> Token {
-        let start = self.chars.index();
+    fn number(&mut self) -> Kind {
         self.eat_while(|v| v.is_ascii_digit());
 
-        let kind = match self.chars.peek() {
+        match self.chars.peek() {
             '.' | 'e' | 'E' => {
                 _ = self.chars.next();
                 self.eat_while(|v| v.is_ascii_digit());
@@ -270,21 +265,14 @@ impl Cursor {
             _ => Kind::Number {
                 base: Base::Decimal,
             },
-        };
-
-        let span = self.span_since(start);
-        Token { kind, span }
+        }
     }
 
-    fn string_lit(&mut self) -> Token {
-        // let span = self.eat_while(|v| v != '"');
-        let start = self.chars.index();
-
-        // TODO: handle unterminated
+    fn string_lit(&mut self) -> Kind {
         while let Some(c) = self.chars.next() {
             match c {
                 '\\' => {
-                    // TODO: newline??
+                    // TODO: should be escape newlines in string literals?
                     if self.chars.peek() == '"' {
                         _ = self.chars.next();
                     }
@@ -297,17 +285,14 @@ impl Cursor {
                 _ => (),
             }
         }
-
-        let span = self.span_since(start);
-        Token {
-            kind: Kind::String,
-            span,
-        }
+        Kind::String
     }
 
     // Code comments (`//`) are stripped from the output, but documentation
     // comments (`///`) are not.
-    fn comment(&mut self) -> (Token, bool) {
+    //
+    // Returns true if this was a documentation-style comment.
+    fn comment(&mut self) -> bool {
         // Consume the leading '/'
         _ = self.chars.next();
 
@@ -321,18 +306,11 @@ impl Cursor {
         while self.chars.peek() != '\n' {
             self.chars.next();
         }
-
-        let span = self.span_since(start);
-        (
-            Token {
-                kind: Kind::Comment,
-                span,
-            },
-            is_doc,
-        )
+        is_doc
     }
 
-    fn block_comment(&mut self) -> (Token, bool) {
+    // Returns true if this was a documentation-style comment.
+    fn block_comment(&mut self) -> bool {
         // Consume the leading '/'
         _ = self.chars.next();
 
@@ -350,15 +328,7 @@ impl Cursor {
                 _ => (),
             }
         }
-
-        let span = self.span_since(start);
-        (
-            Token {
-                kind: Kind::Comment,
-                span,
-            },
-            is_doc,
-        )
+        is_doc
     }
 
     fn peek_or(&mut self, c: char, a: Kind, b: Kind) -> Kind {
@@ -454,22 +424,18 @@ impl Cursor {
                 '!' => self.peek_or('=', Kind::NotEq, Kind::Unknown),
                 '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
                 '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
-
-                '"' => {
-                    self.string_lit();
-                    Kind::String
-                }
+                '"' => self.string_lit(),
 
                 '/' => match self.chars.peek() {
                     '/' => {
-                        if self.comment().1 {
+                        if self.comment() {
                             Kind::Comment
                         } else {
                             continue;
                         }
                     }
                     '*' => {
-                        if self.block_comment().1 {
+                        if self.block_comment() {
                             Kind::Comment
                         } else {
                             continue;
@@ -478,15 +444,9 @@ impl Cursor {
                     _ => Kind::Slash,
                 },
 
-                c if c.is_ascii_digit() => self.number().kind,
-
-                c if is_ident(c) => {
-                    self.ident();
-                    Kind::Ident
-                }
-
+                c if c.is_ascii_digit() => self.number(),
+                c if is_ident(c) => self.ident(),
                 c if c.is_whitespace() => continue,
-
                 v => Kind::Unknown,
             };
 

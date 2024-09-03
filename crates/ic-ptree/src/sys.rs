@@ -903,6 +903,11 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct ic_list_t {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct ic_parse_result_t {
     _unused: [u8; 0],
 }
@@ -931,10 +936,7 @@ extern "C" {
     pub fn ic_ptree_dump(result: *const ic_parse_result_t);
 }
 extern "C" {
-    pub fn ic_codegen_proto(
-        result: *const ic_parse_result_t,
-        destination: *const ::std::os::raw::c_char,
-    );
+    pub fn ic_codegen_proto(result: *const ic_parse_result_t, list: *mut ic_list_t);
 }
 extern "C" {
     pub fn ic_codegen_json(

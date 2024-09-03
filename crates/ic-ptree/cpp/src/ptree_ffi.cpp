@@ -27,7 +27,6 @@
 
 #include "cidl/ptree_ffi.h"
 
-#include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree_builder.h"
@@ -60,9 +59,9 @@ void ic_ptree_dump(const ic_parse_result_t* result) {
     ptree_dump(res);
 }
 
-void ic_codegen_proto(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_proto(const ic_parse_result_t* result, ic_list_t* list) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    intercom::cidl::code_gen_proto(res, destination);
+    intercom::cidl::code_gen_proto(res, list);
 }
 
 void ic_codegen_cpp(

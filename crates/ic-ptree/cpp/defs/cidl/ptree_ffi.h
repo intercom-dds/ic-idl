@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+struct ic_list_t;
+
 struct ic_parse_result_t;
 
 struct ptree;
@@ -52,7 +54,7 @@ struct ic_parse_result_t* ic_ptree_merge(const struct ic_parse_result_t** result
 
 void ic_ptree_dump(const struct ic_parse_result_t* result);
 
-void ic_codegen_proto(const struct ic_parse_result_t* result, const char* destination);
+void ic_codegen_proto(const struct ic_parse_result_t* result, ic_list_t* list);
 
 void ic_codegen_json(const struct ic_parse_result_t* result, const char* destination);
 
@@ -93,6 +95,8 @@ void ic_codegen_cpp(
     struct cpp_options_t options,
     const char* destination
 );
+
+void ic_push_source(ic_list_t* list, const char* path, const char* src);
 
 #ifdef __cplusplus
 }

@@ -36,6 +36,7 @@
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree_builder.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -315,7 +316,7 @@ static void emit_prelude(Printer& out, const ptree* node) {
     }
 }
 
-static void emit_package(const ptree* node, const PrettyPrinter& pkg) {
+static void emit_package(const ptree* node, const PrettyPrinter& pkg, ic_list_t* list) {
     auto file = file_name(node);
     if (CommandLineOption::list_only()) {
         std::cout << file << std::endl;
@@ -326,7 +327,7 @@ static void emit_package(const ptree* node, const PrettyPrinter& pkg) {
 
         std::filesystem::path out = CommandLineOption::proto_target_directory();
         out /= file;
-        write_if_changed(out.string(), content.str());
+        ic_push_source(list, out.c_str(), content.str().c_str());
     }
 }
 
@@ -368,18 +369,13 @@ void validate_proto(parser_state* state, const ptree* node) {
     }
 }
 
-void intercom::cidl::code_gen_proto(const parse_result* result) {
+void intercom::cidl::code_gen_proto(const parse_result* result, ic_list_t* list) {
     Printer out;
     recurse_node(out, result->tree);
 
     for (const auto& pkg : out.packages()) {
         if (!pkg.second.empty()) {
-            emit_package(pkg.first, pkg.second);
+            emit_package(pkg.first, pkg.second, list);
         }
     }
-}
-
-void intercom::cidl::code_gen_proto(const parse_result* result, const char* destination) {
-    intercom::cidl::CommandLineOption::get_instance().proto_target_directory = destination;
-    code_gen_proto(result);
 }

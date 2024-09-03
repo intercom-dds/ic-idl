@@ -43,6 +43,7 @@ use ic_vfs::SourceMap;
 // use ic_preproc::preprocess;
 
 mod config;
+mod ffi;
 mod info;
 mod panic;
 mod pretty;
@@ -126,14 +127,14 @@ fn main() {
 
 enum File {
     Dep(String),
-    Generated(String),
+    Generated { path: String, source: String },
 }
 
 impl std::fmt::Display for File {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             File::Dep(v) => write!(f, "dep:{v}"),
-            File::Generated(v) => write!(f, "gen:{v}"),
+            File::Generated { path, .. } => write!(f, "gen:{path}"),
         }
     }
 }
@@ -178,7 +179,7 @@ where
     Ok(files)
 }
 
-fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
+fn try_main(options: &Options) -> anyhow::Result<Vec<String>> {
     let mut vfs = SourceMap::default();
 
     let files = collect_files(&options.files)?;
@@ -215,7 +216,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 // }
 
                 let ptree = ic_ptree::lower_ast(&v.tree);
-                try_ptree(options, &ptree)?;
+                try_ptree(options, &ptree);
             }
             Err(e) => {
                 // pretty::emit_errors(&input, &e);
@@ -253,19 +254,19 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<Stri
         ic_ptree_pretty::ptree_dump(merged);
     }
 
-    let backends: &[(_, fn(_, _) -> _)] = &[
-        (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
-        (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
-        (&options.codegen.json_out, ic_codegen_json::codegen_json),
+    let backends: &[(_, fn(_) -> _)] = &[
+        // (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
+        // (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
+        // (&options.codegen.json_out, ic_codegen_json::codegen_json),
         (
             &options.codegen.proto_out,
             ic_codegen_protobuf::codegen_proto,
         ),
-        (
-            &options.codegen.python_out,
-            ic_codegen_python::codegen_python,
-        ),
-        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
+        // (
+        //     &options.codegen.python_out,
+        //     ic_codegen_python::codegen_python,
+        // ),
+        // (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
     ];
 
     let mut generated = vec![];
@@ -280,7 +281,7 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<Stri
                 }
             }
         }
-        let files = backend(merged, dir);
+        let files = backend(merged);
         generated.extend(files);
     }
     Ok(generated)

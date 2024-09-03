@@ -133,36 +133,6 @@ pub const OPT_BUILTIN: ptree_opts = 131072;
 pub type ptree_opts = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct identifier {
-    pub name: *const ::std::os::raw::c_char,
-}
-#[test]
-fn bindgen_test_layout_identifier() {
-    const UNINIT: ::std::mem::MaybeUninit<identifier> = ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::std::mem::size_of::<identifier>(),
-        8usize,
-        concat!("Size of: ", stringify!(identifier))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<identifier>(),
-        8usize,
-        concat!("Alignment of ", stringify!(identifier))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).name) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(identifier),
-            "::",
-            stringify!(name)
-        )
-    );
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
 pub struct ptree {
     _unused: [u8; 0],
 }
@@ -456,12 +426,6 @@ extern "C" {
     ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
-    pub fn create_identifier(
-        arg1: *mut parser_state,
-        name: *const ::std::os::raw::c_char,
-    ) -> identifier;
-}
-extern "C" {
     pub fn append_node(arg1: *mut parser_state, list: *mut ptree, node: *mut ptree) -> *mut ptree;
 }
 extern "C" {
@@ -482,7 +446,7 @@ extern "C" {
 extern "C" {
     pub fn create_decl(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         annotations: *mut ptree,
     ) -> *mut declarator;
 }
@@ -496,10 +460,12 @@ extern "C" {
     pub fn register_node_dcl(arg1: *mut parser_state, p: *mut ptree) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    pub fn lookup_node(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn lookup_node(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char)
+    -> *mut ptree;
 }
 extern "C" {
-    pub fn lookup_type(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn lookup_type(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char)
+    -> *mut ptree;
 }
 extern "C" {
     pub fn pop_context(arg1: *mut parser_state) -> *mut ptree;
@@ -511,7 +477,7 @@ extern "C" {
     pub fn duplicate_tree(arg1: *mut parser_state, node: *const ptree) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_include_start(arg1: *mut parser_state, ident: identifier);
+    pub fn create_include_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn create_array_type(
@@ -524,13 +490,16 @@ extern "C" {
     pub fn create_include_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_module_start(arg1: *mut parser_state, ident: identifier);
+    pub fn create_module_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn create_module_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;
 }
 extern "C" {
-    pub fn lookup_value(arg1: *mut parser_state, ident: identifier) -> *const numeric;
+    pub fn lookup_value(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *const numeric;
 }
 extern "C" {
     pub fn create_value_node(
@@ -605,7 +574,7 @@ extern "C" {
 extern "C" {
     pub fn create_struct_start(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         parent: *mut ptree,
     ) -> *mut ptree;
 }
@@ -613,10 +582,16 @@ extern "C" {
     pub fn create_struct_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_struct_dcl(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn create_struct_dcl(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_union_start(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn create_union_start(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_union_finish(
@@ -626,7 +601,10 @@ extern "C" {
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_union_dcl(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn create_union_dcl(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_member(
@@ -656,14 +634,14 @@ extern "C" {
 extern "C" {
     pub fn create_enum(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         values: *mut ptree,
     ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_enum_value(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         value: *const numeric,
     ) -> *mut ptree;
 }
@@ -675,10 +653,13 @@ extern "C" {
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_native_type(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn create_native_type(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_exception_start(arg1: *mut parser_state, ident: identifier);
+    pub fn create_exception_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn create_exception_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;
@@ -686,14 +667,14 @@ extern "C" {
 extern "C" {
     pub fn create_interface_dcl(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         is_local: ::std::os::raw::c_int,
     ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_interface_start(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         parents: *mut declarator,
         is_local: ::std::os::raw::c_int,
     );
@@ -732,7 +713,7 @@ extern "C" {
 extern "C" {
     pub fn create_interface_op(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         params: *mut ptree,
         retval: *mut ptree,
         raises: *mut declarator,
@@ -767,7 +748,7 @@ extern "C" {
 extern "C" {
     pub fn create_bitset(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         fields: *mut ptree,
         parent: *mut ptree,
     ) -> *mut ptree;
@@ -775,7 +756,7 @@ extern "C" {
 extern "C" {
     pub fn create_bitfield(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         bits: *const numeric,
         type_: *mut ptree,
     ) -> *mut ptree;
@@ -783,19 +764,22 @@ extern "C" {
 extern "C" {
     pub fn create_bitmask(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         values: *mut ptree,
     ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_bitmask_value(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         value: *const numeric,
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_annotation_dcl_start(arg1: *mut parser_state, ident: identifier);
+    pub fn create_annotation_dcl_start(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    );
 }
 extern "C" {
     pub fn create_annotation_dcl_finish(arg1: *mut parser_state, members: *mut ptree)
@@ -810,7 +794,7 @@ extern "C" {
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_annotation_start(arg1: *mut parser_state, ident: identifier);
+    pub fn create_annotation_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn create_annotation_finish(arg1: *mut parser_state, params: *mut ptree) -> *mut ptree;
@@ -818,17 +802,20 @@ extern "C" {
 extern "C" {
     pub fn create_annotation_param(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         value: *const numeric,
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_valuetype_dcl(arg1: *mut parser_state, ident: identifier) -> *mut ptree;
+    pub fn create_valuetype_dcl(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_valuetype_start(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         parent: *mut ptree,
         interface: *mut ptree,
     ) -> *mut ptree;
@@ -839,7 +826,7 @@ extern "C" {
 extern "C" {
     pub fn create_valuetype_factory(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         params: *mut ptree,
         raises: *mut declarator,
     ) -> *mut ptree;
@@ -887,12 +874,16 @@ extern "C" {
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_node(arg1: *mut parser_state, kind: node_kind, ident: identifier) -> *mut ptree;
+    pub fn create_node(
+        arg1: *mut parser_state,
+        kind: node_kind,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_doc(
         arg1: *mut parser_state,
-        ident: identifier,
+        ident: *const ::std::os::raw::c_char,
         post_comment: ::std::os::raw::c_int,
     ) -> *mut ptree;
 }

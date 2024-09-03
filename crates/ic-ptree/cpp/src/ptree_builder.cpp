@@ -227,7 +227,7 @@ static T* append_to_list(T* list, T* node) {
 static ptree* create_context_node(
     parser_state* state,
     node_kind kind,
-    identifier ident,
+    const char* ident,
     const std::vector<ptree*>& parents = std::vector<ptree*>()
 ) {
     ptree* node = create_node(state, kind, ident);
@@ -245,7 +245,7 @@ static std::vector<ptree*> create_node_list(parser_state* state, declarator* dec
     std::vector<ptree*> res;
     if (len > 0) {
         for (declarator* d = decl; d; d = d->next) {
-            ptree* node = lookup_node(state, d->ident);
+            ptree* node = lookup_node(state, d->ident.c_str());
             if (!node || node->kind != kind) {
                 state->error() << "invalid parent type in node " << node;
                 return {};
@@ -369,24 +369,18 @@ static std::string format_docstring(const char* text, int placement) {
     return res.str();
 }
 
-identifier create_identifier(parser_state* state, const char* name) {
-    identifier ident{};
-    ident.name = get_symbol(state, name);
-    return ident;
-}
-
-ptree* create_doc(parser_state* state, struct identifier ident, int post_doc) {
-    identifier doc_ident = create_identifier(state, "@doc");
-    identifier text_ident = create_identifier(state, "text");
+ptree* create_doc(parser_state* state, const char* ident, int post_doc) {
+    auto doc_ident = "@doc";
+    auto text_ident = "text";
     create_annotation_start(state, doc_ident);
     ptree* param = create_node(state, N_CONST, text_ident);
     param->type = &unbounded_string_type;
-    param->value.val.str(ident.name);
+    param->value.val.str(ident);
     int placement_value = post_doc ? AFTER_DECLARATION : BEFORE_DECLARATION;
     // if (placement_value == BEFORE_DECLARATION && ident.pos.line <= 1) {
     //     placement_value = BEGIN_FILE;
     // }
-    identifier placement_ident = create_identifier(state, "placement");
+    auto placement_ident = "placement";
     ptree* placement = create_node(state, N_CONST, placement_ident);
     ptree* placement_kind = nullptr;
     auto placement_type =
@@ -412,11 +406,11 @@ ptree* create_doc(parser_state* state, struct identifier ident, int post_doc) {
     return ann;
 }
 
-ptree* create_node(parser_state* state, node_kind kind, identifier ident) {
+ptree* create_node(parser_state* state, node_kind kind, const char* ident) {
     std::shared_ptr<ptree> p(new ptree);
     p->kind = kind;
-    if (ident.name) {
-        p->name = ident.name;
+    if (ident) {
+        p->name = ident;
     }
     p->super = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];
     p->scope = p->super;
@@ -548,8 +542,8 @@ extern "C" ptree* try_lookup_node(parser_state* state, const char* name, const n
     return type;
 }
 
-ptree* create_or_lookup_type(parser_state* state, node_kind kind, identifier ident) {
-    std::string lc_name = "::" + tolower(ident.name);
+ptree* create_or_lookup_type(parser_state* state, node_kind kind, const char* ident) {
+    std::string lc_name = "::" + tolower(ident);
     if (!state->context.empty()) {
         lc_name = lc_scoped_name(state->context[state->context.size() - 1][0]) + lc_name;
     }
@@ -918,9 +912,7 @@ ptree* append_enum_node(parser_state* state, ptree* list, ptree* node) {
             if (value_ann->type == annotation_type_value ||
                 value_ann->type == annotation_type_position) {
                 if (value_ann->value.kind() == STRING_KIND) {
-                    value_ann->value = *lookup_value(
-                        state, create_identifier(state, value_ann->value.val.str().c_str())
-                    );
+                    value_ann->value = *lookup_value(state, value_ann->value.val.str().c_str());
                 }
                 state->enum_counter = long_long_value(value_ann->value);
                 break;
@@ -944,7 +936,7 @@ declarator* append_decl(declarator* list, declarator* decl) {
     return append_to_list(list, decl);
 }
 
-declarator* create_decl(parser_state* state, identifier ident, ptree* annotations) {
+declarator* create_decl(parser_state* state, const char* ident, ptree* annotations) {
     std::shared_ptr<declarator> decl(new declarator);
     decl->ident = ident;
     decl->annotations = annotations;
@@ -981,18 +973,18 @@ int register_node_dcl(parser_state* state, ptree* p) {
     return true;
 }
 
-ptree* lookup_node(parser_state* state, identifier ident) {
-    ptree* type = try_lookup_node(state, ident.name, ANY_KIND);
+ptree* lookup_node(parser_state* state, const char* ident) {
+    ptree* type = try_lookup_node(state, ident, ANY_KIND);
     if (!type) {
-        state->error() << "unknown node \"" << ident.name << "\"";
+        state->error() << "unknown node \"" << ident << "\"";
     }
     return type;
 }
 
-ptree* lookup_type(parser_state* state, identifier ident) {
-    ptree* type = try_lookup_node(state, ident.name, TYPE_KIND);
+ptree* lookup_type(parser_state* state, const char* ident) {
+    ptree* type = try_lookup_node(state, ident, TYPE_KIND);
     if (!type) {
-        state->error() << "unknown type \"" << ident.name << "\"";
+        state->error() << "unknown type \"" << ident << "\"";
     }
     return type;
 }
@@ -1030,24 +1022,24 @@ ptree* peek_context(parser_state* state) {
     return p;
 }
 
-identifier array_name(parser_state* state, ptree* element_type, declarator* decl) {
+static std::string array_name(ptree* element_type, declarator* decl) {
     std::stringstream str;
     str << element_type->name;
     for (auto& bound : decl->bounds) {
         str << "[" << string_value(bound) << "]";
     }
-    return create_identifier(state, str.str().c_str());
+    return str.str();
 }
 
 ptree* create_array_type(parser_state* state, declarator* declarator, ptree* type) {
-    ptree* res = create_or_lookup_type(state, N_ARRAY, array_name(state, type, declarator));
+    ptree* res = create_or_lookup_type(state, N_ARRAY, array_name(type, declarator).c_str());
     res->element_type = type;
     res->bounds = declarator->bounds;
     res->annotations = declarator->annotations;
     return res;
 }
 
-identifier sequence_name(parser_state* state, ptree* element_type, const numeric& bound) {
+static std::string sequence_name(ptree* element_type, const numeric& bound) {
     std::stringstream str;
     int val = integer_value(bound);
     str << "sequence<" << element_type->name;
@@ -1055,11 +1047,10 @@ identifier sequence_name(parser_state* state, ptree* element_type, const numeric
         str << "," << val;
     }
     str << ">";
-    return create_identifier(state, str.str().c_str());
+    return str.str();
 }
 
-identifier
-map_name(parser_state* state, ptree* key_type, ptree* element_type, const numeric& bound) {
+static std::string map_name(ptree* key_type, ptree* element_type, const numeric& bound) {
     std::stringstream str;
     int val = integer_value(bound);
     str << "map<" << key_type->name << "," << element_type->name;
@@ -1067,10 +1058,10 @@ map_name(parser_state* state, ptree* key_type, ptree* element_type, const numeri
         str << "," << val;
     }
     str << ">";
-    return create_identifier(state, str.str().c_str());
+    return str.str();
 }
 
-identifier string_name(parser_state* state, ptree* element_type, const numeric& bound) {
+static std::string string_name(ptree* element_type, const numeric& bound) {
     std::stringstream str;
     int val = integer_value(bound);
     if (element_type == &wchar_type) {
@@ -1080,38 +1071,38 @@ identifier string_name(parser_state* state, ptree* element_type, const numeric& 
     if (val > 0) {
         str << "<" << val << ">";
     }
-    return create_identifier(state, str.str().c_str());
+    return str.str();
 }
 
-identifier fixed_name(parser_state* state, const numeric& bound1, const numeric& bound2) {
+static std::string fixed_name(const numeric& bound1, const numeric& bound2) {
     std::stringstream str;
     str << "fixed<" << integer_value(bound1) << "," << integer_value(bound2) << ">";
-    return create_identifier(state, str.str().c_str());
+    return str.str();
 }
 
-void create_include_start(parser_state* state, identifier ident) {
+void create_include_start(parser_state* state, const char* ident) {
     ptree* p = nullptr;
-    identifier new_ident{};
+    std::string new_ident;
     {
         // Remove surrounding brackets
-        std::string new_name = ident.name;
+        std::string new_name = ident;
         new_name = new_name.substr(1, new_name.size() - 2);
         {
             auto it = state->symbol_map.find(new_name);
             if (it == state->symbol_map.end()) {
                 it = state->symbol_map.insert(new_name).first;
             }
-            new_ident.name = it->c_str();
+            new_ident = *it;
         }
     }
-    std::string scoped_name = std::string("::<") + new_ident.name;
+    std::string scoped_name = std::string("::<") + new_ident;
     auto it = state->type_map.find(scoped_name);
     if (it != state->type_map.end()) {
         p = it->second;
     }
     if (!p) {
-        p = create_node(state, N_INCLUDE, new_ident);
-        p->flags |= (ident.name[0] == '<') ? OPT_SYSTEM_INCLUDE : 0;
+        p = create_node(state, N_INCLUDE, new_ident.c_str());
+        p->flags |= (ident[0] == '<') ? OPT_SYSTEM_INCLUDE : 0;
         state->type_map[scoped_name] = p;
     }
     state->include_context.push_back(p);
@@ -1122,7 +1113,7 @@ ptree* create_include_finish(parser_state* state, ptree* def) {
     return def;
 }
 
-void create_module_start(parser_state* state, identifier ident) {
+void create_module_start(parser_state* state, const char* ident) {
     const node_kind module_kind[] = {N_MODULE};
     ptree* p = create_node(state, N_MODULE, ident);
     ptree* prev = try_lookup_node(state, lc_scoped_name(p).c_str(), module_kind);
@@ -1138,8 +1129,8 @@ ptree* create_module_finish(parser_state* state, ptree* def) {
     return p;
 }
 
-const numeric* lookup_value(parser_state* state, identifier ident) {
-    ptree* p = try_lookup_node(state, ident.name, ANY_KIND);
+const numeric* lookup_value(parser_state* state, const char* ident) {
+    ptree* p = try_lookup_node(state, ident, ANY_KIND);
     if (p) {
         auto n = new_numeric(state, PTREE_KIND);
         n->val.node(p);
@@ -1148,10 +1139,10 @@ const numeric* lookup_value(parser_state* state, identifier ident) {
     if (!state->context.empty() &&
         state->context[state->context.size() - 1][0]->kind == N_ANNOTATION) {
         auto n = new_numeric(state, PTREE_KIND);
-        n->val.str(ident.name);
+        n->val.str(ident);
         return n;
     }
-    state->error() << "unknown value \"" << ident.name << "\"";
+    state->error() << "unknown value \"" << ident << "\"";
     return new_numeric(state, UNDEF_KIND);
 }
 
@@ -1159,7 +1150,7 @@ const numeric* create_value_node(parser_state* state, const numeric* value, ptre
     auto num = new_numeric(state, value->kind());
     *num = *value;
     if (num->kind() == UNDEF_KIND) {
-        identifier ident = {nullptr};
+        const char* ident = {nullptr};
         ptree* node = create_node(state, N_CONST, ident);
         assign_members(state, node, members);
         node->flags |= OPT_CONST_VALUE;
@@ -1172,13 +1163,13 @@ const numeric* create_value_node(parser_state* state, const numeric* value, ptre
 }
 
 static void
-validate_const_value_type(parser_state* state, identifier ident, const ptree* complex_value) {
+validate_const_value_type(parser_state* state, const char* ident, const ptree* complex_value) {
     for (const auto node : complex_value) {
         if (node->kind == N_CONST && node->value->_d() == PTREE_KIND) {
             auto val = node->value->node();
             if (!is_primitive(val) && val->kind != N_STRING && val->kind != N_CONST) {
                 state->error() << "Cannot assign " << val << " of type " << val->kind
-                               << " to const " << ident.name;
+                               << " to const " << ident;
             }
         }
         validate_const_value_type(state, ident, node->members);
@@ -1187,9 +1178,9 @@ validate_const_value_type(parser_state* state, identifier ident, const ptree* co
 
 ptree* create_const_node(parser_state* state, declarator* decl, ptree* type, const numeric* value) {
     numeric num(*value);
-    identifier ident = {nullptr};
+    const char* ident = {nullptr};
     if (decl) {
-        ident = decl->ident;
+        ident = decl->ident.c_str();
     }
     ptree* p = create_node(state, N_CONST, ident);
     if (type) {
@@ -1223,7 +1214,8 @@ ptree* create_sequence(parser_state* state, ptree* element_type, const numeric* 
     if (!element_type) {
         return nullptr;
     }
-    ptree* p = create_or_lookup_type(state, N_SEQUENCE, sequence_name(state, element_type, *bound));
+    ptree* p =
+        create_or_lookup_type(state, N_SEQUENCE, sequence_name(element_type, *bound).c_str());
     p->element_type = element_type;
     add_bounds(p, bound);
     return p;
@@ -1234,7 +1226,7 @@ ptree* create_string(parser_state* state, const numeric* bound) {
     if (bound->kind() == UNDEF_KIND) {
         p = &unbounded_string_type;
     } else {
-        p = create_or_lookup_type(state, N_STRING, string_name(state, &char_type, *bound));
+        p = create_or_lookup_type(state, N_STRING, string_name(&char_type, *bound).c_str());
         p->element_type = &char_type;
         add_bounds(p, bound);
     }
@@ -1246,7 +1238,7 @@ ptree* create_wstring(parser_state* state, const numeric* bound) {
     if (bound->kind() == UNDEF_KIND) {
         p = &unbounded_wstring_type;
     } else {
-        p = create_or_lookup_type(state, N_STRING, string_name(state, &wchar_type, *bound));
+        p = create_or_lookup_type(state, N_STRING, string_name(&wchar_type, *bound).c_str());
         p->element_type = &wchar_type;
         add_bounds(p, bound);
     }
@@ -1254,7 +1246,7 @@ ptree* create_wstring(parser_state* state, const numeric* bound) {
 }
 
 ptree* create_fixed(parser_state* state, const numeric* bound1, const numeric* bound2) {
-    ptree* p = create_or_lookup_type(state, N_FIXED, fixed_name(state, *bound1, *bound2));
+    ptree* p = create_or_lookup_type(state, N_FIXED, fixed_name(*bound1, *bound2).c_str());
     p->element_type = &long_type;
 
     p->bounds.push_back(*bound1);
@@ -1313,7 +1305,7 @@ const numeric* create_double(parser_state* state, double value) {
     return n;
 }
 
-ptree* create_struct_start(parser_state* state, identifier ident, ptree* parent) {
+ptree* create_struct_start(parser_state* state, const char* ident, ptree* parent) {
     std::vector<ptree*> parents;
     if (parent) {
         parent->flags |= OPT_HAS_CHILDREN;
@@ -1334,14 +1326,14 @@ ptree* create_struct_finish(parser_state* state, ptree* members) {
     return p;
 }
 
-ptree* create_struct_dcl(parser_state* state, identifier ident) {
+ptree* create_struct_dcl(parser_state* state, const char* ident) {
     ptree* p = create_node(state, N_STRUCT, ident);
     register_node_dcl(state, p);
     p->flags |= OPT_DECLARATION;
     return p;
 }
 
-ptree* create_union_start(parser_state* state, identifier ident) {
+ptree* create_union_start(parser_state* state, const char* ident) {
     return create_context_node(state, N_UNION, ident);
 }
 
@@ -1352,7 +1344,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
         int label_group = 0;
         int default_label_group = 0;
 
-        create_annotation_start(state, create_identifier(state, "@must_understand"));
+        create_annotation_start(state, "@must_understand");
         discriminator = annotate(state, discriminator, create_annotation_finish(state, nullptr));
         std::set<int> case_values;
 
@@ -1456,7 +1448,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
     return p;
 }
 
-ptree* create_union_dcl(parser_state* state, identifier ident) {
+ptree* create_union_dcl(parser_state* state, const char* ident) {
     ptree* p = create_node(state, N_UNION, ident);
     register_node_dcl(state, p);
     p->flags |= OPT_DECLARATION;
@@ -1486,7 +1478,7 @@ create_member(parser_state* state, declarator* declarators, ptree* type, ptree* 
     ptree* res = nullptr;
     if (type) {
         while (declarators) {
-            ptree* node = create_node(state, N_MEMBER, declarators->ident);
+            ptree* node = create_node(state, N_MEMBER, declarators->ident.c_str());
             register_node(state, node);
             node->type =
                 !declarators->bounds.empty() ? create_array_type(state, declarators, type) : type;
@@ -1495,25 +1487,25 @@ create_member(parser_state* state, declarator* declarators, ptree* type, ptree* 
             declarators = declarators->next;
         }
     } else {
-        state->error() << "unknown type for member " << declarators->ident.name;
+        state->error() << "unknown type for member " << declarators->ident;
     }
     return res;
 }
 
 ptree* create_case_label(parser_state* state, const numeric* value) {
-    ptree* p = create_node(state, N_CASE, create_identifier(state, string_value(*value).c_str()));
+    ptree* p = create_node(state, N_CASE, string_value(*value).c_str());
     p->value = *value;
     return p;
 }
 
 ptree* create_default_case(parser_state* state) {
-    ptree* p = create_node(state, N_CASE, create_identifier(state, "default"));
+    ptree* p = create_node(state, N_CASE, "default");
     p->flags |= OPT_DEFAULT;
     return p;
 }
 
 ptree* create_null_node(parser_state* state) {
-    ptree* p = create_node(state, N_NULL, create_identifier(state, "null"));
+    ptree* p = create_node(state, N_NULL, "null");
     return p;
 }
 
@@ -1528,7 +1520,7 @@ ptree* create_type(parser_state* state, declarator* declarators, ptree* type) {
     if (type->super == scope && type->next == nullptr) {
         if (type->name[0] == '<') {
             res = type;
-            res->name = declarators->ident.name;
+            res->name = declarators->ident;
             register_node(state, res);
             declarators = declarators->next;
         }
@@ -1538,7 +1530,7 @@ ptree* create_type(parser_state* state, declarator* declarators, ptree* type) {
         if (!declarators->bounds.empty()) {
             t = create_array_type(state, declarators, type);
         }
-        ptree* node = create_node(state, N_ALIAS, declarators->ident);
+        ptree* node = create_node(state, N_ALIAS, declarators->ident.c_str());
         node->type = t;
         annotate(state, node, declarators->annotations);
         register_node(state, node);
@@ -1548,13 +1540,13 @@ ptree* create_type(parser_state* state, declarator* declarators, ptree* type) {
     return res;
 }
 
-ptree* create_native_type(parser_state* state, identifier ident) {
+ptree* create_native_type(parser_state* state, const char* ident) {
     ptree* node = create_node(state, N_NATIVE, ident);
     register_node(state, node);
     return node;
 }
 
-void create_exception_start(parser_state* state, identifier ident) {
+void create_exception_start(parser_state* state, const char* ident) {
     create_context_node(state, N_EXCEPTION, ident);
 }
 
@@ -1564,7 +1556,7 @@ ptree* create_exception_finish(parser_state* state, ptree* members) {
     return node;
 }
 
-ptree* create_interface_dcl(parser_state* state, identifier ident, int is_local) {
+ptree* create_interface_dcl(parser_state* state, const char* ident, int is_local) {
     ptree* node = create_node(state, N_INTERFACE, ident);
     register_node_dcl(state, node);
     node->flags |= OPT_DECLARATION;
@@ -1576,7 +1568,7 @@ ptree* create_interface_dcl(parser_state* state, identifier ident, int is_local)
 
 void create_interface_start(
     parser_state* state,
-    identifier ident,
+    const char* ident,
     declarator* parents,
     int is_local
 ) {
@@ -1610,9 +1602,7 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                     node_kind lookup_kinds[] = {N_CONST};
                     if (m->value.kind() == STRING_KIND &&
                         try_lookup_node(state, m->value.val.str().c_str(), lookup_kinds)) {
-                        m->value = *lookup_value(
-                            state, create_identifier(state, m->value.val.str().c_str())
-                        );
+                        m->value = *lookup_value(state, m->value.val.str().c_str());
                     } else if (m->value.kind() != PTREE_KIND) {
                         m->value =
                             *expr_convert(state, &m->value, base_type_of(node)->value.kind());
@@ -1757,9 +1747,9 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                 if (val.has_val()) {
                     val = rpl;
                 } else if (!is_optional(node)) {
-                    ptree* param = create_node(state, N_CONST, create_identifier(state, "value"));
+                    ptree* param = create_node(state, N_CONST, "value");
                     param->value = rpl;
-                    create_annotation_start(state, create_identifier(state, "@default"));
+                    create_annotation_start(state, "@default");
                     annotate(state, node, create_annotation_finish(state, param));
                 }
             }
@@ -1807,7 +1797,7 @@ ptree* annotate_alias(parser_state* state, ptree* node, ptree* annotations) {
         if (existing) {
             res = existing;
         } else {
-            res = create_node(state, N_ALIAS, {name.str().c_str()});
+            res = create_node(state, N_ALIAS, name.str().c_str());
             res->type = node;
             res->flags |= OPT_ANONYMOUS_ALIAS;
             res = annotate(state, res, annotations);
@@ -1818,7 +1808,7 @@ ptree* annotate_alias(parser_state* state, ptree* node, ptree* annotations) {
 
 ptree* create_interface_op(
     parser_state* state,
-    identifier ident,
+    const char* ident,
     ptree* params,
     ptree* retval,
     declarator* raises
@@ -1838,7 +1828,7 @@ ptree* create_interface_op(
 }
 
 ptree* create_param_dcl(parser_state* state, declarator* decl, ptree* type, int kind) {
-    ptree* node = create_node(state, N_MEMBER, decl->ident);
+    ptree* node = create_node(state, N_MEMBER, decl->ident.c_str());
     node->type = type;
     node->flags |= kind;
     return node;
@@ -1852,7 +1842,7 @@ ptree* create_attribute(
     declarator* setraises,
     int readonly
 ) {
-    ptree* node = create_node(state, N_MEMBER, decl->ident);
+    ptree* node = create_node(state, N_MEMBER, decl->ident.c_str());
     register_node(state, node);
     node->type = type;
     node->annotations = decl->annotations;
@@ -1872,14 +1862,15 @@ ptree* create_map(parser_state* state, ptree* key_type, ptree* element_type, con
     if (!key_type || !element_type) {
         return nullptr;
     }
-    ptree* p = create_or_lookup_type(state, N_MAP, map_name(state, key_type, element_type, *bound));
+    ptree* p =
+        create_or_lookup_type(state, N_MAP, map_name(key_type, element_type, *bound).c_str());
     p->element_type = element_type;
     p->key_type = key_type;
     add_bounds(p, bound);
     return p;
 }
 
-ptree* create_bitset(parser_state* state, identifier ident, ptree* fields, ptree* parent) {
+ptree* create_bitset(parser_state* state, const char* ident, ptree* fields, ptree* parent) {
     ptree* node = create_node(state, N_BITSET, ident);
     register_node(state, node);
     assign_members(state, node, fields);
@@ -1895,14 +1886,14 @@ ptree* create_bitset(parser_state* state, identifier ident, ptree* fields, ptree
     return node;
 }
 
-ptree* create_bitfield(parser_state* state, identifier ident, const numeric* bits, ptree* type) {
+ptree* create_bitfield(parser_state* state, const char* ident, const numeric* bits, ptree* type) {
     ptree* node = create_node(state, N_CONST, ident);
     node->value = *bits;
     node->type = type ? type : &long_type;
     return node;
 }
 
-ptree* create_enum(parser_state* state, identifier ident, ptree* values) {
+ptree* create_enum(parser_state* state, const char* ident, ptree* values) {
     ptree* node = create_node(state, N_ENUM, ident);
     register_node(state, node);
 
@@ -1921,14 +1912,14 @@ ptree* create_enum(parser_state* state, identifier ident, ptree* values) {
     return node;
 }
 
-ptree* create_enum_value(parser_state* state, identifier ident, const numeric* value) {
+ptree* create_enum_value(parser_state* state, const char* ident, const numeric* value) {
     ptree* p = create_node(state, N_CONST, ident);
     register_node(state, p);
     p->value = *value;
     return p;
 }
 
-ptree* create_bitmask(parser_state* state, identifier ident, ptree* values) {
+ptree* create_bitmask(parser_state* state, const char* ident, ptree* values) {
     ptree* node = create_node(state, N_BITMASK, ident);
     register_node(state, node);
     for (ptree* val : values) {
@@ -1944,14 +1935,14 @@ ptree* create_bitmask(parser_state* state, identifier ident, ptree* values) {
     return node;
 }
 
-ptree* create_bitmask_value(parser_state* state, identifier ident, const numeric* value) {
+ptree* create_bitmask_value(parser_state* state, const char* ident, const numeric* value) {
     ptree* node = create_node(state, N_CONST, ident);
     register_node(state, node);
     node->value = *value;
     return node;
 }
 
-void create_annotation_dcl_start(parser_state* state, identifier ident) {
+void create_annotation_dcl_start(parser_state* state, const char* ident) {
     create_context_node(state, N_ANNOTATION_DEF, ident);
 }
 
@@ -1971,29 +1962,27 @@ ptree* create_annotation_member(
     ptree* type,
     const numeric* default_value
 ) {
-    ptree* node = create_node(state, N_MEMBER, decl->ident);
+    ptree* node = create_node(state, N_MEMBER, decl->ident.c_str());
     node->type = type;
     node->value = *default_value;
     return node;
 }
 
-void create_annotation_start(parser_state* state, identifier ident) {
+void create_annotation_start(parser_state* state, const char* ident) {
     ptree* node;
     ptree* type = try_lookup_node(
-        state, (std::string("::intercom::annotations::") + (ident.name + 1)).c_str(), ANY_KIND
+        state, (std::string("::intercom::annotations::") + (ident + 1)).c_str(), ANY_KIND
     );
     if (!type) {
-        type = try_lookup_node(state, ident.name + 1, ANY_KIND);
+        type = try_lookup_node(state, ident + 1, ANY_KIND);
     }
     if (type && type->kind == N_ANNOTATION_DEF) {
-        identifier id = {type->name.c_str()};
-        node = create_node(state, N_ANNOTATION, id);
+        node = create_node(state, N_ANNOTATION, type->name.c_str());
         node->type = type;
         node->super = type->super;
         node->scope = type->scope;
     } else {
-        identifier id = {ident.name + 1};
-        node = create_node(state, N_ANNOTATION, id);
+        node = create_node(state, N_ANNOTATION, ident + 1);
     }
     push_context(state, node);
 }
@@ -2029,7 +2018,7 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
         value.val.node(
             try_lookup_node(state, "intercom::annotations::Extensibility::FINAL", ANY_KIND)
         );
-        params = create_annotation_param(state, create_identifier(state, "value"), &value);
+        params = create_annotation_param(state, "value", &value);
     }
     if (node->type == annotation_type_mutable) {
         node->type = annotation_type_extensibility;
@@ -2038,7 +2027,7 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
         value.val.node(
             try_lookup_node(state, "intercom::annotations::Extensibility::MUTABLE", ANY_KIND)
         );
-        params = create_annotation_param(state, create_identifier(state, "value"), &value);
+        params = create_annotation_param(state, "value", &value);
     }
     if (node->type == annotation_type_appendable) {
         node->type = annotation_type_extensibility;
@@ -2047,7 +2036,7 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
         value.val.node(
             try_lookup_node(state, "intercom::annotations::Extensibility::APPENDABLE", ANY_KIND)
         );
-        params = create_annotation_param(state, create_identifier(state, "value"), &value);
+        params = create_annotation_param(state, "value", &value);
     }
     node->scope = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];
     node->super = node->scope;
@@ -2088,9 +2077,7 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
             auto it = arguments.find(el->name);
             ptree* arg = nullptr;
             if (it == arguments.end()) {
-                arg = create_annotation_param(
-                    state, create_identifier(state, el->name.c_str()), &el->value
-                );
+                arg = create_annotation_param(state, el->name.c_str(), &el->value);
                 params = append_node(state, params, arg);
                 arg->type = el->type;
             } else {
@@ -2115,14 +2102,14 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
     return node;
 }
 
-ptree* create_annotation_param(parser_state* state, identifier ident, const numeric* value) {
+ptree* create_annotation_param(parser_state* state, const char* ident, const numeric* value) {
     ptree* node = create_node(state, N_CONST, ident);
     node->value = *value;
     node->type = value_type(*value);
     return node;
 }
 
-ptree* create_valuetype_dcl(parser_state* state, identifier ident) {
+ptree* create_valuetype_dcl(parser_state* state, const char* ident) {
     ptree* p = create_node(state, N_VALUETYPE, ident);
     register_node_dcl(state, p);
     p->flags |= OPT_DECLARATION;
@@ -2130,7 +2117,7 @@ ptree* create_valuetype_dcl(parser_state* state, identifier ident) {
 }
 
 ptree*
-create_valuetype_start(parser_state* state, identifier ident, ptree* parent, ptree* interface) {
+create_valuetype_start(parser_state* state, const char* ident, ptree* parent, ptree* interface) {
     std::vector<ptree*> parents;
     if (parent) {
         parent->flags |= OPT_HAS_CHILDREN;
@@ -2147,8 +2134,12 @@ ptree* create_valuetype_finish(parser_state* state, ptree* members) {
     return node;
 }
 
-ptree*
-create_valuetype_factory(parser_state* state, identifier ident, ptree* params, declarator* raises) {
+ptree* create_valuetype_factory(
+    parser_state* state,
+    const char* ident,
+    ptree* params,
+    declarator* raises
+) {
     ptree* node = create_node(state, N_PROTOTYPE, ident);
     register_node(state, node);
     assign_members(state, node, params);
@@ -2159,7 +2150,7 @@ create_valuetype_factory(parser_state* state, identifier ident, ptree* params, d
 }
 
 ptree* create_valuetype_factory_param(parser_state* state, declarator* decl, ptree* type) {
-    ptree* node = create_node(state, N_MEMBER, decl->ident);
+    ptree* node = create_node(state, N_MEMBER, decl->ident.c_str());
     node->flags |= OPT_IN;
     node->type = type;
     return node;
@@ -2169,7 +2160,7 @@ ptree*
 create_valuetype_member(parser_state* state, declarator* declarators, ptree* type, int is_public) {
     ptree* res = nullptr;
     while (declarators) {
-        ptree* node = create_node(state, N_MEMBER, declarators->ident);
+        ptree* node = create_node(state, N_MEMBER, declarators->ident.c_str());
         register_node(state, node);
         node->type =
             !declarators->bounds.empty() ? create_array_type(state, declarators, type) : type;
@@ -2183,7 +2174,7 @@ create_valuetype_member(parser_state* state, declarator* declarators, ptree* typ
 
 declarator* append_array_size(parser_state* state, declarator* decl, const numeric* value) {
     if (!decl) {
-        decl = create_decl(state, create_identifier(state, nullptr), nullptr);
+        decl = create_decl(state, "", nullptr);
     }
     if (integer_value(*value) <= 0) {
         state->error() << "Invalid array index";

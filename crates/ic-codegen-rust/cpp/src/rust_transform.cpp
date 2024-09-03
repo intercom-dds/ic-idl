@@ -159,7 +159,7 @@ static void move_nested(parser_state* state, ptree* node, ptree* scope, std::set
                 node->members = remove_node(node->members, mem);
 
                 // 2. Create an appropriate module for the type and rescope the type
-                create_module_start(state, create_identifier(state, mod_name(node).c_str()));
+                create_module_start(state, mod_name(node).c_str());
                 auto mod = create_module_finish(state, mem);
                 mem->scope = mem->super = mod;
 
@@ -214,8 +214,8 @@ static void replace_native(parser_state* state) {
     // since it's already defined in the API (and it's not really a bitmask).
     auto to_bitmask = [&](const char* name, const char* new_name) {
         if (auto node = state->lookup_node(name)) {
-            auto handle = create_bitmask(state, create_identifier(state, new_name), nullptr);
-            create_annotation_start(state, create_identifier(state, "@ext::suppress"));
+            auto handle = create_bitmask(state, new_name, nullptr);
+            create_annotation_start(state, "@ext::suppress");
             annotate(state, handle, create_annotation_finish(state, nullptr));
 
             auto next = node->next;
@@ -224,7 +224,7 @@ static void replace_native(parser_state* state) {
         }
     };
 
-    create_module_start(state, create_identifier(state, "core"));
+    create_module_start(state, "core");
     to_bitmask("DDS::InstanceHandle_t", "InstanceHandle");
     to_bitmask("DDS::SampleStateKind", "SampleState");
     to_bitmask("DDS::SampleStateMask", "SampleState");

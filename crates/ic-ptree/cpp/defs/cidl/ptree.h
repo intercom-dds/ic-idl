@@ -166,7 +166,7 @@ struct ptree {
 };
 
 struct declarator {
-    identifier ident;
+    std::string ident;
     std::vector<numeric> bounds;
     ptree* annotations = nullptr;
     declarator* next = nullptr;

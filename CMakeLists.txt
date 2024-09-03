@@ -44,18 +44,6 @@ if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif()
 
-if (WIN32)
-    # Statically link VCRT
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
-if (IC_SANITIZE)
-    message(STATUS "Using -fsanitize=${IC_SANITIZE}")
-    add_compile_options(-fsanitize=${IC_SANITIZE})
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${IC_SANITIZE}")
-endif()
-
 if (IC_TIDY)
     find_program(
         TIDY_EXE REQUIRED

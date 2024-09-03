@@ -126,10 +126,6 @@ enum ptree_opts {
     OPT_BUILTIN = (1 << 17),  // Built-in type definitions, mostly primitives and annotations
 };
 
-struct identifier {
-    const char* name;
-};
-
 struct ptree;
 
 void clear_namespace_nodes(struct parser_state* state);

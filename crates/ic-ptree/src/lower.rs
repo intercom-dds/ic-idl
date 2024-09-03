@@ -83,9 +83,8 @@ fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys:
         .map_or(ptr::null_mut(), |p| lower_path(state, p))
 }
 
-unsafe fn create_ident(state: *mut sys::parser_state, name: &str) -> sys::identifier {
-    let name = CString::new(name).unwrap();
-    sys::create_identifier(state, name.as_ptr())
+fn create_ident(name: &str) -> CString {
+    CString::new(name).unwrap()
 }
 
 unsafe fn create_decl(
@@ -95,12 +94,12 @@ unsafe fn create_decl(
 ) -> *mut sys::declarator {
     match name {
         Declarator::Simple(v) => {
-            let ident = create_ident(state, &v.name);
-            sys::create_decl(state, ident, ptr::null_mut())
+            let ident = create_ident(&v.name);
+            sys::create_decl(state, ident.as_ptr(), ptr::null_mut())
         }
         Declarator::Array(v) => {
-            let ident = create_ident(state, &v.ident.name);
-            let mut decl = sys::create_decl(state, ident, ptr::null_mut());
+            let ident = create_ident(&v.ident.name);
+            let mut decl = sys::create_decl(state, ident.as_ptr(), ptr::null_mut());
             for bound in &v.bounds {
                 let expr = lower_expr(state, bound);
                 decl = sys::append_array_size(state, decl, expr);
@@ -175,8 +174,8 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
             LiteralValue::Null => todo!(),
         },
         Expr::Path(v) => {
-            let ident = create_ident(state, &path_str(v));
-            sys::lookup_value(state, ident)
+            let ident = create_ident(&path_str(v));
+            sys::lookup_value(state, ident.as_ptr())
         }
         Expr::Unary(v) => {
             let op = op_kind(v.op);
@@ -195,8 +194,8 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
             let mut list = ptr::null_mut();
             for expr in &v.values {
                 let declarator = expr.ident.as_ref().map_or(ptr::null_mut(), |ident| {
-                    let ident = create_ident(state, &ident.name);
-                    sys::create_decl(state, ident, ptr::null_mut())
+                    let ident = create_ident(&ident.name);
+                    sys::create_decl(state, ident.as_ptr(), ptr::null_mut())
                 });
 
                 let val = sys::create_const_node(
@@ -214,8 +213,8 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
 
 fn lower_path(state: *mut sys::parser_state, path: &Path) -> *mut sys::ptree {
     unsafe {
-        let ident = create_ident(state, &path_str(path));
-        sys::lookup_type(state, ident)
+        let ident = create_ident(&path_str(path));
+        sys::lookup_type(state, ident.as_ptr())
     }
 }
 
@@ -236,8 +235,8 @@ fn lower_interface_member(
             let ty = lower_ty(state, &param.ty);
             let kind = param_kind(param.kind);
             let decl = {
-                let ident = create_ident(state, &param.ident.name);
-                sys::create_decl(state, ident, ptr::null_mut())
+                let ident = create_ident(&param.ident.name);
+                sys::create_decl(state, ident.as_ptr(), ptr::null_mut())
             };
             sys::create_param_dcl(state, decl, ty, kind)
         };
@@ -245,9 +244,15 @@ fn lower_interface_member(
         match member {
             InterfaceMember::Attr(_) => todo!(),
             InterfaceMember::Proto(v) => {
-                let ident = create_ident(state, &v.ident.name);
+                let ident = create_ident(&v.ident.name);
                 let params = collect_with(state, sys::append_node, &v.params, param);
-                sys::create_interface_op(state, ident, params, ptr::null_mut(), ptr::null_mut())
+                sys::create_interface_op(
+                    state,
+                    ident.as_ptr(),
+                    params,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                )
             }
             InterfaceMember::Item(v) => lower_item(state, v),
         }
@@ -257,8 +262,8 @@ fn lower_interface_member(
 unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::ptree {
     match item {
         Item::AnnotationValue(v) => {
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_annotation_dcl_start(state, ident);
+            let ident = create_ident(&v.ident.name);
+            sys::create_annotation_dcl_start(state, ident.as_ptr());
             let params = collect_with(state, sys::append_node, &v.params, |param| match param {
                 AnnotationField::Item(v) => lower_item(state, v),
                 AnnotationField::Member(v) => lower_field(state, v),
@@ -266,23 +271,23 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             sys::create_annotation_finish(state, params)
         }
         Item::ModuleValue(v) => {
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_module_start(state, ident);
+            let ident = create_ident(&v.ident.name);
+            sys::create_module_start(state, ident.as_ptr());
             let members = lower_item_list(state, &v.definitions);
             sys::create_module_finish(state, members)
         }
         Item::StructValue(v) => {
             // TODO: parent
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_struct_start(state, ident, ptr::null_mut());
+            let ident = create_ident(&v.ident.name);
+            sys::create_struct_start(state, ident.as_ptr(), ptr::null_mut());
             let members = collect_with(state, sys::append_node, &v.members, |v| {
                 lower_field(state, v)
             });
             sys::create_struct_finish(state, members)
         }
         Item::ExceptionValue(v) => {
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_exception_start(state, ident);
+            let ident = create_ident(&v.ident.name);
+            sys::create_exception_start(state, ident.as_ptr());
             let members = collect_with(state, sys::append_node, &v.members, |v| {
                 lower_field(state, v)
             });
@@ -290,30 +295,30 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
         }
         Item::EnumValue(v) => {
             let values = collect_with(state, sys::append_enum_node, &v.fields, |field| {
-                let ident = create_ident(state, &field.ident.name);
+                let ident = create_ident(&field.ident.name);
                 let expr = field
                     .value
                     .as_ref()
                     .map_or(NUM_UNDEF, |v| lower_expr(state, v));
-                sys::create_enum_value(state, ident, expr)
+                sys::create_enum_value(state, ident.as_ptr(), expr)
             });
 
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_enum(state, ident, values)
+            let ident = create_ident(&v.ident.name);
+            sys::create_enum(state, ident.as_ptr(), values)
         }
         Item::BitmaskValue(v) => {
             let values = collect_with(state, sys::append_node, &v.bits, |bit| {
-                let ident = create_ident(state, &bit.ident.name);
+                let ident = create_ident(&bit.ident.name);
                 let expr = bit
                     .value
                     .as_ref()
                     .map_or(NUM_UNDEF, |v| lower_expr(state, v));
 
-                sys::create_bitmask_value(state, ident, expr)
+                sys::create_bitmask_value(state, ident.as_ptr(), expr)
             });
 
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_bitmask(state, ident, values)
+            let ident = create_ident(&v.ident.name);
+            sys::create_bitmask(state, ident.as_ptr(), values)
         }
         Item::ConstValue(v) => {
             let ty = lower_ty(state, &v.ty);
@@ -327,36 +332,36 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             sys::create_type(state, decls, ty)
         }
         Item::DeclValue(v) => {
-            let ident = create_ident(state, &v.ident.name);
+            let ident = create_ident(&v.ident.name);
             match v.kind {
-                DeclKind::DeclStruct => sys::create_struct_dcl(state, ident),
-                DeclKind::DeclUnion => sys::create_union_dcl(state, ident),
-                DeclKind::DeclNative => sys::create_native_type(state, ident),
-                DeclKind::DeclInterface => sys::create_interface_dcl(state, ident, 0),
-                DeclKind::DeclValuetype => sys::create_valuetype_dcl(state, ident),
+                DeclKind::DeclStruct => sys::create_struct_dcl(state, ident.as_ptr()),
+                DeclKind::DeclUnion => sys::create_union_dcl(state, ident.as_ptr()),
+                DeclKind::DeclNative => sys::create_native_type(state, ident.as_ptr()),
+                DeclKind::DeclInterface => sys::create_interface_dcl(state, ident.as_ptr(), 0),
+                DeclKind::DeclValuetype => sys::create_valuetype_dcl(state, ident.as_ptr()),
             }
         }
         Item::BitsetValue(v) => {
             let bitfields = collect_with(state, sys::append_node, &v.fields, |field| {
-                let ident = create_ident(state, &v.ident.name);
+                let ident = create_ident(&v.ident.name);
                 let size = lower_expr(state, &field.size);
                 let ty = field
                     .ty
                     .as_ref()
                     .map_or(ptr::null_mut(), |v| lower_ty(state, v));
-                sys::create_bitfield(state, ident, size, ty)
+                sys::create_bitfield(state, ident.as_ptr(), size, ty)
             });
 
             let parent = path_or_null(state, &v.parent);
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_bitset(state, ident, bitfields, parent)
+            let ident = create_ident(&v.ident.name);
+            sys::create_bitset(state, ident.as_ptr(), bitfields, parent)
         }
         Item::InterfaceValue(v) => {
             // TODO: parents
-            let ident = create_ident(state, &v.ident.name);
+            let ident = create_ident(&v.ident.name);
             sys::create_interface_start(
                 state,
-                ident,
+                ident.as_ptr(),
                 ptr::null_mut(),
                 ffi::c_int::from(v.local.is_some()),
             );
@@ -368,8 +373,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             )
         }
         Item::UnionValue(v) => {
-            let ident = create_ident(state, &v.ident.name);
-            sys::create_union_start(state, ident);
+            let ident = create_ident(&v.ident.name);
+            sys::create_union_start(state, ident.as_ptr());
 
             let label = |state, label: &Label| match label {
                 Label::Case(v) => {
@@ -394,16 +399,17 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                 sys::create_union_member(state, mem, labels, ptr::null_mut())
             });
 
-            let decl = sys::create_decl(state, create_ident(state, "_d"), ptr::null_mut());
+            let ident = create_ident("_d");
+            let decl = sys::create_decl(state, ident.as_ptr(), ptr::null_mut());
             let disc =
                 sys::create_member(state, decl, lower_ty(state, &v.disc.ty), ptr::null_mut());
             sys::create_union_finish(state, disc, members)
         }
         Item::ValuetypeValue(v) => {
-            let ident = create_ident(state, &v.ident.name);
+            let ident = create_ident(&v.ident.name);
             let parent = path_or_null(state, &v.inherits);
             let supports = path_or_null(state, &v.supports);
-            sys::create_valuetype_start(state, ident, parent, supports);
+            sys::create_valuetype_start(state, ident.as_ptr(), parent, supports);
             // TODO: members
             sys::create_valuetype_finish(state, ptr::null_mut())
         }

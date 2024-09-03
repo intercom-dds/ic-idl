@@ -24,3 +24,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+use ic_ptree::ParseResult;
+
+#[must_use]
+pub fn codegen_json(result: &ParseResult) -> Vec<String> {
+    let mut generated = vec![];
+    unsafe {
+        ic_ptree::sys::ic_codegen_json(
+            result.as_raw(),
+            std::ptr::addr_of_mut!(generated).cast::<_>(),
+        );
+    }
+    generated
+}

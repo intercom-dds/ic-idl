@@ -29,6 +29,7 @@
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -651,11 +652,10 @@ std::string intercom::cidl::json_value(const ptree* obj) {
     return out.str();
 }
 
-void intercom::cidl::code_gen_json(const parse_result* result, const char* destination) {
+void intercom::cidl::code_gen_json(const parse_result* result, ic_list_t* list) {
     for (auto include : result->includes) {
         std::string file_name = trim_include_name(include->name, true);
         file_name += ".json";
-        std::string filepath = std::string(destination) + "/" + file_name;
         std::stringstream file;
         {
             intercom::JsonWriter writer(file, true);
@@ -668,8 +668,7 @@ void intercom::cidl::code_gen_json(const parse_result* result, const char* desti
             writer.end_object();
         }
         if (!file.str().empty()) {
-            // TODO(idarcar):
-            // write_if_changed(filepath, file.str());
+            ic_push_source(list, file_name.c_str(), file.str().c_str());
         }
     }
 }

@@ -112,20 +112,15 @@ pub const OPT_PRIVATE: ptree_opts = 16;
 #[doc = "!< default case in union"]
 pub const OPT_DEFAULT: ptree_opts = 32;
 pub const OPT_HAS_CHILDREN: ptree_opts = 64;
-#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, \
-         ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
+#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
 pub const OPT_ENUMERATED: ptree_opts = 128;
-#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, \
-         ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
+#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
 pub const OPT_EMIT_CODE: ptree_opts = 256;
-#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, \
-         ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
+#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
 pub const OPT_SYSTEM_INCLUDE: ptree_opts = 512;
-#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, \
-         ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
+#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
 pub const OPT_CIRCULAR: ptree_opts = 1024;
-#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, \
-         ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
+#[doc = " enum member with explicit value, != the implicit value e.g. \"enum E { V0, V1 = 1, ENUMERATED\n = 5, V3 };\" \\note also applied to the enum node, if any members have it"]
 pub const OPT_SEQUENCE_LENGTH: ptree_opts = 2048;
 #[doc = "!< node in struct numeric i.e. part of complex value"]
 pub const OPT_CONST_VALUE: ptree_opts = 4096;
@@ -939,10 +934,7 @@ extern "C" {
     pub fn ic_codegen_proto(result: *const ic_parse_result_t, list: *mut ic_list_t);
 }
 extern "C" {
-    pub fn ic_codegen_json(
-        result: *const ic_parse_result_t,
-        destination: *const ::std::os::raw::c_char,
-    );
+    pub fn ic_codegen_json(result: *const ic_parse_result_t, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -986,10 +978,7 @@ fn bindgen_test_layout_python_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_python(
-        result: *const ic_parse_result_t,
-        destination: *const ::std::os::raw::c_char,
-    );
+    pub fn ic_codegen_python(result: *const ic_parse_result_t, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1191,5 +1180,12 @@ extern "C" {
         result: *const ic_parse_result_t,
         options: cpp_options_t,
         destination: *const ::std::os::raw::c_char,
+    );
+}
+extern "C" {
+    pub fn ic_push_source(
+        list: *mut ic_list_t,
+        path: *const ::std::os::raw::c_char,
+        src: *const ::std::os::raw::c_char,
     );
 }

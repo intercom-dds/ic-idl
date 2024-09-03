@@ -106,9 +106,9 @@ void ic_codegen_idl(const ic_parse_result_t* result, ic_list_t* list) {
     intercom::cidl::code_gen_idl(res, list);
 }
 
-void ic_codegen_json(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_json(const ic_parse_result_t* result, ic_list_t* list) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    intercom::cidl::code_gen_json(res, destination);
+    intercom::cidl::code_gen_json(res, list);
 }
 
 void ic_codegen_json_schema(const ic_parse_result_t* result, const char*) {

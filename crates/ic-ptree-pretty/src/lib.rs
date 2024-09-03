@@ -28,7 +28,6 @@
 use ic_ptree::ParseResult;
 
 /// Dumps the ptree to `stdout` in a tree-like format.
-#[must_use]
 pub fn ptree_dump(result: &ParseResult) {
     unsafe { ic_ptree::sys::ic_ptree_dump(result.as_raw()) }
 }

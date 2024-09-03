@@ -56,7 +56,7 @@ void ic_ptree_dump(const struct ic_parse_result_t* result);
 
 void ic_codegen_proto(const struct ic_parse_result_t* result, struct ic_list_t* list);
 
-void ic_codegen_json(const struct ic_parse_result_t* result, const char* destination);
+void ic_codegen_json(const struct ic_parse_result_t* result, struct ic_list_t* list);
 
 struct python_options_t {
     uint8_t use_pep8;
@@ -96,7 +96,7 @@ void ic_codegen_cpp(
     const char* destination
 );
 
-void ic_push_source(ic_list_t* list, const char* path, const char* src);
+void ic_push_source(struct ic_list_t* list, const char* path, const char* src);
 
 #ifdef __cplusplus
 }

@@ -25,6 +25,16 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_ptree::define_backend;
+use ic_ptree::ParseResult;
 
-define_backend!(codegen_rust, ic_codegen_rust);
+#[must_use]
+pub fn codegen_rust(result: &ParseResult) -> Vec<String> {
+    let mut generated = vec![];
+    unsafe {
+        ic_ptree::sys::ic_codegen_rust(
+            result.as_raw(),
+            std::ptr::addr_of_mut!(generated).cast::<_>(),
+        );
+    }
+    generated
+}

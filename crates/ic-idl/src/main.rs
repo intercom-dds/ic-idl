@@ -271,7 +271,7 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<Stri
 
     let mut generated = vec![];
     for (dir, backend) in backends
-        .into_iter()
+        .iter()
         .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
     {
         if options.purge_dirs {

@@ -37,7 +37,6 @@
 
 namespace intercom::cidl {
 
-// NOLINTNEXTLINE
 struct parse_result {
     parse_result() = default;
     const ptree* tree{nullptr};

@@ -49,21 +49,13 @@ std::string trim_include_name(std::filesystem::path name, bool trim_absolute);
 
 void ptree_dump(const parse_result* result);
 
-void code_gen_cs(const parse_result* result);
-
-void code_gen_cs(const parse_result* result, const char* destination);
-
-void code_gen_json(const parse_result* result, const char* destination);
-
 inline void code_gen_json_schema(const parse_result*) {}
+
+void code_gen_json(const parse_result* result, ic_list_t* list);
 
 void code_gen_dds_cplpl(const parse_result* result);
 
 void code_gen_dds_cplpl(const parse_result* result, const Config& options, const char* destination);
-
-void code_gen_java(const parse_result* result);
-
-void code_gen_java(const parse_result* result, const char* destination);
 
 void code_gen_python(const parse_result* result, ic_list_t* list);
 
@@ -72,8 +64,6 @@ void code_gen_rust(const parse_result* result, ic_list_t* list);
 void code_gen_proto(const parse_result* result, ic_list_t* list);
 
 void code_gen_idl(const parse_result* result, ic_list_t* list);
-
-void code_gen_xml(const parse_result* result);
 
 void generate_json_type(std::ostream& stream, const ptree* tree);
 

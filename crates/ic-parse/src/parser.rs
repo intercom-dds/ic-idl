@@ -344,7 +344,7 @@ fn unary_operator() -> impl IdlParser<Op> {
     choice((
         operator(Kind::Minus, OpKind::OpSub),
         operator(Kind::Plus, OpKind::OpAdd),
-        operator(Kind::Tilde, OpKind::OpNot),
+        operator(Kind::BitNot, OpKind::OpNot),
     ))
 }
 

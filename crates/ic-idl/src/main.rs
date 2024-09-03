@@ -39,6 +39,7 @@ use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
+use ic_vfs::SourceMap;
 // use ic_preproc::preprocess;
 
 mod config;
@@ -178,14 +179,15 @@ where
 }
 
 fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
+    let mut vfs = SourceMap::default();
+
     let files = collect_files(&options.files)?;
     for file in files {
         // let input = match std::fs::read_to_string(&file) {
         //     Ok(v) => v,
         //     Err(e) => bail!("couldn't read '{}': {e}", file.display().yellow()),
         // };
-        let ast = ic_parse::from_path(&file);
-
+        let ast = ic_parse::from_path(&file, &mut vfs);
         if options.unstable.token_dump {
             // println!("{:#?}", ic_parse::lexer::scan(&input));
         }

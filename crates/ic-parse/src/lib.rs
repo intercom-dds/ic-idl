@@ -81,7 +81,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_preproc::{ProcArgs, State};
 use ic_syntax::{Item, Span};
-use ic_vfs::SourceMap;
+use ic_vfs::{FileId, SourceMap};
 use lexer::{Kind, Token};
 
 pub mod lexer;
@@ -158,25 +158,29 @@ impl std::fmt::Display for Error {
 /// # Errors
 ///
 /// # Panics
-// pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
-//     let tokens = lexer::stream(input);
-//     let tree = parser::specification()
-//         .parse(tokens)
-//         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
-//
-//     Ok(ParseResult {
-//         tree,
-//         sources: SourceMap::default(),
-//     })
-// }
+pub fn from_str(_input: &str) -> Result<ParseResult, Vec<Error>> {
+    todo!()
+}
 
-pub fn from_path(path: &Path) -> Result<ParseResult, Vec<Error>> {
-    let args = ProcArgs::default();
-    let mut vfs = SourceMap::default();
+/// Parses the specified file and constructs an AST.
+///
+/// # Errors
+///
+/// # Panics
+pub fn from_path(path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
     let (file_id, _) = vfs.open(path).unwrap();
-    let mut state = State::new(&mut vfs);
-    let iter = ic_preproc::preprocess(file_id, &args, &mut state);
+    from_file(file_id, vfs)
+}
 
+/// Parses the specified file and constructs an AST.
+///
+/// # Errors
+///
+/// # Panics
+pub fn from_file(file_id: FileId, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
+    let args = ProcArgs::default();
+    let mut state = State::new(vfs);
+    let iter = ic_preproc::preprocess(file_id, &args, &mut state);
     let tokens = lexer::from_iter(iter);
     let tree = parser::specification()
         .parse(tokens)

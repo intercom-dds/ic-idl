@@ -46,6 +46,7 @@ ic-lint = { path = "../ic-lint" }
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree = { path = "../ic-ptree" }
+ic-vfs = { path = "../ic-vfs" }
 
 ic-codegen-cxx = { path = "../ic-codegen-cxx" }
 ic-codegen-idl = { path = "../ic-codegen-idl" }

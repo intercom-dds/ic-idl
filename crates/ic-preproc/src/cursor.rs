@@ -183,9 +183,6 @@ pub enum Kind {
     /// `-`
     Minus,
 
-    /// `~`
-    Tilde,
-
     /// `*`
     Star,
 

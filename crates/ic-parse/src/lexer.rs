@@ -123,6 +123,9 @@ pub enum Kind {
     /// `>`
     Greater,
 
+    /// `~`
+    BitNot,
+
     /// `&`
     BitAnd,
 
@@ -137,9 +140,6 @@ pub enum Kind {
 
     /// `-`
     Minus,
-
-    /// `~`
-    Tilde,
 
     /// `*`
     Star,
@@ -247,12 +247,12 @@ impl fmt::Display for Kind {
             Kind::RBracket => write!(f, "`]`"),
             Kind::True(_) => write!(f, "`TRUE`"),
             Kind::False(_) => write!(f, "`FALSE`"),
+            Kind::BitNot => write!(f, "`~`"),
             Kind::BitAnd => write!(f, "`&`"),
             Kind::BitOr => write!(f, "`|`"),
             Kind::BitXor => write!(f, "`^`"),
             Kind::Plus => write!(f, "`+`"),
             Kind::Minus => write!(f, "`-`"),
-            Kind::Tilde => write!(f, "`~`"),
             Kind::Star => write!(f, "`*`"),
             Kind::Slash => write!(f, "`/`"),
             Kind::Modulo => write!(f, "`%`"),
@@ -314,11 +314,8 @@ impl From<ic_preproc::Token> for Token {
         let kind = match value.kind {
             ic_preproc::Kind::Ident => Kind::Ident("".to_string()),
             ic_preproc::Kind::Comment => Kind::Comment("".to_string()),
-            // ic_preproc::Kind::Number { base: Base } => Kind::,
-            // ic_preproc::Kind::Float => Kind::,
             ic_preproc::Kind::String => Kind::String,
             ic_preproc::Kind::Char => Kind::Char(None),
-            // ic_preproc::Kind::Hash => Kind::Hash,
             // ic_preproc::Kind::At => Kind::,
             ic_preproc::Kind::Comma => Kind::Comma,
             ic_preproc::Kind::Period => Kind::Period,
@@ -326,8 +323,6 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::DColon => Kind::DColon,
             ic_preproc::Kind::Semi => Kind::Semi,
             ic_preproc::Kind::Eq => Kind::Eq,
-            // ic_preproc::Kind::EqEq => Kind::EqEq,
-            // ic_preproc::Kind::NotEq => Kind::NotEq,
             ic_preproc::Kind::LBrace => Kind::LBrace,
             ic_preproc::Kind::RBrace => Kind::RBrace,
             ic_preproc::Kind::LParen => Kind::LParen,
@@ -336,19 +331,19 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::RBracket => Kind::RBracket,
             ic_preproc::Kind::Lt => Kind::Less,
             ic_preproc::Kind::Gt => Kind::Greater,
-            // ic_preproc::Kind::BitNot => Kind::BitNot,
+            ic_preproc::Kind::BitNot => Kind::BitNot,
             ic_preproc::Kind::BitAnd => Kind::BitAnd,
             ic_preproc::Kind::BitOr => Kind::BitOr,
             ic_preproc::Kind::BitXor => Kind::BitXor,
-            // ic_preproc::Kind::Not => Kind::Not,
-            // ic_preproc::Kind::And => Kind::And,
-            // ic_preproc::Kind::Or => Kind::Or,
             ic_preproc::Kind::Plus => Kind::Plus,
             ic_preproc::Kind::Minus => Kind::Minus,
-            ic_preproc::Kind::Tilde => Kind::Tilde,
             ic_preproc::Kind::Star => Kind::Star,
             ic_preproc::Kind::Slash => Kind::Slash,
             ic_preproc::Kind::Modulo => Kind::Modulo,
+            ic_preproc::Kind::Number { .. } => Kind::Decimal(0),
+            ic_preproc::Kind::Float => Kind::Float(0.0),
+            ic_preproc::Kind::Newline => todo!(),
+            ic_preproc::Kind::Backslash => todo!(),
             _ => Kind::Invalid,
         };
 
@@ -366,7 +361,14 @@ pub fn from_iter<I>(iter: I) -> Stream<'static, Kind, Span, impl Iterator<Item =
 where
     I: IntoIterator<Item = ic_preproc::Token>,
 {
-    let iter = iter.into_iter().map(|v| Token::from(v));
+    let iter = iter.into_iter().filter_map(|v| {
+        if v.kind == ic_preproc::Kind::Newline {
+            None
+        } else {
+            Some(Token::from(v))
+        }
+    });
+
     let end = Span::default();
     Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
 }

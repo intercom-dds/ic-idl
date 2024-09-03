@@ -213,6 +213,7 @@ dependencies = [
  "ic-parse",
  "ic-preproc",
  "ic-ptree",
+ "ic-vfs",
  "intercom-cts",
 ]
 
@@ -252,7 +253,6 @@ version = "0.0.0"
 dependencies = [
  "ic-alloc",
  "ic-expr",
- "ic-syntax",
  "ic-vfs",
 ]
 

@@ -447,12 +447,14 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             }
 
             let include = self.source_of(include);
+            let include = include.trim_start_matches('"').trim_end_matches('"');
+
             match self.state.vfs.open(include) {
                 Ok((id, source)) => {
                     let cursor = File::from_src(source, id);
                     self.stack.push(cursor);
                 }
-                Err(_) => self.state.errors.push(Error::Syntax {
+                Err(e) => self.state.errors.push(Error::Syntax {
                     message: "failed to open file",
                     span,
                 }),
@@ -494,8 +496,11 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn dir_undef(&mut self) {
         let (name, span) = self.macro_name().unwrap();
-        self.state.defines.remove(name);
         self.warn_trailing(span, Directive::Undef);
+
+        if self.is_active() {
+            self.state.defines.remove(name);
+        }
     }
 
     fn expr_and_eval(&mut self) -> bool {

@@ -304,14 +304,16 @@ impl File {
 struct Parser<'a, 'ctx> {
     stack: Vec<File>,
     state: &'a mut State<'ctx>,
+    args: &'a ProcArgs,
     // handler: &'a PragmaHandler,
 }
 
 impl<'a, 'ctx> Parser<'a, 'ctx> {
-    fn with_state(file: File, state: &'a mut State<'ctx>) -> Self {
+    fn with_state(file: File, args: &'a ProcArgs, state: &'a mut State<'ctx>) -> Self {
         Self {
             state,
             stack: vec![file],
+            args,
         }
     }
 
@@ -411,18 +413,22 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     /// are currently parsing is active, i.e. whether we should yield tokens
     /// for the current region or if they should be skipped.
     fn is_active(&mut self) -> bool {
-        self.if_state().last().map_or(false, IfState::is_active)
+        self.if_state().last().map_or(true, IfState::is_active)
     }
 
     fn dir_include(&mut self, span: SourceSpan) {
         let cursor = self.cursor();
-        let tok = cursor.next().unwrap();
-        let _kind = match tok.kind {
-            Kind::Lt => {
-                let _src = cursor.until(Kind::Gt);
-                Include::System
+        let (_, include) = match cursor.peek() {
+            Some(Kind::Lt) => {
+                _ = cursor.next();
+                let (_, span) = cursor.until_peek(Kind::Gt);
+                _ = cursor.next();
+                (Include::System, span)
             }
-            Kind::String => Include::Local,
+            Some(Kind::String) => {
+                let tok = cursor.next().unwrap();
+                (Include::Local, tok.span)
+            }
             _ => {
                 self.expect(Kind::String, "expected \"file\" or <file>");
                 return;
@@ -430,10 +436,28 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         };
         self.warn_trailing(span, Directive::Include);
 
-        let include = "inc.idl";
-        let (id, source) = self.state.vfs.open(include).expect("couldn't open file");
-        let cursor = File::from_src(source, id);
-        self.stack.push(cursor);
+        if self.is_active() {
+            // Bail if we've hit the recursion depth
+            if self.stack.len() >= self.args.recursion_depth {
+                self.state.errors.push(Error::Syntax {
+                    message: "#include nested too deeply",
+                    span,
+                });
+                return;
+            }
+
+            let include = self.source_of(include);
+            match self.state.vfs.open(include) {
+                Ok((id, source)) => {
+                    let cursor = File::from_src(source, id);
+                    self.stack.push(cursor);
+                }
+                Err(_) => self.state.errors.push(Error::Syntax {
+                    message: "failed to open file",
+                    span,
+                }),
+            }
+        }
     }
 
     fn dir_define(&mut self) -> Option<()> {
@@ -857,13 +881,13 @@ impl Iterator for TokenIter<'_, '_> {
 
 pub fn preprocess<'a, 'ctx>(
     file_id: FileId,
-    args: &ProcArgs,
+    args: &'a ProcArgs,
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
     let source = state.vfs.source(file_id);
     source.chars();
     let file = File::from_src(source, file_id);
-    let parser = Parser::with_state(file, state);
+    let parser = Parser::with_state(file, args, state);
     TokenIter(parser)
 }
 

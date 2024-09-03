@@ -147,7 +147,7 @@ impl std::fmt::Display for ProcError {
 /// tokens. Any macro definitions it encounters will be expanded in-place.
 pub fn preprocess<'a, 'ctx>(
     file_id: FileId,
-    args: &ProcArgs,
+    args: &'a ProcArgs,
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
     processor::preprocess(file_id, args, state)

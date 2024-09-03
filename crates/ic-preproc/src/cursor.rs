@@ -297,15 +297,7 @@ impl Cursor {
         _ = self.chars.next();
 
         let is_doc = self.chars.peek() == '/';
-        let start = self.chars.index();
-        // self.until_peek(Kind::Newline);
-        // TODO: this fails with floating points
-        // let tokens = self.until(Kind::Newline);
-        // fixed now, but we need to peek, not consume, so self.until_peek
-        // until_peek consumes more characters than it should.
-        while self.chars.peek() != '\n' {
-            self.chars.next();
-        }
+        self.until_peek(Kind::Newline);
         is_doc
     }
 
@@ -341,28 +333,30 @@ impl Cursor {
     }
 
     /// Advances the iterator until it finds a token with the specified `kind`.
-    pub fn until(&mut self, kind: Kind) -> Vec<Token> {
+    pub fn until(&mut self, kind: Kind) -> (Vec<Token>, SourceSpan) {
         let mut tokens = vec![];
+        let start = self.chars.index();
         while let Some(tok) = self.next() {
             if tok.kind == kind {
                 break;
             }
             tokens.push(tok);
         }
-        tokens
+        (tokens, self.span_since(start))
     }
 
     /// Advances the iterator until the next, peeked token is equal to the
     /// specified `kind`.
-    pub fn until_peek(&mut self, kind: Kind) -> Vec<Token> {
+    pub fn until_peek(&mut self, kind: Kind) -> (Vec<Token>, SourceSpan) {
         let mut tokens = vec![];
+        let start = self.chars.index();
         while let Some(tok) = self.peek() {
             if tok == kind {
                 break;
             }
             tokens.push(self.next().unwrap());
         }
-        tokens
+        (tokens, self.span_since(start))
     }
 
     /// Consumes all token until a newline is encountered, but unlike

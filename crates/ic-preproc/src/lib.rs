@@ -38,6 +38,7 @@ use processor::{Error, State, TokenIter};
 mod cursor;
 mod iter;
 mod processor;
+mod time;
 
 const RECURSION_DEPTH: usize = 200;
 

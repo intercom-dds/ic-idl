@@ -33,7 +33,7 @@ use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_vfs::{FileId, Include, SourceMap};
 
 use crate::cursor::{Base, Cursor, Directive, Kind, SourceSpan, Token};
-use crate::ProcArgs;
+use crate::{time, ProcArgs};
 
 #[derive(Debug)]
 enum Macro {
@@ -349,10 +349,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         let file = self.cursor().file_id();
         let _path = self.state.vfs.path(file).to_string_lossy().to_string();
         let _line = self.cursor().line().to_string();
+        let _time = time::utc_time();
+        let _date = time::date();
 
         // let pairs = [
-        //     ("__TIME__".to_string(), ...),
-        //     ("__DATE__".to_string(), ...),
+        //     ("__TIME__".to_string(), time),
+        //     ("__DATE__".to_string(), date),
         //     ("__FILE__".to_string(), file),
         //     ("__LINE__".to_string(), line),
         // ];

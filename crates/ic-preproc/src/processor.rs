@@ -805,9 +805,9 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             let name = self.source_of(tok.span);
             match self.state.defines.get(name) {
                 Some(v) => match v {
-                    Macro::Function { .. } => {
+                    Macro::Function { def, .. } => {
+                        self.state.queue.extend(def.iter().copied());
                         true
-                        // self.state.queue.extend(def.iter)
                     }
                     Macro::Object { def, .. } => {
                         self.state.queue.extend(def.iter().copied());

@@ -285,7 +285,7 @@ void savememf(
             );
         }
         content.write(memf->memfile, static_cast<std::streamsize>(size));
-        write_if_changed(fullfilename, content.str());
+        // write_if_changed(fullfilename, content.str());
     } else {
         if (filedir && *filedir) {
             fmt::print("{}/{}\n", filedir, filename);

@@ -32,8 +32,6 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 
 #include "cidl/hdrs.h"
 #include "cidl/memf.h"
@@ -59,33 +57,6 @@ std::string trim_include_name(std::filesystem::path name, bool trim_absolute) {
         return file.stem().string();
     }
     return file.string();
-}
-
-bool write_if_changed(const std::string& file_name, const std::string& content) {
-    bool file_changed = true;
-    std::ifstream current_file_content{file_name};
-    if (current_file_content.is_open()) {
-        std::stringstream current;
-        current << current_file_content.rdbuf();
-        file_changed = (current.str() != content);
-        current_file_content.close();
-    }
-    if (file_changed) {
-        try {
-            std::filesystem::create_directories(std::filesystem::path(file_name).parent_path());
-            std::ofstream output{file_name};
-            if (output.is_open()) {
-                output << content;
-            } else {
-                fmt::print(stderr, "Could not write to file \"{}\"\n", file_name);
-                return false;
-            }
-        } catch (const std::exception& e) {
-            fmt::print(stderr, "Could not write to file \"{}\": {}\n", file_name, e.what());
-            return false;
-        }
-    }
-    return true;
 }
 
 parse_result clone_tree(const parse_result* result) {

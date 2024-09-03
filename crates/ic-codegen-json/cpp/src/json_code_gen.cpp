@@ -668,7 +668,8 @@ void intercom::cidl::code_gen_json(const parse_result* result, const char* desti
             writer.end_object();
         }
         if (!file.str().empty()) {
-            write_if_changed(filepath, file.str());
+            // TODO(idarcar):
+            // write_if_changed(filepath, file.str());
         }
     }
 }

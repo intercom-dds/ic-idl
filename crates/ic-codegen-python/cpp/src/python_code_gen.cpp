@@ -2140,7 +2140,8 @@ static void code_gen_python_write(
                     init_file << data_stream.str();
                     init_file.close();
                 } else {
-                    write_if_changed(init_filepath, data_stream.str());
+                    // TODO(idarcar):
+                    // write_if_changed(init_filepath, data_stream.str());
                 }
             }
         }

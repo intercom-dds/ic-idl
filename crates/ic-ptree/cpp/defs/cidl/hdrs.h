@@ -97,11 +97,6 @@ PtreeSeqSeq ptree_build_order(const ptree* obj);
 /// Duplicates the entire tree and all related state.
 parse_result clone_tree(const parse_result* result);
 
-// Output content to file_name unless content equals the current file content.
-// file_name may contain an absolute or relative path, and any missing directories
-// are recursively created.
-bool write_if_changed(const std::string& file_name, const std::string& content);
-
 std::string copyright_header(const std::string& comment_str = "//");
 
 std::string tolower(std::string res);

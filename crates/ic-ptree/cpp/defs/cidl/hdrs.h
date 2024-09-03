@@ -65,15 +65,13 @@ void code_gen_java(const parse_result* result);
 
 void code_gen_java(const parse_result* result, const char* destination);
 
-void code_gen_python(const parse_result* result);
+void code_gen_python(const parse_result* result, ic_list_t* list);
 
-void code_gen_python(const parse_result* result, const char* destination);
-
-void code_gen_rust(const parse_result* result, const char* destination);
+void code_gen_rust(const parse_result* result, ic_list_t* list);
 
 void code_gen_proto(const parse_result* result, ic_list_t* list);
 
-void code_gen_idl(const parse_result* result, const char* destination);
+void code_gen_idl(const parse_result* result, ic_list_t* list);
 
 void code_gen_xml(const parse_result* result);
 

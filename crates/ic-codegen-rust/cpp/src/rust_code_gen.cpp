@@ -37,6 +37,7 @@
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "rust_common.h"
@@ -1513,50 +1514,43 @@ static void recurse_node(Twine& out, const ptree* node) {
     out(blank_line);
 }
 
-static void save_file(std::stringstream& stream, std::filesystem::path file) {
+static void save_file(std::stringstream& stream, std::filesystem::path file, ic_list_t* list) {
     if (file.empty()) {
         file = CommandLineOption::intercom_build() ? "mod" : "lib";
     }
     file.replace_extension(".rs");
-
-    if (CommandLineOption::list_only()) {
-        std::cout << file.c_str() << std::endl;
-    } else {
-        std::filesystem::path filepath = CommandLineOption::rust_target_directory();
-        filepath /= file;
-        write_if_changed(filepath.string(), stream.str());
-    }
+    ic_push_source(list, file.c_str(), stream.str().c_str());
 }
 
-static void emit_module(const Module& module, const std::filesystem::path& name = "") {
+static void
+emit_module(const Module& module, ic_list_t* list, const std::filesystem::path& name = "") {
     std::stringstream stream;
     emit_prelude(stream);
 
     for (const auto& mod : module.entries) {
         stream << "pub mod " << mod.first << ";\n";
-        emit_module(mod.second, name / mod.first);
+        emit_module(mod.second, list, name / mod.first);
     }
     if (!module.entries.empty()) {
         stream << '\n';
     }
     stream << module.printer.str();
-    save_file(stream, name);
+    save_file(stream, name, list);
 }
 
 template <typename P>
-static void emit_crate(const ptree* node, P predicate) {
+static void emit_crate(ic_list_t* list, const ptree* node, P predicate) {
     Twine out;
     for (auto obj : node) {
         if (predicate(obj)) {
             recurse_node(out, obj);
         }
     }
-    emit_module(out.modules());
+    emit_module(out.modules(), list);
 }
 
-void intercom::cidl::code_gen_rust(const parse_result* result, const char* destination) {
-    intercom::cidl::CommandLineOption::get_instance().rust_target_directory = destination;
+void intercom::cidl::code_gen_rust(const parse_result* result, ic_list_t* list) {
     auto cloned = clone_tree(result);
     transform_rust(&cloned);
-    emit_crate(cloned.tree, [&](const ptree* node) { return is_emit(node, LANG_RUST); });
+    emit_crate(list, cloned.tree, [&](const ptree* node) { return is_emit(node, LANG_RUST); });
 }

@@ -91,19 +91,19 @@ void ic_codegen_cpp(
     intercom::cidl::code_gen_dds_cplpl(res, config, destination);
 }
 
-void ic_codegen_python(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_python(const ic_parse_result_t* result, ic_list_t* list) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    intercom::cidl::code_gen_python(res, destination);
+    intercom::cidl::code_gen_python(res, list);
 }
 
-void ic_codegen_rust(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_rust(const ic_parse_result_t* result, ic_list_t* list) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    intercom::cidl::code_gen_rust(res, destination);
+    intercom::cidl::code_gen_rust(res, list);
 }
 
-void ic_codegen_idl(const ic_parse_result_t* result, const char* destination) {
+void ic_codegen_idl(const ic_parse_result_t* result, ic_list_t* list) {
     auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    intercom::cidl::code_gen_idl(res, destination);
+    intercom::cidl::code_gen_idl(res, list);
 }
 
 void ic_codegen_json(const ic_parse_result_t* result, const char* destination) {

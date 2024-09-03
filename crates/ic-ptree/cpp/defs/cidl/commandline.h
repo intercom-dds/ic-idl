@@ -35,7 +35,6 @@ class CommandLineOption {
   public:
     static bool intercom_build();
     static bool generate_typesupport_only();
-    static bool list_only();
     static bool no_rename();
     static bool proxies();
     static bool compatibility();

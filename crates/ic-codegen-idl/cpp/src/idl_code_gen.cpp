@@ -38,6 +38,7 @@
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "utils/md5.h"
@@ -874,25 +875,20 @@ static void code_gen_idl_write(
     ModuleMap& out,
     const std::string& name,
     const std::string& filename,
-    std::set<ptree*>& includes
+    std::set<ptree*>& includes,
+    ic_list_t* list
 ) {
     if (out.find(name) == out.end()) {
         return;
     }
-    std::string filepath;
-    if (CommandLineOption::idl_target_directory()) {
-        filepath = std::string(CommandLineOption::idl_target_directory()) + "/" + filename;
-    } else {
-        filepath = filename;
-    }
-    filepath = std::filesystem::path(filepath).replace_extension(".idl").string();
+    std::filesystem::path filepath(filename);
+    filepath.replace_extension(".idl");
 
     auto content = code_gen_idl_content(out, name, filename, includes);
-
-    write_if_changed(filepath, content);
+    ic_push_source(list, filepath.c_str(), content.c_str());
 }
 
-static void code_gen_idl(const parse_result* result) {
+void intercom::cidl::code_gen_idl(const parse_result* result, ic_list_t* list) {
     ModuleMap out;
 
     auto tree = result->tree;
@@ -907,15 +903,6 @@ static void code_gen_idl(const parse_result* result) {
         const ptree* include = *it;
         std::set<ptree*> includes;
         include_dependencies(result->tree, include, includes);
-        if (CommandLineOption::list_only()) {
-            std::cout << include->name << std::endl;
-        } else {
-            code_gen_idl_write(out, include->name, include->name, includes);
-        }
+        code_gen_idl_write(out, include->name, include->name, includes, list);
     }
-}
-
-void intercom::cidl::code_gen_idl(const parse_result* result, const char* destination) {
-    CommandLineOption::get_instance().idl_target_directory = destination;
-    ::code_gen_idl(result);
 }

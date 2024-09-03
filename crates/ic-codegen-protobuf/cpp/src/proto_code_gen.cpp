@@ -318,17 +318,13 @@ static void emit_prelude(Printer& out, const ptree* node) {
 
 static void emit_package(const ptree* node, const PrettyPrinter& pkg, ic_list_t* list) {
     auto file = file_name(node);
-    if (CommandLineOption::list_only()) {
-        std::cout << file << std::endl;
-    } else {
-        Printer content;
-        emit_prelude(content, node);
-        content(pkg);
+    Printer content;
+    emit_prelude(content, node);
+    content(pkg);
 
-        std::filesystem::path out = CommandLineOption::proto_target_directory();
-        out /= file;
-        ic_push_source(list, out.c_str(), content.str().c_str());
-    }
+    std::filesystem::path out = CommandLineOption::proto_target_directory();
+    out /= file;
+    ic_push_source(list, out.c_str(), content.str().c_str());
 }
 
 static void recurse_node(Printer& out, const ptree* node) {

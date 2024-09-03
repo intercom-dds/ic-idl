@@ -49,9 +49,6 @@ bool CommandLineOption::intercom_build() {
 bool CommandLineOption::generate_typesupport_only() {
     return g_current_options.generate_typesupport_only;
 }
-bool CommandLineOption::list_only() {
-    return g_current_options.list_only;
-}
 bool CommandLineOption::no_rename() {
     return g_current_options.no_rename;
 }

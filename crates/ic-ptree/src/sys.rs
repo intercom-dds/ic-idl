@@ -1033,10 +1033,7 @@ fn bindgen_test_layout_rust_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_rust(
-        result: *const ic_parse_result_t,
-        destination: *const ::std::os::raw::c_char,
-    );
+    pub fn ic_codegen_rust(result: *const ic_parse_result_t, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1080,10 +1077,7 @@ fn bindgen_test_layout_idl_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_idl(
-        result: *const ic_parse_result_t,
-        destination: *const ::std::os::raw::c_char,
-    );
+    pub fn ic_codegen_idl(result: *const ic_parse_result_t, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

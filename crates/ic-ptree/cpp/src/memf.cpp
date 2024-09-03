@@ -273,7 +273,11 @@ void savememf(
     } else {
         fullfilename = fmt::format("{}/{}", basedir, filename);
     }
-    if (!CommandLineOption::list_only()) {
+
+    // TODO(idarcar); ic_push_source
+    // if (!CommandLineOption::list_only()) {
+    // NOLINTNEXTLINE
+    if (false) {
         std::stringstream content;
         if (memf2) {
             content.write(

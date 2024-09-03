@@ -33,13 +33,13 @@
 #include <set>
 #include <string_view>
 
-#include "cidl/codegen.h"
 #include "cidl/commandline.h"
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -2081,8 +2081,12 @@ static void code_gen_python_compound(const ptree* obj, ModuleContext* module, Fi
     }
 }
 
-static void
-code_gen_python_write(FileMap& file_map, const std::string& name, const std::string& filename) {
+static void code_gen_python_write(
+    FileMap& file_map,
+    const std::string& name,
+    const std::string& filename,
+    ic_list_t* list
+) {
     if (file_map.find(filename) == file_map.end()) {
         std::cerr << "COULD NOT FIND FILE: " << name << std::endl;
         return;
@@ -2094,10 +2098,7 @@ code_gen_python_write(FileMap& file_map, const std::string& name, const std::str
         if (!module.second->pp.has_text_content()) {
             continue;
         }
-        std::string folderpath =
-            CommandLineOption::python_target_directory()
-                ? std::string(CommandLineOption::python_target_directory()) + "/"
-                : "";
+        std::string folderpath;
 
         if (module.first == name) {
             folderpath += extract_file_name(filename);
@@ -2180,23 +2181,18 @@ code_gen_python_write(FileMap& file_map, const std::string& name, const std::str
 
         module_ctxt->pp.print(file);
         file << std::endl;
-
-        if (CommandLineOption::list_only()) {
-            std::cout << file.str() << std::endl;
-        } else {
-            write_if_changed(folderpath, file.str());
-        }
+        ic_push_source(list, folderpath.c_str(), file.str().c_str());
     }
 }
 
-void intercom::cidl::code_gen_python(const parse_result* result) {
+void intercom::cidl::code_gen_python(const parse_result* result, ic_list_t* list) {
     FileMap module_map;
     for (const auto& obj : result->tree) {
         code_gen_python_rec(obj, nullptr, module_map);
     }
 
     for (const auto& include : result->includes) {
-        code_gen_python_write(module_map, include->name, extract_file_name(include->name));
+        code_gen_python_write(module_map, include->name, extract_file_name(include->name), list);
     }
 
     // Clean up
@@ -2205,9 +2201,4 @@ void intercom::cidl::code_gen_python(const parse_result* result) {
             delete el.second;
         }
     }
-}
-
-void intercom::cidl::code_gen_python(const parse_result* result, const char* destination) {
-    CommandLineOption::get_instance().python_target_directory = destination;
-    code_gen_python(result);
 }

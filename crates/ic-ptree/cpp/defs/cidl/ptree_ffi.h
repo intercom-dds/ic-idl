@@ -54,7 +54,7 @@ struct ic_parse_result_t* ic_ptree_merge(const struct ic_parse_result_t** result
 
 void ic_ptree_dump(const struct ic_parse_result_t* result);
 
-void ic_codegen_proto(const struct ic_parse_result_t* result, ic_list_t* list);
+void ic_codegen_proto(const struct ic_parse_result_t* result, struct ic_list_t* list);
 
 void ic_codegen_json(const struct ic_parse_result_t* result, const char* destination);
 
@@ -63,21 +63,21 @@ struct python_options_t {
     const char* global_postfix;
 };
 
-void ic_codegen_python(const struct ic_parse_result_t* result, const char* destination);
+void ic_codegen_python(const struct ic_parse_result_t* result, struct ic_list_t* list);
 
 struct rust_options_t {
     uint8_t no_rename;
     uint8_t must_use;
 };
 
-void ic_codegen_rust(const struct ic_parse_result_t* result, const char* destination);
+void ic_codegen_rust(const struct ic_parse_result_t* result, struct ic_list_t* list);
 
 struct idl_options_t {
     uint8_t doxygen;
     uint8_t expand;
 };
 
-void ic_codegen_idl(const struct ic_parse_result_t* result, const char* destination);
+void ic_codegen_idl(const struct ic_parse_result_t* result, struct ic_list_t* list);
 
 struct cpp_options_t {
     const char* header_postfix;

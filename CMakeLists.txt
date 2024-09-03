@@ -80,7 +80,7 @@ add_compile_definitions(
 )
 
 include_directories(external/utils/defs)
-
+include_directories(library/cpp/defs)
 include_directories(SYSTEM external/fmt/defs)
 
 add_subdirectory(crates/ic-ptree/cpp)

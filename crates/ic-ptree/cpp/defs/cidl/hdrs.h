@@ -33,7 +33,7 @@
 #include <string_view>
 #include <vector>
 
-#include "cidl/codegen.h"
+#include "cidl/commandline.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree_ffi.h"
 

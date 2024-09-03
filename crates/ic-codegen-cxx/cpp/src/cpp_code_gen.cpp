@@ -30,7 +30,6 @@
 #include <cstring>
 
 #include "InterCOM/version.h"
-#include "cidl/codegen.h"
 #include "cidl/commandline.h"
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"

@@ -91,6 +91,7 @@ pub struct OwnedChars {
     chars: Peekable<Chars<'static>>,
     inner: Rc<str>,
     index: u32,
+    line: u32,
 }
 
 impl OwnedChars {
@@ -102,6 +103,11 @@ impl OwnedChars {
     #[inline]
     pub fn index(&self) -> u32 {
         self.index
+    }
+
+    #[inline]
+    pub fn line(&self) -> u32 {
+        self.line
     }
 
     #[inline]
@@ -120,6 +126,7 @@ impl From<Rc<str>> for OwnedChars {
             chars: iter.peekable(),
             inner,
             index: 0,
+            line: 1,
         }
     }
 }
@@ -132,6 +139,10 @@ impl Iterator for OwnedChars {
     fn next(&mut self) -> Option<Self::Item> {
         let c = self.chars.next()?;
         self.index += c.len_utf8() as u32;
+        if c == '\n' {
+            self.line += 1;
+        }
+
         debug_assert!(
             u32::try_from(c.len_utf8()).is_ok(),
             "byte index exceeds u32::MAX",

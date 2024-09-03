@@ -354,15 +354,16 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         }
     }
 
-    fn update_builtins() {
-        // TODO: define __LINE__. Need to track that in iterator.
-        // TODO: define __FILE__. need to track current ID in iterator, too.
-        // let now = chrono::Local::now();
+    fn update_builtins(&mut self) {
+        let file = self.cursor().file_id();
+        let _path = self.state.vfs.path(file).to_string_lossy().to_string();
+        let _line = self.cursor().line().to_string();
+
         // let pairs = [
-        //     ("__TIME__".to_string(), now.format("%T").to_string()),
-        //     ("__DATE__".to_string(), now.format("%b %d %Y").to_string()),
-        //     ("__FILE__".to_string(), "<unknown>".to_string()),
-        //     ("__LINE__".to_string(), "0".to_string()),
+        //     ("__TIME__".to_string(), ...),
+        //     ("__DATE__".to_string(), ...),
+        //     ("__FILE__".to_string(), file),
+        //     ("__LINE__".to_string(), line),
         // ];
         // self.state.defines.extend(
         //     pairs
@@ -387,8 +388,6 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         Some((self.source_of(span), span))
     }
 
-    // TODO: move to File? that way we won't ever have to even touch the stack
-    // and we can avoid the transmute
     fn source_of(&self, span: SourceSpan) -> &'a str {
         let Some(file) = self.stack.last() else {
             unreachable!("cursor stack is empty");
@@ -776,7 +775,9 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn expand_function(&mut self, def: Token) {}
 
-    fn maybe_expand(&mut self, tok: Token) -> bool {
+    /// Expands and enqueues the definition of `tok` if it is a macro.
+    /// Returns `true` if the macro was expanded.
+    fn expand_macro(&mut self, tok: Token) -> bool {
         if tok.kind == Kind::Ident {
             let name = self.source_of(tok.span);
             match self.state.defines.get(name) {
@@ -814,7 +815,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
                 // If the current token is a macro, we expand it and queue up
                 // the expanded macros.
-                if self.maybe_expand(tok) {
+                if self.expand_macro(tok) {
                     continue;
                 }
                 return Some(tok);

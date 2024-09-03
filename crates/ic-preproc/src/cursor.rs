@@ -276,11 +276,6 @@ impl Cursor {
         Token { kind, span }
     }
 
-    // TODO: literals can be escaped. Should we care? Support it + add pedantic
-    // lint maybe? don't think it's allowed in standard IDL, but also not sure
-    // if the standard says anything about it.
-    //
-    // yes, we do care. but we still may need a lint.
     fn string_lit(&mut self) -> Token {
         // let span = self.eat_while(|v| v != '"');
         let start = self.chars.index();
@@ -313,6 +308,9 @@ impl Cursor {
     // Code comments (`//`) are stripped from the output, but documentation
     // comments (`///`) are not.
     fn comment(&mut self) -> (Token, bool) {
+        // Consume the leading '/'
+        _ = self.chars.next();
+
         let is_doc = self.chars.peek() == '/';
         let start = self.chars.index();
         // self.until_peek(Kind::Newline);
@@ -334,9 +332,10 @@ impl Cursor {
         )
     }
 
-    // TODO: multi-line doc comments should... you guessed it... be stripped,
-    // but be replaced by the correct amount of newlines.
     fn block_comment(&mut self) -> (Token, bool) {
+        // Consume the leading '/'
+        _ = self.chars.next();
+
         let is_doc = matches!(self.chars.peek(), '*' | '!');
         let start = self.chars.index();
 
@@ -463,7 +462,6 @@ impl Cursor {
 
                 '/' => match self.chars.peek() {
                     '/' => {
-                        _ = self.chars.next();
                         if self.comment().1 {
                             Kind::Comment
                         } else {
@@ -471,7 +469,6 @@ impl Cursor {
                         }
                     }
                     '*' => {
-                        _ = self.chars.next();
                         if self.block_comment().1 {
                             Kind::Comment
                         } else {
@@ -500,6 +497,8 @@ impl Cursor {
         }
     }
 
+    /// Advances if the iterator if the next, peeked token corresponds is of
+    /// type `kind`.
     pub fn take_if(&mut self, kind: Kind) -> Option<Token> {
         if self.peek()? == kind {
             self.next()
@@ -508,8 +507,20 @@ impl Cursor {
         }
     }
 
+    /// Returns the source of th given span.
     pub fn source_of(&self, span: SourceSpan) -> &str {
+        debug_assert_eq!(self.file_id, span.file_id, "FileId mismatch");
         &self.chars.as_str()[span.range()]
+    }
+
+    /// Returns the ID of the cursor's file.
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
+
+    /// Returns the current line of the cursor.
+    pub fn line(&self) -> u32 {
+        self.chars.line()
     }
 
     /// Peeks the next token by cloning the underlying iterator. This is

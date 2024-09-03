@@ -25,26 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::path::Path;
+const FILES: &[&str] = &["cpp/ptree_dump.cpp"];
 
-use ic_ptree::ParseResult;
-
-#[must_use]
-pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<String> {
-    let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
-    let options = ic_ptree::sys::cpp_options_t {
-        header_postfix: std::ptr::null(),
-        header_ext: std::ptr::null(),
-        dll_export: std::ptr::null(),
-        file_prefix: std::ptr::null(),
-        scoped_enums: 0,
-        access_functions: 0,
-        no_stream_op: 0,
-        use_fmt: 0,
-    };
-
-    unsafe {
-        ic_ptree::sys::ic_codegen_cpp(result.as_raw(), options, dir.as_ptr());
-    }
-    vec![]
+fn main() {
+    ic_cc::build(FILES, &[]);
 }

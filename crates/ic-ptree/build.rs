@@ -32,7 +32,6 @@ const FILES: &[&str] = &[
     "cpp/src/idl_parser.cpp",
     "cpp/src/memf.cpp",
     "cpp/src/ptree_builder.cpp",
-    "cpp/src/ptree_dump.cpp",
     "cpp/src/ptree_ffi.cpp",
     "cpp/src/ptree_helpers.cpp",
     "cpp/src/symbols.cpp",

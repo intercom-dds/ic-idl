@@ -35,7 +35,7 @@ pub mod sys;
 #[must_use]
 #[derive(Debug)]
 pub struct ParseResult {
-    pub inner: *mut sys::ic_parse_result_t,
+    inner: *mut sys::ic_parse_result_t,
 }
 
 impl ParseResult {
@@ -49,6 +49,11 @@ impl ParseResult {
         let c_str = unsafe { CStr::from_ptr(sys::ic_parse_error(self.inner)) };
         let owned = c_str.to_str().map(ToString::to_string).ok()?;
         if owned.is_empty() { None } else { Some(owned) }
+    }
+
+    #[must_use]
+    pub fn as_raw(&self) -> *mut sys::ic_parse_result_t {
+        self.inner
     }
 }
 
@@ -96,13 +101,6 @@ pub fn lower_ast(mut ast: &[Item]) -> ParseResult {
     ParseResult { inner }
 }
 
-/// Dumps the ptree to `stdout` in a tree-like format.
-pub fn ptree_dump(result: &ParseResult) {
-    unsafe {
-        sys::ic_ptree_dump(result.inner);
-    }
-}
-
 #[macro_export]
 macro_rules! define_backend {
     ($fn_name:tt, $ffi_name:tt) => {
@@ -110,7 +108,7 @@ macro_rules! define_backend {
         pub fn $fn_name(result: &$crate::ParseResult, directory: &std::path::Path) -> Vec<String> {
             let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
             unsafe {
-                $crate::sys::$ffi_name(result.inner, dir.as_ptr());
+                $crate::sys::$ffi_name(result.as_raw(), dir.as_ptr());
             }
             vec![]
         }

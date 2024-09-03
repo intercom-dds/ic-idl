@@ -164,6 +164,7 @@ name = "ic-diagnostic"
 version = "0.0.0"
 dependencies = [
  "ic-cli",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -213,6 +214,7 @@ dependencies = [
  "ic-parse",
  "ic-preproc",
  "ic-ptree",
+ "ic-ptree-pretty",
  "ic-vfs",
  "intercom-cts",
 ]
@@ -263,6 +265,14 @@ dependencies = [
  "ic-cc",
  "ic-parse",
  "ic-syntax",
+]
+
+[[package]]
+name = "ic-ptree-pretty"
+version = "0.1.0"
+dependencies = [
+ "ic-cc",
+ "ic-ptree",
 ]
 
 [[package]]

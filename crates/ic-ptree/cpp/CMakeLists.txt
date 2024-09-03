@@ -32,7 +32,6 @@ add_library(ic_ptree OBJECT
     src/idl_parser.cpp
     src/memf.cpp
     src/ptree_builder.cpp
-    src/ptree_dump.cpp
     src/ptree_ffi.cpp
     src/ptree_helpers.cpp
     src/symbols.cpp

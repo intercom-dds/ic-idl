@@ -35,278 +35,152 @@ use std::fmt;
 use chumsky::Stream;
 use ic_macros::DiscHash;
 use ic_syntax::Span;
-use logos::{Lexer, Logos};
 
 /// All tokens recognized by the lexer.
-#[derive(Logos, Clone, Debug, PartialEq, DiscHash)]
-#[logos(skip r"[ \t\r\n\f]+")]
-#[logos(skip r"//[^@][^\r\n]*")]
-#[logos(skip r"/\*[^*!]([^*]|\*[^\/])+\*/")]
-#[logos(subpattern digits = "[0-9][_0-9]*")]
-#[logos(subpattern ident = r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
-#[logos(subpattern block = r#"/\*[\*!]([^*]|\*[^\/])+\*/"#)]
-#[logos(subpattern comment = r#"//[/!][^\r\n]*"#)]
+#[derive(Clone, Debug, PartialEq, DiscHash)]
 pub enum Kind {
-    #[token("any")]
     Any,
-
-    #[token("@annotation")]
     Annotation,
-
-    #[token("module")]
     Module,
-
-    #[token("struct")]
     Struct,
-
-    #[token("const")]
     Const,
-
-    #[token("bitmask")]
     Bitmask,
-
-    #[token("bitset")]
     Bitset,
-
-    #[token("bitfield")]
     Bitfield,
-
-    #[token("enum")]
     Enum,
-
-    #[token("exception")]
     Exception,
-
-    #[token("typedef")]
     Typedef,
-
-    #[token("native")]
     Native,
-
-    #[token("fixed")]
     Fixed,
-
-    #[token("union")]
     Union,
-
-    #[token("switch")]
     Switch,
-
-    #[token("case")]
     Case,
-
-    #[token("default")]
     Default,
-
-    #[token("null")]
     Null,
-
-    #[token("valuetype")]
     Valuetype,
-
-    #[token("public")]
     Public,
-
-    #[token("private")]
     Private,
-
-    #[token("supports")]
     Supports,
-
-    #[token("factory")]
     Factory,
-
-    #[token("local")]
     Local,
-
-    #[token("interface")]
     Interface,
-
-    #[token("raises")]
     Raises,
-
-    #[token("getraises")]
     GetRaises,
-
-    #[token("setraises")]
     SetRaises,
-
-    #[token("attribute")]
     Attribute,
-
-    #[token("readonly")]
     ReadOnly,
-
-    #[token("oneway")]
     Oneway,
-
-    #[token("in")]
     In,
-
-    #[token("out")]
     Out,
-
-    #[token("inout")]
     InOut,
-
-    #[token("map")]
     Map,
-
-    #[token("sequence")]
     Sequence,
-
-    #[token("string")]
     String,
-
-    #[token("wstring")]
     WString,
-
-    #[token("unsigned")]
     Unsigned,
-
-    #[token("short")]
     Short,
-
-    #[token("long")]
     Long,
 
     /// `,`
-    #[token(",")]
     Comma,
 
     /// `.`
-    #[token(".")]
     Period,
 
     /// `:`
-    #[token(":")]
     Colon,
 
     /// `::`
-    #[token("::")]
     DColon,
 
     /// `:`
-    #[token(";")]
     Semi,
 
     /// `=`
-    #[token("=")]
     Eq,
 
     /// `{`
-    #[token("{")]
     LBrace,
 
     /// `}`
-    #[token("}")]
     RBrace,
 
     /// `(`
-    #[token("(")]
     LParen,
 
     /// `)`
-    #[token(")")]
     RParen,
 
     /// `[`
-    #[token("[")]
     LBracket,
 
     /// `]`
-    #[token("]")]
     RBracket,
 
     /// `<`
-    #[token("<")]
     Less,
 
     /// `>`
-    #[token(">")]
     Greater,
 
     /// `&`
-    #[token("&")]
     BitAnd,
 
     /// `|`
-    #[token("|")]
     BitOr,
 
     /// `^`
-    #[token("^")]
     BitXor,
 
     /// `+`
-    #[token("+")]
     Plus,
 
     /// `-`
-    #[token("-")]
     Minus,
 
     /// `~`
-    #[token("~")]
     Tilde,
 
     /// `*`
-    #[token("*")]
     Star,
 
     /// `/`
-    #[token("/")]
     Slash,
 
     /// `%`
-    #[token("%")]
     Modulo,
 
     /// `TRUE`
-    #[regex("true|TRUE", is_uppercase)]
     True(bool),
 
     /// `FALSE`
-    #[regex("false|FALSE", is_uppercase)]
     False(bool),
 
     /// Octal number, e.g. `0123`.
-    #[regex("0[1-7][0-7]*", |v| integer_lit(v, 8))]
     Octal(u64),
 
     /// Decimal number.
-    #[regex(r#"(?:0|[1-9]\d*)"#, |v| integer_lit(v, 10))]
     Decimal(u64),
 
     /// Hexadecimal number.
-    #[regex("0[xX][a-fA-F0-9]+", |v| integer_lit(v, 16))]
     Hex(u64),
 
     /// Floating-point literal
-    #[regex(
-        r"(?&digits)(?:[eE](?&digits)|\.(?&digits)(?:[eE](?&digits))?)",
-        float_lit
-    )]
     Float(f64),
 
     /// String literal. Handles escaped quotes.
-    #[regex(r#"L?"(?:[^"]|\\")*""#, string_lit)]
     StringLit(String),
 
     /// Applied annotation made up of a valid UAX#31 identifier
-    #[regex(r#"(@|//@)(?&ident)"#, to_owned)]
     AnnotationAppl(String),
 
     /// A valid UAX#31 identifier.
-    #[regex("(?&ident)", to_owned)]
     Ident(String),
 
     /// Any single UTF-8 character surrounded by single quotes.
-    #[regex(r"L?'(?:\\.|[^\\'])?'", to_char)]
     Char(Option<char>),
 
     // Preserve documentation comments
-    #[regex(r"(?&comment)|(?&block)", to_owned, priority = 7)]
     Comment(String),
 
     /// Fallback for invalid tokens
@@ -395,47 +269,6 @@ impl fmt::Display for Kind {
 
 impl Eq for Kind {}
 
-// Empty character literals are permitted during parsing and instead gets
-// checked later during the linting stage.
-fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
-    match lex.slice().len() {
-        // Empty character literal
-        2 => None,
-
-        // Single UTF-8 character literal
-        3 => lex.slice().chars().nth(1),
-
-        // An escaped single-quote character
-        4 => Some('\''),
-
-        // The regex will never match more than 4 characters
-        _ => unreachable!(),
-    }
-}
-
-fn integer_lit(lex: &mut Lexer<Kind>, radix: u32) -> u64 {
-    u64::from_str_radix(lex.slice(), radix).unwrap_or(0)
-}
-
-fn float_lit(lex: &mut Lexer<Kind>) -> f64 {
-    lex.slice().parse().unwrap()
-}
-
-fn string_lit(lex: &mut Lexer<Kind>) -> String {
-    let mut iter = lex.slice().chars();
-    iter.next();
-    iter.next_back();
-    iter.as_str().to_string()
-}
-
-fn is_uppercase(lex: &mut Lexer<Kind>) -> bool {
-    lex.slice().chars().next().map_or(false, char::is_uppercase)
-}
-
-fn to_owned(lex: &mut Lexer<Kind>) -> String {
-    lex.slice().to_string()
-}
-
 /// A lexed token. Contains the span of the token and its kind.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Token {
@@ -443,42 +276,104 @@ pub struct Token {
     pub kind: Kind,
 }
 
-/// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
-/// backtracking and some other required features.
-#[must_use]
-pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
-    // Remove trailing whitespace so we can correctly scope errors about
-    // missing semicolons at the end of the file.
-    let input = input.trim_end();
-    let lexer = lexer(input);
-    let end = Span {
-        start: input.len() as u32,
-        end: input.len() as u32 + 1,
-    };
+// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
+// backtracking and some other required features.
+// #[must_use]
+// pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
+//     // Remove trailing whitespace so we can correctly scope errors about
+//     // missing semicolons at the end of the file.
+//     let input = input.trim_end();
+//     let lexer = lexer(input);
+//     let end = Span {
+//         start: input.len() as u32,
+//         end: input.len() as u32 + 1,
+//     };
+//
+//     Stream::from_iter(end, lexer.map(move |tok| (tok.kind, tok.span)))
+// }
 
-    Stream::from_iter(end, lexer.map(move |tok| (tok.kind, tok.span)))
+// Constructs an iterator that lazily lexes the input.
+//
+// Lexing is infallible: any invalid tokens or characters will be mapped to a
+// `Kind::Invalid` token.
+// pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
+//     // If push comes to shove, we create an invalid token that spans from the
+//     // current position until the next delimiter. This makes lexing infallible,
+//     // and lets us better handle the error during parsing.
+//     Kind::lexer(input).spanned().map(|(token, span)| Token {
+//         kind: token.unwrap_or(Kind::Invalid),
+//         span: Span {
+//             start: span.start as u32,
+//             end: span.end as u32,
+//         },
+//     })
+// }
+
+impl From<ic_preproc::Token> for Token {
+    fn from(value: ic_preproc::Token) -> Self {
+        let kind = match value.kind {
+            ic_preproc::Kind::Ident => Kind::Ident("".to_string()),
+            ic_preproc::Kind::Comment => Kind::Comment("".to_string()),
+            // ic_preproc::Kind::Number { base: Base } => Kind::,
+            // ic_preproc::Kind::Float => Kind::,
+            ic_preproc::Kind::String => Kind::String,
+            ic_preproc::Kind::Char => Kind::Char(None),
+            // ic_preproc::Kind::Hash => Kind::Hash,
+            // ic_preproc::Kind::At => Kind::,
+            ic_preproc::Kind::Comma => Kind::Comma,
+            ic_preproc::Kind::Period => Kind::Period,
+            ic_preproc::Kind::Colon => Kind::Colon,
+            ic_preproc::Kind::DColon => Kind::DColon,
+            ic_preproc::Kind::Semi => Kind::Semi,
+            ic_preproc::Kind::Eq => Kind::Eq,
+            // ic_preproc::Kind::EqEq => Kind::EqEq,
+            // ic_preproc::Kind::NotEq => Kind::NotEq,
+            ic_preproc::Kind::LBrace => Kind::LBrace,
+            ic_preproc::Kind::RBrace => Kind::RBrace,
+            ic_preproc::Kind::LParen => Kind::LParen,
+            ic_preproc::Kind::RParen => Kind::RParen,
+            ic_preproc::Kind::LBracket => Kind::LBracket,
+            ic_preproc::Kind::RBracket => Kind::RBracket,
+            ic_preproc::Kind::Lt => Kind::Less,
+            ic_preproc::Kind::Gt => Kind::Greater,
+            // ic_preproc::Kind::BitNot => Kind::BitNot,
+            ic_preproc::Kind::BitAnd => Kind::BitAnd,
+            ic_preproc::Kind::BitOr => Kind::BitOr,
+            ic_preproc::Kind::BitXor => Kind::BitXor,
+            // ic_preproc::Kind::Not => Kind::Not,
+            // ic_preproc::Kind::And => Kind::And,
+            // ic_preproc::Kind::Or => Kind::Or,
+            ic_preproc::Kind::Plus => Kind::Plus,
+            ic_preproc::Kind::Minus => Kind::Minus,
+            ic_preproc::Kind::Tilde => Kind::Tilde,
+            ic_preproc::Kind::Star => Kind::Star,
+            ic_preproc::Kind::Slash => Kind::Slash,
+            ic_preproc::Kind::Modulo => Kind::Modulo,
+            _ => Kind::Invalid,
+        };
+
+        Self {
+            span: Span {
+                start: value.span.start,
+                end: value.span.end,
+            },
+            kind,
+        }
+    }
 }
 
-/// Constructs an iterator that lazily lexes the input.
-///
-/// Lexing is infallible: any invalid tokens or characters will be mapped to a
-/// `Kind::Invalid` token.
-pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
-    // If push comes to shove, we create an invalid token that spans from the
-    // current position until the next delimiter. This makes lexing infallible,
-    // and lets us better handle the error during parsing.
-    Kind::lexer(input).spanned().map(|(token, span)| Token {
-        kind: token.unwrap_or(Kind::Invalid),
-        span: Span {
-            start: span.start as u32,
-            end: span.end as u32,
-        },
-    })
+pub fn from_iter<I>(iter: I) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)>>
+where
+    I: IntoIterator<Item = ic_preproc::Token>,
+{
+    let iter = iter.into_iter().map(|v| Token::from(v));
+    let end = Span::default();
+    Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
 }
 
-/// Exhaustively tokenizes the entire input string, returning a list of all
-/// lexed tokens.
-#[must_use]
-pub fn scan(input: &str) -> Vec<Token> {
-    lexer(input).collect()
-}
+// Exhaustively tokenizes the entire input string, returning a list of all
+// lexed tokens.
+// #[must_use]
+// pub fn scan(input: &str) -> Vec<Token> {
+//     lexer(input).collect()
+// }

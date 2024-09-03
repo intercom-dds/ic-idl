@@ -32,9 +32,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::string::FromUtf8Error;
 
+pub use cursor::{Kind, SourceSpan, Token};
 use ic_vfs::{FileId, SourceMap};
-pub use processor::TokenIter;
-use processor::{Error, State};
+use processor::Error;
+pub use processor::{State, TokenIter};
 
 mod cursor;
 mod iter;

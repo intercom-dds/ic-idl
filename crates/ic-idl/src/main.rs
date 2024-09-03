@@ -88,6 +88,7 @@ fn main() {
 
     let options = Options {
         codegen: CodegenOptions::from_result(&result),
+        cpp: CppOptions::from_result(&result),
         rust: RustOptions::from_result(&result),
         python: PythonOptions::from_result(&result),
         idl: IdlOptions::from_result(&result),
@@ -179,14 +180,14 @@ where
 fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let files = collect_files(&options.files)?;
     for file in files {
-        let input = match std::fs::read_to_string(&file) {
-            Ok(v) => v,
-            Err(e) => bail!("couldn't read '{}': {e}", file.display().yellow()),
-        };
-        let ast = ic_parse::from_str(&input);
+        // let input = match std::fs::read_to_string(&file) {
+        //     Ok(v) => v,
+        //     Err(e) => bail!("couldn't read '{}': {e}", file.display().yellow()),
+        // };
+        let ast = ic_parse::from_path(&file);
 
         if options.unstable.token_dump {
-            println!("{:#?}", ic_parse::lexer::scan(&input));
+            // println!("{:#?}", ic_parse::lexer::scan(&input));
         }
 
         match ast {
@@ -203,7 +204,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 
                 for diag in &report.diagnostics {
                     let mut buf = String::new();
-                    ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
+                    // ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
                     eprintln!("{buf}");
                 }
 
@@ -215,7 +216,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 try_ptree(options, &ptree)?;
             }
             Err(e) => {
-                pretty::emit_errors(&input, &e);
+                // pretty::emit_errors(&input, &e);
                 error!(
                     "aborting due to {} previous error{}",
                     e.len(),

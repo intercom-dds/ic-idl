@@ -27,14 +27,6 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn is_leap(year: u64) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-}
-
-fn days_in_year(year: u64) -> u64 {
-    if is_leap(year) { 366 } else { 365 }
-}
-
 const UNIX_YEAR: u64 = 1970;
 const SECS_MINUTE: u64 = 60;
 const SECS_HOUR: u64 = 60 * SECS_MINUTE;
@@ -44,6 +36,14 @@ const DAYS_IN_MONTH: [u64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 const MONTH: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+fn is_leap(year: u64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
+fn days_in_year(year: u64) -> u64 {
+    if is_leap(year) { 366 } else { 365 }
+}
 
 fn format_time(secs: u64) -> String {
     let clock = secs % SECS_DAY;

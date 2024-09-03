@@ -38,9 +38,9 @@ workspace = true
 
 [dependencies]
 chumsky = { version = "0.9.3", default-features = false }
-logos = "0.14.0"
 
 ic-macros = { path = "../ic-macros" }
+ic-preproc = { path = "../ic-preproc" }
 ic-syntax = { path = "../ic-syntax" }
 ic-vfs = { path = "../ic-vfs" }
 

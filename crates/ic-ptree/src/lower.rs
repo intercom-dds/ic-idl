@@ -437,13 +437,13 @@ where
 }
 
 unsafe fn inject_builtin(state: *mut sys::parser_state) {
-    let builtin =
-        ic_parse::from_str(BUILTIN_ANNOTATIONS).expect("failed to parse built-in annotations");
+    // let builtin =
+    //     ic_parse::from_str(BUILTIN_ANNOTATIONS).expect("failed to parse built-in annotations");
 
     // Discard the generated nodes -- we don't want to include the built-in
     // types in the tree. They just need to be registered in the symbol map with
     // their respective definitions.
-    lower_item_list(state, &builtin.tree);
+    // lower_item_list(state, &builtin.tree);
 }
 
 pub extern "C" fn callback(

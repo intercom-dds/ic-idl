@@ -26,9 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const FILES: &[&str] = &[
-    "cpp/src/rust_code_gen.cpp",
-    "cpp/src/rust_common.cpp",
-    "cpp/src/rust_transform.cpp",
+    "cpp/rust_code_gen.cpp",
+    "cpp/rust_common.cpp",
+    "cpp/rust_transform.cpp",
 ];
 
 fn main() {

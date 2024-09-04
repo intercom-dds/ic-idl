@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-const FILES: &[&str] = &["cpp/src/idl_code_gen.cpp"];
+const FILES: &[&str] = &["cpp/idl_code_gen.cpp"];
 
 fn main() {
     ic_cc::build(FILES);

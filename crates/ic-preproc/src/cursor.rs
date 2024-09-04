@@ -41,6 +41,7 @@ pub struct SourceSpan {
 }
 
 impl SourceSpan {
+    #[must_use]
     pub fn range(&self) -> Range<usize> {
         self.start as usize..self.end as usize
     }

@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::fmt::Write;
 use std::rc::Rc;
 
@@ -175,6 +175,7 @@ impl IfState {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct State<'a> {
     defines: HashMap<String, Macro>,
@@ -195,18 +196,22 @@ impl<'a> State<'a> {
         }
     }
 
+    #[must_use]
     pub fn is_defined(&self, macr: &str) -> bool {
-        self.defines.get(macr).is_some()
+        self.defines.contains_key(macr)
     }
 
+    #[must_use]
     pub fn get_macro(&self, macr: &str) -> Option<&Macro> {
         self.defines.get(macr)
     }
 
+    #[must_use]
     pub fn warnings(&self) -> &[Error] {
         &self.warnings
     }
 
+    #[must_use]
     pub fn errors(&self) -> &[Error] {
         &self.errors
     }
@@ -508,18 +513,17 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             Macro::Object { span, def }
         };
 
-        if self.is_active() {
-            if self
+        if self.is_active()
+            && self
                 .state
                 .defines
                 .insert(name.to_string(), definition)
                 .is_some()
-            {
-                self.state.warnings.push(Error::Syntax {
-                    message: "macro redefined",
-                    span,
-                });
-            }
+        {
+            self.state.warnings.push(Error::Syntax {
+                message: "macro redefined",
+                span,
+            });
         }
         Some(())
     }
@@ -768,12 +772,9 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                             // #endif
                             //
                             // The above should work.
-                            //
-                            // I guess we need a set of tokens, then record
-                            // which macros we've expanded to prevent infinite recusion.
                             i128::from(true)
                         } else {
-                            i128::from(false)
+                            0
                         }
                     }
                     _ => unreachable!(),
@@ -826,26 +827,57 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         self.eval_expr(expr).map(|v| v != 0)
     }
 
-    fn expand_function() {}
+    fn expand_inner(&mut self, token: Token, seen: &mut BTreeSet<&'a str>) {
+        // Only identifiers can be macros
+        if token.kind != Kind::Ident {
+            self.state.queue.push_back(token);
+            return;
+        }
+
+        let name = self.source_of(token.span);
+        if let Some(v) = self.state.defines.get(name) {
+            // Macros should not be recursively expanded
+            if !seen.insert(name) {
+                self.state.queue.push_back(token);
+                return;
+            }
+
+            // Bail if we've nested too deeply
+            if seen.len() >= self.args.recursion_depth {
+                self.state.errors.push(Error::Syntax {
+                    message: "macro recursion depth limit was reached",
+                    span: token.span,
+                });
+                return;
+            }
+
+            match v {
+                Macro::Function { .. } => todo!(),
+                Macro::Object { def, .. } => {
+                    for tok in def.clone() {
+                        let name = self.source_of(tok.span);
+                        self.expand_inner(tok, seen);
+                    }
+                }
+            };
+            seen.remove(name);
+        } else {
+            self.state.queue.push_back(token);
+        }
+    }
 
     /// Expands and enqueues the definition of `tok` if it is a macro.
     /// Returns `true` if the macro was expanded.
+    ///
+    /// A macro expansion is not allowed to have side effects, so we
+    /// can fully expand the entire macro definition here. This is
+    /// important as we need to detect and break potential cycles.
     fn expand_macro(&mut self, tok: Token) -> bool {
-        if tok.kind == Kind::Ident {
-            let name = self.source_of(tok.span);
-            match self.state.defines.get(name) {
-                Some(v) => match v {
-                    Macro::Function { def, .. } => {
-                        self.state.queue.extend(def.iter().copied());
-                        true
-                    }
-                    Macro::Object { def, .. } => {
-                        self.state.queue.extend(def.iter().copied());
-                        true
-                    }
-                },
-                None => false,
-            }
+        let name = self.source_of(tok.span);
+        if self.is_defined(name) {
+            let mut seen = BTreeSet::new();
+            self.expand_inner(tok, &mut seen);
+            true
         } else {
             false
         }
@@ -859,15 +891,15 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 return Some(tok);
             }
 
-            let top = self.stack.last_mut()?;
-            if let Some(tok) = top.cursor.next() {
+            // Advance the cursor and continue parsing directives
+            while let Some(tok) = self.stack.last_mut()?.cursor.next() {
                 if tok.kind == Kind::Hash {
                     self.keyword();
                     continue;
                 }
 
                 // If the current token is a macro, we expand it and queue up
-                // the expanded macros.
+                // the expanded tokens.
                 if self.expand_macro(tok) {
                     continue;
                 }
@@ -875,6 +907,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             }
 
             // Make sure all conditional directives were terminated
+            let top = self.stack.last_mut()?;
             while let Some(cond) = top.current.pop() {
                 self.state.errors.push(Error::Syntax {
                     message: "unterminated conditional directive",
@@ -1105,20 +1138,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not yet supported"]
-    fn recursively_expand() {
-        let expanded = expand(
-            r#"
-                #define baz 123
-                #define bar baz
-                #define foo bar
-                foo
-            "#,
-        );
-        assert_eq!(expanded, "123");
-    }
-
-    #[test]
     fn recursive_macro() {
         // A macro should not be expanded from the definition of itself, so
         // "foo" in the macro definition is just treated as a normal identifier
@@ -1133,17 +1152,31 @@ mod tests {
     }
 
     #[test]
-    fn recursive_indirect() {
+    fn recursively_expand() {
+        let expanded = expand(
+            r#"
+                #define baz 123
+                #define bar baz
+                #define foo bar
+                foo
+            "#,
+        );
+        assert_eq!(expanded, "123");
+    }
+
+    #[test]
+    fn recursive_cyclic() {
         // Recursion stops as soon as we find a macro we've already expanded.
         let expanded = expand(
             r#"
-                #define foo bar
-                #define bar foo
-                #define baz bar
-                baz
+                #define foo foo foo
+                #define bar baz
+                #define baz foo
+
+                foo bar baz
             "#,
         );
-        assert_eq!(expanded, "bar");
+        assert_eq!(expanded, "foo foo foo foo foo foo");
     }
 
     #[test]

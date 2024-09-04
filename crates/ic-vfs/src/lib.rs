@@ -77,6 +77,7 @@ pub struct FileInfo {
 pub struct SourceMap {
     sources: Arena<FileInfo>,
     files: BTreeMap<PathBuf, FileId>,
+    builtin_count: usize,
 }
 
 impl SourceMap {
@@ -84,8 +85,12 @@ impl SourceMap {
     ///
     /// Returns an error if `path` does not exist, if we do not have permission
     /// to read the file, or if the contents of the file are not valid UTF-8.
-    pub fn open<P: AsRef<Path>>(&mut self, path: P) -> io::Result<(FileId, Rc<str>)> {
-        let path = std::path::absolute(path.as_ref())?;
+    pub fn open<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        kind: Include,
+    ) -> io::Result<(FileId, Rc<str>)> {
+        let path = std::path::absolute(path)?;
         let src = match self.files.entry(path) {
             Entry::Occupied(id) => {
                 let id = *id.get();
@@ -94,11 +99,24 @@ impl SourceMap {
             Entry::Vacant(v) => {
                 let source = Rc::from(std::fs::read_to_string(v.key())?);
                 let path = v.key().clone();
-                let id = self.insert(path, source, Span::default());
+                let id = self.insert(path, source, Span::default(), kind);
                 (id, self.source(id))
             }
         };
         Ok(src)
+    }
+
+    /// Creates a virtual file that contains the given sources.
+    pub fn embed(&mut self, src: &str) -> FileId {
+        let source = Rc::from(src);
+        let name = format!("<builtin-{}", self.builtin_count);
+        self.builtin_count += 1;
+        self.insert(
+            PathBuf::from(name),
+            source,
+            Span::default(),
+            Include::Static,
+        )
     }
 
     /// # Panics
@@ -137,13 +155,13 @@ impl SourceMap {
         todo!()
     }
 
-    fn insert(&mut self, path: PathBuf, source: Rc<str>, span: Span) -> FileId {
+    fn insert(&mut self, path: PathBuf, source: Rc<str>, span: Span, kind: Include) -> FileId {
         let info = FileInfo {
             path: path.clone(),
             span,
             source,
             included_from: None,
-            kind: Include::Local,
+            kind,
         };
 
         let id = self.sources.alloc(info);

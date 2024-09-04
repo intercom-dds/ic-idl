@@ -33,7 +33,7 @@ use std::path::{Path, PathBuf};
 use std::string::FromUtf8Error;
 
 pub use cursor::{Kind, SourceSpan, Token};
-use ic_vfs::{FileId, SourceMap};
+use ic_vfs::{FileId, Include, SourceMap};
 use processor::Error;
 pub use processor::{State, TokenIter};
 
@@ -165,7 +165,7 @@ where
     P: AsRef<Path>,
 {
     let mut vfs = SourceMap::default();
-    let (file_id, _) = vfs.open(path)?;
+    let (file_id, _) = vfs.open(path, Include::Static)?;
     let mut state = State::new(&mut vfs);
     Ok(processor::to_string(file_id, args, &mut state))
 }

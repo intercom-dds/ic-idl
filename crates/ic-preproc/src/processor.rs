@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Write;
 use std::rc::Rc;
@@ -36,7 +37,7 @@ use crate::cursor::{Base, Cursor, Directive, Kind, SourceSpan, Token};
 use crate::{time, ProcArgs};
 
 #[derive(Debug)]
-enum Macro {
+pub enum Macro {
     Function {
         span: SourceSpan,
         args: Vec<Token>,
@@ -192,6 +193,22 @@ impl<'a> State<'a> {
             warnings: vec![],
             queue: VecDeque::new(),
         }
+    }
+
+    pub fn is_defined(&self, macr: &str) -> bool {
+        self.defines.get(macr).is_some()
+    }
+
+    pub fn get_macro(&self, macr: &str) -> Option<&Macro> {
+        self.defines.get(macr)
+    }
+
+    pub fn warnings(&self) -> &[Error] {
+        &self.warnings
+    }
+
+    pub fn errors(&self) -> &[Error] {
+        &self.errors
     }
 }
 
@@ -418,7 +435,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn dir_include(&mut self, span: SourceSpan) {
         let cursor = self.cursor();
-        let (_, include) = match cursor.peek() {
+        let (kind, path) = match cursor.peek() {
             Some(Kind::Lt) => {
                 _ = cursor.next();
                 let (_, span) = cursor.until_peek(Kind::Gt);
@@ -446,10 +463,10 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 return;
             }
 
-            let include = self.source_of(include);
+            let include = self.source_of(path);
             let include = include.trim_start_matches('"').trim_end_matches('"');
 
-            match self.state.vfs.open(include) {
+            match self.state.vfs.open(include, kind) {
                 Ok((id, source)) => {
                     let cursor = File::from_src(source, id);
                     self.stack.push(cursor);
@@ -490,7 +507,20 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             let def = self.cursor().until_newline();
             Macro::Object { span, def }
         };
-        self.state.defines.insert(name.to_string(), definition);
+
+        if self.is_active() {
+            if self
+                .state
+                .defines
+                .insert(name.to_string(), definition)
+                .is_some()
+            {
+                self.state.warnings.push(Error::Syntax {
+                    message: "macro redefined",
+                    span,
+                });
+            }
+        }
         Some(())
     }
 
@@ -891,7 +921,6 @@ pub fn preprocess<'a, 'ctx>(
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
     let source = state.vfs.source(file_id);
-    source.chars();
     let file = File::from_src(source, file_id);
     let parser = Parser::with_state(file, args, state);
     TokenIter(parser)
@@ -949,58 +978,329 @@ pub fn format_tokens(tokens: &[Token], state: &State<'_>) -> String {
 mod tests {
     use super::*;
 
-    fn preload(_input: &str) -> State {
-        todo!()
+    fn pp<'a>(vfs: &'a mut SourceMap, input: &str) -> State<'a> {
+        let id = vfs.embed(input);
+        let mut state = State::new(vfs);
+        preprocess(id, &ProcArgs::default(), &mut state).for_each(drop);
+        state
     }
 
-    fn expand(_state: &mut State, _input: &str) -> String {
-        todo!()
+    fn with_state(state: &mut State<'_>, input: &str) -> Vec<Token> {
+        let id = state.vfs.embed(input);
+        preprocess(id, &ProcArgs::default(), state).collect()
+    }
+
+    fn expand(input: &str) -> String {
+        let mut vfs = SourceMap::default();
+        let id = vfs.embed(input);
+        let mut state = State::new(&mut vfs);
+        let (output, _) = to_string(id, &ProcArgs::default(), &mut state);
+        output.trim().to_string()
+    }
+
+    #[test]
+    fn define_empty() {
+        let mut vfs = SourceMap::default();
+        let state = pp(&mut vfs, "#define foo");
+        assert!(state.is_defined("foo"));
+    }
+
+    #[test]
+    fn define() {
+        let mut vfs = SourceMap::default();
+        let state = pp(&mut vfs, "#define foo bar 123");
+
+        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+            panic!();
+        };
+        assert_eq!(def.len(), 2);
+
+        let mut iter = def.iter();
+        assert_eq!(iter.next().unwrap().kind, Kind::Ident);
+        assert_eq!(
+            iter.next().unwrap().kind,
+            Kind::Number {
+                base: Base::Decimal
+            }
+        );
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn undef() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(&mut vfs, "#define foo");
+        assert!(state.is_defined("foo"));
+
+        with_state(&mut state, "#undef foo");
+        assert!(!state.is_defined("foo"));
+        assert!(state.errors().is_empty());
+        assert!(state.warnings().is_empty());
+    }
+
+    #[test]
+    fn undef_non_existent() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(&mut vfs, "#undef foo");
+        assert!(state.errors().is_empty());
+        assert!(state.warnings().is_empty());
+    }
+
+    #[test]
+    fn multiline_define() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #define foo bar \
+                    baz
+                123
+            "#,
+        );
+
+        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+            panic!();
+        };
+
+        let mut iter = def.iter();
+        assert_eq!(iter.next().unwrap().kind, Kind::Ident);
+        assert_eq!(iter.next().unwrap().kind, Kind::Newline);
+        assert_eq!(iter.next().unwrap().kind, Kind::Ident);
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn define_immediate_newl() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #define foo \
+                    bar \
+                    baz
+            "#,
+        );
+
+        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+            panic!();
+        };
+
+        let mut iter = def.iter();
+        assert_eq!(iter.next().unwrap().kind, Kind::Newline);
+        assert_eq!(iter.next().unwrap().kind, Kind::Ident);
+        assert_eq!(iter.next().unwrap().kind, Kind::Newline);
+        assert_eq!(iter.next().unwrap().kind, Kind::Ident);
+        assert!(iter.next().is_none());
     }
 
     #[test]
     fn expand_single() {
-        let mut state = preload("#define foo bar");
-        let output = expand(&mut state, "foo");
-        assert_eq!(output, "bar");
+        let expanded = expand(
+            r#"
+                #define foo bar
+                bar 123 bar
+            "#,
+        );
+        assert_eq!(expanded, "bar 123 bar");
+    }
+
+    #[test]
+    #[ignore = "not yet supported"]
+    fn recursively_expand() {
+        let expanded = expand(
+            r#"
+                #define baz 123
+                #define bar baz
+                #define foo bar
+                foo
+            "#,
+        );
+        assert_eq!(expanded, "123");
+    }
+
+    #[test]
+    fn recursive_macro() {
+        // A macro should not be expanded from the definition of itself, so
+        // "foo" in the macro definition is just treated as a normal identifier
+        // and not a macro to be expanded.
+        let expanded = expand(
+            r#"
+                #define foo foo foo bar
+                foo
+            "#,
+        );
+        assert_eq!(expanded, "foo foo bar");
+    }
+
+    #[test]
+    fn recursive_indirect() {
+        // Recursion stops as soon as we find a macro we've already expanded.
+        let expanded = expand(
+            r#"
+                #define foo bar
+                #define bar foo
+                #define baz bar
+                baz
+            "#,
+        );
+        assert_eq!(expanded, "bar");
     }
 
     #[test]
     fn backslash() {
-        let mut state = preload("#define foo \\ a");
-        let output = expand(&mut state, "\\ a");
-        assert_eq!(output, "bar");
-    }
-
-    // TODO: could have a macro that treats each string literal as a newline
-    // thingy.
-    // so
-    // pp! {
-    //    "foo"
-    //    "bar"
-    //    "baz"
-    // }
-    #[test]
-    fn escaped_newline() {
-        let mut state = preload("#define foo\\\na");
-        let output = expand(&mut state, "foo");
-        assert_eq!(output, "a");
-
-        let mut state = preload("#define foo\\\na\\\nb");
-        let output = expand(&mut state, "foo");
-        assert_eq!(output, "a\nb");
-    }
-
-    #[test]
-    fn escaped_eof() {
-        let mut state = preload("#define foo \\");
-        let output = expand(&mut state, "foo bar");
-        assert_eq!(output, "\\ bar");
+        let mut expanded = expand(
+            r#"
+                #define foo \ a
+                foo
+            "#,
+        );
+        assert_eq!(expanded, "\\ a");
     }
 
     #[test]
     fn spaceship() {
-        let mut state = preload("#define foo <==>");
-        let output = expand(&mut state, "foo");
-        assert_eq!(output, "<==>");
+        let mut vfs = SourceMap::default();
+        let state = pp(&mut vfs, "#define foo <==>");
+
+        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+            panic!();
+        };
+
+        let mut iter = def.iter();
+        assert_eq!(iter.next().unwrap().kind, Kind::LtEq);
+        assert_eq!(iter.next().unwrap().kind, Kind::Eq);
+        assert_eq!(iter.next().unwrap().kind, Kind::Gt);
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn comment_escaped_newl() {
+        // We don't escape newlines in comments
+        let expanded = expand(
+            r#"
+                // some comment \
+                foo
+            "#,
+        );
+        assert_eq!(expanded, "foo");
+    }
+
+    #[test]
+    fn inactive_warnings() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #if 0
+                #warning foo
+                #endif
+            "#,
+        );
+        assert!(state.warnings().is_empty());
+    }
+
+    #[test]
+    fn inactive_errors() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #if 0
+                #error foo
+                #endif
+            "#,
+        );
+        assert!(state.errors().is_empty());
+    }
+
+    #[test]
+    fn expand_inactive() {
+        let expanded = expand(
+            r#"
+                #define foo bar
+                #if 0
+                foo
+                #endif
+            "#,
+        );
+        assert!(expanded.is_empty());
+    }
+
+    #[test]
+    fn define_inactive() {
+        let expanded = expand(
+            r#"
+                #if 0
+                #define foo bar
+                #endif
+                foo
+            "#,
+        );
+        assert_eq!(expanded, "foo");
+    }
+
+    #[test]
+    fn redefine_object() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(
+            &mut vfs,
+            r#"
+                #define foo 123
+                #define foo 456
+                #define foo bar
+            "#,
+        );
+        // Not an error, and the value should be updated, but we should emit
+        // a warning each time it is redefined.
+        assert!(state.errors().is_empty());
+        assert_eq!(state.warnings().len(), 2);
+
+        // Last definition is the one that counts
+        let expanded = with_state(&mut state, "foo");
+        assert_eq!(expanded.first().unwrap().kind, Kind::Ident);
+    }
+
+    #[test]
+    fn expr_expansion() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(
+            &mut vfs,
+            r#"
+                #define one 1
+                #define plus +
+                #define sum one plus one
+
+                #if sum == 2
+                #error "error expected"
+                #endif
+            "#,
+        );
+        assert_eq!(state.errors().len(), 1);
+    }
+
+    #[test]
+    fn extra_tokens_ifdef() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(
+            &mut vfs,
+            r#"
+                #ifdef 0 foo
+                #endif
+            "#,
+        );
+        assert_eq!(state.warnings().len(), 1);
+    }
+
+    #[test]
+    fn extra_tokens_ifndef() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(
+            &mut vfs,
+            r#"
+                #ifndef 0 foo
+                #endif
+            "#,
+        );
+        assert_eq!(state.warnings().len(), 1);
     }
 }

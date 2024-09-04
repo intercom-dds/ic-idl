@@ -69,22 +69,30 @@ add_compile_definitions(
 
 include_directories(external/utils/defs)
 include_directories(library/cpp/defs)
+include_directories(library/cpp/defs)
+include_directories(crates/ic-ptree/cpp/defs)
 include_directories(SYSTEM external/fmt/defs)
 
-add_subdirectory(crates/ic-ptree/cpp)
-add_subdirectory(crates/ic-codegen-cxx/cpp)
-add_subdirectory(crates/ic-codegen-idl/cpp)
-add_subdirectory(crates/ic-codegen-json/cpp)
-add_subdirectory(crates/ic-codegen-protobuf/cpp)
-add_subdirectory(crates/ic-codegen-python/cpp)
-add_subdirectory(crates/ic-codegen-rust/cpp)
+macro(glob_directory PATH)
+    file(
+        GLOB SOURCES
+        ${PATH}/*.cpp
+        ${PATH}/*/*.cpp
+    )
+    list(APPEND IC_SOURCES ${SOURCES})
+endmacro()
 
-add_library(ic_core STATIC
-    $<TARGET_OBJECTS:ic_ptree>
-    $<TARGET_OBJECTS:ic_codegen_cxx>
-    $<TARGET_OBJECTS:ic_codegen_idl>
-    $<TARGET_OBJECTS:ic_codegen_json>
-    $<TARGET_OBJECTS:ic_codegen_protobuf>
-    $<TARGET_OBJECTS:ic_codegen_python>
-    $<TARGET_OBJECTS:ic_codegen_rust>
+glob_directory(crates/ic-ptree/cpp)
+glob_directory(crates/ic-ptree-pretty/cpp)
+glob_directory(crates/ic-codegen-cxx/cpp)
+glob_directory(crates/ic-codegen-idl/cpp)
+glob_directory(crates/ic-codegen-json/cpp)
+glob_directory(crates/ic-codegen-protobuf/cpp)
+glob_directory(crates/ic-codegen-python/cpp)
+glob_directory(crates/ic-codegen-rust/cpp)
+glob_directory(crates/ic-codegen-rust/cpp)
+
+add_library(
+    ic_core STATIC
+    ${IC_SOURCES}
 )

@@ -39,7 +39,7 @@ const SYSTEM_INCLUDES: &[&str] = &["../../external/fmt/defs"];
 
 const GLOBAL_DEFINES: &[(&str, &str)] = &[("FMT_HEADER_ONLY", "1"), ("FMT_CONSTEVAL", "")];
 
-pub fn build<P>(files: P, includes: P)
+pub fn build<P>(files: P)
 where
     P: IntoIterator,
     P::Item: AsRef<Path>,
@@ -52,8 +52,7 @@ where
         .extra_warnings(true)
         .flag_if_supported("-Wpedantic")
         .flag_if_supported("-Wno-unused-function")
-        .files(&files)
-        .includes(includes);
+        .files(&files);
 
     for (k, v) in GLOBAL_DEFINES {
         compiler.define(k, *v);
@@ -82,8 +81,6 @@ where
 
     // Rerun if toolchain has changed
     println!("cargo:rerun-if-env-changed=CI");
-    println!("cargo:rerun-if-env-changed=CC");
-    println!("cargo:rerun-if-env-changed=CFLAGS");
     println!("cargo:rerun-if-env-changed=CXX");
     println!("cargo:rerun-if-env-changed=CXXFLAGS");
 

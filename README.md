@@ -35,10 +35,9 @@ A generic IDL compiler.
 
 Building `ic-idl` requires a C++17 toolchain and a Rust 1.80+ toolchain.
 
-The system's default C/C++ toolchain will be used unless otherwise is
-specified. This can be overridden by using the `CC` and `CXX` environment
-variables. Custom flags can be specified with `CFLAGS` and `CXXFLAGS`,
-respectively.
+The system's default C++ toolchain will be used unless otherwise is specified.
+This can be overridden by using the `CXX` environment variable, and custom
+flags can be specified with `CXXFLAGS`.
 
 For working with the C++ code, you can use the top-level `CMakeLists.txt` to
 initialize a project and generate a `compile_commands.json`. The CMake project

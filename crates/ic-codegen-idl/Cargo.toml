@@ -37,6 +37,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+ic-emit = { path = "../ic-emit" }
 ic-ptree = { path = "../ic-ptree" }
 
 [build-dependencies]

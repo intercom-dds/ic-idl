@@ -26,4 +26,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod case;
+mod ffi;
 pub mod printer;
+
+pub enum File {
+    Dep(String),
+    Generated { path: String, source: String },
+}
+
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            File::Dep(v) => write!(f, "dep:{v}"),
+            File::Generated { path, .. } => write!(f, "gen:{path}"),
+        }
+    }
+}

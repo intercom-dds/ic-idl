@@ -27,10 +27,11 @@
 
 use std::path::Path;
 
+use ic_emit::File;
 use ic_ptree::ParseResult;
 
 #[must_use]
-pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<String> {
+pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<File> {
     let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
     let options = ic_ptree::sys::cpp_options_t {
         header_postfix: std::ptr::null(),

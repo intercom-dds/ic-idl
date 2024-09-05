@@ -37,33 +37,18 @@ use config::{
 };
 use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
+use ic_emit::File;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
 use ic_vfs::SourceMap;
-// use ic_preproc::preprocess;
+use util::{collect_files, write_if_changed};
 
 mod config;
-mod ffi;
 mod info;
 mod panic;
 mod pretty;
 mod unstable;
-
-#[macro_export]
-macro_rules! error {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
-    }}
-}
-
-#[macro_export]
-macro_rules! warn {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("{} {}", "warning:".yellow().bold(), format!($($arg)*));
-    }}
-}
+mod util;
 
 fn main() {
     let result = Options::command()
@@ -118,23 +103,11 @@ fn main() {
         }
     };
 
-    if options.list {
-        for f in generated {
+    for f in generated {
+        if options.list {
             println!("{f}");
-        }
-    }
-}
-
-enum File {
-    Dep(String),
-    Generated { path: String, source: String },
-}
-
-impl std::fmt::Display for File {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            File::Dep(v) => write!(f, "dep:{v}"),
-            File::Generated { path, .. } => write!(f, "gen:{path}"),
+        } else if let File::Generated { path, source } = f {
+            write_if_changed(path, &source).unwrap();
         }
     }
 }
@@ -145,41 +118,7 @@ fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
     Ok(input)
 }
 
-fn collect_files<'a, I>(paths: I) -> anyhow::Result<HashSet<PathBuf>>
-where
-    I: IntoIterator<Item = &'a PathBuf>,
-{
-    fn collect(p: &Path, files: &mut HashSet<PathBuf>) -> anyhow::Result<()> {
-        let meta = std::fs::metadata(p)?;
-        if meta.is_dir() {
-            let iter = match std::fs::read_dir(p) {
-                Ok(v) => v,
-                Err(e) => bail!("couldn't open {}: {e}", p.display()),
-            };
-
-            for file in std::fs::read_dir(p).unwrap().flatten() {
-                collect(&file.path(), files);
-            }
-        } else if let Some(ext) = p.extension() {
-            if ext.eq_ignore_ascii_case("idl") {
-                files.insert(p.to_owned());
-            }
-        }
-        Ok(())
-    }
-
-    let mut files = HashSet::new();
-    for path in paths {
-        if std::fs::metadata(path).map_or(false, |v| v.is_dir()) {
-            collect(path, &mut files)?;
-        } else {
-            files.insert(path.clone());
-        }
-    }
-    Ok(files)
-}
-
-fn try_main(options: &Options) -> anyhow::Result<Vec<String>> {
+fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let mut vfs = SourceMap::default();
 
     let files = collect_files(&options.files)?;
@@ -216,7 +155,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<String>> {
                 // }
 
                 let ptree = ic_ptree::lower_ast(&v.tree);
-                try_ptree(options, &ptree);
+                return try_ptree(options, &ptree);
             }
             Err(e) => {
                 // pretty::emit_errors(&input, &e);
@@ -231,7 +170,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<String>> {
     Ok(vec![])
 }
 
-fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<String>> {
+fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File>> {
     // let preprocessed = options
     //     .files
     //     .iter()

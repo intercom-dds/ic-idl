@@ -25,10 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_emit::File;
 use ic_ptree::ParseResult;
 
 #[must_use]
-pub fn codegen_json(result: &ParseResult) -> Vec<String> {
+pub fn codegen_json(result: &ParseResult) -> Vec<File> {
     let mut generated = vec![];
     unsafe {
         ic_ptree::sys::ic_codegen_json(

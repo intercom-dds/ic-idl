@@ -895,7 +895,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn next(&mut self) -> Option<Token> {
-        loop {
+        'outer: loop {
             // Check if we're currently in the middle of a macro expansion, and
             // if so, yield those tokens first.
             if let Some(tok) = self.state.queue.pop_front() {
@@ -906,13 +906,13 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             while let Some(tok) = self.stack.last_mut()?.cursor.next() {
                 if tok.kind == Kind::Hash {
                     self.keyword();
-                    continue;
+                    continue 'outer;
                 }
 
                 // If the current token is a macro, we expand it and queue up
                 // the expanded tokens.
                 if self.expand_macro(tok) {
-                    continue;
+                    continue 'outer;
                 }
                 return Some(tok);
             }

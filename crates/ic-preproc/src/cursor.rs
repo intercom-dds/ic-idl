@@ -244,7 +244,7 @@ impl Cursor {
         Kind::Ident
     }
 
-    fn number(&mut self) -> Kind {
+    fn number(&mut self, leading: char) -> Kind {
         self.eat_while(|v| v.is_ascii_digit());
 
         match self.chars.peek() {
@@ -261,7 +261,11 @@ impl Cursor {
                 }
             }
             _ => Kind::Number {
-                base: Base::Decimal,
+                base: if leading == '0' {
+                    Base::Octal
+                } else {
+                    Base::Decimal
+                },
             },
         }
     }
@@ -284,6 +288,22 @@ impl Cursor {
             }
         }
         Kind::String
+    }
+
+    fn char_lit(&mut self) -> Kind {
+        if let Some(v) = self.chars.next() {
+            if v == '\'' {
+                return Kind::Char;
+            }
+            if v == '\\' && self.chars.peek() == '\'' {
+                self.chars.next();
+            }
+            if self.chars.peek() == '\'' {
+                self.chars.next();
+                return Kind::Char;
+            }
+        }
+        Kind::Unknown
     }
 
     // Code comments (`//`) are stripped from the output, but documentation
@@ -417,6 +437,7 @@ impl Cursor {
                 '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
                 '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
                 '"' => self.string_lit(),
+                '\'' => self.char_lit(),
 
                 '/' => match self.chars.peek() {
                     '/' => {
@@ -436,7 +457,7 @@ impl Cursor {
                     _ => Kind::Slash,
                 },
 
-                c if c.is_ascii_digit() => self.number(),
+                c if c.is_ascii_digit() => self.number(c),
                 c if is_ident(c) => self.ident(),
                 c if c.is_whitespace() => continue,
                 v => Kind::Unknown,
@@ -483,4 +504,116 @@ impl Cursor {
 
 fn is_ident(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
+}
+
+#[cfg(test)]
+mod tests {
+    use ic_vfs::SourceMap;
+
+    use super::*;
+
+    fn scan(input: &str) -> Vec<Token> {
+        let mut vfs = SourceMap::default();
+        let id = vfs.embed(input);
+        let src = vfs.source(id);
+        let mut cursor = Cursor::new(src, id);
+
+        let mut tokens = vec![];
+        while let Some(t) = cursor.next() {
+            tokens.push(t);
+        }
+        tokens
+    }
+
+    fn single(input: &str) -> Kind {
+        scan(input).first().copied().unwrap().kind
+    }
+
+    #[test]
+    fn test_integer_lit() {
+        // octal
+        assert_eq!(single("0"), Kind::Number { base: Base::Octal });
+        assert_eq!(single("0777"), Kind::Number { base: Base::Octal });
+
+        // decimal
+        assert_eq!(
+            single("999"),
+            Kind::Number {
+                base: Base::Decimal
+            }
+        );
+        assert_eq!(
+            single("1000"),
+            Kind::Number {
+                base: Base::Decimal
+            }
+        );
+
+        // hex
+        assert_eq!(
+            single("0x0"),
+            Kind::Number {
+                base: Base::Hexadecimal
+            }
+        );
+        assert_eq!(
+            single("0xFFF"),
+            Kind::Number {
+                base: Base::Hexadecimal
+            }
+        );
+
+        // separation checks
+        assert_eq!(scan("a123").len(), 1);
+        assert_eq!(scan("123a").len(), 2);
+        assert_eq!(scan("123 456 789").len(), 3);
+        assert_eq!(scan("123;456").len(), 3);
+        assert_eq!(scan("123]]]").len(), 4);
+    }
+
+    #[test]
+    fn test_char_lit() {
+        assert_eq!(single("'a'"), Kind::Char);
+        assert_eq!(single("'0'"), Kind::Char);
+        assert_eq!(single("';'"), Kind::Char);
+        assert_eq!(single("'a"), Kind::Unknown);
+        assert_eq!(single("a"), Kind::Ident);
+        assert_eq!(single("''"), Kind::Char);
+
+        let escaped = scan(r"'\''");
+        assert_eq!(escaped.len(), 1);
+        assert_eq!(escaped[0].kind, Kind::Char);
+
+        let tokens = scan("a'");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].kind, Kind::Ident);
+        assert_eq!(tokens[1].kind, Kind::Unknown);
+    }
+
+    #[test]
+    fn test_string_lit() {
+        let input = r#""foo 'bar' baz""#;
+        assert_eq!(single(input), Kind::String);
+
+        let input = r#""howdy 🤠""#;
+        assert_eq!(single(input), Kind::String);
+    }
+
+    #[test]
+    fn escaped_string_lit() {
+        let input = scan(r#""foo \"bar\" baz""#);
+        assert_eq!(input.len(), 1);
+        assert_eq!(input[0].kind, Kind::String);
+    }
+
+    #[test]
+    fn invalid_token() {
+        assert_eq!(single("§"), Kind::Unknown);
+
+        let tokens = scan("foo§bar");
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].kind, Kind::Ident);
+        assert_eq!(tokens[1].kind, Kind::Unknown);
+        assert_eq!(tokens[2].kind, Kind::Ident);
+    }
 }

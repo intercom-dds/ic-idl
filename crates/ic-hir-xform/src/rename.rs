@@ -49,9 +49,12 @@ pub struct Target {
 /// Logic for renaming items in the HIR to conform to a specific naming
 /// convention. This can be used to e.g. make all types in a data model follow
 /// the PEP-8 style guide for Python.
-pub fn rename_all(items: &[Item], target: Target) {
+pub fn rename_all<I>(items: I, target: Target)
+where
+    I: IntoIterator<Item = Item>,
+{
     let mut renamer = Renamer { target };
-    for item in items {
+    for item in items.into_iter() {
         renamer.fold_item(item);
     }
 }

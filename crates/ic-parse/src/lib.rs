@@ -81,7 +81,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_preproc::{ProcArgs, State};
 use ic_syntax::{Item, Span};
-use ic_vfs::{FileId, SourceMap};
+use ic_vfs::{FileId, Include, SourceMap};
 use lexer::{Kind, Token};
 
 pub mod lexer;
@@ -168,7 +168,7 @@ pub fn from_str(_input: &str) -> Result<ParseResult, Vec<Error>> {
 ///
 /// # Panics
 pub fn from_path(path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
-    let (file_id, _) = vfs.open(path).unwrap();
+    let (file_id, _) = vfs.open(path, Include::Static).unwrap();
     from_file(file_id, vfs)
 }
 

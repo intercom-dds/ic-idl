@@ -34,6 +34,7 @@ publish.workspace = true
 
 [dependencies]
 ic-cli = { path = "../ic-cli" }
+ic-vfs = { path = "../ic-vfs" }
 
 [lints]
 workspace = true

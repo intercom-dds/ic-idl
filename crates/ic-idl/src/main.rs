@@ -181,18 +181,18 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File
     }
 
     let backends: &[(_, fn(_) -> _)] = &[
-        // (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
-        // (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
-        // (&options.codegen.json_out, ic_codegen_json::codegen_json),
+        (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
+        (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
+        (&options.codegen.json_out, ic_codegen_json::codegen_json),
         (
             &options.codegen.proto_out,
             ic_codegen_protobuf::codegen_proto,
         ),
-        // (
-        //     &options.codegen.python_out,
-        //     ic_codegen_python::codegen_python,
-        // ),
-        // (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
+        (
+            &options.codegen.python_out,
+            ic_codegen_python::codegen_python,
+        ),
+        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
     ];
 
     let mut generated = vec![];

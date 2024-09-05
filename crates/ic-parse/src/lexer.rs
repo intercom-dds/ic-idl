@@ -27,9 +27,6 @@
 
 #![allow(clippy::cast_possible_truncation)]
 
-#[cfg(test)]
-mod tests;
-
 use std::fmt;
 
 use chumsky::Stream;

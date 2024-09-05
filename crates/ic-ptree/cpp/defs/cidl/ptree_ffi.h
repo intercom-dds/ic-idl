@@ -90,11 +90,7 @@ struct cpp_options_t {
     uint8_t use_fmt;
 };
 
-void ic_codegen_cpp(
-    const struct ic_parse_result_t* result,
-    struct cpp_options_t options,
-    const char* destination
-);
+void ic_codegen_cpp(const struct ic_parse_result_t* result, struct cpp_options_t options);
 
 void ic_push_source(struct ic_list_t* list, const char* path, const char* src);
 

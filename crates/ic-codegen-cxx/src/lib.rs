@@ -25,14 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::path::Path;
-
 use ic_emit::File;
 use ic_ptree::ParseResult;
 
 #[must_use]
-pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<File> {
-    let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
+pub fn codegen_cpp(result: &ParseResult) -> Vec<File> {
     let options = ic_ptree::sys::cpp_options_t {
         header_postfix: std::ptr::null(),
         header_ext: std::ptr::null(),
@@ -45,7 +42,7 @@ pub fn codegen_cpp(result: &ParseResult, directory: &Path) -> Vec<File> {
     };
 
     unsafe {
-        ic_ptree::sys::ic_codegen_cpp(result.as_raw(), options, dir.as_ptr());
+        ic_ptree::sys::ic_codegen_cpp(result.as_raw(), options);
     }
     vec![]
 }

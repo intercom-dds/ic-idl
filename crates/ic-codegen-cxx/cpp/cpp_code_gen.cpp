@@ -3370,13 +3370,8 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
     }
 }
 
-void intercom::cidl::code_gen_dds_cplpl(
-    const parse_result* result,
-    const Config& options,
-    const char* destination
-) {
+void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, const Config& options) {
     auto& config = CommandLineOption::get_instance();
     config = options;
-    config.c_target_directory = destination;
     code_gen_dds_cplpl(result);
 }

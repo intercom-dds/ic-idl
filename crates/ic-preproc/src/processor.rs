@@ -705,7 +705,10 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn unary_expr(&mut self) -> Result<Expr, Error> {
-        let lhs = self.cursor().next().unwrap();
+        let lhs = self.cursor().next().ok_or_else(|| Error::Expr {
+            message: "unexpected end of expression",
+        })?;
+
         let expr = match lhs.kind {
             Kind::Ident | Kind::Number { .. } => Expr::Lit(lhs),
             Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => {
@@ -718,7 +721,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             }
             Kind::LParen => {
                 let expr = self.binary_expr(0)?;
-                assert_eq!(self.next().unwrap().kind, Kind::RParen);
+                self.expect(Kind::RParen, "unterminated expression group");
                 expr
             }
             _ => {
@@ -744,7 +747,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
             lhs = if op.kind == Kind::Question {
                 let then = self.expr()?;
-                assert_eq!(self.next().unwrap().kind, Kind::Colon);
+                self.expect(Kind::Colon, "expected colon in ternary operator");
                 let els = self.binary_expr(prec + 1)?;
                 Expr::Ternary(Box::new(Ternary {
                     cond: lhs,

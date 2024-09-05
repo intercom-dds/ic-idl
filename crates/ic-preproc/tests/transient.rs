@@ -25,15 +25,24 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#if 1
-#elif 0
-#error foo
-#elif 1
-#error foo
-#elif 2
-#error foo
-#elif 0
-#error foo
-#else
-#error foo
-#endif
+use ic_preproc::{preprocess, ProcArgs, State};
+use ic_vfs::SourceMap;
+
+#[test]
+fn transient_conditional() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r#"
+            #include "tests/transient.idl"
+        "#,
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new(&mut vfs);
+    preprocess(id, &args, &mut state).for_each(drop);
+
+    // Conditionals are per file and should have no transient state.
+    // We expect two errors here: one unterminated `#if` and one
+    // unexpected `endif`.
+    assert_eq!(state.errors().len(), 2);
+}

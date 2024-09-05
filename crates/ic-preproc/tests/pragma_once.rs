@@ -25,7 +25,49 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define foo \ a
+use ic_preproc::{preprocess, ProcArgs, State};
+use ic_vfs::SourceMap;
 
-foo
-// should expand to "\ a"
+#[test]
+fn include_pragma_once() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r#"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+            #include "tests/pragma_once.idl"
+        "#,
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new(&mut vfs);
+    preprocess(id, &args, &mut state).for_each(drop);
+
+    assert!(state.errors().is_empty());
+    assert_eq!(state.warnings().len(), 1);
+}
+
+#[test]
+fn pragma_once_recursive() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r#"
+            #include "tests/pragma_once_recursive.idl"
+        "#,
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new(&mut vfs);
+    preprocess(id, &args, &mut state).for_each(drop);
+
+    assert!(state.errors().is_empty());
+    assert!(state.warnings().is_empty());
+    assert!(state.is_defined("SEEN_1"));
+    assert!(state.is_defined("SEEN_2"));
+}

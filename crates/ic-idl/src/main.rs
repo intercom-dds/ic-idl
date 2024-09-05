@@ -54,11 +54,6 @@ fn main() {
     let result = Options::command()
         .split_flags(false)
         .align_sections(true)
-        .section("c++ options", CppOptions::command())
-        .section("rust options", RustOptions::command())
-        .section("python options", PythonOptions::command())
-        .section("idl options", IdlOptions::command())
-        .section("backends", CodegenOptions::command())
         .try_parse();
 
     let result = match result {
@@ -73,15 +68,7 @@ fn main() {
         }
     };
 
-    let options = Options {
-        codegen: CodegenOptions::from_result(&result),
-        cpp: CppOptions::from_result(&result),
-        rust: RustOptions::from_result(&result),
-        python: PythonOptions::from_result(&result),
-        idl: IdlOptions::from_result(&result),
-        ..Options::from_result(&result)
-    };
-
+    let options = Options::from_result(&result);
     if options.version {
         println!("{}", info::version());
         return;

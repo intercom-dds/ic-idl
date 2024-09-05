@@ -92,23 +92,23 @@ pub struct Options {
     #[option(positional)]
     pub files: Vec<PathBuf>,
 
-    // #[section = "c++ options"]
+    #[option(section = "c++ options")]
     pub cpp: CppOptions,
 
-    // #[section = "rust options"]
+    #[option(section = "rust options")]
     pub rust: RustOptions,
 
-    // #[section = "python options"]
+    #[option(section = "python options")]
     pub python: PythonOptions,
 
-    // #[section = "idl options"]
+    #[option(section = "idl options")]
     pub idl: IdlOptions,
 
-    // #[section = "backends"]
+    #[option(section = "backends")]
     pub codegen: CodegenOptions,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Default, Debug)]
 pub struct CppOptions {
     /// Generate scoped enums
     #[option(long)]

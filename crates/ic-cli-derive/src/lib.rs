@@ -25,6 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Most of this code should be rewritten. It was hastily hacked together, and
+// more stuff has just been tacked on since then.
+
 use ic_emit::case;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Punct, TokenTree};
@@ -33,7 +36,7 @@ use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
 use syn::{
     parse_macro_input, Attribute, Data, DataEnum, DataStruct, DeriveInput, ExprLit, Field, Meta,
-    Token, Type,
+    Path, Token, Type,
 };
 
 fn derive_short(input: &Ident, value: &Option<syn::LitChar>) -> char {
@@ -67,6 +70,7 @@ struct Opt {
     required: bool,
     arg_name: String,
     positional: bool,
+    section: Option<(String, Path)>,
 }
 
 impl ToTokens for Opt {
@@ -85,6 +89,18 @@ impl ToTokens for Opt {
                 .desc(#comment)
                 .required(#required)
                 .value(#kind, #arg_name)
+        };
+        tree.to_tokens(stream);
+    }
+}
+
+struct Section(String, Path);
+
+impl ToTokens for Section {
+    fn to_tokens(&self, stream: &mut proc_macro2::TokenStream) {
+        let Self(name, ty) = self;
+        let tree = quote! {
+            #name, #ty::command()
         };
         tree.to_tokens(stream);
     }
@@ -163,6 +179,7 @@ struct OptAttr {
     positional: bool,
     required: bool,
     is_option: bool,
+    section: Option<syn::LitStr>,
 }
 
 fn option_attr(attrs: &Vec<Attribute>) -> OptAttr {
@@ -191,6 +208,8 @@ fn option_attr(attrs: &Vec<Attribute>) -> OptAttr {
                         arg_attr.long = (true, parse_expr(input));
                     } else if value == "arg" {
                         arg_attr.arg_name = parse_expr(input);
+                    } else if value == "section" {
+                        arg_attr.section = parse_expr(input);
                     } else if value == "positional" {
                         arg_attr.positional = true;
                     } else if value == "required" {
@@ -229,12 +248,13 @@ fn handle_option(field: &Field) -> Option<Opt> {
         tokens.push(derive_long(ident, &attrs.long.1));
     }
 
-    let kind = if let Type::Path(ref ty) = field.ty {
-        if ty.path.is_ident("bool") {
+    let (kind, path) = if let Type::Path(ref ty) = field.ty {
+        let kind = if ty.path.is_ident("bool") {
             Kind::Flag
         } else {
             Kind::Option
-        }
+        };
+        (kind, ty.path.clone())
     } else {
         panic!("unsupported type");
     };
@@ -243,6 +263,8 @@ fn handle_option(field: &Field) -> Option<Opt> {
         .arg_name
         .map_or_else(|| "arg".to_string(), |v| v.value());
 
+    let section = attrs.section.map(|v| (v.value(), path));
+
     Some(Opt {
         tokens,
         comment: doc_attr(&field.attrs),
@@ -250,6 +272,7 @@ fn handle_option(field: &Field) -> Option<Opt> {
         kind,
         required: attrs.required,
         positional: attrs.positional,
+        section,
     })
 }
 
@@ -286,12 +309,15 @@ fn struct_command(input: &DataStruct, attrs: &Vec<Attribute>) -> proc_macro2::To
     let doc = doc_attr(attrs);
     let attr = attr_str("command", attrs);
     let mut options = vec![];
+    let mut sections = vec![];
     let mut positionals = false;
 
     for field in &input.fields {
         if let Some(option) = handle_option(field) {
             if option.positional {
                 positionals = true;
+            } else if let Some((name, ty)) = option.section {
+                sections.push(Section(name, ty));
             } else {
                 options.push(option);
             }
@@ -314,6 +340,9 @@ fn struct_command(input: &DataStruct, attrs: &Vec<Attribute>) -> proc_macro2::To
             .opts([
                 #(#options),*
             ])
+            #(
+                .section(#sections)
+            )*
     }
 }
 
@@ -348,6 +377,7 @@ fn struct_parse(input: &DataStruct) -> proc_macro2::TokenStream {
     for field in &input.fields {
         let ident = field.ident.as_ref().unwrap();
         let attrs = option_attr(&field.attrs);
+        let ty = &field.ty;
 
         if !attrs.is_option {
             continue;
@@ -360,6 +390,10 @@ fn struct_parse(input: &DataStruct) -> proc_macro2::TokenStream {
                 } else {
                     ::ic_cli::convert::convert_exit(&result.positionals())
                 },
+            }
+        } else if attrs.section.is_some() {
+            quote! {
+                #ident: #ty::from_result(&result),
             }
         } else {
             let token = if attrs.long.0 {

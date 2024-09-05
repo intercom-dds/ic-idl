@@ -26,8 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt::Write;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
@@ -327,6 +328,10 @@ struct Parser<'a, 'ctx> {
     stack: Vec<File>,
     state: &'a mut State<'ctx>,
     args: &'a ProcArgs,
+
+    /// Set of files we've already parsed.
+    /// Used to enable `#pragma once`-like functionality.
+    parsed_files: HashSet<FileId>,
     // handler: &'a PragmaHandler,
 }
 
@@ -336,6 +341,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             state,
             stack: vec![file],
             args,
+            parsed_files: HashSet::default(),
         }
     }
 
@@ -478,8 +484,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
             match self.state.vfs.open(include, kind) {
                 Ok((id, source)) => {
-                    let cursor = File::from_src(source, id);
-                    self.stack.push(cursor);
+                    // Skip files that we've already parsed if they used the
+                    // `once` pragma.
+                    if !self.parsed_files.contains(&id) {
+                        let cursor = File::from_src(source, id);
+                        self.stack.push(cursor);
+                    }
                 }
                 Err(e) => self.state.errors.push(Error::Syntax {
                     message: "failed to open file",
@@ -644,10 +654,14 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     // whatever.
     fn dir_pragma(&mut self) {
         let tokens = self.cursor().until_newline();
+
         // Empty pragmas are allowed, so this is not guaranteed
         if let Some(pragma) = tokens.first() {
-            // TODO: skip first token when we call handler
-            let _name = self.source_of(pragma.span);
+            let name = self.source_of(pragma.span);
+            if name == "once" {
+                let id = self.cursor().file_id();
+                self.parsed_files.insert(id);
+            }
         }
     }
 
@@ -1418,5 +1432,31 @@ mod tests {
             "#,
         );
         assert!(state.errors().is_empty());
+    }
+
+    #[test]
+    fn pragma_misc() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #pragma once
+                #pragma foo bar baz
+                #pragma 🤠
+                #pragma!
+                #pragma^<[==]>
+
+                #pragma \
+                    once
+
+                #pragma warning(push)
+                #pragma warning(disable : 4251)
+                #pragma warning(pop)
+
+                #pragma
+            "#,
+        );
+        assert!(state.errors().is_empty());
+        assert!(state.warnings().is_empty());
     }
 }

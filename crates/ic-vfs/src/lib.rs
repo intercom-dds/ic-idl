@@ -134,6 +134,16 @@ impl SourceMap {
     }
 
     #[must_use]
+    pub fn source_str(&self, id: FileId) -> &str {
+        &self.file_info(id).source
+    }
+
+    // #[must_use]
+    // pub fn source_of(&self, span: FileId) -> &str {
+    //     &self.file_info(id).source[id]
+    // }
+
+    #[must_use]
     pub fn span_of_file(&self, id: FileId) -> Span {
         self.file_info(id).span
     }

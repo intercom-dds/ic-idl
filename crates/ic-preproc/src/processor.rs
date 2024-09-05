@@ -409,7 +409,12 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         let Some(file) = self.stack.last() else {
             unreachable!("cursor stack is empty");
         };
-        let src = file.cursor.source_of(span);
+
+        let src = if file.cursor.file_id() == span.file_id {
+            file.cursor.source_of(span)
+        } else {
+            &self.state.vfs.source_str(span.file_id)[span.range()]
+        };
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 
@@ -1296,6 +1301,10 @@ mod tests {
         // a warning each time it is redefined.
         assert!(state.errors().is_empty());
         assert_eq!(state.warnings().len(), 2);
+
+        // Last definition is the one that counts
+        let expanded = with_state(&mut state, "foo");
+        assert_eq!(expanded.first().unwrap().kind, Kind::Ident);
     }
 
     #[test]

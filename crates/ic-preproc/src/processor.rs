@@ -414,7 +414,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn is_defined(&self, name: &str) -> bool {
-        self.state.defines.contains_key(name)
+        self.state.is_defined(name)
     }
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
@@ -529,7 +529,9 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn dir_undef(&mut self) {
-        let (name, span) = self.macro_name().unwrap();
+        let Some((name, span)) = self.macro_name() else {
+            return;
+        };
         self.warn_trailing(span, Directive::Undef);
 
         if self.is_active() {
@@ -554,19 +556,25 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn dir_ifdef(&mut self, span: SourceSpan) {
-        let (name, name_span) = self.macro_name().unwrap();
-        self.warn_trailing(name_span, Directive::Ifdef);
+        let result = if let Some((name, name_span)) = self.macro_name() {
+            self.warn_trailing(name_span, Directive::Ifdef);
+            self.is_defined(name)
+        } else {
+            false
+        };
 
-        let result = self.is_defined(name);
         let state = IfState::new_if(result, span);
         self.if_state().push(state);
     }
 
     fn dir_ifndef(&mut self, span: SourceSpan) {
-        let (name, name_span) = self.macro_name().unwrap();
-        self.warn_trailing(name_span, Directive::Ifndef);
+        let result = if let Some((name, name_span)) = self.macro_name() {
+            self.warn_trailing(name_span, Directive::Ifndef);
+            !self.is_defined(name)
+        } else {
+            false
+        };
 
-        let result = !self.is_defined(name);
         let state = IfState::new_if(result, span);
         self.if_state().push(state);
     }

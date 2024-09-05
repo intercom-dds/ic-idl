@@ -443,13 +443,6 @@ impl Cursor {
             };
 
             let span = self.span_since(start);
-            // TODO: remove this before release, but keep it for now
-            debug_assert_ne!(
-                kind,
-                Kind::Unknown,
-                "unknown character encountered: {}",
-                self.source_of(span),
-            );
             break Some(Token { kind, span });
         }
     }
@@ -466,7 +459,7 @@ impl Cursor {
 
     /// Returns the source of th given span.
     pub fn source_of(&self, span: SourceSpan) -> &str {
-        debug_assert_eq!(self.file_id, span.file_id, "FileId mismatch");
+        assert_eq!(self.file_id, span.file_id, "FileId mismatch");
         &self.chars.as_str()[span.range()]
     }
 

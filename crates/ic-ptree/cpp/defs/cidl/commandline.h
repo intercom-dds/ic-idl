@@ -53,7 +53,6 @@ struct Config {
     bool no_typesupport = false;
 
     std::string cpp_header_postfix = "h";
-    std::string c_file_prefix;
     std::string dll_exp_sym;
     std::string java_package_prefix;
     std::string ada_package_prefix;
@@ -98,7 +97,6 @@ class CommandLineOption {
     static bool no_typesupport();
 
     static const char* cpp_header_postfix();
-    static const char* c_file_prefix();
     static const char* dll_exp_sym();
     static const char* cs_target_directory();
     static const char* c_target_directory();

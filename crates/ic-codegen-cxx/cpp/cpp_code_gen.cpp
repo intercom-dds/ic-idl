@@ -3308,10 +3308,6 @@ static void cpl_saveit(const ptree* tree, const std::string& module) {
         );
 
         std::string cname(module);
-        if (CommandLineOption::c_file_prefix()) {
-            cname = fmt::format("{}{}", CommandLineOption::c_file_prefix(), module);
-        }
-
         mprintf(&g_prebd_file, "\n");
         mprintf(&g_prebd_file, "#include <InterCOM/dds_xtypes_constants.h>\n");
 

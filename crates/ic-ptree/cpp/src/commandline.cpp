@@ -97,9 +97,6 @@ bool CommandLineOption::use_wstring() {
 const char* CommandLineOption::cpp_header_postfix() {
     return strptr_or_null(g_current_options.cpp_header_postfix);
 }
-const char* CommandLineOption::c_file_prefix() {
-    return strptr_or_null(g_current_options.c_file_prefix);
-}
 const char* CommandLineOption::dll_exp_sym() {
     return strptr_or_null(g_current_options.dll_exp_sym);
 }

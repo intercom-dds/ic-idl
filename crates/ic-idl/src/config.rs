@@ -137,10 +137,6 @@ pub struct CppOptions {
     /// Store header files inside a subfolder
     #[option(long, arg = "dir")]
     pub header_subfolder: Option<String>,
-
-    /// Add a filename prefix to generated files
-    #[option(long, arg = "sym")]
-    pub file_prefix: Option<String>,
 }
 
 #[derive(Command, Default)]

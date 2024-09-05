@@ -79,9 +79,6 @@ void ic_codegen_cpp(
     if (options.dll_export) {
         config.dll_exp_sym = options.dll_export;
     }
-    if (options.file_prefix) {
-        config.c_file_prefix = options.file_prefix;
-    }
     config.cpp_scoped_enums = options.scoped_enums;
     config.cpp_access_functions = options.access_functions;
     config.cpp_no_stream_op = options.no_stream_op;

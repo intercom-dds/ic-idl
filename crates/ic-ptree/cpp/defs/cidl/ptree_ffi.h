@@ -84,7 +84,6 @@ struct cpp_options_t {
     const char* header_postfix;
     const char* header_ext;
     const char* dll_export;
-    const char* file_prefix;
     uint8_t scoped_enums;
     uint8_t access_functions;
     uint8_t no_stream_op;

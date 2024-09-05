@@ -145,7 +145,8 @@ class CaseConverter {
                     start = i;
                 }
             } else {
-                return write(input.substr(start));
+                write(input.substr(start));
+                return;
             }
             was_upper = isupper(c) != 0;
         }

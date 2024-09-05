@@ -69,7 +69,7 @@ class MD5 {
 
     //! \return digest of the MD5 calculation as a string of hexadecial values (lower-case, no 0x
     //! prefix )
-    std::string toString() const;
+    std::string to_string() const;
 
   private:
     bool m_closed;

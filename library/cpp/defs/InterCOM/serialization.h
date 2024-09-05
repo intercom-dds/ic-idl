@@ -615,7 +615,7 @@ class TGenericMarshalBase {
     {
       public:
         StructValue(MARSHAL& a_marshal, const TypeInfo* a_info)
-            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : Null_type_info) {
+            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : NULL_TYPE_INFO) {
             m_marshal.writer().begin_type(m_type_info);
         }
 
@@ -669,7 +669,7 @@ class TGenericMarshalBase {
     {
       public:
         VectorValue(MARSHAL& a_marshal, const TypeInfo* a_info)
-            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : Null_seq_type_info) {
+            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : NULL_SEQ_TYPE_INFO) {
             m_marshal.writer().begin_type(m_type_info);
         }
 
@@ -701,7 +701,7 @@ class TGenericMarshalBase {
     {
       public:
         MapValue(MARSHAL& a_marshal, const TypeInfo* a_info)
-            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : Null_map_type_info) {
+            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : NULL_MAP_TYPE_INFO) {
             m_marshal.writer().begin_type(m_type_info);
         }
 
@@ -743,7 +743,7 @@ class TGenericMarshalBase {
     {
       public:
         StringValue(MARSHAL& a_marshal, const TypeInfo* a_info)
-            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : Null_type_info) {
+            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : NULL_TYPE_INFO) {
             m_marshal.writer().begin_type(m_type_info);
         }
 
@@ -771,7 +771,7 @@ class TGenericMarshalBase {
     template <typename T>
     void primitive_io(T value, const TypeInfo* a_info = nullptr)  //!< \private
     {
-        writer().write(&value, 1, a_info ? *a_info : Null_type_info);
+        writer().write(&value, 1, a_info ? *a_info : NULL_TYPE_INFO);
     }
 
     template <typename T>
@@ -781,7 +781,7 @@ class TGenericMarshalBase {
         const TypeInfo* a_info = nullptr
     )  //!< \private
     {
-        writer().write(value, value_count, a_info ? *a_info : Null_type_info);
+        writer().write(value, value_count, a_info ? *a_info : NULL_TYPE_INFO);
     }
 
     WRITER& writer() {
@@ -834,7 +834,7 @@ class TGenericUnmarshalBase {
     {
       public:
         VectorValue(UNMARSHAL& a_unmarshal, const TypeInfo* a_info)
-            : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : Null_seq_type_info) {
+            : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : NULL_SEQ_TYPE_INFO) {
             m_unmarshal.reader().begin_type(m_type_info);
         }
 
@@ -866,7 +866,7 @@ class TGenericUnmarshalBase {
     {
       public:
         MapValue(UNMARSHAL& a_unmarshal, const TypeInfo* a_info)
-            : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : Null_map_type_info) {
+            : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : NULL_MAP_TYPE_INFO) {
             m_unmarshal.reader().begin_type(m_type_info);
         }
 
@@ -912,7 +912,7 @@ class TGenericUnmarshalBase {
 
       public:
         StringValue(UNMARSHAL& a_unmarshal, const TypeInfo* a_info)
-            : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : Null_type_info) {
+            : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : NULL_TYPE_INFO) {
             m_unmarshal.reader().begin_type(m_type_info);
         }
 
@@ -939,12 +939,12 @@ class TGenericUnmarshalBase {
 
     template <typename T>
     void primitive_io(T& value, const TypeInfo* a_info = nullptr) {
-        reader().read(&value, 1, a_info ? *a_info : Null_type_info);
+        reader().read(&value, 1, a_info ? *a_info : NULL_TYPE_INFO);
     }
 
     template <typename T>
     void primitive_io(T* value, uint32_t value_count, const TypeInfo* a_info = nullptr) {
-        reader().read(value, value_count, a_info ? *a_info : Null_type_info);
+        reader().read(value, value_count, a_info ? *a_info : NULL_TYPE_INFO);
     }
 
     READER& reader() {

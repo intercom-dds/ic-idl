@@ -210,9 +210,7 @@ static intercom::cidl::PrettyPrinter idl_type_name(const ptree* node, const ptre
             stream << idl_annotations(node, false);
             stream << idl_type_name(node->type, context);
         } else {
-            stream << idl_scoped_name(
-                node, context
-            );  // same as default TODO [[fallthrough]] (cpp17)
+            stream << idl_scoped_name(node, context);
         }
         break;
     default:
@@ -835,10 +833,6 @@ static std::string code_gen_idl_content(
         it = static_cast<std::string::value_type>(toupper(it));
     }
     std::stringstream file;
-    // TODO: Do we also want to emit it here? It makes sense for e.g. xmi2idl, but less so for
-    // interactive use build info header file << "/*" << generate_info_header(result->file_path,
-    // "\t") << " */\n\n";
-
     std::string uppername_underscore = uppername;
     std::replace(uppername_underscore.begin(), uppername_underscore.end(), '-', '_');
     std::replace(uppername_underscore.begin(), uppername_underscore.end(), '.', '_');
@@ -860,8 +854,8 @@ static std::string code_gen_idl_content(
 
     std::stringstream file_out;
     if (CommandLineOption::legacy_idl()) {
-        file_out << "#ifndef " << uppername_underscore << "_" << md5.toString() << std::endl;
-        file_out << "#define " << uppername_underscore << "_" << md5.toString() << std::endl
+        file_out << "#ifndef " << uppername_underscore << "_" << md5.to_string() << std::endl;
+        file_out << "#define " << uppername_underscore << "_" << md5.to_string() << std::endl
                  << std::endl;
         file_out << file_str << std::endl;
         file_out << "#endif" << std::endl;

@@ -334,38 +334,6 @@ inline unsigned short to_ushort(const std::string& a_str, unsigned short a_defau
     return value;
 }
 
-inline unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_default) {
-    if (a_str.empty()) {
-        return a_default;
-    }
-
-    std::string value_str = to_upper_case(trim_string(a_str));
-
-    unsigned int multiplier = 1;
-    std::size_t numeric_pos;
-
-    if ((numeric_pos = value_str.find("KB")) != std::string::npos) {
-        multiplier = 1024;
-        value_str = value_str.substr(0, numeric_pos);
-    } else if ((numeric_pos = value_str.find("MB")) != std::string::npos) {
-        multiplier = 1024 * 1024;
-        value_str = value_str.substr(0, numeric_pos);
-    } else if ((numeric_pos = value_str.find("GB")) != std::string::npos) {
-        multiplier = 1024 * 1024 * 1024;
-        value_str = value_str.substr(0, numeric_pos);
-    }
-
-    if (!value_str.empty()) {
-        unsigned int size_value = 0;
-        std::istringstream in(value_str);
-        in >> size_value;
-        size_value *= multiplier;
-        return size_value;
-    }
-
-    return a_default;
-}
-
 inline std::string to_html_encoding(const std::string& a_src) {
     std::ostringstream os;
 

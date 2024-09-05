@@ -93,7 +93,7 @@ void put_uint(uint8_t* b, T v);
 
 template <>
 inline void put_uint<BigEndian, uint8_t>(uint8_t* b, uint8_t v) {
-    b[0] = static_cast<uint8_t>(v);
+    b[0] = v;
 }
 
 template <>
@@ -124,7 +124,7 @@ inline void put_uint<BigEndian, uint64_t>(uint8_t* b, uint64_t v) {
 
 template <>
 inline void put_uint<LittleEndian, uint8_t>(uint8_t* b, uint8_t v) {
-    b[0] = static_cast<uint8_t>(v);
+    b[0] = v;
 }
 
 template <>

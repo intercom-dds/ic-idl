@@ -27,10 +27,7 @@
 
 #pragma once
 
-#include <iostream>
-
-#include "InterCOM/integer_types.h"
-
+#include <cstdint>
 namespace intercom {
 enum CharacterEncoding { EIGHT_BIT = 0, UTF8 = 1, UTF16 = 2, UTF32 = 4 };
 
@@ -64,32 +61,36 @@ template <typename T>
 struct encoding_type_of {};
 template <>
 struct encoding_type_of<char> {
+    // NOLINTNEXTLINE
     static const CharacterEncoding kind = DEFAULT_ENCODING;
 };
 template <>
 struct encoding_type_of<char16_t> {
+    // NOLINTNEXTLINE
     static const CharacterEncoding kind = UTF16;
 };
 template <>
 struct encoding_type_of<char32_t> {
+    // NOLINTNEXTLINE
     static const CharacterEncoding kind = UTF32;
 };
 template <>
 struct encoding_type_of<wchar_t> {
+    // NOLINTNEXTLINE
     static const CharacterEncoding kind = static_cast<CharacterEncoding>(sizeof(wchar_t));
 };
 
-const char32_t UNICODE_INVALID = ~0u;
+const char32_t UNICODE_INVALID = ~0U;
 
-inline bool isLegalUnicode(char32_t code) {
-    return (code <= 0x10FFFF && !(code >= 0xD800 && code <= 0xDFFF));
+inline bool is_legal_unicode(char32_t code) {
+    return (code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF));
 }
 
 template <CharacterEncoding ENCODING>
-int writeCharCode(typename character_type_of<ENCODING>::type* buf, char32_t code);
+int write_char_code(typename character_type_of<ENCODING>::type* buf, char32_t code);
 
 template <>
-inline int writeCharCode<EIGHT_BIT>(character_type_of<EIGHT_BIT>::type* buf, char32_t code) {
+inline int write_char_code<EIGHT_BIT>(character_type_of<EIGHT_BIT>::type* buf, char32_t code) {
     if (code >= 256) {
         return 0;
     }
@@ -98,22 +99,26 @@ inline int writeCharCode<EIGHT_BIT>(character_type_of<EIGHT_BIT>::type* buf, cha
 }
 
 template <>
-inline int writeCharCode<UTF8>(character_type_of<UTF8>::type* buf, char32_t code) {
-    if (!isLegalUnicode(code)) {
+inline int write_char_code<UTF8>(character_type_of<UTF8>::type* buf, char32_t code) {
+    if (!is_legal_unicode(code)) {
         return 0;
-    } else if (code <= 0x7F) {
+    }
+    if (code <= 0x7F) {
         buf[0] = static_cast<char>(code);
         return 1;
-    } else if (code <= 0x7FF) {
+    }
+    if (code <= 0x7FF) {
         buf[0] = static_cast<char>(0xC0 | (code >> 6));
         buf[1] = static_cast<char>(0x80 | (code & 0x3F));
         return 2;
-    } else if (code <= 0xFFFF) {
+    }
+    if (code <= 0xFFFF) {
         buf[0] = static_cast<char>(0xE0 | (code >> 12));
         buf[1] = static_cast<char>(0x80 | ((code >> 6) & 0x3F));
         buf[2] = static_cast<char>(0x80 | (code & 0x3F));
         return 3;
-    } else if (code <= 0x10FFFF) {
+    }
+    if (code <= 0x10FFFF) {
         buf[0] = static_cast<char>(0xF0 | (code >> 18));
         buf[1] = static_cast<char>(0x80 | ((code >> 12) & 0x3F));
         buf[2] = static_cast<char>(0x80 | ((code >> 6) & 0x3F));
@@ -124,24 +129,23 @@ inline int writeCharCode<UTF8>(character_type_of<UTF8>::type* buf, char32_t code
 }
 
 template <>
-inline int writeCharCode<UTF16>(character_type_of<UTF16>::type* buf, char32_t code) {
-    if (!isLegalUnicode(code)) {
+inline int write_char_code<UTF16>(character_type_of<UTF16>::type* buf, char32_t code) {
+    if (!is_legal_unicode(code)) {
         return 0;
     }
     if (code <= 0xFFFF) {
         buf[0] = static_cast<char16_t>(code);
         return 1;
-    } else {
-        code -= 0x10000;
-        buf[0] = static_cast<char16_t>(0xD800 | ((code >> 10) & 0x3FF));
-        buf[1] = static_cast<char16_t>(0xDC00 | (code & 0x3FF));
-        return 2;
     }
+    code -= 0x10000;
+    buf[0] = static_cast<char16_t>(0xD800 | ((code >> 10) & 0x3FF));
+    buf[1] = static_cast<char16_t>(0xDC00 | (code & 0x3FF));
+    return 2;
 }
 
 template <>
-inline int writeCharCode<UTF32>(character_type_of<UTF32>::type* buf, char32_t code) {
-    if (!isLegalUnicode(code)) {
+inline int write_char_code<UTF32>(character_type_of<UTF32>::type* buf, char32_t code) {
+    if (!is_legal_unicode(code)) {
         return 0;
     }
     *buf = code;
@@ -149,19 +153,20 @@ inline int writeCharCode<UTF32>(character_type_of<UTF32>::type* buf, char32_t co
 }
 
 template <CharacterEncoding ENCODING>
-int readCharCode(char32_t& code, const typename character_type_of<ENCODING>::type* buf);
+int read_char_code(char32_t& code, const typename character_type_of<ENCODING>::type* buf);
 
 template <>
-inline int readCharCode<EIGHT_BIT>(char32_t& code, const character_type_of<EIGHT_BIT>::type* buf) {
+inline int
+read_char_code<EIGHT_BIT>(char32_t& code, const character_type_of<EIGHT_BIT>::type* buf) {
     code = static_cast<unsigned char>(buf[0]);
-    if (!isLegalUnicode(code)) {
+    if (!is_legal_unicode(code)) {
         code = UNICODE_INVALID;
     }
     return 1;
 }
 
 template <>
-inline int readCharCode<UTF8>(char32_t& code, const character_type_of<UTF8>::type* buf) {
+inline int read_char_code<UTF8>(char32_t& code, const character_type_of<UTF8>::type* buf) {
     int extra_bytes = 0;
     auto c = static_cast<unsigned char>(buf[0]);
     if ((c & 0x80) == 0) {
@@ -191,86 +196,85 @@ inline int readCharCode<UTF8>(char32_t& code, const character_type_of<UTF8>::typ
             break;
         }
     }
-    if (!isLegalUnicode(code)) {
+    if (!is_legal_unicode(code)) {
         code = UNICODE_INVALID;
     }
     return extra_bytes + 1;
 }
 
 template <>
-inline int readCharCode<UTF16>(char32_t& code, const character_type_of<UTF16>::type* buf) {
-    if ((static_cast<uint16_t>(buf[0]) & ~0x7FFu) == 0xD800u &&
-        (static_cast<uint16_t>(buf[1]) & ~0x3FFu) == 0xDC00u) {
-        code = ((static_cast<uint16_t>(buf[0]) & 0x3FFu) << 10) +
-               (static_cast<uint16_t>(buf[1]) & 0x3FFu) + 0x10000u;
-        if (!isLegalUnicode(code)) {
+inline int read_char_code<UTF16>(char32_t& code, const character_type_of<UTF16>::type* buf) {
+    if ((static_cast<uint16_t>(buf[0]) & ~0x7FFU) == 0xD800U &&
+        (static_cast<uint16_t>(buf[1]) & ~0x3FFU) == 0xDC00U) {
+        code = ((static_cast<uint16_t>(buf[0]) & 0x3FFU) << 10) +
+               (static_cast<uint16_t>(buf[1]) & 0x3FFU) + 0x10000U;
+        if (!is_legal_unicode(code)) {
             code = UNICODE_INVALID;
         }
         return 2;
-    } else {
-        code = static_cast<uint16_t>(buf[0]);
-        if (!isLegalUnicode(code)) {
-            code = UNICODE_INVALID;
-        }
-        return 1;
     }
+    code = static_cast<uint16_t>(buf[0]);
+    if (!is_legal_unicode(code)) {
+        code = UNICODE_INVALID;
+    }
+    return 1;
 }
 
 template <>
-inline int readCharCode<UTF32>(char32_t& code, const character_type_of<UTF32>::type* buf) {
+inline int read_char_code<UTF32>(char32_t& code, const character_type_of<UTF32>::type* buf) {
     code = *buf;
-    if (!isLegalUnicode(code)) {
+    if (!is_legal_unicode(code)) {
         code = UNICODE_INVALID;
     }
     return 1;
 }
 
 template <typename T>
-int readCharCode(char32_t& code, T* buf);
+int read_char_code(char32_t& code, T* buf);
 
 template <>
-inline int readCharCode(char32_t& code, const char* buf) {
-    return readCharCode<UTF8>(code, buf);
+inline int read_char_code(char32_t& code, const char* buf) {
+    return read_char_code<UTF8>(code, buf);
 }
 
 template <>
-inline int readCharCode(char32_t& code, const char16_t* buf) {
-    return readCharCode<UTF16>(code, buf);
+inline int read_char_code(char32_t& code, const char16_t* buf) {
+    return read_char_code<UTF16>(code, buf);
 }
 
 template <>
-inline int readCharCode(char32_t& code, const char32_t* buf) {
-    return readCharCode<UTF32>(code, buf);
+inline int read_char_code(char32_t& code, const char32_t* buf) {
+    return read_char_code<UTF32>(code, buf);
 }
 
 template <>
-inline int readCharCode(char32_t& code, const wchar_t* buf) {
-    return readCharCode<encoding_type_of<wchar_t>::kind>(
+inline int read_char_code(char32_t& code, const wchar_t* buf) {
+    return read_char_code<encoding_type_of<wchar_t>::kind>(
         code, reinterpret_cast<const character_type_of<encoding_type_of<wchar_t>::kind>::type*>(buf)
     );
 }
 
 template <typename T>
-int writeCharCode(T* buf, char32_t code);
+int write_char_code(T* buf, char32_t code);
 
 template <>
-inline int writeCharCode(char* buf, char32_t code) {
-    return writeCharCode<UTF8>(buf, code);
+inline int write_char_code(char* buf, char32_t code) {
+    return write_char_code<UTF8>(buf, code);
 }
 
 template <>
-inline int writeCharCode(char16_t* buf, char32_t code) {
-    return writeCharCode<UTF16>(buf, code);
+inline int write_char_code(char16_t* buf, char32_t code) {
+    return write_char_code<UTF16>(buf, code);
 }
 
 template <>
-inline int writeCharCode(char32_t* buf, char32_t code) {
-    return writeCharCode<UTF32>(buf, code);
+inline int write_char_code(char32_t* buf, char32_t code) {
+    return write_char_code<UTF32>(buf, code);
 }
 
 template <>
-inline int writeCharCode(wchar_t* buf, char32_t code) {
-    return writeCharCode<encoding_type_of<wchar_t>::kind>(
+inline int write_char_code(wchar_t* buf, char32_t code) {
+    return write_char_code<encoding_type_of<wchar_t>::kind>(
         reinterpret_cast<character_type_of<encoding_type_of<wchar_t>::kind>::type*>(buf), code
     );
 }

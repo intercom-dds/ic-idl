@@ -74,7 +74,7 @@ class PrettyPrinter {
         PrettyPrinter& parent;
     };
 
-    PrettyPrinter() : p(new impl) {}
+    PrettyPrinter() : m_impl(new impl) {}
 
     template <typename T>
     PrettyPrinter& operator<<(T arg) {
@@ -104,7 +104,7 @@ class PrettyPrinter {
     }
 
     PrettyPrinter& operator<<(const PrettyPrinter& other) {
-        for (const auto& token : other.p->values) {
+        for (const auto& token : other.m_impl->values) {
             add(token.kind, token.text);
         }
         return *this;
@@ -119,17 +119,17 @@ class PrettyPrinter {
     }
 
     bool has_text_content() const {
-        return std::any_of(p->values.begin(), p->values.end(), [](token& t) {
+        return std::any_of(m_impl->values.begin(), m_impl->values.end(), [](token& t) {
             return !t.text.empty();
         });
     }
 
     PrettyPrinter& endl(int count = 1) {
         int found = 0;
-        auto prev_newline = p->values.end();
+        auto prev_newline = m_impl->values.end();
         if (has_text_content()) {
             // count preceding empty (or whitespace only) lines
-            for (auto it = p->values.rbegin(); it != p->values.rend(); ++it) {
+            for (auto it = m_impl->values.rbegin(); it != m_impl->values.rend(); ++it) {
                 if (it->kind == NEWLINE || (count > 1 && it->kind == BLOCK_START)) {
                     if (++found == 1) {
                         auto it_cpy = it;
@@ -141,10 +141,10 @@ class PrettyPrinter {
                 }
             }
             // rm preceding whitespace on last line [in case endl() does not add a newline]
-            while (prev_newline != p->values.end()) {
+            while (prev_newline != m_impl->values.end()) {
                 auto it = prev_newline++;
                 if (it->kind == TAB) {
-                    p->values.erase(it);
+                    m_impl->values.erase(it);
                 }
             }
             // ad newline(s)
@@ -184,7 +184,7 @@ class PrettyPrinter {
                         --level;
                         column += static_cast<int>(it->text.size());
                     } else if (it->kind == PARENT_INDENT) {
-                        column -= static_cast<int>(p->indent_size);
+                        column -= static_cast<int>(m_impl->indent_size);
                         ignore_line = true;
                     } else if (it->kind == NEWLINE) {
                         column = 0;
@@ -227,8 +227,8 @@ class PrettyPrinter {
         std::vector<unsigned int> level_indent{indent_base};
         std::vector<std::vector<unsigned int>> tab_stops;
         tab_stops.resize(1);
-        get_tab_stops(p->values.begin(), p->values.end(), tab_stops[0]);
-        for (auto it = p->values.begin(); it != p->values.end(); ++it) {
+        get_tab_stops(m_impl->values.begin(), m_impl->values.end(), tab_stops[0]);
+        for (auto it = m_impl->values.begin(); it != m_impl->values.end(); ++it) {
             if ((it->kind == BLOCK_END || it->kind == PARENT_INDENT) && indent_count > 0) {
                 --indent_count;
             }
@@ -260,7 +260,7 @@ class PrettyPrinter {
                 if (t.kind == INDENT_TO_COLUMN_BLOCK_START) {
                     level_indent[level] = column;
                 } else {
-                    level_indent[level] = p->indent_size;
+                    level_indent[level] = m_impl->indent_size;
                 }
                 break;
             case BLOCK_END:
@@ -275,7 +275,7 @@ class PrettyPrinter {
                 }
                 break;
             case TAB_GROUP:
-                get_tab_stops(it, p->values.end(), tab_stops[level]);
+                get_tab_stops(it, m_impl->values.end(), tab_stops[level]);
                 break;
             case NEWLINE:
                 stream << std::endl;
@@ -305,20 +305,20 @@ class PrettyPrinter {
     }
 
     void push(const ptree* context) {
-        p->context.push_back(context);
+        m_impl->context.push_back(context);
     }
 
     void pop() {
-        p->context.pop_back();
+        m_impl->context.pop_back();
     }
 
     const ptree* context() {
-        return p->context.empty() ? nullptr : p->context[p->context.size() - 1];
+        return m_impl->context.empty() ? nullptr : m_impl->context[m_impl->context.size() - 1];
     }
 
     void add(token_kind kind, const std::string& text) {
         token t = {kind, text};
-        p->values.push_back(t);
+        m_impl->values.push_back(t);
     }
 
     PrettyPrinter& begin(const std::string& brace) {
@@ -337,15 +337,15 @@ class PrettyPrinter {
     }
 
     bool first_in_block() const {
-        return p->values.empty() || p->values.rbegin()->kind == BLOCK_START;
+        return m_impl->values.empty() || m_impl->values.rbegin()->kind == BLOCK_START;
     }
 
     void set_indent_size(unsigned int size) {
-        p->indent_size = size;
+        m_impl->indent_size = size;
     }
 
     bool empty() const {
-        return p->values.empty();
+        return m_impl->values.empty();
     }
 
   private:
@@ -356,7 +356,7 @@ class PrettyPrinter {
         std::vector<const ptree*> context;
         unsigned int indent_size = 4;
     };
-    std::shared_ptr<impl> p;
+    std::shared_ptr<impl> m_impl;
 };
 
 inline PrettyPrinter& endl(PrettyPrinter& out) {

@@ -59,62 +59,62 @@ enum JsonType {
 struct JsonData {
     using state_type = JsonData;
 
-    JsonData(const char* str, size_t length) : str_(str), length_(length), pos_(0), line_(0) {}
+    JsonData(const char* str, size_t length) : m_str(str), m_length(length), m_pos(0), m_line(0) {}
 
     JsonData(const char* str, size_t length, size_t pos, size_t line)
-        : str_(str), length_(length), pos_(pos), line_(line) {}
+        : m_str(str), m_length(length), m_pos(pos), m_line(line) {}
 
     int peek() const {
-        return (pos_ >= length_) ? EOF : str_[pos_];
+        return (m_pos >= m_length) ? EOF : m_str[m_pos];
     }
 
     int getc() {
-        int c = (pos_ >= length_) ? EOF : str_[pos_++];
+        int c = (m_pos >= m_length) ? EOF : m_str[m_pos++];
         if (c == '\n') {
-            ++line_;
+            ++m_line;
         }
         return c;
     }
 
     size_t pos() const {
-        return pos_;
+        return m_pos;
     }
 
     const char* str() const {
-        return str_ + pos();
+        return m_str + pos();
     }
 
     size_t line() const {
-        return line_;
+        return m_line;
     }
 
     size_t length() const {
-        return length_ - pos_;
+        return m_length - m_pos;
     }
 
     state_type current() const {
         return *this;
     }
 
-    JsonData fromState(const state_type& prev) const {
-        return {str_, pos_, prev.pos_, prev.line_};
+    JsonData from_state(const state_type& prev) const {
+        return {m_str, m_pos, prev.m_pos, prev.m_line};
     }
 
     char32_t read_unicode();
 
   private:
-    const char* str_;
-    size_t length_;
-    size_t pos_;
-    size_t line_;
+    const char* m_str;
+    size_t m_length;
+    size_t m_pos;
+    size_t m_line;
 };
 
 struct JsonStream {
-    JsonStream(std::istream& stream) : stream_(stream), line_(0) {}
+    JsonStream(std::istream& stream) : m_stream(stream) {}
 
     struct state_type {
-        JsonData fromState(state_type& prev) const {
-            return {parent_->data_.data(), pos_, prev.pos_, prev.line_};
+        JsonData from_state(state_type& prev) const {
+            return {parent_->m_data.data(), pos_, prev.pos_, prev.line_};
         }
 
         size_t line() const {
@@ -127,40 +127,40 @@ struct JsonStream {
     };
 
     int peek() const {
-        return stream_.peek();
+        return m_stream.peek();
     }
 
     int getc() {
-        int c = stream_.get();
+        int c = m_stream.get();
         if (c == '\n') {
-            ++line_;
+            ++m_line;
         }
         if (c != EOF) {
-            data_.push_back(static_cast<char>(c));
+            m_data.push_back(static_cast<char>(c));
         }
         return c;
     }
 
     size_t line() const {
-        return line_;
+        return m_line;
     }
 
     size_t pos() const {
-        return data_.size();
+        return m_data.size();
     }
 
     state_type current() const {
-        return {this, data_.size(), line_};
+        return {this, m_data.size(), m_line};
     }
 
-    JsonData fromState(state_type& prev) const {
-        return {data_.data(), data_.size(), prev.pos_, prev.line_};
+    JsonData from_state(state_type& prev) const {
+        return {m_data.data(), m_data.size(), prev.pos_, prev.line_};
     }
 
   private:
-    std::istream& stream_;
-    std::string data_;
-    size_t line_;
+    std::istream& m_stream;
+    std::string m_data;
+    size_t m_line = 0;
 };
 
 class JsonNode {
@@ -192,7 +192,7 @@ class JsonNode {
             while (data.pos() < m_data.length()) {
                 char32_t code = data.read_unicode();
                 character_type buf[4] = {0};
-                int len = writeCharCode<encoding_type::kind>(buf, code);
+                int len = write_char_code<encoding_type::kind>(buf, code);
                 for (int i = 0; i < len; ++i) {
                     value.push_back(static_cast<string_value_type>(buf[i]));
                 }
@@ -248,11 +248,11 @@ class JsonNode {
         return true;
     }
 
-    inline JsonType get_type() const {
+    JsonType get_type() const {
         return m_type;
     }
 
-    inline JsonData get_data() const {
+    JsonData get_data() const {
         return m_data;
     }
 
@@ -478,7 +478,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
     }
 
     template <typename T>
-    void writeUnsigned(T value) {
+    void write_unsigned(T value) {
         maybe_comma();
         if (value == 0) {
             put('0');

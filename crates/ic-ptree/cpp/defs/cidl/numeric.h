@@ -32,6 +32,8 @@
 
 #include "cidl/constants.h"
 
+// NOLINTBEGIN(readability-identifier-naming)
+
 namespace intercom {
 
 template <typename T, typename... Args>
@@ -310,6 +312,7 @@ inline numeric_storage::numeric_storage(numeric_storage&& a_other) noexcept : nu
     }
 }
 
+// NOLINTNEXTLINE
 inline numeric_storage& numeric_storage::operator=(numeric_storage&& a_other) noexcept {
     if (this != &a_other) {
         _d(a_other.m_ic_discriminator_value);
@@ -884,3 +887,5 @@ struct numeric {
         return kind() != UNDEF_KIND;
     }
 };
+
+// NOLINTEND(readability-identifier-naming)

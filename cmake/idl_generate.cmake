@@ -62,324 +62,323 @@
 
 # cmake_minimum_required( VERSION 3.5 ) # cmake_parse_arguments
 
-function( CIDL_GENERATE )
-   set( options INTERCOM_BUILD )
-   set( oneValueArgs
-         LANGUAGE
-         DESTINATION
-         OUTPUT_VAR
-         OUTPUT_ACCUMULATED
-         ALLOW_REDECLARE
-         DOC_IDL )
-   set( multiValueArgs
-         INPUT_IDL
-         INCLUDE_DIRECTORIES
-         FLAGS
-         OVERRIDE_OUTPUTS )
+function( IDL_GENERATE )
+    set( options IC_BUILD )
+    set( oneValueArgs
+            LANGUAGE
+            DESTINATION
+            OUTPUT_VAR
+            OUTPUT_ACCUMULATED
+            ALLOW_REDECLARE
+            DOC_IDL )
+    set( multiValueArgs
+            INPUT_IDL
+            INCLUDE_DIRECTORIES
+            FLAGS
+            OVERRIDE_OUTPUTS )
 
-   cmake_parse_arguments( _CIDL_GENERATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    cmake_parse_arguments( _CIDL_GENERATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
 
-   if( NOT CIDL_EXE )
-      if( TARGET InterCOM::cidl )
-         set( CIDL_EXE $<TARGET_FILE:InterCOM::cidl> )
-      else()
-         message( SEND_ERROR "cidl_generate could not locate InterCOM::cidl target exectuable" )
-      endif()
-   endif()
+    if( NOT CIDL_EXE )
+        if( TARGET InterCOM::cidl )
+            set( CIDL_EXE $<TARGET_FILE:InterCOM::cidl> )
+        else()
+            message( SEND_ERROR "cidl_generate could not locate InterCOM::cidl target exectuable" )
+        endif()
+    endif()
 
-   foreach( ARG ${_CIDL_GENERATE_UNPARSED_ARGUMENTS} )
+    foreach( ARG ${_CIDL_GENERATE_UNPARSED_ARGUMENTS} )
 
-      if(    ARG STREQUAL "CPP"
-          OR ARG STREQUAL "CSHARP"
-          OR ARG STREQUAL "JAVA"
-          OR ARG STREQUAL "ADA"
-          OR ARG STREQUAL "PYTHON"
-          OR ARG STREQUAL "RUST")
+        if(     ARG STREQUAL "CPP"
+             OR ARG STREQUAL "CSHARP"
+             OR ARG STREQUAL "JAVA"
+             OR ARG STREQUAL "ADA"
+             OR ARG STREQUAL "PYTHON"
+             OR ARG STREQUAL "RUST")
 
-         message( WARNING "Language option arguments to cidl_generate have been deprecated. Please use LANGUAGE <lang> instead." )
+            message( WARNING "Language option arguments to cidl_generate have been deprecated. Please use LANGUAGE <lang> instead." )
 
-         if( ARG STREQUAL "CPP" )
-            list( APPEND _CIDL_GENERATE_LANGUAGE CPP )
-         endif()
-         if( ARG STREQUAL "CSHARP" )
-            list( APPEND _CIDL_GENERATE_LANGUAGE CSHARP )
-         endif()
-         if( ARG STREQUAL "JAVA" )
-            list( APPEND _CIDL_GENERATE_LANGUAGE JAVA )
-         endif()
-         if( ARG STREQUAL "ADA" )
-            list( APPEND _CIDL_GENERATE_LANGUAGE ADA )
-         endif()
-         if( ARG STREQUAL "RUST" )
-            list( APPEND _CIDL_GENERATE_LANGUAGE RUST )
-         endif()
-         if( ARG STREQUAL "PYTHON" )
-            list( APPEND _CIDL_GENERATE_LANGUAGE PYTHON )
-         endif()
-      else()
-         list( APPEND _CIDL_GENERATE_INPUT_IDL ${ARG} )
-      endif()
+            if( ARG STREQUAL "CPP" )
+                list( APPEND _CIDL_GENERATE_LANGUAGE CPP )
+            endif()
+            if( ARG STREQUAL "CSHARP" )
+                list( APPEND _CIDL_GENERATE_LANGUAGE CSHARP )
+            endif()
+            if( ARG STREQUAL "JAVA" )
+                list( APPEND _CIDL_GENERATE_LANGUAGE JAVA )
+            endif()
+            if( ARG STREQUAL "ADA" )
+                list( APPEND _CIDL_GENERATE_LANGUAGE ADA )
+            endif()
+            if( ARG STREQUAL "RUST" )
+                list( APPEND _CIDL_GENERATE_LANGUAGE RUST )
+            endif()
+            if( ARG STREQUAL "PYTHON" )
+                list( APPEND _CIDL_GENERATE_LANGUAGE PYTHON )
+            endif()
+        else()
+            list( APPEND _CIDL_GENERATE_INPUT_IDL ${ARG} )
+        endif()
 
-   endforeach()
+    endforeach()
 
-   if( NOT _CIDL_GENERATE_DESTINATION )
-      set( _CIDL_GENERATE_DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )
-   endif()
+    if( NOT _CIDL_GENERATE_DESTINATION )
+        set( _CIDL_GENERATE_DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )
+    endif()
 
-   if( NOT IS_ABSOLUTE "${_CIDL_GENERATE_DESTINATION}" )
-      set( _CIDL_GENERATE_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/${_CIDL_GENERATE_DESTINATION}" )
-   endif()
+    if( NOT IS_ABSOLUTE "${_CIDL_GENERATE_DESTINATION}" )
+        set( _CIDL_GENERATE_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/${_CIDL_GENERATE_DESTINATION}" )
+    endif()
 
-   if( InterCOM_DIR )
-      list( APPEND _CIDL_GENERATE_INCLUDE_DIRECTORIES ${InterCOM_DIR}/../idl )
-   endif()
+    if( InterCOM_DIR )
+        list( APPEND _CIDL_GENERATE_INCLUDE_DIRECTORIES ${InterCOM_DIR}/../idl )
+    endif()
 
-   foreach( _DIR ${_CIDL_GENERATE_INCLUDE_DIRECTORIES} )
-      get_filename_component( _DIR "${_DIR}" REALPATH )
-      list( APPEND _INCLUDES -I${_DIR} )
-   endforeach()
+    foreach( _DIR ${_CIDL_GENERATE_INCLUDE_DIRECTORIES} )
+        get_filename_component( _DIR "${_DIR}" REALPATH )
+        list( APPEND _INCLUDES -I${_DIR} )
+    endforeach()
 
-   if( CIDL_GENERATE_TRACE )
-      message( "" )
-      message( "Call to cidl_generate:" )
-      message( "CIDL_EXE: ${CIDL_EXE}" )
-      message( "INPUT_IDL: ${_CIDL_GENERATE_INPUT_IDL}" )
-      message( "INCLUDES: ${_INCLUDES}" )
-      message( "DESTINATION: ${_CIDL_GENERATE_DESTINATION}" )
-   endif()
+    if( CIDL_GENERATE_TRACE )
+        message( "" )
+        message( "Call to cidl_generate:" )
+        message( "CIDL_EXE: ${CIDL_EXE}" )
+        message( "INPUT_IDL: ${_CIDL_GENERATE_INPUT_IDL}" )
+        message( "INCLUDES: ${_INCLUDES}" )
+        message( "DESTINATION: ${_CIDL_GENERATE_DESTINATION}" )
+    endif()
 
-   get_filename_component( _ABS_DESTINATION "${_CIDL_GENERATE_DESTINATION}" REALPATH )
+    get_filename_component( _ABS_DESTINATION "${_CIDL_GENERATE_DESTINATION}" REALPATH )
 
-   if( NOT _CIDL_GENERATE_LANGUAGE )
-      set( _CIDL_GENERATE_LANGUAGE CPP )
-   else()
-      if( _CIDL_GENERATE_LANGUAGE MATCHES ";" )
-         message( SEND_ERROR "Multiple output languages not supported." )
-      endif()
-   endif()
+    if( NOT _CIDL_GENERATE_LANGUAGE )
+        set( _CIDL_GENERATE_LANGUAGE CPP )
+    else()
+        if( _CIDL_GENERATE_LANGUAGE MATCHES ";" )
+            message( SEND_ERROR "Multiple output languages not supported." )
+        endif()
+    endif()
 
-   string( TOUPPER ${_CIDL_GENERATE_LANGUAGE} _CIDL_GENERATE_LANGUAGE )
+    string( TOUPPER ${_CIDL_GENERATE_LANGUAGE} _CIDL_GENERATE_LANGUAGE )
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "JAVA" )
-      list( APPEND _CIDL_GENERATE_FLAGS --java-destination ${_ABS_DESTINATION} )
-      # Java will generate code in subfolders for each module level, so this guesswork only works for global module types
-      list( APPEND _OUTPUT_SUFFIXES .java )
-      list( APPEND _OUTPUT_SUFFIXES Helper.java )
-      list( APPEND _OUTPUT_SUFFIXES Holder.java )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "JAVA" )
+        list( APPEND _CIDL_GENERATE_FLAGS --java-destination ${_ABS_DESTINATION} )
+        # Java will generate code in subfolders for each module level, so this guesswork only works for global module types
+        list( APPEND _OUTPUT_SUFFIXES .java )
+        list( APPEND _OUTPUT_SUFFIXES Helper.java )
+        list( APPEND _OUTPUT_SUFFIXES Holder.java )
+    endif()
 
-   if( CIDL_GENERATE_DEFAULT_FLAGS )
-      list( APPEND _CIDL_GENERATE_FLAGS ${CIDL_GENERATE_DEFAULT_FLAGS} )
-   endif()
+    if( CIDL_GENERATE_DEFAULT_FLAGS )
+        list( APPEND _CIDL_GENERATE_FLAGS ${CIDL_GENERATE_DEFAULT_FLAGS} )
+    endif()
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "ADA" )
-      list( APPEND _CIDL_GENERATE_FLAGS --ada-destination ${_ABS_DESTINATION} )
-      list( APPEND _OUTPUT_SUFFIXES .adb .ads )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "ADA" )
+        list( APPEND _CIDL_GENERATE_FLAGS --ada-destination ${_ABS_DESTINATION} )
+        list( APPEND _OUTPUT_SUFFIXES .adb .ads )
+    endif()
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "CSHARP" )
-      list( APPEND _CIDL_GENERATE_FLAGS --csharp-destination ${_ABS_DESTINATION} )
-      list( APPEND _OUTPUT_SUFFIXES .cs )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "CSHARP" )
+        list( APPEND _CIDL_GENERATE_FLAGS --csharp-destination ${_ABS_DESTINATION} )
+        list( APPEND _OUTPUT_SUFFIXES .cs )
+    endif()
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "PYTHON" )
-      list( APPEND _CIDL_GENERATE_FLAGS --python-destination ${_ABS_DESTINATION} )
-      list( APPEND _OUTPUT_SUFFIXES .py )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "PYTHON" )
+        list( APPEND _CIDL_GENERATE_FLAGS --python-destination ${_ABS_DESTINATION} )
+        list( APPEND _OUTPUT_SUFFIXES .py )
+    endif()
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "RUST" )
-      list( APPEND _CIDL_GENERATE_FLAGS --rust-destination ${_ABS_DESTINATION} )
-      list( APPEND _OUTPUT_SUFFIXES .rs )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "RUST" )
+        list( APPEND _CIDL_GENERATE_FLAGS --rust-destination ${_ABS_DESTINATION} )
+        list( APPEND _OUTPUT_SUFFIXES .rs )
+    endif()
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "CPP" )
-      list( APPEND _CIDL_GENERATE_FLAGS --cpp-destination ${_ABS_DESTINATION} )
-      list( APPEND _OUTPUT_SUFFIXES .cpp .h )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "CPP" )
+        list( APPEND _CIDL_GENERATE_FLAGS --cpp-destination ${_ABS_DESTINATION} )
+        list( APPEND _OUTPUT_SUFFIXES .cpp .h )
+    endif()
 
-   if( _CIDL_GENERATE_LANGUAGE STREQUAL "IDL" )
-       list( APPEND _CIDL_GENERATE_FLAGS --idl-destination ${_ABS_DESTINATION} )
-       list( APPEND _OUTPUT_SUFFIXES .idl )
-   endif()
+    if( _CIDL_GENERATE_LANGUAGE STREQUAL "IDL" )
+         list( APPEND _CIDL_GENERATE_FLAGS --idl-destination ${_ABS_DESTINATION} )
+         list( APPEND _OUTPUT_SUFFIXES .idl )
+    endif()
 
-   if( _CIDL_GENERATE_INTERCOM_BUILD )
-      list( APPEND _ENV_CMD_ARGS INTERCOM_BUILD=${_CIDL_GENERATE_INTERCOM_BUILD} )
-   endif()
+    if( _CIDL_GENERATE_INTERCOM_BUILD )
+        list( APPEND _ENV_CMD_ARGS INTERCOM_BUILD=${_CIDL_GENERATE_INTERCOM_BUILD} )
+    endif()
 
-   if( _CIDL_GENERATE_ALLOW_REDECLARE )
-      list( APPEND _ENV_CMD_ARGS CIDL_ALLOW_REDECLARE=${_CIDL_GENERATE_ALLOW_REDECLARE} )
-   endif()
+    if( _CIDL_GENERATE_ALLOW_REDECLARE )
+        list( APPEND _ENV_CMD_ARGS CIDL_ALLOW_REDECLARE=${_CIDL_GENERATE_ALLOW_REDECLARE} )
+    endif()
 
-   if( DEFINED ENV{LD_LIBRARY_PATH} )
-      list( APPEND _CIDL_RPATH $ENV{LD_LIBRARY_PATH} )
-   endif()
+    if( DEFINED ENV{LD_LIBRARY_PATH} )
+        list( APPEND _CIDL_RPATH $ENV{LD_LIBRARY_PATH} )
+    endif()
 
-   if( CMAKE_BUILD_RPATH )
-      list( APPEND _CIDL_RPATH ${CMAKE_BUILD_RPATH} )
-   endif()
+    if( CMAKE_BUILD_RPATH )
+        list( APPEND _CIDL_RPATH ${CMAKE_BUILD_RPATH} )
+    endif()
 
-   if( _CIDL_RPATH )
-      string( REPLACE ";" ":"  _CIDL_RPATH "${_CIDL_RPATH}" )
-      list( APPEND _ENV_CMD_ARGS LD_LIBRARY_PATH=${_CIDL_RPATH} )
-   endif()
+    if( _CIDL_RPATH )
+        string( REPLACE ";" ":"  _CIDL_RPATH "${_CIDL_RPATH}" )
+        list( APPEND _ENV_CMD_ARGS LD_LIBRARY_PATH=${_CIDL_RPATH} )
+    endif()
 
-   if( _CIDL_GENERATE_INTERCOM_BUILD OR _CIDL_GENERATE_ALLOW_REDECLARE OR _CIDL_RPATH )
-      set( _ENV_CMD ${CMAKE_COMMAND} -E env ${_ENV_CMD_ARGS} )
-   endif()
+    if( _CIDL_GENERATE_INTERCOM_BUILD OR _CIDL_GENERATE_ALLOW_REDECLARE OR _CIDL_RPATH )
+        set( _ENV_CMD ${CMAKE_COMMAND} -E env ${_ENV_CMD_ARGS} )
+    endif()
 
-   if( CIDL_GENERATE_TRACE )
-      message( "FLAGS: ${_CIDL_GENERATE_FLAGS}" )
-      message( "ABS_DESTINATION: ${_ABS_DESTINATION}" )
-      message( "ENV_CMD: ${_ENV_CMD}" )
-   endif()
+    if( CIDL_GENERATE_TRACE )
+        message( "FLAGS: ${_CIDL_GENERATE_FLAGS}" )
+        message( "ABS_DESTINATION: ${_ABS_DESTINATION}" )
+        message( "ENV_CMD: ${_ENV_CMD}" )
+    endif()
 
-   if( _CIDL_GENERATE_DOC_IDL )
-      get_filename_component( _DOC_FILE_NAME "${_CIDL_GENERATE_DOC_IDL}" NAME )
-      get_filename_component( _DOC_FILE_DIRECTORY "${_CIDL_GENERATE_DOC_IDL}" DIRECTORY )
-      get_filename_component( _DOC_FILE_DIRECTORY "${_DOC_FILE_DIRECTORY}" REALPATH )
+    if( _CIDL_GENERATE_DOC_IDL )
+        get_filename_component( _DOC_FILE_NAME "${_CIDL_GENERATE_DOC_IDL}" NAME )
+        get_filename_component( _DOC_FILE_DIRECTORY "${_CIDL_GENERATE_DOC_IDL}" DIRECTORY )
+        get_filename_component( _DOC_FILE_DIRECTORY "${_DOC_FILE_DIRECTORY}" REALPATH )
 
-      if( "${_DOC_FILE_NAME}" MATCHES "\\.idl$" )
-         get_filename_component( _DOC_FILE_BASENAME "${_CIDL_GENERATE_DOC_IDL}" NAME_WE )
-     elseif(NOT IS_DIRECTORY "${_CIDL_GENERATE_DOC_IDL}")
-         set( _DOC_FILE_BASENAME ${_DOC_FILE_NAME} )
-         set( _DOC_FILE_NAME ${_DOC_FILE_BASENAME}.idl )
-      endif()
+        if( "${_DOC_FILE_NAME}" MATCHES "\\.idl$" )
+            get_filename_component( _DOC_FILE_BASENAME "${_CIDL_GENERATE_DOC_IDL}" NAME_WE )
+      elseif(NOT IS_DIRECTORY "${_CIDL_GENERATE_DOC_IDL}")
+            set( _DOC_FILE_BASENAME ${_DOC_FILE_NAME} )
+            set( _DOC_FILE_NAME ${_DOC_FILE_BASENAME}.idl )
+        endif()
 
-      set( _DOC_ABS_INPUT ${_DOC_FILE_DIRECTORY}/${_DOC_FILE_NAME} )
+        set( _DOC_ABS_INPUT ${_DOC_FILE_DIRECTORY}/${_DOC_FILE_NAME} )
 
-      if( NOT EXISTS ${_DOC_ABS_INPUT} )
-         message( SEND_ERROR "DOC_IDL \"${_DOC_ABS_INPUT}\" could not be found"  )
-      endif()
+        if( NOT EXISTS ${_DOC_ABS_INPUT} )
+            message( SEND_ERROR "DOC_IDL \"${_DOC_ABS_INPUT}\" could not be found"  )
+        endif()
 
-      if( CIDL_GENERATE_TRACE )
-         message( "DOC_IDL: ${_CIDL_GENERATE_DOC_IDL}" )
-         message( "DOC_FILE_DIRECTORY: ${_DOC_FILE_DIRECTORY}" )
-         message( "DOC_FILE_BASENAME: ${_DOC_FILE_BASENAME}" )
-         message( "DOC_FILE_NAME: ${_DOC_FILE_NAME}" )
-         message( "DOC_ABS_INPUT: ${_DOC_ABS_INPUT}" )
-      endif()
-   endif()
+        if( CIDL_GENERATE_TRACE )
+            message( "DOC_IDL: ${_CIDL_GENERATE_DOC_IDL}" )
+            message( "DOC_FILE_DIRECTORY: ${_DOC_FILE_DIRECTORY}" )
+            message( "DOC_FILE_BASENAME: ${_DOC_FILE_BASENAME}" )
+            message( "DOC_FILE_NAME: ${_DOC_FILE_NAME}" )
+            message( "DOC_ABS_INPUT: ${_DOC_ABS_INPUT}" )
+        endif()
+    endif()
 
-   if( NOT CIDL_L_EXE AND TARGET InterCOM::cidl )
-      get_property( CIDL_L_EXE TARGET InterCOM::cidl PROPERTY LOCATION )
-   endif()
+    if( NOT CIDL_L_EXE AND TARGET InterCOM::cidl )
+        get_property( CIDL_L_EXE TARGET InterCOM::cidl PROPERTY LOCATION )
+    endif()
 
-   foreach( _INPUT ${_CIDL_GENERATE_INPUT_IDL} )
+    foreach( _INPUT ${_CIDL_GENERATE_INPUT_IDL} )
 
-      get_filename_component( _FILE_NAME "${_INPUT}" NAME )
-      get_filename_component( _ABS_DIRECTORY "${_INPUT}" DIRECTORY )
-      get_filename_component( _ABS_DIRECTORY "${_ABS_DIRECTORY}" REALPATH )
+        get_filename_component( _FILE_NAME "${_INPUT}" NAME )
+        get_filename_component( _ABS_DIRECTORY "${_INPUT}" DIRECTORY )
+        get_filename_component( _ABS_DIRECTORY "${_ABS_DIRECTORY}" REALPATH )
 
-      set( _INPUT_INCLUDES ${_INCLUDES} -I${_ABS_DIRECTORY} )
+        set( _INPUT_INCLUDES ${_INCLUDES} -I${_ABS_DIRECTORY} )
 
-      if( "${_FILE_NAME}" MATCHES "\\.idl$" )
-         get_filename_component( _FILE_BASENAME "${_INPUT}" NAME_WE )
-     elseif(NOT IS_DIRECTORY "${_INPUT}")
-         set( _FILE_BASENAME ${_FILE_NAME} )
-         set( _FILE_NAME ${_FILE_BASENAME}.idl )
-      endif()
+        if( "${_FILE_NAME}" MATCHES "\\.idl$" )
+            get_filename_component( _FILE_BASENAME "${_INPUT}" NAME_WE )
+      elseif(NOT IS_DIRECTORY "${_INPUT}")
+            set( _FILE_BASENAME ${_FILE_NAME} )
+            set( _FILE_NAME ${_FILE_BASENAME}.idl )
+        endif()
 
-      set( _ABS_INPUT ${_ABS_DIRECTORY}/${_FILE_NAME} )
+        set( _ABS_INPUT ${_ABS_DIRECTORY}/${_FILE_NAME} )
 
-      set( _CIDL_ARGS ${_INPUT_INCLUDES} ${_CIDL_GENERATE_FLAGS} ${_ABS_INPUT} ${_DOC_ABS_INPUT} )
+        set( _CIDL_ARGS ${_INPUT_INCLUDES} ${_CIDL_GENERATE_FLAGS} ${_ABS_INPUT} ${_DOC_ABS_INPUT} )
 
-      unset( _ABS_OUTPUT )
+        unset( _ABS_OUTPUT )
 
-      string( REPLACE ";" " " _ENV_CMD_PRETTY "${_ENV_CMD}" )
-      string( REPLACE ";" " " _CIDL_ARGS_PRETTY "${_CIDL_ARGS}" )
+        string( REPLACE ";" " " _ENV_CMD_PRETTY "${_ENV_CMD}" )
+        string( REPLACE ";" " " _CIDL_ARGS_PRETTY "${_CIDL_ARGS}" )
 
-      if( _CIDL_GENERATE_OVERRIDE_OUTPUTS )
-         set( _ABS_OUTPUT ${_CIDL_GENERATE_OVERRIDE_OUTPUTS} )
-      elseif(CIDL_L_EXE)
-         execute_process(
-            COMMAND
-               ${_ENV_CMD} ${CIDL_L_EXE} ${_CIDL_ARGS} -l
-            OUTPUT_VARIABLE
-               _CIDL_FILE_LIST
-            ERROR_VARIABLE
-               _CIDL_ERROR
-            RESULT_VARIABLE
-               _CIDL_RESULT
-            OUTPUT_STRIP_TRAILING_WHITESPACE )
-         if( NOT _CIDL_RESULT EQUAL 0 )
-            message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_CIDL_ARGS_PRETTY}] returned ${_CIDL_RESULT}: ${_CIDL_ERROR}" )
-         endif()
+        if( _CIDL_GENERATE_OVERRIDE_OUTPUTS )
+            set( _ABS_OUTPUT ${_CIDL_GENERATE_OVERRIDE_OUTPUTS} )
+        elseif(CIDL_L_EXE)
+            execute_process(
+                COMMAND
+                    ${_ENV_CMD} ${CIDL_L_EXE} ${_CIDL_ARGS} -l
+                OUTPUT_VARIABLE
+                    _CIDL_FILE_LIST
+                ERROR_VARIABLE
+                    _CIDL_ERROR
+                RESULT_VARIABLE
+                    _CIDL_RESULT
+                OUTPUT_STRIP_TRAILING_WHITESPACE )
+            if( NOT _CIDL_RESULT EQUAL 0 )
+                message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_CIDL_ARGS_PRETTY}] returned ${_CIDL_RESULT}: ${_CIDL_ERROR}" )
+            endif()
 
-         if( _CIDL_FILE_LIST STREQUAL "" )
-            message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_CIDL_ARGS_PRETTY}] returned no output" )
-         endif()
+            if( _CIDL_FILE_LIST STREQUAL "" )
+                message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_CIDL_ARGS_PRETTY}] returned no output" )
+            endif()
 
-         string( REGEX REPLACE "\n" ";" _CIDL_FILE_LIST "${_CIDL_FILE_LIST}")
+            string( REGEX REPLACE "\n" ";" _CIDL_FILE_LIST "${_CIDL_FILE_LIST}")
 
-         foreach( _OUTPUT_FILE ${_CIDL_FILE_LIST} )
-            list( APPEND _ABS_OUTPUT ${_ABS_DESTINATION}/${_OUTPUT_FILE} )
-         endforeach()
-      else()
-         # Fallback to an educated guess removed as this masks cidl installation problems. This is really
-         # only necessary when building cidl the first time during repository bootstrap.
-         if (NOT INTERCOM_BUILD_HELPER_TOOLS)
-            message(FATAL_ERROR "Unable to locate cidl executable ${CIDL_L_EXE} - IDL dependencies must be specified with OVERRIDE_OUTPUTS")
-         else()
-            foreach( _SUFFIX ${_OUTPUT_SUFFIXES} )
-               list( APPEND _ABS_OUTPUT ${_ABS_DESTINATION}/${_FILE_BASENAME}${_SUFFIX} )
+            foreach( _OUTPUT_FILE ${_CIDL_FILE_LIST} )
+                list( APPEND _ABS_OUTPUT ${_ABS_DESTINATION}/${_OUTPUT_FILE} )
             endforeach()
-         endif()
-      endif()
+        else()
+            # Fallback to an educated guess removed as this masks cidl installation problems. This is really
+            # only necessary when building cidl the first time during repository bootstrap.
+            if (NOT INTERCOM_BUILD_HELPER_TOOLS)
+                message(FATAL_ERROR "Unable to locate cidl executable ${CIDL_L_EXE} - IDL dependencies must be specified with OVERRIDE_OUTPUTS")
+            else()
+                foreach( _SUFFIX ${_OUTPUT_SUFFIXES} )
+                    list( APPEND _ABS_OUTPUT ${_ABS_DESTINATION}/${_FILE_BASENAME}${_SUFFIX} )
+                endforeach()
+            endif()
+        endif()
 
-      list( APPEND _OUTPUT_LIST ${_ABS_OUTPUT} )
+        list( APPEND _OUTPUT_LIST ${_ABS_OUTPUT} )
 
-      if( CIDL_GENERATE_TRACE )
-         message( "" )
-         message( "INPUT: ${_INPUT}" )
-         message( "INPUT_INCLUDES: ${_INPUT_INCLUDES}" )
-         message( "FILE_BASENAME: ${_FILE_BASENAME}" )
-         message( "FILE_NAME: ${_FILE_NAME}" )
-         message( "ABS_DIRECTORY: ${_ABS_DIRECTORY}" )
-         message( "ABS_INPUT: ${_ABS_INPUT}" )
-         message( "ABS_OUTPUT: ${_ABS_OUTPUT}" )
+        if( CIDL_GENERATE_TRACE )
+            message( "" )
+            message( "INPUT: ${_INPUT}" )
+            message( "INPUT_INCLUDES: ${_INPUT_INCLUDES}" )
+            message( "FILE_BASENAME: ${_FILE_BASENAME}" )
+            message( "FILE_NAME: ${_FILE_NAME}" )
+            message( "ABS_DIRECTORY: ${_ABS_DIRECTORY}" )
+            message( "ABS_INPUT: ${_ABS_INPUT}" )
+            message( "ABS_OUTPUT: ${_ABS_OUTPUT}" )
 
-         message( "COMMAND: ${_ENV_CMD_PRETTY} ${CIDL_EXE} ${_CIDL_ARGS_PRETTY}" )
-         message( "DEPENDS: ${CIDL_EXE} ${_ABS_INPUT} ${_DOC_ABS_INPUT}" )
-      endif()
+            message( "COMMAND: ${_ENV_CMD_PRETTY} ${CIDL_EXE} ${_CIDL_ARGS_PRETTY}" )
+            message( "DEPENDS: ${CIDL_EXE} ${_ABS_INPUT} ${_DOC_ABS_INPUT}" )
+        endif()
 
-      # Messing with a variable we don't need anymore (_FILE_BASENAME) for prettier comments
-      if( _DOC_FILE_BASENAME )
-         set( _FILE_BASENAME "${_FILE_BASENAME} + ${_DOC_FILE_BASENAME}" )
-      endif()
+        # Messing with a variable we don't need anymore (_FILE_BASENAME) for prettier comments
+        if( _DOC_FILE_BASENAME )
+            set( _FILE_BASENAME "${_FILE_BASENAME} + ${_DOC_FILE_BASENAME}" )
+        endif()
 
-      add_custom_command( OUTPUT ${_ABS_OUTPUT}
-         COMMAND
-            ${CMAKE_COMMAND} -E make_directory ${_ABS_DESTINATION}
-         COMMAND
-            ${_ENV_CMD} ${CIDL_EXE} ${_CIDL_ARGS}
-         MAIN_DEPENDENCY
-            ${_ABS_INPUT}
-         DEPENDS
-            ${CIDL_EXE}
-            ${_DOC_ABS_INPUT}
-         WORKING_DIRECTORY
-            ${_ABS_DIRECTORY}
-         COMMENT
-            "[CIDL][${_FILE_BASENAME}] -> ${_ABS_DESTINATION}" )
-   endforeach()
+        add_custom_command( OUTPUT ${_ABS_OUTPUT}
+            COMMAND
+                ${CMAKE_COMMAND} -E make_directory ${_ABS_DESTINATION}
+            COMMAND
+                ${_ENV_CMD} ${CIDL_EXE} ${_CIDL_ARGS}
+            MAIN_DEPENDENCY
+                ${_ABS_INPUT}
+            DEPENDS
+                ${CIDL_EXE}
+                ${_DOC_ABS_INPUT}
+            WORKING_DIRECTORY
+                ${_ABS_DIRECTORY}
+            COMMENT
+                "[CIDL][${_FILE_BASENAME}] -> ${_ABS_DESTINATION}" )
+    endforeach()
 
-   list( REMOVE_DUPLICATES _OUTPUT_LIST )
+    list( REMOVE_DUPLICATES _OUTPUT_LIST )
 
-   if( NOT _CIDL_GENERATE_OUTPUT_VAR )
-      set( _CIDL_GENERATE_OUTPUT_VAR CIDL_GENERATE_OUTPUTS )
-   endif()
+    if( NOT _CIDL_GENERATE_OUTPUT_VAR )
+        set( _CIDL_GENERATE_OUTPUT_VAR CIDL_GENERATE_OUTPUTS )
+    endif()
 
-   # NB: CIDL_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE
-   set( ${_CIDL_GENERATE_OUTPUT_VAR} ${_OUTPUT_LIST} PARENT_SCOPE )
+    # NB: CIDL_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE
+    set( ${_CIDL_GENERATE_OUTPUT_VAR} ${_OUTPUT_LIST} PARENT_SCOPE )
 
-   if( _CIDL_GENERATE_OUTPUT_ACCUMULATED )
-      list( APPEND ${_CIDL_GENERATE_OUTPUT_ACCUMULATED} ${_OUTPUT_LIST} )
-      set( ${_CIDL_GENERATE_OUTPUT_ACCUMULATED} ${${_CIDL_GENERATE_OUTPUT_ACCUMULATED}} PARENT_SCOPE )
-   endif()
+    if( _CIDL_GENERATE_OUTPUT_ACCUMULATED )
+        list( APPEND ${_CIDL_GENERATE_OUTPUT_ACCUMULATED} ${_OUTPUT_LIST} )
+        set( ${_CIDL_GENERATE_OUTPUT_ACCUMULATED} ${${_CIDL_GENERATE_OUTPUT_ACCUMULATED}} PARENT_SCOPE )
+    endif()
 
-   if( CIDL_GENERATE_TRACE )
-      message( "" )
-      message( "${_CIDL_GENERATE_OUTPUT_VAR}: ${_OUTPUT_LIST}" )
-   endif()
-
+    if( CIDL_GENERATE_TRACE )
+        message( "" )
+        message( "${_CIDL_GENERATE_OUTPUT_VAR}: ${_OUTPUT_LIST}" )
+    endif()
 endfunction()

@@ -61,25 +61,25 @@ struct TypeInfo {
     MemberInfo* members;
 };
 
-extern const TypeInfo Null_type_info;
-extern const TypeInfo Char_type_info;
-extern const TypeInfo Char16_type_info;
-extern const TypeInfo Char32_type_info;
-extern const TypeInfo Boolean_type_info;
-extern const TypeInfo Octet_type_info;
-extern const TypeInfo Int8_type_info;
-extern const TypeInfo Uint8_type_info;
-extern const TypeInfo Short_type_info;
-extern const TypeInfo UShort_type_info;
-extern const TypeInfo Long_type_info;
-extern const TypeInfo ULong_type_info;
-extern const TypeInfo LongLong_type_info;
-extern const TypeInfo ULongLong_type_info;
-extern const TypeInfo Float_type_info;
-extern const TypeInfo Double_type_info;
-extern const TypeInfo LongDouble_type_info;
-extern const TypeInfo Null_seq_type_info;
-extern const TypeInfo Null_map_type_info;
-extern const int32_t* MemberInfo_empty_case_labels;
+extern const TypeInfo NULL_TYPE_INFO;
+extern const TypeInfo CHAR_TYPE_INFO;
+extern const TypeInfo CHAR16_TYPE_INFO;
+extern const TypeInfo CHAR32_TYPE_INFO;
+extern const TypeInfo BOOLEAN_TYPE_INFO;
+extern const TypeInfo OCTET_TYPE_INFO;
+extern const TypeInfo INT8_TYPE_INFO;
+extern const TypeInfo UINT8_TYPE_INFO;
+extern const TypeInfo SHORT_TYPE_INFO;
+extern const TypeInfo USHORT_TYPE_INFO;
+extern const TypeInfo LONG_TYPE_INFO;
+extern const TypeInfo ULONG_TYPE_INFO;
+extern const TypeInfo LONGLONG_TYPE_INFO;
+extern const TypeInfo ULONGLONG_TYPE_INFO;
+extern const TypeInfo FLOAT_TYPE_INFO;
+extern const TypeInfo DOUBLE_TYPE_INFO;
+extern const TypeInfo LONG_DOUBLE_TYPE_INFO;
+extern const TypeInfo NULL_SEQ_TYPE_INFO;
+extern const TypeInfo NULL_MAP_TYPE_INFO;
+extern const int32_t* g_MemberInfo_empty_case_labels;
 
 }  // namespace intercom

@@ -185,23 +185,6 @@ int to_int(const std::string& a_str, const int& a_default = 0);
 /// a_default otherwise
 unsigned short to_ushort(const std::string& a_str);
 
-/// Converts the input string to an unsigned integer representing a buffersize.
-/// Permitted units in input are bytes, kilobytes, megabytes, and gigabytes, using no suffix, "kb",
-/// "mb", and "gb" respectively.
-///
-/// Example:
-/// \code
-/// auto size = toBufferSize("64")  // size becomes 64
-/// size      = toBufferSize("1kb") // size becomes 1024
-/// \endcode
-///
-/// @param a_str The input string
-/// @param a_default Default value to be returned if a_str is not recognized as representing a
-/// buffer size
-/// @return an unsigned integer parsed from a_str if a_str represents a valid buffer size, a_default
-/// otherwise.
-unsigned int to_buffer_size(const std::string& a_str, const unsigned int& a_default = 0);
-
 /// Converts the input string to a string formatted for display in html.
 /// I.e. special characters like the ampersand is replaced with &amp; so that it will display as an
 /// ampersand during display of an html document.

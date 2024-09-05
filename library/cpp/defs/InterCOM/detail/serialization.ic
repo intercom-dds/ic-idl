@@ -47,7 +47,7 @@
 namespace intercom {
 
 template <typename T>
-inline bool enumToString(std::string& res, T value, const TypeInfo* type) {
+inline bool enum_to_string(std::string& res, T value, const TypeInfo* type) {
     if (type) {
         if (type->kind == dcps::xtypes::TK_ENUM) {
             auto uvalue = static_cast<uint32_t>(value);
@@ -516,7 +516,7 @@ inline TGenericUnmarshalBase<READER, UNMARSHAL>::StructValue::StructValue(
     UNMARSHAL& a_unmarshal,
     const TypeInfo* a_info
 )
-    : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : Null_type_info) {
+    : m_unmarshal(a_unmarshal), m_type_info(a_info ? *a_info : NULL_TYPE_INFO) {
     m_unmarshal.reader().begin_type(m_type_info);
 }
 
@@ -524,7 +524,7 @@ template <typename READER, typename UNMARSHAL>
 inline TGenericUnmarshalBase<READER, UNMARSHAL>::StructValue::~StructValue() {
     try {
         m_unmarshal.reader().end_type();
-    } catch (...) {
+    } catch (...) {  // NOLINT
         // If the data is bad, we are probably already in an exception, so
         // propagating another from here will cause the application to terminate
     }
@@ -626,7 +626,7 @@ template <typename WRITER, typename READER>
 inline bool
 copy_discriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, int32_t& a_idx) {
     const MemberInfo* member_info = &type_info.members[0];
-    uint64_t discr;
+    uint64_t discr = 0;
     bool reader_has_member = reader.find_member(*member_info);
     if (reader_has_member) {
         if (writer.begin_member(*member_info)) {
@@ -659,7 +659,7 @@ copy_discriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, in
                 auto value = static_cast<uint32_t>(discr);
                 writer.write(&value, 1, type_info);
             } else {
-                auto value = static_cast<uint64_t>(discr);
+                auto value = discr;
                 writer.write(&value, 1, type_info);
             }
             writer.end_member();
@@ -804,49 +804,49 @@ inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info)
     // Primitive types are handle without begin_type/end_type
     switch (type_info.kind) {
     case dcps::xtypes::TK_BOOLEAN:
-        copy_value<bool>(writer, reader, Boolean_type_info);
+        copy_value<bool>(writer, reader, BOOLEAN_TYPE_INFO);
         return;
     case dcps::xtypes::TK_BYTE:
-        copy_value<uint8_t>(writer, reader, Octet_type_info);
+        copy_value<uint8_t>(writer, reader, OCTET_TYPE_INFO);
         return;
     case dcps::xtypes::TK_CHAR8:
-        copy_value<char>(writer, reader, Char_type_info);
+        copy_value<char>(writer, reader, CHAR_TYPE_INFO);
         return;
     case dcps::xtypes::TK_INT8:
-        copy_value<int8_t>(writer, reader, Int8_type_info);
+        copy_value<int8_t>(writer, reader, INT8_TYPE_INFO);
         return;
     case dcps::xtypes::TK_UINT8:
-        copy_value<uint8_t>(writer, reader, Octet_type_info);
+        copy_value<uint8_t>(writer, reader, OCTET_TYPE_INFO);
         return;
 
     case dcps::xtypes::TK_INT16:
-        copy_value<int16_t>(writer, reader, Short_type_info);
+        copy_value<int16_t>(writer, reader, SHORT_TYPE_INFO);
         return;
     case dcps::xtypes::TK_UINT16:
-        copy_value<uint16_t>(writer, reader, UShort_type_info);
+        copy_value<uint16_t>(writer, reader, USHORT_TYPE_INFO);
         return;
     case dcps::xtypes::TK_CHAR16:
-        copy_value<char16_t>(writer, reader, Char16_type_info);
+        copy_value<char16_t>(writer, reader, CHAR16_TYPE_INFO);
         return;
 
     case dcps::xtypes::TK_INT32:
-        copy_value<int32_t>(writer, reader, Long_type_info);
+        copy_value<int32_t>(writer, reader, LONG_TYPE_INFO);
         return;
     case dcps::xtypes::TK_UINT32:
-        copy_value<uint32_t>(writer, reader, ULong_type_info);
+        copy_value<uint32_t>(writer, reader, ULONG_TYPE_INFO);
         return;
     case dcps::xtypes::TK_FLOAT32:
-        copy_value<float>(writer, reader, Float_type_info);
+        copy_value<float>(writer, reader, FLOAT_TYPE_INFO);
         return;
 
     case dcps::xtypes::TK_INT64:
-        copy_value<int64_t>(writer, reader, LongLong_type_info);
+        copy_value<int64_t>(writer, reader, LONGLONG_TYPE_INFO);
         return;
     case dcps::xtypes::TK_UINT64:
-        copy_value<uint64_t>(writer, reader, ULongLong_type_info);
+        copy_value<uint64_t>(writer, reader, ULONGLONG_TYPE_INFO);
         return;
     case dcps::xtypes::TK_FLOAT64:
-        copy_value<double>(writer, reader, Double_type_info);
+        copy_value<double>(writer, reader, DOUBLE_TYPE_INFO);
         return;
     default:
         break;

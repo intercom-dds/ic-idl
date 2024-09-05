@@ -86,7 +86,7 @@ inline char32_t read_unicode(T& reader) {
                     char16_t pair[2];
                     pair[0] = static_cast<uint16_t>(code);
                     pair[1] = static_cast<uint16_t>(read_hex(reader));
-                    readCharCode<UTF16>(code, pair);
+                    read_char_code<UTF16>(code, pair);
                 } else {
                     code = UNICODE_INVALID;
                 }
@@ -155,7 +155,7 @@ inline char32_t read_unicode(T& reader) {
                 break;
             }
         }
-        if (!isLegalUnicode(code) || code < 0x20) {
+        if (!is_legal_unicode(code) || code < 0x20) {
             code = UNICODE_INVALID;
         }
     }
@@ -322,7 +322,7 @@ inline JsonNode json_consume_number(T& data) {
             c = data.peek();
         }
     }
-    return {has_frac ? JSON_FLOAT : JSON_INTEGER, data.fromState(start_pos)};
+    return {has_frac ? JSON_FLOAT : JSON_INTEGER, data.from_state(start_pos)};
 }
 
 template <typename T>
@@ -391,7 +391,7 @@ inline JsonNode json_consume_object(T& data, int level) {
     } else {
         data.getc();
     }
-    return {JSON_OBJECT, end_pos.fromState(start_pos), element_count};
+    return {JSON_OBJECT, end_pos.from_state(start_pos), element_count};
 }
 
 template <typename T>
@@ -423,7 +423,7 @@ inline JsonNode json_consume_array(T& data, int level) {
     } else {
         data.getc();
     }
-    return {JSON_ARRAY, end_pos.fromState(start_pos), element_count};
+    return {JSON_ARRAY, end_pos.from_state(start_pos), element_count};
 }
 
 template <typename T>
@@ -436,7 +436,7 @@ inline JsonNode json_consume_string(T& data) {
             return json_error(start_pos, "Illegal value in string");
         }
     }
-    auto res = JsonNode(JSON_STRING, data.fromState(start_pos));
+    auto res = JsonNode(JSON_STRING, data.from_state(start_pos));
     data.getc();
     return res;
 }
@@ -700,9 +700,9 @@ inline void JsonWriter::write_string(const std::string& value) {
     const char* str = value.c_str();
     while (*str) {
         char32_t code = 0;
-        str += readCharCode<UTF8>(code, str);
+        str += read_char_code<UTF8>(code, str);
         char buf[4];
-        int len = writeCharCode<DEFAULT_ENCODING>(buf, code);
+        int len = write_char_code<DEFAULT_ENCODING>(buf, code);
         if (len == 1) {
             put_escaped(buf[0]);
         } else {
@@ -721,9 +721,9 @@ inline void JsonWriter::write_string(const std::u16string& value) {
     const char16_t* str = value.c_str();
     while (*str) {
         char32_t code = 0;
-        str += readCharCode(code, str);
+        str += read_char_code(code, str);
         char buf[4];
-        int len = writeCharCode<UTF8>(buf, code);
+        int len = write_char_code<UTF8>(buf, code);
         if (len == 1) {
             put_escaped(buf[0]);
         } else {
@@ -742,9 +742,9 @@ inline void JsonWriter::write_string(const std::wstring& value) {
     const wchar_t* str = value.c_str();
     while (*str) {
         char32_t code = 0;
-        str += readCharCode(code, str);
+        str += read_char_code(code, str);
         char buf[4];
-        int len = writeCharCode<UTF8>(buf, code);
+        int len = write_char_code<UTF8>(buf, code);
         if (len == 1) {
             put_escaped(buf[0]);
         } else {
@@ -762,7 +762,7 @@ inline void JsonWriter::write(long double value) {
 }
 
 inline void JsonWriter::write(unsigned char value) {
-    writeUnsigned(value);
+    write_unsigned(value);
 }
 
 inline void JsonWriter::write(char value) {
@@ -773,7 +773,7 @@ inline void JsonWriter::write(char value) {
 }
 
 inline void JsonWriter::write(uint16_t value) {
-    writeUnsigned(value);
+    write_unsigned(value);
 }
 
 inline void JsonWriter::write(int16_t value) {
@@ -781,7 +781,7 @@ inline void JsonWriter::write(int16_t value) {
 }
 
 inline void JsonWriter::write(uint32_t value) {
-    writeUnsigned(value);
+    write_unsigned(value);
 }
 
 inline void JsonWriter::write(int32_t value) {
@@ -789,7 +789,7 @@ inline void JsonWriter::write(int32_t value) {
 }
 
 inline void JsonWriter::write(uint64_t value) {
-    writeUnsigned(value);
+    write_unsigned(value);
 }
 
 inline void JsonWriter::write(int64_t value) {
@@ -1195,7 +1195,7 @@ inline void JsonWriter::write_integer(T& a_value, const TypeInfo& a_info) {
     if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
         a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
         std::string str;
-        if (enumToString(str, a_value, &a_info)) {
+        if (enum_to_string(str, a_value, &a_info)) {
             if (m_type_stack[m_level].info.name != nullptr &&
                 m_type_stack[m_level].info.name == std::string_view("intercom::JsonValue") &&
                 str == "JSON_VALUE_NULL") {
@@ -1553,7 +1553,7 @@ inline bool JsonReader::read_from_string(T& a_value, const TypeInfo&) {
                 dcps::cts::GenericUnmarshal(reader).io(a_value);
                 return true;
             }
-        } catch (...) {
+        } catch (...) {  // NOLINT
         }
     }
     return false;
@@ -1587,7 +1587,7 @@ inline JsonReader::JsonReader(std::string_view a_text, SerializerFlags a_flags)
 inline JsonReader::JsonReader(const char* a_text, uint32_t a_length, SerializerFlags a_flags)
     : m_data(new JsonData(a_text, a_length)), m_flags(a_flags) {
     m_type_stack[0].current = JsonNode::from_data(*m_data);
-    m_type_stack[0].info = Null_type_info;
+    m_type_stack[0].info = NULL_TYPE_INFO;
     if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
         throw std::runtime_error("Invalid JSON data supplied to JsonReader");
     }
@@ -1596,7 +1596,7 @@ inline JsonReader::JsonReader(const char* a_text, uint32_t a_length, SerializerF
 inline JsonReader::JsonReader(std::istream& a_stream, SerializerFlags a_flags)
     : m_stream(new JsonStream(a_stream)), m_flags(a_flags) {
     m_type_stack[0].current = JsonNode::from_data(*m_stream);
-    m_type_stack[0].info = Null_type_info;
+    m_type_stack[0].info = NULL_TYPE_INFO;
     if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
         throw std::runtime_error("Invalid JSON data supplied to JsonReader");
     }
@@ -1604,7 +1604,7 @@ inline JsonReader::JsonReader(std::istream& a_stream, SerializerFlags a_flags)
 
 inline JsonReader::JsonReader(const JsonNode& a_node, SerializerFlags a_flags) : m_flags(a_flags) {
     m_type_stack[0].current = a_node;
-    m_type_stack[0].info = Null_type_info;
+    m_type_stack[0].info = NULL_TYPE_INFO;
     if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
         throw std::runtime_error("Invalid JSON data supplied to JsonReader");
     }

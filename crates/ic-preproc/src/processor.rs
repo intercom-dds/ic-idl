@@ -781,7 +781,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 let lit = self.source_of(v.span);
                 match v.kind {
                     Kind::Number { base } => parse_str(lit, base)?,
-                    Kind::Ident => i128::from(self.is_defined(lit)),
+                    Kind::Ident => 0,
                     _ => unreachable!(),
                 }
             }
@@ -1381,5 +1381,42 @@ mod tests {
             "#,
         );
         assert_eq!(state.warnings().len(), 1);
+    }
+
+    #[test]
+    fn if_cond() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #define foo bar
+
+                #if foo
+                #error "fail"
+                #endif
+            "#,
+        );
+        assert!(state.errors().is_empty());
+    }
+
+    #[test]
+    fn if_cond_cyclic() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #define foo bar
+                #define bar foo
+
+                #if foo
+                #error "fail"
+                #endif
+
+                #if foo + 1 != 1
+                #error "fail"
+                #endif
+            "#,
+        );
+        assert!(state.errors().is_empty());
     }
 }

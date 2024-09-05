@@ -1177,6 +1177,15 @@ mod tests {
             "#,
         );
         assert_eq!(expanded, "foo foo foo foo foo foo");
+
+        let expanded = expand(
+            r#"
+                #define foo bar
+                #define bar foo
+                foo bar
+            "#,
+        );
+        assert_eq!(expanded, "foo bar");
     }
 
     #[test]

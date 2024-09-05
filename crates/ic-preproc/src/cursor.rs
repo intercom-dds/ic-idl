@@ -444,7 +444,12 @@ impl Cursor {
 
             let span = self.span_since(start);
             // TODO: remove this before release, but keep it for now
-            debug_assert_ne!(kind, Kind::Unknown, "unknown character encountered");
+            debug_assert_ne!(
+                kind,
+                Kind::Unknown,
+                "unknown character encountered: {}",
+                self.source_of(span),
+            );
             break Some(Token { kind, span });
         }
     }

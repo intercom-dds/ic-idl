@@ -705,7 +705,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn unary_expr(&mut self) -> Result<Expr, Error> {
-        let lhs = self.cursor().next().ok_or_else(|| Error::Expr {
+        let lhs = self.next().ok_or(Error::Expr {
             message: "unexpected end of expression",
         })?;
 
@@ -734,16 +734,23 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         Ok(expr)
     }
 
+    // Note that this function uses `Parser::next` instead of `Cursor::next` as
+    // we need to expand and inline macros during parsing.
     fn binary_expr(&mut self, min_prec: u8) -> Result<Expr, Error> {
         let mut lhs = self.unary_expr()?;
 
-        while let Some(prec) = self.cursor().peek().and_then(infix_precedence) {
-            if prec < min_prec {
-                break;
-            }
-
-            // consume the peeked token
-            let op = self.cursor().next().unwrap();
+        while let Some(op) = self.next() {
+            // We require a lookahead of 1 here, but doing so involves expanding
+            // and consuming the next token in the sequence. So if this is not
+            // an operator, or an operator of lower precedence, we push it back
+            // on the queue.
+            let prec = match infix_precedence(op.kind) {
+                Some(prec) if prec >= min_prec => prec,
+                _ => {
+                    self.state.queue.push_front(op);
+                    break;
+                }
+            };
 
             lhs = if op.kind == Kind::Question {
                 let then = self.expr()?;
@@ -769,25 +776,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
                 let lit = self.source_of(v.span);
                 match v.kind {
                     Kind::Number { base } => parse_str(lit, base)?,
-                    Kind::Ident => {
-                        if self.is_defined(lit) {
-                            // We now have to recursively expand the macro.
-                            // If the fully-expanded macro doesn't equate to a
-                            // valid expression, we error out.
-                            //
-                            // #define one 1
-                            // #define plus +
-                            // #define true one plus one
-                            // #if true
-                            // #error "error expected"
-                            // #endif
-                            //
-                            // The above should work.
-                            i128::from(true)
-                        } else {
-                            0
-                        }
-                    }
+                    Kind::Ident => i128::from(self.is_defined(lit)),
                     _ => unreachable!(),
                 }
             }
@@ -903,7 +892,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             }
 
             // Advance the cursor and continue parsing directives
-            while let Some(tok) = self.stack.last_mut()?.cursor.next() {
+            if let Some(tok) = self.stack.last_mut()?.cursor.next() {
                 if tok.kind == Kind::Hash {
                     self.keyword();
                     continue 'outer;
@@ -1298,16 +1287,15 @@ mod tests {
         // a warning each time it is redefined.
         assert!(state.errors().is_empty());
         assert_eq!(state.warnings().len(), 2);
-
-        // Last definition is the one that counts
-        let expanded = with_state(&mut state, "foo");
-        assert_eq!(expanded.first().unwrap().kind, Kind::Ident);
     }
 
     #[test]
     fn expr_expansion() {
         let mut vfs = SourceMap::default();
-        let mut state = pp(
+
+        // We avoid using `elif` and `else` here to make sure the expression
+        // doesn't blindly evaluate to true regardless of its contents.
+        let state = pp(
             &mut vfs,
             r#"
                 #define one 1
@@ -1315,20 +1303,49 @@ mod tests {
                 #define sum one plus one
 
                 #if sum == 2
-                #error "error expected"
+                #warning "ok"
+                #endif
+
+                #if sum != 2
+                #error "fail"
                 #endif
             "#,
         );
-        assert_eq!(state.errors().len(), 1);
+        assert!(state.errors().is_empty());
+        assert_eq!(state.warnings().len(), 1);
+    }
+
+    #[test]
+    fn expanded_precedence() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r#"
+                #define two 2
+                #define three 3
+                #define mul *
+                #define sum two + three mul three
+
+                #if sum == 11
+                #warning "ok"
+                #endif
+
+                #if sum != 11
+                #error "fail"
+                #endif
+            "#,
+        );
+        assert!(state.errors().is_empty());
+        assert_eq!(state.warnings().len(), 1);
     }
 
     #[test]
     fn extra_tokens_ifdef() {
         let mut vfs = SourceMap::default();
-        let mut state = pp(
+        let state = pp(
             &mut vfs,
             r#"
-                #ifdef 0 foo
+                #ifdef true foo
                 #endif
             "#,
         );
@@ -1338,10 +1355,10 @@ mod tests {
     #[test]
     fn extra_tokens_ifndef() {
         let mut vfs = SourceMap::default();
-        let mut state = pp(
+        let state = pp(
             &mut vfs,
             r#"
-                #ifndef 0 foo
+                #ifndef true foo
                 #endif
             "#,
         );

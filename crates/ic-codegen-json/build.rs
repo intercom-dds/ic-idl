@@ -28,5 +28,5 @@
 const FILES: &[&str] = &["cpp/json_code_gen.cpp"];
 
 fn main() {
-    ic_cc::build(FILES);
+    ic_cc::build("json", FILES);
 }

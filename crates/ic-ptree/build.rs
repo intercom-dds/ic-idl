@@ -38,5 +38,5 @@ const FILES: &[&str] = &[
 ];
 
 fn main() {
-    ic_cc::build(FILES);
+    ic_cc::build("ptree", FILES);
 }

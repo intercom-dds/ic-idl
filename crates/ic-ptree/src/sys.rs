@@ -461,11 +461,11 @@ extern "C" {
 }
 extern "C" {
     pub fn lookup_node(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char)
-    -> *mut ptree;
+        -> *mut ptree;
 }
 extern "C" {
     pub fn lookup_type(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char)
-    -> *mut ptree;
+        -> *mut ptree;
 }
 extern "C" {
     pub fn pop_context(arg1: *mut parser_state) -> *mut ptree;
@@ -783,7 +783,7 @@ extern "C" {
 }
 extern "C" {
     pub fn create_annotation_dcl_finish(arg1: *mut parser_state, members: *mut ptree)
-    -> *mut ptree;
+        -> *mut ptree;
 }
 extern "C" {
     pub fn create_annotation_member(
@@ -1065,7 +1065,6 @@ pub struct cpp_options_t {
     pub header_postfix: *const ::std::os::raw::c_char,
     pub header_ext: *const ::std::os::raw::c_char,
     pub dll_export: *const ::std::os::raw::c_char,
-    pub file_prefix: *const ::std::os::raw::c_char,
     pub scoped_enums: u8,
     pub access_functions: u8,
     pub no_stream_op: u8,
@@ -1077,7 +1076,7 @@ fn bindgen_test_layout_cpp_options_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<cpp_options_t>(),
-        40usize,
+        32usize,
         concat!("Size of: ", stringify!(cpp_options_t))
     );
     assert_eq!(
@@ -1116,18 +1115,8 @@ fn bindgen_test_layout_cpp_options_t() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).file_prefix) as usize - ptr as usize },
-        24usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cpp_options_t),
-            "::",
-            stringify!(file_prefix)
-        )
-    );
-    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).scoped_enums) as usize - ptr as usize },
-        32usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(cpp_options_t),
@@ -1137,7 +1126,7 @@ fn bindgen_test_layout_cpp_options_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).access_functions) as usize - ptr as usize },
-        33usize,
+        25usize,
         concat!(
             "Offset of field: ",
             stringify!(cpp_options_t),
@@ -1147,7 +1136,7 @@ fn bindgen_test_layout_cpp_options_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).no_stream_op) as usize - ptr as usize },
-        34usize,
+        26usize,
         concat!(
             "Offset of field: ",
             stringify!(cpp_options_t),
@@ -1157,7 +1146,7 @@ fn bindgen_test_layout_cpp_options_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).use_fmt) as usize - ptr as usize },
-        35usize,
+        27usize,
         concat!(
             "Offset of field: ",
             stringify!(cpp_options_t),

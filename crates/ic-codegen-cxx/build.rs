@@ -28,5 +28,5 @@
 const FILES: &[&str] = &["cpp/cpp_code_gen.cpp", "cpp/cpp_typeinfo.cpp"];
 
 fn main() {
-    ic_cc::build(FILES);
+    ic_cc::build("cxx", FILES);
 }

@@ -28,5 +28,5 @@
 const FILES: &[&str] = &["cpp/python_code_gen.cpp"];
 
 fn main() {
-    ic_cc::build(FILES);
+    ic_cc::build("python", FILES);
 }

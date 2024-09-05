@@ -34,7 +34,6 @@ pub fn codegen_cpp(result: &ParseResult) -> Vec<File> {
         header_postfix: std::ptr::null(),
         header_ext: std::ptr::null(),
         dll_export: std::ptr::null(),
-        file_prefix: std::ptr::null(),
         scoped_enums: 0,
         access_functions: 0,
         no_stream_op: 0,

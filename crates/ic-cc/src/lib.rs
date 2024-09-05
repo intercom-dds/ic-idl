@@ -39,7 +39,7 @@ const SYSTEM_INCLUDES: &[&str] = &["../../external/fmt/defs"];
 
 const GLOBAL_DEFINES: &[(&str, &str)] = &[("FMT_HEADER_ONLY", "1"), ("FMT_CONSTEVAL", "")];
 
-pub fn build<P>(files: P)
+pub fn build<P>(name: &str, files: P)
 where
     P: IntoIterator,
     P::Item: AsRef<Path>,
@@ -77,7 +77,7 @@ where
         compiler.warnings_into_errors(true);
     }
 
-    compiler.compile(env!("CARGO_PKG_NAME"));
+    compiler.compile(name);
 
     // Rerun if toolchain has changed
     println!("cargo:rerun-if-env-changed=CI");

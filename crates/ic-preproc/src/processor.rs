@@ -1459,4 +1459,21 @@ mod tests {
         assert!(state.errors().is_empty());
         assert!(state.warnings().is_empty());
     }
+
+    #[test]
+    fn invalid_expr() {
+        let output = expand(
+            r#"
+                #if a +
+                    abc
+                #elif b +
+                    def
+                #else
+                    123
+                #endif
+            "#,
+        );
+        // Invalid expressions will always evaluate to 0.
+        assert_eq!(output, "123");
+    }
 }

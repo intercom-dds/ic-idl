@@ -180,7 +180,7 @@ pub fn from_path(path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Er
 pub fn from_file(file_id: FileId, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
     let args = ProcArgs::default();
     let mut state = State::new(vfs);
-    let iter = ic_preproc::preprocess(file_id, &args, &mut state);
+    let iter = ic_preproc::preprocess(file_id, args, &mut state);
     let tokens = lexer::from_iter(iter);
     let tree = parser::specification()
         .parse(tokens)

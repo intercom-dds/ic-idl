@@ -119,6 +119,13 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
             // println!("{:#?}", ic_parse::lexer::scan(&input));
         }
 
+        if options.preprocessor_only {
+            let args = ProcArgs::default();
+            let (output, _) = ic_preproc::to_string(&file, args)?;
+            println!("{output}");
+            continue;
+        }
+
         match ast {
             Ok(v) => {
                 // Lint the AST

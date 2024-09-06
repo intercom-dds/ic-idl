@@ -1599,4 +1599,19 @@ mod tests {
         // Invalid expressions will always evaluate to 0.
         assert_eq!(output, "123");
     }
+
+    #[test]
+    fn undef_break_cycle() {
+        let output = expand(
+            r#"
+                #define foo bar
+                #define bar baz
+                foo // should be baz
+
+                #undef bar
+                foo // should be bar
+            "#,
+        );
+        assert_eq!(output, "baz \n\nbar");
+    }
 }

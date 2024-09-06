@@ -79,7 +79,7 @@ use std::path::Path;
 
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
-use ic_preproc::{ProcArgs, State};
+use ic_preproc::ProcArgs;
 use ic_syntax::{Item, Span};
 use ic_vfs::{FileId, Include, SourceMap};
 use lexer::{Kind, Token};
@@ -179,8 +179,7 @@ pub fn from_path(path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Er
 /// # Panics
 pub fn from_file(file_id: FileId, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
     let args = ProcArgs::default();
-    let mut state = State::new(vfs);
-    let iter = ic_preproc::preprocess(file_id, args, &mut state);
+    let iter = ic_preproc::preprocess(file_id, args, vfs);
     let tokens = lexer::from_iter(iter);
     let tree = parser::specification()
         .parse(tokens)

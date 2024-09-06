@@ -82,12 +82,11 @@ impl ProcArgs {
         self
     }
 
-    pub fn define<K, V>(mut self, arg: K, val: Option<V>) -> Self
+    pub fn define<K>(mut self, arg: K, val: Option<String>) -> Self
     where
         K: Into<String>,
-        V: Into<String>,
     {
-        self.defines.insert(arg.into(), val.map(Into::into));
+        self.defines.insert(arg.into(), val);
         self
     }
 

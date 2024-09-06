@@ -354,21 +354,19 @@ where
     fn with_state(file: File, args: ProcArgs, state: S, vfs: &'a mut SourceMap) -> Self {
         let mut this = Self {
             state,
-            stack: vec![],
+            stack: vec![file],
             pragmas: HashMap::default(),
             includes: args.include_dirs,
             recursion_depth: args.recursion_depth,
             vfs,
         };
 
-        // Inject definitions from `ProcArgs`
+        // Inject definitions from `ProcArgs`. This pushes a new virtual file
+        // to the top of the stack.
         cli_defines(args.defines, &mut this);
 
         // Register pragma handlers
         this.add_pragma(PragmaOnce);
-
-        // Push the file on the stack after all definitions have been injected
-        this.stack.push(file);
         this
     }
 

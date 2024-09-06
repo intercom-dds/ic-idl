@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::borrow::{Borrow, BorrowMut};
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt::Write as _;
@@ -216,22 +217,22 @@ impl State {
     }
 }
 
-trait PragmaHandler {
+trait PragmaHandler<S: BorrowMut<State>> {
     /// Name of the pragma, e.g. `once` for `#pragma once`.
     fn name(&self) -> &str;
 
     /// Handle a `pragma` directive.
-    fn handle(&self, parser: &mut Parser<'_>, tokens: Vec<Token>);
+    fn handle(&self, parser: &mut Parser<'_, S>, tokens: Vec<Token>);
 }
 
 struct PragmaOnce;
 
-impl PragmaHandler for PragmaOnce {
+impl<S: BorrowMut<State>> PragmaHandler<S> for PragmaOnce {
     fn name(&self) -> &str {
         "once"
     }
 
-    fn handle(&self, parser: &mut Parser<'_>, _: Vec<Token>) {
+    fn handle(&self, parser: &mut Parser<'_, S>, _: Vec<Token>) {
         let id = parser.cursor().file_id();
         parser.mark_included(id);
     }
@@ -335,24 +336,22 @@ impl File {
     }
 }
 
-struct Parser<'a> {
+struct Parser<'a, S> {
     stack: Vec<File>,
-    state: &'a mut State,
+    state: S,
     vfs: &'a mut SourceMap,
     includes: HashSet<PathBuf>,
     recursion_depth: usize,
 
     /// Registered pragmas.
-    pragmas: HashMap<String, Rc<dyn PragmaHandler>>,
+    pragmas: HashMap<String, Rc<dyn PragmaHandler<S>>>,
 }
 
-impl<'a> Parser<'a> {
-    fn with_state(
-        file: File,
-        args: ProcArgs,
-        state: &'a mut State,
-        vfs: &'a mut SourceMap,
-    ) -> Self {
+impl<'a, S> Parser<'a, S>
+where
+    S: BorrowMut<State>,
+{
+    fn with_state(file: File, args: ProcArgs, state: S, vfs: &'a mut SourceMap) -> Self {
         let mut this = Self {
             state,
             stack: vec![],
@@ -394,7 +393,7 @@ impl<'a> Parser<'a> {
                 Kind::Ident => self.directive(tok.span),
                 Kind::Number { .. } | Kind::Newline => (),
                 _ => {
-                    self.state.errors.push(Error::Syntax {
+                    self.state().errors.push(Error::Syntax {
                         message: "invalid preprocessing directive",
                         span: tok.span,
                     });
@@ -430,7 +429,7 @@ impl<'a> Parser<'a> {
             span,
         } = tok
         else {
-            self.state.errors.push(Error::Syntax {
+            self.state().errors.push(Error::Syntax {
                 message: "macro name must be an identifier",
                 span: tok.span,
             });
@@ -452,20 +451,24 @@ impl<'a> Parser<'a> {
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 
+    fn state(&mut self) -> &mut State {
+        self.state.borrow_mut()
+    }
+
     fn is_defined(&self, name: &str) -> bool {
-        self.state.is_defined(name)
+        self.state.borrow().is_defined(name)
     }
 
     fn add_pragma<H>(&mut self, pragma: H)
     where
-        H: PragmaHandler + 'static,
+        H: PragmaHandler<S> + 'static,
     {
         self.pragmas
             .insert(pragma.name().to_string(), Rc::new(pragma));
     }
 
     fn mark_included(&mut self, file_id: FileId) {
-        self.state.parsed_files.insert(file_id);
+        self.state().parsed_files.insert(file_id);
     }
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
@@ -473,7 +476,7 @@ impl<'a> Parser<'a> {
     fn warn_trailing(&mut self, span: SourceSpan, directive: Directive) {
         let tokens = self.cursor().until_newline();
         if !tokens.is_empty() {
-            self.state.warnings.push(Error::Extraneous {
+            self.state().warnings.push(Error::Extraneous {
                 directive,
                 span,
                 tokens,
@@ -544,7 +547,7 @@ impl<'a> Parser<'a> {
         if self.is_active() {
             // Bail if we've hit the recursion depth
             if self.stack.len() >= self.recursion_depth {
-                self.state.errors.push(Error::Syntax {
+                self.state().errors.push(Error::Syntax {
                     message: "#include nested too deeply",
                     span,
                 });
@@ -559,18 +562,18 @@ impl<'a> Parser<'a> {
                     Ok((id, source)) => {
                         // Skip files that we've already parsed if they used
                         // the `once` pragma.
-                        if !self.state.parsed_files.contains(&id) {
+                        if !self.state().parsed_files.contains(&id) {
                             let cursor = File::from_src(source, id);
                             self.stack.push(cursor);
                         }
                     }
-                    Err(e) => self.state.errors.push(Error::Syntax {
+                    Err(e) => self.state().errors.push(Error::Syntax {
                         message: "failed to open file",
                         span,
                     }),
                 }
             } else {
-                self.state.errors.push(Error::Syntax {
+                self.state().errors.push(Error::Syntax {
                     message: "file not found",
                     span,
                 });
@@ -609,12 +612,12 @@ impl<'a> Parser<'a> {
 
         if self.is_active()
             && self
-                .state
+                .state()
                 .defines
                 .insert(name.to_string(), definition)
                 .is_some()
         {
-            self.state.warnings.push(Error::Syntax {
+            self.state().warnings.push(Error::Syntax {
                 message: "macro redefined",
                 span,
             });
@@ -629,7 +632,7 @@ impl<'a> Parser<'a> {
         self.warn_trailing(span, Directive::Undef);
 
         if self.is_active() {
-            self.state.defines.remove(name);
+            self.state().defines.remove(name);
         }
     }
 
@@ -637,7 +640,7 @@ impl<'a> Parser<'a> {
         match self.expr().and_then(|v| self.is_true(&v)) {
             Ok(v) => v,
             Err(e) => {
-                self.state.errors.push(e);
+                self.state().errors.push(e);
                 false
             }
         }
@@ -677,10 +680,10 @@ impl<'a> Parser<'a> {
         match self.if_state().last_mut() {
             Some(v) => {
                 if let Err(e) = v.eval_else() {
-                    self.state.errors.push(e);
+                    self.state().errors.push(e);
                 }
             }
-            None => self.state.errors.push(Error::Syntax {
+            None => self.state().errors.push(Error::Syntax {
                 message: "#else without #if",
                 span,
             }),
@@ -693,10 +696,10 @@ impl<'a> Parser<'a> {
         match self.if_state().last_mut() {
             Some(v) => {
                 if let Err(e) = v.eval_elif(result) {
-                    self.state.errors.push(e);
+                    self.state().errors.push(e);
                 }
             }
-            None => self.state.errors.push(Error::Syntax {
+            None => self.state().errors.push(Error::Syntax {
                 message: "#elif without #if",
                 span,
             }),
@@ -705,7 +708,7 @@ impl<'a> Parser<'a> {
 
     fn dir_endif(&mut self, span: SourceSpan) {
         if self.if_state().pop().is_none() {
-            self.state.errors.push(Error::Syntax {
+            self.state().errors.push(Error::Syntax {
                 message: "#endif without #if",
                 span,
             });
@@ -715,14 +718,14 @@ impl<'a> Parser<'a> {
     fn dir_warning(&mut self, span: SourceSpan) {
         let tokens = self.cursor().until_newline();
         if self.is_active() {
-            self.state.warnings.push(Error::Note { span, tokens });
+            self.state().warnings.push(Error::Note { span, tokens });
         }
     }
 
     fn dir_error(&mut self, span: SourceSpan) {
         let tokens = self.cursor().until_newline();
         if self.is_active() {
-            self.state.errors.push(Error::Note { span, tokens });
+            self.state().errors.push(Error::Note { span, tokens });
         }
     }
 
@@ -762,7 +765,7 @@ impl<'a> Parser<'a> {
                 return Some(tok);
             }
 
-            self.state.errors.push(Error::Syntax {
+            self.state().errors.push(Error::Syntax {
                 message,
                 span: tok.span,
             });
@@ -787,7 +790,7 @@ impl<'a> Parser<'a> {
             "error" => self.dir_error(span),
             "line" => _ = self.dir_line(span),
             _ => {
-                self.state.errors.push(Error::Syntax {
+                self.state().errors.push(Error::Syntax {
                     message: "invalid preprocessing directive",
                     span,
                 });
@@ -842,7 +845,7 @@ impl<'a> Parser<'a> {
             let prec = match infix_precedence(op.kind) {
                 Some(prec) if prec >= min_prec => prec,
                 _ => {
-                    self.state.queue.push_front(op);
+                    self.state().queue.push_front(op);
                     break;
                 }
             };
@@ -925,21 +928,21 @@ impl<'a> Parser<'a> {
     fn expand_inner(&mut self, token: Token, seen: &mut BTreeSet<&'a str>) {
         // Only identifiers can be macros
         if token.kind != Kind::Ident {
-            self.state.queue.push_back(token);
+            self.state().queue.push_back(token);
             return;
         }
 
         let name = self.source_of(token.span);
-        if let Some(v) = self.state.defines.get(name) {
+        if let Some(v) = self.state.borrow().defines.get(name) {
             // Macros should not be recursively expanded
             if !seen.insert(name) {
-                self.state.queue.push_back(token);
+                self.state().queue.push_back(token);
                 return;
             }
 
             // Bail if we've nested too deeply
             if seen.len() >= self.recursion_depth {
-                self.state.errors.push(Error::Syntax {
+                self.state().errors.push(Error::Syntax {
                     message: "macro recursion depth limit was reached",
                     span: token.span,
                 });
@@ -957,7 +960,7 @@ impl<'a> Parser<'a> {
             };
             seen.remove(name);
         } else {
-            self.state.queue.push_back(token);
+            self.state().queue.push_back(token);
         }
     }
 
@@ -982,7 +985,7 @@ impl<'a> Parser<'a> {
         'outer: loop {
             // Check if we're currently in the middle of a macro expansion, and
             // if so, yield those tokens first.
-            if let Some(tok) = self.state.queue.pop_front() {
+            if let Some(tok) = self.state().queue.pop_front() {
                 return Some(tok);
             }
 
@@ -1004,7 +1007,7 @@ impl<'a> Parser<'a> {
             // Make sure all conditional directives were terminated
             let top = self.stack.last_mut()?;
             while let Some(cond) = top.current.pop() {
-                self.state.errors.push(Error::Syntax {
+                self.state.borrow_mut().errors.push(Error::Syntax {
                     message: "unterminated conditional directive",
                     span: cond.defined,
                 });
@@ -1025,8 +1028,9 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn cli_defines<I>(defines: I, parser: &mut Parser<'_>)
+fn cli_defines<S, I>(defines: I, parser: &mut Parser<'_, S>)
 where
+    S: BorrowMut<State>,
     I: IntoIterator<Item = (String, Option<String>)>,
 {
     // Generate a virtual file with the specified command-line arguments. We
@@ -1052,16 +1056,22 @@ where
 }
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct TokenIter<'a>(Parser<'a>);
+pub struct TokenIter<'a, S>(Parser<'a, S>);
 
-impl TokenIter<'_> {
+impl<S> TokenIter<'_, S>
+where
+    S: BorrowMut<State>,
+{
     #[must_use]
     pub fn source_of(&self, span: SourceSpan) -> &str {
         self.0.source_of(span)
     }
 }
 
-impl Iterator for TokenIter<'_> {
+impl<S> Iterator for TokenIter<'_, S>
+where
+    S: BorrowMut<State>,
+{
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1069,12 +1079,12 @@ impl Iterator for TokenIter<'_> {
     }
 }
 
-pub fn preprocess<'a>(
+pub fn preprocess<S: BorrowMut<State>>(
     file_id: FileId,
     args: ProcArgs,
-    state: &'a mut State,
-    vfs: &'a mut SourceMap,
-) -> TokenIter<'a> {
+    state: S,
+    vfs: &mut SourceMap,
+) -> TokenIter<'_, S> {
     let source = vfs.source(file_id);
     let file = File::from_src(source, file_id);
     let parser = Parser::with_state(file, args, state, vfs);

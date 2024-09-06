@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_preproc::{preprocess, ProcArgs, State};
+use ic_preproc::{with_state, ProcArgs, State};
 use ic_vfs::{Include, SourceMap};
 
 #[test]
@@ -35,7 +35,7 @@ fn transient_conditional() {
 
     let args = ProcArgs::default();
     let mut state = State::new();
-    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     // Conditionals are per file and should have no transient state.
     // We expect two errors here: one unterminated `#if` and one

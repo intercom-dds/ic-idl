@@ -147,12 +147,24 @@ impl std::fmt::Display for ProcError {
 
 /// Processes the specified file and returns an iterator of the preprocessed
 /// tokens. Any macro definitions it encounters will be expanded in-place.
-pub fn preprocess<'a>(
+pub fn preprocess(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> TokenIter<'_, State> {
+    let mut state = State::default();
+    processor::preprocess(file_id, args, state, vfs)
+}
+
+/// Processes the specified file and returns an iterator of the preprocessed
+/// tokens. Any macro definitions it encounters will be expanded in-place.
+///
+/// Unlike [`preprocess`], this mutably borrows a [`State`] and uses that as
+/// the preprocessors internal state. This can be useful for effectively
+/// re-using a preprocessor for subsequent runs without resetting or clearing
+/// the state.
+pub fn with_state<'a>(
     file_id: FileId,
     args: ProcArgs,
     state: &'a mut State,
     vfs: &'a mut SourceMap,
-) -> TokenIter<'a> {
+) -> TokenIter<'a, &'a mut State> {
     processor::preprocess(file_id, args, state, vfs)
 }
 

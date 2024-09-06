@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_preproc::{preprocess, ProcArgs, State};
+use ic_preproc::{with_state, ProcArgs, State};
 use ic_vfs::{Include, SourceMap};
 
 #[test]
@@ -37,7 +37,7 @@ fn transitive_include() {
 
     let args = ProcArgs::default();
     let mut state = State::new();
-    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
     assert!(state.errors().is_empty());
     assert!(state.is_defined("C_INCLUDED"));
 }

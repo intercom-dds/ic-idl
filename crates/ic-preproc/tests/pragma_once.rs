@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_preproc::{preprocess, ProcArgs, State};
+use ic_preproc::{with_state, ProcArgs, State};
 use ic_vfs::SourceMap;
 
 #[test]
@@ -47,7 +47,10 @@ fn include_pragma_once() {
 
     let args = ProcArgs::default();
     let mut state = State::new();
-    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
+
+    // TODO: should we instead take ownership? and then let you consume the
+    // TokenIter and get the state back?... hmmm...
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     assert!(state.errors().is_empty());
     assert_eq!(state.warnings().len(), 1);
@@ -64,7 +67,7 @@ fn pragma_once_recursive() {
 
     let args = ProcArgs::default();
     let mut state = State::new();
-    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     assert!(state.errors().is_empty());
     assert!(state.warnings().is_empty());

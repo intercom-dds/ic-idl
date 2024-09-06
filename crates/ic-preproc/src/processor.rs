@@ -27,7 +27,8 @@
 
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
-use std::fmt::Write;
+use std::fmt::Write as _;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -700,7 +701,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             self.state.errors.push(Error::Syntax {
                 message: "#endif without #if",
                 span,
-            })
+            });
         }
     }
 
@@ -778,7 +779,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             "warning" => self.dir_warning(span),
             "error" => self.dir_error(span),
             "line" => _ = self.dir_line(span),
-            v => {
+            _ => {
                 self.state.errors.push(Error::Syntax {
                     message: "invalid preprocessing directive",
                     span,
@@ -1035,11 +1036,36 @@ impl Iterator for TokenIter<'_, '_> {
     }
 }
 
+fn cli_defines(args: &ProcArgs, state: &mut State<'_>) {
+    // Generate a virtual file with the specified command-line arguments. We
+    // need to be able to reference these (and their location) in the future,
+    // so creating a new virtual file is easier.
+    let mut buffer = vec![];
+    for (k, v) in &args.defines {
+        write!(&mut buffer, "#define {k}");
+        if let Some(v) = v {
+            write!(&mut buffer, " {v}");
+        }
+        writeln!(&mut buffer);
+    }
+
+    // Insert the generated file into the VFS
+    let src: Rc<str> = Rc::from(String::from_utf8(buffer).unwrap());
+    let cli = state.vfs.embed_with_name("<command-line>", src.clone());
+
+    let file = File::from_src(src, cli);
+    let parser = Parser::with_state(file, args.clone(), state);
+    TokenIter(parser).for_each(drop);
+}
+
 pub fn preprocess<'a, 'ctx>(
     file_id: FileId,
     args: ProcArgs,
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
+    // Inject the given definitions
+    cli_defines(&args, state);
+
     let source = state.vfs.source(file_id);
     let file = File::from_src(source, file_id);
     let mut parser = Parser::with_state(file, args.clone(), state);
@@ -1076,7 +1102,7 @@ pub fn to_string(file_id: FileId, args: ProcArgs, state: &mut State<'_>) -> (Str
     while let Some(tok) = iter.next() {
         if last_id != tok.span.file_id {
             let path = iter.0.state.vfs.path(tok.span.file_id);
-            buffer.write_str(&format!("#line 1 {path:?}\n"));
+            buffer.write_str(&format!("\n#line 1 {path:?}\n"));
             last_id = tok.span.file_id;
         }
 

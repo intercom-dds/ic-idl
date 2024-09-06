@@ -108,6 +108,15 @@ fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
 fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let mut vfs = SourceMap::default();
 
+    let defines = options.define.iter().map(|v| {
+        v.split_once('=')
+            .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
+    });
+
+    let args = ProcArgs::default()
+        .defines(defines)
+        .includes(options.include.clone());
+
     let files = collect_files(&options.files)?;
     for file in files {
         // let input = match std::fs::read_to_string(&file) {
@@ -120,8 +129,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
         }
 
         if options.preprocessor_only {
-            let args = ProcArgs::default();
-            let (output, _) = ic_preproc::to_string(&file, args)?;
+            let (output, _) = ic_preproc::to_string(&file, args.clone())?;
             println!("{output}");
             continue;
         }

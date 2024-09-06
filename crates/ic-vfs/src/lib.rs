@@ -108,8 +108,13 @@ impl SourceMap {
 
     /// Creates a virtual file that contains the given sources.
     pub fn embed(&mut self, src: &str) -> FileId {
-        let source = Rc::from(src);
         let name = format!("<builtin-{}", self.builtin_count);
+        self.embed_with_name(&name, src)
+    }
+
+    /// Creates a virtual file that contains the given sources.
+    pub fn embed_with_name(&mut self, name: &str, src: impl Into<Rc<str>>) -> FileId {
+        let source = src.into();
         self.builtin_count += 1;
         self.insert(
             PathBuf::from(name),

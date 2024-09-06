@@ -616,4 +616,32 @@ mod tests {
         assert_eq!(tokens[1].kind, Kind::Unknown);
         assert_eq!(tokens[2].kind, Kind::Ident);
     }
+
+    #[test]
+    fn weird_utf8() {
+        let tokens = scan(
+            r#"
+            Ā Á Ă À
+            ā á ă à
+            Ǖ Ǘ Ǚ Ǜ
+            ǖ ǘ ǚ ǜ
+            Ĉ ĉ Ĝ ĝ Ĥ ĥ
+            Ĵ ĵ Ŝ ŝ Ŭ ŭ
+            Я не говорю по русски
+            𠜎𠜱𠝹𠱓 𠱸𠲖𠳏 𠳕𠴕𠵼𠵿𠸎𠸏𠹷 𠺝𠺢𠻗𠻹𠻺𠼭 𠼮𠽌𠾴𠾼𠿪𡁜𡁯𡁵𡁶𡁻𡃁𡃉𡇙𢃇𢞵𢫕
+            𢭃 𢯊 𢱑 𢱕 𢳂 𢴈 𢵌 𢵧 𢺳 𣲷 𤓓 𤶸 𤷪 𥄫 𦉘 𦟌 𦧲 𦧺 𧨾 𨅝 𨈇 𨋢 𨳊 𨳍 𨳒 𩶘
+            אני לא לומד עברית
+            𓂝𓃀𓅡𓄿𓌂 𓋴𓅓𓏏𓇏𓇌𓀀
+            我们刚才从
+            图书馆来了
+            我們剛才從
+            圖書館來了
+            øæå"#,
+        );
+        assert!(
+            tokens
+                .iter()
+                .all(|v| matches!(v.kind, Kind::Ident | Kind::Newline))
+        )
+    }
 }

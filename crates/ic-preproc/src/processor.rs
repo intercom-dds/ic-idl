@@ -218,12 +218,25 @@ impl<'a> State<'a> {
     }
 }
 
-pub trait PragmaHandler {
+trait PragmaHandler {
     /// Name of the pragma, e.g. `once` for `#pragma once`.
     fn name(&self) -> &str;
 
-    // TODO: some way to emit a warning about extra (unused) tokens...
-    fn handle(&mut self, tokens: Vec<Token>);
+    /// Handle a `pragma` directive.
+    fn handle(&self, parser: &mut Parser<'_, '_>, tokens: Vec<Token>);
+}
+
+struct PragmaOnce;
+
+impl PragmaHandler for PragmaOnce {
+    fn name(&self) -> &str {
+        "once"
+    }
+
+    fn handle(&self, parser: &mut Parser<'_, '_>, _: Vec<Token>) {
+        let id = parser.cursor().file_id();
+        parser.mark_included(id);
+    }
 }
 
 /// Operator precedence is defined as follows, from highest to lowest:
@@ -329,20 +342,25 @@ struct Parser<'a, 'ctx> {
     state: &'a mut State<'ctx>,
     args: &'a ProcArgs,
 
+    /// Registered pragmas.
+    pragmas: HashMap<String, Rc<dyn PragmaHandler>>,
+
     /// Set of files we've already parsed.
     /// Used to enable `#pragma once`-like functionality.
     parsed_files: HashSet<FileId>,
-    // handler: &'a PragmaHandler,
 }
 
 impl<'a, 'ctx> Parser<'a, 'ctx> {
     fn with_state(file: File, args: &'a ProcArgs, state: &'a mut State<'ctx>) -> Self {
-        Self {
+        let mut this = Self {
             state,
             stack: vec![file],
             args,
             parsed_files: HashSet::default(),
-        }
+            pragmas: HashMap::default(),
+        };
+        this.add_pragma(PragmaOnce);
+        this
     }
 
     fn cursor(&mut self) -> &mut Cursor {
@@ -426,6 +444,18 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn is_defined(&self, name: &str) -> bool {
         self.state.is_defined(name)
+    }
+
+    fn add_pragma<H>(&mut self, pragma: H)
+    where
+        H: PragmaHandler + 'static,
+    {
+        self.pragmas
+            .insert(pragma.name().to_string(), Rc::new(pragma));
+    }
+
+    fn mark_included(&mut self, file_id: FileId) {
+        self.parsed_files.insert(file_id);
     }
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
@@ -658,9 +688,8 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         // Empty pragmas are allowed, so this is not guaranteed
         if let Some(pragma) = tokens.first() {
             let name = self.source_of(pragma.span);
-            if name == "once" {
-                let id = self.cursor().file_id();
-                self.parsed_files.insert(id);
+            if let Some(v) = self.pragmas.get(name).cloned() {
+                v.handle(self, tokens);
             }
         }
     }

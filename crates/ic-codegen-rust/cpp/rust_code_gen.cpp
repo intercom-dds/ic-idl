@@ -1519,7 +1519,7 @@ static void save_file(std::stringstream& stream, std::filesystem::path file, ic_
         file = CommandLineOption::intercom_build() ? "mod" : "lib";
     }
     file.replace_extension(".rs");
-    ic_push_source(list, file.c_str(), stream.str().c_str());
+    ic_push_source(list, file.string().c_str(), stream.str().c_str());
 }
 
 static void

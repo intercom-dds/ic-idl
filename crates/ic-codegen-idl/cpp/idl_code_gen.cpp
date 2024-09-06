@@ -879,7 +879,7 @@ static void code_gen_idl_write(
     filepath.replace_extension(".idl");
 
     auto content = code_gen_idl_content(out, name, filename, includes);
-    ic_push_source(list, filepath.c_str(), content.c_str());
+    ic_push_source(list, filepath.string().c_str(), content.c_str());
 }
 
 void intercom::cidl::code_gen_idl(const parse_result* result, ic_list_t* list) {

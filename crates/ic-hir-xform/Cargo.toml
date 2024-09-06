@@ -27,10 +27,11 @@
 
 [package]
 name = "ic-hir-xform"
-version = "0.1.0"
 edition = "2021"
-rust-version.workspace = true
+
 publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
 ic-emit = { path = "../ic-emit" }

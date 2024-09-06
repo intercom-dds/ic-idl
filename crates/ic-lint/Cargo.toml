@@ -27,11 +27,11 @@
 
 [package]
 name = "ic-lint"
-version = "0.0.0"
 edition = "2021"
 
 publish.workspace = true
 rust-version.workspace = true
+version.workspace = true
 
 [lints]
 workspace = true

@@ -27,9 +27,9 @@
 
 [package]
 name = "ic-alloc"
-version = "0.0.0"
 edition = "2021"
 
+version.workspace = true
 publish.workspace = true
 rust-version.workspace = true
 

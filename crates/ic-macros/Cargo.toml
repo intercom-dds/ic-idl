@@ -27,11 +27,11 @@
 
 [package]
 name = "ic-macros"
-version = "0.0.0"
 edition = "2021"
 
-rust-version.workspace = true
 publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [lib]
 proc-macro = true

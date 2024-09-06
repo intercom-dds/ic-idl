@@ -1071,8 +1071,15 @@ pub fn to_string(file_id: FileId, args: ProcArgs, state: &mut State<'_>) -> (Str
     let src = state.vfs.source(file_id);
     let mut iter = preprocess(file_id, args, state);
     let mut buffer = String::with_capacity(src.len());
+    let mut last_id = file_id;
 
     while let Some(tok) = iter.next() {
+        if last_id != tok.span.file_id {
+            let path = iter.0.state.vfs.path(tok.span.file_id);
+            buffer.write_str(&format!("#line 1 {path:?}\n"));
+            last_id = tok.span.file_id;
+        }
+
         let slice = iter.source_of(tok.span);
         _ = buffer.write_str(slice);
         if tok.kind != Kind::Newline {

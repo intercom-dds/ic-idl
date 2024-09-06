@@ -62,6 +62,6 @@ fn main() {
         for error in errors {
             eprintln!("error: {error:?}");
         }
-        println!("#line 0 {file:?}\n{output}");
+        println!("{output}");
     }
 }

@@ -178,24 +178,21 @@ impl IfState {
 }
 
 #[must_use]
-#[derive(Debug)]
-pub struct State<'a> {
+#[derive(Default, Debug)]
+pub struct State {
     defines: HashMap<String, Macro>,
     errors: Vec<Error>,
     warnings: Vec<Error>,
     queue: VecDeque<Token>,
-    vfs: &'a mut SourceMap,
+
+    /// Set of files we've already parsed.
+    /// Used to enable `#pragma once`-like functionality.
+    parsed_files: HashSet<FileId>,
 }
 
-impl<'a> State<'a> {
-    pub fn new(vfs: &'a mut SourceMap) -> Self {
-        State {
-            vfs,
-            defines: HashMap::default(),
-            errors: vec![],
-            warnings: vec![],
-            queue: VecDeque::new(),
-        }
+impl State {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     #[must_use]
@@ -224,7 +221,7 @@ trait PragmaHandler {
     fn name(&self) -> &str;
 
     /// Handle a `pragma` directive.
-    fn handle(&self, parser: &mut Parser<'_, '_>, tokens: Vec<Token>);
+    fn handle(&self, parser: &mut Parser<'_>, tokens: Vec<Token>);
 }
 
 struct PragmaOnce;
@@ -234,7 +231,7 @@ impl PragmaHandler for PragmaOnce {
         "once"
     }
 
-    fn handle(&self, parser: &mut Parser<'_, '_>, _: Vec<Token>) {
+    fn handle(&self, parser: &mut Parser<'_>, _: Vec<Token>) {
         let id = parser.cursor().file_id();
         parser.mark_included(id);
     }
@@ -338,30 +335,37 @@ impl File {
     }
 }
 
-struct Parser<'a, 'ctx> {
+struct Parser<'a> {
     stack: Vec<File>,
-    state: &'a mut State<'ctx>,
-    args: ProcArgs,
+    state: &'a mut State,
+    vfs: &'a mut SourceMap,
     includes: HashSet<PathBuf>,
+    recursion_depth: usize,
 
     /// Registered pragmas.
     pragmas: HashMap<String, Rc<dyn PragmaHandler>>,
-
-    /// Set of files we've already parsed.
-    /// Used to enable `#pragma once`-like functionality.
-    parsed_files: HashSet<FileId>,
 }
 
-impl<'a, 'ctx> Parser<'a, 'ctx> {
-    fn with_state(file: File, args: ProcArgs, state: &'a mut State<'ctx>) -> Self {
+impl<'a> Parser<'a> {
+    fn with_state(
+        file: File,
+        args: ProcArgs,
+        state: &'a mut State,
+        vfs: &'a mut SourceMap,
+    ) -> Self {
         let mut this = Self {
             state,
             stack: vec![file],
-            args,
-            parsed_files: HashSet::default(),
             pragmas: HashMap::default(),
-            includes: HashSet::default(),
+            includes: args.include_dirs,
+            recursion_depth: args.recursion_depth,
+            vfs,
         };
+
+        // Inject definitions from `ProcArgs`
+        cli_defines(args.defines, &mut this);
+
+        // Register pragma handlers
         this.add_pragma(PragmaOnce);
         this
     }
@@ -398,7 +402,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
     fn update_builtins(&mut self) {
         let file = self.cursor().file_id();
-        let _path = self.state.vfs.path(file).to_string_lossy().to_string();
+        let _path = self.vfs.path(file).to_string_lossy().to_string();
         let _line = self.cursor().line().to_string();
         let _time = time::utc_time();
         let _date = time::date();
@@ -440,7 +444,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         let src = if file.cursor.file_id() == span.file_id {
             file.cursor.source_of(span)
         } else {
-            &self.state.vfs.source_str(span.file_id)[span.range()]
+            &self.vfs.source_str(span.file_id)[span.range()]
         };
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
@@ -458,7 +462,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 
     fn mark_included(&mut self, file_id: FileId) {
-        self.parsed_files.insert(file_id);
+        self.state.parsed_files.insert(file_id);
     }
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
@@ -495,7 +499,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         // Include relative to the current file
         if kind == Include::Local {
             let cur_id = self.cursor().file_id();
-            let local = self.state.vfs.path(cur_id);
+            let local = self.vfs.path(cur_id);
             if let Some(parent) = local.parent() {
                 let file = parent.join(path);
                 if file.exists() {
@@ -536,7 +540,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
 
         if self.is_active() {
             // Bail if we've hit the recursion depth
-            if self.stack.len() >= self.args.recursion_depth {
+            if self.stack.len() >= self.recursion_depth {
                 self.state.errors.push(Error::Syntax {
                     message: "#include nested too deeply",
                     span,
@@ -548,11 +552,11 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             let include = include.trim_start_matches('"').trim_end_matches('"');
 
             if let Some(v) = self.search_includes(include, kind) {
-                match self.state.vfs.open(v, kind) {
+                match self.vfs.open(v, kind) {
                     Ok((id, source)) => {
                         // Skip files that we've already parsed if they used
                         // the `once` pragma.
-                        if !self.parsed_files.contains(&id) {
+                        if !self.state.parsed_files.contains(&id) {
                             let cursor = File::from_src(source, id);
                             self.stack.push(cursor);
                         }
@@ -931,7 +935,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             }
 
             // Bail if we've nested too deeply
-            if seen.len() >= self.args.recursion_depth {
+            if seen.len() >= self.recursion_depth {
                 self.state.errors.push(Error::Syntax {
                     message: "macro recursion depth limit was reached",
                     span: token.span,
@@ -1018,30 +1022,15 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
     }
 }
 
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct TokenIter<'a, 'ctx>(Parser<'a, 'ctx>);
-
-impl<'a, 'ctx> TokenIter<'a, 'ctx> {
-    #[must_use]
-    pub fn source_of(&self, span: SourceSpan) -> &str {
-        self.0.source_of(span)
-    }
-}
-
-impl Iterator for TokenIter<'_, '_> {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next_active()
-    }
-}
-
-fn cli_defines(args: &ProcArgs, state: &mut State<'_>) {
+fn cli_defines<I>(defines: I, parser: &mut Parser<'_>)
+where
+    I: IntoIterator<Item = (String, Option<String>)>,
+{
     // Generate a virtual file with the specified command-line arguments. We
     // need to be able to reference these (and their location) in the future,
     // so creating a new virtual file is easier.
     let mut buffer = vec![];
-    for (k, v) in &args.defines {
+    for (k, v) in defines {
         write!(&mut buffer, "#define {k}");
         if let Some(v) = v {
             write!(&mut buffer, " {v}");
@@ -1051,25 +1040,41 @@ fn cli_defines(args: &ProcArgs, state: &mut State<'_>) {
 
     // Insert the generated file into the VFS
     let src: Rc<str> = Rc::from(String::from_utf8(buffer).unwrap());
-    let cli = state.vfs.embed_with_name("<command-line>", src.clone());
-
+    let cli = parser.vfs.embed_with_name("<command-line>", src.clone());
     let file = File::from_src(src, cli);
-    let parser = Parser::with_state(file, args.clone(), state);
-    TokenIter(parser).for_each(drop);
+
+    // Push the file to the parser's stack. The definitions will then be parsed
+    // when the iterator is evalutaed.
+    parser.stack.push(file);
 }
 
-pub fn preprocess<'a, 'ctx>(
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub struct TokenIter<'a>(Parser<'a>);
+
+impl TokenIter<'_> {
+    #[must_use]
+    pub fn source_of(&self, span: SourceSpan) -> &str {
+        self.0.source_of(span)
+    }
+}
+
+impl Iterator for TokenIter<'_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next_active()
+    }
+}
+
+pub fn preprocess<'a>(
     file_id: FileId,
     args: ProcArgs,
-    state: &'a mut State<'ctx>,
-) -> TokenIter<'a, 'ctx> {
-    // Inject the given definitions
-    cli_defines(&args, state);
-
-    let source = state.vfs.source(file_id);
+    state: &'a mut State,
+    vfs: &'a mut SourceMap,
+) -> TokenIter<'a> {
+    let source = vfs.source(file_id);
     let file = File::from_src(source, file_id);
-    let mut parser = Parser::with_state(file, args.clone(), state);
-    parser.includes.extend(args.include_dirs);
+    let parser = Parser::with_state(file, args, state, vfs);
     TokenIter(parser)
 }
 
@@ -1093,15 +1098,20 @@ pub fn preprocess<'a, 'ctx>(
 /// But that's not been implemented yet. The C standard doesn't require that
 /// we actually materialize the preprocessed document in any way. We don't need
 /// it either since the preprocessor is effectively a lexer for our IDL parser.
-pub fn to_string(file_id: FileId, args: ProcArgs, state: &mut State<'_>) -> (String, Vec<Error>) {
-    let src = state.vfs.source(file_id);
-    let mut iter = preprocess(file_id, args, state);
+pub fn to_string(
+    file_id: FileId,
+    args: ProcArgs,
+    state: &mut State,
+    vfs: &mut SourceMap,
+) -> (String, Vec<Error>) {
+    let src = vfs.source(file_id);
+    let mut iter = preprocess(file_id, args, state, vfs);
     let mut buffer = String::with_capacity(src.len());
     let mut last_id = file_id;
 
     while let Some(tok) = iter.next() {
         if last_id != tok.span.file_id {
-            let path = iter.0.state.vfs.path(tok.span.file_id);
+            let path = iter.0.vfs.path(tok.span.file_id);
             buffer.write_str(&format!("\n#line 1 {path:?}\n"));
             last_id = tok.span.file_id;
         }
@@ -1116,10 +1126,10 @@ pub fn to_string(file_id: FileId, args: ProcArgs, state: &mut State<'_>) -> (Str
 }
 
 /// Formats the given set of tokens as a string.
-pub fn format_tokens(tokens: &[Token], state: &State<'_>) -> String {
+pub fn format_tokens(tokens: &[Token], vfs: &SourceMap) -> String {
     let mut buffer = String::new();
     for tok in tokens {
-        let src = state.vfs.source(tok.span.file_id);
+        let src = vfs.source(tok.span.file_id);
         _ = buffer.write_str(&src[tok.span.range()]);
         if tok.kind != Kind::Newline {
             _ = buffer.write_char(' ');
@@ -1132,23 +1142,23 @@ pub fn format_tokens(tokens: &[Token], state: &State<'_>) -> String {
 mod tests {
     use super::*;
 
-    fn pp<'a>(vfs: &'a mut SourceMap, input: &str) -> State<'a> {
+    fn pp<'a>(vfs: &'a mut SourceMap, input: &str) -> State {
         let id = vfs.embed(input);
-        let mut state = State::new(vfs);
-        preprocess(id, ProcArgs::default(), &mut state).for_each(drop);
+        let mut state = State::new();
+        preprocess(id, ProcArgs::default(), &mut state, vfs).for_each(drop);
         state
     }
 
-    fn with_state(state: &mut State<'_>, input: &str) -> Vec<Token> {
-        let id = state.vfs.embed(input);
-        preprocess(id, ProcArgs::default(), state).collect()
+    fn with_state(state: &mut State, vfs: &mut SourceMap, input: &str) -> Vec<Token> {
+        let id = vfs.embed(input);
+        preprocess(id, ProcArgs::default(), state, vfs).collect()
     }
 
     fn expand(input: &str) -> String {
         let mut vfs = SourceMap::default();
         let id = vfs.embed(input);
-        let mut state = State::new(&mut vfs);
-        let (output, _) = to_string(id, ProcArgs::default(), &mut state);
+        let mut state = State::new();
+        let (output, _) = to_string(id, ProcArgs::default(), &mut state, &mut vfs);
         output.trim().to_string()
     }
 
@@ -1186,7 +1196,7 @@ mod tests {
         let mut state = pp(&mut vfs, "#define foo");
         assert!(state.is_defined("foo"));
 
-        with_state(&mut state, "#undef foo");
+        with_state(&mut state, &mut vfs, "#undef foo");
         assert!(!state.is_defined("foo"));
         assert!(state.errors().is_empty());
         assert!(state.warnings().is_empty());
@@ -1419,7 +1429,7 @@ mod tests {
         assert_eq!(state.warnings().len(), 2);
 
         // Last definition is the one that counts
-        let expanded = with_state(&mut state, "foo");
+        let expanded = with_state(&mut state, &mut vfs, "foo");
         assert_eq!(expanded.first().unwrap().kind, Kind::Ident);
     }
 

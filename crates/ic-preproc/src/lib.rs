@@ -27,7 +27,7 @@
 
 #![allow(unused, dead_code)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::string::FromUtf8Error;
@@ -47,7 +47,7 @@ const RECURSION_DEPTH: usize = 200;
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct ProcArgs {
-    include_dirs: Vec<PathBuf>,
+    include_dirs: HashSet<PathBuf>,
     defines: HashMap<String, Option<String>>,
     strip_comments: bool,
     recursion_depth: usize,
@@ -56,7 +56,7 @@ pub struct ProcArgs {
 impl Default for ProcArgs {
     fn default() -> Self {
         Self {
-            include_dirs: vec![],
+            include_dirs: HashSet::default(),
             defines: HashMap::default(),
             strip_comments: false,
             recursion_depth: RECURSION_DEPTH,
@@ -69,7 +69,7 @@ impl ProcArgs {
     where
         S: Into<PathBuf>,
     {
-        self.include_dirs.push(dir.into());
+        self.include_dirs.insert(dir.into());
         self
     }
 
@@ -147,12 +147,13 @@ impl std::fmt::Display for ProcError {
 
 /// Processes the specified file and returns an iterator of the preprocessed
 /// tokens. Any macro definitions it encounters will be expanded in-place.
-pub fn preprocess<'a, 'ctx>(
+pub fn preprocess<'a>(
     file_id: FileId,
     args: ProcArgs,
-    state: &'a mut State<'ctx>,
-) -> TokenIter<'a, 'ctx> {
-    processor::preprocess(file_id, args, state)
+    state: &'a mut State,
+    vfs: &'a mut SourceMap,
+) -> TokenIter<'a> {
+    processor::preprocess(file_id, args, state, vfs)
 }
 
 /// Parses the given file and returns a string of the preprocessed contents.
@@ -166,6 +167,6 @@ where
 {
     let mut vfs = SourceMap::default();
     let (file_id, _) = vfs.open(path, Include::Static)?;
-    let mut state = State::new(&mut vfs);
-    Ok(processor::to_string(file_id, args, &mut state))
+    let mut state = State::new();
+    Ok(processor::to_string(file_id, args, &mut state, &mut vfs))
 }

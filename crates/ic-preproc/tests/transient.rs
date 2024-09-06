@@ -34,8 +34,8 @@ fn transient_conditional() {
     let (id, _) = vfs.open("tests/transient.idl", Include::Local).unwrap();
 
     let args = ProcArgs::default();
-    let mut state = State::new(&mut vfs);
-    preprocess(id, args, &mut state).for_each(drop);
+    let mut state = State::new();
+    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
 
     // Conditionals are per file and should have no transient state.
     // We expect two errors here: one unterminated `#if` and one

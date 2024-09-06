@@ -46,8 +46,8 @@ fn include_pragma_once() {
     );
 
     let args = ProcArgs::default();
-    let mut state = State::new(&mut vfs);
-    preprocess(id, args, &mut state).for_each(drop);
+    let mut state = State::new();
+    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
 
     assert!(state.errors().is_empty());
     assert_eq!(state.warnings().len(), 1);
@@ -63,8 +63,8 @@ fn pragma_once_recursive() {
     );
 
     let args = ProcArgs::default();
-    let mut state = State::new(&mut vfs);
-    preprocess(id, args, &mut state).for_each(drop);
+    let mut state = State::new();
+    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
 
     assert!(state.errors().is_empty());
     assert!(state.warnings().is_empty());

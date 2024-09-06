@@ -36,8 +36,8 @@ fn transitive_include() {
         .unwrap();
 
     let args = ProcArgs::default();
-    let mut state = State::new(&mut vfs);
-    preprocess(id, args, &mut state).for_each(drop);
+    let mut state = State::new();
+    preprocess(id, args, &mut state, &mut vfs).for_each(drop);
     assert!(state.errors().is_empty());
     assert!(state.is_defined("C_INCLUDED"));
 }

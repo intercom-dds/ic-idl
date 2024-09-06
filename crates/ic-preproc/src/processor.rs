@@ -355,7 +355,7 @@ impl<'a> Parser<'a> {
     ) -> Self {
         let mut this = Self {
             state,
-            stack: vec![file],
+            stack: vec![],
             pragmas: HashMap::default(),
             includes: args.include_dirs,
             recursion_depth: args.recursion_depth,
@@ -367,6 +367,9 @@ impl<'a> Parser<'a> {
 
         // Register pragma handlers
         this.add_pragma(PragmaOnce);
+
+        // Push the file on the stack after all definitions have been injected
+        this.stack.push(file);
         this
     }
 

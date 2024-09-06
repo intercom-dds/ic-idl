@@ -28,7 +28,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
@@ -340,7 +340,8 @@ impl File {
 struct Parser<'a, 'ctx> {
     stack: Vec<File>,
     state: &'a mut State<'ctx>,
-    args: &'a ProcArgs,
+    args: ProcArgs,
+    includes: HashSet<PathBuf>,
 
     /// Registered pragmas.
     pragmas: HashMap<String, Rc<dyn PragmaHandler>>,
@@ -351,13 +352,14 @@ struct Parser<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Parser<'a, 'ctx> {
-    fn with_state(file: File, args: &'a ProcArgs, state: &'a mut State<'ctx>) -> Self {
+    fn with_state(file: File, args: ProcArgs, state: &'a mut State<'ctx>) -> Self {
         let mut this = Self {
             state,
             stack: vec![file],
             args,
             parsed_files: HashSet::default(),
             pragmas: HashMap::default(),
+            includes: HashSet::default(),
         };
         this.add_pragma(PragmaOnce);
         this
@@ -479,6 +481,38 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         self.if_state().last().map_or(true, IfState::is_active)
     }
 
+    /// Searches through all include directories for a matching file.
+    //
+    // TODO: should we move this logic to the VFS? It can cache the results so
+    // we don't have to repeatedly search through directories.
+    fn search_includes<P: AsRef<Path>>(&mut self, path: P, kind: Include) -> Option<PathBuf> {
+        let path = path.as_ref();
+        if path.is_absolute() {
+            return Some(path.to_owned());
+        }
+
+        // Include relative to the current file
+        if kind == Include::Local {
+            let cur_id = self.cursor().file_id();
+            let local = self.state.vfs.path(cur_id);
+            if let Some(parent) = local.parent() {
+                let file = parent.join(path);
+                if file.exists() {
+                    return Some(file);
+                }
+            }
+        }
+
+        // Fall back to searching all include directories
+        for p in &self.includes {
+            let file = p.join(path);
+            if file.exists() {
+                return Some(file);
+            }
+        }
+        None
+    }
+
     fn dir_include(&mut self, span: SourceSpan) {
         let cursor = self.cursor();
         let (kind, path) = match cursor.peek() {
@@ -512,19 +546,26 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             let include = self.source_of(path);
             let include = include.trim_start_matches('"').trim_end_matches('"');
 
-            match self.state.vfs.open(include, kind) {
-                Ok((id, source)) => {
-                    // Skip files that we've already parsed if they used the
-                    // `once` pragma.
-                    if !self.parsed_files.contains(&id) {
-                        let cursor = File::from_src(source, id);
-                        self.stack.push(cursor);
+            if let Some(v) = self.search_includes(include, kind) {
+                match self.state.vfs.open(v, kind) {
+                    Ok((id, source)) => {
+                        // Skip files that we've already parsed if they used
+                        // the `once` pragma.
+                        if !self.parsed_files.contains(&id) {
+                            let cursor = File::from_src(source, id);
+                            self.stack.push(cursor);
+                        }
                     }
+                    Err(e) => self.state.errors.push(Error::Syntax {
+                        message: "failed to open file",
+                        span,
+                    }),
                 }
-                Err(e) => self.state.errors.push(Error::Syntax {
-                    message: "failed to open file",
+            } else {
+                self.state.errors.push(Error::Syntax {
+                    message: "file not found",
                     span,
-                }),
+                });
             }
         }
     }
@@ -654,11 +695,9 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
         }
     }
 
-    fn dir_endif(&mut self, span: SourceSpan) -> Result<(), Error> {
-        if self.if_state().pop().is_some() {
-            Ok(())
-        } else {
-            Err(Error::Syntax {
+    fn dir_endif(&mut self, span: SourceSpan) {
+        if self.if_state().pop().is_none() {
+            self.state.errors.push(Error::Syntax {
                 message: "#endif without #if",
                 span,
             })
@@ -731,7 +770,7 @@ impl<'a, 'ctx> Parser<'a, 'ctx> {
             "ifndef" => self.dir_ifndef(span),
             "elif" => self.dir_elif(span),
             "else" => self.dir_else(span),
-            "endif" => _ = self.dir_endif(span),
+            "endif" => self.dir_endif(span),
             "pragma" => self.dir_pragma(),
             "define" => _ = self.dir_define(),
             "undef" => self.dir_undef(),
@@ -998,12 +1037,13 @@ impl Iterator for TokenIter<'_, '_> {
 
 pub fn preprocess<'a, 'ctx>(
     file_id: FileId,
-    args: &'a ProcArgs,
+    args: ProcArgs,
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
     let source = state.vfs.source(file_id);
     let file = File::from_src(source, file_id);
-    let parser = Parser::with_state(file, args, state);
+    let mut parser = Parser::with_state(file, args.clone(), state);
+    parser.includes.extend(args.include_dirs);
     TokenIter(parser)
 }
 
@@ -1027,7 +1067,7 @@ pub fn preprocess<'a, 'ctx>(
 /// But that's not been implemented yet. The C standard doesn't require that
 /// we actually materialize the preprocessed document in any way. We don't need
 /// it either since the preprocessor is effectively a lexer for our IDL parser.
-pub fn to_string(file_id: FileId, args: &ProcArgs, state: &mut State<'_>) -> (String, Vec<Error>) {
+pub fn to_string(file_id: FileId, args: ProcArgs, state: &mut State<'_>) -> (String, Vec<Error>) {
     let src = state.vfs.source(file_id);
     let mut iter = preprocess(file_id, args, state);
     let mut buffer = String::with_capacity(src.len());
@@ -1062,20 +1102,20 @@ mod tests {
     fn pp<'a>(vfs: &'a mut SourceMap, input: &str) -> State<'a> {
         let id = vfs.embed(input);
         let mut state = State::new(vfs);
-        preprocess(id, &ProcArgs::default(), &mut state).for_each(drop);
+        preprocess(id, ProcArgs::default(), &mut state).for_each(drop);
         state
     }
 
     fn with_state(state: &mut State<'_>, input: &str) -> Vec<Token> {
         let id = state.vfs.embed(input);
-        preprocess(id, &ProcArgs::default(), state).collect()
+        preprocess(id, ProcArgs::default(), state).collect()
     }
 
     fn expand(input: &str) -> String {
         let mut vfs = SourceMap::default();
         let id = vfs.embed(input);
         let mut state = State::new(&mut vfs);
-        let (output, _) = to_string(id, &ProcArgs::default(), &mut state);
+        let (output, _) = to_string(id, ProcArgs::default(), &mut state);
         output.trim().to_string()
     }
 

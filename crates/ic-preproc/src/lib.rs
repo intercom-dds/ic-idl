@@ -149,7 +149,7 @@ impl std::fmt::Display for ProcError {
 /// tokens. Any macro definitions it encounters will be expanded in-place.
 pub fn preprocess<'a, 'ctx>(
     file_id: FileId,
-    args: &'a ProcArgs,
+    args: ProcArgs,
     state: &'a mut State<'ctx>,
 ) -> TokenIter<'a, 'ctx> {
     processor::preprocess(file_id, args, state)
@@ -160,7 +160,7 @@ pub fn preprocess<'a, 'ctx>(
 /// # Errors
 ///
 /// Returns an error if there was an error opening the specified `path`.
-pub fn to_string<P>(path: P, args: &ProcArgs) -> std::io::Result<(String, Vec<Error>)>
+pub fn to_string<P>(path: P, args: ProcArgs) -> std::io::Result<(String, Vec<Error>)>
 where
     P: AsRef<Path>,
 {

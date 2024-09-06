@@ -26,20 +26,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_preproc::{preprocess, ProcArgs, State};
-use ic_vfs::SourceMap;
+use ic_vfs::{Include, SourceMap};
 
 #[test]
 fn transient_conditional() {
     let mut vfs = SourceMap::default();
-    let id = vfs.embed(
-        r#"
-            #include "tests/transient.idl"
-        "#,
-    );
+    let (id, _) = vfs.open("tests/transient.idl", Include::Local).unwrap();
 
     let args = ProcArgs::default();
     let mut state = State::new(&mut vfs);
-    preprocess(id, &args, &mut state).for_each(drop);
+    preprocess(id, args, &mut state).for_each(drop);
 
     // Conditionals are per file and should have no transient state.
     // We expect two errors here: one unterminated `#if` and one

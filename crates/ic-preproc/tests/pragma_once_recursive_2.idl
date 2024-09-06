@@ -27,6 +27,6 @@
 
 #pragma once
 
-#include <tests/pragma_once_recursive.idl>
+#include "pragma_once_recursive.idl"
 
 #define SEEN_2

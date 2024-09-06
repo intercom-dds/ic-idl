@@ -58,7 +58,7 @@ fn main() {
         .strip_comments(false);
 
     for file in &opts.files {
-        let (output, errors) = ic_preproc::to_string(file, &args).unwrap();
+        let (output, errors) = ic_preproc::to_string(file, args.clone()).unwrap();
         for error in errors {
             eprintln!("error: {error:?}");
         }

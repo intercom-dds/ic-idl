@@ -57,15 +57,13 @@ pub enum Include {
 #[derive(Debug)]
 pub struct FileInfo {
     /// Absolute path of the file.
-    // TODO: store filename elsewhere?
     pub path: PathBuf,
+
+    /// The file name written exactly as it was first included.
+    pub included_as: PathBuf,
 
     /// Contents of the file.
     pub source: Rc<str>,
-
-    /// Populated if this file was included by another file, and if so, the
-    /// span of the `#include` directive.
-    pub included_from: Option<(FileId, Span)>,
 
     pub kind: Include,
 }
@@ -87,16 +85,17 @@ impl SourceMap {
         path: P,
         kind: Include,
     ) -> io::Result<(FileId, Rc<str>)> {
-        let path = std::path::absolute(path)?;
-        let src = match self.files.entry(path) {
+        let abs = std::path::absolute(&path)?;
+        let src = match self.files.entry(abs) {
             Entry::Occupied(id) => {
                 let id = *id.get();
                 (id, self.source(id))
             }
             Entry::Vacant(v) => {
                 let source = Rc::from(std::fs::read_to_string(v.key())?);
+                let included_as = path.as_ref().to_path_buf();
                 let path = v.key().clone();
-                let id = self.insert(path, source, kind);
+                let id = self.insert(path, included_as, source, kind);
                 (id, self.source(id))
             }
         };
@@ -112,8 +111,9 @@ impl SourceMap {
     /// Creates a virtual file that contains the given sources.
     pub fn embed_with_name(&mut self, name: &str, src: impl Into<Rc<str>>) -> FileId {
         let source = src.into();
+        let name = PathBuf::from(name);
         self.builtin_count += 1;
-        self.insert(PathBuf::from(name), source, Include::Static)
+        self.insert(name.clone(), name, source, Include::Static)
     }
 
     /// # Panics
@@ -123,6 +123,10 @@ impl SourceMap {
     /// instances.
     pub fn file_info(&self, id: FileId) -> &FileInfo {
         self.sources.get(id).unwrap()
+    }
+
+    pub fn included_as(&self, id: FileId) -> &Path {
+        &self.file_info(id).included_as
     }
 
     #[must_use]
@@ -157,11 +161,17 @@ impl SourceMap {
         todo!()
     }
 
-    fn insert(&mut self, path: PathBuf, source: Rc<str>, kind: Include) -> FileId {
+    fn insert(
+        &mut self,
+        path: PathBuf,
+        included_as: PathBuf,
+        source: Rc<str>,
+        kind: Include,
+    ) -> FileId {
         let info = FileInfo {
             path: path.clone(),
+            included_as,
             source,
-            included_from: None,
             kind,
         };
 

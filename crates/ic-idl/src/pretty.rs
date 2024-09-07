@@ -25,10 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::path::{Path, PathBuf};
+
 use ic_cli::color::Colorize;
 use ic_diagnostic::{error_span, Diag, Label};
 use ic_parse::{Error, Reason};
 use ic_vfs::SourceMap;
+
+fn rel_path(path: &Path) -> PathBuf {
+    std::env::current_dir()
+        .map_or(path, |v| path.strip_prefix(v).unwrap_or(path))
+        .to_path_buf()
+}
 
 fn emit_error(error: &Error, vfs: &SourceMap) {
     let diag = match &error.reason {
@@ -70,8 +78,8 @@ fn emit_error(error: &Error, vfs: &SourceMap) {
     };
     let mut buf = String::new();
     let file = vfs.file_info(error.span.file_id);
-    let name = file.path.file_name().unwrap().to_str().unwrap();
-    let _ = ic_diagnostic::emit_diagnostic(&mut buf, name, &file.source, &diag);
+    let relative = rel_path(&file.path).to_string_lossy().to_string();
+    let _ = ic_diagnostic::emit_diagnostic(&mut buf, &relative, &file.source, &diag);
     eprintln!("{buf}");
 }
 

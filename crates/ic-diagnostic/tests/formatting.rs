@@ -47,7 +47,7 @@ fn diag() {
         );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_diagnostic(&mut buf, "abc def ghi jkl", &diag).unwrap();
+    ic_diagnostic::emit_diagnostic(&mut buf, "unknown", "abc def ghi jkl", &diag).unwrap();
     println!("{buf}");
 }
 
@@ -64,7 +64,7 @@ fn single() {
         .note("foobar");
 
     let mut buf = String::new();
-    ic_diagnostic::emit_diagnostic(&mut buf, "abc def ghi", &diag).unwrap();
+    ic_diagnostic::emit_diagnostic(&mut buf, "unknown", "abc def ghi", &diag).unwrap();
     println!("{buf}");
 }
 
@@ -116,7 +116,7 @@ fn plenty() {
         .help("use `bar` instead");
 
     let mut buf = String::new();
-    ic_diagnostic::emit_diagnostic(&mut buf, "abcdefghi", &diag).unwrap();
+    ic_diagnostic::emit_diagnostic(&mut buf, "unknown", "abcdefghi", &diag).unwrap();
     println!("{buf}");
 }
 

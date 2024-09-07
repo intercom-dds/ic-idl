@@ -63,8 +63,19 @@ pub enum Base {
     Hexadecimal = 16,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Keyword {
+    Struct,
+}
+
+// I think this may be the way to go. Maybe even have a generic K type for
+// keywords. But this makes it actually doable to handle in the preprocessor.
+// We can treat it as an identifier, and not have hundreds of branches.
 #[derive(Copy, Clone, Debug, PartialEq, Hash)]
 pub enum Kind {
+    ///
+    Keyword(Keyword),
+
     /// Any valid UAX#31 identifier
     Ident,
 

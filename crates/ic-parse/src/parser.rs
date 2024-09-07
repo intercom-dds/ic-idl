@@ -568,7 +568,7 @@ fn struct_def() -> impl IdlParser<Item> {
 
     let parent = just(Kind::Colon).ignore_then(scoped_name());
 
-    let struct_def = just(Kind::Struct)
+    let struct_def = just(Kind::Keyword(crate::lexer::Keyword::Struct))
         .ignore_then(ident())
         .then(parent.or_not())
         .then(fields)

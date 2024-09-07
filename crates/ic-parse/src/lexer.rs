@@ -33,9 +33,16 @@ use chumsky::Stream;
 use ic_macros::DiscHash;
 use ic_syntax::Span;
 
+#[derive(Clone, Debug, PartialEq, DiscHash)]
+pub enum Keyword {
+    Struct,
+}
+
 /// All tokens recognized by the lexer.
+// TODO: add K as a generic for keywords to the preprocessor?
 #[derive(Clone, Debug, PartialEq, DiscHash)]
 pub enum Kind {
+    Keyword(Keyword),
     Any,
     Annotation,
     Module,
@@ -187,6 +194,7 @@ pub enum Kind {
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Kind::Keyword(_) => write!(f, "keyword"),
             Kind::Struct => write!(f, "struct"),
             Kind::Enum => write!(f, "enum"),
             Kind::Bitmask => write!(f, "bitmask"),
@@ -309,6 +317,7 @@ pub struct Token {
 impl From<ic_preproc::Token> for Token {
     fn from(value: ic_preproc::Token) -> Self {
         let kind = match value.kind {
+            ic_preproc::Kind::Keyword(_) => Kind::Keyword(Keyword::Struct),
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
             ic_preproc::Kind::Comment => Kind::Comment(String::new()),
             ic_preproc::Kind::String => Kind::String,

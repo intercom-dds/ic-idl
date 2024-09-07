@@ -36,7 +36,7 @@ use std::rc::Rc;
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_vfs::{FileId, Include, SourceMap};
 
-use crate::cursor::{Base, Cursor, Directive, Kind, Token};
+use crate::cursor::{Base, Cursor, Directive, Keyword, Kind, Token};
 use crate::{time, ProcArgs, Span};
 
 #[derive(Debug)]
@@ -1073,7 +1073,20 @@ where
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next_active()
+        if let Some(mut next) = self.0.next_active() {
+            match next.kind {
+                Kind::Ident => match self.0.source_of(next.span) {
+                    "struct" => {
+                        next.kind = Kind::Keyword(Keyword::Struct);
+                        Some(next)
+                    }
+                    _ => Some(next),
+                },
+                _ => Some(next),
+            }
+        } else {
+            None
+        }
     }
 }
 

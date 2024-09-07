@@ -77,6 +77,13 @@ impl chumsky::Span for Span {
     }
 }
 
+impl Span {
+    #[must_use]
+    pub fn range(&self) -> Range<usize> {
+        self.start as usize..self.end as usize
+    }
+}
+
 impl From<Span> for Range<usize> {
     #[inline]
     fn from(val: Span) -> Self {

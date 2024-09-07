@@ -29,28 +29,14 @@ use std::iter::Peekable;
 use std::ops::Range;
 use std::rc::Rc;
 
-use ic_vfs::FileId;
+use ic_vfs::{FileId, Span};
 
 use crate::iter::{OwnedChars, EOF};
 
 #[derive(Copy, Clone, Debug)]
-pub struct SourceSpan {
-    pub start: u32,
-    pub end: u32,
-    pub file_id: FileId,
-}
-
-impl SourceSpan {
-    #[must_use]
-    pub fn range(&self) -> Range<usize> {
-        self.start as usize..self.end as usize
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct Token {
     pub kind: Kind,
-    pub span: SourceSpan,
+    pub span: Span,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -219,15 +205,15 @@ impl Cursor {
         Cursor { chars, file_id }
     }
 
-    fn span_since(&self, start: u32) -> SourceSpan {
-        SourceSpan {
+    fn span_since(&self, start: u32) -> Span {
+        Span {
             start,
             end: self.chars.index(),
             file_id: self.file_id,
         }
     }
 
-    fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) -> SourceSpan {
+    fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) -> Span {
         let start = self.chars.index();
         loop {
             let c = self.chars.peek();
@@ -351,7 +337,7 @@ impl Cursor {
     }
 
     /// Advances the iterator until it finds a token with the specified `kind`.
-    pub fn until(&mut self, kind: Kind) -> (Vec<Token>, SourceSpan) {
+    pub fn until(&mut self, kind: Kind) -> (Vec<Token>, Span) {
         let mut tokens = vec![];
         let start = self.chars.index();
         while let Some(tok) = self.next() {
@@ -365,7 +351,7 @@ impl Cursor {
 
     /// Advances the iterator until the next, peeked token is equal to the
     /// specified `kind`.
-    pub fn until_peek(&mut self, kind: Kind) -> (Vec<Token>, SourceSpan) {
+    pub fn until_peek(&mut self, kind: Kind) -> (Vec<Token>, Span) {
         let mut tokens = vec![];
         let start = self.chars.index();
         while let Some(tok) = self.peek() {
@@ -479,7 +465,7 @@ impl Cursor {
     }
 
     /// Returns the source of th given span.
-    pub fn source_of(&self, span: SourceSpan) -> &str {
+    pub fn source_of(&self, span: Span) -> &str {
         assert_eq!(self.file_id, span.file_id, "FileId mismatch");
         &self.chars.as_str()[span.range()]
     }

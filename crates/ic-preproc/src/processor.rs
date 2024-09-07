@@ -36,18 +36,18 @@ use std::rc::Rc;
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_vfs::{FileId, Include, SourceMap};
 
-use crate::cursor::{Base, Cursor, Directive, Kind, SourceSpan, Token};
-use crate::{time, ProcArgs};
+use crate::cursor::{Base, Cursor, Directive, Kind, Token};
+use crate::{time, ProcArgs, Span};
 
 #[derive(Debug)]
 pub enum Macro {
     Function {
-        span: SourceSpan,
+        span: Span,
         args: Vec<Token>,
         def: Vec<Token>,
     },
     Object {
-        span: SourceSpan,
+        span: Span,
         def: Vec<Token>,
     },
 }
@@ -89,17 +89,17 @@ impl TryFrom<Token> for Op {
 #[derive(Clone, Debug)]
 pub enum Error {
     Note {
-        span: SourceSpan,
+        span: Span,
         tokens: Vec<Token>,
     },
     Extraneous {
         directive: Directive,
-        span: SourceSpan,
+        span: Span,
         tokens: Vec<Token>,
     },
     Syntax {
         message: &'static str,
-        span: SourceSpan,
+        span: Span,
     },
 
     // TODO: this should be Error::Syntax, but we don't currently record
@@ -122,11 +122,11 @@ enum IfKind {
 struct IfState {
     state: IfKind,
     evaluated: bool,
-    defined: SourceSpan,
+    defined: Span,
 }
 
 impl IfState {
-    fn new_if(result: bool, defined: SourceSpan) -> Self {
+    fn new_if(result: bool, defined: Span) -> Self {
         Self {
             state: IfKind::If { result },
             evaluated: false,
@@ -420,7 +420,7 @@ where
         // );
     }
 
-    fn macro_name(&mut self) -> Option<(&'a str, SourceSpan)> {
+    fn macro_name(&mut self) -> Option<(&'a str, Span)> {
         let tok = self.expect(Kind::Ident, "macro name must be an identifier")?;
         let Token {
             kind: Kind::Ident,
@@ -436,7 +436,7 @@ where
         Some((self.source_of(span), span))
     }
 
-    fn source_of(&self, span: SourceSpan) -> &'a str {
+    fn source_of(&self, span: Span) -> &'a str {
         let Some(file) = self.stack.last() else {
             unreachable!("cursor stack is empty");
         };
@@ -471,7 +471,7 @@ where
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
     /// `#undef foo bar`, where "bar" is an extraneous token.
-    fn warn_trailing(&mut self, span: SourceSpan, directive: Directive) {
+    fn warn_trailing(&mut self, span: Span, directive: Directive) {
         let tokens = self.cursor().until_newline();
         if !tokens.is_empty() {
             self.state().warnings.push(Error::Extraneous {
@@ -522,7 +522,7 @@ where
         None
     }
 
-    fn dir_include(&mut self, span: SourceSpan) {
+    fn dir_include(&mut self, span: Span) {
         let cursor = self.cursor();
         let (kind, path) = match cursor.peek() {
             Some(Kind::Lt) => {
@@ -644,13 +644,13 @@ where
         }
     }
 
-    fn dir_if(&mut self, span: SourceSpan) {
+    fn dir_if(&mut self, span: Span) {
         let result = self.expr_and_eval();
         let state = IfState::new_if(result, span);
         self.if_state().push(state);
     }
 
-    fn dir_ifdef(&mut self, span: SourceSpan) {
+    fn dir_ifdef(&mut self, span: Span) {
         let result = if let Some((name, name_span)) = self.macro_name() {
             self.warn_trailing(name_span, Directive::Ifdef);
             self.is_defined(name)
@@ -662,7 +662,7 @@ where
         self.if_state().push(state);
     }
 
-    fn dir_ifndef(&mut self, span: SourceSpan) {
+    fn dir_ifndef(&mut self, span: Span) {
         let result = if let Some((name, name_span)) = self.macro_name() {
             self.warn_trailing(name_span, Directive::Ifndef);
             !self.is_defined(name)
@@ -674,7 +674,7 @@ where
         self.if_state().push(state);
     }
 
-    fn dir_else(&mut self, span: SourceSpan) {
+    fn dir_else(&mut self, span: Span) {
         match self.if_state().last_mut() {
             Some(v) => {
                 if let Err(e) = v.eval_else() {
@@ -688,7 +688,7 @@ where
         }
     }
 
-    fn dir_elif(&mut self, span: SourceSpan) {
+    fn dir_elif(&mut self, span: Span) {
         let result = self.expr_and_eval();
 
         match self.if_state().last_mut() {
@@ -704,7 +704,7 @@ where
         }
     }
 
-    fn dir_endif(&mut self, span: SourceSpan) {
+    fn dir_endif(&mut self, span: Span) {
         if self.if_state().pop().is_none() {
             self.state().errors.push(Error::Syntax {
                 message: "#endif without #if",
@@ -713,14 +713,14 @@ where
         }
     }
 
-    fn dir_warning(&mut self, span: SourceSpan) {
+    fn dir_warning(&mut self, span: Span) {
         let tokens = self.cursor().until_newline();
         if self.is_active() {
             self.state().warnings.push(Error::Note { span, tokens });
         }
     }
 
-    fn dir_error(&mut self, span: SourceSpan) {
+    fn dir_error(&mut self, span: Span) {
         let tokens = self.cursor().until_newline();
         if self.is_active() {
             self.state().errors.push(Error::Note { span, tokens });
@@ -743,7 +743,7 @@ where
     }
 
     // Parse the directive but disregard its contents.
-    fn dir_line(&mut self, span: SourceSpan) -> Option<()> {
+    fn dir_line(&mut self, span: Span) -> Option<()> {
         // Only decimal numbers allowed here
         let _line = self.expect(
             Kind::Number {
@@ -772,7 +772,7 @@ where
         None
     }
 
-    fn directive(&mut self, span: SourceSpan) {
+    fn directive(&mut self, span: Span) {
         match self.source_of(span) {
             "if" => self.dir_if(span),
             "ifdef" => self.dir_ifdef(span),
@@ -1061,7 +1061,7 @@ where
     S: BorrowMut<State>,
 {
     #[must_use]
-    pub fn source_of(&self, span: SourceSpan) -> &str {
+    pub fn source_of(&self, span: Span) -> &str {
         self.0.source_of(span)
     }
 }
@@ -1101,7 +1101,7 @@ pub fn preprocess<S: BorrowMut<State>>(
 ///     Text(Token),
 ///     Expanded {
 ///         token: Token,
-///         original_span: SourceSpan,
+///         original_span: Span,
 ///     }
 /// }
 /// ```

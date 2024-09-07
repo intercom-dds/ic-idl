@@ -32,9 +32,9 @@ use chumsky::Parser;
 use ic_syntax::{
     AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind,
     Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident, InitList,
-    InterfaceMember, Item, Label, LitBool, LitKind, Literal, LiteralValue, MapType, NamedExpr, Op,
-    OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type, Unary,
-    UnionElement, UnionField, UnionMember, UnionNull,
+    InterfaceMember, Item, Label, LitKind, Literal, LiteralValue, MapType, NamedExpr, Op, OpKind,
+    Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type, Unary, UnionElement,
+    UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -362,13 +362,13 @@ fn literal() -> impl IdlParser<Literal> {
 // Rule 18
 fn boolean_literal() -> impl IdlParser<Literal> {
     let val = select! {
-        Kind::True(v) => (true, v),
-        Kind::False(v) => (false, v),
+        Kind::True => true,
+        Kind::False => false,
     };
 
-    val.map_with_span(|(value, uppercase), span| Literal {
+    val.map_with_span(|value, span| Literal {
         span,
-        value: LiteralValue::Bool(LitBool { uppercase, value }),
+        value: LiteralValue::Bool(value),
     })
 }
 

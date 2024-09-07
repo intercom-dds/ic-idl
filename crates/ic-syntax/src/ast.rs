@@ -296,61 +296,9 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct LitBool {
-    /// Indicates whether the bool was written in uppercase or lowercase.
-    pub uppercase: bool,
-    /// The assigned value of the boolean.
-    pub value: bool,
-}
-
-impl LitBool {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            uppercase: false,
-            value: false,
-        }
-    }
-}
-
-impl ::std::default::Default for LitBool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ::intercom_cts::Marshal for LitBool {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
-
-        let mut state = ar.encode_struct("LitBool")?;
-        state.encode_field(0, "uppercase", &self.uppercase)?;
-        state.encode_field(1, "value", &self.value)?;
-        state.end()
-    }
-}
-
-impl ::intercom_cts::Unmarshal for LitBool {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::FieldDeserializer as _;
-
-        let mut state = ar.decode_struct("LitBool")?;
-        state.decode_field(0, "uppercase", &mut self.uppercase)?;
-        state.decode_field(1, "value", &mut self.value)?;
-        Ok(())
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum LiteralValue {
-    Bool(crate::ast::LitBool),
+    Bool(bool),
     Int(u64),
     Char(char),
     String_(String),
@@ -360,7 +308,7 @@ pub enum LiteralValue {
 impl LiteralValue {
     #[must_use]
     pub fn new() -> Self {
-        Self::Bool(<crate::ast::LitBool>::default())
+        Self::Null
     }
 
     #[must_use]
@@ -378,7 +326,7 @@ impl LiteralValue {
 impl From<crate::ast::LitKind> for LiteralValue {
     fn from(disc: crate::ast::LitKind) -> Self {
         match disc {
-            crate::ast::LitKind::LitBool => Self::Bool(<crate::ast::LitBool>::default()),
+            crate::ast::LitKind::LitBool => Self::Bool(false),
             crate::ast::LitKind::LitInt => Self::Int(0),
             crate::ast::LitKind::LitChar => Self::Char('\x00'),
             crate::ast::LitKind::LitString => Self::String_(<String>::default()),
@@ -424,7 +372,7 @@ impl ::intercom_cts::Unmarshal for LiteralValue {
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
             crate::ast::LitKind::LitBool => {
-                let mut value = <crate::ast::LitBool>::default();
+                let mut value = false;
                 state.decode_variant(0, "bool", &mut value)?;
                 Self::Bool(value)
             }

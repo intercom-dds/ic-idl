@@ -163,7 +163,7 @@ unsafe fn lower_ty(state: *mut sys::parser_state, ty: &Type) -> *mut sys::ptree 
 unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::numeric {
     match num {
         Expr::Literal(v) => match v.value.clone() {
-            LiteralValue::Bool(v) => sys::create_bool(state, ffi::c_int::from(v.value)),
+            LiteralValue::Bool(v) => sys::create_bool(state, ffi::c_int::from(v)),
             LiteralValue::Int(v) => sys::create_i64(state, v as i64, 10),
             // LiteralValue::Int(v) => sys::create_double(v),
             LiteralValue::Char(v) => sys::create_char(state, v as ffi::c_char),

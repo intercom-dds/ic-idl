@@ -133,7 +133,7 @@ impl Interp<'_> {
 
         match expr {
             Expr::Literal(v) => match &v.value {
-                LiteralValue::Bool(v) => i64::from(v.value),
+                LiteralValue::Bool(v) => i64::from(*v),
                 LiteralValue::Int(v) => *v as i64,
                 // LiteralValue::Float(_) => todo!(),
                 LiteralValue::Char(_) => todo!(),
@@ -169,7 +169,7 @@ impl Interp<'_> {
 
         match expr {
             Expr::Literal(v) => match &v.value {
-                LiteralValue::Bool(v) => Numeric::Bool(v.value),
+                LiteralValue::Bool(v) => Numeric::Bool(*v),
                 LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
                 LiteralValue::String_(ref v) => Numeric::String(v.clone()),
                 _ => todo!(),

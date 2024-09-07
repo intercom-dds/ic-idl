@@ -88,18 +88,9 @@ enum LitKind {
 };
 
 @nested
-struct LitBool {
-    /// Indicates whether the bool was written in uppercase or lowercase.
-    boolean uppercase;
-
-    /// The assigned value of the boolean.
-    boolean value;
-};
-
-@nested
 union LiteralValue switch(LitKind) {
 case LIT_BOOL:
-     LitBool bool;
+     boolean bool;
 case LIT_INT:
      uint64 int;
 case LIT_FLOAT:

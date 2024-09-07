@@ -148,10 +148,10 @@ pub enum Kind {
     Modulo,
 
     /// `TRUE`
-    True(bool),
+    True,
 
     /// `FALSE`
-    False(bool),
+    False,
 
     /// Octal number, e.g. `0123`.
     Octal(u64),
@@ -242,8 +242,8 @@ impl fmt::Display for Kind {
             Kind::RParen => write!(f, "`)`"),
             Kind::LBracket => write!(f, "`[`"),
             Kind::RBracket => write!(f, "`]`"),
-            Kind::True(_) => write!(f, "`TRUE`"),
-            Kind::False(_) => write!(f, "`FALSE`"),
+            Kind::True => write!(f, "`TRUE`"),
+            Kind::False => write!(f, "`FALSE`"),
             Kind::BitNot => write!(f, "`~`"),
             Kind::BitAnd => write!(f, "`&`"),
             Kind::BitOr => write!(f, "`|`"),

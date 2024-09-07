@@ -127,6 +127,7 @@ pub trait Lint<'a>: Sized {
     }
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Report {
     pub diagnostics: Vec<Diag>,
@@ -145,7 +146,7 @@ pub fn lint_syntax(tree: &[Item]) -> Report {
     };
 
     {
-        pedantic::lowercase_bool::LowercaseBool::check(&mut ctx, tree);
+        pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
     }
 
     // for lint in LINTS {

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, dead_code, clippy::all, clippy::must_use_candidate)]
+#![allow(clippy::all, warnings)]
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;

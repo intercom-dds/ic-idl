@@ -54,7 +54,7 @@ where
     I: IntoIterator<Item = Item>,
 {
     let mut renamer = Renamer { target };
-    for item in items.into_iter() {
+    for item in items {
         renamer.fold_item(item);
     }
 }

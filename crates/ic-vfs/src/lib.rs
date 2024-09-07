@@ -125,6 +125,7 @@ impl SourceMap {
         self.sources.get(id).unwrap()
     }
 
+    #[must_use]
     pub fn included_as(&self, id: FileId) -> &Path {
         &self.file_info(id).included_as
     }

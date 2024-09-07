@@ -309,8 +309,8 @@ pub struct Token {
 impl From<ic_preproc::Token> for Token {
     fn from(value: ic_preproc::Token) -> Self {
         let kind = match value.kind {
-            ic_preproc::Kind::Ident => Kind::Ident("".to_string()),
-            ic_preproc::Kind::Comment => Kind::Comment("".to_string()),
+            ic_preproc::Kind::Ident => Kind::Ident(String::new()),
+            ic_preproc::Kind::Comment => Kind::Comment(String::new()),
             ic_preproc::Kind::String => Kind::String,
             ic_preproc::Kind::Char => Kind::Char(None),
             // ic_preproc::Kind::At => Kind::,

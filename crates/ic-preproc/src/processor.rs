@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::borrow::{Borrow, BorrowMut};
-use std::collections::hash_map::Entry;
+use std::borrow::BorrowMut;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt::Write as _;
 use std::io::Write as _;
@@ -34,9 +33,10 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
+use ic_lexer::cursor::Cursor;
+use ic_lexer::token::{Base, Keyword, Kind, Token};
 use ic_vfs::{FileId, Include, SourceMap};
 
-use crate::cursor::{Base, Cursor, Directive, Keyword, Kind, Token};
 use crate::{time, ProcArgs, Span};
 
 #[derive(Debug)]
@@ -54,36 +54,21 @@ pub enum Macro {
 
 type Expr = ic_expr::Expr<Token>;
 
-impl TryFrom<Token> for Op {
-    type Error = Error;
-
-    fn try_from(value: Token) -> Result<Self, Self::Error> {
-        let op = match value.kind {
-            Kind::Not => Op::Not,
-            Kind::Or => Op::Or,
-            Kind::And => Op::And,
-            Kind::EqEq => Op::EqEq,
-            Kind::NotEq => Op::NotEq,
-            Kind::BitOr => Op::BitOr,
-            Kind::BitAnd => Op::BitAnd,
-            Kind::BitXor => Op::BitXor,
-            Kind::BitNot => Op::BitNot,
-            Kind::Lt => Op::Lt,
-            Kind::LtEq => Op::LtEq,
-            Kind::Gt => Op::Gt,
-            Kind::GtEq => Op::GtEq,
-            Kind::Plus => Op::Add,
-            Kind::Minus => Op::Sub,
-            Kind::Star => Op::Mul,
-            Kind::Slash => Op::Div,
-            Kind::Modulo => Op::Mod,
-            _ => Err(Error::Syntax {
-                message: "invalid binary operator",
-                span: value.span,
-            })?,
-        };
-        Ok(op)
-    }
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Directive {
+    If,
+    Ifdef,
+    Ifndef,
+    Elif,
+    Else,
+    Endif,
+    Include,
+    Define,
+    Undef,
+    Line,
+    Warning,
+    Error,
+    Pragma,
 }
 
 #[derive(Clone, Debug)]
@@ -320,6 +305,34 @@ fn parse_str(str: &str, base: Base) -> Result<i128, Error> {
     })
 }
 
+fn expr_op(tok: Token) -> Result<Op, Error> {
+    let op = match tok.kind {
+        Kind::Not => Op::Not,
+        Kind::Or => Op::Or,
+        Kind::And => Op::And,
+        Kind::EqEq => Op::EqEq,
+        Kind::NotEq => Op::NotEq,
+        Kind::BitOr => Op::BitOr,
+        Kind::BitAnd => Op::BitAnd,
+        Kind::BitXor => Op::BitXor,
+        Kind::BitNot => Op::BitNot,
+        Kind::Lt => Op::Lt,
+        Kind::LtEq => Op::LtEq,
+        Kind::Gt => Op::Gt,
+        Kind::GtEq => Op::GtEq,
+        Kind::Plus => Op::Add,
+        Kind::Minus => Op::Sub,
+        Kind::Star => Op::Mul,
+        Kind::Slash => Op::Div,
+        Kind::Modulo => Op::Mod,
+        _ => Err(Error::Syntax {
+            message: "invalid binary operator",
+            span: tok.span,
+        })?,
+    };
+    Ok(op)
+}
+
 /// State we keep for each file we process. `File`s are not guaranteed to be
 /// unique; multiple includes of the same file create multiple `File` instances
 /// as each has to be parsed separately.
@@ -400,6 +413,7 @@ where
         }
     }
 
+    #[allow(unused)]
     fn update_builtins(&mut self) {
         let file = self.cursor().file_id();
         let _path = self.vfs.path(file).to_string_lossy().to_string();
@@ -531,12 +545,15 @@ where
                 _ = cursor.next();
                 (Include::System, span)
             }
-            Some(Kind::String) => {
+            Some(Kind::String { .. }) => {
                 let tok = cursor.next().unwrap();
                 (Include::Local, tok.span)
             }
             _ => {
-                self.expect(Kind::String, "expected \"file\" or <file>");
+                self.expect(
+                    Kind::String { terminated: true },
+                    "expected \"file\" or <file>",
+                );
                 return;
             }
         };
@@ -565,7 +582,7 @@ where
                             self.stack.push(cursor);
                         }
                     }
-                    Err(e) => self.state().errors.push(Error::Syntax {
+                    Err(_) => self.state().errors.push(Error::Syntax {
                         message: "failed to open file",
                         span,
                     }),
@@ -752,7 +769,10 @@ where
             "expected decimal line number",
         )?;
 
-        let _file = self.expect(Kind::String, "expected file name as string literal")?;
+        let _file = self.expect(
+            Kind::String { terminated: true },
+            "expected file name as string literal",
+        )?;
         self.warn_trailing(span, Directive::Line);
         Some(())
     }
@@ -811,7 +831,7 @@ where
                 let prefix = prefix_precedence(lhs.kind);
                 let expr = self.binary_expr(prefix)?;
                 Expr::Unary(Box::new(Unary {
-                    op: Op::try_from(lhs)?,
+                    op: expr_op(lhs)?,
                     expr,
                 }))
             }
@@ -858,7 +878,7 @@ where
                     els,
                 }))
             } else {
-                let op = Op::try_from(op)?;
+                let op = expr_op(op)?;
                 let rhs = self.binary_expr(prec + 1)?;
                 Expr::Binary(Box::new(Binary { lhs, op, rhs }))
             }
@@ -951,7 +971,6 @@ where
                 Macro::Function { .. } => todo!(),
                 Macro::Object { def, .. } => {
                     for tok in def.clone() {
-                        let name = self.source_of(tok.span);
                         self.expand_inner(tok, seen);
                     }
                 }
@@ -1036,11 +1055,11 @@ where
     // so creating a new virtual file is easier.
     let mut buffer = vec![];
     for (k, v) in defines {
-        write!(&mut buffer, "#define {k}");
+        _ = write!(&mut buffer, "#define {k}");
         if let Some(v) = v {
-            write!(&mut buffer, " {v}");
+            _ = write!(&mut buffer, " {v}");
         }
-        writeln!(&mut buffer);
+        _ = writeln!(&mut buffer);
     }
 
     // Insert the generated file into the VFS
@@ -1136,7 +1155,7 @@ pub fn to_string(
     while let Some(tok) = iter.next() {
         if last_id != tok.span.file_id {
             let path = iter.0.vfs.path(tok.span.file_id);
-            buffer.write_str(&format!("\n#line 1 {path:?}\n"));
+            _ = buffer.write_str(&format!("\n#line 1 {path:?}\n"));
             last_id = tok.span.file_id;
         }
 
@@ -1147,19 +1166,6 @@ pub fn to_string(
         }
     }
     (buffer, iter.0.state.errors.clone())
-}
-
-/// Formats the given set of tokens as a string.
-pub fn format_tokens(tokens: &[Token], vfs: &SourceMap) -> String {
-    let mut buffer = String::new();
-    for tok in tokens {
-        let src = vfs.source(tok.span.file_id);
-        _ = buffer.write_str(&src[tok.span.range()]);
-        if tok.kind != Kind::Newline {
-            _ = buffer.write_char(' ');
-        }
-    }
-    buffer
 }
 
 #[cfg(test)]
@@ -1229,7 +1235,7 @@ mod tests {
     #[test]
     fn undef_non_existent() {
         let mut vfs = SourceMap::default();
-        let mut state = pp(&mut vfs, "#undef foo");
+        let state = pp(&mut vfs, "#undef foo");
         assert!(state.errors().is_empty());
         assert!(state.warnings().is_empty());
     }
@@ -1345,7 +1351,7 @@ mod tests {
 
     #[test]
     fn backslash() {
-        let mut expanded = expand(
+        let expanded = expand(
             r#"
                 #define foo \ a
                 foo

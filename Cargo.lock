@@ -227,6 +227,10 @@ dependencies = [
 [[package]]
 name = "ic-lexer"
 version = "0.0.0"
+dependencies = [
+ "ic-expr",
+ "ic-vfs",
+]
 
 [[package]]
 name = "ic-lint"
@@ -265,6 +269,7 @@ version = "0.0.0"
 dependencies = [
  "ic-alloc",
  "ic-expr",
+ "ic-lexer",
  "ic-vfs",
 ]
 

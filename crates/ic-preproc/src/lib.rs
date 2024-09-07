@@ -25,21 +25,17 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, dead_code)]
-
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::string::FromUtf8Error;
 
-pub use cursor::{Kind, Token};
+pub use ic_lexer::token::{Kind, Token};
 pub use ic_vfs::Span;
 use ic_vfs::{FileId, Include, SourceMap};
 use processor::Error;
 pub use processor::{State, TokenIter};
 
-mod cursor;
-mod iter;
 mod processor;
 mod time;
 
@@ -148,7 +144,7 @@ impl std::fmt::Display for ProcError {
 /// Processes the specified file and returns an iterator of the preprocessed
 /// tokens. Any macro definitions it encounters will be expanded in-place.
 pub fn preprocess(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> TokenIter<'_, State> {
-    let mut state = State::default();
+    let state = State::default();
     processor::preprocess(file_id, args, state, vfs)
 }
 

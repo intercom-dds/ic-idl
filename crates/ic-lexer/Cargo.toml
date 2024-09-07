@@ -26,18 +26,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-preproc"
+name = "ic-lexer"
 edition = "2021"
 
 publish.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[dependencies]
+ic-vfs = { path = "../ic-vfs" }
+ic-expr = { path = "../ic-expr" }
+
 [lints]
 workspace = true
-
-[dependencies]
-ic-alloc = { path = "../ic-alloc" }
-ic-expr = { path = "../ic-expr" }
-ic-lexer = { path = "../ic-lexer" }
-ic-vfs = { path = "../ic-vfs" }

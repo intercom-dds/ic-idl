@@ -25,183 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::iter::Peekable;
-use std::ops::Range;
 use std::rc::Rc;
 
 use ic_vfs::{FileId, Span};
 
 use crate::iter::{OwnedChars, EOF};
-
-#[derive(Copy, Clone, Debug)]
-pub struct Token {
-    pub kind: Kind,
-    pub span: Span,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Directive {
-    If,
-    Ifdef,
-    Ifndef,
-    Elif,
-    Else,
-    Endif,
-    Include,
-    Define,
-    Undef,
-    Line,
-    Warning,
-    Error,
-    Pragma,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Base {
-    Octal = 8,
-    Decimal = 10,
-    Hexadecimal = 16,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Keyword {
-    Struct,
-}
-
-// I think this may be the way to go. Maybe even have a generic K type for
-// keywords. But this makes it actually doable to handle in the preprocessor.
-// We can treat it as an identifier, and not have hundreds of branches.
-#[derive(Copy, Clone, Debug, PartialEq, Hash)]
-pub enum Kind {
-    ///
-    Keyword(Keyword),
-
-    /// Any valid UAX#31 identifier
-    Ident,
-
-    /// A documentation-style comment
-    Comment,
-
-    /// Octal, decimal or hexadecimal number
-    Number { base: Base },
-
-    /// Floating-point literal
-    Float,
-
-    /// String literal
-    String,
-
-    /// Single UTF-8 character literal
-    Char,
-
-    /// `#`
-    Hash,
-
-    /// `@`
-    At,
-
-    /// `,`
-    Comma,
-
-    /// `.`
-    Period,
-
-    /// `:`
-    Colon,
-
-    /// `::`
-    DColon,
-
-    /// `:`
-    Semi,
-
-    /// `=`
-    Eq,
-
-    /// `==`
-    EqEq,
-
-    /// `!=`
-    NotEq,
-
-    /// `{`
-    LBrace,
-
-    /// `}`
-    RBrace,
-
-    /// `(`
-    LParen,
-
-    /// `)`
-    RParen,
-
-    /// `[`
-    LBracket,
-
-    /// `]`
-    RBracket,
-
-    /// `<`
-    Lt,
-
-    /// `>`
-    Gt,
-
-    /// `<=`
-    LtEq,
-
-    /// `>=`
-    GtEq,
-
-    /// `~`
-    BitNot,
-
-    /// `&`
-    BitAnd,
-
-    /// `|`
-    BitOr,
-
-    /// `^`
-    BitXor,
-
-    /// `!`
-    Not,
-
-    /// `&&`
-    And,
-
-    /// `||`
-    Or,
-
-    /// `+`
-    Plus,
-
-    /// `-`
-    Minus,
-
-    /// `*`
-    Star,
-
-    /// `/`
-    Slash,
-
-    /// `%`
-    Modulo,
-
-    /// `?`
-    Question,
-
-    /// `\n`
-    Newline,
-
-    /// `\`
-    Backslash,
-
-    /// Fallback for invalid tokens
-    Unknown,
-}
+use crate::token::{Base, Kind, Token};
 
 #[must_use]
 #[derive(Clone, Debug)]
@@ -268,6 +97,7 @@ impl Cursor {
     }
 
     fn string_lit(&mut self) -> Kind {
+        let mut terminated = false;
         while let Some(c) = self.chars.next() {
             match c {
                 '\\' => {
@@ -276,15 +106,15 @@ impl Cursor {
                         _ = self.chars.next();
                     }
                 }
-                '\n' => {
-                    // TODO: propagate that this was not terminated.
+                '\n' => break,
+                '"' => {
+                    terminated = true;
                     break;
                 }
-                '"' => break,
                 _ => (),
             }
         }
-        Kind::String
+        Kind::String { terminated }
     }
 
     fn char_lit(&mut self) -> Kind {
@@ -322,8 +152,6 @@ impl Cursor {
         _ = self.chars.next();
 
         let is_doc = matches!(self.chars.peek(), '*' | '!');
-        let start = self.chars.index();
-
         loop {
             match self.chars.next() {
                 Some('*') => {
@@ -457,7 +285,7 @@ impl Cursor {
                 c if c.is_ascii_digit() => self.number(c),
                 c if is_ident(c) => self.ident(),
                 c if c.is_whitespace() => continue,
-                v => Kind::Unknown,
+                _ => Kind::Unknown,
             };
 
             let span = self.span_since(start);
@@ -590,17 +418,17 @@ mod tests {
     #[test]
     fn test_string_lit() {
         let input = r#""foo 'bar' baz""#;
-        assert_eq!(single(input), Kind::String);
+        assert_eq!(single(input), Kind::String { terminated: true });
 
         let input = r#""howdy 🤠""#;
-        assert_eq!(single(input), Kind::String);
+        assert_eq!(single(input), Kind::String { terminated: true });
     }
 
     #[test]
     fn escaped_string_lit() {
         let input = scan(r#""foo \"bar\" baz""#);
         assert_eq!(input.len(), 1);
-        assert_eq!(input[0].kind, Kind::String);
+        assert_eq!(input[0].kind, Kind::String { terminated: true });
     }
 
     #[test]

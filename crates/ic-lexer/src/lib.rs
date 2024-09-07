@@ -25,66 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Op {
-    Not,
-    And,
-    Or,
-    Gt,
-    GtEq,
-    Lt,
-    LtEq,
-    EqEq,
-    NotEq,
-    BitNot,
-    BitAnd,
-    BitOr,
-    BitXor,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-}
-
-#[derive(Debug)]
-pub enum Expr<T> {
-    Lit(T),
-    Unary(Box<Unary<T>>),
-    Binary(Box<Binary<T>>),
-    Ternary(Box<Ternary<T>>),
-}
-
-#[derive(Debug)]
-pub struct Unary<T> {
-    pub op: Op,
-    pub expr: Expr<T>,
-}
-
-#[derive(Debug)]
-pub struct Binary<T> {
-    pub lhs: Expr<T>,
-    pub op: Op,
-    pub rhs: Expr<T>,
-}
-
-#[derive(Debug)]
-pub struct Ternary<T> {
-    pub cond: Expr<T>,
-    pub then: Expr<T>,
-    pub els: Expr<T>,
-}
-
-pub trait Handler<T, R> {
-    fn eval_lit(lit: &T) -> R;
-}
-
-// I guess we could pass a trait or callback that deals with Lit(T)?
-// The issue here is that we need a notion of types.
-#[allow(clippy::needless_pass_by_value)]
-pub fn eval<T, H, R>(_expr: &Expr<T>, _handler: H) -> R
-where
-    H: Handler<T, R>,
-{
-    todo!()
-}
+pub mod cursor;
+pub mod iter;
+pub mod token;

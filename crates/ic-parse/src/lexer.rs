@@ -320,7 +320,7 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Keyword(_) => Kind::Keyword(Keyword::Struct),
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
             ic_preproc::Kind::Comment => Kind::Comment(String::new()),
-            ic_preproc::Kind::String => Kind::String,
+            ic_preproc::Kind::String { .. } => Kind::String,
             ic_preproc::Kind::Char => Kind::Char(None),
             // ic_preproc::Kind::At => Kind::,
             ic_preproc::Kind::Comma => Kind::Comma,

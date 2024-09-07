@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_vfs::FileId;
+
 use crate::{Declarator, Expr, Path, Span, Type};
 
 #[must_use]
@@ -69,10 +71,12 @@ pub fn path_span(path: &Path) -> Span {
     Span {
         start,
         end,
-        file_id: 0,
+        file_id: FileId::default(),
     }
 }
 
+// TODO: start and end do not necessarily come from the same file, so merging
+// them like this is dangerous.
 #[must_use]
 pub fn expr_span(expr: &Expr) -> Span {
     match expr {
@@ -84,7 +88,7 @@ pub fn expr_span(expr: &Expr) -> Span {
             Span {
                 start,
                 end,
-                file_id: 0,
+                file_id: v.op.span.file_id,
             }
         }
         Expr::Binary(v) => {
@@ -93,9 +97,11 @@ pub fn expr_span(expr: &Expr) -> Span {
             Span {
                 start,
                 end,
-                file_id: 0,
+                file_id: v.lhs.span().file_id,
             }
         }
+        // TODO: an init list can be empty -- we should track spans of the
+        // curly braces.
         Expr::InitList(v) => {
             let start = v
                 .values
@@ -113,7 +119,7 @@ pub fn expr_span(expr: &Expr) -> Span {
             Span {
                 start,
                 end,
-                file_id: 0,
+                file_id: FileId::default(),
             }
         }
     }

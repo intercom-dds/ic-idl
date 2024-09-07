@@ -38,8 +38,7 @@ use intercom_cts::{Marshal, Unmarshal};
 #[must_use]
 #[repr(transparent)]
 pub struct Id<T> {
-    // TODO: make non-pub
-    pub id: usize,
+    id: usize,
     _marker: PhantomData<fn() -> T>,
 }
 

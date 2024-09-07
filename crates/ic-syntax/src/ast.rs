@@ -28,59 +28,7 @@
 
 #![allow(clippy::match_wildcard_for_single_variants)]
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Span {
-    /// Byte offset to the start of the span.
-    pub start: u32,
-    /// Byte offset to the end of the span.
-    pub end: u32,
-    pub file_id: u32,
-}
-
-impl Span {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            start: 0,
-            end: 0,
-            file_id: 0,
-        }
-    }
-}
-
-impl ::std::default::Default for Span {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ::intercom_cts::Marshal for Span {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
-
-        let mut state = ar.encode_struct("Span")?;
-        state.encode_field(0, "start", &self.start)?;
-        state.encode_field(1, "end", &self.end)?;
-        state.end()
-    }
-}
-
-impl ::intercom_cts::Unmarshal for Span {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::FieldDeserializer as _;
-
-        let mut state = ar.decode_struct("Span")?;
-        state.decode_field(0, "start", &mut self.start)?;
-        state.decode_field(1, "end", &mut self.end)?;
-        Ok(())
-    }
-}
+pub use ic_vfs::Span;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Ident {

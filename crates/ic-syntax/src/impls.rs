@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ops::Range;
-
 use crate::{
     AliasDef, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl,
     DeclKind, Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Ident,
@@ -198,41 +196,5 @@ impl Item {
             annotations: vec![],
             kind,
         })
-    }
-}
-
-// This doesn't really belong here, but since we can't implement the trait in
-// `ic-parse`, we have to do it here instead.
-impl chumsky::Span for Span {
-    type Context = u32;
-    type Offset = u32;
-
-    fn new(file_id: Self::Context, range: std::ops::Range<Self::Offset>) -> Self {
-        Self {
-            start: range.start,
-            end: range.end,
-            file_id,
-        }
-    }
-
-    fn context(&self) -> Self::Context {
-        self.file_id
-    }
-
-    fn start(&self) -> Self::Offset {
-        self.start
-    }
-
-    fn end(&self) -> Self::Offset {
-        self.end
-    }
-}
-
-impl From<Span> for Range<usize> {
-    fn from(val: Span) -> Self {
-        Self {
-            start: val.start as usize,
-            end: val.end as usize,
-        }
     }
 }

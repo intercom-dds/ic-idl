@@ -35,7 +35,7 @@ version.workspace = true
 
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
-chumsky = { version = "0.9.3", default-features = false }
+ic-vfs = { path = "../ic-vfs" }
 
 intercom-cts.workspace = true
 

@@ -70,7 +70,26 @@ impl<T> std::fmt::Debug for Id<T> {
     }
 }
 
+// TODO(idarcar): remove
+impl<T> Default for Id<T> {
+    fn default() -> Self {
+        Self::new(usize::MAX)
+    }
+}
+
 impl<T> Eq for Id<T> {}
+
+impl<T> PartialOrd for Id<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.id.partial_cmp(&other.id)
+    }
+}
+
+impl<T> Ord for Id<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
 
 impl<T> Clone for Id<T> {
     fn clone(&self) -> Self {

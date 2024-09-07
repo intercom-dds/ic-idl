@@ -32,7 +32,9 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
-use ic_syntax::Span;
+
+mod span;
+pub use span::Span;
 
 /// An ID of a file in the [`SourceMap`].
 pub type FileId = Id<FileInfo>;
@@ -57,11 +59,6 @@ pub struct FileInfo {
     /// Absolute path of the file.
     // TODO: store filename elsewhere?
     pub path: PathBuf,
-
-    /// If we imagine that our preprocessor creates a single file where
-    /// all includes have been inlined, this span would represent the span of
-    /// the expanded include in the amalgamation.
-    pub span: Span,
 
     /// Contents of the file.
     pub source: Rc<str>,
@@ -99,7 +96,7 @@ impl SourceMap {
             Entry::Vacant(v) => {
                 let source = Rc::from(std::fs::read_to_string(v.key())?);
                 let path = v.key().clone();
-                let id = self.insert(path, source, Span::default(), kind);
+                let id = self.insert(path, source, kind);
                 (id, self.source(id))
             }
         };
@@ -116,12 +113,7 @@ impl SourceMap {
     pub fn embed_with_name(&mut self, name: &str, src: impl Into<Rc<str>>) -> FileId {
         let source = src.into();
         self.builtin_count += 1;
-        self.insert(
-            PathBuf::from(name),
-            source,
-            Span::default(),
-            Include::Static,
-        )
+        self.insert(PathBuf::from(name), source, Include::Static)
     }
 
     /// # Panics
@@ -148,11 +140,6 @@ impl SourceMap {
     //     &self.file_info(id).source[id]
     // }
 
-    #[must_use]
-    pub fn span_of_file(&self, id: FileId) -> Span {
-        self.file_info(id).span
-    }
-
     /// Returns the name of the specified file.
     #[must_use]
     pub fn name(&self, id: FileId) -> &Path {
@@ -170,10 +157,9 @@ impl SourceMap {
         todo!()
     }
 
-    fn insert(&mut self, path: PathBuf, source: Rc<str>, span: Span, kind: Include) -> FileId {
+    fn insert(&mut self, path: PathBuf, source: Rc<str>, kind: Include) -> FileId {
         let info = FileInfo {
             path: path.clone(),
-            span,
             source,
             included_from: None,
             kind,

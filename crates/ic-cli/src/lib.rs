@@ -251,14 +251,14 @@ impl CommandLine {
         let version = self.version.clone().unwrap_or_default();
         lines.push(format!(
             "{} {version}",
-            self.qualified_name('-', false).green()
+            self.qualified_name('-', false).yellow().bold()
         ));
 
         if !self.desc.is_empty() {
             lines.push(format!("\n{}", self.desc));
         }
 
-        lines.push("\nusage:".yellow());
+        lines.push("\nusage:".yellow().bold());
         let mut usage = format!("{:PAD$}{}", " ", self.qualified_name(' ', true));
         if !self.subcommands.is_empty() {
             usage = format!("{usage} [command]");
@@ -275,14 +275,14 @@ impl CommandLine {
             if !self.hide_flags {
                 let flags = self.format_args(|v| v.kind == Value::Flag && v.section.is_none());
                 if !flags.is_empty() {
-                    lines.push("\nflags:".yellow());
+                    lines.push("\nflags:".yellow().bold());
                     lines.extend(flags);
                 }
             }
             if !self.hide_options {
                 let options = self.format_args(|v| v.kind != Value::Flag && v.section.is_none());
                 if !options.is_empty() {
-                    lines.push("\noptions:".yellow());
+                    lines.push("\noptions:".yellow().bold());
                     lines.extend(options);
                 }
             }
@@ -293,7 +293,7 @@ impl CommandLine {
                     && v.section.is_none()
             });
             if !options.is_empty() {
-                lines.push("\noptions:".yellow());
+                lines.push("\noptions:".yellow().bold());
                 lines.extend(options);
             }
         }
@@ -321,7 +321,7 @@ impl CommandLine {
                     }
                 });
 
-                lines.push(format!("\n{}:", section.0).yellow());
+                lines.push(format!("\n{}:", section.0).yellow().bold());
                 lines.extend(flags);
             }
         }
@@ -410,16 +410,16 @@ impl CommandLine {
             .subcommands
             .values()
             .flatten()
-            .map(|v| v.name.green().len())
+            .map(|v| v.name.bold().len())
             .max()
             .unwrap_or(0);
 
         for (section, cmds) in &self.subcommands {
-            lines.push(format!("\n{section}:").yellow());
+            lines.push(format!("\n{section}:").yellow().bold());
 
             let width = width + PAD;
             for cmd in cmds {
-                let line = format!("{:PAD$}{:width$} {}", " ", cmd.name.green(), cmd.desc);
+                let line = format!("{:PAD$}{:width$} {}", " ", cmd.name.bold(), cmd.desc);
                 lines.push(line);
             }
         }
@@ -507,7 +507,7 @@ impl Opt {
             let name = self.value_name.clone().unwrap_or_else(|| "arg".into());
             line = format!("{line} <{name}>");
         }
-        line.green()
+        line.bold()
     }
 }
 

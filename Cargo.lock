@@ -285,8 +285,8 @@ dependencies = [
 name = "ic-syntax"
 version = "0.0.0"
 dependencies = [
- "chumsky",
  "ic-alloc",
+ "ic-vfs",
  "intercom-cts",
 ]
 
@@ -294,8 +294,9 @@ dependencies = [
 name = "ic-vfs"
 version = "0.0.0"
 dependencies = [
+ "chumsky",
  "ic-alloc",
- "ic-syntax",
+ "intercom-cts",
 ]
 
 [[package]]

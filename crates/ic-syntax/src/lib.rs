@@ -41,5 +41,6 @@ pub mod util;
 
 mod ast;
 pub use ast::*;
+pub use ic_vfs::Span;
 
 mod impls;

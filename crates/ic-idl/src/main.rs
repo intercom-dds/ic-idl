@@ -38,9 +38,10 @@ use config::{
 use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
+use ic_hir::hir::Kind;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
-use ic_vfs::SourceMap;
+use ic_vfs::{Include, SourceMap};
 use util::{collect_files, write_if_changed};
 
 mod config;
@@ -161,6 +162,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 return try_ptree(options, &ptree);
             }
             Err(e) => {
+                dbg!(&e);
                 // pretty::emit_errors(&input, &e);
                 error!(
                     "aborting due to {} previous error{}",

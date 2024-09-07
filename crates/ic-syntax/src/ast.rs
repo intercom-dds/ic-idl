@@ -34,12 +34,17 @@ pub struct Span {
     pub start: u32,
     /// Byte offset to the end of the span.
     pub end: u32,
+    pub file_id: u32,
 }
 
 impl Span {
     #[must_use]
     pub fn new() -> Self {
-        Self { start: 0, end: 0 }
+        Self {
+            start: 0,
+            end: 0,
+            file_id: 0,
+        }
     }
 }
 

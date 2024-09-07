@@ -66,7 +66,11 @@ pub fn path_span(path: &Path) -> Span {
     );
 
     let end = path.segments.last().map_or(0, |v| v.span.end);
-    Span { start, end }
+    Span {
+        start,
+        end,
+        file_id: 0,
+    }
 }
 
 #[must_use]
@@ -77,12 +81,20 @@ pub fn expr_span(expr: &Expr) -> Span {
         Expr::Unary(v) => {
             let start = v.op.span.start;
             let end = expr_span(&v.expr).end;
-            Span { start, end }
+            Span {
+                start,
+                end,
+                file_id: 0,
+            }
         }
         Expr::Binary(v) => {
             let start = expr_span(&v.lhs).start;
             let end = expr_span(&v.rhs).end;
-            Span { start, end }
+            Span {
+                start,
+                end,
+                file_id: 0,
+            }
         }
         Expr::InitList(v) => {
             let start = v
@@ -98,7 +110,11 @@ pub fn expr_span(expr: &Expr) -> Span {
                 .map(|e| expr_span(&e.value))
                 .unwrap_or_default()
                 .end;
-            Span { start, end }
+            Span {
+                start,
+                end,
+                file_id: 0,
+            }
         }
     }
 }

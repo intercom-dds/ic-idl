@@ -204,17 +204,20 @@ impl Item {
 // This doesn't really belong here, but since we can't implement the trait in
 // `ic-parse`, we have to do it here instead.
 impl chumsky::Span for Span {
-    type Context = ();
+    type Context = u32;
     type Offset = u32;
 
-    fn new(_: Self::Context, range: std::ops::Range<Self::Offset>) -> Self {
+    fn new(file_id: Self::Context, range: std::ops::Range<Self::Offset>) -> Self {
         Self {
             start: range.start,
             end: range.end,
+            file_id,
         }
     }
 
-    fn context(&self) -> Self::Context {}
+    fn context(&self) -> Self::Context {
+        self.file_id
+    }
 
     fn start(&self) -> Self::Offset {
         self.start

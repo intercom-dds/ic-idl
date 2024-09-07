@@ -29,6 +29,7 @@
 
 use chumsky::prelude::*;
 use chumsky::Parser;
+use ic_lexer::token::Keyword;
 use ic_syntax::{
     AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind,
     Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident, InitList,
@@ -65,6 +66,10 @@ fn ident() -> impl IdlParser<Ident> {
 
 fn ty() -> impl IdlParser<Ident> {
     ident().labelled("type")
+}
+
+fn keyword(keyword: Keyword) -> impl IdlParser<Kind> {
+    just(Kind::Keyword(keyword))
 }
 
 fn integer_literal() -> impl IdlParser<Literal> {
@@ -175,7 +180,7 @@ fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> +
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
-    let module_def = just(Kind::Module)
+    let module_def = keyword(Keyword::Module)
         .ignore_then(ident())
         .then(items)
         .labelled("module definition")
@@ -217,7 +222,7 @@ fn annotation_ident() -> impl IdlParser<Path> {
 
 // Rule 5
 fn const_dcl() -> impl IdlParser<Item> {
-    let def = just(Kind::Const)
+    let def = keyword(Keyword::Const)
         .ignore_then(const_type())
         .then(declarator())
         .then_ignore(just(Kind::Eq))
@@ -418,15 +423,15 @@ fn signed_int() -> impl IdlParser<Type> {
 
 // Rule 27
 fn signed_short_int() -> impl IdlParser<Type> {
-    just(Kind::Short).map_with_span(|_, span| primitive_type("int16", span))
+    keyword(Keyword::Short).map_with_span(|_, span| primitive_type("int16", span))
 }
 
 // Rule 28, 29
 //
 // Merged to provide better error messages.
 fn signed_long_int() -> impl IdlParser<Type> {
-    just(Kind::Long)
-        .ignore_then(just(Kind::Long).or_not())
+    keyword(Keyword::Long)
+        .ignore_then(keyword(Keyword::Long).or_not())
         .map_with_span(|v, span| {
             if v.is_some() {
                 primitive_type("int64", span)
@@ -440,9 +445,9 @@ fn signed_long_int() -> impl IdlParser<Type> {
 //
 // Merged to provide better error messages.
 fn unsigned_int() -> impl IdlParser<Type> {
-    just(Kind::Unsigned).ignore_then(choice((
-        just(Kind::Long)
-            .ignore_then(just(Kind::Long).or_not())
+    keyword(Keyword::Unsigned).ignore_then(choice((
+        keyword(Keyword::Long)
+            .ignore_then(keyword(Keyword::Long).or_not())
             .map_with_span(|v, span| {
                 if v.is_some() {
                     primitive_type("uint64", span)
@@ -450,7 +455,7 @@ fn unsigned_int() -> impl IdlParser<Type> {
                     primitive_type("uint32", span)
                 }
             }),
-        just(Kind::Short).map_with_span(|_, span| primitive_type("uint16", span)),
+        keyword(Keyword::Short).map_with_span(|_, span| primitive_type("uint16", span)),
     )))
 }
 
@@ -480,7 +485,7 @@ fn sequence_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type
         .then(bound())
         .delimited_by(just(Kind::Less), just(Kind::Greater));
 
-    let seq = just(Kind::Sequence).ignore_then(inner);
+    let seq = keyword(Keyword::Sequence).ignore_then(inner);
     seq.map_with_span(|(elem, bound), span| {
         Type::Sequence(SequenceType {
             ty: Box::new(elem),
@@ -496,7 +501,7 @@ fn string_type() -> impl IdlParser<Type> {
         .delimited_by(just(Kind::Less), just(Kind::Greater))
         .or_not();
 
-    just(Kind::String)
+    keyword(Keyword::String)
         .ignore_then(bound)
         .map_with_span(|bound, span| {
             Type::String_(StringType {
@@ -513,7 +518,7 @@ fn wide_string_type() -> impl IdlParser<Type> {
         .delimited_by(just(Kind::Less), just(Kind::Greater))
         .or_not();
 
-    just(Kind::WString)
+    keyword(Keyword::WString)
         .ignore_then(bound)
         .map_with_span(|bound, span| {
             Type::String_(StringType {
@@ -531,7 +536,7 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
         .then(positive_int_const())
         .delimited_by(just(Kind::Less), just(Kind::Greater));
 
-    just(Kind::Fixed)
+    keyword(Keyword::Fixed)
         .ignore_then(body)
         .map_with_span(|(tot, frac), span| {
             Type::Fixed(FixedType {
@@ -546,7 +551,7 @@ fn fixed_pt_type() -> impl IdlParser<Type> {
 
 // Rule 43
 fn fixed_pt_const_type() -> impl IdlParser<Type> {
-    just(Kind::Fixed).map_with_span(|_, span| Type::Fixed(FixedType { span, bounds: None }))
+    keyword(Keyword::Fixed).map_with_span(|_, span| Type::Fixed(FixedType { span, bounds: None }))
 }
 
 // Rule 44
@@ -568,7 +573,7 @@ fn struct_def() -> impl IdlParser<Item> {
 
     let parent = just(Kind::Colon).ignore_then(scoped_name());
 
-    let struct_def = just(Kind::Keyword(crate::lexer::Keyword::Struct))
+    let struct_def = keyword(Keyword::Struct)
         .ignore_then(ident())
         .then(parent.or_not())
         .then(fields)
@@ -592,7 +597,7 @@ fn member() -> impl IdlParser<Field> {
 
 // Rule 48
 fn struct_forward_dcl() -> impl IdlParser<Item> {
-    let decl = just(Kind::Struct)
+    let decl = keyword(Keyword::Struct)
         .ignore_then(ident())
         .labelled("struct declaration")
         .annotated()
@@ -609,7 +614,7 @@ fn union_dcl() -> impl IdlParser<Item> {
 // Rule 50
 fn union_def() -> impl IdlParser<Item> {
     // `switch(foo)`
-    let disc = just(Kind::Switch)
+    let disc = keyword(Keyword::Switch)
         .ignore_then(switch_type_spec().parenthesized())
         .map(|ty| Discriminator {
             annotations: vec![],
@@ -619,7 +624,7 @@ fn union_def() -> impl IdlParser<Item> {
     // Case labels + members
     let body = switch_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
-    let def = just(Kind::Union)
+    let def = keyword(Keyword::Union)
         .ignore_then(ident())
         .then(disc)
         .then(body)
@@ -653,13 +658,13 @@ fn case() -> impl IdlParser<UnionField> {
 
 // Rule 54
 fn case_label() -> impl IdlParser<Label> {
-    let case = just(Kind::Case)
+    let case = keyword(Keyword::Case)
         .ignore_then(const_expr())
         .map(Label::Case)
         .labelled("case label")
         .then_ignore(just(Kind::Colon));
 
-    let default = just(Kind::Default)
+    let default = keyword(Keyword::Default)
         .map(|_| Label::Default(Empty {}))
         .labelled("default label")
         .then_ignore(just(Kind::Colon));
@@ -670,7 +675,7 @@ fn case_label() -> impl IdlParser<Label> {
 // Rule 55
 fn element_spec() -> impl IdlParser<UnionElement> {
     // InterCOM extension that lets you define an "empty" member.
-    let null = just(Kind::Null)
+    let null = keyword(Keyword::Null)
         .then_ignore(just(Kind::Semi))
         .map_with_span(|_, span| UnionElement::Null(UnionNull { span }));
 
@@ -690,7 +695,7 @@ fn element_spec() -> impl IdlParser<UnionElement> {
 
 // Rule 56
 fn union_forward_dcl() -> impl IdlParser<Item> {
-    let decl = just(Kind::Union)
+    let decl = keyword(Keyword::Union)
         .ignore_then(ident())
         .labelled("union declaration")
         .annotated()
@@ -706,7 +711,7 @@ fn enum_dcl() -> impl IdlParser<Item> {
         .separated_by(just(Kind::Comma))
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
-    let def = just(Kind::Enum)
+    let def = keyword(Keyword::Enum)
         .ignore_then(ident())
         .then(enumerators)
         .labelled("enum")
@@ -744,7 +749,7 @@ fn fixed_array_size() -> impl IdlParser<Expr> {
 
 // Rule 61
 fn native_dcl() -> impl IdlParser<Item> {
-    just(Kind::Native)
+    keyword(Keyword::Native)
         .ignore_then(ident())
         .map_with_span(|name, span| Item::decl(name, DeclKind::DeclNative, span))
 }
@@ -756,7 +761,7 @@ fn simple_declarator() -> impl IdlParser<Declarator> {
 
 // Rule 63
 fn typedef_dcl() -> impl IdlParser<Item> {
-    let def = just(Kind::Typedef)
+    let def = keyword(Keyword::Typedef)
         .ignore_then(type_declarator())
         .annotated()
         .then_ignore(just(Kind::Semi));
@@ -794,7 +799,7 @@ fn declarator() -> impl IdlParser<Declarator> {
 
 // Rule 70
 fn any_type() -> impl IdlParser<Type> {
-    just(Kind::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
+    keyword(Keyword::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
 }
 
 // Rule 72
@@ -803,7 +808,7 @@ fn except_dcl() -> impl IdlParser<Item> {
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
-    just(Kind::Exception)
+    keyword(Keyword::Exception)
         .ignore_then(ident())
         .then(body)
         .then_ignore(just(Kind::Semi))
@@ -849,10 +854,10 @@ fn interface_header() -> impl IdlParser<((Option<Span>, Ident), Vec<Path>)> {
 
 // Rule 77 with the rule 121 extension
 fn interface_kind() -> impl IdlParser<Option<Span>> {
-    just(Kind::Local)
+    keyword(Keyword::Local)
         .map_with_span(|_, span| span)
         .or_not()
-        .then_ignore(just(Kind::Interface))
+        .then_ignore(keyword(Keyword::Interface))
 }
 
 // Rule 78
@@ -932,9 +937,9 @@ fn param_dcl() -> impl IdlParser<Param> {
 // Rule 86
 fn param_attribute() -> impl IdlParser<ParamKind> {
     choice((
-        just(Kind::In).to(ParamKind::ParamIn),
-        just(Kind::Out).to(ParamKind::ParamOut),
-        just(Kind::InOut).to(ParamKind::ParamInout),
+        keyword(Keyword::In).to(ParamKind::ParamIn),
+        keyword(Keyword::Out).to(ParamKind::ParamOut),
+        keyword(Keyword::InOut).to(ParamKind::ParamInout),
     ))
 }
 
@@ -945,7 +950,7 @@ fn raises_expr() -> impl IdlParser<Vec<Path>> {
         .at_least(1)
         .parenthesized();
 
-    just(Kind::Raises).ignore_then(exceptions)
+    keyword(Keyword::Raises).ignore_then(exceptions)
 }
 
 // Rule 88
@@ -955,9 +960,9 @@ fn attr_dcl() -> impl IdlParser<Attribute> {
 
 // Rule 89
 fn readonly_attr_spec() -> impl IdlParser<Attribute> {
-    let def = just(Kind::ReadOnly)
+    let def = keyword(Keyword::ReadOnly)
         .map_with_span(|_, span| span)
-        .then_ignore(just(Kind::Attribute))
+        .then_ignore(keyword(Keyword::Attribute))
         .then(type_spec())
         .then(readonly_attr_declarator())
         .then_ignore(just(Kind::Semi));
@@ -982,7 +987,7 @@ fn readonly_attr_declarator() -> impl IdlParser<()> {
 
 // Rule 91
 fn attr_spec() -> impl IdlParser<Attribute> {
-    let def = just(Kind::Attribute)
+    let def = keyword(Keyword::Attribute)
         .ignore_then(type_spec())
         .then(attr_declarator());
 
@@ -1014,12 +1019,12 @@ fn attr_raises_expr() -> impl IdlParser<()> {
 
 // Rule 94
 fn get_excep_expr() -> impl IdlParser<Vec<Path>> {
-    just(Kind::GetRaises).ignore_then(exception_list())
+    keyword(Keyword::GetRaises).ignore_then(exception_list())
 }
 
 // Rule 95
 fn set_excep_expr() -> impl IdlParser<Vec<Path>> {
-    just(Kind::SetRaises).ignore_then(exception_list())
+    keyword(Keyword::SetRaises).ignore_then(exception_list())
 }
 
 // Rule 96
@@ -1057,13 +1062,15 @@ fn value_header() -> impl IdlParser<(Ident, (Option<Path>, Option<Path>))> {
 
 // Rule 102
 fn value_kind() -> impl IdlParser<Kind> {
-    just(Kind::Valuetype)
+    keyword(Keyword::Valuetype)
 }
 
 // Rule 103
 fn value_inheritance_spec() -> impl IdlParser<(Option<Path>, Option<Path>)> {
     let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
-    let supports = just(Kind::Supports).ignore_then(interface_name()).or_not();
+    let supports = keyword(Keyword::Supports)
+        .ignore_then(interface_name())
+        .or_not();
     inherit.then(supports)
 }
 
@@ -1079,7 +1086,7 @@ fn value_element() -> impl IdlParser<()> {
 
 // Rule 106
 fn state_member() -> impl IdlParser<()> {
-    one_of([Kind::Public, Kind::Private])
+    choice((keyword(Keyword::Public), keyword(Keyword::Private)))
         .then(type_spec())
         .then(declarators())
         .then_ignore(just(Kind::Semi))
@@ -1091,7 +1098,7 @@ fn init_dcl() -> impl IdlParser<()> {
     let params = init_param_dcls().parenthesized();
     let raises = raises_expr().or_not();
 
-    just(Kind::Factory)
+    keyword(Keyword::Factory)
         .ignore_then(ident())
         .then(params)
         .then(raises)
@@ -1106,7 +1113,7 @@ fn init_param_dcls() -> impl IdlParser<()> {
 
 // Rule 109
 fn init_param_dcl() -> impl IdlParser<()> {
-    just(Kind::In)
+    keyword(Keyword::In)
         .ignore_then(type_spec())
         .then(simple_declarator())
         .ignored()
@@ -1127,7 +1134,7 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
 // later stages. There's a `@oneway` annotation that poses the same
 // restrictions, so there's really no need for the parser to enforce them.
 fn op_oneway_dcl() -> impl IdlParser<Prototype> {
-    just(Kind::Oneway)
+    keyword(Keyword::Oneway)
         .map_with_span(|_, span| span)
         .then(op_dcl())
         .map(|(span, mut proto)| {
@@ -1141,8 +1148,8 @@ fn map_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type> + '
     let key = map_type_spec(state.clone());
     let value = map_type_spec(state);
     let inner = key.then_ignore(just(Kind::Comma)).then(value).then(bound());
-    let def =
-        just(Kind::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
+    let def = keyword(Keyword::Map)
+        .ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
 
     def.map_with_span(|((key, value), bound), span| {
         Type::Map(MapType {
@@ -1168,7 +1175,7 @@ fn bitset_dcl() -> impl IdlParser<Item> {
         .repeated()
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
-    let def = just(Kind::Bitset)
+    let def = keyword(Keyword::Bitset)
         .ignore_then(ident())
         .then(inherit)
         .then(body)
@@ -1192,7 +1199,7 @@ fn bitfield() -> impl IdlParser<Bitfield> {
 
 // Rule 202
 fn bitfield_spec() -> impl IdlParser<(Expr, Option<Type>)> {
-    just(Kind::Bitfield).ignore_then(
+    keyword(Keyword::Bitfield).ignore_then(
         positive_int_const()
             .then(just(Kind::Comma).ignore_then(destination_type()).or_not())
             .delimited_by(just(Kind::Less), just(Kind::Greater)),
@@ -1211,7 +1218,7 @@ fn bitmask_dcl() -> impl IdlParser<Item> {
         .separated_by(just(Kind::Comma))
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
-    let def = just(Kind::Bitmask)
+    let def = keyword(Keyword::Bitmask)
         .ignore_then(ident())
         .then(body)
         .annotated()
@@ -1243,7 +1250,7 @@ fn annotation_dcl() -> impl IdlParser<Item> {
 
 // Rule 220
 fn annotation_header() -> impl IdlParser<Ident> {
-    just(Kind::Annotation).ignore_then(ident())
+    keyword(Keyword::Annotation).ignore_then(ident())
 }
 
 // Rule 221
@@ -1259,7 +1266,7 @@ fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
 // Rule 222
 fn annotation_member() -> impl IdlParser<Field> {
     let param = annotation_member_type().then(simple_declarator());
-    let default = just(Kind::Default).ignore_then(const_expr());
+    let default = keyword(Keyword::Default).ignore_then(const_expr());
     let def = param.then(default.or_not()).then_ignore(just(Kind::Semi));
 
     // TODO: what should we do with the default value?
@@ -1277,7 +1284,7 @@ fn annotation_member_type() -> impl IdlParser<Type> {
 
 // Rule 224
 fn any_const_type() -> impl IdlParser<Type> {
-    just(Kind::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
+    keyword(Keyword::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
 }
 
 // Rule 225

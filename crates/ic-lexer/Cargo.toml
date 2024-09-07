@@ -34,8 +34,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-ic-vfs = { path = "../ic-vfs" }
 ic-expr = { path = "../ic-expr" }
+ic-vfs = { path = "../ic-vfs" }
 
 [lints]
 workspace = true

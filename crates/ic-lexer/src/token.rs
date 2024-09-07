@@ -34,16 +34,56 @@ pub struct Token {
     pub span: Span,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum Base {
     Octal = 8,
     Decimal = 10,
     Hexadecimal = 16,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum Keyword {
+    Any,
+    Annotation,
+    Module,
     Struct,
+    Const,
+    Bitmask,
+    Bitset,
+    Bitfield,
+    Enum,
+    Exception,
+    Typedef,
+    Native,
+    Fixed,
+    Union,
+    Switch,
+    Case,
+    Default,
+    Null,
+    Valuetype,
+    Public,
+    Private,
+    Supports,
+    Factory,
+    Local,
+    Interface,
+    Raises,
+    GetRaises,
+    SetRaises,
+    Attribute,
+    ReadOnly,
+    Oneway,
+    In,
+    Out,
+    InOut,
+    Map,
+    Sequence,
+    String,
+    WString,
+    Unsigned,
+    Short,
+    Long,
 }
 
 // I think this may be the way to go. Maybe even have a generic K type for

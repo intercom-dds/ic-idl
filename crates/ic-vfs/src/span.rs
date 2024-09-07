@@ -31,8 +31,9 @@ use intercom_cts::{Marshal, Unmarshal};
 
 use crate::FileId;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+// TODO: this really shouldn't be default constructible, but all generated code
+// relies on it, so...
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Marshal, Unmarshal)]
 pub struct Span {
     /// Byte offset to the start of the span.

@@ -162,8 +162,8 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 return try_ptree(options, &ptree);
             }
             Err(e) => {
-                dbg!(&e);
-                // pretty::emit_errors(&input, &e);
+                // TODO: include information such as "included_as" in VFS.
+                pretty::emit_errors(&e, &vfs);
                 error!(
                     "aborting due to {} previous error{}",
                     e.len(),

@@ -282,9 +282,9 @@ impl fmt::Display for Diag {
     }
 }
 
-pub fn with_source(f: &mut dyn fmt::Write, source: &str, diag: &Diag) -> fmt::Result {
+pub fn with_source(f: &mut dyn fmt::Write, name: &str, source: &str, diag: &Diag) -> fmt::Result {
     let fmt = Formatter {
-        filename: None,
+        filename: Some(name),
         source,
         chars: Charset::unicode(),
     };

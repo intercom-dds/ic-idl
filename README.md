@@ -84,4 +84,3 @@ semver-breaking change.
 - Variadic macros are not supported.
 - \_Pragma is not supported.
 - `#line` directives are ignored by the preprocessor.
-- All diagnostics report "unknown" as filename.

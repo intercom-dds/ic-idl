@@ -28,8 +28,9 @@
 use ic_cli::color::Colorize;
 use ic_diagnostic::{error_span, Diag, Label};
 use ic_parse::{Error, Reason};
+use ic_vfs::SourceMap;
 
-fn emit_error(input: &str, error: &Error) {
+fn emit_error(error: &Error, vfs: &SourceMap) {
     let diag = match &error.reason {
         Reason::Unclosed { span, delimiter } => error_span(
             format!("unclosed delimiter {delimiter}"),
@@ -67,14 +68,15 @@ fn emit_error(input: &str, error: &Error) {
             )
         }
     };
-
     let mut buf = String::new();
-    let _ = ic_diagnostic::emit_diagnostic(&mut buf, input, &diag);
+    let file = vfs.file_info(error.span.file_id);
+    let name = file.path.file_name().unwrap().to_str().unwrap();
+    let _ = ic_diagnostic::emit_diagnostic(&mut buf, name, &file.source, &diag);
     eprintln!("{buf}");
 }
 
-pub fn emit_errors(input: &str, errors: &[Error]) {
+pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
     for diag in errors {
-        emit_error(input, diag);
+        emit_error(diag, vfs);
     }
 }

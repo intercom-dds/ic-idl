@@ -176,8 +176,13 @@ pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
 /// # Errors
 ///
 /// May fail if writing to the given buffer fails.
-pub fn emit_diagnostic(f: &mut dyn fmt::Write, source: &str, diag: &Diag) -> fmt::Result {
-    format::with_source(f, source, diag)
+pub fn emit_diagnostic(
+    f: &mut dyn fmt::Write,
+    name: &str,
+    source: &str,
+    diag: &Diag,
+) -> fmt::Result {
+    format::with_source(f, name, source, diag)
 }
 
 /// A compact representation of the diagnostic. Only includes the origin of the

@@ -231,6 +231,7 @@ dependencies = [
  "ic-diagnostic",
  "ic-hir",
  "ic-syntax",
+ "ic-vfs",
 ]
 
 [[package]]

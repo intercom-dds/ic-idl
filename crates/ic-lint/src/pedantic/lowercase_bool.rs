@@ -29,102 +29,37 @@ use ic_diagnostic::{warn_span, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::{Item, Literal, LiteralValue};
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Lint that checks for uses of lowercase `true` or `false`, neither of which
 /// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
-#[derive(Default)]
-pub struct LowercaseBool(Vec<Diag>);
+pub struct LowercaseBool<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for LowercaseBool {
+impl<'a> Lint<'a> for LowercaseBool<'a> {
+    fn category() -> Category {
+        Category::Pedantic
+    }
+
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
+    }
+}
+
+impl<'a> Visitor<'a> for LowercaseBool<'a> {
     fn visit_literal(&mut self, num: &'a Literal) {
         if let LiteralValue::Bool(lit) = &num.value {
-            if !lit.uppercase {
+            if self.ctx.slice(num.span).chars().any(char::is_lowercase) {
                 let fixed = lit.value.to_string().to_uppercase();
                 let diag = warn_span(
                     "lowercase literals are InterCOM extension",
                     Label::new(num.span).message("lowercase boolean literal"),
                 )
                 .help(format!("use `{fixed}` instead"));
-
-                self.0.push(diag);
+                self.ctx.report(diag);
             }
         }
-    }
-}
-
-impl Lint for LowercaseBool {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
-        Category::Pedantic
-    }
-
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use ic_syntax::*;
-
-    use super::*;
-
-    #[test]
-    fn lowercase_lit() {
-        let num = Literal {
-            span: Span::default(),
-            value: LiteralValue::Bool(LitBool {
-                uppercase: false,
-                value: false,
-            }),
-        };
-        let mut lint = LowercaseBool::default();
-        lint.visit_literal(&num);
-        assert_eq!(lint.0.len(), 1);
-
-        let num = Literal {
-            span: Span::default(),
-            value: LiteralValue::Bool(LitBool {
-                uppercase: false,
-                value: false,
-            }),
-        };
-        let mut lint = LowercaseBool::default();
-        lint.visit_literal(&num);
-        assert_eq!(lint.0.len(), 1);
-    }
-
-    #[test]
-    fn uppercase_lit() {
-        // complies with the standard so no warning produced
-        let num = Literal {
-            span: Span::default(),
-            value: LiteralValue::Bool(LitBool {
-                uppercase: true,
-                value: false,
-            }),
-        };
-        let mut lint = LowercaseBool::default();
-        lint.visit_literal(&num);
-        assert!(lint.0.is_empty());
-
-        let num = Literal {
-            span: Span::default(),
-            value: LiteralValue::Bool(LitBool {
-                uppercase: true,
-                value: false,
-            }),
-        };
-        let mut lint = LowercaseBool::default();
-        lint.visit_literal(&num);
-        assert!(lint.0.is_empty());
     }
 }

@@ -27,11 +27,11 @@
 
 //! Collection of lints that are guarded behind the `-Wpedantic` flag.
 
-pub mod assign_expr;
-pub mod complex_key;
-pub mod complex_lit;
-pub mod empty_mod;
+// pub mod assign_expr;
+// pub mod complex_key;
+// pub mod complex_lit;
+// pub mod empty_mod;
 pub mod lowercase_bool;
-pub mod null;
-pub mod omitted_in;
-pub mod scoped_enum;
+// pub mod null;
+// pub mod omitted_in;
+// pub mod scoped_enum;

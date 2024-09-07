@@ -28,36 +28,40 @@
 #![allow(dead_code, unused)]
 #![allow(clippy::new_ret_no_self)]
 
+use std::cell::RefCell;
+
 use ic_diagnostic::Diag;
-use ic_syntax::Item;
+use ic_syntax::{Item, Span};
+use ic_vfs::SourceMap;
 
-mod annotation;
+// mod annotation;
 mod pedantic;
-mod semantic;
-mod syntax;
+// mod semantic;
+// mod syntax;
+//
 
-macro_rules! lints {
-    ($($lint:ty),* $(,)?) => {
-        type LintFn = fn() -> Box<dyn Lint>;
-
-        const LINTS: &[LintFn] = &[
-            $(<$lint>::new,)*
-        ];
-    };
-}
-
-lints! {
-    pedantic::assign_expr::AssignExpr,
-    pedantic::complex_lit::ComplexLit,
-    pedantic::empty_mod::EmptyMod,
-    pedantic::lowercase_bool::LowercaseBool,
-    pedantic::null::NullVariant,
-    pedantic::omitted_in::OmittedIn,
-    semantic::oneway::NonVoidOneway,
-    semantic::unsupported::Unsupported,
-    syntax::ascii::AsciiIdent,
-    syntax::empty::EmptyTypes,
-}
+// macro_rules! lints {
+//     ($($lint:ty),* $(,)?) => {
+//         type LintFn = fn() -> Box<dyn Lint>;
+//
+//         const LINTS: &[LintFn] = &[
+//             $(<$lint>::new,)*
+//         ];
+//     };
+// }
+//
+// lints! {
+//     // pedantic::assign_expr::AssignExpr,
+//     // pedantic::complex_lit::ComplexLit,
+//     // pedantic::empty_mod::EmptyMod,
+//     pedantic::lowercase_bool::LowercaseBool,
+//     // pedantic::null::NullVariant,
+//     // pedantic::omitted_in::OmittedIn,
+//     // semantic::oneway::NonVoidOneway,
+//     // semantic::unsupported::Unsupported,
+//     // syntax::ascii::AsciiIdent,
+//     // syntax::empty::EmptyTypes,
+// }
 
 /// The supported lint categories.
 #[derive(Copy, Clone, Debug)]
@@ -78,20 +82,36 @@ pub enum Category {
     Syntax,
 }
 
-pub trait Lint {
-    /// Constructs a new instance of the lint.
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized;
+#[derive(Debug)]
+pub struct LintCtx<'a> {
+    vfs: &'a SourceMap,
+    diagnostics: RefCell<Vec<Diag>>,
+}
 
+impl LintCtx<'_> {
+    /// Emit a diagnostic.
+    ///
+    /// Diagnostics will be collected and emitted after all lints have been
+    /// ran.
+    pub fn report(&self, diag: Diag) {
+        self.diagnostics.borrow_mut().push(diag);
+    }
+
+    /// Returns a slice of the given span.
+    pub fn slice(&self, span: Span) -> &str {
+        todo!()
+    }
+}
+
+pub trait Lint<'a>: Sized {
     /// Category of the lint.
-    fn category(&self) -> Category;
+    fn category() -> Category;
 
     /// Runs the lint on the given AST.
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
-    fn check(self: Box<Self>, ast: &[Item]) -> Vec<Diag>;
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]);
 
     /// Runs the lint on the given HIR.
     ///
@@ -118,14 +138,24 @@ pub struct Report {
 /// require more in-depth semantic analysis is typically done on the HIR with
 /// [`lint_hir`].
 pub fn lint_syntax(tree: &[Item]) -> Report {
-    let mut diagnostics = vec![];
+    let vfs = SourceMap::default();
+    let mut ctx = LintCtx {
+        vfs: &vfs,
+        diagnostics: RefCell::default(),
+    };
 
-    for lint in LINTS {
-        let pass = lint().check(tree);
-        diagnostics.extend(pass.into_iter());
+    {
+        pedantic::lowercase_bool::LowercaseBool::check(&mut ctx, tree);
     }
 
-    Report { diagnostics }
+    // for lint in LINTS {
+    //     let pass = lint().check(&ctx, tree);
+    //     diagnostics.extend(pass.into_iter());
+    // }
+
+    Report {
+        diagnostics: ctx.diagnostics.take(),
+    }
 }
 
 /// Set of lints that operates on the HIR.

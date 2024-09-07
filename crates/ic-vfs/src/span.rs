@@ -52,6 +52,7 @@ impl chumsky::Span for Span {
     type Context = FileId;
     type Offset = u32;
 
+    #[inline]
     fn new(file_id: Self::Context, range: Range<Self::Offset>) -> Self {
         Self {
             start: range.start,
@@ -60,20 +61,24 @@ impl chumsky::Span for Span {
         }
     }
 
+    #[inline]
     fn context(&self) -> Self::Context {
         self.file_id
     }
 
+    #[inline]
     fn start(&self) -> Self::Offset {
         self.start
     }
 
+    #[inline]
     fn end(&self) -> Self::Offset {
         self.end
     }
 }
 
 impl From<Span> for Range<usize> {
+    #[inline]
     fn from(val: Span) -> Self {
         Self {
             start: val.start as usize,

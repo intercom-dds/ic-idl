@@ -35,7 +35,7 @@ pub mod sys;
 #[must_use]
 #[derive(Debug)]
 pub struct ParseResult {
-    inner: *mut sys::ic_parse_result_t,
+    inner: *mut sys::parse_result,
 }
 
 impl ParseResult {
@@ -52,7 +52,7 @@ impl ParseResult {
     }
 
     #[must_use]
-    pub fn as_raw(&self) -> *mut sys::ic_parse_result_t {
+    pub fn as_raw(&self) -> *mut sys::parse_result {
         self.inner
     }
 }
@@ -94,7 +94,8 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
     ParseResult { inner }
 }
 
-#[allow(clippy::ptr_as_ptr)]
+/// Lowers the AST into a `ptree`. This process should be infallible, as
+/// everything should have been type checked prior to this.
 pub fn lower_ast(ast: &[Item]) -> ParseResult {
     let inner = unsafe {
         let state = sys::ic_parser_create();

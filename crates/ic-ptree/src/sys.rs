@@ -889,34 +889,47 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct ic_list_t {
+pub struct parse_result {
     _unused: [u8; 0],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct ic_parse_result_t {
+pub struct ic_list_t {
     _unused: [u8; 0],
 }
 extern "C" {
-    pub fn ic_error_count(result: *const ic_parse_result_t) -> u32;
+    pub fn ic_error_count(result: *const parse_result) -> u32;
 }
 extern "C" {
-    pub fn ic_parse_error(result: *const ic_parse_result_t) -> *const ::std::os::raw::c_char;
+    pub fn ic_parse_error(result: *const parse_result) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
-    pub fn ic_parse_free(result: *mut ic_parse_result_t);
+    pub fn ic_parse_free(result: *mut parse_result);
 }
 extern "C" {
-    pub fn ic_ptree_merge(result: *mut *const ic_parse_result_t) -> *mut ic_parse_result_t;
+    pub fn ic_ptree_merge(result: *mut *const parse_result) -> *mut parse_result;
 }
 extern "C" {
-    pub fn ic_ptree_dump(result: *const ic_parse_result_t);
+    pub fn ic_push_source(
+        list: *mut ic_list_t,
+        path: *const ::std::os::raw::c_char,
+        src: *const ::std::os::raw::c_char,
+    );
 }
 extern "C" {
-    pub fn ic_codegen_proto(result: *const ic_parse_result_t, list: *mut ic_list_t);
+    pub fn ic_parser_create() -> *mut parser_state;
 }
 extern "C" {
-    pub fn ic_codegen_json(result: *const ic_parse_result_t, list: *mut ic_list_t);
+    pub fn ic_parser_result(state: *mut parser_state, tree: *mut ptree) -> *mut parse_result;
+}
+extern "C" {
+    pub fn ic_ptree_dump(result: *const parse_result);
+}
+extern "C" {
+    pub fn ic_codegen_proto(result: *const parse_result, list: *mut ic_list_t);
+}
+extern "C" {
+    pub fn ic_codegen_json(result: *const parse_result, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -960,7 +973,7 @@ fn bindgen_test_layout_python_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_python(result: *const ic_parse_result_t, list: *mut ic_list_t);
+    pub fn ic_codegen_python(result: *const parse_result, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1004,7 +1017,7 @@ fn bindgen_test_layout_rust_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_rust(result: *const ic_parse_result_t, list: *mut ic_list_t);
+    pub fn ic_codegen_rust(result: *const parse_result, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1048,7 +1061,7 @@ fn bindgen_test_layout_idl_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_idl(result: *const ic_parse_result_t, list: *mut ic_list_t);
+    pub fn ic_codegen_idl(result: *const parse_result, list: *mut ic_list_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1147,21 +1160,5 @@ fn bindgen_test_layout_cpp_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_cpp(result: *const ic_parse_result_t, options: cpp_options_t);
-}
-extern "C" {
-    pub fn ic_push_source(
-        list: *mut ic_list_t,
-        path: *const ::std::os::raw::c_char,
-        src: *const ::std::os::raw::c_char,
-    );
-}
-extern "C" {
-    pub fn ic_parser_create() -> *mut parser_state;
-}
-extern "C" {
-    pub fn ic_parser_result(state: *mut parser_state, tree: *mut ptree) -> *mut ic_parse_result_t;
-}
-extern "C" {
-    pub fn ic_parser_free(state: *mut parser_state);
+    pub fn ic_codegen_cpp(result: *const parse_result, options: cpp_options_t);
 }

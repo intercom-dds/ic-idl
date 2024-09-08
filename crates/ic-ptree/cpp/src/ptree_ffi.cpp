@@ -30,40 +30,35 @@
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 
-uint32_t ic_error_count(const ic_parse_result_t* result) {
-    return reinterpret_cast<const parse_result*>(result)->error_count;
+uint32_t ic_error_count(const parse_result* result) {
+    return result->error_count;
 }
 
-const char* ic_parse_error(const ic_parse_result_t* result) {
-    return reinterpret_cast<const parse_result*>(result)->msg.c_str();
+const char* ic_parse_error(const parse_result* result) {
+    return result->msg.c_str();
 }
 
-void ic_parse_free(ic_parse_result_t* result) {
-    delete reinterpret_cast<parse_result*>(result);
+void ic_parse_free(parse_result* result) {
+    delete result;
 }
 
-ic_parse_result_t* ic_ptree_merge(const ic_parse_result_t** result) {
+parse_result* ic_ptree_merge(const parse_result** result) {
     std::vector<parse_result> to_merge;
     for (auto tree = result; *tree; ++tree) {
-        auto native = reinterpret_cast<const parse_result*>(*tree);
-        to_merge.emplace_back(*native);
+        to_merge.emplace_back(**tree);
     }
-
-    auto merged = new parse_result(intercom::cidl::merge_results(to_merge));
-    return reinterpret_cast<ic_parse_result_t*>(merged);
+    return new parse_result(intercom::cidl::merge_results(to_merge));
 }
 
-void ic_ptree_dump(const ic_parse_result_t* result) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::ptree_dump(res);
+void ic_ptree_dump(const parse_result* result) {
+    intercom::cidl::ptree_dump(result);
 }
 
-void ic_codegen_proto(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_proto(res, list);
+void ic_codegen_proto(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_proto(result, list);
 }
 
-void ic_codegen_cpp(const ic_parse_result_t* result, struct cpp_options_t options) {
+void ic_codegen_cpp(const parse_result* result, struct cpp_options_t options) {
     intercom::cidl::Config config;
     if (options.header_ext) {
         config.header_subfolder = options.header_ext;
@@ -79,31 +74,25 @@ void ic_codegen_cpp(const ic_parse_result_t* result, struct cpp_options_t option
     config.cpp_no_stream_op = options.no_stream_op;
     config.use_fmtlib = options.use_fmt;
 
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_dds_cplpl(res, config);
+    intercom::cidl::code_gen_dds_cplpl(result, config);
 }
 
-void ic_codegen_python(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_python(res, list);
+void ic_codegen_python(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_python(result, list);
 }
 
-void ic_codegen_rust(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_rust(res, list);
+void ic_codegen_rust(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_rust(result, list);
 }
 
-void ic_codegen_idl(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_idl(res, list);
+void ic_codegen_idl(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_idl(result, list);
 }
 
-void ic_codegen_json(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_json(res, list);
+void ic_codegen_json(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_json(result, list);
 }
 
-void ic_codegen_json_schema(const ic_parse_result_t* result, const char*) {
-    auto res = reinterpret_cast<const parse_result*>(result);
-    intercom::cidl::code_gen_json_schema(res);
+void ic_codegen_json_schema(const parse_result* result, const char*) {
+    intercom::cidl::code_gen_json_schema(result);
 }

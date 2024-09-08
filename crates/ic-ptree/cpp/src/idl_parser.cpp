@@ -660,9 +660,9 @@ parser_state* ic_parser_create() {
     return state;
 }
 
-ic_parse_result_t* ic_parser_result(parser_state* state, ptree* tree) {
+parse_result* ic_parser_result(parser_state* state, ptree* tree) {
     auto result = new parse_result();
     state->top_level.next = tree;
     result->state.reset(state);
-    return reinterpret_cast<ic_parse_result_t*>(result);
+    return result;
 }

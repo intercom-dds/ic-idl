@@ -158,8 +158,10 @@ impl std::fmt::Display for Error {
 /// # Errors
 ///
 /// # Panics
-pub fn from_str(_input: &str) -> Result<ParseResult, Vec<Error>> {
-    todo!()
+pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(input);
+    from_file(file_id, &mut vfs)
 }
 
 /// Parses the specified file and constructs an AST.

@@ -96,21 +96,25 @@ pub struct OwnedChars {
 
 impl OwnedChars {
     #[inline]
+    #[must_use]
     pub fn as_str(&self) -> &str {
         self.inner.as_ref()
     }
 
     #[inline]
+    #[must_use]
     pub fn index(&self) -> u32 {
         self.index
     }
 
     #[inline]
+    #[must_use]
     pub fn line(&self) -> u32 {
         self.line
     }
 
     #[inline]
+    #[must_use]
     pub fn peek(&mut self) -> char {
         self.chars.peek().copied().unwrap_or(EOF)
     }

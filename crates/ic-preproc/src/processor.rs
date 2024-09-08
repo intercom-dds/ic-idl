@@ -541,7 +541,7 @@ where
         let (kind, path) = match cursor.peek() {
             Some(Kind::Lt) => {
                 _ = cursor.next();
-                let (_, span) = cursor.until_peek(Kind::Gt);
+                let span = cursor.until_peek(Kind::Gt);
                 _ = cursor.next();
                 (Include::System, span)
             }

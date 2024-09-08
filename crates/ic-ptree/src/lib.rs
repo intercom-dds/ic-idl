@@ -99,7 +99,7 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
 pub fn lower_ast(ast: &[Item]) -> ParseResult {
     let inner = unsafe {
         let state = sys::ic_parser_create();
-        let tree = lower::lower_ast(state, &ast);
+        let tree = lower::lower_ast(state, ast);
         sys::ic_parser_result(state, tree)
     };
     ParseResult { inner }

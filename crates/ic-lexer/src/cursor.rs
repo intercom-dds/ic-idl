@@ -142,7 +142,7 @@ impl Cursor {
         _ = self.chars.next();
 
         let is_doc = self.chars.peek() == '/';
-        self.until_peek(Kind::Newline);
+        _ = self.until_peek(Kind::Newline);
         is_doc
     }
 
@@ -190,16 +190,16 @@ impl Cursor {
 
     /// Advances the iterator until the next, peeked token is equal to the
     /// specified `kind`.
-    pub fn until_peek(&mut self, kind: Kind) -> (Vec<Token>, Span) {
-        let mut tokens = vec![];
+    #[must_use]
+    pub fn until_peek(&mut self, kind: Kind) -> Span {
         let start = self.chars.index();
         while let Some(tok) = self.peek() {
             if tok == kind {
                 break;
             }
-            tokens.push(self.next().unwrap());
+            self.next();
         }
-        (tokens, self.span_since(start))
+        self.span_since(start)
     }
 
     /// Consumes all token until a newline is encountered, but unlike
@@ -230,6 +230,7 @@ impl Cursor {
     }
 
     /// Advances the underlying iterator and yields the next token.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<Token> {
         loop {
             let start = self.chars.index();
@@ -304,6 +305,11 @@ impl Cursor {
     }
 
     /// Returns the source of th given span.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given span does not belong to this cursor.
+    #[must_use]
     pub fn source_of(&self, span: Span) -> &str {
         assert_eq!(self.file_id, span.file_id, "FileId mismatch");
         &self.chars.as_str()[span.range()]
@@ -315,6 +321,7 @@ impl Cursor {
     }
 
     /// Returns the current line of the cursor.
+    #[must_use]
     pub fn line(&self) -> u32 {
         self.chars.line()
     }
@@ -322,6 +329,7 @@ impl Cursor {
     /// Peeks the next token by cloning the underlying iterator. This is
     /// necessary as we cannot advance the underlying iterator, but we need
     /// `N` lookup to properly parse expressions.
+    #[must_use]
     pub fn peek(&self) -> Option<Kind> {
         self.clone().next().map(|v| v.kind)
     }

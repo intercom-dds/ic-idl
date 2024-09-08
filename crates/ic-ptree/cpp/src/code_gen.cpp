@@ -36,6 +36,7 @@
 #include "cidl/hdrs.h"
 #include "cidl/memf.h"
 #include "cidl/ptree_builder.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 
 static bool is_path_sep(char c) {
@@ -60,10 +61,10 @@ std::string trim_include_name(std::filesystem::path name, bool trim_absolute) {
 }
 
 parse_result clone_tree(const parse_result* result) {
-    IdlParser parser;
-    parser.run([&](auto state) { return duplicate_tree(state, result->tree); });
+    auto state = ic_parser_create();
+    auto dup = duplicate_tree(state, result->tree);
 
-    auto clone = parser.result();
+    auto clone = *reinterpret_cast<parse_result*>(ic_parser_result(state, dup));
     clone.error_count = result->error_count;
     clone.warning_count = result->warning_count;
     clone.modules = result->modules;

@@ -461,11 +461,11 @@ extern "C" {
 }
 extern "C" {
     pub fn lookup_node(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char)
-        -> *mut ptree;
+    -> *mut ptree;
 }
 extern "C" {
     pub fn lookup_type(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char)
-        -> *mut ptree;
+    -> *mut ptree;
 }
 extern "C" {
     pub fn pop_context(arg1: *mut parser_state) -> *mut ptree;
@@ -783,7 +783,7 @@ extern "C" {
 }
 extern "C" {
     pub fn create_annotation_dcl_finish(arg1: *mut parser_state, members: *mut ptree)
-        -> *mut ptree;
+    -> *mut ptree;
 }
 extern "C" {
     pub fn create_annotation_member(
@@ -896,15 +896,6 @@ pub struct ic_list_t {
 #[derive(Debug, Copy, Clone)]
 pub struct ic_parse_result_t {
     _unused: [u8; 0],
-}
-pub type ic_parser_callback_t = ::std::option::Option<
-    unsafe extern "C" fn(arg1: *mut parser_state, arg2: *mut ::std::os::raw::c_void) -> *mut ptree,
->;
-extern "C" {
-    pub fn ic_parse_w_state(
-        callback: ic_parser_callback_t,
-        user_data: *mut ::std::os::raw::c_void,
-    ) -> *mut ic_parse_result_t;
 }
 extern "C" {
     pub fn ic_error_count(result: *const ic_parse_result_t) -> u32;
@@ -1164,4 +1155,13 @@ extern "C" {
         path: *const ::std::os::raw::c_char,
         src: *const ::std::os::raw::c_char,
     );
+}
+extern "C" {
+    pub fn ic_parser_create() -> *mut parser_state;
+}
+extern "C" {
+    pub fn ic_parser_result(state: *mut parser_state, tree: *mut ptree) -> *mut ic_parse_result_t;
+}
+extern "C" {
+    pub fn ic_parser_free(state: *mut parser_state);
 }

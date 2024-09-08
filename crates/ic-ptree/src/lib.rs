@@ -95,9 +95,12 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
 }
 
 #[allow(clippy::ptr_as_ptr)]
-pub fn lower_ast(mut ast: &[Item]) -> ParseResult {
-    let ptr = std::ptr::addr_of_mut!(ast) as _;
-    let inner = unsafe { sys::ic_parse_w_state(Some(lower::callback), ptr) };
+pub fn lower_ast(ast: &[Item]) -> ParseResult {
+    let inner = unsafe {
+        let state = sys::ic_parser_create();
+        let tree = lower::lower_ast(state, &ast);
+        sys::ic_parser_result(state, tree)
+    };
     ParseResult { inner }
 }
 

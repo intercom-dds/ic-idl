@@ -39,6 +39,7 @@
 #include "cidl/constants.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_builder.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -286,19 +287,42 @@ static std::map<std::string, ptree**> initialize_builtin_annotation_map() {
 
 std::map<std::string, ptree**> g_builtin_annotation_map = initialize_builtin_annotation_map();
 
-static void init_parser_state(const std::shared_ptr<parser_state>& state) {
-    static auto s_initial_state = []() -> std::shared_ptr<parser_state> {
-        auto initial = std::make_shared<parser_state>();
-        clear_namespace_nodes(initial.get());
+static void register_primitives(parser_state* state) {
+    register_node(state, &any_type);
+    register_node(state, &object_type);
+    register_node(state, &boolean_type);
+    register_node(state, &int8_type);
+    register_node(state, &octet_type);
+    register_node(state, &char_type);
+    register_node(state, &wchar_type);
+    register_node(state, &short_type);
+    register_node(state, &ushort_type);
+    register_node(state, &long_type);
+    register_node(state, &ulong_type);
+    register_node(state, &longlong_type);
+    register_node(state, &ulonglong_type);
+    register_node(state, &float_type);
+    register_node(state, &double_type);
+    register_node(state, &ldouble_type);
+    register_node(state, &fixed_type);
+    register_node(state, &unbounded_string_type);
+    register_node(state, &unbounded_wstring_type);
+}
+
+static void init_parser_state(parser_state* state) {
+    static auto s_initial_state = []() -> parser_state {
+        parser_state initial;
+        register_primitives(&initial);
+        clear_namespace_nodes(&initial);
 
         // Everything created up until this point is builtin types
-        for (const auto& node : initial->allocated_nodes) {
+        for (const auto& node : initial.allocated_nodes) {
             node->flags |= OPT_BUILTIN;
         }
 
         return initial;
     }();
-    *state = *s_initial_state;
+    *state = s_initial_state;
 }
 
 static void update_incomplete_type(parser_state* state, struct ptree* node, struct ptree*& type) {
@@ -628,35 +652,17 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     to_merge.clear();
     return out;
 }
-
-struct IdlParserImpl {
-    parse_result result;
-    std::shared_ptr<parser_state> state;
-};
-
-IdlParser::IdlParser() : m_impl(new IdlParserImpl()) {
-    m_impl->state = std::make_shared<parser_state>();
-}
-
-IdlParser::~IdlParser() = default;
-
-const parse_result& IdlParser::result() const {
-    return m_impl->result;
-}
-
-parse_result& IdlParser::result() {
-    return m_impl->result;
-}
-
-void IdlParser::run(const std::function<ptree*(parser_state*)>& input) {
-    init_parser_state(m_impl->state);
-    auto node = input(m_impl->state.get());
-    m_impl->state->top_level.next = node;
-    m_impl->result = get_parse_result(m_impl->state.get());
-    m_impl->result.state = m_impl->state;
-}
-
-std::shared_ptr<parser_state> IdlParser::state() {
-    return m_impl->state;
-}
 }  // namespace intercom::cidl
+
+parser_state* ic_parser_create() {
+    auto state = new parser_state();
+    init_parser_state(state);
+    return state;
+}
+
+ic_parse_result_t* ic_parser_result(parser_state* state, ptree* tree) {
+    auto result = new parse_result();
+    state->top_level.next = tree;
+    result->state.reset(state);
+    return reinterpret_cast<ic_parse_result_t*>(result);
+}

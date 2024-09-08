@@ -29,7 +29,6 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <iostream>
 
 #include "cidl/commandline.h"
 #include "cidl/hdrs.h"

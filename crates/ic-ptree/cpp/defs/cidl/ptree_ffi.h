@@ -40,11 +40,6 @@ struct ic_parse_result_t;
 
 struct ptree;
 
-// NOLINTNEXTLINE
-typedef struct ptree* (*ic_parser_callback_t)(struct parser_state*, void*);
-
-struct ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data);
-
 uint32_t ic_error_count(const struct ic_parse_result_t* result);
 
 const char* ic_parse_error(const struct ic_parse_result_t* result);
@@ -93,6 +88,10 @@ struct cpp_options_t {
 void ic_codegen_cpp(const struct ic_parse_result_t* result, struct cpp_options_t options);
 
 void ic_push_source(struct ic_list_t* list, const char* path, const char* src);
+
+struct parser_state* ic_parser_create();
+
+struct ic_parse_result_t* ic_parser_result(struct parser_state* state, struct ptree* tree);
 
 #ifdef __cplusplus
 }

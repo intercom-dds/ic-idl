@@ -27,7 +27,6 @@
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -35,9 +34,7 @@
 
 #include "cidl/ptree.h"
 
-namespace intercom::cidl {
-
-struct parse_result {
+extern "C" struct parse_result {
     parse_result() = default;
     const ptree* tree{nullptr};
     std::set<const ptree*> includes;
@@ -48,7 +45,7 @@ struct parse_result {
     std::shared_ptr<parser_state> state;
 };
 
-struct IdlParserImpl;
+namespace intercom::cidl {
 
 enum class JsonValueFlags { FLAG_ESCAPED = 1, FLAG_NUMERICAL_VALUE = 2 };
 
@@ -58,19 +55,4 @@ std::string json_value(const ptree* value);
 
 parse_result merge_results(std::vector<parse_result>& to_merge);
 
-class IdlParser {
-  public:
-    IdlParser();
-    ~IdlParser();
-
-    const parse_result& result() const;
-    parse_result& result();
-
-    void run(const std::function<ptree*(parser_state*)>& input);
-
-    std::shared_ptr<parser_state> state();
-
-  private:
-    std::unique_ptr<IdlParserImpl> m_impl;
-};
 }  // namespace intercom::cidl

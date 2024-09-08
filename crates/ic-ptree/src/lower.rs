@@ -452,13 +452,9 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     lower_item_list(state, &builtin.tree);
 }
 
-pub extern "C" fn callback(
-    state: *mut sys::parser_state,
-    ptr: *mut ffi::c_void,
-) -> *mut sys::ptree {
-    let ast = ptr.cast::<&[Item]>();
+pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item]) -> *mut sys::ptree {
     unsafe {
         inject_builtin(state);
-        lower_item_list(state, *ast)
+        lower_item_list(state, ast)
     }
 }

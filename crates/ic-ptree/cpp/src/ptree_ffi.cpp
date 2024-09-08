@@ -29,38 +29,37 @@
 
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
-#include "cidl/ptree_builder.h"
 
 uint32_t ic_error_count(const ic_parse_result_t* result) {
-    return reinterpret_cast<const intercom::cidl::parse_result*>(result)->error_count;
+    return reinterpret_cast<const parse_result*>(result)->error_count;
 }
 
 const char* ic_parse_error(const ic_parse_result_t* result) {
-    return reinterpret_cast<const intercom::cidl::parse_result*>(result)->msg.c_str();
+    return reinterpret_cast<const parse_result*>(result)->msg.c_str();
 }
 
 void ic_parse_free(ic_parse_result_t* result) {
-    delete reinterpret_cast<intercom::cidl::parse_result*>(result);
+    delete reinterpret_cast<parse_result*>(result);
 }
 
 ic_parse_result_t* ic_ptree_merge(const ic_parse_result_t** result) {
-    std::vector<intercom::cidl::parse_result> to_merge;
+    std::vector<parse_result> to_merge;
     for (auto tree = result; *tree; ++tree) {
-        auto native = reinterpret_cast<const intercom::cidl::parse_result*>(*tree);
+        auto native = reinterpret_cast<const parse_result*>(*tree);
         to_merge.emplace_back(*native);
     }
 
-    auto merged = new intercom::cidl::parse_result(intercom::cidl::merge_results(to_merge));
+    auto merged = new parse_result(intercom::cidl::merge_results(to_merge));
     return reinterpret_cast<ic_parse_result_t*>(merged);
 }
 
 void ic_ptree_dump(const ic_parse_result_t* result) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
-    ptree_dump(res);
+    auto res = reinterpret_cast<const parse_result*>(result);
+    intercom::cidl::ptree_dump(res);
 }
 
 void ic_codegen_proto(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_proto(res, list);
 }
 
@@ -80,63 +79,31 @@ void ic_codegen_cpp(const ic_parse_result_t* result, struct cpp_options_t option
     config.cpp_no_stream_op = options.no_stream_op;
     config.use_fmtlib = options.use_fmt;
 
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_dds_cplpl(res, config);
 }
 
 void ic_codegen_python(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_python(res, list);
 }
 
 void ic_codegen_rust(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_rust(res, list);
 }
 
 void ic_codegen_idl(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_idl(res, list);
 }
 
 void ic_codegen_json(const ic_parse_result_t* result, ic_list_t* list) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_json(res, list);
 }
 
 void ic_codegen_json_schema(const ic_parse_result_t* result, const char*) {
-    auto res = reinterpret_cast<const intercom::cidl::parse_result*>(result);
+    auto res = reinterpret_cast<const parse_result*>(result);
     intercom::cidl::code_gen_json_schema(res);
-}
-
-static void register_primitives(parser_state* state) {
-    register_node(state, &any_type);
-    register_node(state, &object_type);
-    register_node(state, &boolean_type);
-    register_node(state, &int8_type);
-    register_node(state, &octet_type);
-    register_node(state, &char_type);
-    register_node(state, &wchar_type);
-    register_node(state, &short_type);
-    register_node(state, &ushort_type);
-    register_node(state, &long_type);
-    register_node(state, &ulong_type);
-    register_node(state, &longlong_type);
-    register_node(state, &ulonglong_type);
-    register_node(state, &float_type);
-    register_node(state, &double_type);
-    register_node(state, &ldouble_type);
-    register_node(state, &fixed_type);
-    register_node(state, &unbounded_string_type);
-    register_node(state, &unbounded_wstring_type);
-}
-
-ic_parse_result_t* ic_parse_w_state(ic_parser_callback_t callback, void* user_data) {
-    intercom::cidl::IdlParser parser;
-    parser.run([=](auto state) {
-        register_primitives(state);
-        return callback(state, user_data);
-    });
-    auto res = new intercom::cidl::parse_result(parser.result());
-    return reinterpret_cast<ic_parse_result_t*>(res);
 }

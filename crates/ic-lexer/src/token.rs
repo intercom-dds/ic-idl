@@ -42,7 +42,7 @@ pub enum Base {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum Keyword {
+pub enum Kw {
     Any,
     Annotation,
     Module,
@@ -95,7 +95,7 @@ pub enum Keyword {
 #[derive(Copy, Clone, Debug, PartialEq, Hash)]
 pub enum Kind {
     /// An IDL keyword
-    Keyword(Keyword),
+    Keyword(Kw),
 
     /// An arithmetic or bitwise operator
     Op(Op),

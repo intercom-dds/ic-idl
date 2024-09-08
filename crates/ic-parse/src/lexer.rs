@@ -30,7 +30,7 @@
 use std::fmt;
 
 use chumsky::Stream;
-use ic_lexer::token::Keyword;
+use ic_lexer::token::Kw;
 use ic_macros::DiscHash;
 use ic_syntax::Span;
 
@@ -38,7 +38,7 @@ use ic_syntax::Span;
 // TODO: add K as a generic for keywords to the preprocessor?
 #[derive(Clone, Debug, PartialEq, DiscHash)]
 pub enum Kind {
-    Keyword(Keyword),
+    Keyword(Kw),
 
     /// `,`
     Comma,
@@ -238,7 +238,7 @@ pub struct Token {
 impl From<ic_preproc::Token> for Token {
     fn from(value: ic_preproc::Token) -> Self {
         let kind = match value.kind {
-            ic_preproc::Kind::Keyword(_) => Kind::Keyword(Keyword::Struct),
+            ic_preproc::Kind::Keyword(_) => Kind::Keyword(Kw::Struct),
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
             ic_preproc::Kind::Comment => Kind::Comment(String::new()),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),

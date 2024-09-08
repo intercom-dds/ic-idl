@@ -34,7 +34,7 @@ use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
-use ic_lexer::token::{Base, Keyword, Kind, Token};
+use ic_lexer::token::{Base, Kw, Kind, Token};
 use ic_vfs::{FileId, Include, SourceMap};
 
 use crate::{time, ProcArgs, Span};
@@ -542,7 +542,7 @@ where
             Some(Kind::Lt) => {
                 _ = cursor.next();
                 let span = cursor.until_peek(Kind::Gt);
-                _ = cursor.next();
+                self.expect(Kind::Gt, "unterminated include");
                 (Include::System, span)
             }
             Some(Kind::String { .. }) => {
@@ -1104,7 +1104,7 @@ where
             let tok = match next.kind {
                 Kind::Ident => match self.inner.source_of(next.span) {
                     "struct" => {
-                        next.kind = Kind::Keyword(Keyword::Struct);
+                        next.kind = Kind::Keyword(Kw::Struct);
                         next
                     }
                     _ => next,

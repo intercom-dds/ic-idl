@@ -31,9 +31,7 @@ use intercom_cts::{Marshal, Unmarshal};
 
 use crate::FileId;
 
-// TODO: this really shouldn't be default constructible, but all generated code
-// relies on it, so...
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Marshal, Unmarshal)]
 pub struct Span {
     /// Byte offset to the start of the span.
@@ -44,6 +42,18 @@ pub struct Span {
 
     /// ID of the file to which this span belongs.
     pub file_id: FileId,
+}
+
+// TODO: this really shouldn't be default constructible, but all generated code
+// relies on it, so...
+impl Default for Span {
+    fn default() -> Self {
+        Self {
+            start: 0,
+            end: 0,
+            file_id: FileId::_do_not_use(),
+        }
+    }
 }
 
 // This doesn't really belong here, but since we can't implement the trait in

@@ -148,7 +148,9 @@ fn doxy_comment() -> impl IdlParser<()> {
 // Rule 1
 #[must_use]
 pub fn specification() -> impl IdlParser<Vec<Item>> {
-    definition().repeated().then_ignore(end())
+    definition()
+        .repeated()
+        .then_ignore(just(Kind::Eoi).then(end()))
 }
 
 // Rule 2 with the rule 71 and 218 extensions

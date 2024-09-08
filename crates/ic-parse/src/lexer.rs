@@ -142,6 +142,8 @@ pub enum Kind {
     // Preserve documentation comments
     Comment(String),
 
+    Eoi,
+
     /// Fallback for invalid tokens
     Invalid,
 }
@@ -183,6 +185,7 @@ impl fmt::Display for Kind {
             Kind::StringLit(_) => todo!(),
             Kind::AnnotationAppl(_) => todo!(),
             Kind::Ident(_) => todo!(),
+            Kind::Eoi => write!(f, "end of input"),
             // Kind::Unsigned => write!(f, "unsigned"),
             // Kind::Short => write!(f, "short"),
             // Kind::Long => write!(f, "long"),
@@ -268,6 +271,7 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Float => Kind::Float(0.0),
             ic_preproc::Kind::Newline => todo!(),
             ic_preproc::Kind::Backslash => todo!(),
+            ic_preproc::Kind::Eoi => Kind::Eoi,
             _ => Kind::Invalid,
         };
 

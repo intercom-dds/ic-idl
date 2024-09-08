@@ -122,7 +122,7 @@ impl From<SimpleReason<Kind, Span>> for Reason {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Error {
     pub found: Option<Kind>,
     pub expected: Option<Vec<Kind>>,

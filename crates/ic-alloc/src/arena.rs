@@ -49,6 +49,13 @@ impl<T> Id<T> {
             _marker: PhantomData,
         }
     }
+
+    // Some objects need to be default constructed. This should be avoided
+    // where possible, but it's difficult to do so for generated code.
+    #[doc(hidden)]
+    pub fn _do_not_use() -> Self {
+        Self::new(0)
+    }
 }
 
 impl<T> PartialEq for Id<T> {
@@ -66,13 +73,6 @@ impl<T> std::hash::Hash for Id<T> {
 impl<T> std::fmt::Debug for Id<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self.id, f)
-    }
-}
-
-// TODO(idarcar): remove
-impl<T> Default for Id<T> {
-    fn default() -> Self {
-        Self::new(usize::MAX)
     }
 }
 

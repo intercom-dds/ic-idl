@@ -1073,7 +1073,10 @@ where
 }
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct TokenIter<'a, S>(Parser<'a, S>);
+pub struct TokenIter<'a, S> {
+    inner: Parser<'a, S>,
+    prev: Option<Span>,
+}
 
 impl<S> TokenIter<'_, S>
 where
@@ -1081,7 +1084,12 @@ where
 {
     #[must_use]
     pub fn source_of(&self, span: Span) -> &str {
-        self.0.source_of(span)
+        self.inner.source_of(span)
+    }
+
+    #[must_use]
+    pub fn prev_span(&self) -> Option<Span> {
+        self.prev
     }
 }
 
@@ -1092,19 +1100,27 @@ where
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(mut next) = self.0.next_active() {
-            match next.kind {
-                Kind::Ident => match self.0.source_of(next.span) {
+        if let Some(mut next) = self.inner.next_active() {
+            let tok = match next.kind {
+                Kind::Ident => match self.inner.source_of(next.span) {
                     "struct" => {
                         next.kind = Kind::Keyword(Keyword::Struct);
-                        Some(next)
+                        next
                     }
-                    _ => Some(next),
+                    _ => next,
                 },
-                _ => Some(next),
+                _ => next,
+            };
+            // TODO: handle this elsewhere
+            if tok.kind != Kind::Newline {
+                self.prev = Some(tok.span);
             }
+            Some(tok)
         } else {
-            None
+            self.prev.take().map(|span| Token {
+                kind: Kind::Eoi,
+                span,
+            })
         }
     }
 }
@@ -1118,7 +1134,10 @@ pub fn preprocess<S: BorrowMut<State>>(
     let source = vfs.source(file_id);
     let file = File::from_src(source, file_id);
     let parser = Parser::with_state(file, args, state, vfs);
-    TokenIter(parser)
+    TokenIter {
+        inner: parser,
+        prev: None,
+    }
 }
 
 /// Preprocesses a file, inlines all includes and expands all macro definitions.
@@ -1154,7 +1173,7 @@ pub fn to_string(
 
     while let Some(tok) = iter.next() {
         if last_id != tok.span.file_id {
-            let path = iter.0.vfs.path(tok.span.file_id);
+            let path = iter.inner.vfs.path(tok.span.file_id);
             _ = buffer.write_str(&format!("\n#line 1 {path:?}\n"));
             last_id = tok.span.file_id;
         }
@@ -1165,7 +1184,7 @@ pub fn to_string(
             _ = buffer.write_char(' ');
         }
     }
-    (buffer, iter.0.state.errors.clone())
+    (buffer, iter.inner.state.errors.clone())
 }
 
 #[cfg(test)]

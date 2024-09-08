@@ -71,7 +71,7 @@ pub fn path_span(path: &Path) -> Span {
     Span {
         start,
         end,
-        file_id: FileId::default(),
+        file_id: FileId::_do_not_use(),
     }
 }
 
@@ -119,7 +119,7 @@ pub fn expr_span(expr: &Expr) -> Span {
             Span {
                 start,
                 end,
-                file_id: FileId::default(),
+                file_id: FileId::_do_not_use(),
             }
         }
     }

@@ -178,6 +178,7 @@ impl SourceMap {
 
         let id = self.sources.alloc(info);
         self.files.insert(path, id);
+        println!("created: {id:?}");
         id
     }
 }

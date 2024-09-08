@@ -225,4 +225,9 @@ pub enum Kind {
 
     /// Fallback for invalid tokens
     Unknown,
+
+    /// End of input. This token is necessary to be able to propagate the span
+    /// of the last token that was yielded, so we can properly pinpoint where
+    /// an error occurred.
+    Eoi,
 }

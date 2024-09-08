@@ -212,7 +212,7 @@ impl<'a> Formatter<'a> {
             // Emit the highlight. If the label spans multiple lines, we
             // should only emit highlights for the first line.
             let line = line_or_span(self.source, &label.span);
-            let len = self.source[line].chars().count();
+            let len = self.source[line].chars().count().max(1);
 
             write!(
                 f,

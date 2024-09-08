@@ -29,6 +29,7 @@ use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::{error_span, Diag, Label};
+use ic_parse::lexer::Kind;
 use ic_parse::{Error, Reason};
 use ic_vfs::SourceMap;
 
@@ -36,6 +37,22 @@ fn rel_path(path: &Path) -> PathBuf {
     std::env::current_dir()
         .map_or(path, |v| path.strip_prefix(v).unwrap_or(path))
         .to_path_buf()
+}
+
+fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
+    match kind.split_last() {
+        Some((last, rest)) if !rest.is_empty() => {
+            let body = rest
+                .iter()
+                .map(|v| v.yellow())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            format!("{body} or {}", last.yellow())
+        }
+        Some((last, _)) => last.yellow(),
+        _ => String::new(),
+    }
 }
 
 fn emit_error(error: &Error, vfs: &SourceMap) {
@@ -56,11 +73,10 @@ fn emit_error(error: &Error, vfs: &SourceMap) {
                 "unexpected end of input".to_string()
             };
 
-            let expected = if let Some(e) = &error.expected {
-                e.iter()
-                    .map(|v| v.to_string().yellow().bold())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+            let expected = if let Some(e) = error.label {
+                e.yellow()
+            } else if let Some(e) = &error.expected {
+                format_slice(e)
             } else {
                 "definition".to_string()
             };

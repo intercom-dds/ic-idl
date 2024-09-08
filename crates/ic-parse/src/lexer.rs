@@ -38,6 +38,7 @@ use ic_syntax::Span;
 // TODO: add K as a generic for keywords to the preprocessor?
 #[derive(Clone, Debug, PartialEq, DiscHash)]
 pub enum Kind {
+    /// An IDL keyword
     Keyword(Kw),
 
     /// `,`
@@ -176,11 +177,8 @@ impl fmt::Display for Kind {
             Kind::Float(_) => todo!(),
             Kind::StringLit(_) => todo!(),
             Kind::AnnotationAppl(_) => todo!(),
-            Kind::Ident(_) => todo!(),
+            Kind::Ident(_) => write!(f, "identifier"),
             Kind::Eoi => write!(f, "end of input"),
-            // Kind::Unsigned => write!(f, "unsigned"),
-            // Kind::Short => write!(f, "short"),
-            // Kind::Long => write!(f, "long"),
         }
     }
 }

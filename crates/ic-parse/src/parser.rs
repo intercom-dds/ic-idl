@@ -185,7 +185,6 @@ fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> +
     let module_def = keyword(Kw::Module)
         .ignore_then(ident())
         .then(items)
-        .labelled("module definition")
         .annotated()
         .then_ignore(just(Kind::Semi));
 
@@ -206,9 +205,8 @@ fn scoped_name() -> impl IdlParser<Path> {
 
 // Similar to scoped_name, but for applied annotations
 fn annotation_ident() -> impl IdlParser<Path> {
-    let name = select! { Kind::AnnotationAppl(v) => v }
-        .map_with_span(|name, span| Ident { name, span })
-        .labelled("annotation");
+    let name =
+        select! { Kind::AnnotationAppl(v) => v }.map_with_span(|name, span| Ident { name, span });
 
     let path = name.then(just(Kind::DColon).ignore_then(ident()).repeated());
 
@@ -229,7 +227,6 @@ fn const_dcl() -> impl IdlParser<Item> {
         .then(declarator())
         .then_ignore(just(Kind::Eq))
         .then(complex_const_expr())
-        .labelled("const declaration")
         .annotated()
         .then_ignore(just(Kind::Semi));
 
@@ -570,8 +567,7 @@ fn struct_dcl() -> impl IdlParser<Item> {
 fn struct_def() -> impl IdlParser<Item> {
     let fields = member()
         .repeated()
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
-        .labelled("struct member");
+        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 
     let parent = just(Kind::Colon).ignore_then(scoped_name());
 
@@ -579,7 +575,6 @@ fn struct_def() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then(parent.or_not())
         .then(fields)
-        .labelled("struct definition")
         .annotated()
         .then_ignore(just(Kind::Semi));
 
@@ -591,8 +586,7 @@ fn member() -> impl IdlParser<Field> {
     let field = type_spec()
         .then(declarators())
         .annotated()
-        .then_ignore(just(Kind::Semi))
-        .labelled("member");
+        .then_ignore(just(Kind::Semi));
 
     field.map(|(ty, names)| Field { names, ty })
 }
@@ -601,7 +595,6 @@ fn member() -> impl IdlParser<Field> {
 fn struct_forward_dcl() -> impl IdlParser<Item> {
     let decl = keyword(Kw::Struct)
         .ignore_then(ident())
-        .labelled("struct declaration")
         .annotated()
         .then_ignore(just(Kind::Semi));
 
@@ -663,12 +656,10 @@ fn case_label() -> impl IdlParser<Label> {
     let case = keyword(Kw::Case)
         .ignore_then(const_expr())
         .map(Label::Case)
-        .labelled("case label")
         .then_ignore(just(Kind::Colon));
 
     let default = keyword(Kw::Default)
         .map(|_| Label::Default(Empty {}))
-        .labelled("default label")
         .then_ignore(just(Kind::Colon));
 
     choice((case, default))
@@ -699,7 +690,6 @@ fn element_spec() -> impl IdlParser<UnionElement> {
 fn union_forward_dcl() -> impl IdlParser<Item> {
     let decl = keyword(Kw::Union)
         .ignore_then(ident())
-        .labelled("union declaration")
         .annotated()
         .then_ignore(just(Kind::Semi));
 
@@ -716,7 +706,6 @@ fn enum_dcl() -> impl IdlParser<Item> {
     let def = keyword(Kw::Enum)
         .ignore_then(ident())
         .then(enumerators)
-        .labelled("enum")
         .annotated()
         .then_ignore(just(Kind::Semi));
 
@@ -727,7 +716,7 @@ fn enum_dcl() -> impl IdlParser<Item> {
 fn enumerator() -> impl IdlParser<Enumerator> {
     // Grammar extension for `MY_ENUMERATOR = 1`
     let value = just(Kind::Eq).ignore_then(const_expr()).or_not();
-    let def = ident().then(value).labelled("enumerator");
+    let def = ident().then(value);
 
     def.map(|(ident, value)| Enumerator {
         ident,

@@ -127,6 +127,7 @@ pub struct Error {
     pub found: Option<Kind>,
     pub expected: Option<Vec<Kind>>,
     pub reason: Reason,
+    pub label: Option<&'static str>,
     pub span: Span,
 }
 
@@ -136,6 +137,7 @@ impl From<Simple<Kind, Span>> for Error {
             found: value.found().cloned(),
             expected: value.expected().cloned().collect(),
             reason: Reason::from(value.reason().clone()),
+            label: value.label(),
             span: value.span(),
         }
     }

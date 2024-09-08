@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt;
+
 use ic_expr::Op;
 use ic_vfs::Span;
 
@@ -84,14 +86,10 @@ pub enum Kw {
     Unsigned,
     Short,
     Long,
+    True,
+    False,
 }
 
-// I think this may be the way to go. Maybe even have a generic K type for
-// keywords. But this makes it actually doable to handle in the preprocessor.
-// We can treat it as an identifier, and not have hundreds of branches.
-//
-// The cursor could identify keywords + preprocessor tokens. So we can then
-// define directive here as well, and not have a Hash token etc.
 #[derive(Copy, Clone, Debug, PartialEq, Hash)]
 pub enum Kind {
     /// An IDL keyword
@@ -230,4 +228,55 @@ pub enum Kind {
     /// of the last token that was yielded, so we can properly pinpoint where
     /// an error occurred.
     Eoi,
+}
+
+impl fmt::Display for Kw {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            Kw::Any => "any",
+            Kw::Annotation => "@annotation",
+            Kw::Module => "module",
+            Kw::Struct => "struct",
+            Kw::Const => "const",
+            Kw::Bitmask => "bitmask",
+            Kw::Bitset => "bitset",
+            Kw::Bitfield => "bitfield",
+            Kw::Enum => "enum",
+            Kw::Exception => "exception",
+            Kw::Typedef => "typedef",
+            Kw::Native => "native",
+            Kw::Fixed => "fixed",
+            Kw::Union => "union",
+            Kw::Switch => "switch",
+            Kw::Case => "case",
+            Kw::Default => "default",
+            Kw::Null => "null",
+            Kw::Valuetype => "valuetype",
+            Kw::Public => "public",
+            Kw::Private => "private",
+            Kw::Supports => "supports",
+            Kw::Factory => "factory",
+            Kw::Local => "local",
+            Kw::Interface => "interface",
+            Kw::Raises => "raises",
+            Kw::GetRaises => "getraises",
+            Kw::SetRaises => "setraises",
+            Kw::Attribute => "attribute",
+            Kw::ReadOnly => "readonly",
+            Kw::Oneway => "oneway",
+            Kw::In => "in",
+            Kw::Out => "out",
+            Kw::InOut => "inout",
+            Kw::Map => "map",
+            Kw::Sequence => "sequence",
+            Kw::String => "string",
+            Kw::WString => "wstring",
+            Kw::Unsigned => "unsigned",
+            Kw::Short => "short",
+            Kw::Long => "long",
+            Kw::True => "TRUE",
+            Kw::False => "FALSE",
+        };
+        write!(f, "{str}")
+    }
 }

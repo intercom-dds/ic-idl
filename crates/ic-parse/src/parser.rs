@@ -369,8 +369,8 @@ fn literal() -> impl IdlParser<Literal> {
 // Rule 18
 fn boolean_literal() -> impl IdlParser<Literal> {
     let val = select! {
-        Kind::True => true,
-        Kind::False => false,
+        Kind::Keyword(Kw::True) => true,
+        Kind::Keyword(Kw::False) => false,
     };
 
     val.map_with_span(|value, span| Literal {

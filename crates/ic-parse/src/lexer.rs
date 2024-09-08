@@ -109,12 +109,6 @@ pub enum Kind {
     /// `%`
     Modulo,
 
-    /// `TRUE`
-    True,
-
-    /// `FALSE`
-    False,
-
     /// Octal number, e.g. `0123`.
     Octal(u64),
 
@@ -151,7 +145,7 @@ pub enum Kind {
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Kind::Keyword(_) => write!(f, "keyword"),
+            Kind::Keyword(v) => write!(f, "{v}"),
             Kind::Colon => write!(f, "`:`"),
             Kind::DColon => write!(f, "`::`"),
             Kind::Eq => write!(f, "`=`"),
@@ -166,8 +160,6 @@ impl fmt::Display for Kind {
             Kind::RParen => write!(f, "`)`"),
             Kind::LBracket => write!(f, "`[`"),
             Kind::RBracket => write!(f, "`]`"),
-            Kind::True => write!(f, "`TRUE`"),
-            Kind::False => write!(f, "`FALSE`"),
             Kind::BitNot => write!(f, "`~`"),
             Kind::BitAnd => write!(f, "`&`"),
             Kind::BitOr => write!(f, "`|`"),

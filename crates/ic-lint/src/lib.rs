@@ -33,11 +33,12 @@ use std::cell::RefCell;
 use ic_diagnostic::Diag;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
+use syntax::sanity;
 
 // mod annotation;
 mod pedantic;
 // mod semantic;
-// mod syntax;
+mod syntax;
 //
 
 // macro_rules! lints {
@@ -147,6 +148,7 @@ pub fn lint_syntax(tree: &[Item]) -> Report {
 
     {
         pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
+        sanity::Sanity::check(&ctx, tree);
     }
 
     // for lint in LINTS {

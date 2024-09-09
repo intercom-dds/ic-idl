@@ -25,57 +25,58 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::hir::{EnumTy, Item, ModuleTy, Numeric, StructTy, Type, UnionTy};
-
-pub trait Visitor<'a> {
-    fn visit_item(&mut self, item: &'a Item) {
-        visit_item(self, item)
-    }
-
-    fn visit_ty(&mut self, ty: &'a Type) {
-        visit_ty(self, ty)
-    }
-
-    fn visit_module(&mut self, ty: &'a ModuleTy) {}
-
-    fn visit_struct(&mut self, ty: &'a StructTy) {}
-
-    fn visit_enum(&mut self, ty: &'a EnumTy) {}
-
-    fn visit_union(&mut self, ty: &'a UnionTy) {}
-
-    fn visit_numeric(&mut self, ty: &'a Numeric) {}
-}
-
-pub fn visit_item<'a, V>(visitor: &mut V, item: &'a Item)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    match item {
-        Item::Annotation(_) => todo!(),
-        Item::Module(v) => visitor.visit_module(v),
-        Item::Const(_) => todo!(),
-        Item::Decl(_) => todo!(),
-        Item::Adt(_) => todo!(),
-    }
-}
-
-pub fn visit_ty<'a, V>(visitor: &mut V, ty: &'a Type)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    match ty {
-        Type::Primitive(_) => todo!(),
-        Type::Annotation(_) => todo!(),
-        Type::Module(v) => visitor.visit_module(v),
-        Type::Alias(_) => todo!(),
-        Type::Const(_) => todo!(),
-        Type::Struct(v) => visitor.visit_struct(v),
-        Type::Except(_) => todo!(),
-        Type::Union(v) => visitor.visit_union(v),
-        Type::Enum(v) => visitor.visit_enum(v),
-        Type::Bitmask(_) => todo!(),
-        Type::Interface(_) => todo!(),
-        Type::Decl(_) => todo!(),
-    }
-}
+// use crate::hir::{EnumTy, Item, ModuleTy, Numeric, StructTy, Type, UnionTy};
+//
+// pub trait Visitor<'a> {
+//     fn visit_item(&mut self, item: &'a Item) {
+//         visit_item(self, item)
+//     }
+//
+//     fn visit_ty(&mut self, ty: &'a Type) {
+//         visit_ty(self, ty)
+//     }
+//
+//     fn visit_module(&mut self, ty: &'a ModuleTy) {}
+//
+//     fn visit_struct(&mut self, ty: &'a StructTy) {}
+//
+//     fn visit_enum(&mut self, ty: &'a EnumTy) {}
+//
+//     fn visit_union(&mut self, ty: &'a UnionTy) {}
+//
+//     fn visit_numeric(&mut self, ty: &'a Numeric) {}
+// }
+//
+// pub fn visit_item<'a, V>(visitor: &mut V, item: &'a Item)
+// where
+//     V: Visitor<'a> + ?Sized,
+// {
+//     match item {
+//         Item::Annotation(_) => todo!(),
+//         Item::Module(v) => visitor.visit_module(v),
+//         Item::Const(_) => todo!(),
+//         Item::Decl(_) => todo!(),
+//         Item::Adt(_) => todo!(),
+//     }
+// }
+//
+// pub fn visit_ty<'a, V>(visitor: &mut V, ty: &'a Type)
+// where
+//     V: Visitor<'a> + ?Sized,
+// {
+//     match ty {
+//         Type::Primitive(_) => todo!(),
+//         Type::Annotation(_) => todo!(),
+//         Type::Module(v) => visitor.visit_module(v),
+//         Type::Alias(_) => todo!(),
+//         Type::Const(_) => todo!(),
+//         Type::Struct(v) => visitor.visit_struct(v),
+//         Type::Except(_) => todo!(),
+//         Type::Union(v) => visitor.visit_union(v),
+//         Type::Enum(v) => visitor.visit_enum(v),
+//         Type::Bitmask(_) => todo!(),
+//         Type::Interface(_) => todo!(),
+//         Type::Decl(_) => todo!(),
+//         Type::Array { ty, len } => todo!(),
+//     }
+// }

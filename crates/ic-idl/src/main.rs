@@ -38,10 +38,11 @@ use config::{
 use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
-use ic_hir::hir::Kind;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
 use ic_vfs::{Include, SourceMap};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::util::SubscriberInitExt;
 use util::{collect_files, write_if_changed};
 
 mod config;
@@ -82,6 +83,12 @@ fn main() {
 
     // Install a panic handler to catch failed asserts.
     panic::install_hook();
+
+    // Configure logging
+    tracing_subscriber::fmt()
+        .with_ansi(true)
+        .with_max_level(LevelFilter::TRACE)
+        .init();
 
     let generated = match try_main(&options) {
         Ok(v) => v,
@@ -145,21 +152,21 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                     println!("{:#?}", v.tree);
                 }
 
-                // Lower the AST to a HIR
-                // let hir = ic_hir::lower_ast(v.tree);
-
                 for diag in &report.diagnostics {
                     let mut buf = String::new();
                     // ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
                     eprintln!("{buf}");
                 }
 
+                // Lower the AST to a HIR
+                let hir = ic_hir::lower_ast(v.tree);
+
                 // if options.unstable.hir_dump {
                 //     println!("{hir:#?}");
                 // }
 
-                let ptree = ic_ptree::lower_ast(&v.tree);
-                return try_ptree(options, &ptree);
+                // let ptree = ic_ptree::lower_ast(&v.tree);
+                // return try_ptree(options, &ptree);
             }
             Err(e) => {
                 pretty::emit_errors(&e, &vfs);

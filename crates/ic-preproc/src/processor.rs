@@ -34,7 +34,7 @@ use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
-use ic_lexer::token::{Base, Kw, Kind, Token};
+use ic_lexer::token::{Base, Kind, Kw, Token};
 use ic_vfs::{FileId, Include, SourceMap};
 
 use crate::{time, ProcArgs, Span};
@@ -1101,21 +1101,18 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(mut next) = self.inner.next_active() {
-            let tok = match next.kind {
-                Kind::Ident => match self.inner.source_of(next.span) {
-                    "struct" => {
-                        next.kind = Kind::Keyword(Kw::Struct);
-                        next
-                    }
-                    _ => next,
-                },
-                _ => next,
-            };
-            // TODO: handle this elsewhere
-            if tok.kind != Kind::Newline {
-                self.prev = Some(tok.span);
+            if next.kind == Kind::Ident {
+                let src = self.inner.source_of(next.span);
+                if let Some(kw) = Kw::from_str(src) {
+                    next.kind = Kind::Keyword(kw);
+                }
             }
-            Some(tok)
+
+            // TODO: handle this elsewhere. probably in cursor?
+            if next.kind != Kind::Newline {
+                self.prev = Some(next.span);
+            }
+            Some(next)
         } else {
             self.prev.take().map(|span| Token {
                 kind: Kind::Eoi,

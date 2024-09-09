@@ -61,7 +61,7 @@ impl<'a> Visitor<'a> for Resolver {
         visit_module(self, module);
     }
 
-    fn visit_decl(&mut self, decl: &'a Decl) {
+    fn visit_forward_decl(&mut self, decl: &'a Decl) {
         self.fwd_decls.insert(decl.ident.name.clone(), ());
     }
 

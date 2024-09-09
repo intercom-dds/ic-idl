@@ -33,7 +33,7 @@ use std::fmt::Debug;
 use std::num::NonZero;
 use std::rc::Rc;
 
-use ic_alloc::arena::{Arena, Id};
+use ic_alloc::arena::{self, Arena};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
@@ -47,22 +47,25 @@ mod resolve;
 pub mod visit;
 // mod downcast;
 
-use hir::{
-    AliasTy, DeclTy, EnumTy, Enumerator, Member, ModuleTy, Numeric, PrimitiveTy, StructTy, TyFlags,
-    Type, UnionTy,
-};
+use hir::*;
 
 mod embedded {
     pub const ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 }
 
-// TODO: some id that identifies the source file this belongs to
-pub type TypeId = ic_alloc::arena::Id<Type>;
+// TODO: should a Type point to the definition instead?
+//
+// So type {
+//     def_id: Id,
+//     ??? whatever else
+// }
+#[derive(Debug)]
+pub struct Type;
 
 #[derive(Debug)]
 pub struct Context {
-    pub arena: Arena<Type>,
-    pub items: Arena<hir::Item>,
+    pub types: Arena<Type>,
+    pub definitions: Arena<hir::Def>,
 
     // Qualified type name => Type ID
     pub symbols: HashMap<String, TypeId>,
@@ -80,8 +83,8 @@ impl Context {
     /// Creates a new context without injecting any of the built-in types.
     pub fn empty() -> Self {
         Self {
-            arena: Arena::default(),
-            items: Arena::default(),
+            types: Arena::default(),
+            definitions: Arena::default(),
             symbols: HashMap::new(),
         }
     }
@@ -109,68 +112,81 @@ impl Context {
     //     self.try_ty(*ty)
     // }
 
-    fn register_type<I>(&mut self, name: I, ty: Type) -> Id<Type>
-    where
-        I: Into<String>,
-    {
-        match self.symbols.entry(name.into()) {
-            Entry::Occupied(v) => {
-                panic!("type {} was registered multiple times", v.key());
-            }
-            Entry::Vacant(v) => {
-                let id = self.arena.alloc(ty);
-                v.insert(id);
-                id
-            }
-        }
-    }
+    // fn register_type<I>(&mut self, name: I, ty: Type) -> TypeId
+    // where
+    //     I: Into<String>,
+    // {
+    //     let name = name.into();
+    //     tracing::info!("registering type {name}: {ty:?}");
+    //
+    //     match self.symbols.entry(name) {
+    //         Entry::Occupied(v) => {
+    //             panic!("type {} was registered multiple times", v.key());
+    //         }
+    //         Entry::Vacant(v) => {
+    //             let id = self.types.alloc(ty);
+    //             v.insert(id);
+    //             id
+    //         }
+    //     }
+    // }
 
     /// Returns the type definition of the specified type.
     ///
     /// # Panics
     ///
-    /// Panics if the specified type does not exist in the arena. This can only
-    /// happen if there are multiple `Context`s whose arenas have been mixed
-    /// up.
-    fn type_of(&self, ty: TypeId) -> &Type {
-        self.arena
-            .get(ty)
-            .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
-    }
+    /// Panics if the given type ID does not exist. This can only ever happen
+    /// if there are multiple `Context`s whose arenas have been mixed up.
+    // pub fn type_of(&self, ty: TypeId) -> &Type {
+    //     self.types
+    //         .get(ty)
+    //         .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
+    // }
 
     /// Similar to `type_of`, but will resolve the underlying type.
-    fn base_type_of(&self, ty: TypeId) -> &Type {
-        let ty = self.type_of(ty);
-        if let Type::Alias(alias) = ty {
-            self.type_of(alias.ty)
-        } else {
-            ty
-        }
-    }
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given type ID does not exist. This can only ever happen
+    /// if there are multiple `Context`s whose arenas have been mixed up.
+    // pub fn base_type_of(&self, ty: TypeId) -> &Type {
+    //     let ty = self.type_of(ty);
+    //     if let Type::Alias(alias) = ty {
+    //         self.type_of(alias.ty)
+    //     } else {
+    //         ty
+    //     }
+    // }
 
     // TODO: handle this in `Resolver` instead -- we should only operate on IDs.
     fn resolve_type(&self, name: &ic_syntax::Type) -> TypeId {
         let name = type_name(name);
-        *self.symbols.get(&name).expect("unknown type")
+        let id = *self.symbols.get(&name).expect("unknown type");
+        tracing::trace!("resolving type `{name}` => {id:?}");
+        id
     }
 
     fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
         let name = path_name(path);
-        *self.symbols.get(&name).expect("unknown type")
+        let ty = *self.symbols.get(&name).expect("unknown type");
+        tracing::trace!("resolving path `{name}` => {ty:?}");
+        ty
     }
 
     // TODO: or should it be TypeId? that must be a ConstTy?
-    fn resolve_const(&self, path: &ic_syntax::Path) -> Type {
-        todo!()
-        // let name = path_name(path);
-        // *self.symbols.get(&name).expect("unknown const")
-    }
+    // fn resolve_const(&self, path: &ic_syntax::Path) -> Type {
+    //     todo!()
+    //     // let name = path_name(path);
+    //     // *self.symbols.get(&name).expect("unknown const")
+    // }
 }
 
 /// Inserts primitive types and built-in annotations into the context.
 fn init_ctx_state(ctx: &mut Context) {
     for ty in PrimitiveTy::iter() {
-        ctx.register_type(ty.name(), Type::Primitive(ty));
+        // let name = name.into();
+        // tracing::info!("registering type {name}: {ty:?}");
+        // ctx.register_type(ty.name(), Type::Primitive(ty));
     }
 }
 
@@ -205,10 +221,10 @@ fn is_consistent(ctx: &mut Context, lhs: &AnnotationDef, rhs: &AnnotationDef) ->
     }
 
     lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
-        // (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
-        //     decl_consistent(ctx, &lhs.names, &rhs.names)
-        //         && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
-        // }
+        (AnnotationField::Member(lhs), AnnotationField::Member(rhs)) => {
+            decl_consistent(ctx, &lhs.names, &rhs.names)
+                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+        }
         // (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
         //     // TODO: check value
         //     lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name)
@@ -279,6 +295,8 @@ where
 {
     let mut context = Context::new();
     let mut resolver = Resolver::default();
+
+    tracing::info!("lowering AST -> HIR: {context:?}");
     let order = lower::from_ast(&mut context, ast);
 
     ResolvedGraph { context, order }

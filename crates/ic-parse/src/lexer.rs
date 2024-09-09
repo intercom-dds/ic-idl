@@ -32,6 +32,7 @@ use std::fmt;
 use chumsky::Stream;
 use ic_lexer::token::Kw;
 use ic_macros::DiscHash;
+use ic_preproc::{State, TokenIter};
 use ic_syntax::Span;
 
 /// All tokens recognized by the lexer.
@@ -228,7 +229,7 @@ pub struct Token {
 impl From<ic_preproc::Token> for Token {
     fn from(value: ic_preproc::Token) -> Self {
         let kind = match value.kind {
-            ic_preproc::Kind::Keyword(_) => Kind::Keyword(Kw::Struct),
+            ic_preproc::Kind::Keyword(v) => Kind::Keyword(v),
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
             ic_preproc::Kind::Comment => Kind::Comment(String::new()),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),
@@ -285,6 +286,30 @@ where
             None
         } else {
             Some(Token::from(v))
+        }
+    });
+
+    let end = Span::default();
+    Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
+}
+
+pub fn from_cursor<'src>(
+    mut iter: TokenIter<'src, State>,
+) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + use<'src>> {
+    let iter = std::iter::from_fn(move || {
+        loop {
+            let next = iter.next()?;
+            match next.kind {
+                ic_preproc::Kind::Newline => continue,
+                ic_preproc::Kind::Ident => {
+                    let ident = iter.source_of(next.span).to_string();
+                    break Some(Token {
+                        kind: Kind::Ident(ident),
+                        span: next.span,
+                    });
+                }
+                _ => break Some(Token::from(next)),
+            }
         }
     });
 

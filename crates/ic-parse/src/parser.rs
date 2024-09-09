@@ -33,8 +33,8 @@ use ic_lexer::token::Kw;
 use ic_syntax::{
     AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield, DeclKind,
     Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident, InitList,
-    InterfaceMember, Item, Label, LitKind, Literal, LiteralValue, MapType, NamedExpr, Op, OpKind,
-    Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type, Unary, UnionElement,
+    InterfaceMember, Item, Label, Literal, LiteralValue, MapType, NamedExpr, Op, OpKind, Param,
+    ParamKind, Path, Prototype, SequenceType, Span, StringType, Type, Unary, UnionElement,
     UnionField, UnionMember, UnionNull,
 };
 
@@ -62,10 +62,6 @@ fn ident() -> impl IdlParser<Ident> {
     ident
         .map_with_span(|name, span| Ident { name, span })
         .labelled("identifier")
-}
-
-fn ty() -> impl IdlParser<Ident> {
-    ident().labelled("type")
 }
 
 fn keyword(keyword: Kw) -> impl IdlParser<Kind> {
@@ -192,7 +188,6 @@ fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> +
 }
 
 // Rule 4
-// TODO: should probably return Type?
 fn scoped_name() -> impl IdlParser<Path> {
     let leading = just(Kind::DColon).map_with_span(|_, span| span).or_not();
     let path = leading.then(ident().separated_by(just(Kind::DColon)).at_least(1));
@@ -262,6 +257,7 @@ fn complex_const_expr() -> impl IdlParser<Expr> {
 // Rule 6
 fn const_type() -> impl IdlParser<Type> {
     choice((
+        floating_pt_type(),
         integer_type(),
         template_type_spec(),
         scoped_name().map(Type::Path),
@@ -404,10 +400,23 @@ fn simple_type_spec() -> impl IdlParser<Type> {
 
 // Rule 23 with the rule 69 extension
 fn base_type_spec() -> impl IdlParser<Type> {
-    // Minor deviation: we do not treat primitive types as keywords for the
-    // sole reason that it serves no purpose other than further complicating
-    // the grammar.
-    choice((integer_type(), any_type(), scoped_name().map(Type::Path)))
+    choice((
+        floating_pt_type(),
+        integer_type(),
+        any_type(),
+        scoped_name().map(Type::Path),
+    ))
+}
+
+// Rule 24
+fn floating_pt_type() -> impl IdlParser<Type> {
+    choice((
+        keyword(Kw::Float).map_with_span(|_, span| primitive_type("float", span)),
+        keyword(Kw::Double).map_with_span(|_, span| primitive_type("double", span)),
+        keyword(Kw::Long)
+            .then(keyword(Kw::Double))
+            .map_with_span(|_, span| primitive_type("long double", span)),
+    ))
 }
 
 // Rule 25

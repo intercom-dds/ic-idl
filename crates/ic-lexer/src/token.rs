@@ -86,6 +86,8 @@ pub enum Kw {
     Unsigned,
     Short,
     Long,
+    Float,
+    Double,
     True,
     False,
 }
@@ -230,6 +232,60 @@ pub enum Kind {
     Eoi,
 }
 
+impl Kw {
+    pub fn from_str(str: &str) -> Option<Self> {
+        let kind = match str {
+            "any" => Kw::Any,
+            "@annotation" => Kw::Annotation,
+            "module" => Kw::Module,
+            "struct" => Kw::Struct,
+            "const" => Kw::Const,
+            "bitmask" => Kw::Bitmask,
+            "bitset" => Kw::Bitset,
+            "bitfield" => Kw::Bitfield,
+            "enum" => Kw::Enum,
+            "exception" => Kw::Exception,
+            "typedef" => Kw::Typedef,
+            "native" => Kw::Native,
+            "fixed" => Kw::Fixed,
+            "union" => Kw::Union,
+            "switch" => Kw::Switch,
+            "case" => Kw::Case,
+            "default" => Kw::Default,
+            "null" => Kw::Null,
+            "valuetype" => Kw::Valuetype,
+            "public" => Kw::Public,
+            "private" => Kw::Private,
+            "supports" => Kw::Supports,
+            "factory" => Kw::Factory,
+            "local" => Kw::Local,
+            "interface" => Kw::Interface,
+            "raises" => Kw::Raises,
+            "getraises" => Kw::GetRaises,
+            "setraises" => Kw::SetRaises,
+            "attribute" => Kw::Attribute,
+            "readonly" => Kw::ReadOnly,
+            "oneway" => Kw::Oneway,
+            "in" => Kw::In,
+            "out" => Kw::Out,
+            "inout" => Kw::InOut,
+            "map" => Kw::Map,
+            "sequence" => Kw::Sequence,
+            "string" => Kw::String,
+            "wstring" => Kw::WString,
+            "unsigned" => Kw::Unsigned,
+            "short" => Kw::Short,
+            "long" => Kw::Long,
+            "float" => Kw::Float,
+            "double" => Kw::Double,
+            "TRUE" | "true" => Kw::True,
+            "FALSE" | "false" => Kw::False,
+            _ => return None,
+        };
+        Some(kind)
+    }
+}
+
 impl fmt::Display for Kw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
@@ -274,6 +330,8 @@ impl fmt::Display for Kw {
             Kw::Unsigned => "unsigned",
             Kw::Short => "short",
             Kw::Long => "long",
+            Kw::Float => "float",
+            Kw::Double => "double",
             Kw::True => "TRUE",
             Kw::False => "FALSE",
         };

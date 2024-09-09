@@ -29,10 +29,10 @@
 
 use crate::{
     AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Attribute, Binary,
-    Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Discriminator, EnumDef, Enumerator,
-    ExceptDef, Expr, Field, Ident, InitList, InterfaceDef, InterfaceMember, Item, ItemKind, Label,
-    Literal, ModuleDef, Param, Path, Prototype, Span, StructDef, Type, Unary, UnionDef,
-    UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
+    Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Declarator, Discriminator, EnumDef,
+    Enumerator, ExceptDef, Expr, Field, Ident, InitList, InterfaceDef, InterfaceMember, Item,
+    ItemKind, Label, Literal, ModuleDef, Param, Path, Prototype, Span, StructDef, Type, Unary,
+    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -150,9 +150,11 @@ pub trait Visitor<'a> {
 
     fn visit_expr_init_list(&mut self, binary: &'a InitList) {}
 
-    fn visit_decl(&mut self, decl: &'a Decl) {}
+    fn visit_forward_decl(&mut self, decl: &'a Decl) {}
 
     fn visit_ident(&mut self, ident: &'a Ident) {}
+
+    fn visit_declarator(&mut self, decl: &'a Declarator) {}
 
     fn visit_path(&mut self, path: &'a Path) {
         visit_path(self, path);
@@ -187,7 +189,7 @@ where
         Item::BitsetValue(v) => visitor.visit_bitset(v),
         Item::ConstValue(v) => visitor.visit_const(v),
         Item::AliasValue(v) => visitor.visit_typedef(v),
-        Item::DeclValue(v) => visitor.visit_decl(v),
+        Item::DeclValue(v) => visitor.visit_forward_decl(v),
         Item::InterfaceValue(v) => visitor.visit_interface(v),
         Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
     }
@@ -437,7 +439,7 @@ impl Visit for Item {
             Item::BitsetValue(v) => visitor.visit_bitset(v),
             Item::ConstValue(v) => visitor.visit_const(v),
             Item::AliasValue(v) => visitor.visit_typedef(v),
-            Item::DeclValue(v) => visitor.visit_decl(v),
+            Item::DeclValue(v) => visitor.visit_forward_decl(v),
             Item::InterfaceValue(v) => visitor.visit_interface(v),
             Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
         }

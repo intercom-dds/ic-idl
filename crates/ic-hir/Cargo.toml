@@ -42,3 +42,5 @@ ic-macros = { path = "../ic-macros" }
 ic-syntax = { path = "../ic-syntax" }
 
 intercom-cts.workspace = true
+
+tracing = "0.1.40"

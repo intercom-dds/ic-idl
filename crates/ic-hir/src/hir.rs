@@ -35,13 +35,11 @@ use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
-use ic_syntax::util::{path_name, type_name};
-use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Span};
+pub use ic_syntax::{Ident, Span};
 
-/// Dependency graph
-pub type TyGraph = ic_alloc::graph::DiGraph<TypeId>;
+pub type DefId = ic_alloc::arena::Id<Def>;
 
-use crate::TypeId;
+pub type TypeId = ic_alloc::arena::Id<Def>;
 
 /// Built-in primitive types. These types are effectively stateless and have no
 /// bounds or other attributes attached to them.
@@ -64,340 +62,272 @@ pub enum PrimitiveTy {
     WString,
 }
 
-impl PrimitiveTy {
-    pub fn name(self) -> &'static str {
-        match self {
-            PrimitiveTy::Bool => "boolean",
-            PrimitiveTy::WChar => "wchar",
-            PrimitiveTy::Char => "char",
-            PrimitiveTy::Int8 => "int8",
-            PrimitiveTy::UInt8 => "octet",
-            PrimitiveTy::Int16 => "int16",
-            PrimitiveTy::UInt16 => "uint16",
-            PrimitiveTy::Int32 => "int32",
-            PrimitiveTy::UInt32 => "uint32",
-            PrimitiveTy::Int64 => "int64",
-            PrimitiveTy::UInt64 => "uint64",
-            PrimitiveTy::Float => "float",
-            PrimitiveTy::Double => "double",
-            PrimitiveTy::String => "string",
-            PrimitiveTy::WString => "wstring",
-        }
+intercom_cts::bitmask! {
+    #[derive(Copy, Clone)]
+    DefFlags: u32 {
+        /// Indicates whether the type is recursive.
+        IS_CIRCULAR = 1 << 0,
+
+        /// Indicates whether the type is trivial, i.e. consists only of
+        /// primitive types and arrays thereof.
+        IS_TRIVIAL = 1 << 1,
+
+        /// Marker for built-in types.
+        IS_BUILTIN = 1 << 2,
+
+        /// Indicates whether the type consists of members that can form a
+        /// total order.
+        TOTAL_ORDER = 1 << 3,
     }
 }
 
-/// A dynamic representation of an applied annotation.
 #[derive(Debug)]
-pub struct GenericAnn {
+pub struct Def {
+    /// The ID of this definition.
+    pub id: DefId,
+
+    /// Name of the definition.
     pub ident: Ident,
+
+    /// Annotations attached to the definition.
+    pub annotations: Vec<()>,
+
+    /// Span of the whole definition of the type, typically from the type's
+    /// keyword to the terminating semicolon.
     pub span: Span,
-    pub fields: Vec<AnnParam>,
+
+    /// Variant-specific data.
+    pub kind: DefKind,
 }
 
 #[derive(Debug)]
-pub struct AnnParam {
-    pub ident: Option<Ident>,
-    pub span: Span,
-    pub value: Expr,
-}
-
-impl GenericAnn {
-    /// Attempts to "downcast" the annotation to a concrete annotation type.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use ic_hir::GenericAnn;
-    /// use ic_hir::annotations::MustUnderstand;
-    ///
-    /// let ann = GenericAnn { ... };
-    /// let concrete = ann.try_get::<MustUnderstand>().unwrap();
-    /// assert_eq!(concrete.value, true);
-    /// ```
-    pub fn try_get<T>(&self) -> T {
-        todo!()
-    }
-}
-
-#[derive(Debug)]
-pub enum Item {
-    Annotation(AnnTy),
+pub enum DefKind {
     Module(ModuleTy),
+    Struct(StructTy),
+    Except(ExceptTy),
+    Union(UnionTy),
+    Enum(EnumTy),
     Const(ConstTy),
-    Decl(DeclTy),
-    Adt(TypeId),
+    Bitmask(BitmaskTy),
+    Alias(AliasTy),
+    Interface(InterfaceTy),
+    Decl(Decl),
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Decl {
+    Struct,
+    Union,
+    Native,
+    Interface,
+    Valuetype,
+}
+
+#[derive(Clone, Debug)]
 pub enum Ty {
+    /// The `any` type.
+    Any,
+
+    /// Fixed<> types.
+    Fixed,
+
+    /// A primitive built-in type, such as `uint8` or `long long`.
     Primitive(PrimitiveTy),
+
+    /// An array of type `ty` with bounds `len`.
+    /// For multi-dimensional arrays, the type `ty` will point to another array.
     Array {
         ty: Box<Ty>,
         len: usize,
     },
+
     Sequence {
         ty: Box<Ty>,
         bound: Option<usize>,
     },
+
+    String {
+        wide: bool,
+        bound: Option<usize>,
+    },
+
     Map {
         key: Box<Ty>,
         elem: Box<Ty>,
         bound: Option<usize>,
     },
-    Struct(StructTy),
-    Except(ExceptTy),
-    Union(UnionTy),
-    Enum(EnumTy),
-    Bitmask(BitmaskTy),
-    Alias(AliasTy),
-    Interface(InterfaceTy),
-}
 
-#[derive(Debug)]
-pub enum Type {
-    Primitive(PrimitiveTy),
-    Annotation(AnnTy),
-    Module(ModuleTy),
-    Alias(AliasTy),
-    Const(ConstTy),
-    Struct(StructTy),
-    Except(ExceptTy),
-    Union(UnionTy),
-    Enum(EnumTy),
-    Bitmask(BitmaskTy),
-    Interface(InterfaceTy),
-    Decl(DeclTy),
-}
-
-intercom_cts::bitmask! {
-    #[derive(Copy, Clone)]
-    pub TyFlags: u16 {
-        /// Indicates whether the type is recursive.
-        IS_CIRCULAR  = 1 << 0,
-
-        /// Indicates whether the type is trivial, i.e. consists only of
-        /// primitive types and arrays thereof.
-        IS_TRIVIAL   = 1 << 1,
-
-        /// Indicates whether the type is anonymous.
-        IS_ANONYMOUS = 1 << 2,
-
-        /// Marker for built-in types.
-        IS_BUILTIN   = 1 << 3,
-
-        /// Indicates whether the type consists of members that can form a
-        /// total order.
-        TOTAL_ORDER  = 1 << 4,
-    }
-}
-
-#[derive(Debug)]
-pub struct Node {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub scope: Option<TypeId>,
-    pub annotations: Vec<GenericAnn>,
-    pub span: Span,
-    pub data: Type,
-}
-
-pub enum Kind {
-    Enum {
-        enumerators: Vec<Enumerator>,
-    },
-    Struct {
-        members: Vec<Member>,
-    },
-    Union {
-        disc: Discriminator,
-        variants: Vec<Variant>,
-    },
-    Module {
-        defs: Vec<Node>,
-    },
-}
-
-#[derive(Debug)]
-pub struct AnnTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct ModuleTy {
-    // pub id: ic_alloc::arena::Id<Item>,
-    pub ident: Ident,
-    pub span: Span,
-    pub definitions: Vec<TypeId>,
-}
-
-#[derive(Debug)]
-pub struct AliasTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub ty: TypeId,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct ConstTy {
-    pub ident: Ident,
-    pub ty: TypeId,
-    pub value: Numeric,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct StructTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub span: Span,
-    pub members: Vec<Member>,
-    pub flags: TyFlags,
-}
-
-pub type ExceptTy = StructTy;
-
-/// Member of a struct or union.
-#[derive(Debug)]
-pub struct Member {
-    pub ident: Ident,
-    pub ty: TypeId,
-}
-
-pub enum MemberKind {
-    Type(TypeId),
-    String {
-        bound: Option<usize>,
-    },
-    Sequence {
-        ty: Box<MemberKind>,
-        bound: Option<usize>,
-    },
-    Array {
-        ty: TypeId,
-        bounds: Vec<usize>,
-    },
-    Map {
-        key: Box<MemberKind>,
-        element: Box<MemberKind>,
-        bound: Option<usize>,
-    },
-}
-
-#[derive(Debug)]
-pub struct UnionTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub span: Span,
-    pub disc: Discriminator,
-    pub variants: Vec<Variant>,
-}
-
-#[derive(Debug)]
-pub struct Discriminator {
-    pub ty: TypeId,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub enum Variant {
-    Member(Member, Vec<Numeric>),
-    Null(Vec<Numeric>),
-}
-
-#[derive(Debug)]
-pub struct EnumTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub span: Span,
-    pub ty: PrimitiveTy,
-    pub enumerators: Vec<Enumerator>,
-}
-
-#[derive(Debug)]
-pub struct Enumerator {
-    pub ident: Ident,
-    pub value: i64,
-}
-
-#[derive(Debug)]
-pub struct BitmaskTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub span: Span,
-    pub ty: PrimitiveTy,
-    pub bits: Vec<(Ident, usize)>,
-}
-
-#[derive(Debug)]
-pub struct InterfaceTy {
-    pub id: TypeId,
-    pub ident: Ident,
-    pub span: Span,
-    pub prototypes: Vec<Proto>,
-    pub attributes: Vec<Attr>,
-}
-
-#[derive(Debug)]
-pub struct Proto {
-    pub ident: Ident,
-    pub return_ty: Option<TypeId>,
-}
-
-#[derive(Debug)]
-pub struct Attr {
-    pub ident: Ident,
-    pub ty: TypeId,
-    pub read_only: bool,
-}
-
-#[derive(Debug)]
-pub struct DeclTy {
-    pub ident: Ident,
-    pub ty: TypeId,
+    /// An algebraic data type.
+    Adt(TypeId),
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Numeric {
+    /// A boolean literal.
     Bool(bool),
+
+    /// A char literal.
     Char(char),
+
+    /// An i8 literal.
     Int8(i8),
+
+    /// A u8 literal.
     Octet(u8),
+
+    /// An i16 literal.
     Int16(i16),
+
+    /// A u16 literal.
     UInt16(u16),
+
+    /// An i32 literal.
     Int32(i32),
+
+    /// A u32 literal.
     UInt32(u32),
+
+    /// An i64 literal.
     Int64(i64),
+
+    /// A u64 literal.
     UInt64(u64),
+
+    /// An f32 literal.
     Float(f32),
+
+    /// An f64 literal.
     Double(f64),
+
+    /// A string literal.
     String(String),
 
     /// Value that points to another constant.
-    /// To retrieve the fully resolved value, use `Context::resolve_expr`.
-    Const(TypeId),
+    /// To retrieve the fully resolved value, use [`Context::resolve_expr`].
+    Const(DefId),
 
     /// Initializer list of numerics.
+    //
+    // TODO: map this to an index and ty of a struct?
     InitList(Vec<Numeric>),
 
     /// Fixed-size array elements, e.g. `{1, 2, 3}`.
-    Array {
-        ty: TypeId,
-        values: Box<[Numeric]>,
-    },
+    Array { ty: TypeId, values: Box<[Numeric]> },
 
     /// Sequence elements, e.g. `{1, 2, 3}`.
-    Sequence {
-        ty: TypeId,
-        values: Vec<Numeric>,
-    },
+    Sequence { ty: TypeId, values: Box<[Numeric]> },
 
     /// Map entries, eg. `{{key1, value1}, {key2, value2}}`.
     Map {
         ty: TypeId,
-        values: Vec<(Numeric, Numeric)>,
+        values: Box<[(Numeric, Numeric)]>,
     },
+}
+
+#[derive(Debug)]
+pub struct ModuleTy {
+    pub definitions: Vec<DefId>,
+}
+
+#[derive(Debug)]
+pub struct StructTy {
+    /// Parent type, i.e. the type from which this type inherits.
+    pub parent: Option<DefId>,
+
+    /// Direct members of the struct. Does not include inherited members.
+    pub members: Vec<Member>,
+}
+
+#[derive(Debug)]
+pub struct Member {
+    pub ident: Ident,
+    pub ty: Ty,
+    pub annotations: Vec<()>,
+}
+
+#[derive(Debug)]
+pub struct ExceptTy {
+    /// Direct members of the exception.
+    pub members: Vec<Member>,
+}
+
+#[derive(Debug)]
+pub struct UnionTy {
+    /// The type of the union's discriminator.
+    pub disc: Ty,
+
+    /// The union's variants, i.e. its members.
+    pub variants: Vec<Variant>,
+}
+
+#[derive(Debug)]
+pub struct Variant {
+    /// Annotations attached to the variant.
+    pub annotations: Vec<()>,
+
+    /// Name of the variant.
+    pub ident: Ident,
+
+    /// Type of the variant.
+    pub ty: Ty,
+
+    /// All switch cases that map to this variant.
+    pub labels: Vec<Numeric>,
+
+    /// Indicates whether this variant has a default label.
+    pub is_default: bool,
+}
+
+#[derive(Debug)]
+pub struct EnumTy {
+    pub fields: Vec<EnumLit>,
+}
+
+#[derive(Debug)]
+pub struct EnumLit {
+    pub ident: Ident,
+    pub value: isize,
+    pub annotations: Vec<()>,
+}
+
+#[derive(Debug)]
+pub struct ConstTy {
+    /// The value of the constant.
+    pub value: Numeric,
+
+    /// Type of the constant.
+    pub ty: Ty,
+}
+
+#[derive(Debug)]
+pub struct BitmaskTy {
+    /// The bitmask flags.
+    pub flags: Vec<BitFlag>,
+}
+
+#[derive(Debug)]
+pub struct BitFlag {
+    /// Name of the bitmask flag.
+    pub ident: Ident,
+
+    /// Value of the flag.
+    // TODO: numeric instead?
+    // pub value: Numeric,
+    pub value: usize,
+
+    pub annotations: Vec<()>,
+}
+
+#[derive(Debug)]
+pub struct InterfaceTy {
+    pub prototypes: Vec<()>,
+    pub attributes: Vec<()>,
+}
+
+#[derive(Debug)]
+pub struct AliasTy {
+    /// The type to which this alias points.
+    pub ty: Ty,
 }
 
 macro_rules! numeric_from {
@@ -424,5 +354,5 @@ numeric_from! {
     f32 => Float,
     f64 => Double,
     String => String,
-    TypeId => Const,
+    DefId => Const,
 }

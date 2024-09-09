@@ -122,7 +122,7 @@ pub trait Lint<'a>: Sized {
     fn check_hir(
         self: Box<Self>,
         context: &ic_hir::Context,
-        graph: &[ic_hir::hir::Type],
+        // graph: &[ic_hir::hir::Type],
     ) -> Vec<Diag> {
         todo!()
     }

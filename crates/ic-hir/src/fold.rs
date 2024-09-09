@@ -25,13 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::hir::{ConstTy, Item, StructTy};
+use crate::hir::{ConstTy, StructTy};
 
 pub trait Fold {
-    fn fold_item(&mut self, item: Item) -> Item {
-        item
-    }
-
     fn fold_struct(&mut self, ty: StructTy) -> StructTy {
         ty
     }

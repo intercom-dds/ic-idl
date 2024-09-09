@@ -36,12 +36,9 @@ use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::visit::{visit_item, Visitor};
-use ic_syntax::{Ident, LiteralValue, Span};
+use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
-use crate::hir::{
-    self, AliasTy, BitmaskTy, ConstTy, DeclTy, EnumTy, Enumerator, Item, Member, ModuleTy, Numeric,
-    PrimitiveTy, StructTy, TyFlags, Type, UnionTy,
-};
+use crate::hir::*;
 use crate::{Context, TypeId};
 
 pub struct Scope {
@@ -246,19 +243,19 @@ impl<'a> Lower<'a> {
             return false;
         }
 
-        true
-        // lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
-        //     (AnnotationField::Arg(lhs), AnnotationField::Arg(rhs)) => {
-        //         self.check_decl_consistency(&lhs.names, &rhs.names)
-        //             && self.check_type_consistency(&lhs.ty, &rhs.ty)
-        //     }
-        //     (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
-        //         lhs.ident.name.eq_ignore_ascii_case(&rhs.name.name)
-        //             && self.check_type_consistency(&lhs.ty, &rhs.ty)
-        //             && self.check_expr_consistency(&lhs.value, &rhs.value)
-        //     }
-        //     (lhs, rhs) => lhs.disc() == rhs.disc(),
-        // })
+        lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
+            (AnnotationField::Member(lhs), AnnotationField::Member(rhs)) => {
+                self.check_decl_consistency(&lhs.names, &rhs.names)
+                    && self.check_type_consistency(&lhs.ty, &rhs.ty)
+            }
+            (AnnotationField::Item(lhs), AnnotationField::Item(rhs)) => {
+                true
+                // lhs.ident.name.eq_ignore_ascii_case(&rhs.name.name)
+                //     && self.check_type_consistency(&lhs.ty, &rhs.ty)
+                //     && self.check_expr_consistency(&lhs.value, &rhs.value)
+            }
+            (lhs, rhs) => lhs.disc() == rhs.disc(),
+        })
     }
 
     /// Determines if two sets of declarators are semantically consistent. They
@@ -371,271 +368,447 @@ impl<'a> Lower<'a> {
         }
     }
 
+    // TODO: we need to register symbols too, for things like constants...
     fn register_type<I>(&mut self, name: I, ty: TypeId)
     where
         I: Into<String>,
     {
-        self.ctx.symbols.insert(name.into(), ty);
-    }
+        let name = name.into();
+        if name.is_empty() {
+            tracing::error!("attempted to register unnamed type");
+            return;
+        }
 
-    /// Destructures a declarator into a (ident, type) tuple. For arrays, this
-    /// will create a suitable type with the defined bounds.
-    fn lower_declarator(&mut self, decl: &ic_syntax::Declarator, ty: TypeId) -> (Ident, TypeId) {
-        match decl {
-            ic_syntax::Declarator::Simple(v) => (v.clone(), ty),
-            ic_syntax::Declarator::Array(v) => {
-                let bounds: Vec<_> = v.bounds.iter().map(|v| self.bound_expr(v)).collect();
-                let ty = self.lower_array(ty, &bounds);
-                (v.ident.clone(), ty)
+        // TODO: Must handle forward dcls and check they are of the same type,
+        // i.e. not a struct fwd dcl to a union def.
+        match self.ctx.symbols.entry(name) {
+            Entry::Occupied(v) => {
+                // TODO: should report info about span of first reg
+                tracing::error!("duplicate registration of {}", v.key());
+            }
+            Entry::Vacant(v) => {
+                tracing::info!("registering type `{}`, id={ty:?}", v.key());
+                v.insert(ty);
             }
         }
     }
 
-    /// Constructs an array type.
-    fn lower_array(&mut self, ty: TypeId, bounds: &[usize]) -> TypeId {
-        todo!()
+    // /// Constructs an array type.
+    // fn lower_array(&mut self, mut ty: TypeId, bounds: &[ic_syntax::Expr]) -> TypeId {
+    //     // TODO: write a test for the order here... so that [1][2][3] maps correctly
+    //     for bound in bounds {
+    //         // TODO: should we deduplicate these types?
+    //         // Also, should they even be "types" in the traditional sense...
+    //         // they probably have to.
+    //         //
+    //         // Unless..
+    //         // No, they don't? We could have definitions and types as separate
+    //         // things. So a Ty can point to a TypeId (definition).
+    //         let len = self.bound_expr(bound);
+    //         let array = Type::Array { ty, len };
+    //         tracing::info!("creating array type: {array:?}");
+    //         ty = self.ctx.types.alloc(array);
+    //     }
+    //     ty
+    // }
+    //
+    // fn array_type(&mut self, mut ty: TypeId, bounds: &[ic_syntax::Expr]) -> Ty {
+    //     // Start with the outermost bound
+    //     let mut bounds = bounds.iter().rev();
+    //     let mut ty = Ty::Item(ty);
+    //
+    //     for b in bounds {
+    //         let len = self.bound_expr(b);
+    //         ty = Ty::Array {
+    //             ty: Box::new(ty),
+    //             len,
+    //         };
+    //     }
+    //     ty
+    // }
+    //
+    // // Forward declarations are somewhat tricky. Types that depend on the
+    // // forward-declared type should point to the type definition and not the
+    // // declaration, but at this point we're not guaranteed to have the seen the
+    // // definition.``
+    // //
+    // // Instead, we allocate two type entries: one for the declaration, and one
+    // // for the yet-to-be-seen definition. The declaration will point to the
+    // // definition, and future calls to `Context::resolve_type` will yield the
+    // // ID of the definition. When we encounter the definition, we will mutate
+    // // the existing entry. Once construction of the HIR is done, we'll check
+    // // that all types have been defined.
+    // fn lower_decl(&mut self, symbol: ic_syntax::Decl) -> TypeId {
+    //     self.ctx.types.alloc_with_id(|id| {
+    //         Type::Decl(DeclTy {
+    //             ident: symbol.ident.clone(),
+    //             ty: id,
+    //         })
+    //     })
+    // }
+    //
+    // fn lower_const(&mut self, symbol: ic_syntax::ConstDef) -> ConstTy {
+    //     let ty = self.ctx.resolve_type(&symbol.ty);
+    //     let value = match symbol.value {
+    //         ic_syntax::Expr::InitList(v) => {
+    //             todo!()
+    //             // Numeric::InitList(v.values.iter().map(|v| self.eval_expr(v)).collect())
+    //         }
+    //         v => self.eval_expr(&v),
+    //     };
+    //
+    //     ConstTy {
+    //         ident: symbol.ident,
+    //         span: symbol.span,
+    //         ty,
+    //         value,
+    //     }
+    // }
+
+    // // A typedef with multiple declarators will be expanded to multiple,
+    // // individual typedefs, each with one declarator.
+    // fn lower_alias(&mut self, symbol: ic_syntax::AliasDef) -> TypeId {
+    //     let ty = self.ctx.resolve_type(&symbol.ty);
+    //     let id = self.ctx.types.alloc_with_id(|id| {
+    //         Type::Alias(AliasTy {
+    //             id,
+    //             ident: symbol.ident.clone(),
+    //             span: symbol.span,
+    //             ty,
+    //         })
+    //     });
+    //
+    //     self.register_type(symbol.ident.name.clone(), id);
+    //     id
+    // }
+
+    fn lookup_path(&mut self, path: ic_syntax::Path) -> DefId {
+        self.ctx
+            .definitions
+            .iter()
+            .find(|(id, def)| def.ident.name == path.segments.last().as_ref().unwrap().name)
+            .unwrap()
+            .0
     }
 
-    // Forward declarations are somewhat tricky. Types that depend on the
-    // forward-declared type should point to the type definition and not the
-    // declaration, but at this point we're not guaranteed to have the seen the
-    // definition.
-    //
-    // Instead, we allocate two type entries: one for the declaration, and one
-    // for the yet-to-be-seen definition. The declaration will point to the
-    // definition, and future calls to `Context::resolve_type` will yield the
-    // ID of the definition. When we encounter the definition, we will mutate
-    // the existing entry. Once construction of the HIR is done, we'll check
-    // that all types have been defined.
-    fn lower_decl(&mut self, symbol: ic_syntax::Decl) -> TypeId {
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Decl(DeclTy {
-                ident: symbol.ident.clone(),
-                ty: id,
-            })
+    fn array_type(&mut self, mut ty: Ty, bounds: &[ic_syntax::Expr]) -> Ty {
+        // Start with the outermost bound
+        let mut bounds = bounds.iter().rev();
+        for b in bounds {
+            let len = self.bound_expr(b);
+            ty = Ty::Array {
+                ty: Box::new(ty),
+                len,
+            };
+        }
+        ty
+    }
+
+    /// Destructures a declarator into an (ident, type) tuple. For arrays, this
+    /// will create a suitable type with the defined bounds.
+    fn lower_declarator(&mut self, decl: ic_syntax::Declarator, ty: Ty) -> (Ident, Ty) {
+        match decl {
+            ic_syntax::Declarator::Simple(v) => (v, ty),
+            ic_syntax::Declarator::Array(v) => {
+                let ty = self.array_type(ty, &v.bounds);
+                (v.ident, ty)
+            }
+        }
+    }
+
+    fn lower_type(&mut self, ty: ic_syntax::Type) -> Ty {
+        use ic_syntax::Type;
+
+        match ty {
+            Type::Any(_) => Ty::Any,
+            Type::Fixed(_) => Ty::Fixed,
+            Type::Sequence(v) => Ty::Sequence {
+                ty: Box::new(self.lower_type(*v.ty)),
+                bound: v.bound.map(|e| self.bound_expr(&e)),
+            },
+            Type::String_(v) => Ty::String {
+                wide: v.wide,
+                bound: v.bound.map(|e| self.bound_expr(&e)),
+            },
+            Type::Map(v) => Ty::Map {
+                key: Box::new(self.lower_type(*v.key)),
+                elem: Box::new(self.lower_type(*v.value)),
+                bound: v.bound.map(|e| self.bound_expr(&e)),
+            },
+            Type::Path(v) => Ty::Adt(self.lookup_path(v)),
+        }
+    }
+
+    fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
+        let definitions: Vec<_> = def
+            .definitions
+            .into_iter()
+            .map(|v| self.lower_item(v))
+            .collect();
+
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Module(ModuleTy { definitions }),
         })
     }
 
-    fn lower_const(&mut self, symbol: ic_syntax::ConstDef) -> ConstTy {
-        let ty = self.ctx.resolve_type(&symbol.ty);
-        let value = match symbol.value {
-            ic_syntax::Expr::InitList(v) => {
-                todo!()
-                // Numeric::InitList(v.values.iter().map(|v| self.eval_expr(v)).collect())
-            }
-            v => self.eval_expr(&v),
-        };
+    fn lower_struct(&mut self, def: ic_syntax::StructDef) -> DefId {
+        let members = def
+            .members
+            .into_iter()
+            .flat_map(|v| self.lower_field(v))
+            .collect();
 
-        ConstTy {
-            ident: symbol.ident,
-            span: symbol.span,
-            ty,
-            value,
+        let parent = def.parent.map(|v| self.lookup_path(v));
+
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Struct(StructTy { parent, members }),
+        })
+    }
+
+    fn lower_field(&mut self, field: ic_syntax::Field) -> Vec<Member> {
+        field
+            .names
+            .into_iter()
+            .map(|decl| {
+                let ty = self.lower_type(field.ty.clone());
+                let (ident, ty) = self.lower_declarator(decl, ty);
+
+                Member {
+                    ident,
+                    ty,
+                    annotations: vec![],
+                }
+            })
+            .collect()
+    }
+
+    fn lower_except(&mut self, def: ic_syntax::ExceptDef) -> DefId {
+        let members = def
+            .members
+            .into_iter()
+            .flat_map(|v| self.lower_field(v))
+            .collect();
+
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Except(ExceptTy { members }),
+        })
+    }
+
+    fn lower_union(&mut self, def: ic_syntax::UnionDef) -> DefId {
+        use ic_syntax::{Label, UnionElement};
+
+        let mut variants = vec![];
+        for var in def.fields {
+            let labels: Vec<_> = var
+                .labels
+                .into_iter()
+                .map(|label| match label {
+                    Label::Case(v) => self.eval_expr(&v),
+                    Label::Default(_) => todo!(),
+                })
+                .collect();
+
+            let member = match var.field {
+                UnionElement::Member(v) => {
+                    let ty = self.lower_type(*v.ty);
+                    let (ident, ty) = self.lower_declarator(v.decl, ty);
+
+                    Variant {
+                        annotations: vec![],
+                        ident,
+                        ty,
+                        labels,
+                        is_default: false,
+                    }
+                }
+                UnionElement::Null(_) => todo!(),
+            };
+            variants.push(member);
         }
+
+        let disc = self.lower_type(def.disc.ty);
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Union(UnionTy { disc, variants }),
+        })
+    }
+
+    fn lower_enum_lit(&mut self, lit: ic_syntax::Enumerator, last: &mut isize) -> EnumLit {
+        *last = lit
+            .value
+            .map(|v| self.bound_expr(&v) as isize)
+            .unwrap_or_else(|| *last + 1);
+
+        EnumLit {
+            ident: lit.ident,
+            value: *last,
+            annotations: vec![],
+        }
+    }
+
+    fn lower_enum(&mut self, def: ic_syntax::EnumDef) -> DefId {
+        let mut last = -1;
+        let fields = def
+            .fields
+            .into_iter()
+            .map(|lit| self.lower_enum_lit(lit, &mut last))
+            .collect();
+
+        // TODO: should we check here that all enum names are unique? check
+        // what rustc does...
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Enum(EnumTy { fields }),
+        })
+    }
+
+    fn lower_bitmask(&mut self, def: ic_syntax::BitmaskDef) -> DefId {
+        let mut last = -1;
+        let flags = def
+            .bits
+            .into_iter()
+            .map(|bit| {
+                last = bit
+                    .value
+                    .map(|v| self.bound_expr(&v) as isize)
+                    .unwrap_or_else(|| last + 1);
+
+                BitFlag {
+                    ident: bit.ident,
+                    value: last as usize,
+                    annotations: vec![],
+                }
+            })
+            .collect();
+
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Bitmask(BitmaskTy { flags }),
+        })
+    }
+
+    fn lower_const(&mut self, def: ic_syntax::ConstDef) -> DefId {
+        let value = self.eval_expr(&def.value);
+        let ty = self.lower_type(def.ty);
+
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Const(ConstTy { value, ty }),
+        })
     }
 
     // A typedef with multiple declarators will be expanded to multiple,
-    // individual typedefs, each with one declarator.
-    fn lower_alias(&mut self, symbol: ic_syntax::AliasDef) -> TypeId {
-        let ty = self.ctx.resolve_type(&symbol.ty);
-        let id = self.ctx.arena.alloc_with_id(|id| {
-            Type::Alias(AliasTy {
-                id,
-                ident: symbol.ident.clone(),
-                span: symbol.span,
-                ty,
-            })
-        });
+    fn lower_alias(&mut self, def: ic_syntax::AliasDef) -> Vec<DefId> {
+        let ty = self.lower_type(def.ty);
 
-        self.register_type(symbol.ident.name.clone(), id);
-        id
-    }
-
-    fn lower_mod(&mut self, symbol: ic_syntax::ModuleDef) -> ModuleTy {
-        let definitions = symbol
-            .definitions
+        def.decl
             .into_iter()
-            .filter_map(|v| self.lower_item(v))
-            .collect();
-
-        // self.ctx.items.alloc_with_id(|id| {
-        ModuleTy {
-            // id,
-            ident: symbol.ident,
-            span: symbol.span,
-            definitions,
-        }
-        // })
-    }
-
-    // Members with multiple declarators are expanded into multiple members,
-    // each with a single declarator.
-    fn lower_struct(&mut self, symbol: ic_syntax::StructDef) -> TypeId {
-        let mut members = vec![];
-        for mem in &symbol.members {
-            assert!(
-                !mem.names.is_empty(),
-                "struct member without any declarators",
-            );
-
-            let ty = self.ctx.resolve_type(&mem.ty);
-            for decl in &mem.names {
-                let (ident, ty) = match decl {
-                    ic_syntax::Declarator::Simple(v) => (v.clone(), ty),
-                    ic_syntax::Declarator::Array(v) => todo!(),
-                };
-
-                // TODO: should collection types be their own type? or should it be
-                // a separate ValueType enum for map/sequence/array?
-                members.push(Member { ident, ty });
-            }
-        }
-
-        let id = self.ctx.arena.alloc_with_id(|id| {
-            Type::Struct(StructTy {
-                id,
-                ident: symbol.ident.clone(),
-                span: symbol.span,
-                members,
-                flags: TyFlags::nil(),
+            .map(|decl| {
+                let (ident, ty) = self.lower_declarator(decl, ty.clone());
+                self.ctx.definitions.alloc_with_id(|id| Def {
+                    id,
+                    ident,
+                    annotations: vec![],
+                    span: def.span,
+                    kind: DefKind::Alias(AliasTy { ty }),
+                })
             })
-        });
-        self.register_type(symbol.ident.name, id);
-        id
+            .collect()
     }
 
-    fn lower_except(&mut self, _: ic_syntax::ExceptDef) -> TypeId {
-        todo!()
+    fn lower_interface(&mut self, def: ic_syntax::InterfaceDef) -> DefId {
+        // TODO:
+        let prototypes = vec![];
+        let attributes = vec![];
+
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Interface(InterfaceTy {
+                prototypes,
+                attributes,
+            }),
+        })
     }
 
-    fn lower_union(&mut self, symbol: ic_syntax::UnionDef) -> TypeId {
-        let disc = hir::Discriminator {
-            ty: self.ctx.resolve_type(&symbol.disc.ty),
-            span: ic_syntax::util::ty_span(&symbol.disc.ty),
+    fn lower_decl(&mut self, def: ic_syntax::Decl) -> DefId {
+        use ic_syntax::DeclKind;
+
+        let kind = match def.kind {
+            DeclKind::DeclStruct => Decl::Struct,
+            DeclKind::DeclUnion => Decl::Union,
+            DeclKind::DeclNative => Decl::Native,
+            DeclKind::DeclInterface => Decl::Interface,
+            DeclKind::DeclValuetype => Decl::Valuetype,
         };
 
-        let mut variants = vec![];
-        for var in &symbol.fields {
-            let labels: Vec<_> = var.labels.iter().map(|_| Numeric::Octet(0)).collect();
-
-            let variant = match &var.field {
-                ic_syntax::UnionElement::Member(v) => {
-                    let ty = self.ctx.resolve_type(v.ty.as_ref());
-                    hir::Variant::Member(
-                        Member {
-                            ident: match v.decl.clone() {
-                                ic_syntax::Declarator::Simple(s) => s,
-                                ic_syntax::Declarator::Array(v) => v.ident,
-                            },
-                            ty,
-                        },
-                        labels,
-                    )
-                }
-                ic_syntax::UnionElement::Null(_) => hir::Variant::Null(labels),
-            };
-            variants.push(variant);
-        }
-
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Union(UnionTy {
-                id,
-                ident: symbol.ident,
-                span: symbol.span,
-                disc,
-                variants,
-            })
+        self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident,
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Decl(kind),
         })
     }
 
-    fn lower_bitmask(&mut self, symbol: ic_syntax::BitmaskDef) -> TypeId {
-        let bits = symbol.bits.iter().cloned().map(|v| (v.ident, 0)).collect();
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Bitmask(BitmaskTy {
-                id,
-                ident: symbol.ident,
-                span: symbol.span,
-                ty: PrimitiveTy::UInt32,
-                bits,
-            })
-        })
-    }
-
-    fn lower_enum(&mut self, symbol: ic_syntax::EnumDef) -> TypeId {
-        let mut last_value = 0;
-        let mut enumerators = vec![];
-
-        for lit in &symbol.fields {
-            let value = lit
-                .value
-                .as_ref()
-                .map_or_else(|| last_value + 1, |e| self.bound_expr(e) as i64);
-
-            last_value = value;
-
-            enumerators.push(Enumerator {
-                ident: lit.ident.clone(),
-                value,
-            });
-        }
-
-        self.ctx.arena.alloc_with_id(|id| {
-            Type::Enum(EnumTy {
-                id,
-                ident: symbol.ident,
-                span: symbol.span,
-                ty: PrimitiveTy::UInt32,
-                enumerators,
-            })
-        })
-    }
-
-    fn lower_item2(&mut self, item: ic_syntax::Item) -> Option<Item> {
-        use ic_syntax as syn;
-
-        Some(match item {
-            syn::Item::AnnotationValue(_) => todo!(),
-            syn::Item::ModuleValue(v) => Item::Module(self.lower_mod(v)),
-            syn::Item::StructValue(v) => Item::Adt(self.lower_struct(v)),
-            syn::Item::UnionValue(v) => Item::Adt(self.lower_union(v)),
-            syn::Item::EnumValue(v) => Item::Adt(self.lower_enum(v)),
-            syn::Item::ConstValue(v) => Item::Const(self.lower_const(v)),
-            syn::Item::AliasValue(v) => Item::Adt(self.lower_alias(v)),
-            syn::Item::ExceptionValue(v) => Item::Adt(self.lower_except(v)),
-            // syn::Item::InterfaceValue(v) => Item::Interface(self.lower_interface(v)),
-            syn::Item::ValuetypeValue(_) => todo!(),
-            // syn::Item::DeclValue(v) => Item::Decl(self.lower_decl(v)),
-            syn::Item::BitmaskValue(v) => Item::Adt(self.lower_bitmask(v)),
-            syn::Item::BitsetValue(_) => return None,
-            _ => return None,
-        })
-    }
-
-    // TODO: implement as visitor instead?
-    fn lower_item(&mut self, item: ic_syntax::Item) -> Option<TypeId> {
+    fn lower_item(&mut self, item: ic_syntax::Item) -> DefId {
         use ic_syntax::Item;
+        tracing::info!("lowering item: {item:?}");
 
-        let ty = match item {
-            Item::AnnotationValue(_) => todo!(),
-            Item::ModuleValue(v) => {
-                self.lower_mod(v);
-                return None;
-            }
+        let id = match item {
+            // Item::AnnotationValue(_) => todo!(),
+            Item::ModuleValue(v) => self.lower_mod(v),
             Item::StructValue(v) => self.lower_struct(v),
             Item::UnionValue(v) => self.lower_union(v),
             Item::EnumValue(v) => self.lower_enum(v),
             Item::ExceptionValue(v) => self.lower_except(v),
             Item::BitmaskValue(v) => self.lower_bitmask(v),
-            // Item::ConstValue(v) => self.lower_const(v),
-            Item::AliasValue(v) => self.lower_alias(v),
-            Item::InterfaceValue(_) => todo!(),
-            Item::ValuetypeValue(_) => todo!(),
+            Item::ConstValue(v) => self.lower_const(v),
+            Item::AliasValue(v) => {
+                // FIXME: refactor lower_item so we can return multiple IDs
+                // TODO: also need some way to skip bitsets
+                let ids = self.lower_alias(v);
+                let id = ids.first().copied().unwrap();
+                self.order.extend(ids);
+                id
+            }
+            Item::InterfaceValue(v) => self.lower_interface(v),
+            // Item::ValuetypeValue(_) => todo!(),
             Item::DeclValue(v) => self.lower_decl(v),
-            Item::BitsetValue(_) => return None,
+            // Item::BitsetValue(_) => return None,
             _ => todo!(),
         };
-        self.order.push(ty);
-        Some(ty)
+
+        // TODO: should we perhaps only push top-level `DefId`s?
+        // since everything else can be driven by examining the tree.
+        self.order.push(id);
+        id
     }
 }
 
@@ -682,15 +855,15 @@ impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
     // ID of the definition. When we encounter the definition, we will mutate
     // the existing entry. Once construction of the HIR is done, we'll iterate
     // over all declared types and ensure they've been defined.
-    fn visit_decl(&mut self, symbol: &'a ic_syntax::Decl) {
-        let id = self.lower.ctx.arena.alloc_with_id(|id| {
-            Type::Decl(DeclTy {
-                ident: symbol.ident.clone(),
-                ty: id,
-            })
-        });
-        self.declared.insert(id);
-    }
+    // fn visit_forward_decl(&mut self, symbol: &'a ic_syntax::Decl) {
+    //     let id = self.lower.ctx.types.alloc_with_id(|id| {
+    //         Type::Decl(DeclTy {
+    //             ident: symbol.ident.clone(),
+    //             ty: id,
+    //         })
+    //     });
+    //     self.declared.insert(id);
+    // }
 }
 
 fn lower_item<'cx>(lower: &mut Lower<'cx>, item: &ic_syntax::Item) -> Vec<TypeId> {
@@ -715,11 +888,12 @@ where
 {
     let mut state = Lower::with_ctx(ctx);
     for item in ast {
-        state.lower_item2(item);
+        state.lower_item(item);
     }
     debug_assert!(
         all_unique(&state.order),
         "order of types contains duplicate entries",
     );
+    tracing::info!("lowered: {:#?}", state.ctx);
     state.order
 }

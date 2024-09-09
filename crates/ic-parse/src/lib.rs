@@ -184,7 +184,7 @@ pub fn from_path(path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Er
 pub fn from_file(file_id: FileId, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
     let args = ProcArgs::default();
     let iter = ic_preproc::preprocess(file_id, args, vfs);
-    let tokens = lexer::from_iter(iter);
+    let tokens = lexer::from_cursor(iter);
     let tree = parser::specification()
         .parse(tokens)
         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;

@@ -587,7 +587,9 @@ fn struct_def() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    struct_def.map_with_span(|v, span| Item::def_struct(v.0.0, v.1, None, span))
+    struct_def.map_with_span(|((ident, parent), members), span| {
+        Item::def_struct(ident, members, parent, span)
+    })
 }
 
 // Rule 47
@@ -751,6 +753,7 @@ fn fixed_array_size() -> impl IdlParser<Expr> {
 fn native_dcl() -> impl IdlParser<Item> {
     keyword(Kw::Native)
         .ignore_then(ident())
+        .then_ignore(just(Kind::Semi))
         .map_with_span(|name, span| Item::decl(name, DeclKind::DeclNative, span))
 }
 

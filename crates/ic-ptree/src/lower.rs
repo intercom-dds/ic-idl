@@ -138,7 +138,7 @@ unsafe fn lower_ty(state: *mut sys::parser_state, ty: &Type) -> *mut sys::ptree 
             let bound = v.bound.as_ref().map_or(NUM_UNDEF, |e| lower_expr(state, e));
             sys::create_sequence(state, ty, bound)
         }
-        Type::String_(v) => match &v.bound {
+        Type::String(v) => match &v.bound {
             Some(bound) => {
                 let bound = lower_expr(state, bound);
                 if v.wide {

@@ -268,7 +268,7 @@ fn is_type_consistent(ctx: &mut Context, lhs: &ic_syntax::Type, rhs: &ic_syntax:
         (Type::Sequence(lhs), Type::Sequence(rhs)) => {
             is_type_consistent(ctx, lhs.ty.as_ref(), rhs.ty.as_ref())
         }
-        (Type::String_(lhs), Type::String_(rhs)) => lhs.wide == rhs.wide,
+        (Type::String(lhs), Type::String(rhs)) => lhs.wide == rhs.wide,
         (Type::Map(lhs), Type::Map(rhs)) => {
             is_type_consistent(ctx, lhs.key.as_ref(), rhs.key.as_ref())
                 && is_type_consistent(ctx, lhs.value.as_ref(), rhs.value.as_ref())

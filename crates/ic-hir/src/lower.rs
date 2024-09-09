@@ -326,7 +326,7 @@ impl<'a> Lower<'a> {
                 self.check_bound_consistency(lhs.bound.as_ref(), rhs.bound.as_ref())
                     && self.check_type_consistency(lhs.ty.as_ref(), rhs.ty.as_ref())
             }
-            (Type::String_(lhs), Type::String_(rhs)) => {
+            (Type::String(lhs), Type::String(rhs)) => {
                 self.check_bound_consistency(lhs.bound.as_ref(), rhs.bound.as_ref())
                     && lhs.wide == rhs.wide
             }
@@ -526,7 +526,7 @@ impl<'a> Lower<'a> {
                 ty: Box::new(self.lower_type(*v.ty)),
                 bound: v.bound.map(|e| self.bound_expr(&e)),
             },
-            Type::String_(v) => Ty::String {
+            Type::String(v) => Ty::String {
                 wide: v.wide,
                 bound: v.bound.map(|e| self.bound_expr(&e)),
             },

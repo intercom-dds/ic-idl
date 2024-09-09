@@ -1489,7 +1489,7 @@ pub enum Type {
     /// Sequence of another type, e.g. `sequence<string>`.
     Sequence(crate::ast::SequenceType),
     /// A possibly bounded string.
-    String_(crate::ast::StringType),
+    String(crate::ast::StringType),
     /// (key, value) pair of types, e.g. `map<string, string>`.
     Map(crate::ast::MapType),
     /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
@@ -1509,7 +1509,7 @@ impl Type {
         match self {
             Self::Any(_) => crate::ast::TypeKind::TypeAny,
             Self::Sequence(_) => crate::ast::TypeKind::TypeSequence,
-            Self::String_(_) => crate::ast::TypeKind::TypeString,
+            Self::String(_) => crate::ast::TypeKind::TypeString,
             Self::Map(_) => crate::ast::TypeKind::TypeMap,
             Self::Fixed(_) => crate::ast::TypeKind::TypeFixed,
             Self::Path(_) => crate::ast::TypeKind::TypePath,
@@ -1524,7 +1524,7 @@ impl From<crate::ast::TypeKind> for Type {
             crate::ast::TypeKind::TypeSequence => {
                 Self::Sequence(<crate::ast::SequenceType>::default())
             }
-            crate::ast::TypeKind::TypeString => Self::String_(<crate::ast::StringType>::default()),
+            crate::ast::TypeKind::TypeString => Self::String(<crate::ast::StringType>::default()),
             crate::ast::TypeKind::TypeMap => Self::Map(<crate::ast::MapType>::default()),
             crate::ast::TypeKind::TypeFixed => Self::Fixed(<crate::ast::FixedType>::default()),
             crate::ast::TypeKind::TypePath => Self::Path(<crate::ast::Path>::default()),
@@ -1550,7 +1550,7 @@ impl ::intercom_cts::Marshal for Type {
         match self {
             Self::Any(v) => state.encode_variant(0, "any", v),
             Self::Sequence(v) => state.encode_variant(1, "sequence", v),
-            Self::String_(v) => state.encode_variant(2, "string", v),
+            Self::String(v) => state.encode_variant(2, "string", v),
             Self::Map(v) => state.encode_variant(3, "map", v),
             Self::Fixed(v) => state.encode_variant(4, "fixed", v),
             Self::Path(v) => state.encode_variant(5, "path", v),
@@ -1582,7 +1582,7 @@ impl ::intercom_cts::Unmarshal for Type {
             crate::ast::TypeKind::TypeString => {
                 let mut value = <crate::ast::StringType>::default();
                 state.decode_variant(2, "string", &mut value)?;
-                Self::String_(value)
+                Self::String(value)
             }
             crate::ast::TypeKind::TypeMap => {
                 let mut value = <crate::ast::MapType>::default();

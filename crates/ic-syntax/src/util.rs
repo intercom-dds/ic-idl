@@ -43,7 +43,7 @@ pub fn path_name(path: &Path) -> String {
 pub fn type_name(path: &Type) -> String {
     match path {
         Type::Any(..) => "any".to_string(),
-        Type::String_(..) => "string".to_string(),
+        Type::String(..) => "string".to_string(),
         Type::Map(..) => "map".to_string(),
         Type::Fixed(..) => "fixed".to_string(),
         Type::Sequence(seq) => format!("sequence<{}>", type_name(seq.ty.as_ref())),
@@ -130,7 +130,7 @@ pub fn ty_span(ty: &Type) -> Span {
     match ty {
         Type::Any(v) => v.span,
         Type::Sequence(v) => v.span,
-        Type::String_(v) => v.span,
+        Type::String(v) => v.span,
         Type::Map(v) => v.span,
         Type::Fixed(v) => v.span,
         Type::Path(v) => path_span(v),

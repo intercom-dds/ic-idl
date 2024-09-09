@@ -512,7 +512,7 @@ fn string_type() -> impl IdlParser<Type> {
     keyword(Kw::String)
         .ignore_then(bound)
         .map_with_span(|bound, span| {
-            Type::String_(StringType {
+            Type::String(StringType {
                 wide: false,
                 bound,
                 span,
@@ -529,7 +529,7 @@ fn wide_string_type() -> impl IdlParser<Type> {
     keyword(Kw::WString)
         .ignore_then(bound)
         .map_with_span(|bound, span| {
-            Type::String_(StringType {
+            Type::String(StringType {
                 wide: true,
                 bound,
                 span,

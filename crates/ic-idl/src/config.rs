@@ -35,15 +35,27 @@ use ic_cli::Command;
 
 use crate::warn;
 
-intercom_cts::bitmask! {
-    #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-    pub Warnings: u32 {
-        DEPRECATED = 1 << 0,
-        ANNOTATION = 1 << 1,
-        UNKNOWN_ANNOTATION = 1 << 2,
-        PEDANTIC = 1 << 3,
-        ERROR = 1 << 4,
-    }
+#[derive(Command, Default)]
+pub struct Warnings {
+    /// Enable all warnings
+    #[option(long)]
+    all: bool,
+
+    /// Warn on suspicious annotation usage such as conflicting annotations
+    #[option(long)]
+    annotation: bool,
+
+    /// Warn on use of unknown annotations
+    #[option(long)]
+    unknown_annotation: bool,
+
+    /// Warn on use of language extensions or implementation-defined behavior
+    #[option(long)]
+    pedantic: bool,
+
+    /// Upgrade warnings to errors
+    #[option(long)]
+    error: bool,
 }
 
 /// Generic IDL code generator
@@ -247,35 +259,28 @@ impl convert::Convert for Unstable {
 
 impl convert::Convert for Warnings {
     fn from_result(input: &[String]) -> convert::Result<Self> {
-        let mut bits = Warnings::nil();
+        let mut warnings = Self::default();
 
         for arg in input {
-            let (arg, is_negated) = if let Some(arg) = arg.strip_prefix("no-") {
-                (arg, true)
+            let (arg, enabled) = if let Some(arg) = arg.strip_prefix("no-") {
+                (arg, false)
             } else {
-                (arg.as_str(), false)
+                (arg.as_str(), true)
             };
 
             let bit = match arg {
-                "all" => Warnings::all(),
-                "deprecated" => Warnings::DEPRECATED,
-                "annotation" => Warnings::ANNOTATION,
-                "unknown-annotation" => Warnings::UNKNOWN_ANNOTATION,
-                "pedantic" => Warnings::PEDANTIC,
-                "error" => Warnings::ERROR,
-                "help" => todo!(),
+                "all" => warnings.all = enabled,
+                "annotation" => warnings.annotation = enabled,
+                "unknown-annotation" => warnings.unknown_annotation = enabled,
+                "pedantic" => warnings.pedantic = enabled,
+                "error" => warnings.error = enabled,
+                "help" => crate::unstable::warning_help(),
                 _ => {
                     warn!("unknown warning '{}'", format!("-W{arg}").yellow());
                     continue;
                 }
             };
-
-            if is_negated {
-                bits.unset(bit);
-            } else {
-                bits.set(bit);
-            }
         }
-        Ok(bits)
+        Ok(warnings)
     }
 }

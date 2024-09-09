@@ -359,7 +359,7 @@ impl CommandLine {
         self.name.to_string()
     }
 
-    pub fn format_args<P>(&self, filter: P) -> Vec<String>
+    fn format_args<P>(&self, filter: P) -> Vec<String>
     where
         P: FnMut(&&Opt) -> bool + Clone,
     {
@@ -397,6 +397,52 @@ impl CommandLine {
             let width = 2 + PAD + width - opt.formatted().len() - current_width;
 
             let tokens = opt.formatted();
+            let desc = opt.desc.clone().unwrap_or_default();
+            let line = format!("{:indent_by$}{tokens}{}{desc}", " ", " ".repeat(width));
+            lines.push(line);
+        }
+        lines
+    }
+
+    // TODO: total hack, should be cleaned up and merged with the function above
+    pub fn format_args_prefix<P>(&self, prefix: &str, filter: P) -> Vec<String>
+    where
+        P: FnMut(&&Opt) -> bool + Clone,
+    {
+        let mut lines = vec![];
+        let matches: Vec<_> = self.options.values().iter().filter(filter).collect();
+
+        // Find the highest number of short options
+        let n_short: usize = matches
+            .iter()
+            .map(|v| v.tokens.iter().filter(|v| v.len() == 1).count())
+            .max()
+            .unwrap_or(0);
+
+        let width = if self.align_sections {
+            self.options
+                .values()
+                .iter()
+                .map(|v| v.with_prefix(prefix).len())
+                .max()
+                .unwrap_or(0)
+        } else {
+            matches
+                .iter()
+                .map(|v| v.with_prefix(prefix).len())
+                .max()
+                .unwrap_or(0)
+        };
+
+        for opt in matches {
+            let current_n_short = opt.tokens.iter().filter(|v| v.len() == 1).count();
+
+            // 4 is the number of characters that separate short options
+            let current_width = 4 * (n_short - current_n_short);
+            let indent_by = PAD + current_width;
+            let width = 2 + PAD + width - opt.with_prefix(prefix).len() - current_width;
+
+            let tokens = opt.with_prefix(prefix);
             let desc = opt.desc.clone().unwrap_or_default();
             let line = format!("{:indent_by$}{tokens}{}{desc}", " ", " ".repeat(width));
             lines.push(line);
@@ -500,6 +546,20 @@ impl Opt {
         for token in &self.tokens {
             let sep = if token.len() > 1 { "--" } else { "-" };
             tokens.push(format!("{sep}{token}"));
+        }
+
+        let mut line = tokens.join(", ");
+        if self.kind != Value::Flag {
+            let name = self.value_name.clone().unwrap_or_else(|| "arg".into());
+            line = format!("{line} <{name}>");
+        }
+        line.bold()
+    }
+
+    fn with_prefix(&self, prefix: &str) -> String {
+        let mut tokens = vec![];
+        for token in &self.tokens {
+            tokens.push(format!("{prefix}{token}"));
         }
 
         let mut line = tokens.join(", ");

@@ -41,15 +41,15 @@ pub struct Warnings {
     #[option(long)]
     all: bool,
 
-    /// Warn on suspicious annotation usage such as conflicting annotations
+    /// Suspicious annotation usage such as conflicting annotations
     #[option(long)]
     annotation: bool,
 
-    /// Warn on use of unknown annotations
+    /// Use of unknown annotations
     #[option(long)]
     unknown_annotation: bool,
 
-    /// Warn on use of language extensions or implementation-defined behavior
+    /// Language extensions or implementation-defined behavior
     #[option(long)]
     pedantic: bool,
 

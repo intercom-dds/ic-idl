@@ -391,10 +391,9 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    // TODO:
-    // for decl in &def.decl {
-    //     visitor.visit_decl(decl);
-    // }
+    for decl in &def.decl {
+        visitor.visit_declarator(decl);
+    }
 }
 
 pub fn visit_path<'a, V>(visitor: &mut V, path: &'a Path)

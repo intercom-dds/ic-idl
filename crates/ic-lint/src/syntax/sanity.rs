@@ -25,12 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, Diag, Label};
-use ic_syntax::util::{item_name, ItemTraits};
 use ic_syntax::visit::{
     visit_struct_field, visit_tree, visit_typedef, visit_union_variant, Visitor,
 };
-use ic_syntax::{AliasDef, Declarator, Field, Ident, Item, Path, UnionField};
+use ic_syntax::{Declarator, Field, Ident, Item, Path, UnionField};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -77,10 +75,5 @@ impl<'a> Visitor<'a> for Sanity {
     fn visit_union_variant(&mut self, variant: &'a ic_syntax::UnionField) {
         assert!(!variant.labels.is_empty());
         visit_union_variant(self, variant);
-    }
-
-    fn visit_typedef(&mut self, def: &'a ic_syntax::AliasDef) {
-        assert!(!def.decl.is_empty());
-        visit_typedef(self, def);
     }
 }

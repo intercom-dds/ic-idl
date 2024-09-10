@@ -77,7 +77,7 @@ class ScopedPrinter {
 };
 }  // namespace
 
-static void recurse_node(ScopedPrinter&, const ptree*);
+static void recurse_node(ScopedPrinter&, const ptree*, std::set<const ptree*>&);
 
 static std::string kind_name(node_kind kind) {
     std::array<const char*, 26> names = {
@@ -177,13 +177,17 @@ static void emit_flags(ScopedPrinter& out, const ptree* node) {
     }
 }
 
-static void emit_value(ScopedPrinter& out, numeric val) {
+static void emit_value(ScopedPrinter& out, numeric val, std::set<const ptree*>& seen) {
     if (val.kind() == PTREE_KIND) {
         ScopedPrinter scope(&out);
-        recurse_node(scope, val.val.node());
+        recurse_node(scope, val.val.node(), seen);
     } else {
         auto str = value<std::string>(val);
         if (val.kind() == STRING_KIND || val.kind() == CHAR_KIND) {
+            size_t pos = 0;
+            while ((pos = str.find('\n')) != std::string::npos) {
+                str.replace(pos, str.length(), "\\n");
+            }
             out << fmt::format(fg(fmt::terminal_color::bright_magenta), "'= \"{}\"' ", str);
         } else {
             out << fmt::format(fg(fmt::terminal_color::bright_magenta), "'= {}' ", str);
@@ -191,7 +195,7 @@ static void emit_value(ScopedPrinter& out, numeric val) {
     }
 }
 
-static void recurse_node(ScopedPrinter& out, const ptree* node) {
+static void recurse_node(ScopedPrinter& out, const ptree* node, std::set<const ptree*>& seen) {
     out << decl(node) << addr(node) << name(node);
     if (node->type) {
         out << type(node, node->type);
@@ -199,49 +203,50 @@ static void recurse_node(ScopedPrinter& out, const ptree* node) {
     emit_flags(out, node);
 
     if (node->value.kind() != UNDEF_KIND) {
-        emit_value(out, node->value);
+        emit_value(out, node->value, seen);
     }
 
     if (node->key_type) {
         ScopedPrinter scope(&out);
         scope << attrib("key_type");
-        recurse_node(scope, node->key_type);
+        recurse_node(scope, node->key_type, seen);
     }
 
     if (node->element_type) {
         ScopedPrinter scope(&out);
         scope << attrib("element_type");
-        recurse_node(scope, node->element_type);
+        recurse_node(scope, node->element_type, seen);
     }
 
-    if (node->type && !is_complex_type(node->type)) {
+    if (node->type && !is_complex_type(node->type) && seen.count(node->type) == 0) {
         ScopedPrinter scope(&out);
         scope << attrib("type");
-        recurse_node(scope, node->type);
+        recurse_node(scope, node->type, seen);
     }
 
     // Applied annotations
     for (auto ann : node->annotations) {
         ScopedPrinter scope(&out);
-        recurse_node(scope, ann);
+        recurse_node(scope, ann, seen);
     }
 
     // Iterate all over members regardless of whether the node is intended to have members or not
     for (auto mem : node->members) {
         ScopedPrinter scope(&out);
-        recurse_node(scope, mem);
+        recurse_node(scope, mem, seen);
     }
 
     for (auto mem : node->generated) {
         ScopedPrinter scope(&out);
-        recurse_node(scope, mem);
+        recurse_node(scope, mem, seen);
     }
 }
 
 void intercom::cidl::ptree_dump(const parse_result* result) {
     ScopedPrinter out(nullptr);
+    std::set<const ptree*> seen;
     for (auto node : result->tree) {
-        recurse_node(out, node);
+        recurse_node(out, node, seen);
         out << endl;
     }
     std::cout << out.str() << std::flush;

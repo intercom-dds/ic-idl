@@ -28,7 +28,6 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 
-#include <array>
 #include <iostream>
 
 #include "cidl/hdrs.h"
@@ -80,15 +79,61 @@ class ScopedPrinter {
 static void recurse_node(ScopedPrinter&, const ptree*, std::set<const ptree*>&);
 
 static std::string kind_name(node_kind kind) {
-    std::array<const char*, 26> names = {
-        "Undef",         "Include",    "Primitive", "Native",     "ModuleDef", "StructDef",
-        "UnionDef",      "Valuetype",  "Interface", "Exception",  "EnumDef",   "BitsetDef",
-        "BitmaskDef",    "Case",       "Null",      "MemberDecl", "Proto",     "Seq",
-        "Map",           "Array",      "String",    "Fixed",      "Alias",     "ConstDef",
-        "AnnotationDef", "Annotation",
-    };
-    static_assert(names.size() == node_kind::N_ANNOTATION + 1);
-    return names[kind];
+    switch (kind) {
+    case N_INCLUDE:
+        return "N_INCLUDE";
+    case N_PRIMITIVE:
+        return "N_PRIMITIVE";
+    case N_NATIVE:
+        return "N_NATIVE";
+    case N_MODULE:
+        return "N_MODULE";
+    case N_STRUCT:
+        return "N_STRUCT";
+    case N_UNION:
+        return "N_UNION";
+    case N_VALUETYPE:
+        return "N_VALUETYPE";
+    case N_INTERFACE:
+        return "N_INTERFACE";
+    case N_EXCEPTION:
+        return "N_EXCEPTION";
+    case N_ENUM:
+        return "N_ENUM";
+    case N_BITSET:
+        return "N_BITSET";
+    case N_BITMASK:
+        return "N_BITMASK";
+    case N_CASE:
+        return "N_CASE";
+    case N_NULL:
+        return "N_NULL";
+    case N_MEMBER:
+        return "N_MEMBER";
+    case N_PROTOTYPE:
+        return "N_PROTOTYPE";
+    case N_SEQUENCE:
+        return "N_SEQUENCE";
+    case N_MAP:
+        return "N_MAP";
+    case N_ARRAY:
+        return "N_ARRAY";
+    case N_STRING:
+        return "N_STRING";
+    case N_FIXED:
+        return "N_FIXED";
+    case N_ALIAS:
+        return "N_ALIAS";
+    case N_CONST:
+        return "N_CONST";
+    case N_ANNOTATION_DEF:
+        return "N_ANNOTATION_DEF";
+    case N_ANNOTATION:
+        return "N_ANNOTATION";
+    case N_UNDEF:
+    default:
+        return "N_UNDEF";
+    }
 }
 
 static std::string decl(const ptree* node) {

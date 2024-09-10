@@ -1169,6 +1169,10 @@ pub fn to_string(
     let mut last_id = file_id;
 
     while let Some(tok) = iter.next() {
+        if tok.kind == Kind::Eoi {
+            break;
+        }
+
         if last_id != tok.span.file_id {
             let path = iter.inner.vfs.path(tok.span.file_id);
             _ = buffer.write_str(&format!("\n#line 1 {path:?}\n"));

@@ -94,8 +94,8 @@ impl Interner {
     }
 
     #[must_use]
-    pub fn get(&self, id: SymbolId) -> Option<&str> {
-        self.arena.get(id).map(|v| v.string.as_ref())
+    pub fn get(&self, id: SymbolId) -> &str {
+        &self.arena.get(id).string
     }
 
     pub fn insert<I>(&mut self, str: I) -> SymbolId
@@ -136,6 +136,6 @@ mod tests {
         let mut interner = Interner::new();
         let id = interner.insert(str);
 
-        assert_eq!(interner.get(id).unwrap(), str);
+        assert_eq!(interner.get(id), str);
     }
 }

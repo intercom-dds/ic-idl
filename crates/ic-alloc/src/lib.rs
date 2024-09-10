@@ -32,6 +32,6 @@ pub mod bitset;
 pub mod graph;
 pub mod index;
 pub mod inline_str;
+pub mod insensitive;
 pub mod interner;
 pub mod md5;
-pub mod ptr;

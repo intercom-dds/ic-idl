@@ -149,18 +149,18 @@ impl<T> Arena<T> {
         index
     }
 
-    pub fn get<Q>(&self, id: Q) -> Option<&T>
+    pub fn get<Q>(&self, id: Q) -> &T
     where
         Q: Borrow<Id<T>>,
     {
-        self.elements.get(id.borrow().id)
+        &self.elements[id.borrow().id]
     }
 
-    pub fn get_mut<Q>(&mut self, id: Q) -> Option<&mut T>
+    pub fn get_mut<Q>(&mut self, id: Q) -> &mut T
     where
         Q: Borrow<Id<T>>,
     {
-        self.elements.get_mut(id.borrow().id)
+        &mut self.elements[id.borrow().id]
     }
 
     #[must_use]

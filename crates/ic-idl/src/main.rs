@@ -25,24 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, clippy::print_stdout, clippy::print_stderr)]
+#![allow(clippy::print_stdout, clippy::print_stderr)]
 
-use std::collections::HashSet;
-use std::io;
-use std::path::{Path, PathBuf};
-
-use anyhow::{bail, Context};
-use config::{
-    CodegenOptions, CppOptions, IdlOptions, Options, PythonOptions, RustOptions, Unstable,
-};
-use ic_cli::color::Colorize;
+use config::Options;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
-use ic_vfs::{Include, SourceMap};
+use ic_vfs::SourceMap;
 use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::util::SubscriberInitExt;
 use util::{collect_files, write_if_changed};
 
 mod config;
@@ -107,12 +98,6 @@ fn main() {
     }
 }
 
-fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
-    let input = std::fs::read_to_string(path)?;
-    // preprocess(path, &options.define, &options.include)?
-    Ok(input)
-}
-
 fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let mut vfs = SourceMap::default();
 
@@ -154,7 +139,17 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 
                 for diag in &report.diagnostics {
                     let mut buf = String::new();
-                    // ic_diagnostic::emit_diagnostic(&mut buf, &input, diag);
+
+                    // TODO: propagate file id here so we don't have to reopen it.
+                    // this isn't necessarily the correct file either, we need
+                    // to retrieve the FileId from the error
+                    let input = std::fs::read_to_string(&file).unwrap();
+                    ic_diagnostic::emit_diagnostic(
+                        &mut buf,
+                        &file.to_string_lossy().to_string(),
+                        &input,
+                        diag,
+                    )?;
                     eprintln!("{buf}");
                 }
 
@@ -182,22 +177,6 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 }
 
 fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File>> {
-    // let preprocessed = options
-    //     .files
-    //     .iter()
-    //     .map(|f| parse_file(options, f))
-    //     .collect::<Result<Vec<_>, _>>()?;
-
-    // if options.preprocessor_only {
-    //     println!("{}", preprocessed.join("\n"));
-    //     return Ok(vec![]);
-    // }
-
-    // let parsed = preprocessed
-    //     .iter()
-    //     .map(|v| ic_ptree::parse_idl(v))
-    //     .collect::<Result<Vec<_>, _>>()?;
-
     // let merged = ic_ptree::merge_trees(&parsed);
 
     if options.unstable.ptree_dump {

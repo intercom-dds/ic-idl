@@ -59,8 +59,8 @@ where
                 Err(e) => bail!("couldn't open {}: {e}", p.display()),
             };
 
-            for file in std::fs::read_dir(p).unwrap().flatten() {
-                collect(&file.path(), files);
+            for file in iter.flatten() {
+                collect(&file.path(), files)?;
             }
         } else if let Some(ext) = p.extension() {
             if ext.eq_ignore_ascii_case("idl") {

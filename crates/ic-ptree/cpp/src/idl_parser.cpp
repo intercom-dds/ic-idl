@@ -432,24 +432,14 @@ static void register_node_in_scope(parser_state* state, ptree* node, ptree* scp)
     std::swap(node->super, scp);
 }
 
-/// \brief registers inherited and merged members
-/// \details register_node(..) is usually called during ptree construction, but for forward
-/// declarations it has to happen after
 static void register_inherited_nodes(parser_state* state, ptree* node) {
     if (node->type || (node->kind != N_STRUCT && node->kind != N_INTERFACE)) {
         return;
     }
-    // inheritance
     for (ptree* parent = node; !parent->parents.empty();) {
         parent = base_type_of(parent->parents.front());
         for (ptree* elem : parent->members) {
             register_node_in_scope(state, elem, node);
-        }
-    }
-    // merge
-    for (MergeTrace& trace : get_merge_traces(node)) {
-        if (trace.size() > 1U) {
-            register_node_in_scope(state, const_cast<ptree*>(trace.back()), node);
         }
     }
 }
@@ -602,7 +592,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
         for (auto node : tree) {
             update_state_ptr(node->members);
             update_state_ptr(node->generated);
-            update_state_ptr(node->original_members);
             update_state_ptr(node->annotations);
             update_state_ptr(node->included_from);
         }

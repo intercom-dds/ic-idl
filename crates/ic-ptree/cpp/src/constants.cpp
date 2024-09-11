@@ -45,8 +45,6 @@ static numeric* create_numeric(parser_state* state, T val);
         return n;                                                 \
     }
 
-CREATE_NUMERIC(bool, BOOLEAN_KIND, b);
-
 CREATE_NUMERIC(int32_t, LONG_KIND, l);
 
 CREATE_NUMERIC(uint32_t, ULONG_KIND, ul);

@@ -45,7 +45,6 @@ bool is_key_member(const ptree* node, AnnotationGetter get = get_annotation);
 bool is_shared(const ptree* node, AnnotationGetter get = get_annotation);
 bool is_nested(const ptree* node, AnnotationGetter get = get_annotation);
 bool is_optional(const ptree* node, AnnotationGetter get = get_annotation);
-bool is_merged(const ptree* node, AnnotationGetter get = get_annotation);
 bool is_must_understand(const ptree* node, AnnotationGetter get = get_annotation);
 bool is_bitmask(const ptree* node);
 bool is_minimumtypecheck(const ptree* node, AnnotationGetter get = get_annotation);

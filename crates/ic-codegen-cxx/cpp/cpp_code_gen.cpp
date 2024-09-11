@@ -236,7 +236,7 @@ static std::string cpp_string_view_type_name(const ptree* node) {
 }
 
 static std::string public_member_name(const ptree* elem) {
-    if (CommandLineOption::cpp_access_functions() || is_merged(elem) ||
+    if (CommandLineOption::cpp_access_functions() ||
         (elem->kind == N_MEMBER && elem->super->kind == N_UNION)) {
         return fmt::format("{}()", cpp_name(elem));
     }
@@ -333,24 +333,6 @@ static int member_count(const ptree* obj) {
     int count = 0;
     if (obj) {
         for (const ptree* elem : obj->members) {
-            if (elem->kind == N_MEMBER) {
-                ++count;
-            }
-        }
-        for (auto parent : obj->parents) {
-            count += member_count(parent);
-        }
-    }
-    return count;
-}
-
-static int original_member_count(const ptree* obj) {
-    if (!obj->original_members) {
-        return member_count(obj);
-    }
-    int count = 0;
-    if (obj) {
-        for (const ptree* elem : obj->original_members) {
             if (elem->kind == N_MEMBER) {
                 ++count;
             }
@@ -1152,8 +1134,7 @@ static void rec_cpl_gen_member_arguments(
         );
     }
     if (obj->kind == N_STRUCT || obj->kind == N_VALUETYPE || obj->kind == N_EXCEPTION) {
-        const ptree* members = obj->original_members ? obj->original_members : obj->members;
-        for (const ptree* elem : members) {
+        for (const ptree* elem : obj->members) {
             if (elem->kind != N_MEMBER) {
                 continue;
             }
@@ -1365,80 +1346,6 @@ static void cpl_gen_member_copy_ctor(
     }
 }
 
-/// \breif one external parameter to many internal members
-/// the traces in \param members must all derive from the same member, i.e. .front() is
-/// identical for all traces.
-static void
-emit_merged_getters_and_setters(const ptree* obj, const std::vector<MergeTrace>& members) {
-    const ptree* parameter = members.front().front();
-    emit_docs(&g_hd_file, parameter);
-
-    std::string parameter_name = cplpl_param_name(obj, name(parameter));
-    std::string parameter_type = cplpl_member_type(parameter, parameter->super);
-
-    std::stringstream safe_get{};
-    std::stringstream safe_set{};
-    safe_get << fmt::format("{} res = {{}};\n", type_name(parameter));
-    for (const MergeTrace& trace : members) {
-        const ptree* elem = trace.back();
-        const ptree* parameter_members = base_type_of(parameter)->members;
-        const ptree* elem_in_parameter_type = *std::find_if(
-            begin(parameter_members),
-            end(parameter_members),
-            [&elem](const ptree* needle) { return elem->name == needle->name; }
-        );
-        // get [\note this has to copy elem into parameter (inverted), and therefore can not
-        // rely on safe_copy() & co.]
-        std::vector<std::string> preconditions{};
-        std::string copy_exp;
-        if (is_shared(elem) && !is_shared(elem_in_parameter_type)) {
-            preconditions.push_back(fmt::format("{}", private_member_name(elem)));
-            copy_exp = fmt::format("*{}", private_member_name(elem));
-        } else if (is_optional(elem) && !is_optional(elem_in_parameter_type)) {
-            preconditions.push_back(fmt::format("{}.has_value()", private_member_name(elem)));
-            copy_exp = fmt::format("{}.value()", private_member_name(elem));
-        }
-        if (!preconditions.empty()) {
-            safe_get << fmt::format(
-                "if ({}) {{\nres.{} = {};\n}}\n",
-                combine_conds(preconditions, " && "),
-                public_member_name(elem),
-                copy_exp
-            );
-        } else {  // elem & parameter are similar enough that safe_copy() is probably fine
-            safe_get << fmt::format(
-                "res.{} = {};\n",
-                public_member_name(elem),
-                safe_copy(private_member_name(elem), false, {elem})
-            );
-        }
-        // set
-        safe_set << fmt::format(
-            "{} = {};\n", private_member_name(elem), safe_copy(parameter_name, false, trace)
-        );
-    }
-    safe_get << "return "
-             << (is_shared(parameter) ? "std::unique_ptr<decltype(res)>{new decltype(res) {res}}"
-                                      : "res")
-             << ";\n";
-
-    mprintf(
-        &g_hd_file,
-        "const {} {}() const {{\n{}}}\n",
-        parameter_type,
-        name(parameter),
-        safe_get.str()
-    );
-    mprintf(
-        &g_hd_file,
-        "void {} (const {}& {}) {{\n{}}}\n\n",
-        name(parameter),
-        parameter_type,
-        parameter_name,
-        safe_set.str()
-    );
-}
-
 static void emit_getters_and_setters(const ptree* obj, const ptree* parameter) {
     emit_docs(&g_hd_file, parameter);
 
@@ -1542,17 +1449,8 @@ static void cpl_gen_access_functions(const ptree* obj) {
         }
     }
     for (const AccessSignature& signature : signatures) {
-        const bool is_merged =
-            signature.merge_traces != decltype(signature.merge_traces){{signature.parameter}};
         const ptree* parameter = signature.parameter;
-        if (parameter->kind != N_MEMBER) {
-            continue;
-        }
-        // indirect access functions (one to many)
-        if (is_merged) {
-            emit_merged_getters_and_setters(obj, signature.merge_traces);
-        }
-        if (!CommandLineOption::cpp_access_functions()) {
+        if (parameter->kind != N_MEMBER || !CommandLineOption::cpp_access_functions()) {
             continue;
         }
         // direct access functions (one to one)
@@ -2515,7 +2413,7 @@ static void cpl_union_c_def(const ptree* obj) {
 }
 
 static void cpl_struct_c_def(const ptree* obj) {
-    int number_of_elems = original_member_count(obj);
+    int number_of_elems = member_count(obj);
     auto body_name = scoped_name(obj, namespace_of(obj));
     auto param = cplpl_param_name(obj, "other");
     auto p_first = cplpl_param_name(obj, "first");

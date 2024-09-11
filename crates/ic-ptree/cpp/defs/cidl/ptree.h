@@ -153,7 +153,6 @@ struct ptree {
     ptree* members{nullptr};
     ptree* annotations{nullptr};
     ptree* generated{nullptr};
-    ptree* original_members{nullptr};  //!< before merging \@merge
     const ptree* original{nullptr};
     std::vector<ptree*> parents;
     std::vector<ptree*> getraises;

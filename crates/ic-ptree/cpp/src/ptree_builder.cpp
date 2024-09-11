@@ -30,7 +30,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
-#include <functional>
 #include <iostream>
 #include <map>
 #include <set>
@@ -45,8 +44,6 @@
 #include "cidl/symbols.h"
 
 using namespace intercom::cidl;
-
-bool string_ends_with(const std::string& pragma, const std::string& end);
 
 extern std::map<std::string, ptree**> g_builtin_annotation_map;
 
@@ -120,6 +117,16 @@ static const node_kind TYPE_KIND[] = {
     N_ALIAS,
     N_UNDEF,
 };
+
+static ptree*
+update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem);
+
+static void update_value_type_array_rec(
+    parser_state* state,
+    numeric& value,
+    const ptree* array,
+    size_t depth = 0
+);
 
 static ptree* value_type(const numeric& value) {
     switch (value.kind()) {
@@ -370,68 +377,6 @@ static std::string format_docstring(const char* text, int placement) {
     return res.str();
 }
 
-ptree* create_doc(parser_state* state, const char* ident, int post_doc) {
-    auto doc_ident = "@doc";
-    auto text_ident = "text";
-    create_annotation_start(state, doc_ident);
-    ptree* param = create_node(state, N_CONST, text_ident);
-    param->type = &unbounded_string_type;
-    param->value.val.str(ident);
-    int placement_value = post_doc ? AFTER_DECLARATION : BEFORE_DECLARATION;
-    // if (placement_value == BEFORE_DECLARATION && ident.pos.line <= 1) {
-    //     placement_value = BEGIN_FILE;
-    // }
-    auto placement_ident = "placement";
-    ptree* placement = create_node(state, N_CONST, placement_ident);
-    ptree* placement_kind = nullptr;
-    auto placement_type =
-        try_lookup_node(state, "::intercom::annotations::doc::PlacementKind", ANY_KIND);
-    if (placement_type) {
-        for (auto p : placement_type->members) {
-            if (value<int>(p->value) == placement_value) {
-                placement_kind = p;
-                break;
-            }
-        }
-    }
-    if (placement_kind) {
-        placement->type = placement_kind->type;
-        placement->value.val.node(placement_kind);
-    } else {
-        placement->value.val.l(placement_value);
-        placement->type = &long_type;
-    }
-    param = append_node(state, param, placement);
-
-    auto ann = create_annotation_finish(state, param);
-    return ann;
-}
-
-ptree* create_node(parser_state* state, node_kind kind, const char* ident) {
-    std::shared_ptr<ptree> p(new ptree);
-    p->kind = kind;
-    if (ident) {
-        p->name = ident;
-    }
-    p->super = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];
-    p->scope = p->super;
-    p->file_name = state->current_input_file;
-    p->flags |= OPT_EMIT_CODE;
-    if (!state->include_context.empty()) {
-        p->included_from = state->include_context[state->include_context.size() - 1];
-    }
-
-    state->allocated_nodes.push_back(p);
-    return p.get();
-}
-
-ptree* duplicate_node(parser_state* state, const ptree* node) {
-    std::shared_ptr<ptree> p(new ptree);
-    state->allocated_nodes.push_back(p);
-    *p = *node;
-    return p.get();
-}
-
 static ptree*
 deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, ptree*>& alloc);
 
@@ -488,10 +433,6 @@ deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, p
     for (auto gen : node->generated) {
         p->generated = append_to_list(p->generated, deep_clone_node(state, gen, alloc));
     }
-    for (auto orig : node->original_members) {
-        p->original_members =
-            append_to_list(p->original_members, deep_clone_node(state, orig, alloc));
-    }
     for (auto parent : node->parents) {
         p->parents.emplace_back(deep_clone_node(state, parent, alloc));
     }
@@ -524,26 +465,7 @@ deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, p
     return p.get();
 }
 
-// Duplicates an entire tree, creating new nodes for all types and values.
-ptree* duplicate_tree(parser_state* state, const ptree* node) {
-    ptree* dup = nullptr;
-    std::map<const ptree*, ptree*> allocated;
-    for (; node; node = node->next) {
-        dup = append_to_list(dup, deep_clone_node(state, node, allocated));
-    }
-    return dup;
-}
-
-extern "C" ptree* try_lookup_node(parser_state* state, const char* name, const node_kind kind[]) {
-    std::string lc_name = tolower(name);
-    ptree* type = lookup_name(state, lc_name, state->type_map, kind, state->context.size());
-    if (type == nullptr) {
-        type = lookup_name(state, lc_name, state->type_dcl_map, kind, state->context.size());
-    }
-    return type;
-}
-
-ptree* create_or_lookup_type(parser_state* state, node_kind kind, const char* ident) {
+static ptree* create_or_lookup_type(parser_state* state, node_kind kind, const char* ident) {
     std::string lc_name = "::" + tolower(ident);
     if (!state->context.empty()) {
         lc_name = lc_scoped_name(state->context[state->context.size() - 1][0]) + lc_name;
@@ -554,7 +476,7 @@ ptree* create_or_lookup_type(parser_state* state, node_kind kind, const char* id
     return state->type_map[lc_name];
 }
 
-ptree* create_sub_array_value_type(parser_state* state, const ptree* array, uint32_t depth) {
+static ptree* create_sub_array_value_type(parser_state* state, const ptree* array, uint32_t depth) {
     declarator sub_array_type_decl;
     sub_array_type_decl.bounds = array->bounds;
     sub_array_type_decl.bounds.erase(
@@ -564,21 +486,12 @@ ptree* create_sub_array_value_type(parser_state* state, const ptree* array, uint
     return sub_arr;
 }
 
-bool is_ref(const numeric& value) {
+static bool is_ref(const numeric& value) {
     return value.kind() == PTREE_KIND && value.val.node()->kind == N_CONST &&
            !value.val.node()->name.empty();
 }
 
-ptree* update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem);
-
-void update_value_type_array_rec(
-    parser_state* state,
-    numeric& value,
-    const ptree* array,
-    size_t depth = 0
-);
-
-void update_value_type(parser_state* state, numeric& value, const ptree* type) {
+static void update_value_type(parser_state* state, numeric& value, const ptree* type) {
     if (is_ref(value)) {
         return;  // type updated in annotate(...)
     }
@@ -636,7 +549,8 @@ void update_value_type(parser_state* state, numeric& value, const ptree* type) {
     }
 }
 
-ptree* update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem) {
+static ptree*
+update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem) {
     for (auto parent : type->parents) {
         value_elem = update_value_type_struct_rec(state, parent, value_elem);
     }
@@ -660,12 +574,8 @@ ptree* update_value_type_struct_rec(parser_state* state, const ptree* type, ptre
     return value_elem;
 }
 
-void update_value_type_array_rec(
-    parser_state* state,
-    numeric& value,
-    const ptree* array,
-    size_t depth
-) {
+static void
+update_value_type_array_rec(parser_state* state, numeric& value, const ptree* array, size_t depth) {
     if (value.kind() != PTREE_KIND) {
         return;
     }
@@ -698,7 +608,7 @@ void update_value_type_array_rec(
 }
 
 template <typename T, typename Pred>
-bool all_in_range(T begin, const T& end, const Pred& pred) {
+static bool all_in_range(T begin, const T& end, const Pred& pred) {
     for (; begin != end; begin++) {
         if (!pred(begin)) {
             return false;
@@ -707,7 +617,7 @@ bool all_in_range(T begin, const T& end, const Pred& pred) {
     return true;
 }
 
-bool has_all_type_values(ptree* type, const std::set<int>& values) {
+static bool has_all_type_values(ptree* type, const std::set<int>& values) {
     if (type->kind == N_ALIAS) {
         return has_all_type_values(type->type, values);
     }
@@ -726,7 +636,7 @@ bool has_all_type_values(ptree* type, const std::set<int>& values) {
     return false;
 }
 
-ptree* assign_members(parser_state* state, ptree* node, ptree* members) {
+static ptree* assign_members(parser_state* state, ptree* node, ptree* members) {
     node->members = members;
 
     // Apply any trailing doxy annotation at the head of the member list to the node.
@@ -741,7 +651,7 @@ ptree* assign_members(parser_state* state, ptree* node, ptree* members) {
     return node;
 }
 
-void update_enum_values(parser_state* state, ptree* node) {
+static void update_enum_values(parser_state* state, ptree* node) {
     if (node->members) {
         std::vector<ptree*> member_vec;
         for (auto m : node->members) {
@@ -776,7 +686,7 @@ void update_enum_values(parser_state* state, ptree* node) {
     }
 }
 
-void update_bitmask_values(ptree* node) {
+static void update_bitmask_values(ptree* node) {
     node->flags |= OPT_ENUMERATED;
     for (auto m : node->members) {
         auto bit_value = integer_value(m->value);
@@ -788,61 +698,88 @@ void update_bitmask_values(ptree* node) {
     }
 }
 
-void get_recursive_members_rec(
-    ptree* original_node,
-    ptree* member_node,
-    std::vector<ptree*>& trace,
-    std::vector<std::vector<ptree*>>& traces,
-    std::set<ptree*>& visited,
-    const std::function<bool(ptree* node)>& give_up_trace
-) {
-    const ptree* base_type = base_type_of(member_node);
-    if (!base_type || base_type->kind == N_ENUM || base_type->kind == N_BITSET ||
-        base_type->kind == N_BITMASK || give_up_trace(member_node)) {
-        return;
-    }
-    trace.push_back(member_node);
-    // cache trace to recursive type
-    if (base_type == original_node) {
-        traces.push_back(trace);
-        trace.pop_back();
-        return;
-    }
-    // using type instead of member_node:
-    // traversing the same type more than once is probably not interesting (within the same trace).
-    // e.g. ignores steps "(B->)+" in traces shaped like "A->B->(B->)+A" (regex)
-    visited.insert(member_node->type);
-    // check unvisited adjacent members
-    for (ptree* member : base_type->members) {
-        if (visited.find(member->type) == visited.end()) {
-            get_recursive_members_rec(original_node, member, trace, traces, visited, give_up_trace);
+extern "C" {
+
+ptree* duplicate_node(parser_state* state, const ptree* node) {
+    std::shared_ptr<ptree> p(new ptree);
+    state->allocated_nodes.push_back(p);
+    *p = *node;
+    return p.get();
+}
+
+ptree* create_doc(parser_state* state, const char* ident, int post_doc) {
+    auto doc_ident = "@doc";
+    auto text_ident = "text";
+    create_annotation_start(state, doc_ident);
+    ptree* param = create_node(state, N_CONST, text_ident);
+    param->type = &unbounded_string_type;
+    param->value.val.str(ident);
+    int placement_value = post_doc ? AFTER_DECLARATION : BEFORE_DECLARATION;
+    // if (placement_value == BEFORE_DECLARATION && ident.pos.line <= 1) {
+    //     placement_value = BEGIN_FILE;
+    // }
+    auto placement_ident = "placement";
+    ptree* placement = create_node(state, N_CONST, placement_ident);
+    ptree* placement_kind = nullptr;
+    auto placement_type =
+        try_lookup_node(state, "::intercom::annotations::doc::PlacementKind", ANY_KIND);
+    if (placement_type) {
+        for (auto p : placement_type->members) {
+            if (value<int>(p->value) == placement_value) {
+                placement_kind = p;
+                break;
+            }
         }
     }
-    visited.erase(member_node->type);
-    trace.pop_back();
+    if (placement_kind) {
+        placement->type = placement_kind->type;
+        placement->value.val.node(placement_kind);
+    } else {
+        placement->value.val.l(placement_value);
+        placement->type = &long_type;
+    }
+    param = append_node(state, param, placement);
+
+    auto ann = create_annotation_finish(state, param);
+    return ann;
 }
 
-/// returns vector of traces to nested member of same type as node.
-/// \param give_up_trace(ptree* node) will stop further search into given member node if true.
-///     \verbatim by default it will give up on members marked @external or @shared i.e. it ignores
-///     recursion through pointers \endvarbatim
-inline std::vector<std::vector<ptree*>> get_recursive_members(
-    ptree* node,
-    const std::function<bool(ptree* node)>& give_up_trace = [](const ptree* n
-                                                            ) { return is_shared(n) != 0; }
-) {
-    std::vector<std::vector<ptree*>> traces{};
-    std::vector<ptree*> trace{};
-    std::set<ptree*> visited{};
-
-    for (ptree* member : node->members) {
-        get_recursive_members_rec(node, member, trace, traces, visited, give_up_trace);
+ptree* create_node(parser_state* state, node_kind kind, const char* ident) {
+    std::shared_ptr<ptree> p(new ptree);
+    p->kind = kind;
+    if (ident) {
+        p->name = ident;
+    }
+    p->super = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];
+    p->scope = p->super;
+    p->file_name = state->current_input_file;
+    p->flags |= OPT_EMIT_CODE;
+    if (!state->include_context.empty()) {
+        p->included_from = state->include_context[state->include_context.size() - 1];
     }
 
-    return traces;
+    state->allocated_nodes.push_back(p);
+    return p.get();
 }
 
-extern "C" {
+// Duplicates an entire tree, creating new nodes for all types and values.
+ptree* duplicate_tree(parser_state* state, const ptree* node) {
+    ptree* dup = nullptr;
+    std::map<const ptree*, ptree*> allocated;
+    for (; node; node = node->next) {
+        dup = append_to_list(dup, deep_clone_node(state, node, allocated));
+    }
+    return dup;
+}
+
+ptree* try_lookup_node(parser_state* state, const char* name, const node_kind kind[]) {
+    std::string lc_name = tolower(name);
+    ptree* type = lookup_name(state, lc_name, state->type_map, kind, state->context.size());
+    if (type == nullptr) {
+        type = lookup_name(state, lc_name, state->type_dcl_map, kind, state->context.size());
+    }
+    return type;
+}
 
 void clear_namespace_nodes(parser_state* state) {
     auto it = state->type_map.begin();
@@ -1691,9 +1628,6 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                 update_value_type(state, ann->value, base_type_of(node));
                 ann->members->value = ann->value;
             }
-            if (ann->type == annotation_type_merge && base_type_of(node)->kind != N_STRUCT) {
-                state->error() << "@merge on non struct " << node << " is not allowed";
-            }
             ann->super = ann->scope = node;
             ann = ann->next;
         }
@@ -2287,11 +2221,6 @@ void validate_node(parser_state* state, ptree* node) {
             if (is_optional(node)) {
                 state->error() << "Optional members cannot be used as keys";
             }
-
-            // Disallow using merged members as keys
-            if (is_merged(node)) {
-                state->error() << "Merged members cannot be used as keys";
-            }
         }
 
         // Default labels are only allowed when the non-default labels do not cover the
@@ -2416,15 +2345,6 @@ void validate_tree(parser_state* state, ptree* node) {
         }
 
         validate_node(state, node);
-
-        // validate node's original_members that are not in node's members
-        for (ptree* original_member : node->original_members) {
-            if (is_merged(original_member) &&
-                std::find(begin(node->members), end(node->members), original_member) ==
-                    end(node->members)) {
-                validate_node(state, original_member);
-            }
-        }
         validate_tree(state, node->members);
         node = node->next;
     }

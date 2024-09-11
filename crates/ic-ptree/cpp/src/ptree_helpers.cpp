@@ -267,11 +267,6 @@ bool is_optional(const ptree* node, AnnotationGetter get) {
     return ann ? integer_value(ann->members->value) : false;
 }
 
-bool is_merged(const ptree* node, AnnotationGetter get) {
-    struct ptree* ann = get(node, annotation_type_merge);
-    return ann ? integer_value(ann->members->value) : false;
-}
-
 bool is_must_understand(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_must_understand);
     return ann ? integer_value(ann->members->value) : false;
@@ -671,15 +666,10 @@ int get_bit_size_of_type(const ptree* node) {
 std::vector<MergeTrace> rec_get_merge_traces(const ptree* node, MergeTrace trace) {
     std::vector<MergeTrace> traces = {};
     auto base = base_type_of(node);
-    auto members = base->original_members ? base->original_members : base->members;
+    auto members = base->members;
     for (const ptree* elem : members) {
         trace.push_back(elem);
-        if (is_merged(elem)) {
-            auto sub_traces = rec_get_merge_traces(elem, trace);
-            traces.insert(traces.end(), sub_traces.begin(), sub_traces.end());
-        } else {
-            traces.push_back(trace);
-        }
+        traces.push_back(trace);
         trace.pop_back();
     }
     return traces;
@@ -687,21 +677,11 @@ std::vector<MergeTrace> rec_get_merge_traces(const ptree* node, MergeTrace trace
 
 std::vector<MergeTrace> get_merge_traces(const ptree* node) {
     const ptree* base = base_type_of(node);
-    if (!base->original_members) {
-        std::vector<MergeTrace> flat_traces{};
-        for (const ptree* member : base->members) {
-            flat_traces.push_back({member});
-        }
-        return flat_traces;
+    std::vector<MergeTrace> flat_traces{};
+    for (const ptree* member : base->members) {
+        flat_traces.push_back({member});
     }
-    auto traces = rec_get_merge_traces(node, {});
-    // replace the last member in every trace with the internal equivalent.
-    size_t i = 0U;
-    for (const ptree* elem : base_type_of(node)->members) {
-        traces[i++].back() = elem;
-    }
-    assert(i == traces.size());
-    return traces;
+    return flat_traces;
 }
 
 bool is_doc_with_placement(const ptree* annotation, int placement) {

@@ -30,7 +30,6 @@
 #include <algorithm>
 #include <filesystem>
 
-#include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
@@ -320,10 +319,7 @@ static void emit_package(const ptree* node, const PrettyPrinter& pkg, ic_list_t*
     Printer content;
     emit_prelude(content, node);
     content(pkg);
-
-    std::filesystem::path out = CommandLineOption::proto_target_directory();
-    out /= file;
-    ic_push_source(list, out.string().c_str(), content.str().c_str());
+    ic_push_source(list, file.c_str(), content.str().c_str());
 }
 
 static void recurse_node(Printer& out, const ptree* node) {

@@ -58,7 +58,11 @@ void ic_codegen_proto(const parse_result* result, ic_list_t* list) {
     intercom::cidl::code_gen_proto(result, list);
 }
 
-void ic_codegen_cpp(const parse_result* result, struct cpp_options_t options) {
+void ic_codegen_cpp(
+    const parse_result* result,
+    struct cpp_options_t options,
+    struct ic_list_t* list
+) {
     intercom::cidl::Config config;
     if (options.header_ext) {
         config.header_subfolder = options.header_ext;
@@ -74,7 +78,7 @@ void ic_codegen_cpp(const parse_result* result, struct cpp_options_t options) {
     config.cpp_no_stream_op = options.no_stream_op;
     config.use_fmtlib = options.use_fmt;
 
-    intercom::cidl::code_gen_dds_cplpl(result, config);
+    intercom::cidl::code_gen_dds_cplpl(result, config, list);
 }
 
 void ic_codegen_python(const parse_result* result, ic_list_t* list) {

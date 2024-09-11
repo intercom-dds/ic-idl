@@ -159,7 +159,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 }
 
                 // Lower the AST to a HIR
-                let hir = ic_hir::lower_ast(v.tree.clone());
+                // let hir = ic_hir::lower_ast(v.tree.clone());
 
                 // if options.unstable.hir_dump {
                 //     println!("{hir:#?}");
@@ -231,7 +231,15 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File
                 }
             }
         }
-        let files = backend(merged);
+
+        // Invoke the backend and update the file paths
+        let files = backend(merged).into_iter().map(|v| match v {
+            File::Generated { path, source } => File::Generated {
+                path: dir.join(path),
+                source,
+            },
+            _ => v,
+        });
         generated.extend(files);
     }
     Ok(generated)

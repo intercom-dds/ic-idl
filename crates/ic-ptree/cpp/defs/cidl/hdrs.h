@@ -53,9 +53,9 @@ inline void code_gen_json_schema(const parse_result*) {}
 
 void code_gen_json(const parse_result* result, ic_list_t* list);
 
-void code_gen_dds_cplpl(const parse_result* result);
+void code_gen_dds_cplpl(const parse_result* result, ic_list_t* list);
 
-void code_gen_dds_cplpl(const parse_result* result, const Config& options);
+void code_gen_dds_cplpl(const parse_result* result, const Config& options, ic_list_t* list);
 
 void code_gen_python(const parse_result* result, ic_list_t* list);
 

@@ -1160,5 +1160,9 @@ fn bindgen_test_layout_cpp_options_t() {
     );
 }
 extern "C" {
-    pub fn ic_codegen_cpp(result: *const parse_result, options: cpp_options_t);
+    pub fn ic_codegen_cpp(
+        result: *const parse_result,
+        options: cpp_options_t,
+        list: *mut ic_list_t,
+    );
 }

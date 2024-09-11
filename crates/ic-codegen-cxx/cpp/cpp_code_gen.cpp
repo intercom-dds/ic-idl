@@ -35,6 +35,7 @@
 #include "cidl/hdrs.h"
 #include "cidl/memf.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 
@@ -3183,7 +3184,7 @@ static void cgcpl_recurs(const ptree* obj) {
     }
 }
 
-static void cpl_saveit(const ptree* tree, const std::string& module) {
+static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* list) {
     auto include_prefix = CommandLineOption::header_subfolder();
     if (!module.empty()) {
         static struct memf s_pk_file;
@@ -3330,22 +3331,13 @@ static void cpl_saveit(const ptree* tree, const std::string& module) {
             "#endif\n\n"
         );
 
-        savememf(
-            &g_prebd_file,
-            nullptr,
-            CommandLineOption::c_target_directory(),
-            "",
-            "{}.cpp",
-            cname.c_str()
-        );
-        savememf(
-            &s_pk_file,
-            nullptr,
-            CommandLineOption::c_target_directory(),
-            include_prefix,
-            "{}.{}",
-            module.c_str()
-        );
+        // TODO: include prefix
+        auto header_path = fmt::format("{}.{}", module, CommandLineOption::cpp_header_postfix());
+        ic_push_source(list, header_path.c_str(), s_pk_file.memfile);
+
+        auto src_path = fmt::format("{}.{}", module, CommandLineOption::cpp_header_postfix());
+        ic_push_source(list, src_path.c_str(), g_prebd_file.memfile);
+
         mreset(&s_pk_file);
     }
 
@@ -3361,17 +3353,21 @@ static void cpl_saveit(const ptree* tree, const std::string& module) {
     mreset(&g_hd_fmt_file);
 }
 
-void intercom::cidl::code_gen_dds_cplpl(const parse_result* result) {
+void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, ic_list_t* list) {
     for (auto include : result->includes) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
         std::string file_name = trim_include_name(include->name, true);
-        cpl_saveit(result->tree, file_name);
+        cpl_saveit(result->tree, file_name, list);
     }
 }
 
-void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, const Config& options) {
+void intercom::cidl::code_gen_dds_cplpl(
+    const parse_result* result,
+    const Config& options,
+    ic_list_t* list
+) {
     auto& config = CommandLineOption::get_instance();
     config = options;
-    code_gen_dds_cplpl(result);
+    code_gen_dds_cplpl(result, list);
 }

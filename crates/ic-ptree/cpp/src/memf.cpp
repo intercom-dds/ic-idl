@@ -254,45 +254,4 @@ void mprintflv(struct memf** memfl, std::string_view format, std::string_view st
     }
 }
 
-void savememf(
-    struct memf* memf,
-    struct memf* memf2,
-    const char* basedir,
-    const char* filedir,
-    const char* frmt,
-    const char* module
-) {
-    size_t size;
-    auto filename =
-        fmt::format(fmt::runtime(frmt), module, CommandLineOption::cpp_header_postfix());
-    std::string fullfilename;
-    size = memf->memp - memf->memfile;
-
-    if (filedir && *filedir) {
-        fullfilename = fmt::format("{}/{}/{}", basedir, filedir, filename);
-    } else {
-        fullfilename = fmt::format("{}/{}", basedir, filename);
-    }
-
-    // TODO(idarcar); ic_push_source
-    // if (!CommandLineOption::list_only()) {
-    // NOLINTNEXTLINE
-    if (false) {
-        std::stringstream content;
-        if (memf2) {
-            content.write(
-                memf2->memfile, static_cast<std::streamsize>(memf2->memp - memf2->memfile)
-            );
-        }
-        content.write(memf->memfile, static_cast<std::streamsize>(size));
-        // write_if_changed(fullfilename, content.str());
-    } else {
-        if (filedir && *filedir) {
-            fmt::print("{}/{}\n", filedir, filename);
-        } else {
-            fmt::print("{}\n", filename);
-        }
-    }
-}
-
 }  // namespace intercom::cidl

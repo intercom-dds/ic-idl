@@ -86,8 +86,6 @@ class CommandLineOption {
 
     static const char* cpp_header_postfix();
     static const char* dll_exp_sym();
-    static const char* cs_target_directory();
-    static const char* c_target_directory();
     static const char* java_package_prefix();
     static const char* python_global_postfix();
     static const char* ada_package_prefix();

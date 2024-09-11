@@ -89,7 +89,11 @@ struct cpp_options_t {
     uint8_t use_fmt;
 };
 
-void ic_codegen_cpp(const struct parse_result* result, struct cpp_options_t options);
+void ic_codegen_cpp(
+    const struct parse_result* result,
+    struct cpp_options_t options,
+    struct ic_list_t* list
+);
 
 #ifdef __cplusplus
 }

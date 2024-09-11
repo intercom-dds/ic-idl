@@ -127,7 +127,7 @@ static std::string file_name(const ptree* node) {
     file.replace_extension(".proto");
 
     auto str = file.string();
-    std::replace(str.begin(), str.end(), '/', '\\');
+    std::replace(str.begin(), str.end(), '\\', '/');
     return str;
 }
 

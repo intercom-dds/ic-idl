@@ -25,20 +25,22 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::path::PathBuf;
+
 pub mod case;
 mod ffi;
 pub mod printer;
 
 pub enum File {
     Dep(String),
-    Generated { path: String, source: String },
+    Generated { path: PathBuf, source: String },
 }
 
 impl std::fmt::Display for File {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             File::Dep(v) => write!(f, "dep:{v}"),
-            File::Generated { path, .. } => write!(f, "gen:{path}"),
+            File::Generated { path, .. } => write!(f, "gen:{}", path.display()),
         }
     }
 }

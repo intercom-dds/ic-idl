@@ -40,8 +40,13 @@ pub fn codegen_cpp(result: &ParseResult) -> Vec<File> {
         use_fmt: 0,
     };
 
+    let mut generated = vec![];
     unsafe {
-        ic_ptree::sys::ic_codegen_cpp(result.as_raw(), options);
+        ic_ptree::sys::ic_codegen_cpp(
+            result.as_raw(),
+            options,
+            std::ptr::addr_of_mut!(generated).cast::<_>(),
+        );
     }
-    vec![]
+    generated
 }

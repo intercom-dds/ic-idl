@@ -32,6 +32,7 @@
 
 #include "cidl/hdrs.h"
 #include "cidl/pretty_printer.h"
+#include "color.h"
 
 using namespace intercom::cidl;
 
@@ -65,7 +66,7 @@ class ScopedPrinter {
         auto parent = m_scope;
         while (parent) {
             auto fmt = parent->m_scope ? "| " : "|-";
-            m_out << fmt::format(fg(fmt::terminal_color::blue), fmt);
+            m_out << ic::color::blue << fmt << ic::color::reset;
             parent = parent->m_scope;
         }
     }
@@ -138,25 +139,35 @@ static std::string kind_name(node_kind kind) {
 
 static std::string decl(const ptree* node) {
     auto kind = kind_name(node->kind);
-    return fmt::format(fmt::emphasis::bold | fg(fmt::terminal_color::green), "{} ", kind);
+    std::stringstream ss;
+    ss << ic::color::bold << ic::color::green << kind << " " << ic::color::reset;
+    return ss.str();
 }
 
 static std::string addr(const ptree* node) {
-    return fmt::format(fg(fmt::terminal_color::blue), "{} ", fmt::ptr(node));
+    std::stringstream ss;
+    ss << ic::color::blue << node << " " << ic::color::reset;
+    return ss.str();
 }
 
 static std::string attrib(const char* name) {
-    return fmt::format(fg(fmt::terminal_color::magenta), "{} ", name);
+    std::stringstream ss;
+    ss << ic::color::magenta << name << " " << ic::color::reset;
+    return ss.str();
 }
 
 static std::string name(const ptree* node) {
+    std::stringstream ss;
     auto name = node->name.empty() ? "<anon>" : node->name;
-    return fmt::format(fmt::emphasis::bold | fg(fmt::terminal_color::cyan), "{} ", name);
+    ss << ic::color::bold << ic::color::cyan << name << " " << ic::color::reset;
+    return ss.str();
 }
 
 static std::string type(const ptree* node, const ptree* scope) {
+    std::stringstream ss;
     auto name = idl_scoped_name(node, scope);
-    return fmt::format(fg(fmt::terminal_color::green), "'{}' ", name);
+    ss << ic::color::green << name << " " << ic::color::reset;
+    return ss.str();
 }
 
 static bool is_complex_type(const ptree* node) {
@@ -233,9 +244,9 @@ static void emit_value(ScopedPrinter& out, numeric val, std::set<const ptree*>& 
             while ((pos = str.find('\n')) != std::string::npos) {
                 str.replace(pos, str.length(), "\\n");
             }
-            out << fmt::format(fg(fmt::terminal_color::bright_magenta), "'= \"{}\"' ", str);
+            out << ic::color::bright_magenta << "'= \"" << str << "\"' " << ic::color::reset;
         } else {
-            out << fmt::format(fg(fmt::terminal_color::bright_magenta), "'= {}' ", str);
+            out << ic::color::bright_magenta << "'= " << str << "' " << ic::color::reset;
         }
     }
 }

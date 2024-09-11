@@ -39,8 +39,7 @@ extern "C" struct parse_result {
     const ptree* tree{nullptr};
     std::set<const ptree*> includes;
     std::set<std::string> modules;
-    int error_count{0};
-    int warning_count{0};
+    size_t error_count{0};
     std::string msg;
     std::shared_ptr<parser_state> state;
 };

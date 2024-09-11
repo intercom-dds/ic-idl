@@ -66,7 +66,6 @@ parse_result clone_tree(const parse_result* result) {
 
     auto clone = *reinterpret_cast<parse_result*>(ic_parser_result(state, dup));
     clone.error_count = result->error_count;
-    clone.warning_count = result->warning_count;
     clone.modules = result->modules;
     clone.msg = result->msg;
     for (auto inc : result->includes) {

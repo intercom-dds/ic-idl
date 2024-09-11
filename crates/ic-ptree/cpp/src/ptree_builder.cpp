@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <set>

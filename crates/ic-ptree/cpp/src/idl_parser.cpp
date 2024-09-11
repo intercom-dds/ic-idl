@@ -638,7 +638,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
 
         // Merge errors
         out.error_count += to_merge_result.error_count;
-        out.warning_count += to_merge_result.warning_count;
         if (!to_merge_result.msg.empty()) {
             if (!out.msg.empty()) {
                 out.msg += "\n";
@@ -664,6 +663,14 @@ parser_state* ic_parser_create() {
 parse_result* ic_parser_result(parser_state* state, ptree* tree) {
     auto result = new parse_result();
     state->top_level.next = tree;
+    result->tree = tree;
     result->state.reset(state);
+    result->error_count = state->errors.size();
+
+    std::stringstream msg;
+    for (const auto& err : state->errors) {
+        msg << err << '\n';
+    }
+    result->msg = msg.str();
     return result;
 }

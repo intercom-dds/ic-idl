@@ -40,8 +40,6 @@
 #include "cidl/ptree_helpers.h"
 #include "utils/md5.h"
 
-static const char* get_constant_name(const char* name);
-
 static void idl_scoped_name_rec(
     const ptree* node,
     const ptree* scope,
@@ -300,64 +298,3 @@ std::string lc_scoped_name(const ptree* p) {
 }
 
 }  // namespace intercom::cidl
-
-static const char* get_constant_name(const char* name) {
-    if (name == boolean_type.name) {
-        return boolean_type.name.c_str();
-    }
-    if (name == octet_type.name) {
-        return octet_type.name.c_str();
-    }
-    if (name == int8_type.name) {
-        return int8_type.name.c_str();
-    }
-    if (name == char_type.name) {
-        return char_type.name.c_str();
-    }
-    if (name == wchar_type.name) {
-        return wchar_type.name.c_str();
-    }
-    if (name == short_type.name) {
-        return short_type.name.c_str();
-    }
-    if (name == ushort_type.name) {
-        return ushort_type.name.c_str();
-    }
-    if (name == long_type.name) {
-        return long_type.name.c_str();
-    }
-    if (name == ulong_type.name) {
-        return ulong_type.name.c_str();
-    }
-    if (name == longlong_type.name) {
-        return longlong_type.name.c_str();
-    }
-    if (name == ulonglong_type.name) {
-        return ulonglong_type.name.c_str();
-    }
-    if (name == float_type.name) {
-        return float_type.name.c_str();
-    }
-    if (name == double_type.name) {
-        return double_type.name.c_str();
-    }
-    if (name == ldouble_type.name) {
-        return ldouble_type.name.c_str();
-    }
-    if (name == fixed_type.name) {
-        return fixed_type.name.c_str();
-    }
-    if (name == unbounded_string_type.name) {
-        return unbounded_string_type.name.c_str();
-    }
-    if (name == unbounded_wstring_type.name) {
-        return unbounded_wstring_type.name.c_str();
-    }
-    if (name == any_type.name) {
-        return any_type.name.c_str();
-    }
-    if (name == object_type.name) {
-        return object_type.name.c_str();
-    }
-    return nullptr;
-}

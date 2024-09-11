@@ -44,7 +44,7 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
         Some((last, rest)) if !rest.is_empty() => {
             let body = rest
                 .iter()
-                .map(|v| v.yellow())
+                .map(Colorize::yellow)
                 .collect::<Vec<_>>()
                 .join(", ");
 

@@ -77,10 +77,7 @@ impl Hash for CaseString<'_> {
 #[derive(Debug)]
 pub struct CaseMap<'a, T>(HashMap<CaseString<'a>, T>);
 
-impl<'a, T> CaseMap<'a, T>
-where
-    T: Hash + Eq,
-{
+impl<'a, T> CaseMap<'a, T> {
     pub fn insert<K>(&mut self, key: K, value: T) -> Option<T>
     where
         K: Into<Cow<'a, str>>,

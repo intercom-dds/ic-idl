@@ -33,19 +33,15 @@ use std::ops::{Neg, Not};
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
+use ic_alloc::insensitive::CaseMap;
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::visit::{visit_item, Visitor};
 use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
 use crate::hir::*;
+use crate::resolve::Resolver;
 use crate::{Context, TypeId};
-
-pub struct Scope {
-    symbols: HashMap<String, TypeId>,
-}
-
-pub struct Resolver {}
 
 #[derive(Debug)]
 pub struct Interp<'a> {
@@ -206,12 +202,58 @@ impl Interp<'_> {
 /// typedefs with a single declarator each. More opinionated transformations of
 /// the source code happens as subsequent passes on the `HIR`.
 ///
-/// Note: avoid triggering errors here unless absolutely necessary.
-/// Non-critical warnings and errors are better suited as lints.
+/// Note: non-critical warnings and errors are better implemented as lints.
 struct Lower<'a> {
     ctx: &'a mut Context,
     order: Vec<TypeId>,
     decls: Vec<TypeId>,
+    resolver: Resolver,
+
+    // Do we need to know the ID? don't think so? I think maybe the name is
+    // enough?
+    // global: Scope,
+    scope: Vec<Scope>,
+}
+
+// enum Scope {
+//     Module,
+//     Interface,
+// }
+//
+// struct SymbolTable {
+//     table: HashMap<String, Symbol>,
+//     parent: Option<SymbolTable>,
+// }
+
+#[derive(Debug)]
+struct Scope {
+    name: String,
+    // symbols: CaseMap<DefId>,
+    // scopes: CaseMap<Scope>,
+}
+
+// with_scope can work if we separate out some parts... if we can...
+fn lower_mod(ctx: &mut Lower<'_>, def: ic_syntax::ModuleDef) -> DefId {
+    // how can we avoid this?
+    ctx.start_scope(&def.ident);
+
+    let definitions: Vec<_> = def
+        .definitions
+        .into_iter()
+        .map(|v| ctx.lower_item(v))
+        .collect();
+
+    ctx.finish_scope();
+
+    let id = ctx.ctx.definitions.alloc_with_id(|id| Def {
+        id,
+        ident: def.ident.clone(),
+        annotations: vec![],
+        span: def.span,
+        kind: DefKind::Module(ModuleTy { definitions }),
+    });
+    ctx.register_type(&def.ident, id);
+    id
 }
 
 impl<'a> Lower<'a> {
@@ -220,6 +262,9 @@ impl<'a> Lower<'a> {
             ctx,
             order: vec![],
             decls: vec![],
+            resolver: Resolver::default(),
+            scope: vec![],
+            // global: CaseMap::default(),
         }
     }
 
@@ -368,65 +413,6 @@ impl<'a> Lower<'a> {
         }
     }
 
-    // TODO: we need to register symbols too, for things like constants...
-    fn register_type<I>(&mut self, name: I, ty: TypeId)
-    where
-        I: Into<String>,
-    {
-        let name = name.into();
-        if name.is_empty() {
-            tracing::error!("attempted to register unnamed type");
-            return;
-        }
-
-        // TODO: Must handle forward dcls and check they are of the same type,
-        // i.e. not a struct fwd dcl to a union def.
-        match self.ctx.symbols.entry(name) {
-            Entry::Occupied(v) => {
-                // TODO: should report info about span of first reg
-                tracing::error!("duplicate registration of {}", v.key());
-            }
-            Entry::Vacant(v) => {
-                tracing::info!("registering type `{}`, id={ty:?}", v.key());
-                v.insert(ty);
-            }
-        }
-    }
-
-    // /// Constructs an array type.
-    // fn lower_array(&mut self, mut ty: TypeId, bounds: &[ic_syntax::Expr]) -> TypeId {
-    //     // TODO: write a test for the order here... so that [1][2][3] maps correctly
-    //     for bound in bounds {
-    //         // TODO: should we deduplicate these types?
-    //         // Also, should they even be "types" in the traditional sense...
-    //         // they probably have to.
-    //         //
-    //         // Unless..
-    //         // No, they don't? We could have definitions and types as separate
-    //         // things. So a Ty can point to a TypeId (definition).
-    //         let len = self.bound_expr(bound);
-    //         let array = Type::Array { ty, len };
-    //         tracing::info!("creating array type: {array:?}");
-    //         ty = self.ctx.types.alloc(array);
-    //     }
-    //     ty
-    // }
-    //
-    // fn array_type(&mut self, mut ty: TypeId, bounds: &[ic_syntax::Expr]) -> Ty {
-    //     // Start with the outermost bound
-    //     let mut bounds = bounds.iter().rev();
-    //     let mut ty = Ty::Item(ty);
-    //
-    //     for b in bounds {
-    //         let len = self.bound_expr(b);
-    //         ty = Ty::Array {
-    //             ty: Box::new(ty),
-    //             len,
-    //         };
-    //     }
-    //     ty
-    // }
-    //
     // // Forward declarations are somewhat tricky. Types that depend on the
     // // forward-declared type should point to the type definition and not the
     // // declaration, but at this point we're not guaranteed to have the seen the
@@ -445,41 +431,6 @@ impl<'a> Lower<'a> {
     //             ty: id,
     //         })
     //     })
-    // }
-    //
-    // fn lower_const(&mut self, symbol: ic_syntax::ConstDef) -> ConstTy {
-    //     let ty = self.ctx.resolve_type(&symbol.ty);
-    //     let value = match symbol.value {
-    //         ic_syntax::Expr::InitList(v) => {
-    //             todo!()
-    //             // Numeric::InitList(v.values.iter().map(|v| self.eval_expr(v)).collect())
-    //         }
-    //         v => self.eval_expr(&v),
-    //     };
-    //
-    //     ConstTy {
-    //         ident: symbol.ident,
-    //         span: symbol.span,
-    //         ty,
-    //         value,
-    //     }
-    // }
-
-    // // A typedef with multiple declarators will be expanded to multiple,
-    // // individual typedefs, each with one declarator.
-    // fn lower_alias(&mut self, symbol: ic_syntax::AliasDef) -> TypeId {
-    //     let ty = self.ctx.resolve_type(&symbol.ty);
-    //     let id = self.ctx.types.alloc_with_id(|id| {
-    //         Type::Alias(AliasTy {
-    //             id,
-    //             ident: symbol.ident.clone(),
-    //             span: symbol.span,
-    //             ty,
-    //         })
-    //     });
-    //
-    //     self.register_type(symbol.ident.name.clone(), id);
-    //     id
     // }
 
     fn lookup_path(&mut self, path: ic_syntax::Path) -> DefId {
@@ -502,6 +453,15 @@ impl<'a> Lower<'a> {
             };
         }
         ty
+    }
+
+    fn qualified_name(&self, ident: &Ident) -> String {
+        let mut segments: Vec<&str> = vec![];
+        for scope in &self.scope {
+            segments.push(&scope.name);
+        }
+        segments.push(&ident.name);
+        segments.join("::")
     }
 
     /// Destructures a declarator into an (ident, type) tuple. For arrays, this
@@ -539,38 +499,113 @@ impl<'a> Lower<'a> {
         }
     }
 
-    fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
-        let definitions: Vec<_> = def
-            .definitions
-            .into_iter()
-            .map(|v| self.lower_item(v))
-            .collect();
+    fn with_scope<R>(&mut self, ident: &Ident, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.scope.push(Scope {
+            name: ident.name.clone(),
+        });
+        let ret = f(self);
+        self.scope.pop();
+        ret
+    }
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+    fn start_scope(&mut self, ident: &Ident) {
+        // TODO: need a pointer (or something) to the current scope...
+
+        // but popping a scope shouldn't cause anything to disappear...
+        // it needs to be persistent
+
+        // self.scope.push(value)
+        // self.scope.push(Scope {
+        //     name: ident.name.clone(),
+        //     segm
+        // })
+    }
+
+    fn finish_scope(&mut self) {
+        // self.scope.pop();
+    }
+
+    // TODO: we need to register symbols too, for things like constants...
+    fn register_type(&mut self, ident: &Ident, ty: TypeId) {
+        // FIXME: this is already checked in the sanity lint. this can either
+        // be removed or asserted
+        if ident.name.is_empty() {
+            tracing::error!("attempted to register unnamed type");
+            return;
+        }
+
+        // TODO: Must handle forward dcls and check they are of the same type,
+        // i.e. not a struct fwd dcl to a union def.
+        let name = self.qualified_name(ident);
+        tracing::info!("registering item: {name}");
+
+        match self.ctx.symbols.entry(name) {
+            Entry::Occupied(v) => {
+                // TODO: should report info about span of first reg
+                tracing::error!("duplicate registration of {}", v.key());
+            }
+            Entry::Vacant(v) => {
+                v.insert(ty);
+            }
+        }
+    }
+
+    // TODO: do we even need a type map? if we implement the scope mechanism?
+    // ...yeah, we do...
+    // we need a way to look at modules in the parent scope, and then traverse
+    // down from there.
+    //
+    // TODO: maybe a with_scope helper function that pushes/pops + register
+    // everything?
+    //
+    // doing it this way means we don't register the module until it's done.
+    // is that fine?
+    //
+    // we can avoid this by just not filling out the definitions, and instead
+    // assigning it later? so leave an empty vec then populate it afterwards
+
+    fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
+        // how can we avoid this?
+        // self.start_scope(&def.ident);
+        let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
+            def.definitions
+                .into_iter()
+                .map(|v| this.lower_item(v))
+                .collect()
+        });
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
-            ident: def.ident,
+            ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Module(ModuleTy { definitions }),
-        })
+        });
+        self.register_type(&def.ident, id);
+        id
     }
 
+    // Keep a stack of IDs for the current scope? probably...
     fn lower_struct(&mut self, def: ic_syntax::StructDef) -> DefId {
-        let members = def
-            .members
-            .into_iter()
-            .flat_map(|v| self.lower_field(v))
-            .collect();
-
         let parent = def.parent.map(|v| self.lookup_path(v));
+        let members = self.with_scope(&def.ident, |this| {
+            def.members
+                .into_iter()
+                .flat_map(|v| this.lower_field(v))
+                .collect()
+        });
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
-            ident: def.ident,
+            ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Struct(StructTy { parent, members }),
-        })
+        });
+
+        self.register_type(&def.ident, id);
+        // self.ctx.define(None, id);
+        id
     }
 
     fn lower_field(&mut self, field: ic_syntax::Field) -> Vec<Member> {
@@ -591,11 +626,12 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_except(&mut self, def: ic_syntax::ExceptDef) -> DefId {
-        let members = def
-            .members
-            .into_iter()
-            .flat_map(|v| self.lower_field(v))
-            .collect();
+        let members = self.with_scope(&def.ident, |this| {
+            def.members
+                .into_iter()
+                .flat_map(|v| this.lower_field(v))
+                .collect()
+        });
 
         self.ctx.definitions.alloc_with_id(|id| Def {
             id,
@@ -779,7 +815,7 @@ impl<'a> Lower<'a> {
 
     fn lower_item(&mut self, item: ic_syntax::Item) -> DefId {
         use ic_syntax::Item;
-        tracing::info!("lowering item: {item:?}");
+        tracing::debug!("lowering item: {item:?} in scope {:?}", self.scope);
 
         let id = match item {
             // Item::AnnotationValue(_) => todo!(),
@@ -890,10 +926,14 @@ where
     for item in ast {
         state.lower_item(item);
     }
+    // assert!(
+    //     state.scope.is_empty(),
+    //     "a scope was opened but never closed",
+    // );
     debug_assert!(
         all_unique(&state.order),
         "order of types contains duplicate entries",
     );
-    tracing::info!("lowered: {:#?}", state.ctx);
+    tracing::info!("lowered: {:?}", state.ctx);
     state.order
 }

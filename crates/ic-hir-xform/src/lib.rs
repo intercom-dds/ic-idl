@@ -31,5 +31,7 @@
 //!
 //! Each transformation will consume the HIR and construct a new one.
 
+#![allow(unused, dead_code)]
+
 pub mod nested;
 pub mod rename;

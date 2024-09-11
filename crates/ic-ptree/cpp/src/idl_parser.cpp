@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <set>

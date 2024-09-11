@@ -25,55 +25,127 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::hash::Hash;
 
-use ic_syntax::visit::Visitor;
-use ic_syntax::*;
-use visit::{visit_module, visit_struct, visit_struct_field};
+use ic_syntax::{AnnotationDef, AnnotationField, Expr};
 
-pub struct SymbolTable {}
+use crate::{Context, Def, DefId};
 
-#[derive(Default, Debug)]
-struct Scope {
-    fwd_decls: HashMap<String, ()>,
-    types: HashMap<String, ()>,
+/// Wrapper around `String` that performs case-insensitive hashing of the
+/// underlying string.
+#[derive(Debug, Eq)]
+pub struct Lc(pub String);
+
+impl PartialEq for Lc {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(&other.0)
+    }
 }
 
-// TODO: Scope or absolute names?
-#[derive(Default, Debug)]
+impl std::hash::Hash for Lc {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_ascii_lowercase().hash(state)
+    }
+}
+
+#[derive(Default)]
 pub struct Resolver {
-    modules: HashSet<String>,
-    fwd_decls: HashMap<String, ()>,
-    types: HashMap<String, ()>,
-    scopes: Vec<Scope>,
+    // TODO: insert decl and then replace with def?
+    pub definitions: HashMap<Lc, DefId>,
 }
 
 impl Resolver {
-    fn is_defined(&self, ty: &Type) -> bool {
-        let name = util::type_name(ty);
-        self.types.contains_key(&name) || self.fwd_decls.contains_key(&name)
+    pub fn declare(&mut self, _scope: Option<DefId>, _def: &Def) {
+        // Already defined? Check kind
+        // if self.definitions.get(&(_def.ident.name.clone())).is_some() {
+        // TODO: check kind
+        // }
+        todo!()
+    }
+
+    pub fn define(&mut self, _scope: Option<DefId>, def: &Def) {
+        let lc = Lc(def.ident.name.clone());
+        match self.definitions.entry(lc) {
+            Entry::Occupied(v) => {
+                tracing::error!(
+                    "duplicate registration of `{}`, first registered as `{}`",
+                    def.ident.name,
+                    v.key().0,
+                );
+            }
+            Entry::Vacant(v) => {
+                tracing::info!("registered type");
+                v.insert(def.id);
+            }
+        }
     }
 }
 
-impl<'a> Visitor<'a> for Resolver {
-    fn visit_module(&mut self, module: &'a ModuleDef) {
-        self.modules.insert(module.ident.name.clone());
-        visit_module(self, module);
+/// Determines if two annotation definitions are consistent. The standard
+/// doesn't clarify what "consistent" means, but I've interpreted it as the two
+/// definitions being identical.
+fn is_consistent(ctx: &mut Context, lhs: &AnnotationDef, rhs: &AnnotationDef) -> bool {
+    if !lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name) || lhs.params.len() != rhs.params.len()
+    {
+        return false;
     }
 
-    fn visit_forward_decl(&mut self, decl: &'a Decl) {
-        self.fwd_decls.insert(decl.ident.name.clone(), ());
-    }
-
-    fn visit_struct(&mut self, def: &'a StructDef) {
-        self.types.insert(def.ident.name.clone(), ());
-        visit_struct(self, def);
-    }
-
-    fn visit_struct_field(&mut self, def: &'a Field) {
-        if !self.is_defined(&def.ty) {
-            eprintln!("type not defined");
+    lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
+        (AnnotationField::Member(lhs), AnnotationField::Member(rhs)) => {
+            decl_consistent(ctx, &lhs.names, &rhs.names)
+                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
         }
-        visit_struct_field(self, def);
+        // (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
+        //     // TODO: check value
+        //     lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name)
+        //         && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+        // }
+        (lhs, rhs) => lhs.disc() == rhs.disc(),
+    })
+}
+
+/// Determines if two sets of declarators are semantically consistent. They
+/// must resolve to the same types with the same bounds for them to be
+/// considered consistent.
+fn decl_consistent(
+    ctx: &mut Context,
+    lhs: &[ic_syntax::Declarator],
+    rhs: &[ic_syntax::Declarator],
+) -> bool {
+    use ic_syntax::Declarator;
+
+    lhs.iter().zip(rhs.iter()).all(|v| match v {
+        (Declarator::Simple(lhs), Declarator::Simple(rhs)) => {
+            lhs.name.eq_ignore_ascii_case(&rhs.name)
+        }
+        (Declarator::Array(lhs), Declarator::Array(rhs)) => {
+            // TODO: should check each expr
+            lhs.bounds.len() == rhs.bounds.len()
+                && lhs.ident.name.eq_ignore_ascii_case(&rhs.ident.name)
+        }
+        _ => false,
+    })
+}
+
+/// Determines if two types are semantically consistent. Collection types are
+/// treated as consistent if they have the same bound and resolve to the same
+/// element type.
+fn is_type_consistent(ctx: &mut Context, lhs: &ic_syntax::Type, rhs: &ic_syntax::Type) -> bool {
+    use ic_syntax::Type;
+
+    // TODO: eval and check bounds
+    match (lhs, rhs) {
+        (Type::Sequence(lhs), Type::Sequence(rhs)) => {
+            is_type_consistent(ctx, lhs.ty.as_ref(), rhs.ty.as_ref())
+        }
+        (Type::String(lhs), Type::String(rhs)) => lhs.wide == rhs.wide,
+        (Type::Map(lhs), Type::Map(rhs)) => {
+            is_type_consistent(ctx, lhs.key.as_ref(), rhs.key.as_ref())
+                && is_type_consistent(ctx, lhs.value.as_ref(), rhs.value.as_ref())
+        }
+        (Type::Path(lhs), Type::Path(rhs)) => ctx.resolve_path(lhs) == ctx.resolve_path(rhs),
+        _ => lhs.disc() == rhs.disc(),
     }
 }

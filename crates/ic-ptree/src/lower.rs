@@ -454,7 +454,10 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
 
 pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item]) -> *mut sys::ptree {
     unsafe {
-        inject_builtin(state);
-        lower_item_list(state, ast)
+        // inject_builtin(state);
+        let include = create_ident("foo.idl");
+        sys::create_include_start(state, include.as_ptr());
+        let tree = lower_item_list(state, ast);
+        sys::create_include_finish(state, tree)
     }
 }

@@ -159,14 +159,14 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 }
 
                 // Lower the AST to a HIR
-                let hir = ic_hir::lower_ast(v.tree);
+                let hir = ic_hir::lower_ast(v.tree.clone());
 
                 // if options.unstable.hir_dump {
                 //     println!("{hir:#?}");
                 // }
 
-                // let ptree = ic_ptree::lower_ast(&v.tree);
-                // return try_ptree(options, &ptree);
+                let ptree = ic_ptree::lower_ast(&v.tree);
+                return try_ptree(options, &ptree);
             }
             Err(e) => {
                 pretty::emit_errors(&e, &vfs);

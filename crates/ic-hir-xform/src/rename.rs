@@ -27,7 +27,7 @@
 
 use ic_emit::case::Case;
 use ic_hir::fold::Fold;
-use ic_hir::hir::{ConstTy, Item};
+// use ic_hir::hir::{ConstTy, Item};
 
 /// Defines the naming convention to use for types of a specific kind.
 ///
@@ -49,33 +49,33 @@ pub struct Target {
 /// Logic for renaming items in the HIR to conform to a specific naming
 /// convention. This can be used to e.g. make all types in a data model follow
 /// the PEP-8 style guide for Python.
-pub fn rename_all<I>(items: I, target: Target)
-where
-    I: IntoIterator<Item = Item>,
-{
-    let mut renamer = Renamer { target };
-    for item in items {
-        renamer.fold_item(item);
-    }
-}
+// pub fn rename_all<I>(items: I, target: Target)
+// where
+//     I: IntoIterator<Item = Item>,
+// {
+//     let mut renamer = Renamer { target };
+//     for item in items {
+//         renamer.fold_item(item);
+//     }
+// }
 
 struct Renamer {
     target: Target,
 }
 
 impl Fold for Renamer {
-    fn fold_item(&mut self, item: Item) -> Item {
-        if let Item::Const(def) = item {
-            Item::Const(self.fold_const(def))
-        } else {
-            item
-        }
-    }
+    // fn fold_item(&mut self, item: Item) -> Item {
+    //     if let Item::Const(def) = item {
+    //         Item::Const(self.fold_const(def))
+    //     } else {
+    //         item
+    //     }
+    // }
 
-    fn fold_const(&mut self, mut ty: ConstTy) -> ConstTy {
-        if let Some(case) = self.target.constant {
-            ty.ident.name = ic_emit::case::convert(&ty.ident.name, case);
-        }
-        ty
-    }
+    // fn fold_const(&mut self, mut ty: ConstTy) -> ConstTy {
+    //     if let Some(case) = self.target.constant {
+    //         ty.ident.name = ic_emit::case::convert(&ty.ident.name, case);
+    //     }
+    //     ty
+    // }
 }

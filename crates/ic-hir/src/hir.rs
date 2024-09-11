@@ -75,9 +75,12 @@ intercom_cts::bitmask! {
         /// Marker for built-in types.
         IS_BUILTIN = 1 << 2,
 
+        /// Marker for synthesized types.
+        IS_SYNTHESIZED = 1 << 3,
+
         /// Indicates whether the type consists of members that can form a
         /// total order.
-        TOTAL_ORDER = 1 << 3,
+        TOTAL_ORDER = 1 << 4,
     }
 }
 

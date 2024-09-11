@@ -293,9 +293,10 @@ where
     Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
 }
 
-pub fn from_cursor<'src>(
-    mut iter: TokenIter<'src, State>,
-) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + use<'src>> {
+#[must_use]
+pub fn from_cursor(
+    mut iter: TokenIter<'_, State>,
+) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
     let iter = std::iter::from_fn(move || {
         loop {
             let next = iter.next()?;

@@ -268,7 +268,7 @@ impl convert::Convert for Warnings {
                 (arg.as_str(), true)
             };
 
-            let bit = match arg {
+            match arg {
                 "all" => warnings.all = enabled,
                 "annotation" => warnings.annotation = enabled,
                 "unknown-annotation" => warnings.unknown_annotation = enabled,
@@ -279,7 +279,7 @@ impl convert::Convert for Warnings {
                     warn!("unknown warning '{}'", format!("-W{arg}").yellow());
                     continue;
                 }
-            };
+            }
         }
         Ok(warnings)
     }

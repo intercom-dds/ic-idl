@@ -233,6 +233,8 @@ pub enum Kind {
 }
 
 impl Kw {
+    #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn from_str(str: &str) -> Option<Self> {
         let kind = match str {
             "any" => Kw::Any,

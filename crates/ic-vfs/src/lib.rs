@@ -122,7 +122,7 @@ impl SourceMap {
     /// only happen if you have mixed up IDs between multiple `SourceMap`
     /// instances.
     pub fn file_info(&self, id: FileId) -> &FileInfo {
-        self.sources.get(id).unwrap()
+        self.sources.get(id)
     }
 
     #[must_use]

@@ -146,7 +146,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                     let input = std::fs::read_to_string(&file).unwrap();
                     ic_diagnostic::emit_diagnostic(
                         &mut buf,
-                        &file.to_string_lossy().to_string(),
+                        file.to_string_lossy().as_ref(),
                         &input,
                         diag,
                     )?;
@@ -187,6 +187,7 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File
         (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
         (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
         (&options.codegen.json_out, ic_codegen_json::codegen_json),
+        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
         (
             &options.codegen.proto_out,
             ic_codegen_protobuf::codegen_proto,
@@ -195,7 +196,6 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File
             &options.codegen.python_out,
             ic_codegen_python::codegen_python,
         ),
-        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
     ];
 
     let mut generated = vec![];
@@ -217,7 +217,7 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File
                 path: dir.join(path),
                 source,
             },
-            _ => v,
+            File::Dep(_) => v,
         });
         generated.extend(files);
     }

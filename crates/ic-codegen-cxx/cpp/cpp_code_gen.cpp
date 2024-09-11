@@ -3256,7 +3256,6 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, ic_list_t* l
     for (auto include : result->includes) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
-        std::cout << include->name << std::endl;
         std::string file_name = trim_include_name(include->name, true);
         cpl_saveit(result->tree, file_name, list);
     }

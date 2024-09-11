@@ -460,6 +460,13 @@ static parse_result get_parse_result(parser_state* state) {
 
     parse_result result;
     result.tree = state->top_level.next;
+
+    std::stringstream msg;
+    for (const auto& err : state->errors) {
+        msg << err << '\n';
+    }
+    result.msg = msg.str();
+
     tree_modules(state->top_level.next, result.modules);
     tree_includes(state->top_level.next, result.includes);
     return result;
@@ -650,16 +657,6 @@ parser_state* ic_parser_create() {
 }
 
 parse_result* ic_parser_result(parser_state* state, ptree* tree) {
-    auto result = new parse_result();
     state->top_level.next = tree;
-    result->tree = tree;
-    result->state.reset(state);
-    result->error_count = state->errors.size();
-
-    std::stringstream msg;
-    for (const auto& err : state->errors) {
-        msg << err << '\n';
-    }
-    result->msg = msg.str();
-    return result;
+    return new parse_result(get_parse_result(state));
 }

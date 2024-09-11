@@ -420,12 +420,6 @@ extern "C" {
     pub static mut annotation_type_jaus: *mut ptree;
 }
 extern "C" {
-    pub fn get_symbol(
-        arg1: *mut parser_state,
-        name: *const ::std::os::raw::c_char,
-    ) -> *const ::std::os::raw::c_char;
-}
-extern "C" {
     pub fn append_node(arg1: *mut parser_state, list: *mut ptree, node: *mut ptree) -> *mut ptree;
 }
 extern "C" {
@@ -477,7 +471,11 @@ extern "C" {
     pub fn duplicate_tree(arg1: *mut parser_state, node: *const ptree) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_include_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char);
+    pub fn create_include_start(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+        is_system_inc: ::std::os::raw::c_int,
+    );
 }
 extern "C" {
     pub fn create_array_type(

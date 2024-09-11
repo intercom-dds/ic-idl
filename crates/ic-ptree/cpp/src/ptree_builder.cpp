@@ -1018,29 +1018,16 @@ static std::string fixed_name(const numeric& bound1, const numeric& bound2) {
     return str.str();
 }
 
-void create_include_start(parser_state* state, const char* ident) {
+void create_include_start(parser_state* state, const char* ident, int is_system_include) {
     ptree* p = nullptr;
-    std::string new_ident;
-    {
-        // Remove surrounding brackets
-        std::string new_name = ident;
-        new_name = new_name.substr(1, new_name.size() - 2);
-        {
-            auto it = state->symbol_map.find(new_name);
-            if (it == state->symbol_map.end()) {
-                it = state->symbol_map.insert(new_name).first;
-            }
-            new_ident = *it;
-        }
-    }
-    std::string scoped_name = std::string("::<") + new_ident;
+    std::string scoped_name = std::string("::<") + ident;
     auto it = state->type_map.find(scoped_name);
     if (it != state->type_map.end()) {
         p = it->second;
     }
     if (!p) {
-        p = create_node(state, N_INCLUDE, new_ident.c_str());
-        p->flags |= (ident[0] == '<') ? OPT_SYSTEM_INCLUDE : 0;
+        p = create_node(state, N_INCLUDE, ident);
+        p->flags |= is_system_include ? OPT_SYSTEM_INCLUDE : 0;
         state->type_map[scoped_name] = p;
     }
     state->include_context.push_back(p);

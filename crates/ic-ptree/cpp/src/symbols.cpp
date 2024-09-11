@@ -30,7 +30,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
-#include <set>
 #include <sstream>
 #include <string>
 
@@ -38,7 +37,6 @@
 #include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 #include "cidl/keywords.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "utils/md5.h"
 
@@ -59,24 +57,6 @@ static void idl_scoped_name_rec(
         }
         out << node->name;
     }
-}
-
-extern "C" {
-const char* get_symbol(struct parser_state* state, const char* name) {
-    if (!name || name[0] == '\0') {
-        return "";
-    }
-    const char* constant_name = get_constant_name(name);
-    if (constant_name) {
-        return constant_name;
-    }
-    auto it = state->symbol_map.find(name);
-    if (it == state->symbol_map.end()) {
-        state->symbol_map.insert(name);
-        it = state->symbol_map.find(name);
-    }
-    return it->c_str();
-}
 }
 
 namespace intercom::cidl {

@@ -37,8 +37,6 @@ extern "C" {
 
 struct parser_state;
 
-const char* get_symbol(struct parser_state*, const char* name);
-
 struct ptree* append_node(struct parser_state*, struct ptree* list, struct ptree* node);
 
 struct ptree* append_enum_node(struct parser_state*, struct ptree* list, struct ptree* node);
@@ -63,7 +61,7 @@ struct ptree* duplicate_node(struct parser_state*, const struct ptree* node);
 
 struct ptree* duplicate_tree(struct parser_state*, const struct ptree* node);
 
-void create_include_start(struct parser_state*, const char* ident);
+void create_include_start(struct parser_state*, const char* ident, int is_system_inc);
 
 struct ptree*
 create_array_type(struct parser_state*, struct declarator* declarator, struct ptree* type);
@@ -304,7 +302,6 @@ extern "C" struct parser_state {
     std::map<std::string, ptree*> type_dcl_map;
     std::vector<std::shared_ptr<ptree>> allocated_nodes;
     std::vector<std::shared_ptr<declarator>> allocated_decl;
-    std::set<std::string> symbol_map;
     std::list<numeric> numeric_map;
     std::string current_input_file;
     std::vector<std::string> errors;

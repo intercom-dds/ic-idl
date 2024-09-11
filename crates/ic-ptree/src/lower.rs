@@ -456,7 +456,8 @@ pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item]) -> *mut sys::ptree
     unsafe {
         // inject_builtin(state);
         let include = create_ident("foo.idl");
-        sys::create_include_start(state, include.as_ptr());
+        // TODO: properly propagate include info
+        sys::create_include_start(state, include.as_ptr(), 0);
         let tree = lower_item_list(state, ast);
         sys::create_include_finish(state, tree)
     }

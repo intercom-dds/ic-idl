@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cctype>
 #include <cstring>
+#include <iostream>
 
 #include "InterCOM/version.h"
 #include "cidl/commandline.h"
@@ -3233,7 +3234,7 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
         auto header_path = fmt::format("{}.{}", module, CommandLineOption::cpp_header_postfix());
         ic_push_source(list, header_path.c_str(), s_pk_file.memfile);
 
-        auto src_path = fmt::format("{}.{}", module, CommandLineOption::cpp_header_postfix());
+        auto src_path = fmt::format("{}.cpp", module);
         ic_push_source(list, src_path.c_str(), g_prebd_file.memfile);
 
         mreset(&s_pk_file);
@@ -3255,6 +3256,7 @@ void intercom::cidl::code_gen_dds_cplpl(const parse_result* result, ic_list_t* l
     for (auto include : result->includes) {
         g_current_include = include;
         cgcpl_recurs(result->tree);
+        std::cout << include->name << std::endl;
         std::string file_name = trim_include_name(include->name, true);
         cpl_saveit(result->tree, file_name, list);
     }

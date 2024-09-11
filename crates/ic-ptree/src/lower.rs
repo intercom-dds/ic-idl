@@ -75,7 +75,7 @@ fn path_str(path: &Path) -> String {
         vec![]
     };
     str.extend(path.segments.iter().map(|v| v.name.as_str()));
-    str.join("")
+    str.join("::")
 }
 
 fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {

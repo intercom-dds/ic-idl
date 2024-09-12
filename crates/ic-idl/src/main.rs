@@ -213,10 +213,11 @@ fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<Fi
         .iter()
         .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
     {
+        let dir = std::path::absolute(dir)?;
         if options.purge_dirs {
-            if let Ok(v) = std::fs::metadata(dir) {
+            if let Ok(v) = std::fs::metadata(&dir) {
                 if v.is_dir() {
-                    std::fs::remove_dir_all(dir)?;
+                    std::fs::remove_dir_all(&dir)?;
                 }
             }
         }

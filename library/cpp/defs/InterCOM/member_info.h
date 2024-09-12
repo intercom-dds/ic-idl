@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "bounded.h"
+
 namespace intercom {
 
 struct TypeInfo;
@@ -96,6 +98,74 @@ TYPETRAITS_PRIMITIVE(uint64_t);
 TYPETRAITS_PRIMITIVE(float);
 TYPETRAITS_PRIMITIVE(double);
 TYPETRAITS_PRIMITIVE(long double);
+
+namespace detail {
+template <typename T>
+struct dimensions_inner {
+    static constexpr uint32_t value = 0;  // NOLINT
+};
+
+template <typename T, size_t N>
+struct dimensions_inner<std::array<T, N>> {
+    static constexpr uint32_t value = dimensions_inner<T>::value + 1;  // NOLINT
+};
+
+template <typename T>
+using array_dimensions = std::integral_constant<uint32_t, dimensions_inner<T>::value>;
+}  // namespace detail
+
+template <typename T>
+struct TypeTraits<std::vector<T>> {
+    using value_type = T;
+    using element_traits = TypeTraits<value_type>;
+    using is_bounded = std::false_type;
+};
+
+template <typename T, uint32_t N>
+struct TypeTraits<bounded_vector<T, N>> {
+    using value_type = T;
+    using element_traits = TypeTraits<value_type>;
+    using is_bounded = std::true_type;
+    using bound = std::integral_constant<uint32_t, N>;
+};
+
+template <typename CharT>
+struct TypeTraits<std::basic_string<CharT>> {
+    using value_type = CharT;
+    using element_traits = TypeTraits<value_type>;
+    using is_bounded = std::false_type;
+};
+
+template <typename T, uint32_t N>
+struct TypeTraits<bounded_basic_string<T, N>> {
+    using value_type = T;
+    using element_traits = TypeTraits<value_type>;
+    using is_bounded = std::true_type;
+    using bound = std::integral_constant<uint32_t, N>;
+};
+
+template <typename T, size_t N>
+struct TypeTraits<std::array<T, N>> {
+    using value_type = T;
+    using element_traits = TypeTraits<value_type>;
+    using dimensions = detail::array_dimensions<std::array<T, N>>;
+    using bound = std::integral_constant<uint32_t, N>;
+};
+
+template <typename K, typename V>
+struct TypeTraits<std::map<K, V>> {
+    using key_traits = TypeTraits<K>;
+    using value_traits = TypeTraits<V>;
+    using is_bounded = std::false_type;
+};
+
+template <typename K, typename V, uint32_t N>
+struct TypeTraits<bounded_map<K, V, N>> {
+    using key_traits = TypeTraits<K>;
+    using value_traits = TypeTraits<V>;
+    using is_bounded = std::true_type;
+    using bound = std::integral_constant<uint32_t, N>;
+};
 
 }  // namespace intercom
 

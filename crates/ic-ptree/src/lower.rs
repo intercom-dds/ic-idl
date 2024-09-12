@@ -30,6 +30,7 @@
 use std::ffi::{self, CString};
 use std::ptr;
 
+use ic_parse::SourceMap;
 use ic_syntax::{
     AnnotationField, DeclKind, Declarator, Expr, Field, InterfaceMember, Item, Label, LiteralValue,
     Op, OpKind, Param, ParamKind, Path, Type, UnionElement,
@@ -123,7 +124,6 @@ unsafe fn create_decl_list(
 }
 
 unsafe fn lower_item_list(state: *mut sys::parser_state, items: &[Item]) -> *mut sys::ptree {
-    // TODO: we need to add info about includes
     collect_with(state, sys::append_node, items, |v| unsafe {
         lower_item(state, v)
     })
@@ -165,13 +165,12 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
         Expr::Literal(v) => match v.value.clone() {
             LiteralValue::Bool(v) => sys::create_bool(state, ffi::c_int::from(v)),
             LiteralValue::Int(v) => sys::create_i64(state, v as i64, 10),
-            // LiteralValue::Int(v) => sys::create_double(v),
             LiteralValue::Char(v) => sys::create_char(state, v as ffi::c_char),
-            LiteralValue::String_(v) => {
+            LiteralValue::Float(v) => sys::create_double(state, v),
+            LiteralValue::String(v) => {
                 let str = CString::new(v).unwrap();
                 sys::create_str(state, str.as_ptr())
             }
-            LiteralValue::Null => todo!(),
         },
         Expr::Path(v) => {
             let ident = create_ident(&path_str(v));
@@ -452,13 +451,19 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     lower_item_list(state, &builtin.tree);
 }
 
-pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item]) -> *mut sys::ptree {
+pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -> *mut sys::ptree {
     unsafe {
         // inject_builtin(state);
-        let include = create_ident("foo.idl");
-        // TODO: properly propagate include info
-        sys::create_include_start(state, include.as_ptr(), 0);
-        let tree = lower_item_list(state, ast);
-        sys::create_include_finish(state, tree)
+
+        collect_with(state, sys::append_node, ast, |item| {
+            let span = ic_syntax::util::item_span(item);
+            let defined_in = format!("{}", vfs.name(span.file_id).display());
+            let include = create_ident(&defined_in);
+            println!("include: {defined_in}, {item:?}");
+
+            sys::create_include_start(state, include.as_ptr(), 0);
+            let node = lower_item(state, item);
+            sys::create_include_finish(state, node)
+        })
     }
 }

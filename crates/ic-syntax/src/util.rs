@@ -27,6 +27,7 @@
 
 use ic_vfs::FileId;
 
+use crate::ast::Item;
 use crate::{Declarator, Expr, Path, Span, Type};
 
 #[must_use]
@@ -185,4 +186,22 @@ named_item! {
 #[must_use]
 pub fn item_name<T: ItemTraits>(_: &T) -> &'static str {
     T::item_name()
+}
+
+pub fn item_span(item: &Item) -> Span {
+    match item {
+        Item::AnnotationValue(v) => v.span,
+        Item::ModuleValue(v) => v.span,
+        Item::StructValue(v) => v.span,
+        Item::UnionValue(v) => v.span,
+        Item::EnumValue(v) => v.span,
+        Item::ExceptionValue(v) => v.span,
+        Item::BitmaskValue(v) => v.span,
+        Item::BitsetValue(v) => v.span,
+        Item::ConstValue(v) => v.span,
+        Item::AliasValue(v) => v.span,
+        Item::InterfaceValue(v) => v.span,
+        Item::ValuetypeValue(v) => v.span,
+        Item::DeclValue(v) => v.span,
+    }
 }

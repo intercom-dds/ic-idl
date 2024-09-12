@@ -249,19 +249,19 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum LiteralValue {
     Bool(bool),
     Int(u64),
+    Float(f64),
     Char(char),
-    String_(String),
-    Null,
+    String(String),
 }
 
 impl LiteralValue {
     #[must_use]
     pub fn new() -> Self {
-        Self::Null
+        Self::Bool(false)
     }
 
     #[must_use]
@@ -269,9 +269,9 @@ impl LiteralValue {
         match self {
             Self::Bool(_) => crate::ast::LitKind::LitBool,
             Self::Int(_) => crate::ast::LitKind::LitInt,
+            Self::Float(_) => crate::ast::LitKind::LitFloat,
             Self::Char(_) => crate::ast::LitKind::LitChar,
-            Self::String_(_) => crate::ast::LitKind::LitString,
-            Self::Null => crate::ast::LitKind::LitFloat,
+            Self::String(_) => crate::ast::LitKind::LitString,
         }
     }
 }
@@ -281,9 +281,9 @@ impl From<crate::ast::LitKind> for LiteralValue {
         match disc {
             crate::ast::LitKind::LitBool => Self::Bool(false),
             crate::ast::LitKind::LitInt => Self::Int(0),
+            crate::ast::LitKind::LitFloat => Self::Float(0_f64),
             crate::ast::LitKind::LitChar => Self::Char('\x00'),
-            crate::ast::LitKind::LitString => Self::String_(<String>::default()),
-            _ => Self::default(),
+            crate::ast::LitKind::LitString => Self::String(<String>::default()),
         }
     }
 }
@@ -306,9 +306,9 @@ impl ::intercom_cts::Marshal for LiteralValue {
         match self {
             Self::Bool(v) => state.encode_variant(0, "bool", v),
             Self::Int(v) => state.encode_variant(1, "int", v),
-            Self::Char(v) => state.encode_variant(2, "char", v),
-            Self::String_(v) => state.encode_variant(3, "string", v),
-            _ => state.encode_null(),
+            Self::Float(v) => state.encode_variant(2, "float", v),
+            Self::Char(v) => state.encode_variant(3, "char", v),
+            Self::String(v) => state.encode_variant(4, "string", v),
         }
     }
 }
@@ -334,23 +334,27 @@ impl ::intercom_cts::Unmarshal for LiteralValue {
                 state.decode_variant(1, "int", &mut value)?;
                 Self::Int(value)
             }
+            crate::ast::LitKind::LitFloat => {
+                let mut value = 0_f64;
+                state.decode_variant(2, "float", &mut value)?;
+                Self::Float(value)
+            }
             crate::ast::LitKind::LitChar => {
                 let mut value = '\x00';
-                state.decode_variant(2, "char", &mut value)?;
+                state.decode_variant(3, "char", &mut value)?;
                 Self::Char(value)
             }
             crate::ast::LitKind::LitString => {
                 let mut value = <String>::default();
-                state.decode_variant(3, "string", &mut value)?;
-                Self::String_(value)
+                state.decode_variant(4, "string", &mut value)?;
+                Self::String(value)
             }
-            _ => Self::Null,
         };
         Ok(())
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Literal {
     pub span: crate::ast::Span,
     pub value: crate::ast::LiteralValue,
@@ -738,7 +742,7 @@ impl ::intercom_cts::decode::EnumVisitor for ExprKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InitList {
     pub values: Vec<crate::ast::NamedExpr>,
 }
@@ -784,7 +788,7 @@ impl ::intercom_cts::Unmarshal for InitList {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Expr {
     Literal(crate::ast::Literal),
     Path(crate::ast::Path),
@@ -893,7 +897,7 @@ impl ::intercom_cts::Unmarshal for Expr {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct NamedExpr {
     pub ident: Option<crate::ast::Ident>,
     pub value: crate::ast::Expr,
@@ -943,7 +947,7 @@ impl ::intercom_cts::Unmarshal for NamedExpr {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Unary {
     pub op: crate::ast::Op,
     pub expr: crate::ast::Expr,
@@ -993,7 +997,7 @@ impl ::intercom_cts::Unmarshal for Unary {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Binary {
     pub lhs: crate::ast::Expr,
     pub op: crate::ast::Op,
@@ -1093,7 +1097,7 @@ impl ::intercom_cts::Unmarshal for AnyType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct SequenceType {
     pub ty: Box<crate::ast::Type>,
     pub bound: Option<crate::ast::Expr>,
@@ -1147,7 +1151,7 @@ impl ::intercom_cts::Unmarshal for SequenceType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StringType {
     pub wide: bool,
     pub bound: Option<crate::ast::Expr>,
@@ -1201,7 +1205,7 @@ impl ::intercom_cts::Unmarshal for StringType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct MapType {
     pub key: Box<crate::ast::Type>,
     pub value: Box<crate::ast::Type>,
@@ -1259,7 +1263,7 @@ impl ::intercom_cts::Unmarshal for MapType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Fixed {
     pub total: crate::ast::Expr,
     pub fractional: crate::ast::Expr,
@@ -1309,7 +1313,7 @@ impl ::intercom_cts::Unmarshal for Fixed {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct FixedType {
     pub span: crate::ast::Span,
     pub bounds: Option<crate::ast::Fixed>,
@@ -1482,7 +1486,7 @@ impl ::intercom_cts::decode::EnumVisitor for TypeKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Type {
     /// The `any` type.
     Any(crate::ast::AnyType),
@@ -1705,7 +1709,7 @@ impl ::intercom_cts::decode::EnumVisitor for DeclaratorKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ArrayDeclarator {
     pub ident: crate::ast::Ident,
     pub bounds: Vec<crate::ast::Expr>,
@@ -1755,7 +1759,7 @@ impl ::intercom_cts::Unmarshal for ArrayDeclarator {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Declarator {
     Simple(crate::ast::Ident),
     Array(crate::ast::ArrayDeclarator),
@@ -1839,7 +1843,7 @@ impl ::intercom_cts::Unmarshal for Declarator {
 
 /// A parameter inside an applied annotation, e.g. `value=true` in
 /// `@optional(value=true)`.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationArg {
     /// Name of the parameter if one was specified.
     /// May be omitted for annotations with only a single, non-default member,
@@ -1898,7 +1902,7 @@ impl ::intercom_cts::Unmarshal for AnnotationArg {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationAppl {
     pub ident: crate::ast::Ident,
     pub span: crate::ast::Span,
@@ -1952,7 +1956,7 @@ impl ::intercom_cts::Unmarshal for AnnotationAppl {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Stmt {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -2115,7 +2119,7 @@ impl ::intercom_cts::decode::EnumVisitor for AnnotationFieldKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum AnnotationField {
     Item(Box<crate::ast::Item>),
     Member(Box<crate::ast::Field>),
@@ -2197,7 +2201,7 @@ impl ::intercom_cts::Unmarshal for AnnotationField {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -2265,7 +2269,7 @@ impl ::intercom_cts::Unmarshal for AnnotationDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ModuleDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -2333,7 +2337,7 @@ impl ::intercom_cts::Unmarshal for ModuleDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Field {
     pub names: Vec<crate::ast::Declarator>,
     pub ty: crate::ast::Type,
@@ -2383,7 +2387,7 @@ impl ::intercom_cts::Unmarshal for Field {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StructDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -2455,7 +2459,7 @@ impl ::intercom_cts::Unmarshal for StructDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Discriminator {
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub ty: crate::ast::Type,
@@ -2642,7 +2646,7 @@ impl ::intercom_cts::decode::EnumVisitor for LabelKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Label {
     Case(crate::ast::Expr),
     Default(crate::ast::Empty),
@@ -2819,7 +2823,7 @@ impl ::intercom_cts::decode::EnumVisitor for UnionElementKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionMember {
     pub ty: Box<crate::ast::Type>,
     pub decl: crate::ast::Declarator,
@@ -2915,7 +2919,7 @@ impl ::intercom_cts::Unmarshal for UnionNull {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum UnionElement {
     Member(crate::ast::UnionMember),
     Null(crate::ast::UnionNull),
@@ -2997,7 +3001,7 @@ impl ::intercom_cts::Unmarshal for UnionElement {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionField {
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     /// Case labels that map to this variant.
@@ -3052,7 +3056,7 @@ impl ::intercom_cts::Unmarshal for UnionField {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3127,7 +3131,7 @@ impl ::intercom_cts::Unmarshal for UnionDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ConstDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3203,7 +3207,7 @@ impl ::intercom_cts::Unmarshal for ConstDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Enumerator {
     pub ident: crate::ast::Ident,
     pub annotations: Vec<crate::ast::AnnotationAppl>,
@@ -3259,7 +3263,7 @@ impl ::intercom_cts::Unmarshal for Enumerator {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct EnumDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3327,7 +3331,7 @@ impl ::intercom_cts::Unmarshal for EnumDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ExceptDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3395,7 +3399,7 @@ impl ::intercom_cts::Unmarshal for ExceptDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AliasDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3469,7 +3473,7 @@ impl ::intercom_cts::Unmarshal for AliasDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bit {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3537,7 +3541,7 @@ impl ::intercom_cts::Unmarshal for Bit {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitmaskDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3605,7 +3609,7 @@ impl ::intercom_cts::Unmarshal for BitmaskDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bitfield {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3677,7 +3681,7 @@ impl ::intercom_cts::Unmarshal for Bitfield {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitsetDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -3749,7 +3753,7 @@ impl ::intercom_cts::Unmarshal for BitsetDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Attribute {
     /// Name of the attribute.
     pub ident: crate::ast::Ident,
@@ -3915,7 +3919,7 @@ impl ::intercom_cts::decode::EnumVisitor for ParamKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Param {
     /// Name of the parameter.
     pub ident: crate::ast::Ident,
@@ -3972,7 +3976,7 @@ impl ::intercom_cts::Unmarshal for Param {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Prototype {
     /// Name of the prototype.
     pub ident: crate::ast::Ident,
@@ -4038,7 +4042,7 @@ impl ::intercom_cts::Unmarshal for Prototype {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InterfaceDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -4114,7 +4118,7 @@ impl ::intercom_cts::Unmarshal for InterfaceDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValueMember {
     pub ident: crate::ast::Ident,
     pub ty: crate::ast::Type,
@@ -4168,7 +4172,7 @@ impl ::intercom_cts::Unmarshal for ValueMember {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValuetypeDef {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -4365,7 +4369,7 @@ impl ::intercom_cts::decode::EnumVisitor for DeclKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Decl {
     /// Name of the item.
     pub ident: crate::ast::Ident,
@@ -4611,7 +4615,7 @@ impl ::intercom_cts::decode::EnumVisitor for ItemKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Item {
     /// A definition of an annotation
     AnnotationValue(crate::ast::AnnotationDef),
@@ -4927,7 +4931,7 @@ impl ::intercom_cts::decode::EnumVisitor for InterfaceMemberKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum InterfaceMember {
     /// An interface attribute.
     Attr(crate::ast::Attribute),

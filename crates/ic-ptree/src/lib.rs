@@ -27,8 +27,6 @@
 
 use std::ffi::{CStr, NulError};
 
-use ic_syntax::Item;
-
 mod lower;
 pub mod sys;
 
@@ -96,10 +94,10 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
 
 /// Lowers the AST into a `ptree`. This process should be infallible, as
 /// everything should have been type checked prior to this.
-pub fn lower_ast(ast: &[Item]) -> ParseResult {
+pub fn lower_ast(ast: &ic_parse::ParseResult) -> ParseResult {
     let inner = unsafe {
         let state = sys::ic_parser_create();
-        let tree = lower::lower_ast(state, ast);
+        let tree = lower::lower_ast(state, &ast.tree, &ast.sources);
         sys::ic_parser_result(state, tree)
     };
     ParseResult { inner }

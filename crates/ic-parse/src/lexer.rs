@@ -277,6 +277,7 @@ impl From<ic_preproc::Token> for Token {
     }
 }
 
+#[must_use]
 pub fn from_iter<I>(iter: I) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)>>
 where
     I: IntoIterator<Item = ic_preproc::Token>,

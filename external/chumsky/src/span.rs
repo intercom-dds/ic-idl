@@ -36,6 +36,9 @@ pub trait Span: Clone {
     fn new(context: Self::Context, range: Range<Self::Offset>) -> Self;
 
     /// Return the span's context.
+    fn merge(start: Self::Context, end: Self::Context) -> Self::Context;
+
+    /// Return the span's context.
     fn context(&self) -> Self::Context;
 
     /// Return the start offset of the span.
@@ -52,6 +55,11 @@ impl<T: Clone + Ord> Span for Range<T> {
     fn new((): Self::Context, range: Self) -> Self {
         range
     }
+
+    fn merge(start: Self::Context, _: Self::Context) -> Self::Context {
+        start
+    }
+
     fn context(&self) -> Self::Context {}
     fn start(&self) -> Self::Offset {
         self.start.clone()
@@ -67,6 +75,9 @@ impl<C: Clone, T: Clone> Span for (C, Range<T>) {
 
     fn new(context: Self::Context, range: Range<T>) -> Self {
         (context, range)
+    }
+    fn merge(start: Self::Context, _: Self::Context) -> Self::Context {
+        start
     }
     fn context(&self) -> Self::Context {
         self.0.clone()

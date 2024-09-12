@@ -73,6 +73,11 @@ impl chumsky::Span for Span {
     }
 
     #[inline]
+    fn merge(start: Self::Context, _: Self::Context) -> Self::Context {
+        start
+    }
+
+    #[inline]
     fn context(&self) -> Self::Context {
         self.file_id
     }

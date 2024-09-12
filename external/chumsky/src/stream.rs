@@ -5,8 +5,9 @@
 //! [`Stream`] is the primary type used to feed input data into a chumsky parser. You can create them in a number of
 //! ways: from strings, iterators, arrays, etc.
 
-use super::*;
 use alloc::vec;
+
+use super::*;
 
 trait StreamExtend<T>: Iterator<Item = T> {
     /// Extend the vector with input. The actual amount can be more or less than `n`, but must be at least 1 (0 implies
@@ -158,17 +159,19 @@ impl<'a, I: Clone, S: Span + 'a> BoxStream<'a, I, S> {
         let mut v: Vec<alloc::collections::VecDeque<(P, S)>> = vec![iter.collect()];
         Self::from_iter(
             eoi,
-            Box::new(core::iter::from_fn(move || loop {
-                if let Some(many) = v.last_mut() {
-                    match many.pop_front().map(&mut flatten) {
-                        Some(Flat::Single(input)) => break Some(input),
-                        Some(Flat::Many(many)) => v.push(many.collect()),
-                        None => {
-                            v.pop();
+            Box::new(core::iter::from_fn(move || {
+                loop {
+                    if let Some(many) = v.last_mut() {
+                        match many.pop_front().map(&mut flatten) {
+                            Some(Flat::Single(input)) => break Some(input),
+                            Some(Flat::Many(many)) => v.push(many.collect()),
+                            None => {
+                                v.pop();
+                            }
                         }
+                    } else {
+                        break None;
                     }
-                } else {
-                    break None;
                 }
             })),
         )
@@ -222,16 +225,18 @@ impl<'a, I: Clone, S: Span> Stream<'a, I, S> {
             self.offset,
             start_offset
         );
-        let (start, ctx) = self
+        let (start, start_ctx) = self
             .pull_until(start_offset)
             .as_ref()
             .map(|(_, s)| (s.start(), s.context()))
             .unwrap_or_else(|| (self.eoi.start(), self.eoi.context()));
-        let end = self
+        let (end, end_ctx) = self
             .pull_until(self.offset.saturating_sub(1).max(start_offset))
             .as_ref()
-            .map(|(_, s)| s.end())
-            .unwrap_or_else(|| self.eoi.end());
+            .map(|(_, s)| (s.end(), s.context()))
+            .unwrap_or_else(|| (self.eoi.end(), self.eoi.context()));
+
+        let ctx = S::merge(start_ctx, end_ctx);
         S::new(ctx, start..end)
     }
 

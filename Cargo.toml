@@ -61,6 +61,7 @@ exclude = [
     "tools/explorer",
     "tools/fuzz",
     "tools/idlpp",
+    "external/chumsky",
 ]
 default-members = ["crates/ic-idl"]
 
@@ -75,6 +76,7 @@ quote = "1.0"
 syn = "2.0"
 
 intercom-cts = { path = "library/rust/intercom-cts", features = ["derive"] }
+chumsky = { path = "external/chumsky", default-features = false }
 
 [workspace.lints.rust]
 future_incompatible = "deny"

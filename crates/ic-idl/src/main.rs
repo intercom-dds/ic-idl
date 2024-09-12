@@ -160,7 +160,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
                 //     println!("{hir:#?}");
                 // }
 
-                let ptree = ic_ptree::lower_ast(&v.tree);
+                let ptree = ic_ptree::lower_ast(&v);
                 return try_ptree(options, &ptree);
             }
             Err(e) => {

@@ -37,8 +37,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-chumsky = { version = "0.9.3", default-features = false }
-
 ic-macros = { path = "../ic-macros" }
 ic-lexer = { path = "../ic-lexer" }
 ic-syntax = { path = "../ic-syntax" }
@@ -46,6 +44,8 @@ ic-vfs = { path = "../ic-vfs" }
 
 # TODO: remove
 ic-preproc = { path = "../ic-preproc" }
+
+chumsky.workspace = true
 
 [dev-dependencies]
 insta = "1.39.0"

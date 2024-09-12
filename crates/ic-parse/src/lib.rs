@@ -81,7 +81,8 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::{Parser, Stream};
 use ic_preproc::ProcArgs;
 use ic_syntax::{Item, Span};
-use ic_vfs::{FileId, Include, SourceMap};
+pub use ic_vfs::SourceMap;
+use ic_vfs::{FileId, Include};
 use lexer::{Kind, Token};
 
 pub mod lexer;
@@ -191,7 +192,7 @@ pub fn from_file(file_id: FileId, vfs: &mut SourceMap) -> Result<ParseResult, Ve
 
     Ok(ParseResult {
         tree,
-        sources: SourceMap::default(),
+        sources: vfs.clone(),
     })
 }
 

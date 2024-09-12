@@ -54,7 +54,7 @@ impl<T> Id<T> {
     // where possible, but it's difficult to do so for generated code.
     #[doc(hidden)]
     pub fn _do_not_use() -> Self {
-        Self::new(0)
+        Self::new(usize::MAX)
     }
 }
 
@@ -117,7 +117,7 @@ impl<T> Unmarshal for Id<T> {
 }
 
 #[must_use]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Arena<T> {
     elements: Vec<T>,
 }

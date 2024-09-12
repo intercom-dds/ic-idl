@@ -28,6 +28,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace intercom {
 
@@ -72,6 +73,29 @@ struct TypeInfo {
     uint32_t member_count;
     MemberInfo* members;
 };
+
+#define TYPETRAITS_PRIMITIVE(type)               \
+    template <>                                  \
+    struct TypeTraits<type> {                    \
+        using value_type = type;                 \
+        using sequence_type = std::vector<type>; \
+        static const TypeInfo type_info;         \
+    };
+
+TYPETRAITS_PRIMITIVE(bool);
+TYPETRAITS_PRIMITIVE(char);
+TYPETRAITS_PRIMITIVE(char16_t);
+TYPETRAITS_PRIMITIVE(int8_t);
+TYPETRAITS_PRIMITIVE(uint8_t);
+TYPETRAITS_PRIMITIVE(int16_t);
+TYPETRAITS_PRIMITIVE(uint16_t);
+TYPETRAITS_PRIMITIVE(int32_t);
+TYPETRAITS_PRIMITIVE(uint32_t);
+TYPETRAITS_PRIMITIVE(int64_t);
+TYPETRAITS_PRIMITIVE(uint64_t);
+TYPETRAITS_PRIMITIVE(float);
+TYPETRAITS_PRIMITIVE(double);
+TYPETRAITS_PRIMITIVE(long double);
 
 }  // namespace intercom
 

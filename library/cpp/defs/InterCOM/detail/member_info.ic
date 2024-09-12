@@ -336,20 +336,19 @@ inline constexpr const TypeInfo NULL_MAP_TYPE_INFO = {
 
 inline constexpr const int32_t* const MEMBER_INFO_EMPTY_CASE_LABELS = {nullptr};
 
-// const TypeInfo TypeTraits<bool>::type_info = Boolean_type_info;
-// const TypeInfo TypeTraits<char>::type_info = Char_type_info;
-// const TypeInfo TypeTraits<char16_t>::type_info = Char16_type_info;
-// const TypeInfo TypeTraits<char32_t>::type_info = Char32_type_info;
-// const TypeInfo TypeTraits<int8_t>::type_info = Int8_type_info;
-// const TypeInfo TypeTraits<uint8_t>::type_info = Uint8_type_info;
-// const TypeInfo TypeTraits<int16_t>::type_info = Short_type_info;
-// const TypeInfo TypeTraits<uint16_t>::type_info = UShort_type_info;
-// const TypeInfo TypeTraits<int32_t>::type_info = Long_type_info;
-// const TypeInfo TypeTraits<uint32_t>::type_info = ULong_type_info;
-// const TypeInfo TypeTraits<int64_t>::type_info = LongLong_type_info;
-// const TypeInfo TypeTraits<uint64_t>::type_info = ULongLong_type_info;
-// const TypeInfo TypeTraits<float>::type_info = Float_type_info;
-// const TypeInfo TypeTraits<double>::type_info = Double_type_info;
-// const TypeInfo TypeTraits<long double>::type_info = LongDouble_type_info;
+inline constexpr const TypeInfo TypeTraits<bool>::type_info = BOOLEAN_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<char>::type_info = CHAR_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<char16_t>::type_info = CHAR16_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<int8_t>::type_info = INT8_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<uint8_t>::type_info = UINT8_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<int16_t>::type_info = SHORT_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<uint16_t>::type_info = USHORT_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<int32_t>::type_info = LONG_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<uint32_t>::type_info = ULONG_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<int64_t>::type_info = LONGLONG_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<uint64_t>::type_info = ULONGLONG_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<float>::type_info = FLOAT_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<double>::type_info = DOUBLE_TYPE_INFO;
+inline constexpr const TypeInfo TypeTraits<long double>::type_info = LONG_DOUBLE_TYPE_INFO;
 
 }  // namespace intercom

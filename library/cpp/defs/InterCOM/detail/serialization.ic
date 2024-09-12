@@ -793,12 +793,6 @@ inline void copy_sequence(WRITER& writer, READER& reader, const TypeInfo& type_i
     }
 }
 
-// TODO(idarcar);
-// template <typename T, typename WRITER, typename READER>
-// inline void transform(WRITER& writer, READER& reader) {
-//     transform(writer, reader, TypeTraits<T>::type_info);
-// }
-
 template <typename WRITER, typename READER>
 inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info) {
     // Primitive types are handle without begin_type/end_type

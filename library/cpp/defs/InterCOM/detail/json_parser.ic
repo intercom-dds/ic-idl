@@ -1515,6 +1515,22 @@ inline void JsonReader::read(long double* a_values, uint32_t a_count, const Type
     }
 }
 
+inline void JsonReader::read(char* a_values, uint32_t a_count, const TypeInfo&) {
+    for (uint32_t i = 0; i < a_count; ++i) {
+        std::string str;
+        read(str);
+        a_values[i] = str[0];
+    }
+}
+
+inline void JsonReader::read(char16_t* a_values, uint32_t a_count, const TypeInfo&) {
+    for (uint32_t i = 0; i < a_count; ++i) {
+        std::u16string str;
+        read(str);
+        a_values[i] = str[0];
+    }
+}
+
 inline void JsonWriter::write(const char* a_values, uint32_t a_count, const TypeInfo&) {
     std::string str;
     str.reserve(1);

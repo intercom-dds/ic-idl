@@ -45,7 +45,7 @@ using namespace intercom::cidl;
 std::string get_const_value(const numeric& value, const ptree* scope);
 
 static void add_flag(std::string& flag, const std::string& value) {
-    const std::string flag_type = "intercom::ULong";
+    const std::string flag_type = "uint32_t";
     auto is_null = [&flag_type](const std::string& f) {
         return f == "0" || f == flag_type + "(0)";
     };
@@ -289,46 +289,46 @@ static std::string gen_array_type_info(
 
 static const char* primitive_type_info(const ptree* obj) {
     if (obj == &boolean_type) {
-        return "::intercom::Boolean_type_info";
+        return "::intercom::BOOLEAN_TYPE_INFO";
     }
     if (obj == &int8_type) {
-        return "::intercom::Int8_type_info";
+        return "::intercom::INT8_TYPE_INFO";
     }
     if (obj == &octet_type) {
-        return "::intercom::Uint8_type_info";
+        return "::intercom::UINT8_TYPE_INFO";
     }
     if (obj == &char_type) {
-        return "::intercom::Char_type_info";
+        return "::intercom::CHAR_TYPE_INFO";
     }
     if (obj == &wchar_type) {
-        return "::intercom::Char16_type_info";
+        return "::intercom::CHAR16_TYPE_INFO";
     }
     if (obj == &short_type) {
-        return "::intercom::Short_type_info";
+        return "::intercom::SHORT_TYPE_INFO";
     }
     if (obj == &ushort_type) {
-        return "::intercom::UShort_type_info";
+        return "::intercom::USHORT_TYPE_INFO";
     }
     if (obj == &long_type) {
-        return "::intercom::Long_type_info";
+        return "::intercom::LONG_TYPE_INFO";
     }
     if (obj == &ulong_type) {
-        return "::intercom::ULong_type_info";
+        return "::intercom::ULONG_TYPE_INFO";
     }
     if (obj == &longlong_type) {
-        return "::intercom::LongLong_type_info";
+        return "::intercom::LONGLONG_TYPE_INFO";
     }
     if (obj == &ulonglong_type) {
-        return "::intercom::ULongLong_type_info";
+        return "::intercom::ULONGLONG_TYPE_INFO";
     }
     if (obj == &float_type) {
-        return "::intercom::Float_type_info";
+        return "::intercom::FLOAT_TYPE_INFO";
     }
     if (obj == &double_type) {
-        return "::intercom::Double_type_info";
+        return "::intercom::DOUBLE_TYPE_INFO";
     }
     if (obj == &ldouble_type) {
-        return "::intercom::LongDouble_type_info";
+        return "::intercom::LONG_DOUBLE_TYPE_INFO";
     }
     return "";
 }
@@ -695,7 +695,7 @@ void intercom::cidl::gen_cpp_type_info(
                 } else {
                     mprintf(
                         memf,
-                        "{{ static_cast< ::intercom::ULong >( {} ), \"{}\", 0, nullptr, nullptr, nullptr }}",
+                        "{{ static_cast<uint32_t>({}), \"{}\", 0, nullptr, nullptr, nullptr }}",
                         member_id,
                         name
                     );
@@ -728,7 +728,7 @@ void intercom::cidl::gen_cpp_type_info(
                     mprintf(memf, " }};\n");
                     case_label_names.emplace_back(label_name);
                 } else {
-                    case_label_names.emplace_back("intercom::MemberInfo_empty_case_labels");
+                    case_label_names.emplace_back("intercom::MEMBER_INFO_EMPTY_CASE_LABELS");
                 }
             }
             mprintf(

@@ -28,6 +28,7 @@
 #pragma once
 
 #include <cstdint>
+#include <stdexcept>
 
 namespace intercom {
 
@@ -65,6 +66,11 @@ inline void get_uint<BigEndian, uint64_t>(const uint8_t* b, uint64_t& v) {
 }
 
 template <>
+inline void get_uint<BigEndian, long double>(const uint8_t*, long double&) {
+    throw std::invalid_argument("long double serialization not supported");
+}
+
+template <>
 inline void get_uint<LittleEndian, uint8_t>(const uint8_t* b, uint8_t& v) {
     v = b[0];
 }
@@ -86,6 +92,11 @@ inline void get_uint<LittleEndian, uint64_t>(const uint8_t* b, uint64_t& v) {
         static_cast<uint64_t>(b[2]) << 16 | static_cast<uint64_t>(b[3]) << 24 |
         static_cast<uint64_t>(b[4]) << 32 | static_cast<uint64_t>(b[5]) << 40 |
         static_cast<uint64_t>(b[6]) << 48 | static_cast<uint64_t>(b[7]) << 56;
+}
+
+template <>
+inline void get_uint<LittleEndian, long double>(const uint8_t*, long double&) {
+    throw std::invalid_argument("long double serialization not supported");
 }
 
 template <int E, typename T>
@@ -123,6 +134,11 @@ inline void put_uint<BigEndian, uint64_t>(uint8_t* b, uint64_t v) {
 }
 
 template <>
+inline void put_uint<BigEndian, long double>(uint8_t*, long double) {
+    throw std::invalid_argument("long double serialization not supported");
+}
+
+template <>
 inline void put_uint<LittleEndian, uint8_t>(uint8_t* b, uint8_t v) {
     b[0] = v;
 }
@@ -151,6 +167,11 @@ inline void put_uint<LittleEndian, uint64_t>(uint8_t* b, uint64_t v) {
     b[5] = static_cast<uint8_t>(v >> 40);
     b[6] = static_cast<uint8_t>(v >> 48);
     b[7] = static_cast<uint8_t>(v >> 56);
+}
+
+template <>
+inline void put_uint<LittleEndian, long double>(uint8_t*, long double) {
+    throw std::invalid_argument("long double serialization not supported");
 }
 
 }  // namespace intercom

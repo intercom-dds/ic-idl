@@ -980,9 +980,6 @@ static void cpl_conv_gen(const ptree* obj) {
 #ifndef CIDL_BOOTSTRAP
     if ((obj->kind == N_STRUCT || obj->kind == N_UNION || obj->kind == N_VALUETYPE) &&
         !is_nested(obj)) {
-        mprintf(&g_hd_ts_file, "using reader_type = {}DataReader;\n", objname);
-        mprintf(&g_hd_ts_file, "using writer_type = {}DataWriter;\n", objname);
-        mprintf(&g_hd_ts_file, "using type_support_type = {}TypeSupport;\n", objname);
         mprintf(&g_hd_ts_file, "static const char* default_topic_name;\n");
         mprintf(&g_hd_ts_file, "static const char* intercom_type_identifier;\n");
         mprintf(
@@ -1032,7 +1029,7 @@ static void cpl_conv_gen(const ptree* obj) {
         );
         mprintf(
             &g_hd_ts_file,
-            "a_archive.primitive_io(integer_value, a_info ? a_info : &intercom::TypeTraits< {}{} >::type_info);\n",
+            "a_archive.primitive_io(integer_value, a_info ? a_info : &intercom::TypeTraits<{}{}>::type_info);\n",
             objname,
             is_bitmask(obj) ? "Bits" : ""
         );
@@ -1066,7 +1063,9 @@ static void cpl_conv_gen(const ptree* obj) {
         auto p_info = cplpl_param_name_force(obj, "info");
 
         mprintf(
-            &g_hd_ts_file, "template <class Archive>\nstruct Serializer<Archive, {}> {{\n", objname
+            &g_hd_ts_file,
+            "template <class Archive>\nstruct intercom::Serializer<Archive, {}> {{\n",
+            objname
         );
         mprintf(
             &g_hd_ts_file,
@@ -3167,11 +3166,6 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
             );
         }
 
-        if (!mempty(&g_hd_rpc_file)) {
-            mprintf(&s_pk_file, "#include <InterCOM/rpc.h>\n");
-        }
-
-        mprintf(&s_pk_file, "#include <InterCOM/optional.h>\n");
         mprintf(&s_pk_file, "#include <InterCOM/span.h>\n");
         mprintf(&s_pk_file, "#include <InterCOM/cdr_serializer.h>\n");
 
@@ -3183,6 +3177,7 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
             mprintf(&s_pk_file, "#include <stdexcept>\n");
         }
         mprintf(&s_pk_file, "#include <functional>\n");
+        mprintf(&s_pk_file, "#include <optional>\n");
 
         include_dependencies(&s_pk_file, tree, g_current_include);
 
@@ -3230,7 +3225,6 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
             "#endif\n\n"
         );
 
-        // TODO: include prefix
         auto header_path = fmt::format("{}.{}", module, CommandLineOption::cpp_header_postfix());
         ic_push_source(list, header_path.c_str(), s_pk_file.memfile);
 

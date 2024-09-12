@@ -27,9 +27,9 @@
 
 # User Documentation:
 
-# Passing LANGUAGE <CPP|PYTHON|RUST|IDL> to cidl_generate() will cause that
-# language to be generated. If no LANGUAGE is specified CPP will be generated.
-# Multiple languages in the same statement is not supported.
+# Passing LANGUAGE <CPP|PYTHON|RUST|IDL|PROTOBUf> to cidl_generate() will cause
+# that language to be generated. If no LANGUAGE is specified CPP will be
+# generated. Multiple languages in the same statement is not supported.
 #
 # DESTINATION should be a path to the output directory.
 # If no DESTINATION is specified, CMAKE_CURRENT_BINARY_DIR will be used.
@@ -85,7 +85,7 @@ function(IDL_GENERATE)
     cmake_parse_arguments(_IC_GENERATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT IC_EXE)
-        if(TARGET InterCOM::ic_Idl)
+        if(TARGET InterCOM::ic_idl)
             set(IC_EXE $<TARGET_FILE:InterCOM::ic_idl>)
         else()
             message(SEND_ERROR "idl_generate could not locate InterCOM::ic_idl target exectuable")
@@ -125,27 +125,27 @@ function(IDL_GENERATE)
         list( APPEND _IC_GENERATE_FLAGS ${CIDL_GENERATE_DEFAULT_FLAGS} )
     endif()
 
-    if( _IC_GENERATE_LANGUAGE STREQUAL "CSHARP" )
-        list( APPEND _IC_GENERATE_FLAGS --csharp-destination ${_ABS_DESTINATION} )
-        list( APPEND _OUTPUT_SUFFIXES .cs )
-    endif()
-
     if( _IC_GENERATE_LANGUAGE STREQUAL "PYTHON" )
-        list( APPEND _IC_GENERATE_FLAGS --python-destination ${_ABS_DESTINATION} )
+        list( APPEND _IC_GENERATE_FLAGS --python-out ${_ABS_DESTINATION} )
         list( APPEND _OUTPUT_SUFFIXES .py )
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "RUST" )
-        list( APPEND _IC_GENERATE_FLAGS --rust-destination ${_ABS_DESTINATION} )
+        list( APPEND _IC_GENERATE_FLAGS --rust-out ${_ABS_DESTINATION} )
         list( APPEND _OUTPUT_SUFFIXES .rs )
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "CPP" )
-        list( APPEND _IC_GENERATE_FLAGS --cpp-destination ${_ABS_DESTINATION} )
+        list( APPEND _IC_GENERATE_FLAGS --cpp-out ${_ABS_DESTINATION} )
         list( APPEND _OUTPUT_SUFFIXES .cpp .h )
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "IDL" )
+         list( APPEND _IC_GENERATE_FLAGS --idl-destination ${_ABS_DESTINATION} )
+         list( APPEND _OUTPUT_SUFFIXES .idl )
+    endif()
+
+    if( _IC_GENERATE_LANGUAGE STREQUAL "PROTOBUF" )
          list( APPEND _IC_GENERATE_FLAGS --idl-destination ${_ABS_DESTINATION} )
          list( APPEND _OUTPUT_SUFFIXES .idl )
     endif()
@@ -190,7 +190,7 @@ function(IDL_GENERATE)
         get_filename_component( _ABS_DIRECTORY "${_INPUT}" DIRECTORY )
         get_filename_component( _ABS_DIRECTORY "${_ABS_DIRECTORY}" REALPATH )
 
-        set( _INPUT_INCLUDES ${_INCLUDES} -I${_ABS_DIRECTORY} )
+        set( _INPUT_INCLUDES ${_INCLUDES} -I ${_ABS_DIRECTORY} )
 
         if( "${_FILE_NAME}" MATCHES "\\.idl$" )
             get_filename_component( _FILE_BASENAME "${_INPUT}" NAME_WE )
@@ -200,6 +200,8 @@ function(IDL_GENERATE)
         endif()
 
         set( _ABS_INPUT ${_ABS_DIRECTORY}/${_FILE_NAME} )
+
+        set( _IC_ARGS ${_INPUT_INCLUDES} ${_IC_GENERATE_FLAGS} ${_ABS_INPUT} )
 
         unset( _ABS_OUTPUT )
 
@@ -230,7 +232,7 @@ function(IDL_GENERATE)
             string( REGEX REPLACE "\n" ";" _IC_FILE_LIST "${_IC_FILE_LIST}")
 
             foreach( _OUTPUT_FILE ${_IC_FILE_LIST} )
-                list( APPEND _ABS_OUTPUT ${_ABS_DESTINATION}/${_OUTPUT_FILE} )
+                list( APPEND _ABS_OUTPUT ${_OUTPUT_FILE} )
             endforeach()
         else()
             message(FATAL_ERROR "Unable to locate the ic-idl executable ${CIDL_L_EXE}")
@@ -248,8 +250,8 @@ function(IDL_GENERATE)
             message( "ABS_INPUT: ${_ABS_INPUT}" )
             message( "ABS_OUTPUT: ${_ABS_OUTPUT}" )
 
-            message( "COMMAND: ${_ENV_CMD_PRETTY} ${CIDL_EXE} ${_IC_ARGS_PRETTY}" )
-            message( "DEPENDS: ${CIDL_EXE} ${_ABS_INPUT}" )
+            message( "COMMAND: ${_ENV_CMD_PRETTY} ${IC_EXE} ${_IC_ARGS_PRETTY}" )
+            message( "DEPENDS: ${IC_EXE} ${_ABS_INPUT}" )
         endif()
 
         # Messing with a variable we don't need anymore (_FILE_BASENAME) for prettier comments
@@ -261,11 +263,11 @@ function(IDL_GENERATE)
             COMMAND
                 ${CMAKE_COMMAND} -E make_directory ${_ABS_DESTINATION}
             COMMAND
-                ${_ENV_CMD} ${CIDL_EXE} ${_IC_ARGS}
+                ${_ENV_CMD} ${IC_EXE} ${_IC_ARGS}
             MAIN_DEPENDENCY
                 ${_ABS_INPUT}
             DEPENDS
-                ${CIDL_EXE}
+                ${IC_EXE}
             WORKING_DIRECTORY
                 ${_ABS_DIRECTORY}
             COMMENT

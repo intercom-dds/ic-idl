@@ -128,10 +128,9 @@ impl Interp<'_> {
             Expr::Literal(v) => match &v.value {
                 LiteralValue::Bool(v) => i64::from(*v),
                 LiteralValue::Int(v) => *v as i64,
-                // LiteralValue::Float(_) => todo!(),
+                LiteralValue::Float(_) => todo!(),
                 LiteralValue::Char(_) => todo!(),
-                LiteralValue::String_(_) => todo!(),
-                _ => todo!(),
+                LiteralValue::String(_) => todo!(),
             },
             // ic_syntax::Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
             Expr::Unary(v) => self.eval_unary(v),
@@ -164,7 +163,7 @@ impl Interp<'_> {
             Expr::Literal(v) => match &v.value {
                 LiteralValue::Bool(v) => Numeric::Bool(*v),
                 LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
-                LiteralValue::String_(ref v) => Numeric::String(v.clone()),
+                LiteralValue::String(ref v) => Numeric::String(v.clone()),
                 _ => todo!(),
             },
             Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),

@@ -85,7 +85,7 @@ const char* const ADA_KEYWORDS[] = {
     "raise",   "range",      "record",    "rem",       "renames", "requeue",      "return",
     "reverse", "select",     "separate",  "some",      "subtype", "synchronized", "tagged",
     "task",    "terminate",  "then",      "type",      "until",   "use",          "when",
-    "while",   "with",       "xor",       nullptr
+    "while",   "with",       "xor",       nullptr,
 };
 
 const char* const CS_KEYWORDS[] = {
@@ -100,7 +100,7 @@ const char* const CS_KEYWORDS[] = {
     "sizeof",   "stackalloc", "static",  "string",   "struct",    "switch",   "this",
     "throw",    "true",       "try",     "typeof",   "uint",      "ulong",    "unchecked",
     "unsafe",   "ushort",     "using",   "using",    "static",    "virtual",  "void",
-    "volatile", "while",      nullptr
+    "volatile", "while",      nullptr,
 };
 
 const char* const PYTHON_KEYWORDS[] = {
@@ -118,67 +118,17 @@ const char* const PYTHON_KEYWORDS[] = {
     "memoryview", "min",      "next",     "object",    "oct",          "open",     "ord",
     "pow",        "print",    "property", "range",     "repr",         "reversed", "round",
     "set",        "setattr",  "slice",    "sorted",    "staticmethod", "str",      "sum",
-    "super",      "tuple",    "type",     "vars",      "zip",          nullptr
+    "super",      "tuple",    "type",     "vars",      "zip",          nullptr,
 };
 
 const char* const RUST_KEYWORDS[] = {
-    "as",
-    "break",
-    "const",
-    "continue",
-    "crate",
-    "else",
-    "enum",
-    "extern",
-    "false",
-    "fn",
-    "for",
-    "if",
-    "impl",
-    "in",
-    "let",
-    "loop",
-    "match",
-    "mod",
-    "move",
-    "mut",
-    "pub",
-    "ref",
-    "return",
-    "self",
-    "Self",
-    "static",
-    "struct",
-    "super",
-    "trait",
-    "true",
-    "type",
-    "unsafe",
-    "use",
-    "where",
-    "while",
-    "async",
-    "await",
-    "dyn",
-    "abstract",
-    "become",
-    "box",
-    "do",
-    "final",
-    "macro",
-    "override",
-    "priv",
-    "typeof",
-    "unsized",
-    "virtual",
-    "yield",
-    "try",
-    // not keywords, but types from the prelude we reserve to make things more readable
-    "String",
-    "Option",
-    "Box",
-    "Vec",
-    nullptr
+    "as",      "break",  "const",  "continue", "crate",    "else", "enum",     "extern",
+    "false",   "fn",     "for",    "if",       "impl",     "in",   "let",      "loop",
+    "match",   "mod",    "move",   "mut",      "pub",      "ref",  "return",   "self",
+    "Self",    "static", "struct", "super",    "trait",    "true", "type",     "unsafe",
+    "use",     "where",  "while",  "async",    "await",    "dyn",  "abstract", "become",
+    "box",     "do",     "final",  "macro",    "override", "priv", "typeof",   "unsized",
+    "virtual", "yield",  "try",    "String",   "Option",   "Box",  "Vec",      nullptr,
 };
 
 const char* const PROTO_KEYWORDS[] = {
@@ -187,5 +137,5 @@ const char* const PROTO_KEYWORDS[] = {
     "sint32",   "option",   "returns", "sint64",   "inf",        "to",       "fixed32",
     "nan",      "max",      "fixed64", "message",  "repeated",   "sfixed32", "enum",
     "optional", "sfixed64", "service", "required", "bool",       "extend",   "string",
-    "float",    "group",    "bytes",   "double",   "oneof",      nullptr
+    "float",    "group",    "bytes",   "double",   "oneof",      nullptr,
 };

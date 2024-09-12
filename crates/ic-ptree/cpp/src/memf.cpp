@@ -27,11 +27,6 @@
 
 #include "cidl/memf.h"
 
-#include <sstream>
-
-#include "cidl/commandline.h"
-#include "cidl/hdrs.h"
-
 enum { MAX_LINE_LENGTH = 90000 };
 
 #ifdef _WIN32

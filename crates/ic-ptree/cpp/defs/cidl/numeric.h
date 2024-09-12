@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #include "cidl/constants.h"
 

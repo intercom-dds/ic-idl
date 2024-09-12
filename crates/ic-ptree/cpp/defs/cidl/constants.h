@@ -236,26 +236,4 @@ extern struct ptree* annotation_type_jaus;
 
 #ifdef __cplusplus
 };  // extern C
-
-#  include <fmt/ostream.h>
-
-#  include <string>
-
-#  include "cidl/numeric.h"
-
-int integer_value(const numeric& v);
-unsigned long unsigned_value(const numeric& v);
-long long long_long_value(const numeric& v);
-float float_value(const numeric& v);
-double double_value(const numeric& v);
-std::string string_value(const numeric& v);
-
-template <>
-struct fmt::formatter<numeric> : public fmt::formatter<std::string> {
-    template <typename FormatContext>
-    auto format(const numeric& num, FormatContext& ctx) const -> decltype(ctx.out()) {
-        return formatter<std::string>::format(string_value(num), ctx);
-    }
-};
-
 #endif

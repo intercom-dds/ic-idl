@@ -27,12 +27,20 @@
 
 #pragma once
 
+#include <fmt/ostream.h>
+
+#include <list>
+#include <map>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include "cidl/numeric.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_helpers.h"
+#include "cidl/symbols.h"
 
 extern "C" struct parse_result {
     parse_result() = default;
@@ -42,6 +50,50 @@ extern "C" struct parse_result {
     size_t error_count{0};
     std::string msg;
     std::shared_ptr<parser_state> state;
+};
+
+extern "C" struct parser_state {
+    struct error_stream;
+
+    ptree* lookup_node(const char* name) const;
+    error_stream error();
+
+    long long enum_counter{0};
+    std::vector<std::vector<ptree*>> context;
+    std::vector<std::pair<std::string, ptree*>> include_context;
+    std::map<std::string, ptree*> type_map;
+    std::map<std::string, ptree*> type_dcl_map;
+    std::vector<std::shared_ptr<ptree>> allocated_nodes;
+    std::vector<std::shared_ptr<declarator>> allocated_decl;
+    std::list<numeric> numeric_map;
+    std::vector<std::string> errors;
+    ptree top_level;
+};
+
+struct parser_state::error_stream {
+    explicit error_stream(parser_state* parent) : m_parent(parent) {
+        m_index = parent->errors.size();
+        parent->errors.emplace_back();
+    }
+
+    ~error_stream() {
+        m_parent->errors[m_index] = m_stream.str();
+    }
+
+    template <typename T>
+    error_stream& operator<<(const T& src) {
+        m_stream << src;
+        return *this;
+    }
+
+    error_stream& operator<<(const ptree* node) {
+        m_stream << intercom::cidl::idl_scoped_name(node, nullptr);
+        return *this;
+    }
+
+    parser_state* m_parent;
+    size_t m_index;
+    std::stringstream m_stream;
 };
 
 namespace intercom::cidl {
@@ -55,3 +107,11 @@ std::string json_value(const ptree* value);
 parse_result merge_results(std::vector<parse_result>& to_merge);
 
 }  // namespace intercom::cidl
+
+template <>
+struct fmt::formatter<numeric> : public fmt::formatter<std::string> {
+    template <typename FormatContext>
+    auto format(const numeric& num, FormatContext& ctx) const -> decltype(ctx.out()) {
+        return formatter<std::string>::format(intercom::cidl::string_value(num), ctx);
+    }
+};

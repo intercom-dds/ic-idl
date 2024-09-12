@@ -31,6 +31,7 @@
 #include <cstring>
 #include <string>
 
+#include "cidl/idl_parser.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_builder.h"
 
@@ -251,30 +252,6 @@ numeric* expr_unary(parser_state*, char, std::string) {
     return &num_undef;
 }
 
-int integer_value(const numeric& v) {
-    return value<int>(v);
-}
-
-unsigned long unsigned_value(const numeric& v) {
-    return value<unsigned long>(v);
-}
-
-long long long_long_value(const numeric& v) {
-    return value<long long>(v);
-}
-
-float float_value(const numeric& v) {
-    return value<float>(v);
-}
-
-double double_value(const numeric& v) {
-    return value<double>(v);
-}
-
-std::string string_value(const numeric& v) {
-    return value<std::string>(v);
-}
-
 int numeric_base(const numeric& v) {
     if (v.kind() == PTREE_KIND) {
         return numeric_base(v.val.node()->value);
@@ -479,3 +456,31 @@ const numeric* expr_binary(parser_state* state, char op, const numeric* v1, cons
     return res;
 }
 }
+
+namespace intercom::cidl {
+
+int integer_value(const numeric& v) {
+    return value<int>(v);
+}
+
+unsigned long unsigned_value(const numeric& v) {
+    return value<unsigned long>(v);
+}
+
+long long long_long_value(const numeric& v) {
+    return value<long long>(v);
+}
+
+float float_value(const numeric& v) {
+    return value<float>(v);
+}
+
+double double_value(const numeric& v) {
+    return value<double>(v);
+}
+
+std::string string_value(const numeric& v) {
+    return value<std::string>(v);
+}
+
+}  // namespace intercom::cidl

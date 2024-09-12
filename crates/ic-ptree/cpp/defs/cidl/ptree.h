@@ -34,6 +34,7 @@
 
 #include "cidl/constants.h"
 #include "cidl/numeric.h"
+#include "cidl/ptree_helpers.h"
 
 /**
  * When parsing an IDL file, all information is stored in a recursive structure of
@@ -377,7 +378,7 @@ inline std::string value(const numeric& v) {
         out << v.val.str();
         break;
     case PTREE_KIND:
-        return string_value(v.val.node()->value);
+        return intercom::cidl::string_value(v.val.node()->value);
     }
     return out.str();
 }

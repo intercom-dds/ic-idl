@@ -28,9 +28,11 @@
 #pragma once
 
 #include <string_view>
+#include <vector>
 
-#include "cidl/ptree.h"
 #include "cidl/symbols.h"
+
+struct ptree;
 
 namespace intercom::cidl {
 
@@ -75,6 +77,13 @@ numeric get_min_value(const ptree* node, AnnotationGetter get = get_annotation);
 numeric get_max_value(const ptree* node, AnnotationGetter get = get_annotation);
 numeric get_annotation_value(const ptree* ann, std::string_view name = "value");
 std::string get_root_filename(const ptree* node);
+
+int integer_value(const numeric& v);
+unsigned long unsigned_value(const numeric& v);
+long long long_long_value(const numeric& v);
+float float_value(const numeric& v);
+double double_value(const numeric& v);
+std::string string_value(const numeric& v);
 
 std::string default_topic_name(const ptree* node);
 

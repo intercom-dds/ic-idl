@@ -368,8 +368,7 @@ static ptree* prune_annotations(struct ptree* node, struct ptree* super = nullpt
 
 static void generate_code(parser_state* state, struct ptree* node) {
     while (node) {
-        state->current_input_file = node->file_name;
-        state->include_context.push_back(node->included_from);
+        state->include_context.emplace_back(node->file_name, node->included_from);
         push_context(state, node);
         generate_code(state, node->members);
         state->include_context.pop_back();
@@ -460,6 +459,7 @@ static parse_result get_parse_result(parser_state* state) {
 
     parse_result result;
     result.tree = state->top_level.next;
+    result.state.reset(state);
 
     std::stringstream msg;
     for (const auto& err : state->errors) {

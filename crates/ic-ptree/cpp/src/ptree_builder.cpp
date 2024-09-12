@@ -752,10 +752,12 @@ ptree* create_node(parser_state* state, node_kind kind, const char* ident) {
     }
     p->super = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];
     p->scope = p->super;
-    p->file_name = state->current_input_file;
     p->flags |= OPT_EMIT_CODE;
+
     if (!state->include_context.empty()) {
-        p->included_from = state->include_context[state->include_context.size() - 1];
+        const auto& [name, node] = state->include_context[state->include_context.size() - 1];
+        p->included_from = node;
+        p->file_name = name;
     }
 
     state->allocated_nodes.push_back(p);
@@ -1030,7 +1032,7 @@ void create_include_start(parser_state* state, const char* ident, int is_system_
         p->flags |= is_system_include ? OPT_SYSTEM_INCLUDE : 0;
         state->type_map[scoped_name] = p;
     }
-    state->include_context.push_back(p);
+    state->include_context.emplace_back(ident, p);
 }
 
 ptree* create_include_finish(parser_state* state, ptree* def) {
@@ -2143,6 +2145,10 @@ void validate_node(parser_state* state, ptree* node) {
         // All nodes have names
         if (node->name.empty()) {
             state->error() << "Unnamed node in scope " << node->super;
+        }
+
+        if (!node->included_from || !node->file_name.empty()) {
+            state->error() << "Node is missing a file name";
         }
 
         // If node has members, it must be a type with members

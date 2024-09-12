@@ -281,7 +281,6 @@ struct ptree* create_doc(struct parser_state*, const char* ident, int post_comme
 #  include <list>
 #  include <map>
 #  include <memory>
-#  include <set>
 #  include <sstream>
 #  include <string>
 #  include <vector>
@@ -297,13 +296,12 @@ extern "C" struct parser_state {
 
     long long enum_counter{0};
     std::vector<std::vector<ptree*>> context;
-    std::vector<ptree*> include_context;
+    std::vector<std::pair<std::string, ptree*>> include_context;
     std::map<std::string, ptree*> type_map;
     std::map<std::string, ptree*> type_dcl_map;
     std::vector<std::shared_ptr<ptree>> allocated_nodes;
     std::vector<std::shared_ptr<declarator>> allocated_decl;
     std::list<numeric> numeric_map;
-    std::string current_input_file;
     std::vector<std::string> errors;
     ptree top_level;
 };

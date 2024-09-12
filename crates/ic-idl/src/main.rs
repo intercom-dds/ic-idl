@@ -27,6 +27,9 @@
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
+use std::path::Path;
+
+use anyhow::anyhow;
 use config::Options;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
@@ -111,13 +114,9 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
         .defines(defines)
         .includes(options.include.clone());
 
+    let mut trees = vec![];
     let files = collect_files(&options.files)?;
     for file in files {
-        // let input = match std::fs::read_to_string(&file) {
-        //     Ok(v) => v,
-        //     Err(e) => bail!("couldn't read '{}': {e}", file.display().yellow()),
-        // };
-        let ast = ic_parse::from_path(&file, &mut vfs);
         if options.unstable.token_dump {
             // println!("{:#?}", ic_parse::lexer::scan(&input));
         }
@@ -125,62 +124,73 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
         if options.preprocessor_only {
             let (output, _) = ic_preproc::to_string(&file, args.clone())?;
             println!("{output}");
-            continue;
-        }
-
-        match ast {
-            Ok(v) => {
-                // Lint the AST
-                let report = ic_lint::lint_syntax(&v.tree);
-
-                if options.unstable.ast_dump {
-                    println!("{:#?}", v.tree);
-                }
-
-                for diag in &report.diagnostics {
-                    let mut buf = String::new();
-
-                    // TODO: propagate file id here so we don't have to reopen it.
-                    // this isn't necessarily the correct file either, we need
-                    // to retrieve the FileId from the error
-                    let input = std::fs::read_to_string(&file).unwrap();
-                    ic_diagnostic::emit_diagnostic(
-                        &mut buf,
-                        file.to_string_lossy().as_ref(),
-                        &input,
-                        diag,
-                    )?;
-                    eprintln!("{buf}");
-                }
-
-                // Lower the AST to a HIR
-                // let hir = ic_hir::lower_ast(v.tree.clone());
-
-                // if options.unstable.hir_dump {
-                //     println!("{hir:#?}");
-                // }
-
-                let ptree = ic_ptree::lower_ast(&v);
-                return try_ptree(options, &ptree);
-            }
-            Err(e) => {
-                pretty::emit_errors(&e, &vfs);
-                error!(
-                    "aborting due to {} previous error{}",
-                    e.len(),
-                    if e.len() > 1 { "s" } else { "" },
-                );
-            }
+        } else {
+            let ast = try_parse(options, args.clone(), &file, &mut vfs)?;
+            trees.push(ast);
         }
     }
-    Ok(vec![])
+    try_ptree(options, &trees)
 }
 
-fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File>> {
-    // let merged = ic_ptree::merge_trees(&parsed);
+fn try_parse(
+    options: &Options,
+    _proc: ProcArgs,
+    path: &Path,
+    vfs: &mut SourceMap,
+) -> anyhow::Result<ParseResult> {
+    let ast = ic_parse::from_path(path, vfs);
 
+    match ast {
+        Ok(v) => {
+            // Lint the AST
+            let report = ic_lint::lint_syntax(&v.tree);
+
+            if options.unstable.ast_dump {
+                println!("{:#?}", v.tree);
+            }
+
+            for diag in &report.diagnostics {
+                let mut buf = String::new();
+
+                // TODO: propagate file id here so we don't have to reopen it.
+                // this isn't necessarily the correct file either, we need
+                // to retrieve the FileId from the error
+                let input = std::fs::read_to_string(path).unwrap();
+                ic_diagnostic::emit_diagnostic(
+                    &mut buf,
+                    path.to_string_lossy().as_ref(),
+                    &input,
+                    diag,
+                )?;
+                eprintln!("{buf}");
+            }
+
+            // Lower the AST to a HIR
+            // let hir = ic_hir::lower_ast(v.tree.clone());
+
+            // if options.unstable.hir_dump {
+            //     println!("{hir:#?}");
+            // }
+
+            Ok(ic_ptree::lower_ast(&v))
+        }
+        Err(e) => {
+            // TODO: collect + join for all files
+            pretty::emit_errors(&e, &vfs);
+            error!(
+                "aborting due to {} previous error{}",
+                e.len(),
+                if e.len() > 1 { "s" } else { "" },
+            );
+            Err(anyhow!("parsing failed"))
+        }
+    }
+}
+
+fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<File>> {
+    let merged = ic_ptree::merge_trees(&parsed);
     if options.unstable.ptree_dump {
-        ic_ptree_pretty::ptree_dump(merged);
+        ic_ptree_pretty::ptree_dump(&merged);
     }
 
     let backends: &[(_, fn(_) -> _)] = &[
@@ -212,7 +222,7 @@ fn try_ptree(options: &Options, merged: &ParseResult) -> anyhow::Result<Vec<File
         }
 
         // Invoke the backend and update the file paths
-        let files = backend(merged).into_iter().map(|v| match v {
+        let files = backend(&merged).into_iter().map(|v| match v {
             File::Generated { path, source } => File::Generated {
                 path: dir.join(path),
                 source,

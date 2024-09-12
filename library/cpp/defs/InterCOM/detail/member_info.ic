@@ -30,236 +30,54 @@
 #include "InterCOM/member_info.h"
 
 namespace intercom {
-inline constexpr const TypeInfo NULL_TYPE_INFO = {
-    "NULL",
-    0 /* xtypes::TK_NONE */,
-    0,
-    8,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    &NULL_TYPE_INFO,
-    &NULL_TYPE_INFO,
-    0,
-    nullptr
+// xtypes::TK_NONE
+inline constexpr const TypeInfo NULL_TYPE_INFO =
+    {"NULL", 0, 0, 8, 0, 0, nullptr, nullptr, nullptr, &NULL_TYPE_INFO, &NULL_TYPE_INFO, 0, nullptr
 };
 
-inline constexpr const TypeInfo BOOLEAN_TYPE_INFO = {
-    "Boolean",
-    1 /* xtypes::TK_BOOLEAN */,
-    0,
-    8,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_BOOLEAN
+inline constexpr const TypeInfo BOOLEAN_TYPE_INFO =
+    {"Boolean", 1, 0, 8, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo OCTET_TYPE_INFO = {
-    "Octet",
-    2 /* xtypes::TK_BYTE */,
-    0,
-    8,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_BYTE
+inline constexpr const TypeInfo OCTET_TYPE_INFO =
+    {"Octet", 2, 0, 8, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo INT8_TYPE_INFO = {
-    "int8",
-    12 /* xtypes::TK_INT8 */,
-    0,
-    8,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_INT8
+inline constexpr const TypeInfo INT8_TYPE_INFO =
+    {"int8", 12, 0, 8, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo UINT8_TYPE_INFO = {
-    "uint8",
-    13 /* xtypes::TK_UINT8 */,
-    0,
-    8,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_UINT8
+inline constexpr const TypeInfo UINT8_TYPE_INFO =
+    {"uint8", 13, 0, 8, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo SHORT_TYPE_INFO = {
-    "Short",
-    3 /* xtypes::TK_INT16 */,
-    0,
-    16,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_INT16
+inline constexpr const TypeInfo SHORT_TYPE_INFO =
+    {"Short", 3, 0, 16, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo USHORT_TYPE_INFO = {
-    "UShort",
-    6 /* xtypes::TK_UINT16 */,
-    0,
-    16,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_UINT16
+inline constexpr const TypeInfo USHORT_TYPE_INFO =
+    {"UShort", 6, 0, 16, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo LONG_TYPE_INFO = {
-    "Long",
-    4 /* xtypes::TK_INT32 */,
-    0,
-    32,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_INT32
+inline constexpr const TypeInfo LONG_TYPE_INFO =
+    {"Long", 4, 0, 32, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo ULONG_TYPE_INFO = {
-    "ULong",
-    7 /* xtypes::TK_UINT32 */,
-    0,
-    32,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_UINT32
+inline constexpr const TypeInfo ULONG_TYPE_INFO =
+    {"ULong", 7, 0, 32, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo LONGLONG_TYPE_INFO = {
-    "LongLong",
-    5 /* xtypes::TK_INT64 */,
-    0,
-    64,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_INT64
+inline constexpr const TypeInfo LONGLONG_TYPE_INFO =
+    {"LongLong", 5, 0, 64, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
+// xtypes::TK_UINT64
 inline constexpr const TypeInfo ULONGLONG_TYPE_INFO = {
     "ULongLong",
-    8 /* xtypes::TK_UINT64 */,
-    0,
-    64,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr,
-};
-
-inline constexpr const TypeInfo FLOAT_TYPE_INFO = {
-    "Float",
-    9 /* xtypes::TK_FLOAT32 */,
-    0,
-    32,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
-
-inline constexpr const TypeInfo DOUBLE_TYPE_INFO = {
-    "Double",
-    10 /* xtypes::TK_FLOAT64 */,
-    0,
-    64,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
-
-inline constexpr const TypeInfo LONG_DOUBLE_TYPE_INFO = {
-    "LongDouble",
-    11 /* xtypes::TK_FLOAT128 */,
-    0,
-    128,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
-
-inline constexpr const TypeInfo CHAR_TYPE_INFO = {
-    "Char",
-    16 /* xtypes::TK_CHAR8 */,
-    0,
     8,
     0,
+    64,
+    0,
     0,
     nullptr,
     nullptr,
@@ -267,44 +85,37 @@ inline constexpr const TypeInfo CHAR_TYPE_INFO = {
     nullptr,
     nullptr,
     0,
-    nullptr
+    nullptr,
 };
 
-inline constexpr const TypeInfo CHAR16_TYPE_INFO = {
-    "Char16",
-    17 /* xtypes::TK_CHAR16 */,
-    0,
-    16,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_FLOAT32
+inline constexpr const TypeInfo FLOAT_TYPE_INFO =
+    {"Float", 9, 0, 32, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
-inline constexpr const TypeInfo CHAR32_TYPE_INFO = {
-    "Char32",
-    0 /* xtypes::TK_NONE */,
-    0,
-    32,
-    0,
-    0,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    0,
-    nullptr
-};
+// xtypes::TK_FLOAT64
+inline constexpr const TypeInfo DOUBLE_TYPE_INFO =
+    {"Double", 10, 0, 64, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
 
+// xtypes::TK_FLOAT128
+inline constexpr const TypeInfo LONG_DOUBLE_TYPE_INFO =
+    {"LongDouble", 11, 0, 128, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
+
+// xtypes::TK_CHAR8
+inline constexpr const TypeInfo CHAR_TYPE_INFO =
+    {"Char", 16, 0, 8, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
+
+// xtypes::TK_CHAR16
+inline constexpr const TypeInfo CHAR16_TYPE_INFO =
+    {"Char16", 17, 0, 16, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
+
+// xtypes::TK_NONE
+inline constexpr const TypeInfo CHAR32_TYPE_INFO =
+    {"Char32", 0, 0, 32, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr};
+
+// xtypes::TK_SEQUENCE
 inline constexpr const TypeInfo NULL_SEQ_TYPE_INFO = {
     "NullSequence",
-    0x60 /* xtypes::TK_SEQUENCE */,
+    0x60,
     0,
     32,
     0,
@@ -318,9 +129,10 @@ inline constexpr const TypeInfo NULL_SEQ_TYPE_INFO = {
     nullptr
 };
 
+// xtypes::TK_MAP
 inline constexpr const TypeInfo NULL_MAP_TYPE_INFO = {
     "NullMap",
-    0x62 /* xtypes::TK_MAP */,
+    0x62,
     0,
     32,
     0,

@@ -1,7 +1,5 @@
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
-#![doc = include_str!("../README.md")]
-#![deny(missing_docs)]
 #![allow(deprecated)] // TODO: Don't allow this
 
 extern crate alloc;

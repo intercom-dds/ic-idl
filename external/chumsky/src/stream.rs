@@ -222,17 +222,17 @@ impl<'a, I: Clone, S: Span> Stream<'a, I, S> {
             self.offset,
             start_offset
         );
-        let start = self
+        let (start, ctx) = self
             .pull_until(start_offset)
             .as_ref()
-            .map(|(_, s)| s.start())
-            .unwrap_or_else(|| self.eoi.start());
+            .map(|(_, s)| (s.start(), s.context()))
+            .unwrap_or_else(|| (self.eoi.start(), self.eoi.context()));
         let end = self
             .pull_until(self.offset.saturating_sub(1).max(start_offset))
             .as_ref()
             .map(|(_, s)| s.end())
             .unwrap_or_else(|| self.eoi.end());
-        S::new(self.eoi.context(), start..end)
+        S::new(ctx, start..end)
     }
 
     pub(crate) fn attempt<R, F: FnOnce(&mut Self) -> (bool, R)>(&mut self, f: F) -> R {

@@ -92,6 +92,7 @@ fn whitelist(name: &str) -> bool {
 
     !extension
         && !name.starts_with("external/fmt")
+        && !name.starts_with("external/chumsky")
         && !name.contains("Cargo.lock")
         && name != "LICENSE"
 }

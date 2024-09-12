@@ -448,7 +448,7 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     // Discard the generated nodes -- we don't want to include the built-in
     // types in the tree. They just need to be registered in the symbol map with
     // their respective definitions.
-    lower_item_list(state, &builtin.tree);
+    _ = lower_item_list(state, &builtin.tree);
 }
 
 pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -> *mut sys::ptree {
@@ -459,7 +459,6 @@ pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -
             let span = ic_syntax::util::item_span(item);
             let defined_in = format!("{}", vfs.name(span.file_id).display());
             let include = create_ident(&defined_in);
-            println!("include: {defined_in}, {item:?}");
 
             sys::create_include_start(state, include.as_ptr(), 0);
             let node = lower_item(state, item);

@@ -39,6 +39,7 @@ use syntax::sanity;
 mod pedantic;
 // mod semantic;
 mod syntax;
+mod unsupported;
 //
 
 // macro_rules! lints {
@@ -119,11 +120,7 @@ pub trait Lint<'a>: Sized {
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
     #[must_use]
-    fn check_hir(
-        self: Box<Self>,
-        context: &ic_hir::Context,
-        // graph: &[ic_hir::hir::Type],
-    ) -> Vec<Diag> {
+    fn check_hir(context: &ic_hir::Context, graph: &[ic_hir::hir::Def]) -> Vec<Diag> {
         todo!()
     }
 }

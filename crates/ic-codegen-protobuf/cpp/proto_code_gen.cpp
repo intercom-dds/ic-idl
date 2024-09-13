@@ -33,7 +33,6 @@
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/pretty_printer.h"
-#include "cidl/ptree_builder.h"
 #include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
@@ -348,15 +347,6 @@ static void recurse_node(Printer& out, const ptree* node) {
             break;
         }
         out(blank_line);
-    }
-}
-
-// TODO(idarcar): not used anywhere after refactoring
-void validate_proto(parser_state* state, const ptree* node) {
-    if (node->kind == N_ENUM) {
-        if (long_long_value(node->members->value) != 0) {
-            state->error() << "The first enum value must be zero in proto3";
-        }
     }
 }
 

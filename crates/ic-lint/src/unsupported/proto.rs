@@ -25,39 +25,42 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Def, DefKind, EnumTy};
+use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
+use ic_hir::visit::Visitor;
 
-pub trait Visitor<'a> {
-    fn visit_enum(&mut self, ty: &'a EnumTy) {}
-}
+use crate::{Category, Lint};
 
-pub fn visit_def<'a, V>(visitor: &mut V, item: &'a Def)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    match &item.kind {
-        DefKind::Enum(ty) => visitor.visit_enum(ty),
-        _ => todo!(),
+#[derive(Default)]
+pub struct Proto(Vec<Diag>);
+
+impl<'a> Visitor<'a> for Proto {
+    fn visit_enum(&mut self, ty: &'a ic_hir::hir::EnumTy) {
+        if let Some(field) = ty.fields.first() {
+            if field.value != 0 {
+                let diag = error_span(
+                    "the first enum value must be zero in proto3",
+                    Label::new(field.ident.span)
+                        .message(format!("this field has the value {}", field.value)),
+                );
+                self.0.push(diag);
+            }
+        }
     }
 }
 
-// pub fn visit_ty<'a, V>(visitor: &mut V, ty: &'a Type)
-// where
-//     V: Visitor<'a> + ?Sized,
-// {
-//     match ty {
-//         Type::Primitive(_) => todo!(),
-//         Type::Annotation(_) => todo!(),
-//         Type::Module(v) => visitor.visit_module(v),
-//         Type::Alias(_) => todo!(),
-//         Type::Const(_) => todo!(),
-//         Type::Struct(v) => visitor.visit_struct(v),
-//         Type::Except(_) => todo!(),
-//         Type::Union(v) => visitor.visit_union(v),
-//         Type::Enum(v) => visitor.visit_enum(v),
-//         Type::Bitmask(_) => todo!(),
-//         Type::Interface(_) => todo!(),
-//         Type::Decl(_) => todo!(),
-//         Type::Array { ty, len } => todo!(),
-//     }
-// }
+impl<'a> Lint<'a> for Proto {
+    fn category() -> Category {
+        Category::Unsupported
+    }
+
+    fn check(_: &'a crate::LintCtx<'_>, _: &[ic_syntax::Item]) {}
+
+    #[must_use]
+    fn check_hir(_: &ic_hir::Context, hir: &[ic_hir::hir::Def]) -> Vec<Diag> {
+        let mut res = Proto::default();
+        for item in hir {
+            ic_hir::visit::visit_def(&mut res, item);
+        }
+        res.0
+    }
+}

@@ -382,7 +382,7 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    visitor.visit_ident(&def.ident);
+    visitor.visit_declarator(&def.decl);
     visitor.visit_expr(&def.value);
 }
 

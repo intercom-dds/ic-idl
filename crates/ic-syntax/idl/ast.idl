@@ -68,7 +68,7 @@ struct Span {
     Position start;
 
     /// The end position of the span.
-    Position start;
+    Position end;
 };
 
 @nested
@@ -335,10 +335,8 @@ struct AnnotationAppl {
 };
 
 @nested
-struct Stmt {
-    /// Name of the item.
-    Ident ident;
-
+@ext::suppress(language="rust")
+struct IDecl {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -351,6 +349,13 @@ struct Stmt {
 
     /// Annotations that were applied to this item.
     sequence<AnnotationAppl> annotations;
+};
+
+@nested
+@ext::suppress(language="rust")
+struct IDef : IDecl {
+    /// Name of the item.
+    Ident ident;
 };
 
 enum AnnotationFieldKind {
@@ -367,12 +372,12 @@ case FIELD_MEMBER:
 };
 
 @nested
-struct AnnotationDef : Stmt {
+struct AnnotationDef : IDef {
     sequence<AnnotationField> params;
 };
 
 @nested
-struct ModuleDef : Stmt {
+struct ModuleDef : IDef {
     sequence<Item> definitions;
 };
 
@@ -383,7 +388,7 @@ struct Field {
 };
 
 @nested
-struct StructDef : Stmt {
+struct StructDef : IDef {
     sequence<Field> members;
     @optional Path parent;
 };
@@ -445,7 +450,7 @@ struct UnionField {
 };
 
 @nested
-struct UnionDef : Stmt {
+struct UnionDef : IDef {
     /// The discriminator component of the union.
     Discriminator disc;
 
@@ -455,7 +460,7 @@ struct UnionDef : Stmt {
 };
 
 @nested
-struct ConstDef : Stmt {
+struct ConstDef : IDecl {
     Declarator decl;
     Type ty;
     Expr value;
@@ -472,17 +477,17 @@ struct Enumerator {
 };
 
 @nested
-struct EnumDef : Stmt {
+struct EnumDef : IDef {
     sequence<Enumerator> fields;
 };
 
 @nested
-struct ExceptDef : Stmt {
+struct ExceptDef : IDef {
     sequence<Field> members;
 };
 
 @nested
-struct AliasDef : Stmt {
+struct AliasDef : IDecl {
     /// List of all declarators. Always contains at least one declarator.
     sequence<Declarator> decl;
 
@@ -491,23 +496,23 @@ struct AliasDef : Stmt {
 };
 
 @nested
-struct Bit : Stmt {
+struct Bit : IDef {
     @optional Expr value;
 };
 
 @nested
-struct BitmaskDef : Stmt {
+struct BitmaskDef : IDef {
     sequence<Bit> bits;
 };
 
 @nested
-struct Bitfield : Stmt {
+struct Bitfield : IDef {
     Expr size;
     @optional Type ty;
 };
 
 @nested
-struct BitsetDef : Stmt {
+struct BitsetDef : IDef {
     @optional Path parent;
     sequence<Bitfield> fields;
 };
@@ -565,7 +570,7 @@ struct Prototype {
 };
 
 @nested
-struct InterfaceDef : Stmt {
+struct InterfaceDef : IDef {
     sequence<InterfaceMember> members;
     sequence<Path> inherits;
     @optional Span _local;
@@ -579,7 +584,7 @@ struct ValueMember {
 };
 
 @nested
-struct ValuetypeDef : Stmt {
+struct ValuetypeDef : IDef {
     sequence<ValueMember> members;
     sequence<Prototype> prototypes;
     @optional Path inherits;
@@ -595,7 +600,7 @@ enum DeclKind {
 };
 
 @nested
-struct Decl : Stmt {
+struct Decl : IDef {
     DeclKind kind;
 };
 

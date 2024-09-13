@@ -1956,70 +1956,6 @@ impl ::intercom_cts::Unmarshal for AnnotationAppl {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Stmt {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
-    pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
-    pub annotations: Vec<crate::ast::AnnotationAppl>,
-}
-
-impl Stmt {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            ident: <crate::ast::Ident>::default(),
-            span: <crate::ast::Span>::default(),
-            annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
-        }
-    }
-}
-
-impl ::std::default::Default for Stmt {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ::intercom_cts::Marshal for Stmt {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
-
-        let mut state = ar.encode_struct("Stmt")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
-        state.end()
-    }
-}
-
-impl ::intercom_cts::Unmarshal for Stmt {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::FieldDeserializer as _;
-
-        let mut state = ar.decode_struct("Stmt")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
-        Ok(())
-    }
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum AnnotationFieldKind {
@@ -2203,8 +2139,6 @@ impl ::intercom_cts::Unmarshal for AnnotationField {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -2216,6 +2150,8 @@ pub struct AnnotationDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub params: Vec<crate::ast::AnnotationField>,
 }
 
@@ -2223,9 +2159,9 @@ impl AnnotationDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             params: <Vec<crate::ast::AnnotationField>>::default(),
         }
     }
@@ -2245,9 +2181,9 @@ impl ::intercom_cts::Marshal for AnnotationDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("AnnotationDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "params", &self.params)?;
         state.end()
     }
@@ -2261,9 +2197,9 @@ impl ::intercom_cts::Unmarshal for AnnotationDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("AnnotationDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "params", &mut self.params)?;
         Ok(())
     }
@@ -2271,8 +2207,6 @@ impl ::intercom_cts::Unmarshal for AnnotationDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ModuleDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -2284,6 +2218,8 @@ pub struct ModuleDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub definitions: Vec<crate::ast::Item>,
 }
 
@@ -2291,9 +2227,9 @@ impl ModuleDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             definitions: <Vec<crate::ast::Item>>::default(),
         }
     }
@@ -2313,9 +2249,9 @@ impl ::intercom_cts::Marshal for ModuleDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("ModuleDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "definitions", &self.definitions)?;
         state.end()
     }
@@ -2329,9 +2265,9 @@ impl ::intercom_cts::Unmarshal for ModuleDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("ModuleDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "definitions", &mut self.definitions)?;
         Ok(())
     }
@@ -2389,8 +2325,6 @@ impl ::intercom_cts::Unmarshal for Field {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StructDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -2402,6 +2336,8 @@ pub struct StructDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::Field>,
     pub parent: Option<crate::ast::Path>,
 }
@@ -2410,9 +2346,9 @@ impl StructDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             members: <Vec<crate::ast::Field>>::default(),
             parent: None,
         }
@@ -2433,9 +2369,9 @@ impl ::intercom_cts::Marshal for StructDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("StructDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "members", &self.members)?;
         state.encode_field(1, "parent", &self.parent)?;
         state.end()
@@ -2450,9 +2386,9 @@ impl ::intercom_cts::Unmarshal for StructDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("StructDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "members", &mut self.members)?;
         state.decode_field(1, "parent", &mut self.parent)?;
         Ok(())
@@ -3058,8 +2994,6 @@ impl ::intercom_cts::Unmarshal for UnionField {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3071,6 +3005,8 @@ pub struct UnionDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     /// The discriminator component of the union.
     pub disc: crate::ast::Discriminator,
     /// All variants of the union. The case labels that map to each variant can
@@ -3082,9 +3018,9 @@ impl UnionDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             disc: <crate::ast::Discriminator>::default(),
             fields: <Vec<crate::ast::UnionField>>::default(),
         }
@@ -3105,9 +3041,9 @@ impl ::intercom_cts::Marshal for UnionDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("UnionDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "disc", &self.disc)?;
         state.encode_field(1, "fields", &self.fields)?;
         state.end()
@@ -3122,9 +3058,9 @@ impl ::intercom_cts::Unmarshal for UnionDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("UnionDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "disc", &mut self.disc)?;
         state.decode_field(1, "fields", &mut self.fields)?;
         Ok(())
@@ -3133,8 +3069,6 @@ impl ::intercom_cts::Unmarshal for UnionDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ConstDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3155,7 +3089,6 @@ impl ConstDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             decl: <crate::ast::Declarator>::default(),
@@ -3179,9 +3112,8 @@ impl ::intercom_cts::Marshal for ConstDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("ConstDef")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "decl", &self.decl)?;
         state.encode_field(1, "ty", &self.ty)?;
         state.encode_field(2, "value", &self.value)?;
@@ -3197,9 +3129,8 @@ impl ::intercom_cts::Unmarshal for ConstDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("ConstDef")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "decl", &mut self.decl)?;
         state.decode_field(1, "ty", &mut self.ty)?;
         state.decode_field(2, "value", &mut self.value)?;
@@ -3265,8 +3196,6 @@ impl ::intercom_cts::Unmarshal for Enumerator {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct EnumDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3278,6 +3207,8 @@ pub struct EnumDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub fields: Vec<crate::ast::Enumerator>,
 }
 
@@ -3285,9 +3216,9 @@ impl EnumDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             fields: <Vec<crate::ast::Enumerator>>::default(),
         }
     }
@@ -3307,9 +3238,9 @@ impl ::intercom_cts::Marshal for EnumDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("EnumDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "fields", &self.fields)?;
         state.end()
     }
@@ -3323,9 +3254,9 @@ impl ::intercom_cts::Unmarshal for EnumDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("EnumDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "fields", &mut self.fields)?;
         Ok(())
     }
@@ -3333,8 +3264,6 @@ impl ::intercom_cts::Unmarshal for EnumDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ExceptDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3346,6 +3275,8 @@ pub struct ExceptDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::Field>,
 }
 
@@ -3353,9 +3284,9 @@ impl ExceptDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             members: <Vec<crate::ast::Field>>::default(),
         }
     }
@@ -3375,9 +3306,9 @@ impl ::intercom_cts::Marshal for ExceptDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("ExceptDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "members", &self.members)?;
         state.end()
     }
@@ -3391,9 +3322,9 @@ impl ::intercom_cts::Unmarshal for ExceptDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("ExceptDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "members", &mut self.members)?;
         Ok(())
     }
@@ -3401,8 +3332,6 @@ impl ::intercom_cts::Unmarshal for ExceptDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AliasDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3424,7 +3353,6 @@ impl AliasDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             decl: <Vec<crate::ast::Declarator>>::default(),
@@ -3447,9 +3375,8 @@ impl ::intercom_cts::Marshal for AliasDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("AliasDef")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "decl", &self.decl)?;
         state.encode_field(1, "ty", &self.ty)?;
         state.end()
@@ -3464,9 +3391,8 @@ impl ::intercom_cts::Unmarshal for AliasDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("AliasDef")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "decl", &mut self.decl)?;
         state.decode_field(1, "ty", &mut self.ty)?;
         Ok(())
@@ -3475,8 +3401,6 @@ impl ::intercom_cts::Unmarshal for AliasDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bit {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3488,6 +3412,8 @@ pub struct Bit {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub value: Option<crate::ast::Expr>,
 }
 
@@ -3495,9 +3421,9 @@ impl Bit {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             value: None,
         }
     }
@@ -3517,9 +3443,9 @@ impl ::intercom_cts::Marshal for Bit {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("Bit")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "value", &self.value)?;
         state.end()
     }
@@ -3533,9 +3459,9 @@ impl ::intercom_cts::Unmarshal for Bit {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("Bit")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "value", &mut self.value)?;
         Ok(())
     }
@@ -3543,8 +3469,6 @@ impl ::intercom_cts::Unmarshal for Bit {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitmaskDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3556,6 +3480,8 @@ pub struct BitmaskDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub bits: Vec<crate::ast::Bit>,
 }
 
@@ -3563,9 +3489,9 @@ impl BitmaskDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             bits: <Vec<crate::ast::Bit>>::default(),
         }
     }
@@ -3585,9 +3511,9 @@ impl ::intercom_cts::Marshal for BitmaskDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("BitmaskDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "bits", &self.bits)?;
         state.end()
     }
@@ -3601,9 +3527,9 @@ impl ::intercom_cts::Unmarshal for BitmaskDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("BitmaskDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "bits", &mut self.bits)?;
         Ok(())
     }
@@ -3611,8 +3537,6 @@ impl ::intercom_cts::Unmarshal for BitmaskDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bitfield {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3624,6 +3548,8 @@ pub struct Bitfield {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub size: crate::ast::Expr,
     pub ty: Option<crate::ast::Type>,
 }
@@ -3632,9 +3558,9 @@ impl Bitfield {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             size: <crate::ast::Expr>::default(),
             ty: None,
         }
@@ -3655,9 +3581,9 @@ impl ::intercom_cts::Marshal for Bitfield {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("Bitfield")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "size", &self.size)?;
         state.encode_field(1, "ty", &self.ty)?;
         state.end()
@@ -3672,9 +3598,9 @@ impl ::intercom_cts::Unmarshal for Bitfield {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("Bitfield")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "size", &mut self.size)?;
         state.decode_field(1, "ty", &mut self.ty)?;
         Ok(())
@@ -3683,8 +3609,6 @@ impl ::intercom_cts::Unmarshal for Bitfield {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitsetDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -3696,6 +3620,8 @@ pub struct BitsetDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub parent: Option<crate::ast::Path>,
     pub fields: Vec<crate::ast::Bitfield>,
 }
@@ -3704,9 +3630,9 @@ impl BitsetDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             parent: None,
             fields: <Vec<crate::ast::Bitfield>>::default(),
         }
@@ -3727,9 +3653,9 @@ impl ::intercom_cts::Marshal for BitsetDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("BitsetDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "parent", &self.parent)?;
         state.encode_field(1, "fields", &self.fields)?;
         state.end()
@@ -3744,9 +3670,9 @@ impl ::intercom_cts::Unmarshal for BitsetDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("BitsetDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "parent", &mut self.parent)?;
         state.decode_field(1, "fields", &mut self.fields)?;
         Ok(())
@@ -4044,8 +3970,6 @@ impl ::intercom_cts::Unmarshal for Prototype {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InterfaceDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -4057,6 +3981,8 @@ pub struct InterfaceDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::InterfaceMember>,
     pub inherits: Vec<crate::ast::Path>,
     pub local: Option<crate::ast::Span>,
@@ -4066,9 +3992,9 @@ impl InterfaceDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             members: <Vec<crate::ast::InterfaceMember>>::default(),
             inherits: <Vec<crate::ast::Path>>::default(),
             local: None,
@@ -4090,9 +4016,9 @@ impl ::intercom_cts::Marshal for InterfaceDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("InterfaceDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "members", &self.members)?;
         state.encode_field(1, "inherits", &self.inherits)?;
         state.encode_field(2, "local", &self.local)?;
@@ -4108,9 +4034,9 @@ impl ::intercom_cts::Unmarshal for InterfaceDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("InterfaceDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "members", &mut self.members)?;
         state.decode_field(1, "inherits", &mut self.inherits)?;
         state.decode_field(2, "local", &mut self.local)?;
@@ -4174,8 +4100,6 @@ impl ::intercom_cts::Unmarshal for ValueMember {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValuetypeDef {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -4187,6 +4111,8 @@ pub struct ValuetypeDef {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::ValueMember>,
     pub prototypes: Vec<crate::ast::Prototype>,
     pub inherits: Option<crate::ast::Path>,
@@ -4197,9 +4123,9 @@ impl ValuetypeDef {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             members: <Vec<crate::ast::ValueMember>>::default(),
             prototypes: <Vec<crate::ast::Prototype>>::default(),
             inherits: None,
@@ -4222,9 +4148,9 @@ impl ::intercom_cts::Marshal for ValuetypeDef {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("ValuetypeDef")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "members", &self.members)?;
         state.encode_field(1, "prototypes", &self.prototypes)?;
         state.encode_field(2, "inherits", &self.inherits)?;
@@ -4241,9 +4167,9 @@ impl ::intercom_cts::Unmarshal for ValuetypeDef {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("ValuetypeDef")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "members", &mut self.members)?;
         state.decode_field(1, "prototypes", &mut self.prototypes)?;
         state.decode_field(2, "inherits", &mut self.inherits)?;
@@ -4371,8 +4297,6 @@ impl ::intercom_cts::decode::EnumVisitor for DeclKind {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Decl {
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
     ///
@@ -4384,6 +4308,8 @@ pub struct Decl {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
+    /// Name of the item.
+    pub ident: crate::ast::Ident,
     pub kind: crate::ast::DeclKind,
 }
 
@@ -4391,9 +4317,9 @@ impl Decl {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            ident: <crate::ast::Ident>::default(),
             kind: crate::ast::DeclKind::DeclStruct,
         }
     }
@@ -4413,9 +4339,9 @@ impl ::intercom_cts::Marshal for Decl {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("Decl")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "annotations", &self.annotations)?;
         state.encode_field(0, "kind", &self.kind)?;
         state.end()
     }
@@ -4429,9 +4355,9 @@ impl ::intercom_cts::Unmarshal for Decl {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("Decl")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "annotations", &mut self.annotations)?;
         state.decode_field(0, "kind", &mut self.kind)?;
         Ok(())
     }

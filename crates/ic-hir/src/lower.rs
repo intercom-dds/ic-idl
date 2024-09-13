@@ -163,6 +163,7 @@ impl Interp<'_> {
             Expr::Literal(v) => match &v.value {
                 LiteralValue::Bool(v) => Numeric::Bool(*v),
                 LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
+                LiteralValue::Char(v) => Numeric::Char(*v),
                 LiteralValue::String(ref v) => Numeric::String(v.clone()),
                 _ => todo!(),
             },
@@ -774,10 +775,11 @@ impl<'a> Lower<'a> {
     fn lower_const(&mut self, def: ic_syntax::ConstDef) -> DefId {
         let value = self.eval_expr(&def.value);
         let ty = self.lower_type(def.ty);
+        let (ident, ty) = self.lower_declarator(def.decl, ty);
 
         self.ctx.definitions.alloc_with_id(|id| Def {
             id,
-            ident: def.ident,
+            ident,
             annotations: vec![],
             span: def.span,
             kind: DefKind::Const(ConstTy { value, ty }),

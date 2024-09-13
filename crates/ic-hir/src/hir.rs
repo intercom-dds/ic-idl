@@ -43,7 +43,7 @@ pub type TypeId = ic_alloc::arena::Id<Def>;
 
 /// Built-in primitive types. These types are effectively stateless and have no
 /// bounds or other attributes attached to them.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter, ToString)]
 pub enum PrimitiveTy {
     Bool,
     Char,

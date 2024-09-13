@@ -34,7 +34,7 @@ use std::rc::Rc;
 use ic_alloc::arena::{Arena, Id};
 
 mod span;
-pub use span::{Position, Span};
+pub use span::{Location, Span};
 
 /// An ID of a file in the [`SourceMap`].
 pub type FileId = Id<FileInfo>;

@@ -33,12 +33,12 @@ use crate::FileId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Marshal, Unmarshal)]
-pub struct Position {
+pub struct Location {
     pub offset: u32,
     pub file_id: FileId,
 }
 
-impl Position {
+impl Location {
     #[must_use]
     pub fn new(offset: u32, file_id: FileId) -> Self {
         Self { offset, file_id }
@@ -48,7 +48,7 @@ impl Position {
 // This really shouldn't be default constructible, but all generated code
 // relies on it. We have a sanity lint that verifies all `Position`s in the AST
 // has a valid `FileId`, so that should hopefully catch such cases.
-impl Default for Position {
+impl Default for Location {
     fn default() -> Self {
         Self::new(0, FileId::_do_not_use())
     }
@@ -57,8 +57,8 @@ impl Default for Position {
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Marshal, Unmarshal)]
 pub struct Span {
-    pub start: Position,
-    pub end: Position,
+    pub start: Location,
+    pub end: Location,
 }
 
 // This doesn't really belong here, but since we can't implement the trait in
@@ -66,7 +66,7 @@ pub struct Span {
 // newtype wrapper in `ic-parse` is not ideal because it's used _everywhere_.
 impl chumsky::Span for Span {
     type Context = ();
-    type Offset = Position;
+    type Offset = Location;
 
     #[inline]
     fn new(_: Self::Context, range: Range<Self::Offset>) -> Self {

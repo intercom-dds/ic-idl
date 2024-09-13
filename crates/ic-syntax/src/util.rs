@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_vfs::Position;
+use ic_vfs::Location;
 
 use crate::ast::Item;
 use crate::{Declarator, Expr, Path, Span, Type};
@@ -67,7 +67,7 @@ pub fn path_span(path: &Path) -> Span {
         || {
             path.segments
                 .first()
-                .map_or_else(Position::default, |v| v.span.start)
+                .map_or_else(Location::default, |v| v.span.start)
         },
         |v| v.start,
     );
@@ -75,7 +75,7 @@ pub fn path_span(path: &Path) -> Span {
     let end = path
         .segments
         .last()
-        .map_or_else(Position::default, |v| v.span.end);
+        .map_or_else(Location::default, |v| v.span.end);
 
     Span { start, end }
 }

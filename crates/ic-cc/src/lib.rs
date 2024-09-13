@@ -51,7 +51,6 @@ where
         .includes(GLOBAL_INCLUDES)
         .extra_warnings(true)
         .flag_if_supported("-Wpedantic")
-        .flag_if_supported("-Wno-unused-function")
         .files(&files);
 
     for (k, v) in GLOBAL_DEFINES {

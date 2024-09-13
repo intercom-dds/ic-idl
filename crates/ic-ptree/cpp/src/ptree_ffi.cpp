@@ -42,14 +42,6 @@ void ic_parse_free(parse_result* result) {
     delete result;
 }
 
-parse_result* ic_ptree_merge(const parse_result** result) {
-    std::vector<parse_result> to_merge;
-    for (auto tree = result; *tree; ++tree) {
-        to_merge.emplace_back(**tree);
-    }
-    return new parse_result(intercom::cidl::merge_results(to_merge));
-}
-
 void ic_ptree_dump(const parse_result* result) {
     intercom::cidl::ptree_dump(result);
 }

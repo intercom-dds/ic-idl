@@ -29,14 +29,15 @@ use ic_diagnostic::{error_span, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::Item;
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
-/// Verifies that all identifiers are made up of alphanumeric ASCII characters,
-/// and that all character literals only consist of ASCII characters.
-#[derive(Default)]
-pub struct AsciiIdent(Vec<Diag>);
+/// Verifies that all identifiers and character literals are made up of
+/// alphanumeric ASCII characters,
+pub struct AsciiIdent<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for AsciiIdent {
+impl<'a> Visitor<'a> for AsciiIdent<'_> {
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
         let invalid = ident
             .name
@@ -48,25 +49,30 @@ impl<'a> Visitor<'a> for AsciiIdent {
                 "identifiers can only consist of alphanumeric ASCII characters",
                 Label::new(ident.span).message("non-ASCII identifier"),
             );
-            self.0.push(diag);
+            self.ctx.report(diag);
+        }
+    }
+
+    fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
+        if let ic_syntax::LiteralValue::Char(c) = &num.value {
+            if !c.is_ascii() {
+                let diag = error_span(
+                    "character literals can only consist of alphanumeric ASCII characters",
+                    Label::new(num.span).message("non-ASCII character"),
+                );
+                self.ctx.report(diag);
+            }
         }
     }
 }
 
-impl Lint for AsciiIdent {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> crate::Category {
+impl<'a> Lint<'a> for AsciiIdent<'a> {
+    fn category() -> crate::Category {
         Category::Syntax
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = AsciiIdent { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

@@ -113,7 +113,7 @@ pub trait Lint<'a>: Sized {
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]);
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {}
 
     /// Runs the lint on the given HIR.
     ///
@@ -146,6 +146,7 @@ pub fn lint_syntax(tree: &[Item]) -> Report {
     {
         pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
         sanity::Sanity::check(&ctx, tree);
+        syntax::ascii::AsciiIdent::check(&ctx, tree);
     }
 
     // for lint in LINTS {

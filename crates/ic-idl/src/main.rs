@@ -142,12 +142,12 @@ fn try_parse(
 
     match ast {
         Ok(v) => {
-            // Lint the AST
-            let report = ic_lint::lint_syntax(&v.tree);
-
             if options.unstable.ast_dump {
                 println!("{:#?}", v.tree);
             }
+
+            // Lint the AST
+            let report = ic_lint::lint_syntax(&v.tree);
 
             for diag in &report.diagnostics {
                 let mut buf = String::new();

@@ -100,7 +100,7 @@ pub enum Kind {
     /// An arithmetic or bitwise operator
     Op(Op),
 
-    /// Any valid UAX#31 identifier
+    /// Any valid UTF-8 identifier
     Ident,
 
     /// A documentation-style comment

@@ -125,7 +125,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
             let (output, _) = ic_preproc::to_string(&file, args.clone())?;
             println!("{output}");
         } else {
-            let ast = try_parse(options, args.clone(), &file, &mut vfs)?;
+            let ast = try_parse(options, &args, &file, &mut vfs)?;
             trees.push(ast);
         }
     }
@@ -134,7 +134,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 
 fn try_parse(
     options: &Options,
-    _proc: ProcArgs,
+    _proc: &ProcArgs,
     path: &Path,
     vfs: &mut SourceMap,
 ) -> anyhow::Result<ParseResult> {
@@ -175,7 +175,7 @@ fn try_parse(
         }
         Err(e) => {
             // TODO: collect + join for all files
-            pretty::emit_errors(&e, &vfs);
+            pretty::emit_errors(&e, vfs);
             error!(
                 "aborting due to {} previous error{}",
                 e.len(),
@@ -187,7 +187,7 @@ fn try_parse(
 }
 
 fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<File>> {
-    let merged = ic_ptree::merge_trees(&parsed);
+    let merged = ic_ptree::merge_trees(parsed);
     if options.unstable.ptree_dump {
         ic_ptree_pretty::ptree_dump(&merged);
     }

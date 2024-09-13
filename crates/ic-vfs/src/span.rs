@@ -39,6 +39,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[must_use]
     pub fn new(offset: u32, file_id: FileId) -> Self {
         Self { offset, file_id }
     }

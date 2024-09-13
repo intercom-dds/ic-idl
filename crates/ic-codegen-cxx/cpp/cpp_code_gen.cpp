@@ -3202,7 +3202,6 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
             "#endif\n\n"
         );
 
-        std::string cname(module);
         mprintf(&g_prebd_file, "\n");
         mprintf(&g_prebd_file, "#include <InterCOM/dds_xtypes_constants.h>\n");
 

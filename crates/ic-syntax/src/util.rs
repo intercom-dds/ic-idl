@@ -67,7 +67,7 @@ pub fn path_span(path: &Path) -> Span {
         || {
             path.segments
                 .first()
-                .map_or_else(|| Position::default(), |v| v.span.start)
+                .map_or_else(Position::default, |v| v.span.start)
         },
         |v| v.start,
     );
@@ -75,7 +75,7 @@ pub fn path_span(path: &Path) -> Span {
     let end = path
         .segments
         .last()
-        .map_or_else(|| Position::default(), |v| v.span.end);
+        .map_or_else(Position::default, |v| v.span.end);
 
     Span { start, end }
 }
@@ -180,6 +180,7 @@ pub fn item_name<T: ItemTraits>(_: &T) -> &'static str {
     T::item_name()
 }
 
+#[must_use]
 pub fn item_span(item: &Item) -> Span {
     match item {
         Item::AnnotationValue(v) => v.span,

@@ -48,7 +48,7 @@ struct memf {
     int statement_indent[MEMF_MAX_STATEMENTS];  // 50 levels of nested statements
     char statement_end[MEMF_MAX_STATEMENTS];    // 50 levels of nested statements
     int current_statement;
-    int size;
+    size_t size;
     int ticktick;
     int column;
     lang_kind_t lang_kind;

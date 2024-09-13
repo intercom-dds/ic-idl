@@ -53,7 +53,6 @@ if (IC_TIDY)
     set(TIDY_INVOCATION
         "clang-tidy"
         "--use-color"
-        "--header-filter=.*"
         "--warnings-as-errors='*'"
         "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
     )

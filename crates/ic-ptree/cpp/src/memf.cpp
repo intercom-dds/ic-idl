@@ -39,14 +39,18 @@ static const int MAX_STATEMENTS = MEMF_MAX_STATEMENTS - 1;
 
 namespace intercom::cidl {
 
-static void madjsize(struct memf* memf, int extra) {
+static void madjsize(struct memf* memf, size_t extra) {
     size_t has_size = memf->memp - memf->memfile;
-    if ((has_size + MAX_LINE_LENGTH + extra) > static_cast<size_t>(memf->size)) {
+    if ((has_size + MAX_LINE_LENGTH + extra) > memf->size) {
         if (extra == 0) {
             extra = memf->size;
         }
         memf->size += extra + MAX_LINE_LENGTH;
-        memf->memfile = static_cast<char*>(realloc(memf->memfile, memf->size));
+
+        // NOLINTNEXTLINE
+        if (auto new_buf = static_cast<char*>(realloc(memf->memfile, memf->size))) {
+            memf->memfile = new_buf;
+        }
         memf->memp = memf->memfile + has_size;
     }
 }
@@ -88,7 +92,7 @@ void mreset(struct memf* memf) {
 }
 
 void mreset_l(struct memf* memf, lang_kind_t lang_kind) {
-    free(memf->memfile);
+    free(memf->memfile);  // NOLINT
     memf->memfile = nullptr;
     memf->indent = memf->do_indent = 0;
     memf->size = 0;
@@ -177,6 +181,8 @@ void mprintflv(struct memf** memfl, std::string_view format, std::string_view st
                     case '\"':
                         memf->ticktick++;
                         break;
+                    default:
+                        break;
                     }
                 }
 
@@ -240,12 +246,18 @@ void mprintflv(struct memf** memfl, std::string_view format, std::string_view st
                             incr_indent(memf, 4);
                         }
                         break;
+                    default:
+                        break;
                     }
                 }
             }
+            if (memf->memp) {
+                *(memf->memp) = *ppp;
+            }
+        }
+        if (memf->memp) {
             *(memf->memp) = *ppp;
         }
-        *(memf->memp) = *ppp;
     }
 }
 

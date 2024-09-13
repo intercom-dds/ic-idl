@@ -1897,7 +1897,7 @@ static void code_gen_python_getter_and_setter(const ptree* obj, ModuleContext* m
     code_gen_python_full_type_check(obj, obj, module, "value");
     *module << "self._" << python_name(obj) << " = value" << endl << end("") << blank_line;
 
-    return code_gen_python_getter_and_setter(obj->next, module);
+    code_gen_python_getter_and_setter(obj->next, module);
 }
 
 static void code_gen_python_compound(const ptree* obj, ModuleContext* module, FileMap& module_map) {

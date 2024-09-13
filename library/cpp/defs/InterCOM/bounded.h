@@ -34,6 +34,8 @@
 
 namespace intercom {
 
+// NOLINTBEGIN(hicpp-explicit-conversions)
+
 template <typename CharT, uint32_t N>
 class bounded_basic_string final : public std::basic_string<CharT> {
   public:
@@ -119,6 +121,8 @@ using bounded_u32string = bounded_basic_string<char32_t, N>;
 
 template <uint32_t N>
 using bounded_wstring = bounded_basic_string<wchar_t, N>;
+
+// NOLINTEND(hicpp-explicit-conversions)
 
 }  // namespace intercom
 

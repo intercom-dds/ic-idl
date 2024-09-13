@@ -57,7 +57,8 @@ Checks: 'modernize-*,
          -hicpp-deprecated-headers,
          -bugprone-easily-swappable-parameters,
          -bugprone-reserved-identifier,
-         -bugprone-macro-parentheses'
+         -bugprone-macro-parentheses,
+         -bugprone-exception-escape'
 
 CheckOptions:
    - { key: readability-identifier-naming.NamespaceCase,        value: lower_case }
@@ -70,5 +71,3 @@ CheckOptions:
    - { key: readability-identifier-naming.GlobalVariablePrefix, value: g_         }
 
 WarningsAsErrors: ''
-HeaderFilterRegex: '(?!dds_*\.h$)'
-

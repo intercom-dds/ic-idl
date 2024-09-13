@@ -110,7 +110,7 @@ struct JsonData {
 };
 
 struct JsonStream {
-    JsonStream(std::istream& stream) : m_stream(stream) {}
+    explicit JsonStream(std::istream& stream) : m_stream(stream) {}
 
     struct state_type {
         JsonData from_state(state_type& prev) const {

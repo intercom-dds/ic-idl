@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "InterCOM/json_serializer.h"
-#include "foo.h"
+#include "example.h"
 
 int main(int, const char**) {
     foo2 my_foo;

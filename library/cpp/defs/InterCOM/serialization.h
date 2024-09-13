@@ -291,7 +291,7 @@ class EmptyReader : public GenericReader {
 template <typename DELEGATE>
 class KeyOnlyWriter : public GenericWriter {
   public:
-    KeyOnlyWriter(DELEGATE& a_delegate) : m_delegate(a_delegate) {}
+    explicit KeyOnlyWriter(DELEGATE& a_delegate) : m_delegate(a_delegate) {}
 
     SerializerFlags flags() const override {
         return m_delegate.flags() | SERIALIZER_KEY_ONLY;
@@ -397,7 +397,7 @@ class KeyOnlyWriter : public GenericWriter {
 template <typename DELEGATE>
 class KeyOnlyReader : public GenericReader {
   public:
-    KeyOnlyReader(DELEGATE& a_delegate) : m_delegate(a_delegate) {}
+    explicit KeyOnlyReader(DELEGATE& a_delegate) : m_delegate(a_delegate) {}
 
     SerializerFlags flags() const override {
         return m_delegate.flags() | SERIALIZER_KEY_ONLY;
@@ -761,7 +761,7 @@ class TGenericMarshalBase {
         const TypeInfo& m_type_info;
     };
 
-    TGenericMarshalBase(WRITER& a_writer) : m_writer(&a_writer) {}
+    explicit TGenericMarshalBase(WRITER& a_writer) : m_writer(&a_writer) {}
 
     TGenericMarshalBase() : m_writer(nullptr) {}
 
@@ -930,7 +930,7 @@ class TGenericUnmarshalBase {
         const TypeInfo& m_type_info;
     };
 
-    TGenericUnmarshalBase(READER& a_reader) : m_reader(&a_reader) {}
+    explicit TGenericUnmarshalBase(READER& a_reader) : m_reader(&a_reader) {}
 
     TGenericUnmarshalBase() : m_reader(nullptr) {}
 
@@ -962,14 +962,14 @@ class TGenericUnmarshalBase {
 template <typename READER>
 class TGenericUnmarshal : public TGenericUnmarshalBase<READER, TGenericUnmarshal<READER>> {
   public:
-    TGenericUnmarshal(READER& a_reader)
+    explicit TGenericUnmarshal(READER& a_reader)
         : TGenericUnmarshalBase<READER, TGenericUnmarshal<READER>>(a_reader) {}
 };
 
 template <typename WRITER>
 class TGenericMarshal : public TGenericMarshalBase<WRITER, TGenericMarshal<WRITER>> {
   public:
-    TGenericMarshal(WRITER& a_writer)
+    explicit TGenericMarshal(WRITER& a_writer)
         : TGenericMarshalBase<WRITER, TGenericMarshal<WRITER>>(a_writer) {}
 };
 

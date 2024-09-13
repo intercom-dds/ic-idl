@@ -307,7 +307,7 @@ inline unsigned int functionRound4(
 NO_SANITIZE("integer")
 inline void md5transform(intercom::MD5Context& a_context) {
     unsigned int X[16];
-    for (int i = 0; i < 16; i++) {
+    for (size_t i = 0; i < 16; i++) {
         X[i] = decode(&a_context.buffer[4 * i]);
     }
 

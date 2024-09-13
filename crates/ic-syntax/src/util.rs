@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_vfs::FileId;
+use ic_vfs::Position;
 
 use crate::ast::Item;
 use crate::{Declarator, Expr, Path, Span, Type};
@@ -64,16 +64,20 @@ pub fn element_type(path: &Type) -> String {
 #[must_use]
 pub fn path_span(path: &Path) -> Span {
     let start = path.leading_colons.map_or_else(
-        || path.segments.first().map_or(0, |v| v.span.start),
+        || {
+            path.segments
+                .first()
+                .map_or_else(|| Position::default(), |v| v.span.start)
+        },
         |v| v.start,
     );
 
-    let end = path.segments.last().map_or(0, |v| v.span.end);
-    Span {
-        start,
-        end,
-        file_id: FileId::_do_not_use(),
-    }
+    let end = path
+        .segments
+        .last()
+        .map_or_else(|| Position::default(), |v| v.span.end);
+
+    Span { start, end }
 }
 
 // TODO: start and end do not necessarily come from the same file, so merging
@@ -86,20 +90,12 @@ pub fn expr_span(expr: &Expr) -> Span {
         Expr::Unary(v) => {
             let start = v.op.span.start;
             let end = expr_span(&v.expr).end;
-            Span {
-                start,
-                end,
-                file_id: v.op.span.file_id,
-            }
+            Span { start, end }
         }
         Expr::Binary(v) => {
             let start = expr_span(&v.lhs).start;
             let end = expr_span(&v.rhs).end;
-            Span {
-                start,
-                end,
-                file_id: v.lhs.span().file_id,
-            }
+            Span { start, end }
         }
         // TODO: an init list can be empty -- we should track spans of the
         // curly braces.
@@ -117,11 +113,7 @@ pub fn expr_span(expr: &Expr) -> Span {
                 .map(|e| expr_span(&e.value))
                 .unwrap_or_default()
                 .end;
-            Span {
-                start,
-                end,
-                file_id: FileId::_do_not_use(),
-            }
+            Span { start, end }
         }
     }
 }

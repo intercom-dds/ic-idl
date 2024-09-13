@@ -39,7 +39,7 @@ use ic_syntax::util::{path_name, type_name};
 use ic_syntax::visit::{visit_item, Visitor};
 use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
-use crate::hir::*;
+use crate::hir::{Variant, *};
 use crate::resolve::Resolver;
 use crate::{Context, TypeId};
 
@@ -562,10 +562,7 @@ impl<'a> Lower<'a> {
     //
     // we can avoid this by just not filling out the definitions, and instead
     // assigning it later? so leave an empty vec then populate it afterwards
-
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
-        // how can we avoid this?
-        // self.start_scope(&def.ident);
         let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
             def.definitions
                 .into_iter()
@@ -641,47 +638,66 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_union(&mut self, def: ic_syntax::UnionDef) -> DefId {
+    fn lower_variant(&mut self, var: ic_syntax::UnionField) -> Variant {
         use ic_syntax::{Label, UnionElement};
 
-        let mut variants = vec![];
-        for var in def.fields {
-            let labels: Vec<_> = var
-                .labels
-                .into_iter()
-                .map(|label| match label {
-                    Label::Case(v) => self.eval_expr(&v),
-                    Label::Default(_) => todo!(),
-                })
-                .collect();
+        let labels: Vec<_> = var
+            .labels
+            .into_iter()
+            .map(|label| match label {
+                Label::Case(v) => self.eval_expr(&v),
+                Label::Default(_) => todo!(),
+            })
+            .collect();
 
-            let member = match var.field {
-                UnionElement::Member(v) => {
-                    let ty = self.lower_type(*v.ty);
-                    let (ident, ty) = self.lower_declarator(v.decl, ty);
+        let annotations = var
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
 
-                    Variant {
-                        annotations: vec![],
-                        ident,
-                        ty,
-                        labels,
-                        is_default: false,
-                    }
+        match var.field {
+            UnionElement::Member(v) => {
+                let ty = self.lower_type(*v.ty);
+                let (ident, ty) = self.lower_declarator(v.decl, ty);
+
+                Variant {
+                    annotations,
+                    ident,
+                    ty,
+                    labels,
+                    is_default: false,
                 }
-                UnionElement::Null(_) => todo!(),
-            };
-            variants.push(member);
+            }
+            UnionElement::Null(_) => todo!(),
         }
+    }
+
+    fn lower_union(&mut self, def: ic_syntax::UnionDef) -> DefId {
+        let mut variants = self.with_scope(&def.ident, |this| {
+            def.fields
+                .into_iter()
+                .map(|v| this.lower_variant(v))
+                .collect()
+        });
+
+        let annotations = def
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
 
         let disc = self.lower_type(def.disc.ty);
         self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident,
-            annotations: vec![],
+            annotations,
             span: def.span,
             kind: DefKind::Union(UnionTy { disc, variants }),
         })
     }
+
+    fn lower_annotation(&mut self, _ann: ic_syntax::AnnotationAppl) {}
 
     fn lower_enum_lit(&mut self, lit: ic_syntax::Enumerator, last: &mut isize) -> EnumLit {
         *last = lit
@@ -689,10 +705,16 @@ impl<'a> Lower<'a> {
             .map(|v| self.bound_expr(&v) as isize)
             .unwrap_or_else(|| *last + 1);
 
+        let annotations = lit
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
+
         EnumLit {
             ident: lit.ident,
             value: *last,
-            annotations: vec![],
+            annotations,
         }
     }
 
@@ -704,12 +726,18 @@ impl<'a> Lower<'a> {
             .map(|lit| self.lower_enum_lit(lit, &mut last))
             .collect();
 
+        let annotations = def
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
+
         // TODO: should we check here that all enum names are unique? check
         // what rustc does...
         self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident,
-            annotations: vec![],
+            annotations,
             span: def.span,
             kind: DefKind::Enum(EnumTy { fields }),
         })
@@ -925,10 +953,10 @@ where
     for item in ast {
         state.lower_item(item);
     }
-    // assert!(
-    //     state.scope.is_empty(),
-    //     "a scope was opened but never closed",
-    // );
+    assert!(
+        state.scope.is_empty(),
+        "a scope was opened but never closed",
+    );
     debug_assert!(
         all_unique(&state.order),
         "order of types contains duplicate entries",

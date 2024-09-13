@@ -78,8 +78,8 @@ intercom_cts::bitmask! {
         /// Marker for synthesized types.
         IS_SYNTHESIZED = 1 << 3,
 
-        /// Indicates whether the type consists of members that can form a
-        /// total order.
+        /// Indicates whether the type consists of members that can form an
+        /// ordinal sequence, i.e. a well-ordered set.
         TOTAL_ORDER = 1 << 4,
     }
 }

@@ -455,10 +455,10 @@ where
             unreachable!("cursor stack is empty");
         };
 
-        let src = if file.cursor.file_id() == span.file_id {
+        let src = if file.cursor.file_id() == span.start.file_id {
             file.cursor.source_of(span)
         } else {
-            &self.vfs.source_str(span.file_id)[span.range()]
+            &self.vfs.source_str(span.start.file_id)[span.range()]
         };
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
@@ -1173,10 +1173,10 @@ pub fn to_string(
             break;
         }
 
-        if last_id != tok.span.file_id {
-            let path = iter.inner.vfs.path(tok.span.file_id);
+        if last_id != tok.span.start.file_id {
+            let path = iter.inner.vfs.path(tok.span.start.file_id);
             _ = buffer.write_str(&format!("\n#line 1 {path:?}\n"));
-            last_id = tok.span.file_id;
+            last_id = tok.span.start.file_id;
         }
 
         let slice = iter.source_of(tok.span);

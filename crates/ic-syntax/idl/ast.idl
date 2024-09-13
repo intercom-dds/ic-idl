@@ -53,15 +53,22 @@ struct Field;
 
 @nested
 @ext::suppress(language="rust")
-struct Span {
-    /// Byte offset to the start of the span.
-    uint32 start;
+struct Position {
+    /// Byte offset to the position.
+    uint32 offset;
 
-    /// Byte offset to the end of the span.
-    uint32 end;
-
-    /// The ID of the file from which this span was derived.
+    /// The ID of the file from which this position was derived.
     uint32 file_id;
+};
+
+@nested
+@ext::suppress(language="rust")
+struct Span {
+    /// The start position of the span.
+    Position start;
+
+    /// The end position of the span.
+    Position start;
 };
 
 @nested

@@ -92,7 +92,7 @@ fn emit_error(error: &Error, vfs: &SourceMap) {
         }
     };
     let mut buf = String::new();
-    let file = vfs.file_info(error.span.file_id);
+    let file = vfs.file_info(error.span.start.file_id);
     let relative = rel_path(&file.path).to_string_lossy().to_string();
     let _ = ic_diagnostic::emit_diagnostic(&mut buf, &relative, &file.source, &diag);
     eprintln!("{buf}");

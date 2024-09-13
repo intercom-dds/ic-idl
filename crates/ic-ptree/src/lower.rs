@@ -457,7 +457,7 @@ pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -
 
         collect_with(state, sys::append_node, ast, |item| {
             let span = ic_syntax::util::item_span(item);
-            let defined_in = format!("{}", vfs.name(span.file_id).display());
+            let defined_in = format!("{}", vfs.name(span.start.file_id).display());
             let include = create_ident(&defined_in);
 
             sys::create_include_start(state, include.as_ptr(), 0);

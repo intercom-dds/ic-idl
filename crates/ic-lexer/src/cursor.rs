@@ -27,7 +27,7 @@
 
 use std::rc::Rc;
 
-use ic_vfs::{FileId, Span};
+use ic_vfs::{FileId, Position, Span};
 
 use crate::iter::{OwnedChars, EOF};
 use crate::token::{Base, Kind, Token};
@@ -47,9 +47,8 @@ impl Cursor {
 
     fn span_since(&self, start: u32) -> Span {
         Span {
-            start,
-            end: self.chars.index(),
-            file_id: self.file_id,
+            start: Position::new(start, self.file_id),
+            end: Position::new(self.chars.index(), self.file_id),
         }
     }
 
@@ -311,7 +310,7 @@ impl Cursor {
     /// Panics if the given span does not belong to this cursor.
     #[must_use]
     pub fn source_of(&self, span: Span) -> &str {
-        assert_eq!(self.file_id, span.file_id, "FileId mismatch");
+        assert_eq!(self.file_id, span.start.file_id, "FileId mismatch");
         &self.chars.as_str()[span.range()]
     }
 

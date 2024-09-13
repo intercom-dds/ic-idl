@@ -150,8 +150,8 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}:{}: syntax error: expected {:?}, found {:?}",
-            self.span.start, self.span.end, self.found, self.expected,
+            "{:?}: syntax error: expected {:?}, found {:?}",
+            self.span, self.found, self.expected,
         )
     }
 }

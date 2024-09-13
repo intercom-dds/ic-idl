@@ -54,7 +54,7 @@ if (IC_TIDY)
         "clang-tidy"
         "--use-color"
         "--header-filter=.*"
-        "--warnings-as-errors='*"
+        "--warnings-as-errors='*'"
         "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
     )
 
@@ -89,7 +89,6 @@ glob_directory(crates/ic-codegen-idl/cpp)
 glob_directory(crates/ic-codegen-json/cpp)
 glob_directory(crates/ic-codegen-protobuf/cpp)
 glob_directory(crates/ic-codegen-python/cpp)
-glob_directory(crates/ic-codegen-rust/cpp)
 glob_directory(crates/ic-codegen-rust/cpp)
 
 add_library(

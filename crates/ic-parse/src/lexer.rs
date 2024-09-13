@@ -267,11 +267,7 @@ impl From<ic_preproc::Token> for Token {
         };
 
         Self {
-            span: Span {
-                start: value.span.start,
-                end: value.span.end,
-                file_id: value.span.file_id,
-            },
+            span: value.span,
             kind,
         }
     }

@@ -33,54 +33,50 @@ use crate::FileId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Marshal, Unmarshal)]
-pub struct Span {
-    /// Byte offset to the start of the span.
-    pub start: u32,
-
-    /// Byte offset to the end of the span.
-    pub end: u32,
-
-    /// ID of the file to which this span belongs.
+pub struct Position {
+    pub offset: u32,
     pub file_id: FileId,
 }
 
-// TODO: this really shouldn't be default constructible, but all generated code
-// relies on it, so...
-impl Default for Span {
-    fn default() -> Self {
-        Self {
-            start: 0,
-            end: 0,
-            file_id: FileId::_do_not_use(),
-        }
+impl Position {
+    pub fn new(offset: u32, file_id: FileId) -> Self {
+        Self { offset, file_id }
     }
+}
+
+// This really shouldn't be default constructible, but all generated code
+// relies on it. We have a sanity lint that verifies all `Position`s in the AST
+// has a valid `FileId`, so that should hopefully catch such cases.
+impl Default for Position {
+    fn default() -> Self {
+        Self::new(0, FileId::_do_not_use())
+    }
+}
+
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Marshal, Unmarshal)]
+pub struct Span {
+    pub start: Position,
+    pub end: Position,
 }
 
 // This doesn't really belong here, but since we can't implement the trait in
 // `ic-parse` because of orphan rules, we have to do it here instead. Using a
 // newtype wrapper in `ic-parse` is not ideal because it's used _everywhere_.
 impl chumsky::Span for Span {
-    type Context = FileId;
-    type Offset = u32;
+    type Context = ();
+    type Offset = Position;
 
     #[inline]
-    fn new(file_id: Self::Context, range: Range<Self::Offset>) -> Self {
+    fn new(_: Self::Context, range: Range<Self::Offset>) -> Self {
         Self {
             start: range.start,
             end: range.end,
-            file_id,
         }
     }
 
     #[inline]
-    fn merge(start: Self::Context, _: Self::Context) -> Self::Context {
-        start
-    }
-
-    #[inline]
-    fn context(&self) -> Self::Context {
-        self.file_id
-    }
+    fn context(&self) -> Self::Context {}
 
     #[inline]
     fn start(&self) -> Self::Offset {
@@ -96,16 +92,17 @@ impl chumsky::Span for Span {
 impl Span {
     #[must_use]
     pub fn range(&self) -> Range<usize> {
-        self.start as usize..self.end as usize
+        debug_assert_eq!(
+            self.start.file_id, self.end.file_id,
+            "attempted to derive Range<> from Span where start.file_id != end.file_id",
+        );
+        self.start.offset as usize..self.end.offset as usize
     }
 }
 
 impl From<Span> for Range<usize> {
     #[inline]
     fn from(val: Span) -> Self {
-        Self {
-            start: val.start as usize,
-            end: val.end as usize,
-        }
+        val.range()
     }
 }

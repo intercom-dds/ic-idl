@@ -198,3 +198,22 @@ pub fn item_span(item: &Item) -> Span {
         Item::DeclValue(v) => v.span,
     }
 }
+
+#[must_use]
+pub fn item_variant_name(item: &Item) -> &'static str {
+    match item {
+        Item::AnnotationValue(_) => "annotation",
+        Item::ModuleValue(_) => "module",
+        Item::StructValue(_) => "struct",
+        Item::UnionValue(_) => "union",
+        Item::EnumValue(_) => "enum",
+        Item::ExceptionValue(_) => "exception",
+        Item::BitmaskValue(_) => "bitmask",
+        Item::BitsetValue(_) => "bitset",
+        Item::ConstValue(_) => "const",
+        Item::AliasValue(_) => "alias",
+        Item::InterfaceValue(_) => "interface",
+        Item::ValuetypeValue(_) => "valuetype",
+        Item::DeclValue(_) => "forward declaration",
+    }
+}

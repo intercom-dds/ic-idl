@@ -147,6 +147,7 @@ pub fn lint_syntax(tree: &[Item]) -> Report {
         sanity::Sanity::check(&ctx, tree);
         pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
         syntax::ascii::AsciiIdent::check(&ctx, tree);
+        syntax::ann_members::AnnMembers::check(&ctx, tree);
         pedantic::bitmask_ann::BitmaskAnn::check(&ctx, tree);
     }
 

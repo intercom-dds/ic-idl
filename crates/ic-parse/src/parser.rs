@@ -1338,7 +1338,7 @@ fn annotation_appl() -> impl IdlParser<AnnotationAppl> {
     let members = annotation_appl_params()
         .parenthesized()
         .or_not()
-        .map(|v| v.unwrap_or_default());
+        .map(Option::unwrap_or_default);
 
     annotation_ident()
         .then(members)

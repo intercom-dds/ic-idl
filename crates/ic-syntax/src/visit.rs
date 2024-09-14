@@ -45,12 +45,16 @@ pub trait Visitor<'a> {
     }
 
     fn visit_annotation_field(&mut self, def: &'a AnnotationField) {
-        visit_annotation_field(self, def)
+        visit_annotation_field(self, def);
     }
 
-    fn visit_annotation_appl(&mut self, def: &'a AnnotationAppl) {}
+    fn visit_annotation_appl(&mut self, def: &'a AnnotationAppl) {
+        visit_annotation_appl(self, def);
+    }
 
-    fn visit_annotation_arg(&mut self, def: &'a AnnotationArg) {}
+    fn visit_annotation_arg(&mut self, def: &'a AnnotationArg) {
+        visit_annotation_arg(self, def);
+    }
 
     fn visit_module(&mut self, module: &'a ModuleDef) {
         visit_module(self, module);
@@ -217,6 +221,26 @@ where
         AnnotationField::Item(v) => visitor.visit_item(v),
         AnnotationField::Member(v) => visitor.visit_struct_field(v),
     }
+}
+
+pub fn visit_annotation_appl<'a, V>(visitor: &mut V, def: &'a AnnotationAppl)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_path(&def.ty);
+    for arg in &def.args {
+        visitor.visit_annotation_arg(arg);
+    }
+}
+
+pub fn visit_annotation_arg<'a, V>(visitor: &mut V, def: &'a AnnotationArg)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    if let Some(ident) = &def.ident {
+        visitor.visit_ident(ident);
+    }
+    visitor.visit_expr(&def.value);
 }
 
 pub fn visit_module<'a, V>(visitor: &mut V, module: &'a ModuleDef)

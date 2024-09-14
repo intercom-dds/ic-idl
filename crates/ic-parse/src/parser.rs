@@ -1299,7 +1299,9 @@ fn annotation_header() -> impl IdlParser<Ident> {
 
 // Rule 221
 fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
-    let defs = choice((enum_dcl(), const_dcl(), type_dcl()));
+    // Slight deviation: we accept all kinds of definitions here and instead
+    // check it later during linting to provide better error messages.
+    let defs = choice((const_dcl(), type_dcl()));
     choice((
         annotation_member().map(|v| AnnotationField::Member(Box::new(v))),
         defs.map(|v| AnnotationField::Item(Box::new(v))),

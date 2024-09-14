@@ -142,7 +142,7 @@ impl Cursor {
         // Consume the leading '/'
         _ = self.chars.next();
 
-        let is_doc = self.chars.peek() == '/';
+        let is_doc = matches!(self.chars.peek(), '/' | '!');
         _ = self.until_peek(Kind::Newline);
         is_doc
     }

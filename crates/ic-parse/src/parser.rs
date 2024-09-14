@@ -1286,10 +1286,13 @@ fn bit_value() -> impl IdlParser<Bit> {
 fn annotation_dcl() -> impl IdlParser<Item> {
     let params = annotation_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
     let def = annotation_header()
+        .annotated()
         .then(params)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(i, members), span| Item::def_annotation(i, members, span))
+    def.map_with_span(|((ann, i), members), span| {
+        Item::def_annotation(i, members, span).annotate(ann)
+    })
 }
 
 // Rule 220

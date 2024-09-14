@@ -40,7 +40,7 @@ use ic_syntax::{
 
 use crate::lexer::Kind;
 
-pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Clone {
+pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Sized {
     fn parenthesized(self) -> impl IdlParser<T> {
         self.delimited_by(just(Kind::LParen), just(Kind::RParen))
     }
@@ -53,7 +53,7 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Clone {
 }
 
 // Blanket impl because we really just want an alias
-impl<T, U: chumsky::Parser<Kind, T, Error = Error> + Clone> IdlParser<T> for U {}
+impl<T, U: chumsky::Parser<Kind, T, Error = Error>> IdlParser<T> for U {}
 
 pub type Error = Simple<Kind, Span>;
 

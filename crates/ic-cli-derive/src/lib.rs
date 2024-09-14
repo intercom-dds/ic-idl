@@ -117,7 +117,7 @@ impl ToTokens for Kind {
         let tree = if *self == Kind::Flag {
             quote! { ::ic_cli::Value::Flag }
         } else {
-            quote! { ::ic_cli::Value::Single }
+            quote! { ::ic_cli::Value::Multiple }
         };
         tree.to_tokens(stream);
     }

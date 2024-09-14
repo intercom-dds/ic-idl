@@ -569,6 +569,20 @@ impl Opt {
         }
         line.bold()
     }
+
+    pub(crate) fn insert_value(&mut self, value: String) {
+        self.count += 1;
+        match self.kind {
+            Value::Flag | Value::Single => {
+                if let Some(v) = self.values.first_mut() {
+                    *v = value;
+                } else {
+                    self.values.push(value);
+                }
+            }
+            Value::Multiple => self.values.push(value),
+        }
+    }
 }
 
 impl<'a> From<&'a str> for Opt {

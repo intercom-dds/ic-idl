@@ -30,6 +30,7 @@ use crate::index::IndexMap;
 use crate::{CommandLine, Opt, Value};
 
 #[must_use]
+#[derive(Debug)]
 pub struct ParseResult {
     pub(crate) name: String,
     pub(crate) options: IndexMap<String, Opt>,
@@ -103,157 +104,149 @@ impl From<String> for ParseError {
     }
 }
 
-struct Parser<I: Iterator<Item = String>> {
-    iter: I,
+struct Parser<'a> {
+    ctx: &'a CommandLine,
     result: ParseResult,
+    args: &'a mut dyn Iterator<Item = String>,
 }
 
-impl<I> Parser<I>
-where
-    I: Iterator<Item = String>,
-{
-    fn parse(&mut self, context: &mut CommandLine) -> Result<(), ParseError> {
+impl<'a> Parser<'a> {
+    fn with_command(
+        ctx: &'a CommandLine,
+        args: &'a mut dyn Iterator<Item = String>,
+    ) -> Result<ParseResult, ParseError> {
+        let result = ParseResult::from(ctx);
+        Self { ctx, result, args }.parse()
+    }
+
+    fn parse(mut self) -> Result<ParseResult, ParseError> {
         let mut had_option = false;
-        while let Some(arg) = self.iter.next() {
-            // end of options
+        while let Some(arg) = self.args.next() {
             let is_end = arg == "--";
-            if context.external || is_end {
+
+            // end of options and/or an external command
+            if is_end || self.ctx.external {
                 self.collect_remaining(arg, !is_end);
             }
-            // long option
-            else if let Some(option) = arg.strip_prefix("--") {
-                let (option, value) = Self::split(option);
-                self.parse_arg(context, option, value)?;
+            // long options
+            else if let Some(arg) = arg.strip_prefix("--") {
+                self.long_opt(arg)?;
             }
-            // short, possibly chained option(s)
-            else if let Some(option) = arg.strip_prefix('-') {
-                self.parse_arg(context, option, None)?;
+            // short options
+            else if let Some(arg) = arg.strip_prefix("-") {
+                self.short_opt(arg)?;
             }
-            // subcommand or positional argument
-            else {
-                self.unnamed(context, &arg)?;
+            // subcommand
+            else if !self.ctx.subcommands.is_empty() {
+                let sub = self.subcommand(&arg)?;
+                self.result.subcommand = Some(Box::new(sub));
+                break;
+            }
+            // positional
+            else if self.ctx.positionals {
+                self.result.positionals.push(arg);
+            } else {
+                return Err(format!("unexpected value: '{}'", arg.yellow()).into());
             }
             had_option = true;
         }
 
-        if had_option || (context.subcommands.is_empty() && !context.positionals) {
-            Ok(())
-        } else {
-            Err(ParseError::Help(context.help()))
-        }
-    }
-
-    fn split(arg: &str) -> (&str, Option<String>) {
-        match arg.split_once('=') {
-            Some((a, v)) => (a, Some(v.to_string())),
-            None => (arg, None),
-        }
-    }
-
-    fn unnamed(&mut self, context: &mut CommandLine, arg: &str) -> Result<(), ParseError> {
-        if context.subcommands.is_empty() {
-            if context.positionals {
-                self.result().positionals.push(arg.to_string());
-            } else {
-                return Err(format!("unexpected value: '{}'", arg.yellow()).into());
-            }
-        } else if let Some(cmd) = context
-            .subcommands
-            .values_mut()
-            .flat_map(|c| c.iter_mut())
-            .find(|v| v.name == arg)
+        if (had_option || self.result.subcommand.is_some())
+            || (self.ctx.subcommands.is_empty() && !self.ctx.positionals)
         {
-            let result = ParseResult::from(cmd);
-            self.result().subcommand = Some(Box::new(result));
-            self.parse(cmd)?;
+            Ok(self.result)
         } else {
-            return Err(format!("unknown subcommand '{}'", arg.yellow()).into());
+            Err(ParseError::Help(self.ctx.help()))
+        }
+    }
+
+    fn find_opt(&mut self, opt: &str) -> Result<&mut Opt, ParseError> {
+        self.result
+            .options
+            .get_mut(opt)
+            .ok_or_else(|| did_you_mean(opt, self.ctx.options.values()))
+    }
+
+    fn short_opt(&mut self, arg: &str) -> Result<(), ParseError> {
+        if arg.len() == 1 {
+            self.handle_opt(arg)?;
+        } else {
+            let (key, val) = arg.split_at(1);
+            let opt = self.find_opt(key)?;
+            opt.insert_value(val.to_string());
         }
         Ok(())
     }
 
-    fn consume_arg(&mut self, name: &str) -> Result<String, ParseError> {
-        let arg = self
-            .iter
-            .next()
-            .ok_or_else(|| format!("argument to '{}' is missing", name.yellow()))?;
-
-        if arg.starts_with('-') {
-            Err(format!("expected value, found '{}'", arg.yellow()).into())
+    fn long_opt(&mut self, arg: &str) -> Result<(), ParseError> {
+        if let Some((key, value)) = arg.split_once('=') {
+            let opt = self.find_opt(key)?;
+            for val in value.split(',') {
+                opt.insert_value(val.to_string());
+            }
         } else {
-            Ok(arg)
+            self.handle_opt(arg)?;
         }
+        Ok(())
     }
 
-    fn parse_arg(
-        &mut self,
-        context: &mut CommandLine,
-        name: &str,
-        value: Option<String>,
-    ) -> Result<(), ParseError> {
-        let Some(opt) = context.options.get_mut(name) else {
-            return Err(did_you_mean(name, context.options.values()));
+    fn handle_opt(&mut self, name: &str) -> Result<(), ParseError> {
+        let kind = self.find_opt(name)?.kind;
+        let value = if kind == Value::Flag {
+            true.to_string()
+        } else {
+            let arg = self
+                .args
+                .next()
+                .ok_or_else(|| format!("argument to '{}' is missing", prefixed(name)))?;
+
+            if arg.starts_with('-') {
+                let err = if arg == "-h" || arg == "--help" {
+                    ParseError::Help(self.ctx.help())
+                } else {
+                    format!(
+                        "expected argument to '{}', found option '{}'",
+                        prefixed(name),
+                        arg.yellow(),
+                    )
+                    .into()
+                };
+                return Err(err);
+            }
+            arg.to_string()
         };
 
-        if name == "h" || name == "help" {
-            return Err(ParseError::Help(context.help()));
-        }
-
-        if opt.kind == Value::Flag {
-            // temporary hack to make flags work properly with the derive macro
-            let parsed = self.result().options.get_mut(name).unwrap();
-            parsed.values.push(true.to_string());
-        } else {
-            let value = match value {
-                Some(v) => v,
-                None => self.consume_arg(name)?,
-            };
-            let value: Vec<_> = value.split(',').collect();
-            let parsed = self.result().options.get_mut(name).unwrap();
-
-            for v in value {
-                if opt.kind == Value::Single && !opt.values.is_empty() {
-                    parsed.values[0] = v.to_string();
-                } else {
-                    parsed.values.push(v.to_string());
-                }
-            }
-        }
-        opt.count += 1;
+        self.find_opt(name)?.insert_value(value);
         Ok(())
     }
 
-    fn result(&mut self) -> &mut ParseResult {
-        fn current(result: &mut ParseResult) -> &mut ParseResult {
-            if let Some(ref mut inner) = result.subcommand {
-                current(inner.as_mut())
-            } else {
-                result
-            }
+    fn subcommand(&mut self, cmd: &str) -> Result<ParseResult, ParseError> {
+        if let Some(cmd) = self
+            .ctx
+            .subcommands
+            .values()
+            .flat_map(|c| c.iter())
+            .find(|v| v.name == cmd)
+        {
+            Parser::with_command(cmd, self.args)
+        } else {
+            Err(format!("unknown subcommand '{}'", cmd.yellow()).into())
         }
-        current(&mut self.result)
     }
 
     fn collect_remaining(&mut self, arg: String, include_arg: bool) {
-        let mut positionals: Vec<String> = vec![];
         if include_arg {
-            positionals.push(arg);
+            self.result.positionals.push(arg);
         }
-        positionals.extend(self.iter.by_ref());
-        self.result().positionals.extend(positionals);
+        self.result.positionals.extend(&mut *self.args);
     }
 }
 
-pub fn from_args<I>(iter: I, cmd: &mut CommandLine) -> Result<ParseResult, ParseError>
+pub fn from_args<I>(mut iter: I, cmd: &mut CommandLine) -> Result<ParseResult, ParseError>
 where
     I: Iterator<Item = String>,
 {
-    let mut parser = Parser {
-        iter,
-        result: ParseResult::from(cmd),
-    };
-    parser.parse(cmd)?;
-    Ok(parser.result)
+    Parser::with_command(cmd, &mut iter)
 }
 
 fn levenshtein(a: &str, b: &str) -> usize {
@@ -314,16 +307,20 @@ fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
     closest
 }
 
+fn prefixed(name: &str) -> String {
+    let prefix = if name.len() > 1 { "--" } else { "-" };
+    format!("{prefix}{name}").yellow()
+}
+
 fn did_you_mean(input: &str, options: &[Opt]) -> ParseError {
-    let prefix = if input.len() > 1 { "--" } else { "-" }.yellow();
     let err = if let Some(v) = closest_match(input, options) {
         format!(
-            "unknown option '{prefix}{}', did you mean '{prefix}{}'?",
-            input.yellow(),
-            v.yellow(),
+            "unknown option '{}', did you mean '{}'?",
+            prefixed(input),
+            prefixed(v),
         )
     } else {
-        format!("unknown option '{prefix}{}'", input.yellow())
+        format!("unknown option '{}'", prefixed(input))
     };
     ParseError::Status(err)
 }

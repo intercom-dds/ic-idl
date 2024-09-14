@@ -35,7 +35,7 @@ use ic_cli::Command;
 
 use crate::warn;
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct Warnings {
     /// Enable all warnings
     #[option(long)]
@@ -59,7 +59,7 @@ pub struct Warnings {
 }
 
 /// Generic IDL code generator
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct Options {
     /// Only run the preprocessor
     #[option(short = 'E', long)]
@@ -120,7 +120,7 @@ pub struct Options {
     pub codegen: CodegenOptions,
 }
 
-#[derive(Command, Default, Debug)]
+#[derive(Command, Debug, Default)]
 pub struct CppOptions {
     /// Generate scoped enums
     #[option(long)]
@@ -151,7 +151,7 @@ pub struct CppOptions {
     pub header_subfolder: Option<String>,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct RustOptions {
     /// Do not rename generated types
     #[option(long)]
@@ -162,7 +162,7 @@ pub struct RustOptions {
     pub must_use: bool,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct PythonOptions {
     /// Rename all types to conform to PEP-8
     #[option(long)]
@@ -173,7 +173,7 @@ pub struct PythonOptions {
     pub global_postfix: Option<String>,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct IdlOptions {
     /// Output Doxygen-compatible IDL files
     #[option(long)]
@@ -184,7 +184,7 @@ pub struct IdlOptions {
     pub idl_expand: bool,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 #[allow(clippy::struct_field_names)]
 pub struct CodegenOptions {
     /// Generate C++ files in <dir>
@@ -212,7 +212,7 @@ pub struct CodegenOptions {
     pub json_out: Option<PathBuf>,
 }
 
-#[derive(Command, Default)]
+#[derive(Command, Debug, Default)]
 pub struct Unstable {
     /// Dump out the AST exactly as it was parsed
     #[option(long)]

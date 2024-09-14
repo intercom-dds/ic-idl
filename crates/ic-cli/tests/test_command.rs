@@ -58,6 +58,21 @@ fn test_flags() {
 }
 
 #[test]
+fn test_negated_flag() {
+    #[derive(Default, Command)]
+    struct Foo {
+        #[option(long)]
+        foo: bool,
+    }
+
+    let parsed = Foo::from_args(args!["--foo=false"]);
+    assert!(!parsed.foo);
+
+    let parsed = Foo::from_args(args!["--foo=true"]);
+    assert!(parsed.foo);
+}
+
+#[test]
 fn test_options() {
     #[derive(Default, Command)]
     struct Foo {
@@ -75,6 +90,31 @@ fn test_options() {
     let parsed = Foo::from_args(args!["--string", "abc", "--number", "123"]);
     assert_eq!(parsed.string, "abc");
     assert_eq!(parsed.number, 123);
+}
+
+#[test]
+fn test_short_option_no_space() {
+    #[derive(Default, Command)]
+    struct Foo {
+        #[option(short = 'I')]
+        include: String,
+    }
+
+    let parsed = Foo::from_args(args!["-I."]);
+    assert_eq!(parsed.include, ".");
+}
+
+#[test]
+fn test_long_equals() {
+    #[derive(Default, Command)]
+    struct Foo {
+        #[option(long)]
+        value: Vec<String>,
+    }
+
+    let parsed = Foo::from_args(args!["--value=1,2,3"]);
+    assert_eq!(parsed.value.len(), 3);
+    assert_eq!(parsed.value, vec!["1", "2", "3"]);
 }
 
 #[test]

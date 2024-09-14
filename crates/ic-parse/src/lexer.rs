@@ -175,11 +175,9 @@ impl fmt::Display for Kind {
             Kind::Octal(_) | Kind::Decimal(_) | Kind::Hex(_) => write!(f, "number"),
             Kind::Comment(_) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
-            Kind::Float(_) => todo!(),
-            Kind::StringLit(_) => todo!(),
-            Kind::AnnotationAppl(_) => todo!(),
             Kind::Ident(_) => write!(f, "identifier"),
             Kind::Eoi => write!(f, "end of input"),
+            _ => write!(f, "TODO:"),
         }
     }
 }
@@ -234,7 +232,6 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Comment => Kind::Comment(String::new()),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),
             ic_preproc::Kind::Char => Kind::Char(None),
-            // ic_preproc::Kind::At => Kind::,
             ic_preproc::Kind::Comma => Kind::Comma,
             ic_preproc::Kind::Period => Kind::Period,
             ic_preproc::Kind::Colon => Kind::Colon,
@@ -301,8 +298,13 @@ pub fn from_cursor(
                 ic_preproc::Kind::Newline => continue,
                 ic_preproc::Kind::Ident => {
                     let ident = iter.source_of(next.span).to_string();
+                    let kind = if ident.starts_with('@') {
+                        Kind::AnnotationAppl(ident)
+                    } else {
+                        Kind::Ident(ident)
+                    };
                     break Some(Token {
-                        kind: Kind::Ident(ident),
+                        kind,
                         span: next.span,
                     });
                 }

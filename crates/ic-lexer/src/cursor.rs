@@ -30,7 +30,7 @@ use std::rc::Rc;
 use ic_vfs::{FileId, Location, Span};
 
 use crate::iter::{OwnedChars, EOF};
-use crate::token::{Base, Kind, Token};
+use crate::token::{Base, Kind, Kw, Token};
 
 #[must_use]
 #[derive(Clone, Debug)]
@@ -64,9 +64,11 @@ impl Cursor {
         self.span_since(start)
     }
 
-    fn ident(&mut self) -> Kind {
+    fn ident(&mut self, start: u32) -> Kind {
         self.eat_while(is_ident);
-        Kind::Ident
+        let span = self.span_since(start);
+        let src = &self.chars.as_str()[span.range()];
+        Kw::from_str(src).map_or(Kind::Ident, Kind::Keyword)
     }
 
     fn number(&mut self, leading: char) -> Kind {
@@ -235,7 +237,6 @@ impl Cursor {
             let start = self.chars.index();
             let kind = match self.chars.next()? {
                 '#' => Kind::Hash,
-                '@' => Kind::At,
                 ',' => Kind::Comma,
                 '.' => Kind::Period,
                 ';' => Kind::Semi,
@@ -283,7 +284,7 @@ impl Cursor {
                 },
 
                 c if c.is_ascii_digit() => self.number(c),
-                c if is_ident(c) => self.ident(),
+                c if is_ident(c) => self.ident(start),
                 c if c.is_whitespace() => continue,
                 _ => Kind::Unknown,
             };
@@ -335,7 +336,7 @@ impl Cursor {
 }
 
 fn is_ident(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
+    c.is_alphanumeric() || c == '_' || c == '@'
 }
 
 #[cfg(test)]

@@ -34,7 +34,7 @@ use std::rc::Rc;
 
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
-use ic_lexer::token::{Base, Kind, Kw, Token};
+use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, SourceMap};
 
 use crate::{time, ProcArgs, Span};
@@ -401,7 +401,7 @@ where
         // Empty directives are allowed, but we should consume the hashtag.
         if let Some(tok) = self.cursor().next() {
             match tok.kind {
-                Kind::Ident => self.directive(tok.span),
+                Kind::Ident | Kind::Keyword(_) => self.directive(tok.span),
                 Kind::Number { .. } | Kind::Newline => (),
                 _ => {
                     self.state().errors.push(Error::Syntax {
@@ -435,9 +435,10 @@ where
     }
 
     fn macro_name(&mut self) -> Option<(&'a str, Span)> {
+        // TODO: can also be a keyword
         let tok = self.expect(Kind::Ident, "macro name must be an identifier")?;
         let Token {
-            kind: Kind::Ident,
+            kind: Kind::Ident | Kind::Keyword(_),
             span,
         } = tok
         else {
@@ -609,6 +610,7 @@ where
                     break;
                 }
 
+                // TODO: can also be a keyword
                 let arg = self.expect(Kind::Ident, "invalid token in macro parameter list")?;
                 args.push(arg);
 
@@ -826,7 +828,7 @@ where
         })?;
 
         let expr = match lhs.kind {
-            Kind::Ident | Kind::Number { .. } => Expr::Lit(lhs),
+            Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } => Expr::Lit(lhs),
             Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => {
                 let prefix = prefix_precedence(lhs.kind);
                 let expr = self.binary_expr(prefix)?;
@@ -892,7 +894,7 @@ where
                 let lit = self.source_of(v.span);
                 match v.kind {
                     Kind::Number { base } => parse_str(lit, base)?,
-                    Kind::Ident => 0,
+                    Kind::Ident | Kind::Keyword(_) => 0,
                     _ => unreachable!(),
                 }
             }
@@ -945,7 +947,7 @@ where
 
     fn expand_inner(&mut self, token: Token, seen: &mut BTreeSet<&'a str>) {
         // Only identifiers can be macros
-        if token.kind != Kind::Ident {
+        if !matches!(token.kind, Kind::Ident | Kind::Keyword(_)) {
             self.state().queue.push_back(token);
             return;
         }
@@ -1100,14 +1102,7 @@ where
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(mut next) = self.inner.next_active() {
-            if next.kind == Kind::Ident {
-                let src = self.inner.source_of(next.span);
-                if let Some(kw) = Kw::from_str(src) {
-                    next.kind = Kind::Keyword(kw);
-                }
-            }
-
+        if let Some(next) = self.inner.next_active() {
             // TODO: handle this elsewhere. probably in cursor?
             if next.kind != Kind::Newline {
                 self.prev = Some(next.span);

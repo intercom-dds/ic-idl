@@ -1216,6 +1216,7 @@ fn destination_type() -> impl IdlParser<Type> {
 // Rule 204
 fn bitmask_dcl() -> impl IdlParser<Item> {
     let body = bit_value()
+        .annotated()
         .separated_by(just(Kind::Comma))
         .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
 

@@ -1289,7 +1289,7 @@ fn annotation_dcl() -> impl IdlParser<Item> {
         .then(params)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(i, _), span| Item::def_annotation(i, vec![], span))
+    def.map_with_span(|(i, members), span| Item::def_annotation(i, members, span))
 }
 
 // Rule 220

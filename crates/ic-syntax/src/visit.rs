@@ -40,9 +40,13 @@ pub trait Visitor<'a> {
         visit_item(self, item);
     }
 
-    fn visit_annotation_def(&mut self, def: &'a AnnotationDef) {}
+    fn visit_annotation_def(&mut self, def: &'a AnnotationDef) {
+        visit_annotation_def(self, def);
+    }
 
-    fn visit_annotation_field(&mut self, def: &'a AnnotationField) {}
+    fn visit_annotation_field(&mut self, def: &'a AnnotationField) {
+        visit_annotation_field(self, def)
+    }
 
     fn visit_annotation_appl(&mut self, def: &'a AnnotationAppl) {}
 
@@ -192,6 +196,26 @@ where
         Item::DeclValue(v) => visitor.visit_forward_decl(v),
         Item::InterfaceValue(v) => visitor.visit_interface(v),
         Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
+    }
+}
+
+pub fn visit_annotation_def<'a, V>(visitor: &mut V, def: &'a AnnotationDef)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&def.ident);
+    for param in &def.params {
+        visitor.visit_annotation_field(param);
+    }
+}
+
+pub fn visit_annotation_field<'a, V>(visitor: &mut V, def: &'a AnnotationField)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match def {
+        AnnotationField::Item(v) => visitor.visit_item(v),
+        AnnotationField::Member(v) => visitor.visit_struct_field(v),
     }
 }
 

@@ -602,7 +602,12 @@ fn member() -> impl IdlParser<Field> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    field.map(|(ann, (ty, names))| Field { names, ty })
+    field.map_with_span(|(annotations, (ty, names)), span| Field {
+        names,
+        ty,
+        annotations,
+        span,
+    })
 }
 
 // Rule 48
@@ -1294,9 +1299,11 @@ fn annotation_member() -> impl IdlParser<Field> {
     let def = param.then(default.or_not()).then_ignore(just(Kind::Semi));
 
     // TODO: what should we do with the default value?
-    def.map(|((ty, decl), _default)| Field {
+    def.map_with_span(|((ty, decl), _default), span| Field {
         names: vec![decl],
         ty,
+        span,
+        annotations: vec![],
     })
 }
 

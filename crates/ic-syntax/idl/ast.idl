@@ -372,6 +372,11 @@ case FIELD_MEMBER:
 };
 
 @nested
+struct AnnotationMember {
+    Ident ident;
+};
+
+@nested
 struct AnnotationDef : IDef {
     sequence<AnnotationField> params;
 };
@@ -382,7 +387,7 @@ struct ModuleDef : IDef {
 };
 
 @nested
-struct Field {
+struct Field : IDecl {
     sequence<Declarator> names;
     Type ty;
 };

@@ -25,14 +25,36 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
+use ic_syntax::visit::{visit_tree, Visitor};
 
-// pub mod assign_expr;
-// pub mod complex_key;
-// pub mod complex_lit;
-// pub mod empty_mod;
-pub mod bitmask_ann;
-pub mod lowercase_bool;
-// pub mod null;
-// pub mod omitted_in;
-// pub mod scoped_enum;
+use crate::{Category, Lint, LintCtx};
+
+pub struct BitmaskAnn<'a> {
+    ctx: &'a LintCtx<'a>,
+}
+
+impl<'a> Visitor<'a> for BitmaskAnn<'_> {
+    fn visit_annotation_field(&mut self, def: &'a ic_syntax::AnnotationField) {
+        if let ic_syntax::AnnotationField::Item(item) = def {
+            if let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref() {
+                let diag = warn_span(
+                    "defining bitmasks in annotations is an InterCOM extension",
+                    Label::new(bitmask.ident.span).message("defined here"),
+                );
+                self.ctx.report(diag);
+            }
+        }
+    }
+}
+
+impl<'a> Lint<'a> for BitmaskAnn<'_> {
+    fn category() -> Category {
+        Category::Pedantic
+    }
+
+    fn check(ctx: &'a crate::LintCtx<'_>, tree: &[ic_syntax::Item]) {
+        let mut lint = BitmaskAnn { ctx };
+        visit_tree(&mut lint, tree);
+    }
+}

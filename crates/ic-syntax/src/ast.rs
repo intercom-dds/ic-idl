@@ -2275,6 +2275,17 @@ impl ::intercom_cts::Unmarshal for ModuleDef {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Field {
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    ///
+    /// The span of the above module will start at 'm' and end at '}'.
+    pub span: crate::ast::Span,
+    /// Annotations that were applied to this item.
+    pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub names: Vec<crate::ast::Declarator>,
     pub ty: crate::ast::Type,
 }
@@ -2283,6 +2294,8 @@ impl Field {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            span: <crate::ast::Span>::default(),
+            annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             names: <Vec<crate::ast::Declarator>>::default(),
             ty: <crate::ast::Type>::default(),
         }
@@ -2303,6 +2316,8 @@ impl ::intercom_cts::Marshal for Field {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("Field")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "names", &self.names)?;
         state.encode_field(1, "ty", &self.ty)?;
         state.end()
@@ -2317,6 +2332,8 @@ impl ::intercom_cts::Unmarshal for Field {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("Field")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "names", &mut self.names)?;
         state.decode_field(1, "ty", &mut self.ty)?;
         Ok(())

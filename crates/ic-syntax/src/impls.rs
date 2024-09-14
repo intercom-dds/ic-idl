@@ -26,20 +26,25 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    AliasDef, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl,
-    DeclKind, Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr, Field, Ident,
-    InterfaceDef, InterfaceMember, Item, ModuleDef, Path, Span, StructDef, Type, UnionDef,
-    UnionField, ValueMember, ValuetypeDef,
+    AliasDef, AnnotationAppl, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef,
+    ConstDef, Decl, DeclKind, Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
+    Field, Ident, InterfaceDef, InterfaceMember, Item, ModuleDef, Path, Span, StructDef, Type,
+    UnionDef, UnionField, ValueMember, ValuetypeDef,
 };
 
 impl Item {
     #[must_use]
-    pub fn def_module(ident: Ident, defs: Vec<Item>, span: Span) -> Self {
+    pub fn def_module(
+        annotations: Vec<AnnotationAppl>,
+        ident: Ident,
+        definitions: Vec<Item>,
+        span: Span,
+    ) -> Self {
         Self::ModuleValue(ModuleDef {
-            ident,
             span,
-            annotations: vec![],
-            definitions: defs,
+            annotations,
+            ident,
+            definitions,
         })
     }
 
@@ -91,13 +96,19 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_const(decl: Declarator, ty: Type, value: Expr, span: Span) -> Self {
+    pub fn def_const(
+        annotations: Vec<AnnotationAppl>,
+        decl: Declarator,
+        ty: Type,
+        value: Expr,
+        span: Span,
+    ) -> Self {
         Self::ConstValue(ConstDef {
-            decl,
             span,
-            value,
+            annotations,
+            decl,
             ty,
-            annotations: vec![],
+            value,
         })
     }
 
@@ -192,5 +203,25 @@ impl Item {
             annotations: vec![],
             kind,
         })
+    }
+
+    #[must_use]
+    pub fn annotate(mut self, annotations: Vec<AnnotationAppl>) -> Self {
+        match &mut self {
+            Item::AnnotationValue(v) => v.annotations = annotations,
+            Item::ModuleValue(v) => v.annotations = annotations,
+            Item::StructValue(v) => v.annotations = annotations,
+            Item::UnionValue(v) => v.annotations = annotations,
+            Item::EnumValue(v) => v.annotations = annotations,
+            Item::ExceptionValue(v) => v.annotations = annotations,
+            Item::BitmaskValue(v) => v.annotations = annotations,
+            Item::BitsetValue(v) => v.annotations = annotations,
+            Item::ConstValue(v) => v.annotations = annotations,
+            Item::AliasValue(v) => v.annotations = annotations,
+            Item::InterfaceValue(v) => v.annotations = annotations,
+            Item::ValuetypeValue(v) => v.annotations = annotations,
+            Item::DeclValue(v) => v.annotations = annotations,
+        }
+        self
     }
 }

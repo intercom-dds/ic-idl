@@ -329,7 +329,7 @@ struct AnnotationArg {
 
 @nested
 struct AnnotationAppl {
-    Ident ident;
+    Path ty;
     Span span;
     sequence<AnnotationArg> args;
 };

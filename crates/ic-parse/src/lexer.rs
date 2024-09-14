@@ -308,6 +308,13 @@ pub fn from_cursor(
                         span: next.span,
                     });
                 }
+                ic_preproc::Kind::Comment => {
+                    let comment = iter.source_of(next.span).to_string();
+                    break Some(Token {
+                        kind: Kind::Comment(comment),
+                        span: next.span,
+                    });
+                }
                 _ => break Some(Token::from(next)),
             }
         }

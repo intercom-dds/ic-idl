@@ -31,11 +31,11 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_lexer::token::Kw;
 use ic_syntax::{
-    AnnotationAppl, AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary, Bit, Bitfield,
-    DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed, FixedType, Ident,
-    InitList, InterfaceMember, Item, Label, Literal, LiteralValue, MapType, NamedExpr, Op, OpKind,
-    Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type, Unary, UnionElement,
-    UnionField, UnionMember, UnionNull,
+    AnnotationAppl, AnnotationArg, AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary,
+    Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed,
+    FixedType, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue, MapType,
+    NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type,
+    Unary, UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -47,9 +47,8 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Clone {
 
     fn annotated(self) -> impl IdlParser<(Vec<AnnotationAppl>, T)> {
         let ann = annotation_appl();
-        // let doxy = doxy_comment().ignored();
-        ann.repeated().then(self)
-        // choice((ann, doxy)).repeated().then(self)
+        let doxy = doxy_comment();
+        choice((ann, doxy)).repeated().then(self)
     }
 }
 
@@ -123,14 +122,18 @@ fn rshift() -> impl IdlParser<Op> {
         })
 }
 
-fn primitive_type(name: &str, span: Span) -> Type {
-    Type::Path(Path {
+fn primitive_path(name: &str, span: Span) -> Path {
+    Path {
         leading_colons: None,
         segments: vec![Ident {
             name: name.to_string(),
             span,
         }],
-    })
+    }
+}
+
+fn primitive_type(name: &str, span: Span) -> Type {
+    Type::Path(primitive_path(name, span))
 }
 
 // Handles bounds for collections types
@@ -138,8 +141,20 @@ fn bound() -> impl IdlParser<Option<Expr>> {
     just(Kind::Comma).ignore_then(positive_int_const()).or_not()
 }
 
-fn doxy_comment() -> impl IdlParser<()> {
-    select! { Kind::Comment(v) => v }.ignored()
+fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
+    let comment = select! { Kind::Comment(v) => v };
+    comment.map_with_span(|value, span| AnnotationAppl {
+        ty: primitive_path("@doc", span),
+        span,
+        args: vec![AnnotationArg {
+            ident: None,
+            span,
+            value: Expr::Literal(Literal {
+                span,
+                value: LiteralValue::String(value),
+            }),
+        }],
+    })
 }
 
 // Rule 1
@@ -1320,29 +1335,38 @@ fn any_const_type() -> impl IdlParser<Type> {
 
 // Rule 225
 fn annotation_appl() -> impl IdlParser<AnnotationAppl> {
+    let members = annotation_appl_params()
+        .parenthesized()
+        .or_not()
+        .map(|v| v.unwrap_or_default());
+
     annotation_ident()
-        .then(annotation_appl_params().parenthesized().or_not())
-        .map_with_span(|(ty, _), span| AnnotationAppl {
-            ty,
-            span,
-            args: vec![],
-        })
+        .then(members)
+        .map_with_span(|(ty, args), span| AnnotationAppl { ty, span, args })
 }
 
 // Rule 226
-fn annotation_appl_params() -> impl IdlParser<()> {
-    annotation_appl_param()
-        .separated_by(just(Kind::Comma))
-        .ignored()
+fn annotation_appl_params() -> impl IdlParser<Vec<AnnotationArg>> {
+    let unnamed = complex_const_expr().map_with_span(|value, span| AnnotationArg {
+        ident: None,
+        span,
+        value,
+    });
+
+    // Minor deviation: we allow multiple unnamed arguments here. This is
+    // later checked in a lint. Enforcing this restriction through the grammar
+    // will produce errors that are somewhat unclear.
+    choice((unnamed, annotation_appl_param())).separated_by(just(Kind::Comma))
 }
 
 // Rule 227
-fn annotation_appl_param() -> impl IdlParser<()> {
-    choice((
-        complex_const_expr()
-            .then_ignore(just(Kind::Eq))
-            .then(ident())
-            .ignored(),
-        complex_const_expr().ignored(),
-    ))
+fn annotation_appl_param() -> impl IdlParser<AnnotationArg> {
+    ident()
+        .then_ignore(just(Kind::Eq))
+        .then(complex_const_expr())
+        .map_with_span(|(ident, value), span| AnnotationArg {
+            ident: Some(ident),
+            span,
+            value,
+        })
 }

@@ -37,8 +37,7 @@
 #include <InterCOM/bounded.h>
 #include <InterCOM/span.h>
 
-#include <functional>
-#include <optional>
+// NOLINTBEGIN
 
 namespace intercom {
 using ParameterId_t = uint16_t;
@@ -217,3 +216,5 @@ const MemberId MEMBER_ID_INVALID{0xfffffffU};
 #ifdef _WIN32
 #  pragma warning(pop)
 #endif
+
+// NOLINTEND

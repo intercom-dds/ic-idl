@@ -28,6 +28,7 @@
 #pragma once
 
 #include <cstring>
+#include <optional>
 #include <set>
 #include <string>
 

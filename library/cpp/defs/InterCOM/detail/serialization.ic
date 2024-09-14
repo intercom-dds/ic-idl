@@ -50,7 +50,7 @@ template <typename T>
 inline bool enum_to_string(std::string& res, T value, const TypeInfo* type) {
     if (type) {
         if (type->kind == dcps::xtypes::TK_ENUM) {
-            auto uvalue = static_cast<uint32_t>(value);
+            auto uvalue = static_cast<uint32_t>(value);  // NOLINT
             if (uvalue < type->member_count && type->members[uvalue].id == uvalue) {
                 res = type->members[uvalue].name;
                 return true;
@@ -665,9 +665,9 @@ copy_discriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, in
             writer.end_member();
         }
     }
-    int default_member = 0;
+    int32_t default_member = 0;
     a_idx = 0;
-    for (uint32_t i = 1; a_idx == 0 && i < type_info.member_count; ++i) {
+    for (int32_t i = 1; a_idx == 0 && i < type_info.member_count; ++i) {
         if ((type_info.members[i].flags & dcps::xtypes::IS_DEFAULT) != 0) {
             default_member = i;
         }

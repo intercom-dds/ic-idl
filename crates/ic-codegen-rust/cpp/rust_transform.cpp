@@ -28,10 +28,12 @@
 #include <iostream>
 #include <optional>
 
+#include "cidl/commandline.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
+#include "icgen/template/casing.h"
 #include "rust_common.h"
 
 using namespace intercom::cidl;
@@ -302,6 +304,98 @@ static void rename_tree(ptree* node, const std::set<ptree*>& moved) {
     }
 }
 
+static bool starts_with_alpha(std::string_view name) {
+    for (auto c : name) {
+        if (std::isalpha(c)) {
+            return true;
+        }
+        if (c != '_') {
+            return false;
+        }
+    }
+    return false;
+}
+
+static size_t rfind_delimiter(std::string_view name) {
+    bool was_upper = false;
+    for (size_t i = name.size() - 1; i > 0; i--) {
+        auto c = name[i];
+        if (i >= 1) {
+            auto peek = name[i - 1];
+
+            if (peek == '_' || (islower(c) && isupper(peek)) ||
+                (was_upper && isupper(c) && islower(peek))) {
+                return i - 1;
+            }
+        }
+        was_upper = isupper(c) != 0;
+    }
+    return std::string_view::npos;
+}
+
+/// If all enumerators have a prefix that is also found in the name of the enum
+/// itself, this function will strip that prefix from the names of the
+/// enumerators.
+///
+/// For example:
+/// ```
+///     enum Color { COLOR_RED, COLOR_GREEN };
+/// ```
+/// will be converted to:
+/// ```
+///     enum Color { RED, GREEN };
+/// ```
+static void strip_prefix(const ptree* node) {
+    size_t pos = 0;
+    auto first = std::string_view(node->members->name);
+    auto prefix = first.substr(0, rfind_delimiter(first));
+
+    while (pos != std::string_view::npos) {
+        // Check if all enumerators have a shared prefix
+        bool has_prefix = std::all_of(begin(node->members), end(node->members), [&](ptree* mem) {
+            if (mem->name.size() > prefix.size()) {
+                auto remainder = std::string_view(mem->name).substr(prefix.size());
+                auto view = std::string_view(mem->name).substr(0, prefix.size());
+                return starts_with_alpha(remainder) && view == prefix;
+            }
+            return false;
+        });
+
+        if (has_prefix) {
+            auto found_prefix = intercom::icgen::snake_case(prefix);
+            auto type_name = intercom::icgen::snake_case(node->name);
+
+            // Check if the type name contains the same prefix, though it may
+            // be written with a different naming convention.
+            if (type_name.size() >= found_prefix.size() &&
+                type_name.substr(0, found_prefix.size()) == found_prefix) {
+                for (auto mem : node->members) {
+                    mem->name = mem->name.substr(prefix.size());
+                }
+                break;
+            }
+        }
+
+        // Find the next delimiter and try again
+        pos = rfind_delimiter(prefix);
+        prefix = prefix.substr(0, pos);
+    }
+}
+
+static void enum_prefix(const ptree* node) {
+    if (CommandLineOption::no_rename()) {
+        return;
+    }
+
+    for (; node; node = node->next) {
+        if (node->kind == N_ENUM) {
+            strip_prefix(node);
+        } else if (node->members) {
+            enum_prefix(node->members);
+        }
+    }
+}
+
 static void dump_names(const ptree* node) {
     for (; node; node = node->next) {
         std::cout << idl_scoped_name(node, nullptr) << std::endl;
@@ -335,6 +429,9 @@ void intercom::rust::transform_rust(parse_result* result) {
 
     // Give select modules more suitable names
     rescope_dds(tree);
+
+    // Strip prefixes from enumerators
+    enum_prefix(tree);
 
     // Rename nodes so they conform with Rust's naming convention
     rename_tree(tree, moved);

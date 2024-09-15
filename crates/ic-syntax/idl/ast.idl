@@ -364,16 +364,18 @@ enum AnnotationFieldKind {
 };
 
 @nested
+struct AnnotationMember : IDecl {
+    Declarator decl;
+    Type ty;
+    @optional Expr _default;
+};
+
+@nested
 union AnnotationField switch(AnnotationFieldKind) {
 case FIELD_DEFINITION:
     @external Item item;
 case FIELD_MEMBER:
-    @external Field member;
-};
-
-@nested
-struct AnnotationMember {
-    Ident ident;
+    @external AnnotationMember member;
 };
 
 @nested

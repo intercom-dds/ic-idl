@@ -32,8 +32,8 @@ use std::ptr;
 
 use ic_parse::SourceMap;
 use ic_syntax::{
-    AnnotationAppl, AnnotationArg, AnnotationField, DeclKind, Declarator, Expr, Field,
-    InterfaceMember, Item, Label, LiteralValue, Op, OpKind, Param, ParamKind, Path, Type,
+    AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, DeclKind, Declarator, Expr,
+    Field, InterfaceMember, Item, Label, LiteralValue, Op, OpKind, Param, ParamKind, Path, Type,
     UnionElement,
 };
 
@@ -198,6 +198,7 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
                     sys::create_decl(state, ident.as_ptr(), ptr::null_mut())
                 });
 
+                // TODO: missing type
                 let val = sys::create_const_node(
                     state,
                     declarator,
@@ -221,10 +222,24 @@ fn lower_path(state: *mut sys::parser_state, path: &Path) -> *mut sys::ptree {
 fn lower_field(state: *mut sys::parser_state, field: &Field) -> *mut sys::ptree {
     unsafe {
         let ty = lower_ty(state, &field.ty);
+        let annotations = lower_applied_annotations(state, &field.annotations);
         let decls = create_decl_list(state, &field.names, ptr::null_mut());
-        let mem = sys::create_member(state, decls, ty, ptr::null_mut());
-        annotate(state, mem, &field.annotations)
+        sys::create_member(state, decls, ty, annotations)
     }
+}
+
+unsafe fn lower_annotation_member(
+    state: *mut sys::parser_state,
+    member: &AnnotationMember,
+) -> *mut sys::ptree {
+    let ty = lower_ty(state, &member.ty);
+    let decl = create_decl(state, &member.decl, std::ptr::null_mut());
+    let default = member
+        .default
+        .as_ref()
+        .map_or(NUM_UNDEF, |v| lower_expr(state, v));
+
+    sys::create_annotation_member(state, decl, ty, default)
 }
 
 fn lower_interface_member(
@@ -307,9 +322,9 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             sys::create_annotation_dcl_start(state, ident.as_ptr());
             let params = collect_with(state, sys::append_node, &v.params, |param| match param {
                 AnnotationField::Item(v) => lower_item(state, v),
-                AnnotationField::Member(v) => lower_field(state, v),
+                AnnotationField::Member(v) => lower_annotation_member(state, v),
             });
-            sys::create_annotation_finish(state, params)
+            sys::create_annotation_dcl_finish(state, params)
         }
         Item::ModuleValue(v) => {
             let ident = create_ident(&v.ident.name);

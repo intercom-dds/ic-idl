@@ -94,8 +94,9 @@ fn is_consistent(ctx: &mut Context, lhs: &AnnotationDef, rhs: &AnnotationDef) ->
 
     lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
         (AnnotationField::Member(lhs), AnnotationField::Member(rhs)) => {
-            decl_consistent(ctx, &lhs.names, &rhs.names)
-                && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
+            true
+            // decl_consistent(ctx, &lhs.names, &rhs.names)
+            //     && is_type_consistent(ctx, &lhs.ty, &rhs.ty)
         }
         // (AnnotationField::Const(lhs), AnnotationField::Const(rhs)) => {
         //     // TODO: check value

@@ -100,7 +100,10 @@ pub fn lower_ast(ast: &ic_parse::ParseResult) -> ParseResult {
         let tree = lower::lower_ast(state, &ast.tree, &ast.sources);
         sys::ic_parser_result(state, tree)
     };
-    ParseResult { inner }
+
+    let result = ParseResult { inner };
+    debug_assert_eq!(result.error_count(), 0);
+    result
 }
 
 #[macro_export]

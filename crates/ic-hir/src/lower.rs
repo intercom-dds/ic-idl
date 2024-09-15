@@ -290,8 +290,9 @@ impl<'a> Lower<'a> {
 
         lhs.params.iter().zip(rhs.params.iter()).all(|v| match v {
             (AnnotationField::Member(lhs), AnnotationField::Member(rhs)) => {
-                self.check_decl_consistency(&lhs.names, &rhs.names)
-                    && self.check_type_consistency(&lhs.ty, &rhs.ty)
+                true
+                // self.check_decl_consistency(&lhs.names, &rhs.names)
+                //     && self.check_type_consistency(&lhs.ty, &rhs.ty)
             }
             (AnnotationField::Item(lhs), AnnotationField::Item(rhs)) => {
                 true

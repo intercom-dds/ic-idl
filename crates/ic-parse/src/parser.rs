@@ -31,11 +31,11 @@ use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_lexer::token::Kw;
 use ic_syntax::{
-    AnnotationAppl, AnnotationArg, AnnotationField, AnyType, ArrayDeclarator, Attribute, Binary,
-    Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr, Field, Fixed,
-    FixedType, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue, MapType,
-    NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span, StringType, Type,
-    Unary, UnionElement, UnionField, UnionMember, UnionNull,
+    AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, AnyType, ArrayDeclarator,
+    Attribute, Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr,
+    Field, Fixed, FixedType, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue,
+    MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
+    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -1313,16 +1313,16 @@ fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
 }
 
 // Rule 222
-fn annotation_member() -> impl IdlParser<Field> {
+fn annotation_member() -> impl IdlParser<AnnotationMember> {
     let param = annotation_member_type().then(simple_declarator());
     let default = keyword(Kw::Default).ignore_then(const_expr());
     let def = param.then(default.or_not()).then_ignore(just(Kind::Semi));
 
-    // TODO: what should we do with the default value?
-    def.map_with_span(|((ty, decl), _default), span| Field {
-        names: vec![decl],
+    def.map_with_span(|((ty, decl), default), span| AnnotationMember {
         ty,
         span,
+        decl,
+        default,
         annotations: vec![],
     })
 }

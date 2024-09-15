@@ -166,7 +166,7 @@ static std::string name(const ptree* node) {
 static std::string type(const ptree* node, const ptree* scope) {
     std::stringstream ss;
     auto name = idl_scoped_name(node, scope);
-    ss << ic::color::green << name << " " << ic::color::reset;
+    ss << ic::color::green << '\'' << name << "' " << ic::color::reset;
     return ss.str();
 }
 
@@ -246,7 +246,7 @@ static void emit_value(ScopedPrinter& out, numeric val, std::set<const ptree*>& 
             }
             out << ic::color::bright_magenta << "'= \"" << str << "\"' " << ic::color::reset;
         } else {
-            out << ic::color::bright_magenta << "'= " << str << "' " << ic::color::reset;
+            out << ic::color::bright_magenta << "'= '" << str << "' " << ic::color::reset;
         }
     }
 }

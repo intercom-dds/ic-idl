@@ -2048,9 +2048,80 @@ impl ::intercom_cts::decode::EnumVisitor for AnnotationFieldKind {
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct AnnotationMember {
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    ///
+    /// The span of the above module will start at 'm' and end at '}'.
+    pub span: crate::ast::Span,
+    /// Annotations that were applied to this item.
+    pub annotations: Vec<crate::ast::AnnotationAppl>,
+    pub decl: crate::ast::Declarator,
+    pub ty: crate::ast::Type,
+    pub default: Option<crate::ast::Expr>,
+}
+
+impl AnnotationMember {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            span: <crate::ast::Span>::default(),
+            annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
+            decl: <crate::ast::Declarator>::default(),
+            ty: <crate::ast::Type>::default(),
+            default: None,
+        }
+    }
+}
+
+impl ::std::default::Default for AnnotationMember {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ::intercom_cts::Marshal for AnnotationMember {
+    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+    where
+        S: ::intercom_cts::encode::Serializer,
+    {
+        use ::intercom_cts::encode::FieldSerializer as _;
+
+        let mut state = ar.encode_struct("AnnotationMember")?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
+        state.encode_field(0, "decl", &self.decl)?;
+        state.encode_field(1, "ty", &self.ty)?;
+        state.encode_field(2, "default", &self.default)?;
+        state.end()
+    }
+}
+
+impl ::intercom_cts::Unmarshal for AnnotationMember {
+    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+    where
+        D: ::intercom_cts::decode::Deserializer,
+    {
+        use ::intercom_cts::decode::FieldDeserializer as _;
+
+        let mut state = ar.decode_struct("AnnotationMember")?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
+        state.decode_field(0, "decl", &mut self.decl)?;
+        state.decode_field(1, "ty", &mut self.ty)?;
+        state.decode_field(2, "default", &mut self.default)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum AnnotationField {
     Item(Box<crate::ast::Item>),
-    Member(Box<crate::ast::Field>),
+    Member(Box<crate::ast::AnnotationMember>),
 }
 
 impl AnnotationField {
@@ -2075,7 +2146,7 @@ impl From<crate::ast::AnnotationFieldKind> for AnnotationField {
                 Self::Item(Box::new(<crate::ast::Item>::default()))
             }
             crate::ast::AnnotationFieldKind::FieldMember => {
-                Self::Member(Box::new(<crate::ast::Field>::default()))
+                Self::Member(Box::new(<crate::ast::AnnotationMember>::default()))
             }
         }
     }
@@ -2120,57 +2191,11 @@ impl ::intercom_cts::Unmarshal for AnnotationField {
                 Self::Item(value)
             }
             crate::ast::AnnotationFieldKind::FieldMember => {
-                let mut value = Box::new(<crate::ast::Field>::default());
+                let mut value = Box::new(<crate::ast::AnnotationMember>::default());
                 state.decode_variant(1, "member", &mut value)?;
                 Self::Member(value)
             }
         };
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct AnnotationMember {
-    pub ident: crate::ast::Ident,
-}
-
-impl AnnotationMember {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            ident: <crate::ast::Ident>::default(),
-        }
-    }
-}
-
-impl ::std::default::Default for AnnotationMember {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ::intercom_cts::Marshal for AnnotationMember {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
-
-        let mut state = ar.encode_struct("AnnotationMember")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.end()
-    }
-}
-
-impl ::intercom_cts::Unmarshal for AnnotationMember {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::FieldDeserializer as _;
-
-        let mut state = ar.decode_struct("AnnotationMember")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
         Ok(())
     }
 }

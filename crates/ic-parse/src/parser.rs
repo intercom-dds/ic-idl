@@ -667,7 +667,9 @@ fn union_def() -> impl IdlParser<Item> {
 
 // Rule 51
 fn switch_type_spec() -> impl IdlParser<Type> {
-    // TODO: boolean_type, char_type
+    // Minor deviation: we don't treat `boolean` or `char` as keywords, so we
+    // instead rely on `scoped_name` to resolve to said types. We restrict what
+    // types are allowed as a discriminator during linting.
     choice((integer_type(), scoped_name().map(Type::Path)))
 }
 
@@ -1249,8 +1251,10 @@ fn bitfield_spec() -> impl IdlParser<(Expr, Option<Type>)> {
 
 // Rule 203
 fn destination_type() -> impl IdlParser<Type> {
-    // TODO: boolean_type, octet_type
-    integer_type()
+    // Minor deviation: we don't treat all primitive types as keywords, so we
+    // instead rely on `scoped_name` and instead restrict the types later
+    // during linting.
+    choice((integer_type(), scoped_name().map(Type::Path)))
 }
 
 // Rule 204

@@ -94,9 +94,9 @@ impl Interp<'_> {
 
         let val = self.to_value(&unary.expr);
         match unary.op.kind {
-            OpKind::OpSub => -val,
-            OpKind::OpNot => !val,
-            OpKind::OpAdd => val,
+            OpKind::Sub => -val,
+            OpKind::Not => !val,
+            OpKind::Add => val,
             _ => panic!("invalid operator in unary expression"),
         }
     }
@@ -107,17 +107,17 @@ impl Interp<'_> {
         let lhs = self.to_value(&binary.lhs);
         let rhs = self.to_value(&binary.rhs);
         match binary.op.kind {
-            OpKind::OpAdd => lhs + rhs,
-            OpKind::OpSub => lhs - rhs,
-            OpKind::OpMultiply => lhs * rhs,
-            OpKind::OpDivide => lhs / rhs,
-            OpKind::OpModulo => lhs % rhs,
-            OpKind::OpLshift => lhs << rhs,
-            OpKind::OpRshift => lhs >> rhs,
-            OpKind::OpOr => lhs | rhs,
-            OpKind::OpXor => lhs ^ rhs,
-            OpKind::OpAnd => lhs & rhs,
-            OpKind::OpNot => panic!("expected binary op, found bitwise NOT"),
+            OpKind::Add => lhs + rhs,
+            OpKind::Sub => lhs - rhs,
+            OpKind::Multiply => lhs * rhs,
+            OpKind::Divide => lhs / rhs,
+            OpKind::Modulo => lhs % rhs,
+            OpKind::Lshift => lhs << rhs,
+            OpKind::Rshift => lhs >> rhs,
+            OpKind::Or => lhs | rhs,
+            OpKind::Xor => lhs ^ rhs,
+            OpKind::And => lhs & rhs,
+            OpKind::Not => panic!("expected binary op, found bitwise NOT"),
         }
     }
 
@@ -826,11 +826,11 @@ impl<'a> Lower<'a> {
         use ic_syntax::DeclKind;
 
         let kind = match def.kind {
-            DeclKind::DeclStruct => Decl::Struct,
-            DeclKind::DeclUnion => Decl::Union,
-            DeclKind::DeclNative => Decl::Native,
-            DeclKind::DeclInterface => Decl::Interface,
-            DeclKind::DeclValuetype => Decl::Valuetype,
+            DeclKind::Struct => Decl::Struct,
+            DeclKind::Union => Decl::Union,
+            DeclKind::Native => Decl::Native,
+            DeclKind::Interface => Decl::Interface,
+            DeclKind::Valuetype => Decl::Valuetype,
         };
 
         self.ctx.definitions.alloc_with_id(|id| Def {

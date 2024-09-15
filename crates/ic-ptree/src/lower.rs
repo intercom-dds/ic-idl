@@ -45,25 +45,25 @@ static mut NUM_UNDEF: *const sys::numeric = unsafe { ptr::addr_of!(sys::num_unde
 
 fn op_kind(op: Op) -> ffi::c_char {
     let c = match op.kind {
-        OpKind::OpAdd => b'+',
-        OpKind::OpSub => b'-',
-        OpKind::OpMultiply => b'*',
-        OpKind::OpDivide => b'/',
-        OpKind::OpModulo => b'%',
-        OpKind::OpLshift => b'<',
-        OpKind::OpRshift => b'>',
-        OpKind::OpOr => b'|',
-        OpKind::OpXor => b'^',
-        OpKind::OpAnd => b'&',
-        OpKind::OpNot => b'~',
+        OpKind::Add => b'+',
+        OpKind::Sub => b'-',
+        OpKind::Multiply => b'*',
+        OpKind::Divide => b'/',
+        OpKind::Modulo => b'%',
+        OpKind::Lshift => b'<',
+        OpKind::Rshift => b'>',
+        OpKind::Or => b'|',
+        OpKind::Xor => b'^',
+        OpKind::And => b'&',
+        OpKind::Not => b'~',
     };
     c as ffi::c_char
 }
 
 fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
     let c = match kind {
-        Some(ParamKind::ParamOut) => sys::OPT_OUT,
-        Some(ParamKind::ParamInout) => sys::OPT_INOUT,
+        Some(ParamKind::Out) => sys::OPT_OUT,
+        Some(ParamKind::Inout) => sys::OPT_INOUT,
         _ => sys::OPT_IN,
     };
     c as ffi::c_int
@@ -333,11 +333,11 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
         Item::DeclValue(v) => {
             let ident = create_ident(&v.ident.name);
             match v.kind {
-                DeclKind::DeclStruct => sys::create_struct_dcl(state, ident.as_ptr()),
-                DeclKind::DeclUnion => sys::create_union_dcl(state, ident.as_ptr()),
-                DeclKind::DeclNative => sys::create_native_type(state, ident.as_ptr()),
-                DeclKind::DeclInterface => sys::create_interface_dcl(state, ident.as_ptr(), 0),
-                DeclKind::DeclValuetype => sys::create_valuetype_dcl(state, ident.as_ptr()),
+                DeclKind::Struct => sys::create_struct_dcl(state, ident.as_ptr()),
+                DeclKind::Union => sys::create_union_dcl(state, ident.as_ptr()),
+                DeclKind::Native => sys::create_native_type(state, ident.as_ptr()),
+                DeclKind::Interface => sys::create_interface_dcl(state, ident.as_ptr(), 0),
+                DeclKind::Valuetype => sys::create_valuetype_dcl(state, ident.as_ptr()),
             }
         }
         Item::BitsetValue(v) => {

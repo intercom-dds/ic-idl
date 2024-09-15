@@ -135,17 +135,17 @@ impl ::intercom_cts::Unmarshal for Path {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum LitKind {
-    LitBool,
-    LitInt,
-    LitFloat,
-    LitChar,
-    LitString,
+    Bool,
+    Int,
+    Float,
+    Char,
+    String,
 }
 
 impl LitKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::LitKind::LitBool
+        crate::ast::LitKind::Bool
     }
 }
 
@@ -154,11 +154,11 @@ impl ::std::str::FromStr for LitKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "LIT_BOOL" => Ok(Self::LitBool),
-            "LIT_INT" => Ok(Self::LitInt),
-            "LIT_FLOAT" => Ok(Self::LitFloat),
-            "LIT_CHAR" => Ok(Self::LitChar),
-            "LIT_STRING" => Ok(Self::LitString),
+            "LIT_BOOL" => Ok(Self::Bool),
+            "LIT_INT" => Ok(Self::Int),
+            "LIT_FLOAT" => Ok(Self::Float),
+            "LIT_CHAR" => Ok(Self::Char),
+            "LIT_STRING" => Ok(Self::String),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -167,11 +167,11 @@ impl ::std::str::FromStr for LitKind {
 impl ::std::fmt::Display for LitKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::LitBool => f.write_str("LIT_BOOL"),
-            Self::LitInt => f.write_str("LIT_INT"),
-            Self::LitFloat => f.write_str("LIT_FLOAT"),
-            Self::LitChar => f.write_str("LIT_CHAR"),
-            Self::LitString => f.write_str("LIT_STRING"),
+            Self::Bool => f.write_str("LIT_BOOL"),
+            Self::Int => f.write_str("LIT_INT"),
+            Self::Float => f.write_str("LIT_FLOAT"),
+            Self::Char => f.write_str("LIT_CHAR"),
+            Self::String => f.write_str("LIT_STRING"),
         }
     }
 }
@@ -191,11 +191,11 @@ impl ::intercom_cts::Marshal for LitKind {
 
         let state = ar.encode_enum("LitKind")?;
         match self {
-            Self::LitBool => state.encode_variant::<i32>("LIT_BOOL", 0),
-            Self::LitInt => state.encode_variant::<i32>("LIT_INT", 1),
-            Self::LitFloat => state.encode_variant::<i32>("LIT_FLOAT", 2),
-            Self::LitChar => state.encode_variant::<i32>("LIT_CHAR", 3),
-            Self::LitString => state.encode_variant::<i32>("LIT_STRING", 4),
+            Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 0),
+            Self::Int => state.encode_variant::<i32>("LIT_INT", 1),
+            Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 2),
+            Self::Char => state.encode_variant::<i32>("LIT_CHAR", 3),
+            Self::String => state.encode_variant::<i32>("LIT_STRING", 4),
         }
     }
 }
@@ -221,11 +221,11 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::LitBool,
-            1 => Self::LitInt,
-            2 => Self::LitFloat,
-            3 => Self::LitChar,
-            4 => Self::LitString,
+            0 => Self::Bool,
+            1 => Self::Int,
+            2 => Self::Float,
+            3 => Self::Char,
+            4 => Self::String,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -238,11 +238,11 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "LIT_BOOL" => Self::LitBool,
-            "LIT_INT" => Self::LitInt,
-            "LIT_FLOAT" => Self::LitFloat,
-            "LIT_CHAR" => Self::LitChar,
-            "LIT_STRING" => Self::LitString,
+            "LIT_BOOL" => Self::Bool,
+            "LIT_INT" => Self::Int,
+            "LIT_FLOAT" => Self::Float,
+            "LIT_CHAR" => Self::Char,
+            "LIT_STRING" => Self::String,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -267,11 +267,11 @@ impl LiteralValue {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::LitKind {
         match self {
-            Self::Bool(_) => crate::ast::LitKind::LitBool,
-            Self::Int(_) => crate::ast::LitKind::LitInt,
-            Self::Float(_) => crate::ast::LitKind::LitFloat,
-            Self::Char(_) => crate::ast::LitKind::LitChar,
-            Self::String(_) => crate::ast::LitKind::LitString,
+            Self::Bool(_) => crate::ast::LitKind::Bool,
+            Self::Int(_) => crate::ast::LitKind::Int,
+            Self::Float(_) => crate::ast::LitKind::Float,
+            Self::Char(_) => crate::ast::LitKind::Char,
+            Self::String(_) => crate::ast::LitKind::String,
         }
     }
 }
@@ -279,11 +279,11 @@ impl LiteralValue {
 impl From<crate::ast::LitKind> for LiteralValue {
     fn from(disc: crate::ast::LitKind) -> Self {
         match disc {
-            crate::ast::LitKind::LitBool => Self::Bool(false),
-            crate::ast::LitKind::LitInt => Self::Int(0),
-            crate::ast::LitKind::LitFloat => Self::Float(0_f64),
-            crate::ast::LitKind::LitChar => Self::Char('\x00'),
-            crate::ast::LitKind::LitString => Self::String(<String>::default()),
+            crate::ast::LitKind::Bool => Self::Bool(false),
+            crate::ast::LitKind::Int => Self::Int(0),
+            crate::ast::LitKind::Float => Self::Float(0_f64),
+            crate::ast::LitKind::Char => Self::Char('\x00'),
+            crate::ast::LitKind::String => Self::String(<String>::default()),
         }
     }
 }
@@ -324,27 +324,27 @@ impl ::intercom_cts::Unmarshal for LiteralValue {
         let mut disc = crate::ast::LitKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::LitKind::LitBool => {
+            crate::ast::LitKind::Bool => {
                 let mut value = false;
                 state.decode_variant(0, "bool", &mut value)?;
                 Self::Bool(value)
             }
-            crate::ast::LitKind::LitInt => {
+            crate::ast::LitKind::Int => {
                 let mut value = 0;
                 state.decode_variant(1, "int", &mut value)?;
                 Self::Int(value)
             }
-            crate::ast::LitKind::LitFloat => {
+            crate::ast::LitKind::Float => {
                 let mut value = 0_f64;
                 state.decode_variant(2, "float", &mut value)?;
                 Self::Float(value)
             }
-            crate::ast::LitKind::LitChar => {
+            crate::ast::LitKind::Char => {
                 let mut value = '\x00';
                 state.decode_variant(3, "char", &mut value)?;
                 Self::Char(value)
             }
-            crate::ast::LitKind::LitString => {
+            crate::ast::LitKind::String => {
                 let mut value = <String>::default();
                 state.decode_variant(4, "string", &mut value)?;
                 Self::String(value)
@@ -408,33 +408,33 @@ impl ::intercom_cts::Unmarshal for Literal {
 #[repr(i32)]
 pub enum OpKind {
     /// `+`
-    OpAdd,
+    Add,
     /// `-`
-    OpSub,
+    Sub,
     /// `*`
-    OpMultiply,
+    Multiply,
     /// `/`
-    OpDivide,
+    Divide,
     /// `%`
-    OpModulo,
+    Modulo,
     /// `<<`
-    OpLshift,
+    Lshift,
     /// `>>`
-    OpRshift,
+    Rshift,
     /// `|`
-    OpOr,
+    Or,
     /// `^`
-    OpXor,
+    Xor,
     /// `&`
-    OpAnd,
+    And,
     /// `~`
-    OpNot,
+    Not,
 }
 
 impl OpKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::OpKind::OpAdd
+        crate::ast::OpKind::Add
     }
 }
 
@@ -443,17 +443,17 @@ impl ::std::str::FromStr for OpKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "OP_ADD" => Ok(Self::OpAdd),
-            "OP_SUB" => Ok(Self::OpSub),
-            "OP_MULTIPLY" => Ok(Self::OpMultiply),
-            "OP_DIVIDE" => Ok(Self::OpDivide),
-            "OP_MODULO" => Ok(Self::OpModulo),
-            "OP_LSHIFT" => Ok(Self::OpLshift),
-            "OP_RSHIFT" => Ok(Self::OpRshift),
-            "OP_OR" => Ok(Self::OpOr),
-            "OP_XOR" => Ok(Self::OpXor),
-            "OP_AND" => Ok(Self::OpAnd),
-            "OP_NOT" => Ok(Self::OpNot),
+            "OP_ADD" => Ok(Self::Add),
+            "OP_SUB" => Ok(Self::Sub),
+            "OP_MULTIPLY" => Ok(Self::Multiply),
+            "OP_DIVIDE" => Ok(Self::Divide),
+            "OP_MODULO" => Ok(Self::Modulo),
+            "OP_LSHIFT" => Ok(Self::Lshift),
+            "OP_RSHIFT" => Ok(Self::Rshift),
+            "OP_OR" => Ok(Self::Or),
+            "OP_XOR" => Ok(Self::Xor),
+            "OP_AND" => Ok(Self::And),
+            "OP_NOT" => Ok(Self::Not),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -462,17 +462,17 @@ impl ::std::str::FromStr for OpKind {
 impl ::std::fmt::Display for OpKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::OpAdd => f.write_str("OP_ADD"),
-            Self::OpSub => f.write_str("OP_SUB"),
-            Self::OpMultiply => f.write_str("OP_MULTIPLY"),
-            Self::OpDivide => f.write_str("OP_DIVIDE"),
-            Self::OpModulo => f.write_str("OP_MODULO"),
-            Self::OpLshift => f.write_str("OP_LSHIFT"),
-            Self::OpRshift => f.write_str("OP_RSHIFT"),
-            Self::OpOr => f.write_str("OP_OR"),
-            Self::OpXor => f.write_str("OP_XOR"),
-            Self::OpAnd => f.write_str("OP_AND"),
-            Self::OpNot => f.write_str("OP_NOT"),
+            Self::Add => f.write_str("OP_ADD"),
+            Self::Sub => f.write_str("OP_SUB"),
+            Self::Multiply => f.write_str("OP_MULTIPLY"),
+            Self::Divide => f.write_str("OP_DIVIDE"),
+            Self::Modulo => f.write_str("OP_MODULO"),
+            Self::Lshift => f.write_str("OP_LSHIFT"),
+            Self::Rshift => f.write_str("OP_RSHIFT"),
+            Self::Or => f.write_str("OP_OR"),
+            Self::Xor => f.write_str("OP_XOR"),
+            Self::And => f.write_str("OP_AND"),
+            Self::Not => f.write_str("OP_NOT"),
         }
     }
 }
@@ -492,17 +492,17 @@ impl ::intercom_cts::Marshal for OpKind {
 
         let state = ar.encode_enum("OpKind")?;
         match self {
-            Self::OpAdd => state.encode_variant::<i32>("OP_ADD", 0),
-            Self::OpSub => state.encode_variant::<i32>("OP_SUB", 1),
-            Self::OpMultiply => state.encode_variant::<i32>("OP_MULTIPLY", 2),
-            Self::OpDivide => state.encode_variant::<i32>("OP_DIVIDE", 3),
-            Self::OpModulo => state.encode_variant::<i32>("OP_MODULO", 4),
-            Self::OpLshift => state.encode_variant::<i32>("OP_LSHIFT", 5),
-            Self::OpRshift => state.encode_variant::<i32>("OP_RSHIFT", 6),
-            Self::OpOr => state.encode_variant::<i32>("OP_OR", 7),
-            Self::OpXor => state.encode_variant::<i32>("OP_XOR", 8),
-            Self::OpAnd => state.encode_variant::<i32>("OP_AND", 9),
-            Self::OpNot => state.encode_variant::<i32>("OP_NOT", 10),
+            Self::Add => state.encode_variant::<i32>("OP_ADD", 0),
+            Self::Sub => state.encode_variant::<i32>("OP_SUB", 1),
+            Self::Multiply => state.encode_variant::<i32>("OP_MULTIPLY", 2),
+            Self::Divide => state.encode_variant::<i32>("OP_DIVIDE", 3),
+            Self::Modulo => state.encode_variant::<i32>("OP_MODULO", 4),
+            Self::Lshift => state.encode_variant::<i32>("OP_LSHIFT", 5),
+            Self::Rshift => state.encode_variant::<i32>("OP_RSHIFT", 6),
+            Self::Or => state.encode_variant::<i32>("OP_OR", 7),
+            Self::Xor => state.encode_variant::<i32>("OP_XOR", 8),
+            Self::And => state.encode_variant::<i32>("OP_AND", 9),
+            Self::Not => state.encode_variant::<i32>("OP_NOT", 10),
         }
     }
 }
@@ -528,17 +528,17 @@ impl ::intercom_cts::decode::EnumVisitor for OpKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::OpAdd,
-            1 => Self::OpSub,
-            2 => Self::OpMultiply,
-            3 => Self::OpDivide,
-            4 => Self::OpModulo,
-            5 => Self::OpLshift,
-            6 => Self::OpRshift,
-            7 => Self::OpOr,
-            8 => Self::OpXor,
-            9 => Self::OpAnd,
-            10 => Self::OpNot,
+            0 => Self::Add,
+            1 => Self::Sub,
+            2 => Self::Multiply,
+            3 => Self::Divide,
+            4 => Self::Modulo,
+            5 => Self::Lshift,
+            6 => Self::Rshift,
+            7 => Self::Or,
+            8 => Self::Xor,
+            9 => Self::And,
+            10 => Self::Not,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -551,17 +551,17 @@ impl ::intercom_cts::decode::EnumVisitor for OpKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "OP_ADD" => Self::OpAdd,
-            "OP_SUB" => Self::OpSub,
-            "OP_MULTIPLY" => Self::OpMultiply,
-            "OP_DIVIDE" => Self::OpDivide,
-            "OP_MODULO" => Self::OpModulo,
-            "OP_LSHIFT" => Self::OpLshift,
-            "OP_RSHIFT" => Self::OpRshift,
-            "OP_OR" => Self::OpOr,
-            "OP_XOR" => Self::OpXor,
-            "OP_AND" => Self::OpAnd,
-            "OP_NOT" => Self::OpNot,
+            "OP_ADD" => Self::Add,
+            "OP_SUB" => Self::Sub,
+            "OP_MULTIPLY" => Self::Multiply,
+            "OP_DIVIDE" => Self::Divide,
+            "OP_MODULO" => Self::Modulo,
+            "OP_LSHIFT" => Self::Lshift,
+            "OP_RSHIFT" => Self::Rshift,
+            "OP_OR" => Self::Or,
+            "OP_XOR" => Self::Xor,
+            "OP_AND" => Self::And,
+            "OP_NOT" => Self::Not,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -581,7 +581,7 @@ impl Op {
     pub fn new() -> Self {
         Self {
             span: <crate::ast::Span>::default(),
-            kind: crate::ast::OpKind::OpAdd,
+            kind: crate::ast::OpKind::Add,
         }
     }
 }
@@ -624,21 +624,21 @@ impl ::intercom_cts::Unmarshal for Op {
 #[repr(i32)]
 pub enum ExprKind {
     /// A single literal like `1` or `"foo"`
-    ExprLiteral,
+    Literal,
     /// A possibly scoped identifier like `foo` or `::foo::bar`
-    ExprPath,
+    Path,
     /// `-a` or `a`
-    ExprUnary,
+    Unary,
     /// `a + b`
-    ExprBinary,
+    Binary,
     /// Initializer list for complex types, e.g. `{1, 2, {3}}`
-    ExprInitList,
+    InitList,
 }
 
 impl ExprKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::ExprKind::ExprLiteral
+        crate::ast::ExprKind::Literal
     }
 }
 
@@ -647,11 +647,11 @@ impl ::std::str::FromStr for ExprKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "EXPR_LITERAL" => Ok(Self::ExprLiteral),
-            "EXPR_PATH" => Ok(Self::ExprPath),
-            "EXPR_UNARY" => Ok(Self::ExprUnary),
-            "EXPR_BINARY" => Ok(Self::ExprBinary),
-            "EXPR_INIT_LIST" => Ok(Self::ExprInitList),
+            "EXPR_LITERAL" => Ok(Self::Literal),
+            "EXPR_PATH" => Ok(Self::Path),
+            "EXPR_UNARY" => Ok(Self::Unary),
+            "EXPR_BINARY" => Ok(Self::Binary),
+            "EXPR_INIT_LIST" => Ok(Self::InitList),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -660,11 +660,11 @@ impl ::std::str::FromStr for ExprKind {
 impl ::std::fmt::Display for ExprKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::ExprLiteral => f.write_str("EXPR_LITERAL"),
-            Self::ExprPath => f.write_str("EXPR_PATH"),
-            Self::ExprUnary => f.write_str("EXPR_UNARY"),
-            Self::ExprBinary => f.write_str("EXPR_BINARY"),
-            Self::ExprInitList => f.write_str("EXPR_INIT_LIST"),
+            Self::Literal => f.write_str("EXPR_LITERAL"),
+            Self::Path => f.write_str("EXPR_PATH"),
+            Self::Unary => f.write_str("EXPR_UNARY"),
+            Self::Binary => f.write_str("EXPR_BINARY"),
+            Self::InitList => f.write_str("EXPR_INIT_LIST"),
         }
     }
 }
@@ -684,11 +684,11 @@ impl ::intercom_cts::Marshal for ExprKind {
 
         let state = ar.encode_enum("ExprKind")?;
         match self {
-            Self::ExprLiteral => state.encode_variant::<i32>("EXPR_LITERAL", 0),
-            Self::ExprPath => state.encode_variant::<i32>("EXPR_PATH", 1),
-            Self::ExprUnary => state.encode_variant::<i32>("EXPR_UNARY", 2),
-            Self::ExprBinary => state.encode_variant::<i32>("EXPR_BINARY", 3),
-            Self::ExprInitList => state.encode_variant::<i32>("EXPR_INIT_LIST", 4),
+            Self::Literal => state.encode_variant::<i32>("EXPR_LITERAL", 0),
+            Self::Path => state.encode_variant::<i32>("EXPR_PATH", 1),
+            Self::Unary => state.encode_variant::<i32>("EXPR_UNARY", 2),
+            Self::Binary => state.encode_variant::<i32>("EXPR_BINARY", 3),
+            Self::InitList => state.encode_variant::<i32>("EXPR_INIT_LIST", 4),
         }
     }
 }
@@ -714,11 +714,11 @@ impl ::intercom_cts::decode::EnumVisitor for ExprKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::ExprLiteral,
-            1 => Self::ExprPath,
-            2 => Self::ExprUnary,
-            3 => Self::ExprBinary,
-            4 => Self::ExprInitList,
+            0 => Self::Literal,
+            1 => Self::Path,
+            2 => Self::Unary,
+            3 => Self::Binary,
+            4 => Self::InitList,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -731,11 +731,11 @@ impl ::intercom_cts::decode::EnumVisitor for ExprKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "EXPR_LITERAL" => Self::ExprLiteral,
-            "EXPR_PATH" => Self::ExprPath,
-            "EXPR_UNARY" => Self::ExprUnary,
-            "EXPR_BINARY" => Self::ExprBinary,
-            "EXPR_INIT_LIST" => Self::ExprInitList,
+            "EXPR_LITERAL" => Self::Literal,
+            "EXPR_PATH" => Self::Path,
+            "EXPR_UNARY" => Self::Unary,
+            "EXPR_BINARY" => Self::Binary,
+            "EXPR_INIT_LIST" => Self::InitList,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -806,11 +806,11 @@ impl Expr {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::ExprKind {
         match self {
-            Self::Literal(_) => crate::ast::ExprKind::ExprLiteral,
-            Self::Path(_) => crate::ast::ExprKind::ExprPath,
-            Self::Unary(_) => crate::ast::ExprKind::ExprUnary,
-            Self::Binary(_) => crate::ast::ExprKind::ExprBinary,
-            Self::InitList(_) => crate::ast::ExprKind::ExprInitList,
+            Self::Literal(_) => crate::ast::ExprKind::Literal,
+            Self::Path(_) => crate::ast::ExprKind::Path,
+            Self::Unary(_) => crate::ast::ExprKind::Unary,
+            Self::Binary(_) => crate::ast::ExprKind::Binary,
+            Self::InitList(_) => crate::ast::ExprKind::InitList,
         }
     }
 }
@@ -818,15 +818,11 @@ impl Expr {
 impl From<crate::ast::ExprKind> for Expr {
     fn from(disc: crate::ast::ExprKind) -> Self {
         match disc {
-            crate::ast::ExprKind::ExprLiteral => Self::Literal(<crate::ast::Literal>::default()),
-            crate::ast::ExprKind::ExprPath => Self::Path(<crate::ast::Path>::default()),
-            crate::ast::ExprKind::ExprUnary => {
-                Self::Unary(Box::new(<crate::ast::Unary>::default()))
-            }
-            crate::ast::ExprKind::ExprBinary => {
-                Self::Binary(Box::new(<crate::ast::Binary>::default()))
-            }
-            crate::ast::ExprKind::ExprInitList => Self::InitList(<crate::ast::InitList>::default()),
+            crate::ast::ExprKind::Literal => Self::Literal(<crate::ast::Literal>::default()),
+            crate::ast::ExprKind::Path => Self::Path(<crate::ast::Path>::default()),
+            crate::ast::ExprKind::Unary => Self::Unary(Box::new(<crate::ast::Unary>::default())),
+            crate::ast::ExprKind::Binary => Self::Binary(Box::new(<crate::ast::Binary>::default())),
+            crate::ast::ExprKind::InitList => Self::InitList(<crate::ast::InitList>::default()),
         }
     }
 }
@@ -867,27 +863,27 @@ impl ::intercom_cts::Unmarshal for Expr {
         let mut disc = crate::ast::ExprKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::ExprKind::ExprLiteral => {
+            crate::ast::ExprKind::Literal => {
                 let mut value = <crate::ast::Literal>::default();
                 state.decode_variant(0, "literal", &mut value)?;
                 Self::Literal(value)
             }
-            crate::ast::ExprKind::ExprPath => {
+            crate::ast::ExprKind::Path => {
                 let mut value = <crate::ast::Path>::default();
                 state.decode_variant(1, "path", &mut value)?;
                 Self::Path(value)
             }
-            crate::ast::ExprKind::ExprUnary => {
+            crate::ast::ExprKind::Unary => {
                 let mut value = Box::new(<crate::ast::Unary>::default());
                 state.decode_variant(2, "unary", &mut value)?;
                 Self::Unary(value)
             }
-            crate::ast::ExprKind::ExprBinary => {
+            crate::ast::ExprKind::Binary => {
                 let mut value = Box::new(<crate::ast::Binary>::default());
                 state.decode_variant(3, "binary", &mut value)?;
                 Self::Binary(value)
             }
-            crate::ast::ExprKind::ExprInitList => {
+            crate::ast::ExprKind::InitList => {
                 let mut value = <crate::ast::InitList>::default();
                 state.decode_variant(4, "init_list", &mut value)?;
                 Self::InitList(value)
@@ -1366,18 +1362,18 @@ impl ::intercom_cts::Unmarshal for FixedType {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum TypeKind {
-    TypeAny,
-    TypeSequence,
-    TypeString,
-    TypeMap,
-    TypeFixed,
-    TypePath,
+    Any,
+    Sequence,
+    String,
+    Map,
+    Fixed,
+    Path,
 }
 
 impl TypeKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::TypeKind::TypeAny
+        crate::ast::TypeKind::Any
     }
 }
 
@@ -1386,12 +1382,12 @@ impl ::std::str::FromStr for TypeKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "TYPE_ANY" => Ok(Self::TypeAny),
-            "TYPE_SEQUENCE" => Ok(Self::TypeSequence),
-            "TYPE_STRING" => Ok(Self::TypeString),
-            "TYPE_MAP" => Ok(Self::TypeMap),
-            "TYPE_FIXED" => Ok(Self::TypeFixed),
-            "TYPE_PATH" => Ok(Self::TypePath),
+            "TYPE_ANY" => Ok(Self::Any),
+            "TYPE_SEQUENCE" => Ok(Self::Sequence),
+            "TYPE_STRING" => Ok(Self::String),
+            "TYPE_MAP" => Ok(Self::Map),
+            "TYPE_FIXED" => Ok(Self::Fixed),
+            "TYPE_PATH" => Ok(Self::Path),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -1400,12 +1396,12 @@ impl ::std::str::FromStr for TypeKind {
 impl ::std::fmt::Display for TypeKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::TypeAny => f.write_str("TYPE_ANY"),
-            Self::TypeSequence => f.write_str("TYPE_SEQUENCE"),
-            Self::TypeString => f.write_str("TYPE_STRING"),
-            Self::TypeMap => f.write_str("TYPE_MAP"),
-            Self::TypeFixed => f.write_str("TYPE_FIXED"),
-            Self::TypePath => f.write_str("TYPE_PATH"),
+            Self::Any => f.write_str("TYPE_ANY"),
+            Self::Sequence => f.write_str("TYPE_SEQUENCE"),
+            Self::String => f.write_str("TYPE_STRING"),
+            Self::Map => f.write_str("TYPE_MAP"),
+            Self::Fixed => f.write_str("TYPE_FIXED"),
+            Self::Path => f.write_str("TYPE_PATH"),
         }
     }
 }
@@ -1425,12 +1421,12 @@ impl ::intercom_cts::Marshal for TypeKind {
 
         let state = ar.encode_enum("TypeKind")?;
         match self {
-            Self::TypeAny => state.encode_variant::<i32>("TYPE_ANY", 0),
-            Self::TypeSequence => state.encode_variant::<i32>("TYPE_SEQUENCE", 1),
-            Self::TypeString => state.encode_variant::<i32>("TYPE_STRING", 2),
-            Self::TypeMap => state.encode_variant::<i32>("TYPE_MAP", 3),
-            Self::TypeFixed => state.encode_variant::<i32>("TYPE_FIXED", 4),
-            Self::TypePath => state.encode_variant::<i32>("TYPE_PATH", 5),
+            Self::Any => state.encode_variant::<i32>("TYPE_ANY", 0),
+            Self::Sequence => state.encode_variant::<i32>("TYPE_SEQUENCE", 1),
+            Self::String => state.encode_variant::<i32>("TYPE_STRING", 2),
+            Self::Map => state.encode_variant::<i32>("TYPE_MAP", 3),
+            Self::Fixed => state.encode_variant::<i32>("TYPE_FIXED", 4),
+            Self::Path => state.encode_variant::<i32>("TYPE_PATH", 5),
         }
     }
 }
@@ -1456,12 +1452,12 @@ impl ::intercom_cts::decode::EnumVisitor for TypeKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::TypeAny,
-            1 => Self::TypeSequence,
-            2 => Self::TypeString,
-            3 => Self::TypeMap,
-            4 => Self::TypeFixed,
-            5 => Self::TypePath,
+            0 => Self::Any,
+            1 => Self::Sequence,
+            2 => Self::String,
+            3 => Self::Map,
+            4 => Self::Fixed,
+            5 => Self::Path,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -1474,12 +1470,12 @@ impl ::intercom_cts::decode::EnumVisitor for TypeKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "TYPE_ANY" => Self::TypeAny,
-            "TYPE_SEQUENCE" => Self::TypeSequence,
-            "TYPE_STRING" => Self::TypeString,
-            "TYPE_MAP" => Self::TypeMap,
-            "TYPE_FIXED" => Self::TypeFixed,
-            "TYPE_PATH" => Self::TypePath,
+            "TYPE_ANY" => Self::Any,
+            "TYPE_SEQUENCE" => Self::Sequence,
+            "TYPE_STRING" => Self::String,
+            "TYPE_MAP" => Self::Map,
+            "TYPE_FIXED" => Self::Fixed,
+            "TYPE_PATH" => Self::Path,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -1511,12 +1507,12 @@ impl Type {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::TypeKind {
         match self {
-            Self::Any(_) => crate::ast::TypeKind::TypeAny,
-            Self::Sequence(_) => crate::ast::TypeKind::TypeSequence,
-            Self::String(_) => crate::ast::TypeKind::TypeString,
-            Self::Map(_) => crate::ast::TypeKind::TypeMap,
-            Self::Fixed(_) => crate::ast::TypeKind::TypeFixed,
-            Self::Path(_) => crate::ast::TypeKind::TypePath,
+            Self::Any(_) => crate::ast::TypeKind::Any,
+            Self::Sequence(_) => crate::ast::TypeKind::Sequence,
+            Self::String(_) => crate::ast::TypeKind::String,
+            Self::Map(_) => crate::ast::TypeKind::Map,
+            Self::Fixed(_) => crate::ast::TypeKind::Fixed,
+            Self::Path(_) => crate::ast::TypeKind::Path,
         }
     }
 }
@@ -1524,14 +1520,12 @@ impl Type {
 impl From<crate::ast::TypeKind> for Type {
     fn from(disc: crate::ast::TypeKind) -> Self {
         match disc {
-            crate::ast::TypeKind::TypeAny => Self::Any(<crate::ast::AnyType>::default()),
-            crate::ast::TypeKind::TypeSequence => {
-                Self::Sequence(<crate::ast::SequenceType>::default())
-            }
-            crate::ast::TypeKind::TypeString => Self::String(<crate::ast::StringType>::default()),
-            crate::ast::TypeKind::TypeMap => Self::Map(<crate::ast::MapType>::default()),
-            crate::ast::TypeKind::TypeFixed => Self::Fixed(<crate::ast::FixedType>::default()),
-            crate::ast::TypeKind::TypePath => Self::Path(<crate::ast::Path>::default()),
+            crate::ast::TypeKind::Any => Self::Any(<crate::ast::AnyType>::default()),
+            crate::ast::TypeKind::Sequence => Self::Sequence(<crate::ast::SequenceType>::default()),
+            crate::ast::TypeKind::String => Self::String(<crate::ast::StringType>::default()),
+            crate::ast::TypeKind::Map => Self::Map(<crate::ast::MapType>::default()),
+            crate::ast::TypeKind::Fixed => Self::Fixed(<crate::ast::FixedType>::default()),
+            crate::ast::TypeKind::Path => Self::Path(<crate::ast::Path>::default()),
         }
     }
 }
@@ -1573,32 +1567,32 @@ impl ::intercom_cts::Unmarshal for Type {
         let mut disc = crate::ast::TypeKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::TypeKind::TypeAny => {
+            crate::ast::TypeKind::Any => {
                 let mut value = <crate::ast::AnyType>::default();
                 state.decode_variant(0, "any", &mut value)?;
                 Self::Any(value)
             }
-            crate::ast::TypeKind::TypeSequence => {
+            crate::ast::TypeKind::Sequence => {
                 let mut value = <crate::ast::SequenceType>::default();
                 state.decode_variant(1, "sequence", &mut value)?;
                 Self::Sequence(value)
             }
-            crate::ast::TypeKind::TypeString => {
+            crate::ast::TypeKind::String => {
                 let mut value = <crate::ast::StringType>::default();
                 state.decode_variant(2, "string", &mut value)?;
                 Self::String(value)
             }
-            crate::ast::TypeKind::TypeMap => {
+            crate::ast::TypeKind::Map => {
                 let mut value = <crate::ast::MapType>::default();
                 state.decode_variant(3, "map", &mut value)?;
                 Self::Map(value)
             }
-            crate::ast::TypeKind::TypeFixed => {
+            crate::ast::TypeKind::Fixed => {
                 let mut value = <crate::ast::FixedType>::default();
                 state.decode_variant(4, "fixed", &mut value)?;
                 Self::Fixed(value)
             }
-            crate::ast::TypeKind::TypePath => {
+            crate::ast::TypeKind::Path => {
                 let mut value = <crate::ast::Path>::default();
                 state.decode_variant(5, "path", &mut value)?;
                 Self::Path(value)
@@ -1612,15 +1606,15 @@ impl ::intercom_cts::Unmarshal for Type {
 #[repr(i32)]
 pub enum DeclaratorKind {
     /// A single, non-qualified identifier.
-    DeclaratorSimple,
+    Simple,
     /// An array declarator, e.g. `value[3][4][5]`.
-    DeclaratorArray,
+    Array,
 }
 
 impl DeclaratorKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::DeclaratorKind::DeclaratorSimple
+        crate::ast::DeclaratorKind::Simple
     }
 }
 
@@ -1629,8 +1623,8 @@ impl ::std::str::FromStr for DeclaratorKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "DECLARATOR_SIMPLE" => Ok(Self::DeclaratorSimple),
-            "DECLARATOR_ARRAY" => Ok(Self::DeclaratorArray),
+            "DECLARATOR_SIMPLE" => Ok(Self::Simple),
+            "DECLARATOR_ARRAY" => Ok(Self::Array),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -1639,8 +1633,8 @@ impl ::std::str::FromStr for DeclaratorKind {
 impl ::std::fmt::Display for DeclaratorKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::DeclaratorSimple => f.write_str("DECLARATOR_SIMPLE"),
-            Self::DeclaratorArray => f.write_str("DECLARATOR_ARRAY"),
+            Self::Simple => f.write_str("DECLARATOR_SIMPLE"),
+            Self::Array => f.write_str("DECLARATOR_ARRAY"),
         }
     }
 }
@@ -1660,8 +1654,8 @@ impl ::intercom_cts::Marshal for DeclaratorKind {
 
         let state = ar.encode_enum("DeclaratorKind")?;
         match self {
-            Self::DeclaratorSimple => state.encode_variant::<i32>("DECLARATOR_SIMPLE", 0),
-            Self::DeclaratorArray => state.encode_variant::<i32>("DECLARATOR_ARRAY", 1),
+            Self::Simple => state.encode_variant::<i32>("DECLARATOR_SIMPLE", 0),
+            Self::Array => state.encode_variant::<i32>("DECLARATOR_ARRAY", 1),
         }
     }
 }
@@ -1687,8 +1681,8 @@ impl ::intercom_cts::decode::EnumVisitor for DeclaratorKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::DeclaratorSimple,
-            1 => Self::DeclaratorArray,
+            0 => Self::Simple,
+            1 => Self::Array,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -1701,8 +1695,8 @@ impl ::intercom_cts::decode::EnumVisitor for DeclaratorKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "DECLARATOR_SIMPLE" => Self::DeclaratorSimple,
-            "DECLARATOR_ARRAY" => Self::DeclaratorArray,
+            "DECLARATOR_SIMPLE" => Self::Simple,
+            "DECLARATOR_ARRAY" => Self::Array,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -1774,8 +1768,8 @@ impl Declarator {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::DeclaratorKind {
         match self {
-            Self::Simple(_) => crate::ast::DeclaratorKind::DeclaratorSimple,
-            Self::Array(_) => crate::ast::DeclaratorKind::DeclaratorArray,
+            Self::Simple(_) => crate::ast::DeclaratorKind::Simple,
+            Self::Array(_) => crate::ast::DeclaratorKind::Array,
         }
     }
 }
@@ -1783,10 +1777,8 @@ impl Declarator {
 impl From<crate::ast::DeclaratorKind> for Declarator {
     fn from(disc: crate::ast::DeclaratorKind) -> Self {
         match disc {
-            crate::ast::DeclaratorKind::DeclaratorSimple => {
-                Self::Simple(<crate::ast::Ident>::default())
-            }
-            crate::ast::DeclaratorKind::DeclaratorArray => {
+            crate::ast::DeclaratorKind::Simple => Self::Simple(<crate::ast::Ident>::default()),
+            crate::ast::DeclaratorKind::Array => {
                 Self::Array(<crate::ast::ArrayDeclarator>::default())
             }
         }
@@ -1826,12 +1818,12 @@ impl ::intercom_cts::Unmarshal for Declarator {
         let mut disc = crate::ast::DeclaratorKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::DeclaratorKind::DeclaratorSimple => {
+            crate::ast::DeclaratorKind::Simple => {
                 let mut value = <crate::ast::Ident>::default();
                 state.decode_variant(0, "simple", &mut value)?;
                 Self::Simple(value)
             }
-            crate::ast::DeclaratorKind::DeclaratorArray => {
+            crate::ast::DeclaratorKind::Array => {
                 let mut value = <crate::ast::ArrayDeclarator>::default();
                 state.decode_variant(1, "array", &mut value)?;
                 Self::Array(value)
@@ -2133,6 +2125,52 @@ impl ::intercom_cts::Unmarshal for AnnotationField {
                 Self::Member(value)
             }
         };
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct AnnotationMember {
+    pub ident: crate::ast::Ident,
+}
+
+impl AnnotationMember {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            ident: <crate::ast::Ident>::default(),
+        }
+    }
+}
+
+impl ::std::default::Default for AnnotationMember {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ::intercom_cts::Marshal for AnnotationMember {
+    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+    where
+        S: ::intercom_cts::encode::Serializer,
+    {
+        use ::intercom_cts::encode::FieldSerializer as _;
+
+        let mut state = ar.encode_struct("AnnotationMember")?;
+        state.encode_field(0, "ident", &self.ident)?;
+        state.end()
+    }
+}
+
+impl ::intercom_cts::Unmarshal for AnnotationMember {
+    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+    where
+        D: ::intercom_cts::decode::Deserializer,
+    {
+        use ::intercom_cts::decode::FieldDeserializer as _;
+
+        let mut state = ar.decode_struct("AnnotationMember")?;
+        state.decode_field(0, "ident", &mut self.ident)?;
         Ok(())
     }
 }
@@ -2503,14 +2541,14 @@ impl ::intercom_cts::Unmarshal for Empty {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum LabelKind {
-    LabelCase,
-    LabelDefault,
+    Case,
+    Default,
 }
 
 impl LabelKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::LabelKind::LabelCase
+        crate::ast::LabelKind::Case
     }
 }
 
@@ -2519,8 +2557,8 @@ impl ::std::str::FromStr for LabelKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "LABEL_CASE" => Ok(Self::LabelCase),
-            "LABEL_DEFAULT" => Ok(Self::LabelDefault),
+            "LABEL_CASE" => Ok(Self::Case),
+            "LABEL_DEFAULT" => Ok(Self::Default),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -2529,8 +2567,8 @@ impl ::std::str::FromStr for LabelKind {
 impl ::std::fmt::Display for LabelKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::LabelCase => f.write_str("LABEL_CASE"),
-            Self::LabelDefault => f.write_str("LABEL_DEFAULT"),
+            Self::Case => f.write_str("LABEL_CASE"),
+            Self::Default => f.write_str("LABEL_DEFAULT"),
         }
     }
 }
@@ -2550,8 +2588,8 @@ impl ::intercom_cts::Marshal for LabelKind {
 
         let state = ar.encode_enum("LabelKind")?;
         match self {
-            Self::LabelCase => state.encode_variant::<i32>("LABEL_CASE", 0),
-            Self::LabelDefault => state.encode_variant::<i32>("LABEL_DEFAULT", 1),
+            Self::Case => state.encode_variant::<i32>("LABEL_CASE", 0),
+            Self::Default => state.encode_variant::<i32>("LABEL_DEFAULT", 1),
         }
     }
 }
@@ -2577,8 +2615,8 @@ impl ::intercom_cts::decode::EnumVisitor for LabelKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::LabelCase,
-            1 => Self::LabelDefault,
+            0 => Self::Case,
+            1 => Self::Default,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -2591,8 +2629,8 @@ impl ::intercom_cts::decode::EnumVisitor for LabelKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "LABEL_CASE" => Self::LabelCase,
-            "LABEL_DEFAULT" => Self::LabelDefault,
+            "LABEL_CASE" => Self::Case,
+            "LABEL_DEFAULT" => Self::Default,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -2614,8 +2652,8 @@ impl Label {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::LabelKind {
         match self {
-            Self::Case(_) => crate::ast::LabelKind::LabelCase,
-            Self::Default(_) => crate::ast::LabelKind::LabelDefault,
+            Self::Case(_) => crate::ast::LabelKind::Case,
+            Self::Default(_) => crate::ast::LabelKind::Default,
         }
     }
 }
@@ -2623,8 +2661,8 @@ impl Label {
 impl From<crate::ast::LabelKind> for Label {
     fn from(disc: crate::ast::LabelKind) -> Self {
         match disc {
-            crate::ast::LabelKind::LabelCase => Self::Case(<crate::ast::Expr>::default()),
-            crate::ast::LabelKind::LabelDefault => Self::Default(<crate::ast::Empty>::default()),
+            crate::ast::LabelKind::Case => Self::Case(<crate::ast::Expr>::default()),
+            crate::ast::LabelKind::Default => Self::Default(<crate::ast::Empty>::default()),
         }
     }
 }
@@ -2662,12 +2700,12 @@ impl ::intercom_cts::Unmarshal for Label {
         let mut disc = crate::ast::LabelKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::LabelKind::LabelCase => {
+            crate::ast::LabelKind::Case => {
                 let mut value = <crate::ast::Expr>::default();
                 state.decode_variant(0, "case", &mut value)?;
                 Self::Case(value)
             }
-            crate::ast::LabelKind::LabelDefault => {
+            crate::ast::LabelKind::Default => {
                 let mut value = <crate::ast::Empty>::default();
                 state.decode_variant(1, "default", &mut value)?;
                 Self::Default(value)
@@ -3758,17 +3796,17 @@ impl ::intercom_cts::Unmarshal for Attribute {
 #[repr(i32)]
 pub enum ParamKind {
     /// Explicitly marked as `in`
-    ParamIn,
+    In,
     /// Explicitly marked as `out`
-    ParamOut,
+    Out,
     /// Explicitly marked as `inout`
-    ParamInout,
+    Inout,
 }
 
 impl ParamKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::ParamKind::ParamIn
+        crate::ast::ParamKind::In
     }
 }
 
@@ -3777,9 +3815,9 @@ impl ::std::str::FromStr for ParamKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "PARAM_IN" => Ok(Self::ParamIn),
-            "PARAM_OUT" => Ok(Self::ParamOut),
-            "PARAM_INOUT" => Ok(Self::ParamInout),
+            "PARAM_IN" => Ok(Self::In),
+            "PARAM_OUT" => Ok(Self::Out),
+            "PARAM_INOUT" => Ok(Self::Inout),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -3788,9 +3826,9 @@ impl ::std::str::FromStr for ParamKind {
 impl ::std::fmt::Display for ParamKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::ParamIn => f.write_str("PARAM_IN"),
-            Self::ParamOut => f.write_str("PARAM_OUT"),
-            Self::ParamInout => f.write_str("PARAM_INOUT"),
+            Self::In => f.write_str("PARAM_IN"),
+            Self::Out => f.write_str("PARAM_OUT"),
+            Self::Inout => f.write_str("PARAM_INOUT"),
         }
     }
 }
@@ -3810,9 +3848,9 @@ impl ::intercom_cts::Marshal for ParamKind {
 
         let state = ar.encode_enum("ParamKind")?;
         match self {
-            Self::ParamIn => state.encode_variant::<i32>("PARAM_IN", 0),
-            Self::ParamOut => state.encode_variant::<i32>("PARAM_OUT", 1),
-            Self::ParamInout => state.encode_variant::<i32>("PARAM_INOUT", 2),
+            Self::In => state.encode_variant::<i32>("PARAM_IN", 0),
+            Self::Out => state.encode_variant::<i32>("PARAM_OUT", 1),
+            Self::Inout => state.encode_variant::<i32>("PARAM_INOUT", 2),
         }
     }
 }
@@ -3838,9 +3876,9 @@ impl ::intercom_cts::decode::EnumVisitor for ParamKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::ParamIn,
-            1 => Self::ParamOut,
-            2 => Self::ParamInout,
+            0 => Self::In,
+            1 => Self::Out,
+            2 => Self::Inout,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -3853,9 +3891,9 @@ impl ::intercom_cts::decode::EnumVisitor for ParamKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "PARAM_IN" => Self::ParamIn,
-            "PARAM_OUT" => Self::ParamOut,
-            "PARAM_INOUT" => Self::ParamInout,
+            "PARAM_IN" => Self::In,
+            "PARAM_OUT" => Self::Out,
+            "PARAM_INOUT" => Self::Inout,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4198,17 +4236,17 @@ impl ::intercom_cts::Unmarshal for ValuetypeDef {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum DeclKind {
-    DeclStruct,
-    DeclUnion,
-    DeclNative,
-    DeclInterface,
-    DeclValuetype,
+    Struct,
+    Union,
+    Native,
+    Interface,
+    Valuetype,
 }
 
 impl DeclKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::DeclKind::DeclStruct
+        crate::ast::DeclKind::Struct
     }
 }
 
@@ -4217,11 +4255,11 @@ impl ::std::str::FromStr for DeclKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "DECL_STRUCT" => Ok(Self::DeclStruct),
-            "DECL_UNION" => Ok(Self::DeclUnion),
-            "DECL_NATIVE" => Ok(Self::DeclNative),
-            "DECL_INTERFACE" => Ok(Self::DeclInterface),
-            "DECL_VALUETYPE" => Ok(Self::DeclValuetype),
+            "DECL_STRUCT" => Ok(Self::Struct),
+            "DECL_UNION" => Ok(Self::Union),
+            "DECL_NATIVE" => Ok(Self::Native),
+            "DECL_INTERFACE" => Ok(Self::Interface),
+            "DECL_VALUETYPE" => Ok(Self::Valuetype),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -4230,11 +4268,11 @@ impl ::std::str::FromStr for DeclKind {
 impl ::std::fmt::Display for DeclKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::DeclStruct => f.write_str("DECL_STRUCT"),
-            Self::DeclUnion => f.write_str("DECL_UNION"),
-            Self::DeclNative => f.write_str("DECL_NATIVE"),
-            Self::DeclInterface => f.write_str("DECL_INTERFACE"),
-            Self::DeclValuetype => f.write_str("DECL_VALUETYPE"),
+            Self::Struct => f.write_str("DECL_STRUCT"),
+            Self::Union => f.write_str("DECL_UNION"),
+            Self::Native => f.write_str("DECL_NATIVE"),
+            Self::Interface => f.write_str("DECL_INTERFACE"),
+            Self::Valuetype => f.write_str("DECL_VALUETYPE"),
         }
     }
 }
@@ -4254,11 +4292,11 @@ impl ::intercom_cts::Marshal for DeclKind {
 
         let state = ar.encode_enum("DeclKind")?;
         match self {
-            Self::DeclStruct => state.encode_variant::<i32>("DECL_STRUCT", 0),
-            Self::DeclUnion => state.encode_variant::<i32>("DECL_UNION", 1),
-            Self::DeclNative => state.encode_variant::<i32>("DECL_NATIVE", 2),
-            Self::DeclInterface => state.encode_variant::<i32>("DECL_INTERFACE", 3),
-            Self::DeclValuetype => state.encode_variant::<i32>("DECL_VALUETYPE", 4),
+            Self::Struct => state.encode_variant::<i32>("DECL_STRUCT", 0),
+            Self::Union => state.encode_variant::<i32>("DECL_UNION", 1),
+            Self::Native => state.encode_variant::<i32>("DECL_NATIVE", 2),
+            Self::Interface => state.encode_variant::<i32>("DECL_INTERFACE", 3),
+            Self::Valuetype => state.encode_variant::<i32>("DECL_VALUETYPE", 4),
         }
     }
 }
@@ -4284,11 +4322,11 @@ impl ::intercom_cts::decode::EnumVisitor for DeclKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::DeclStruct,
-            1 => Self::DeclUnion,
-            2 => Self::DeclNative,
-            3 => Self::DeclInterface,
-            4 => Self::DeclValuetype,
+            0 => Self::Struct,
+            1 => Self::Union,
+            2 => Self::Native,
+            3 => Self::Interface,
+            4 => Self::Valuetype,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4301,11 +4339,11 @@ impl ::intercom_cts::decode::EnumVisitor for DeclKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "DECL_STRUCT" => Self::DeclStruct,
-            "DECL_UNION" => Self::DeclUnion,
-            "DECL_NATIVE" => Self::DeclNative,
-            "DECL_INTERFACE" => Self::DeclInterface,
-            "DECL_VALUETYPE" => Self::DeclValuetype,
+            "DECL_STRUCT" => Self::Struct,
+            "DECL_UNION" => Self::Union,
+            "DECL_NATIVE" => Self::Native,
+            "DECL_INTERFACE" => Self::Interface,
+            "DECL_VALUETYPE" => Self::Valuetype,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4337,7 +4375,7 @@ impl Decl {
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             ident: <crate::ast::Ident>::default(),
-            kind: crate::ast::DeclKind::DeclStruct,
+            kind: crate::ast::DeclKind::Struct,
         }
     }
 }
@@ -4384,37 +4422,37 @@ impl ::intercom_cts::Unmarshal for Decl {
 #[repr(i32)]
 pub enum ItemKind {
     /// A definition of an annotation
-    ItemAnnotation,
+    Annotation,
     /// Module declaration
-    ItemModule,
+    Module,
     /// Struct definition
-    ItemStruct,
+    Struct,
     /// Union definition
-    ItemUnion,
+    Union,
     /// Enum definition
-    ItemEnum,
+    Enum,
     /// Exception definition
-    ItemException,
+    Exception,
     /// Bitmask definition
-    ItemBitmask,
+    Bitmask,
     /// Bitset definition
-    ItemBitset,
+    Bitset,
     /// Declaration of a `const`
-    ItemConst,
+    Const,
     /// Typedef definition
-    ItemTypedef,
+    Typedef,
     /// Interface definition
-    ItemInterface,
+    Interface,
     /// Valuetype definition
-    ItemValuetype,
+    Valuetype,
     /// A forward declaration
-    ItemDecl,
+    Decl,
 }
 
 impl ItemKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::ItemKind::ItemAnnotation
+        crate::ast::ItemKind::Annotation
     }
 }
 
@@ -4423,19 +4461,19 @@ impl ::std::str::FromStr for ItemKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "ITEM_ANNOTATION" => Ok(Self::ItemAnnotation),
-            "ITEM_MODULE" => Ok(Self::ItemModule),
-            "ITEM_STRUCT" => Ok(Self::ItemStruct),
-            "ITEM_UNION" => Ok(Self::ItemUnion),
-            "ITEM_ENUM" => Ok(Self::ItemEnum),
-            "ITEM_EXCEPTION" => Ok(Self::ItemException),
-            "ITEM_BITMASK" => Ok(Self::ItemBitmask),
-            "ITEM_BITSET" => Ok(Self::ItemBitset),
-            "ITEM_CONST" => Ok(Self::ItemConst),
-            "ITEM_TYPEDEF" => Ok(Self::ItemTypedef),
-            "ITEM_INTERFACE" => Ok(Self::ItemInterface),
-            "ITEM_VALUETYPE" => Ok(Self::ItemValuetype),
-            "ITEM_DECL" => Ok(Self::ItemDecl),
+            "ITEM_ANNOTATION" => Ok(Self::Annotation),
+            "ITEM_MODULE" => Ok(Self::Module),
+            "ITEM_STRUCT" => Ok(Self::Struct),
+            "ITEM_UNION" => Ok(Self::Union),
+            "ITEM_ENUM" => Ok(Self::Enum),
+            "ITEM_EXCEPTION" => Ok(Self::Exception),
+            "ITEM_BITMASK" => Ok(Self::Bitmask),
+            "ITEM_BITSET" => Ok(Self::Bitset),
+            "ITEM_CONST" => Ok(Self::Const),
+            "ITEM_TYPEDEF" => Ok(Self::Typedef),
+            "ITEM_INTERFACE" => Ok(Self::Interface),
+            "ITEM_VALUETYPE" => Ok(Self::Valuetype),
+            "ITEM_DECL" => Ok(Self::Decl),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -4444,19 +4482,19 @@ impl ::std::str::FromStr for ItemKind {
 impl ::std::fmt::Display for ItemKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::ItemAnnotation => f.write_str("ITEM_ANNOTATION"),
-            Self::ItemModule => f.write_str("ITEM_MODULE"),
-            Self::ItemStruct => f.write_str("ITEM_STRUCT"),
-            Self::ItemUnion => f.write_str("ITEM_UNION"),
-            Self::ItemEnum => f.write_str("ITEM_ENUM"),
-            Self::ItemException => f.write_str("ITEM_EXCEPTION"),
-            Self::ItemBitmask => f.write_str("ITEM_BITMASK"),
-            Self::ItemBitset => f.write_str("ITEM_BITSET"),
-            Self::ItemConst => f.write_str("ITEM_CONST"),
-            Self::ItemTypedef => f.write_str("ITEM_TYPEDEF"),
-            Self::ItemInterface => f.write_str("ITEM_INTERFACE"),
-            Self::ItemValuetype => f.write_str("ITEM_VALUETYPE"),
-            Self::ItemDecl => f.write_str("ITEM_DECL"),
+            Self::Annotation => f.write_str("ITEM_ANNOTATION"),
+            Self::Module => f.write_str("ITEM_MODULE"),
+            Self::Struct => f.write_str("ITEM_STRUCT"),
+            Self::Union => f.write_str("ITEM_UNION"),
+            Self::Enum => f.write_str("ITEM_ENUM"),
+            Self::Exception => f.write_str("ITEM_EXCEPTION"),
+            Self::Bitmask => f.write_str("ITEM_BITMASK"),
+            Self::Bitset => f.write_str("ITEM_BITSET"),
+            Self::Const => f.write_str("ITEM_CONST"),
+            Self::Typedef => f.write_str("ITEM_TYPEDEF"),
+            Self::Interface => f.write_str("ITEM_INTERFACE"),
+            Self::Valuetype => f.write_str("ITEM_VALUETYPE"),
+            Self::Decl => f.write_str("ITEM_DECL"),
         }
     }
 }
@@ -4476,19 +4514,19 @@ impl ::intercom_cts::Marshal for ItemKind {
 
         let state = ar.encode_enum("ItemKind")?;
         match self {
-            Self::ItemAnnotation => state.encode_variant::<i32>("ITEM_ANNOTATION", 0),
-            Self::ItemModule => state.encode_variant::<i32>("ITEM_MODULE", 1),
-            Self::ItemStruct => state.encode_variant::<i32>("ITEM_STRUCT", 2),
-            Self::ItemUnion => state.encode_variant::<i32>("ITEM_UNION", 3),
-            Self::ItemEnum => state.encode_variant::<i32>("ITEM_ENUM", 4),
-            Self::ItemException => state.encode_variant::<i32>("ITEM_EXCEPTION", 5),
-            Self::ItemBitmask => state.encode_variant::<i32>("ITEM_BITMASK", 6),
-            Self::ItemBitset => state.encode_variant::<i32>("ITEM_BITSET", 7),
-            Self::ItemConst => state.encode_variant::<i32>("ITEM_CONST", 8),
-            Self::ItemTypedef => state.encode_variant::<i32>("ITEM_TYPEDEF", 9),
-            Self::ItemInterface => state.encode_variant::<i32>("ITEM_INTERFACE", 10),
-            Self::ItemValuetype => state.encode_variant::<i32>("ITEM_VALUETYPE", 11),
-            Self::ItemDecl => state.encode_variant::<i32>("ITEM_DECL", 12),
+            Self::Annotation => state.encode_variant::<i32>("ITEM_ANNOTATION", 0),
+            Self::Module => state.encode_variant::<i32>("ITEM_MODULE", 1),
+            Self::Struct => state.encode_variant::<i32>("ITEM_STRUCT", 2),
+            Self::Union => state.encode_variant::<i32>("ITEM_UNION", 3),
+            Self::Enum => state.encode_variant::<i32>("ITEM_ENUM", 4),
+            Self::Exception => state.encode_variant::<i32>("ITEM_EXCEPTION", 5),
+            Self::Bitmask => state.encode_variant::<i32>("ITEM_BITMASK", 6),
+            Self::Bitset => state.encode_variant::<i32>("ITEM_BITSET", 7),
+            Self::Const => state.encode_variant::<i32>("ITEM_CONST", 8),
+            Self::Typedef => state.encode_variant::<i32>("ITEM_TYPEDEF", 9),
+            Self::Interface => state.encode_variant::<i32>("ITEM_INTERFACE", 10),
+            Self::Valuetype => state.encode_variant::<i32>("ITEM_VALUETYPE", 11),
+            Self::Decl => state.encode_variant::<i32>("ITEM_DECL", 12),
         }
     }
 }
@@ -4514,19 +4552,19 @@ impl ::intercom_cts::decode::EnumVisitor for ItemKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::ItemAnnotation,
-            1 => Self::ItemModule,
-            2 => Self::ItemStruct,
-            3 => Self::ItemUnion,
-            4 => Self::ItemEnum,
-            5 => Self::ItemException,
-            6 => Self::ItemBitmask,
-            7 => Self::ItemBitset,
-            8 => Self::ItemConst,
-            9 => Self::ItemTypedef,
-            10 => Self::ItemInterface,
-            11 => Self::ItemValuetype,
-            12 => Self::ItemDecl,
+            0 => Self::Annotation,
+            1 => Self::Module,
+            2 => Self::Struct,
+            3 => Self::Union,
+            4 => Self::Enum,
+            5 => Self::Exception,
+            6 => Self::Bitmask,
+            7 => Self::Bitset,
+            8 => Self::Const,
+            9 => Self::Typedef,
+            10 => Self::Interface,
+            11 => Self::Valuetype,
+            12 => Self::Decl,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4539,19 +4577,19 @@ impl ::intercom_cts::decode::EnumVisitor for ItemKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "ITEM_ANNOTATION" => Self::ItemAnnotation,
-            "ITEM_MODULE" => Self::ItemModule,
-            "ITEM_STRUCT" => Self::ItemStruct,
-            "ITEM_UNION" => Self::ItemUnion,
-            "ITEM_ENUM" => Self::ItemEnum,
-            "ITEM_EXCEPTION" => Self::ItemException,
-            "ITEM_BITMASK" => Self::ItemBitmask,
-            "ITEM_BITSET" => Self::ItemBitset,
-            "ITEM_CONST" => Self::ItemConst,
-            "ITEM_TYPEDEF" => Self::ItemTypedef,
-            "ITEM_INTERFACE" => Self::ItemInterface,
-            "ITEM_VALUETYPE" => Self::ItemValuetype,
-            "ITEM_DECL" => Self::ItemDecl,
+            "ITEM_ANNOTATION" => Self::Annotation,
+            "ITEM_MODULE" => Self::Module,
+            "ITEM_STRUCT" => Self::Struct,
+            "ITEM_UNION" => Self::Union,
+            "ITEM_ENUM" => Self::Enum,
+            "ITEM_EXCEPTION" => Self::Exception,
+            "ITEM_BITMASK" => Self::Bitmask,
+            "ITEM_BITSET" => Self::Bitset,
+            "ITEM_CONST" => Self::Const,
+            "ITEM_TYPEDEF" => Self::Typedef,
+            "ITEM_INTERFACE" => Self::Interface,
+            "ITEM_VALUETYPE" => Self::Valuetype,
+            "ITEM_DECL" => Self::Decl,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4597,19 +4635,19 @@ impl Item {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::ItemKind {
         match self {
-            Self::AnnotationValue(_) => crate::ast::ItemKind::ItemAnnotation,
-            Self::ModuleValue(_) => crate::ast::ItemKind::ItemModule,
-            Self::StructValue(_) => crate::ast::ItemKind::ItemStruct,
-            Self::UnionValue(_) => crate::ast::ItemKind::ItemUnion,
-            Self::EnumValue(_) => crate::ast::ItemKind::ItemEnum,
-            Self::ExceptionValue(_) => crate::ast::ItemKind::ItemException,
-            Self::BitmaskValue(_) => crate::ast::ItemKind::ItemBitmask,
-            Self::BitsetValue(_) => crate::ast::ItemKind::ItemBitset,
-            Self::ConstValue(_) => crate::ast::ItemKind::ItemConst,
-            Self::AliasValue(_) => crate::ast::ItemKind::ItemTypedef,
-            Self::InterfaceValue(_) => crate::ast::ItemKind::ItemInterface,
-            Self::ValuetypeValue(_) => crate::ast::ItemKind::ItemValuetype,
-            Self::DeclValue(_) => crate::ast::ItemKind::ItemDecl,
+            Self::AnnotationValue(_) => crate::ast::ItemKind::Annotation,
+            Self::ModuleValue(_) => crate::ast::ItemKind::Module,
+            Self::StructValue(_) => crate::ast::ItemKind::Struct,
+            Self::UnionValue(_) => crate::ast::ItemKind::Union,
+            Self::EnumValue(_) => crate::ast::ItemKind::Enum,
+            Self::ExceptionValue(_) => crate::ast::ItemKind::Exception,
+            Self::BitmaskValue(_) => crate::ast::ItemKind::Bitmask,
+            Self::BitsetValue(_) => crate::ast::ItemKind::Bitset,
+            Self::ConstValue(_) => crate::ast::ItemKind::Const,
+            Self::AliasValue(_) => crate::ast::ItemKind::Typedef,
+            Self::InterfaceValue(_) => crate::ast::ItemKind::Interface,
+            Self::ValuetypeValue(_) => crate::ast::ItemKind::Valuetype,
+            Self::DeclValue(_) => crate::ast::ItemKind::Decl,
         }
     }
 }
@@ -4617,37 +4655,29 @@ impl Item {
 impl From<crate::ast::ItemKind> for Item {
     fn from(disc: crate::ast::ItemKind) -> Self {
         match disc {
-            crate::ast::ItemKind::ItemAnnotation => {
+            crate::ast::ItemKind::Annotation => {
                 Self::AnnotationValue(<crate::ast::AnnotationDef>::default())
             }
-            crate::ast::ItemKind::ItemModule => {
-                Self::ModuleValue(<crate::ast::ModuleDef>::default())
-            }
-            crate::ast::ItemKind::ItemStruct => {
-                Self::StructValue(<crate::ast::StructDef>::default())
-            }
-            crate::ast::ItemKind::ItemUnion => Self::UnionValue(<crate::ast::UnionDef>::default()),
-            crate::ast::ItemKind::ItemEnum => Self::EnumValue(<crate::ast::EnumDef>::default()),
-            crate::ast::ItemKind::ItemException => {
+            crate::ast::ItemKind::Module => Self::ModuleValue(<crate::ast::ModuleDef>::default()),
+            crate::ast::ItemKind::Struct => Self::StructValue(<crate::ast::StructDef>::default()),
+            crate::ast::ItemKind::Union => Self::UnionValue(<crate::ast::UnionDef>::default()),
+            crate::ast::ItemKind::Enum => Self::EnumValue(<crate::ast::EnumDef>::default()),
+            crate::ast::ItemKind::Exception => {
                 Self::ExceptionValue(<crate::ast::ExceptDef>::default())
             }
-            crate::ast::ItemKind::ItemBitmask => {
+            crate::ast::ItemKind::Bitmask => {
                 Self::BitmaskValue(<crate::ast::BitmaskDef>::default())
             }
-            crate::ast::ItemKind::ItemBitset => {
-                Self::BitsetValue(<crate::ast::BitsetDef>::default())
-            }
-            crate::ast::ItemKind::ItemConst => Self::ConstValue(<crate::ast::ConstDef>::default()),
-            crate::ast::ItemKind::ItemTypedef => {
-                Self::AliasValue(<crate::ast::AliasDef>::default())
-            }
-            crate::ast::ItemKind::ItemInterface => {
+            crate::ast::ItemKind::Bitset => Self::BitsetValue(<crate::ast::BitsetDef>::default()),
+            crate::ast::ItemKind::Const => Self::ConstValue(<crate::ast::ConstDef>::default()),
+            crate::ast::ItemKind::Typedef => Self::AliasValue(<crate::ast::AliasDef>::default()),
+            crate::ast::ItemKind::Interface => {
                 Self::InterfaceValue(<crate::ast::InterfaceDef>::default())
             }
-            crate::ast::ItemKind::ItemValuetype => {
+            crate::ast::ItemKind::Valuetype => {
                 Self::ValuetypeValue(<crate::ast::ValuetypeDef>::default())
             }
-            crate::ast::ItemKind::ItemDecl => Self::DeclValue(<crate::ast::Decl>::default()),
+            crate::ast::ItemKind::Decl => Self::DeclValue(<crate::ast::Decl>::default()),
         }
     }
 }
@@ -4696,67 +4726,67 @@ impl ::intercom_cts::Unmarshal for Item {
         let mut disc = crate::ast::ItemKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::ItemKind::ItemAnnotation => {
+            crate::ast::ItemKind::Annotation => {
                 let mut value = <crate::ast::AnnotationDef>::default();
                 state.decode_variant(0, "annotation_value", &mut value)?;
                 Self::AnnotationValue(value)
             }
-            crate::ast::ItemKind::ItemModule => {
+            crate::ast::ItemKind::Module => {
                 let mut value = <crate::ast::ModuleDef>::default();
                 state.decode_variant(1, "module_value", &mut value)?;
                 Self::ModuleValue(value)
             }
-            crate::ast::ItemKind::ItemStruct => {
+            crate::ast::ItemKind::Struct => {
                 let mut value = <crate::ast::StructDef>::default();
                 state.decode_variant(2, "struct_value", &mut value)?;
                 Self::StructValue(value)
             }
-            crate::ast::ItemKind::ItemUnion => {
+            crate::ast::ItemKind::Union => {
                 let mut value = <crate::ast::UnionDef>::default();
                 state.decode_variant(3, "union_value", &mut value)?;
                 Self::UnionValue(value)
             }
-            crate::ast::ItemKind::ItemEnum => {
+            crate::ast::ItemKind::Enum => {
                 let mut value = <crate::ast::EnumDef>::default();
                 state.decode_variant(4, "enum_value", &mut value)?;
                 Self::EnumValue(value)
             }
-            crate::ast::ItemKind::ItemException => {
+            crate::ast::ItemKind::Exception => {
                 let mut value = <crate::ast::ExceptDef>::default();
                 state.decode_variant(5, "exception_value", &mut value)?;
                 Self::ExceptionValue(value)
             }
-            crate::ast::ItemKind::ItemBitmask => {
+            crate::ast::ItemKind::Bitmask => {
                 let mut value = <crate::ast::BitmaskDef>::default();
                 state.decode_variant(6, "bitmask_value", &mut value)?;
                 Self::BitmaskValue(value)
             }
-            crate::ast::ItemKind::ItemBitset => {
+            crate::ast::ItemKind::Bitset => {
                 let mut value = <crate::ast::BitsetDef>::default();
                 state.decode_variant(7, "bitset_value", &mut value)?;
                 Self::BitsetValue(value)
             }
-            crate::ast::ItemKind::ItemConst => {
+            crate::ast::ItemKind::Const => {
                 let mut value = <crate::ast::ConstDef>::default();
                 state.decode_variant(8, "const_value", &mut value)?;
                 Self::ConstValue(value)
             }
-            crate::ast::ItemKind::ItemTypedef => {
+            crate::ast::ItemKind::Typedef => {
                 let mut value = <crate::ast::AliasDef>::default();
                 state.decode_variant(9, "alias_value", &mut value)?;
                 Self::AliasValue(value)
             }
-            crate::ast::ItemKind::ItemInterface => {
+            crate::ast::ItemKind::Interface => {
                 let mut value = <crate::ast::InterfaceDef>::default();
                 state.decode_variant(10, "interface_value", &mut value)?;
                 Self::InterfaceValue(value)
             }
-            crate::ast::ItemKind::ItemValuetype => {
+            crate::ast::ItemKind::Valuetype => {
                 let mut value = <crate::ast::ValuetypeDef>::default();
                 state.decode_variant(11, "valuetype_value", &mut value)?;
                 Self::ValuetypeValue(value)
             }
-            crate::ast::ItemKind::ItemDecl => {
+            crate::ast::ItemKind::Decl => {
                 let mut value = <crate::ast::Decl>::default();
                 state.decode_variant(12, "decl_value", &mut value)?;
                 Self::DeclValue(value)
@@ -4770,17 +4800,17 @@ impl ::intercom_cts::Unmarshal for Item {
 #[repr(i32)]
 pub enum InterfaceMemberKind {
     /// An interface attribute.
-    InterfaceAttribute,
+    Attribute,
     /// Function definition.
-    InterfacePrototype,
+    Prototype,
     /// Type definition nested inside the interface.
-    InterfaceItem,
+    Item,
 }
 
 impl InterfaceMemberKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::InterfaceMemberKind::InterfaceAttribute
+        crate::ast::InterfaceMemberKind::Attribute
     }
 }
 
@@ -4789,9 +4819,9 @@ impl ::std::str::FromStr for InterfaceMemberKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "INTERFACE_ATTRIBUTE" => Ok(Self::InterfaceAttribute),
-            "INTERFACE_PROTOTYPE" => Ok(Self::InterfacePrototype),
-            "INTERFACE_ITEM" => Ok(Self::InterfaceItem),
+            "INTERFACE_ATTRIBUTE" => Ok(Self::Attribute),
+            "INTERFACE_PROTOTYPE" => Ok(Self::Prototype),
+            "INTERFACE_ITEM" => Ok(Self::Item),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -4800,9 +4830,9 @@ impl ::std::str::FromStr for InterfaceMemberKind {
 impl ::std::fmt::Display for InterfaceMemberKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::InterfaceAttribute => f.write_str("INTERFACE_ATTRIBUTE"),
-            Self::InterfacePrototype => f.write_str("INTERFACE_PROTOTYPE"),
-            Self::InterfaceItem => f.write_str("INTERFACE_ITEM"),
+            Self::Attribute => f.write_str("INTERFACE_ATTRIBUTE"),
+            Self::Prototype => f.write_str("INTERFACE_PROTOTYPE"),
+            Self::Item => f.write_str("INTERFACE_ITEM"),
         }
     }
 }
@@ -4822,9 +4852,9 @@ impl ::intercom_cts::Marshal for InterfaceMemberKind {
 
         let state = ar.encode_enum("InterfaceMemberKind")?;
         match self {
-            Self::InterfaceAttribute => state.encode_variant::<i32>("INTERFACE_ATTRIBUTE", 0),
-            Self::InterfacePrototype => state.encode_variant::<i32>("INTERFACE_PROTOTYPE", 1),
-            Self::InterfaceItem => state.encode_variant::<i32>("INTERFACE_ITEM", 2),
+            Self::Attribute => state.encode_variant::<i32>("INTERFACE_ATTRIBUTE", 0),
+            Self::Prototype => state.encode_variant::<i32>("INTERFACE_PROTOTYPE", 1),
+            Self::Item => state.encode_variant::<i32>("INTERFACE_ITEM", 2),
         }
     }
 }
@@ -4850,9 +4880,9 @@ impl ::intercom_cts::decode::EnumVisitor for InterfaceMemberKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::InterfaceAttribute,
-            1 => Self::InterfacePrototype,
-            2 => Self::InterfaceItem,
+            0 => Self::Attribute,
+            1 => Self::Prototype,
+            2 => Self::Item,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4865,9 +4895,9 @@ impl ::intercom_cts::decode::EnumVisitor for InterfaceMemberKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
-            "INTERFACE_ATTRIBUTE" => Self::InterfaceAttribute,
-            "INTERFACE_PROTOTYPE" => Self::InterfacePrototype,
-            "INTERFACE_ITEM" => Self::InterfaceItem,
+            "INTERFACE_ATTRIBUTE" => Self::Attribute,
+            "INTERFACE_PROTOTYPE" => Self::Prototype,
+            "INTERFACE_ITEM" => Self::Item,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -4893,9 +4923,9 @@ impl InterfaceMember {
     #[must_use]
     pub const fn disc(&self) -> crate::ast::InterfaceMemberKind {
         match self {
-            Self::Attr(_) => crate::ast::InterfaceMemberKind::InterfaceAttribute,
-            Self::Proto(_) => crate::ast::InterfaceMemberKind::InterfacePrototype,
-            Self::Item(_) => crate::ast::InterfaceMemberKind::InterfaceItem,
+            Self::Attr(_) => crate::ast::InterfaceMemberKind::Attribute,
+            Self::Proto(_) => crate::ast::InterfaceMemberKind::Prototype,
+            Self::Item(_) => crate::ast::InterfaceMemberKind::Item,
         }
     }
 }
@@ -4903,15 +4933,13 @@ impl InterfaceMember {
 impl From<crate::ast::InterfaceMemberKind> for InterfaceMember {
     fn from(disc: crate::ast::InterfaceMemberKind) -> Self {
         match disc {
-            crate::ast::InterfaceMemberKind::InterfaceAttribute => {
+            crate::ast::InterfaceMemberKind::Attribute => {
                 Self::Attr(<crate::ast::Attribute>::default())
             }
-            crate::ast::InterfaceMemberKind::InterfacePrototype => {
+            crate::ast::InterfaceMemberKind::Prototype => {
                 Self::Proto(<crate::ast::Prototype>::default())
             }
-            crate::ast::InterfaceMemberKind::InterfaceItem => {
-                Self::Item(<crate::ast::Item>::default())
-            }
+            crate::ast::InterfaceMemberKind::Item => Self::Item(<crate::ast::Item>::default()),
         }
     }
 }
@@ -4950,17 +4978,17 @@ impl ::intercom_cts::Unmarshal for InterfaceMember {
         let mut disc = crate::ast::InterfaceMemberKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
-            crate::ast::InterfaceMemberKind::InterfaceAttribute => {
+            crate::ast::InterfaceMemberKind::Attribute => {
                 let mut value = <crate::ast::Attribute>::default();
                 state.decode_variant(0, "attr", &mut value)?;
                 Self::Attr(value)
             }
-            crate::ast::InterfaceMemberKind::InterfacePrototype => {
+            crate::ast::InterfaceMemberKind::Prototype => {
                 let mut value = <crate::ast::Prototype>::default();
                 state.decode_variant(1, "proto", &mut value)?;
                 Self::Proto(value)
             }
-            crate::ast::InterfaceMemberKind::InterfaceItem => {
+            crate::ast::InterfaceMemberKind::Item => {
                 let mut value = <crate::ast::Item>::default();
                 state.decode_variant(2, "item", &mut value)?;
                 Self::Item(value)

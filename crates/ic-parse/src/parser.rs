@@ -109,7 +109,7 @@ fn lshift() -> impl IdlParser<Op> {
         .labelled("<<")
         .map_with_span(|_, span| Op {
             span,
-            kind: OpKind::OpLshift,
+            kind: OpKind::Lshift,
         })
 }
 
@@ -118,7 +118,7 @@ fn rshift() -> impl IdlParser<Op> {
         .labelled(">>")
         .map_with_span(|_, span| Op {
             span,
-            kind: OpKind::OpRshift,
+            kind: OpKind::Rshift,
         })
 }
 
@@ -303,9 +303,9 @@ fn const_expr() -> impl IdlParser<Expr> {
         let expr = binary_op(
             expr,
             choice((
-                operator(Kind::Star, OpKind::OpMultiply),
-                operator(Kind::Slash, OpKind::OpDivide),
-                operator(Kind::Modulo, OpKind::OpModulo),
+                operator(Kind::Star, OpKind::Multiply),
+                operator(Kind::Slash, OpKind::Divide),
+                operator(Kind::Modulo, OpKind::Modulo),
             )),
         );
 
@@ -313,8 +313,8 @@ fn const_expr() -> impl IdlParser<Expr> {
         let expr = binary_op(
             expr,
             choice((
-                operator(Kind::Plus, OpKind::OpAdd),
-                operator(Kind::Minus, OpKind::OpSub),
+                operator(Kind::Plus, OpKind::Add),
+                operator(Kind::Minus, OpKind::Sub),
             )),
         );
 
@@ -322,13 +322,13 @@ fn const_expr() -> impl IdlParser<Expr> {
         let expr = binary_op(expr, choice((lshift(), rshift())));
 
         // Rule 10: Bitwise AND
-        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::OpAnd));
+        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::And));
 
         // Rule 9: Bitwise XOR
-        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::OpXor));
+        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::Xor));
 
         // Rule 8: Bitwise OR
-        binary_op(expr, operator(Kind::BitOr, OpKind::OpOr))
+        binary_op(expr, operator(Kind::BitOr, OpKind::Or))
     })
 }
 
@@ -360,9 +360,9 @@ where
 // Rule 15
 fn unary_operator() -> impl IdlParser<Op> {
     choice((
-        operator(Kind::Minus, OpKind::OpSub),
-        operator(Kind::Plus, OpKind::OpAdd),
-        operator(Kind::BitNot, OpKind::OpNot),
+        operator(Kind::Minus, OpKind::Sub),
+        operator(Kind::Plus, OpKind::Add),
+        operator(Kind::BitNot, OpKind::Not),
     ))
 }
 
@@ -632,9 +632,7 @@ fn struct_forward_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|(ann, name), span| {
-        Item::decl(name, DeclKind::DeclStruct, span).annotate(ann)
-    })
+    decl.map_with_span(|(ann, name), span| Item::decl(name, DeclKind::Struct, span).annotate(ann))
 }
 
 // Rule 49
@@ -735,9 +733,7 @@ fn union_forward_dcl() -> impl IdlParser<Item> {
         .annotated()
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|(ann, name), span| {
-        Item::decl(name, DeclKind::DeclUnion, span).annotate(ann)
-    })
+    decl.map_with_span(|(ann, name), span| Item::decl(name, DeclKind::Union, span).annotate(ann))
 }
 
 // Rule 57
@@ -788,7 +784,7 @@ fn native_dcl() -> impl IdlParser<Item> {
     keyword(Kw::Native)
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi))
-        .map_with_span(|name, span| Item::decl(name, DeclKind::DeclNative, span))
+        .map_with_span(|name, span| Item::decl(name, DeclKind::Native, span))
 }
 
 // Rule 62
@@ -878,7 +874,7 @@ fn interface_forward_dcl() -> impl IdlParser<Item> {
         .then_ignore(just(Kind::Semi));
 
     def.map_with_span(|(ann, ident), span| {
-        Item::decl(ident, DeclKind::DeclInterface, span).annotate(ann)
+        Item::decl(ident, DeclKind::Interface, span).annotate(ann)
     })
 }
 
@@ -976,9 +972,9 @@ fn param_dcl() -> impl IdlParser<Param> {
 // Rule 86
 fn param_attribute() -> impl IdlParser<ParamKind> {
     choice((
-        keyword(Kw::In).to(ParamKind::ParamIn),
-        keyword(Kw::Out).to(ParamKind::ParamOut),
-        keyword(Kw::InOut).to(ParamKind::ParamInout),
+        keyword(Kw::In).to(ParamKind::In),
+        keyword(Kw::Out).to(ParamKind::Out),
+        keyword(Kw::InOut).to(ParamKind::Inout),
     ))
 }
 
@@ -1162,7 +1158,7 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|name, span| Item::decl(name, DeclKind::DeclValuetype, span))
+    def.map_with_span(|name, span| Item::decl(name, DeclKind::Valuetype, span))
 }
 
 // Rule 119, 120, 121

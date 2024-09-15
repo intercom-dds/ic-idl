@@ -32,8 +32,9 @@ use std::ptr;
 
 use ic_parse::SourceMap;
 use ic_syntax::{
-    AnnotationField, DeclKind, Declarator, Expr, Field, InterfaceMember, Item, Label, LiteralValue,
-    Op, OpKind, Param, ParamKind, Path, Type, UnionElement,
+    AnnotationAppl, AnnotationArg, AnnotationField, DeclKind, Declarator, Expr, Field,
+    InterfaceMember, Item, Label, LiteralValue, Op, OpKind, Param, ParamKind, Path, Type,
+    UnionElement,
 };
 
 use crate::sys;
@@ -221,7 +222,8 @@ fn lower_field(state: *mut sys::parser_state, field: &Field) -> *mut sys::ptree 
     unsafe {
         let ty = lower_ty(state, &field.ty);
         let decls = create_decl_list(state, &field.names, ptr::null_mut());
-        sys::create_member(state, decls, ty, ptr::null_mut())
+        let mem = sys::create_member(state, decls, ty, ptr::null_mut());
+        annotate(state, mem, &field.annotations)
     }
 }
 
@@ -258,6 +260,46 @@ fn lower_interface_member(
     }
 }
 
+unsafe fn lower_annotation_arg(
+    state: *mut sys::parser_state,
+    arg: &AnnotationArg,
+) -> *mut sys::ptree {
+    let name = arg.ident.as_ref().map(|v| create_ident(&v.name));
+    let name = name.map_or(std::ptr::null(), |v| v.as_ptr());
+    let value = lower_expr(state, &arg.value);
+    sys::create_annotation_param(state, name, value)
+}
+
+unsafe fn lower_applied_annotation(
+    state: *mut sys::parser_state,
+    annotation: &AnnotationAppl,
+) -> *mut sys::ptree {
+    let ident = create_ident(&path_str(&annotation.ty));
+    sys::create_annotation_start(state, ident.as_ptr());
+    let params = collect_with(state, sys::append_node, &annotation.args, |arg| {
+        lower_annotation_arg(state, arg)
+    });
+    sys::create_annotation_finish(state, params)
+}
+
+unsafe fn lower_applied_annotations(
+    state: *mut sys::parser_state,
+    annotations: &[AnnotationAppl],
+) -> *mut sys::ptree {
+    collect_with(state, sys::append_node, annotations, |ann| {
+        lower_applied_annotation(state, ann)
+    })
+}
+
+unsafe fn annotate(
+    state: *mut sys::parser_state,
+    node: *mut sys::ptree,
+    annotations: &[AnnotationAppl],
+) -> *mut sys::ptree {
+    let anns = lower_applied_annotations(state, annotations);
+    sys::annotate(state, node, anns)
+}
+
 unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::ptree {
     match item {
         Item::AnnotationValue(v) => {
@@ -273,16 +315,19 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             let ident = create_ident(&v.ident.name);
             sys::create_module_start(state, ident.as_ptr());
             let members = lower_item_list(state, &v.definitions);
-            sys::create_module_finish(state, members)
+            let ty = sys::create_module_finish(state, members);
+            annotate(state, ty, &v.annotations)
         }
         Item::StructValue(v) => {
             // TODO: parent
             let ident = create_ident(&v.ident.name);
-            sys::create_struct_start(state, ident.as_ptr(), ptr::null_mut());
+            sys::create_struct_start(state, ident.as_ptr(), std::ptr::null_mut());
             let members = collect_with(state, sys::append_node, &v.members, |v| {
                 lower_field(state, v)
             });
-            sys::create_struct_finish(state, members)
+
+            let ty = sys::create_struct_finish(state, members);
+            annotate(state, ty, &v.annotations)
         }
         Item::ExceptionValue(v) => {
             let ident = create_ident(&v.ident.name);
@@ -290,7 +335,9 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             let members = collect_with(state, sys::append_node, &v.members, |v| {
                 lower_field(state, v)
             });
-            sys::create_exception_finish(state, members)
+
+            let ty = sys::create_exception_finish(state, members);
+            annotate(state, ty, &v.annotations)
         }
         Item::EnumValue(v) => {
             let values = collect_with(state, sys::append_enum_node, &v.fields, |field| {
@@ -303,7 +350,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             });
 
             let ident = create_ident(&v.ident.name);
-            sys::create_enum(state, ident.as_ptr(), values)
+            let ty = sys::create_enum(state, ident.as_ptr(), values);
+            annotate(state, ty, &v.annotations)
         }
         Item::BitmaskValue(v) => {
             let values = collect_with(state, sys::append_node, &v.bits, |bit| {
@@ -317,18 +365,21 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             });
 
             let ident = create_ident(&v.ident.name);
-            sys::create_bitmask(state, ident.as_ptr(), values)
+            let ty = sys::create_bitmask(state, ident.as_ptr(), values);
+            annotate(state, ty, &v.annotations)
         }
         Item::ConstValue(v) => {
             let ty = lower_ty(state, &v.ty);
             let decl = create_decl(state, &v.decl, ptr::null_mut());
             let expr = lower_expr(state, &v.value);
-            sys::create_const_node(state, decl, ty, expr)
+            let ty = sys::create_const_node(state, decl, ty, expr);
+            annotate(state, ty, &v.annotations)
         }
         Item::AliasValue(v) => {
             let ty = lower_ty(state, &v.ty);
             let decls = create_decl_list(state, &v.decl, ptr::null_mut());
-            sys::create_type(state, decls, ty)
+            let ty = sys::create_type(state, decls, ty);
+            annotate(state, ty, &v.annotations)
         }
         Item::DeclValue(v) => {
             let ident = create_ident(&v.ident.name);
@@ -353,7 +404,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
 
             let parent = path_or_null(state, &v.parent);
             let ident = create_ident(&v.ident.name);
-            sys::create_bitset(state, ident.as_ptr(), bitfields, parent)
+            let ty = sys::create_bitset(state, ident.as_ptr(), bitfields, parent);
+            annotate(state, ty, &v.annotations)
         }
         Item::InterfaceValue(v) => {
             // TODO: parents
@@ -364,12 +416,13 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                 ptr::null_mut(),
                 ffi::c_int::from(v.local.is_some()),
             );
-            sys::create_interface_finish(
+            let ty = sys::create_interface_finish(
                 state,
                 collect_with(state, sys::append_node, &v.members, |v| {
                     lower_interface_member(state, v)
                 }),
-            )
+            );
+            annotate(state, ty, &v.annotations)
         }
         Item::UnionValue(v) => {
             let ident = create_ident(&v.ident.name);
@@ -402,7 +455,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             let decl = sys::create_decl(state, ident.as_ptr(), ptr::null_mut());
             let disc =
                 sys::create_member(state, decl, lower_ty(state, &v.disc.ty), ptr::null_mut());
-            sys::create_union_finish(state, disc, members)
+            let ty = sys::create_union_finish(state, disc, members);
+            annotate(state, ty, &v.annotations)
         }
         Item::ValuetypeValue(v) => {
             let ident = create_ident(&v.ident.name);
@@ -410,7 +464,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             let supports = path_or_null(state, &v.supports);
             sys::create_valuetype_start(state, ident.as_ptr(), parent, supports);
             // TODO: members
-            sys::create_valuetype_finish(state, ptr::null_mut())
+            let ty = sys::create_valuetype_finish(state, ptr::null_mut());
+            annotate(state, ty, &v.annotations)
         }
     }
 }
@@ -448,12 +503,13 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     // Discard the generated nodes -- we don't want to include the built-in
     // types in the tree. They just need to be registered in the symbol map with
     // their respective definitions.
-    _ = lower_item_list(state, &builtin.tree);
+    let list = lower_item_list(state, &builtin.tree);
+    assert!(!list.is_null());
 }
 
 pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -> *mut sys::ptree {
     unsafe {
-        // inject_builtin(state);
+        inject_builtin(state);
 
         collect_with(state, sys::append_node, ast, |item| {
             let span = ic_syntax::util::item_span(item);

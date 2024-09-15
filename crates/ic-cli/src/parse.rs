@@ -168,14 +168,16 @@ impl<'a> Parser<'a> {
     }
 
     fn short_opt(&mut self, arg: &str) -> Result<(), ParseError> {
-        if arg.len() == 1 {
-            self.handle_opt(arg)?;
-        } else {
-            let (key, val) = arg.split_at(1);
-            let opt = self.find_opt(key)?;
-            opt.insert_value(val.to_string());
+        match arg.len() {
+            0 => Err(format!("unexpected argument '{}'", '-'.yellow()).into()),
+            1 => self.handle_opt(arg),
+            _ => {
+                let (key, val) = arg.split_at(1);
+                let opt = self.find_opt(key)?;
+                opt.insert_value(val.to_string());
+                Ok(())
+            }
         }
-        Ok(())
     }
 
     fn long_opt(&mut self, arg: &str) -> Result<(), ParseError> {

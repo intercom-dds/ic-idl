@@ -166,10 +166,10 @@ fn try_parse(
             }
 
             // Lower the AST to a HIR
-            let hir = ic_hir::lower_ast(v.tree.clone());
-            if options.unstable.hir_dump {
-                println!("{hir:#?}");
-            }
+            // let hir = ic_hir::lower_ast(v.tree.clone());
+            // if options.unstable.hir_dump {
+            //     println!("{hir:#?}");
+            // }
 
             Ok(ic_ptree::lower_ast(&v))
         }

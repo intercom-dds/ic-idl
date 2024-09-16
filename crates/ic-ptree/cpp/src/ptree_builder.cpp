@@ -2147,7 +2147,7 @@ void validate_node(parser_state* state, ptree* node) {
             state->error() << "Unnamed node in scope " << node->super;
         }
 
-        if (!node->included_from || !node->file_name.empty()) {
+        if (!node->included_from || node->file_name.empty()) {
             state->error() << "Node is missing a file name";
         }
 

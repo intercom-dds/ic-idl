@@ -460,6 +460,7 @@ static parse_result get_parse_result(parser_state* state) {
     parse_result result;
     result.tree = state->top_level.next;
     result.state.reset(state);
+    result.error_count = state->errors.size();
 
     std::stringstream msg;
     for (const auto& err : state->errors) {

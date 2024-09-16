@@ -124,6 +124,16 @@ unsafe fn create_decl_list(
     list
 }
 
+unsafe fn decl_path_list(state: *mut sys::parser_state, names: &[Path]) -> *mut sys::declarator {
+    let mut list = ptr::null_mut();
+    for name in names {
+        let ident = create_ident(&path_str(name));
+        let decl = sys::create_decl(state, ident.as_ptr(), std::ptr::null_mut());
+        list = sys::append_decl(list, decl);
+    }
+    list
+}
+
 unsafe fn lower_item_list(state: *mut sys::parser_state, items: &[Item]) -> *mut sys::ptree {
     collect_with(state, sys::append_node, items, |v| unsafe {
         lower_item(state, v)
@@ -423,12 +433,12 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             annotate(state, ty, &v.annotations)
         }
         Item::InterfaceValue(v) => {
-            // TODO: parents
+            let parents = decl_path_list(state, &v.inherits);
             let ident = create_ident(&v.ident.name);
             sys::create_interface_start(
                 state,
                 ident.as_ptr(),
-                ptr::null_mut(),
+                parents,
                 ffi::c_int::from(v.local.is_some()),
             );
             let ty = sys::create_interface_finish(
@@ -518,7 +528,10 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     // Discard the generated nodes -- we don't want to include the built-in
     // types in the tree. They just need to be registered in the symbol map with
     // their respective definitions.
+    let ident = create_ident("<built-in>");
+    sys::create_include_start(state, ident.as_ptr(), 0);
     let list = lower_item_list(state, &builtin.tree);
+    sys::create_include_finish(state, list);
     assert!(!list.is_null());
 }
 

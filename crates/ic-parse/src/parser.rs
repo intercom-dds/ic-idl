@@ -962,7 +962,7 @@ fn param_dcl() -> impl IdlParser<Param> {
     param.map(|((kind, ty), decl)| Param {
         ident: match decl {
             Declarator::Simple(v) => v,
-            Declarator::Array(_) => todo!(),
+            Declarator::Array(v) => v.ident,
         },
         ty,
         kind,

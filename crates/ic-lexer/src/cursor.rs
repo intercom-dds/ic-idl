@@ -134,6 +134,18 @@ impl Cursor {
         Kind::Unknown
     }
 
+    // `@annotation` is special because it's a keyword that consists of
+    // non-alphanumeric characters.
+    fn annotation(&mut self) -> Kind {
+        if let Some(v) = self.clone().next() {
+            if v.kind == Kind::Ident && self.source_of(v.span) == "annotation" {
+                _ = self.next();
+                return Kind::Keyword(Kw::Annotation);
+            }
+        }
+        Kind::At
+    }
+
     // Code comments (`//`) are stripped from the output, but documentation
     // comments (`///`) are not.
     //
@@ -264,6 +276,7 @@ impl Cursor {
                 '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
                 '"' => self.string_lit(),
                 '\'' => self.char_lit(),
+                '@' => self.annotation(),
 
                 '/' => match self.chars.peek() {
                     '/' => {
@@ -336,7 +349,7 @@ impl Cursor {
 }
 
 fn is_ident(c: char) -> bool {
-    c.is_alphanumeric() || c == '_' || c == '@'
+    c.is_alphanumeric() || c == '_'
 }
 
 #[cfg(test)]
@@ -476,5 +489,21 @@ mod tests {
                 .iter()
                 .all(|v| matches!(v.kind, Kind::Ident | Kind::Newline))
         )
+    }
+
+    #[test]
+    fn annotation_kw() {
+        let tokens = scan("@annotation");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].kind, Kind::Keyword(Kw::Annotation));
+
+        let tokens = scan("@      annotation");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].kind, Kind::Keyword(Kw::Annotation));
+
+        let tokens = scan("@foo");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].kind, Kind::At);
+        assert_eq!(tokens[1].kind, Kind::Ident);
     }
 }

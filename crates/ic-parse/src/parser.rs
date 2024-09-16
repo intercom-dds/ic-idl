@@ -170,7 +170,7 @@ fn definition() -> impl IdlParser<Item> {
     // Semicolons are not checked here. This is a PEG parser, so it picks the
     // first rule that matches. To prevent "struct Foo {};" from matching with
     // `struct_forward_dcl`, we need to include the terminator in the rule.
-    let def = recursive(|defs| {
+    recursive(|defs| {
         choice((
             module_dcl(defs),
             const_dcl(),
@@ -180,12 +180,7 @@ fn definition() -> impl IdlParser<Item> {
             annotation_dcl(),
             value_dcl(),
         ))
-    });
-
-    // If an error occurred, skip all tokens until the next semicolon then
-    // continue from there. We won't be able to create a full AST, but we
-    // can address other syntax errors we encounter.
-    def.recover_with(skip_then_retry_until([Kind::Semi]))
+    })
 }
 
 // Rule 3
@@ -218,19 +213,7 @@ fn scoped_name() -> impl IdlParser<Path> {
 
 // Similar to scoped_name, but for applied annotations
 fn annotation_ident() -> impl IdlParser<Path> {
-    let name =
-        select! { Kind::AnnotationAppl(v) => v }.map_with_span(|name, span| Ident { name, span });
-
-    let path = name.then(just(Kind::DColon).ignore_then(ident()).repeated());
-
-    path.map(|(name, segments)| Path {
-        leading_colons: None,
-        segments: {
-            let mut seg = vec![name];
-            seg.extend(segments);
-            seg
-        },
-    })
+    just(Kind::At).ignore_then(scoped_name())
 }
 
 // Rule 5

@@ -39,8 +39,14 @@ use ic_syntax::Span;
 // TODO: add K as a generic for keywords to the preprocessor?
 #[derive(Clone, Debug, PartialEq, DiscHash)]
 pub enum Kind {
+    /// A valid UAX#31 identifier.
+    Ident(String),
+
     /// An IDL keyword
     Keyword(Kw),
+
+    /// `@`
+    At,
 
     /// `,`
     Comma,
@@ -125,12 +131,6 @@ pub enum Kind {
 
     /// String literal. Handles escaped quotes.
     StringLit(String),
-
-    /// Applied annotation made up of a valid UAX#31 identifier
-    AnnotationAppl(String),
-
-    /// A valid UAX#31 identifier.
-    Ident(String),
 
     /// Any single UTF-8 character surrounded by single quotes.
     Char(Option<char>),
@@ -232,6 +232,7 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Comment => Kind::Comment(String::new()),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),
             ic_preproc::Kind::Char => Kind::Char(None),
+            ic_preproc::Kind::At => Kind::At,
             ic_preproc::Kind::Comma => Kind::Comma,
             ic_preproc::Kind::Period => Kind::Period,
             ic_preproc::Kind::Colon => Kind::Colon,
@@ -298,13 +299,8 @@ pub fn from_cursor(
                 ic_preproc::Kind::Newline => continue,
                 ic_preproc::Kind::Ident => {
                     let ident = iter.source_of(next.span).to_string();
-                    let kind = if ident.starts_with('@') {
-                        Kind::AnnotationAppl(ident)
-                    } else {
-                        Kind::Ident(ident)
-                    };
                     break Some(Token {
-                        kind,
+                        kind: Kind::Ident(ident),
                         span: next.span,
                     });
                 }

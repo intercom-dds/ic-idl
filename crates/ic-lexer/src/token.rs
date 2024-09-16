@@ -103,9 +103,6 @@ pub enum Kind {
     /// Any valid UTF-8 identifier
     Ident,
 
-    /// An @annotation
-    Annotation,
-
     /// A documentation-style comment
     Comment,
 
@@ -120,6 +117,9 @@ pub enum Kind {
 
     /// Single UTF-8 character literal
     Char,
+
+    /// `@`
+    At,
 
     /// `#`
     Hash,

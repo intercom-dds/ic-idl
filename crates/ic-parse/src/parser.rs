@@ -333,11 +333,9 @@ where
     Oper: IdlParser<Op> + 'a,
 {
     let expr = expr.boxed();
-
     expr.clone()
         .then(op.then(expr).repeated())
         .foldl(|lhs, (op, rhs)| Expr::Binary(Box::new(Binary { lhs, op, rhs })))
-        .boxed()
 }
 
 // Rule 15

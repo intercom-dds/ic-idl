@@ -53,7 +53,7 @@ static ptree create_primitive_node(const char* name, numeric_kind num_kind) {
     node.name = name;
     node.value.val._d(num_kind);
     node.flags |= OPT_BUILTIN;
-    node.file_name = "";
+    node.file_name = "<built-in>";
     return node;
 }
 
@@ -2147,7 +2147,7 @@ void validate_node(parser_state* state, ptree* node) {
             state->error() << "Unnamed node in scope " << node->super;
         }
 
-        if (!node->included_from || node->file_name.empty()) {
+        if ((!node->included_from && (node->flags & OPT_BUILTIN) == 0) || node->file_name.empty()) {
             state->error() << "Node is missing a file name";
         }
 

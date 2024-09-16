@@ -308,6 +308,7 @@ static void register_primitives(parser_state* state) {
     register_node(state, &fixed_type);
     register_node(state, &unbounded_string_type);
     register_node(state, &unbounded_wstring_type);
+    state->type_map["::octet"] = &octet_type;
 }
 
 static void init_parser_state(parser_state* state) {

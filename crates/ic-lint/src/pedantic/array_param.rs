@@ -25,15 +25,36 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
+use ic_syntax::visit::{visit_tree, Visitor};
+use ic_syntax::Declarator;
 
-// pub mod assign_expr;
-// pub mod complex_key;
-// pub mod complex_lit;
-// pub mod empty_mod;
-pub mod array_param;
-pub mod bitmask_ann;
-pub mod lowercase_bool;
-// pub mod null;
-// pub mod omitted_in;
-// pub mod scoped_enum;
+use crate::{Category, Lint, LintCtx};
+
+pub struct ArrayParam<'a> {
+    ctx: &'a LintCtx<'a>,
+}
+
+impl<'a> Visitor<'a> for ArrayParam<'_> {
+    fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
+        if let Declarator::Array(decl) = &param.decl {
+            let diag = warn_span(
+                "using arrays as parameters in prototypes is not standard",
+                Label::new(decl.ident.span).message("this parameter is an array"),
+            )
+            .note("standard IDL does not permit arrays as parameters");
+            self.ctx.report(diag);
+        }
+    }
+}
+
+impl<'a> Lint<'a> for ArrayParam<'_> {
+    fn category() -> Category {
+        Category::Pedantic
+    }
+
+    fn check(ctx: &'a crate::LintCtx<'_>, tree: &[ic_syntax::Item]) {
+        let mut lint = ArrayParam { ctx };
+        visit_tree(&mut lint, tree);
+    }
+}

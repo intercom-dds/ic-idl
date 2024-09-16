@@ -256,6 +256,12 @@ module DDS { module XTypes {
     typedef TypeFlag BitmaskTypeFlag;    // Unused. No flags apply
     typedef TypeFlag BitsetTypeFlag;     // Unused. No flags apply
 
+    // Mask used to remove the flags that do no affect assignability
+    const   unsigned short TypeFlagMinimalMask = 0x0007; // Selects  M, A, F
+
+    // Forward declaration
+    union TypeIdentifier;
+
     // ID of a type member
     typedef unsigned long MemberId;
     const MemberId MEMBER_ID_INVALID = 0x0FFFFFFF;

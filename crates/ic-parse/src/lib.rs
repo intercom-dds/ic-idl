@@ -164,26 +164,34 @@ impl std::fmt::Display for Error {
 pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(input);
-    from_file(file_id, &mut vfs)
-}
-
-/// Parses the specified file and constructs an AST.
-///
-/// # Errors
-///
-/// # Panics
-pub fn from_path(path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
-    let (file_id, _) = vfs.open(path, Include::Static).unwrap();
-    from_file(file_id, vfs)
-}
-
-/// Parses the specified file and constructs an AST.
-///
-/// # Errors
-///
-/// # Panics
-pub fn from_file(file_id: FileId, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
     let args = ProcArgs::default();
+    from_file(file_id, args, &mut vfs)
+}
+
+/// Parses the specified file and constructs an AST.
+///
+/// # Errors
+///
+/// # Panics
+pub fn from_path(
+    path: &Path,
+    args: ProcArgs,
+    vfs: &mut SourceMap,
+) -> Result<ParseResult, Vec<Error>> {
+    let (file_id, _) = vfs.open(path, Include::Static).unwrap();
+    from_file(file_id, args, vfs)
+}
+
+/// Parses the specified file and constructs an AST.
+///
+/// # Errors
+///
+/// # Panics
+pub fn from_file(
+    file_id: FileId,
+    args: ProcArgs,
+    vfs: &mut SourceMap,
+) -> Result<ParseResult, Vec<Error>> {
     let iter = ic_preproc::preprocess(file_id, args, vfs);
     let tokens = lexer::from_cursor(iter);
     let tree = parser::specification()

@@ -125,7 +125,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
             let (output, _) = ic_preproc::to_string(&file, args.clone())?;
             println!("{output}");
         } else {
-            let ast = try_parse(options, &args, &file, &mut vfs)?;
+            let ast = try_parse(options, args.clone(), &file, &mut vfs)?;
             trees.push(ast);
         }
     }
@@ -134,11 +134,11 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
 
 fn try_parse(
     options: &Options,
-    _proc: &ProcArgs,
+    proc: ProcArgs,
     path: &Path,
     vfs: &mut SourceMap,
 ) -> anyhow::Result<ParseResult> {
-    let ast = ic_parse::from_path(path, vfs);
+    let ast = ic_parse::from_path(path, proc, vfs);
 
     match ast {
         Ok(v) => {

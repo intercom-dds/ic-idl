@@ -59,7 +59,9 @@ fn dump_backtrace(info: &std::panic::PanicInfo) {
     if trace.status() == backtrace::BacktraceStatus::Captured {
         eprintln!("{trace:#?}");
     }
-    eprintln!("This is a compiler bug. Please report it to the InterCOM DDS team.");
+    eprintln!(
+        "This is a compiler bug. Please report it to KONGSBERG <InterCOM.DDSteam@kongsberg.com>.",
+    );
 }
 
 pub fn install_hook() {

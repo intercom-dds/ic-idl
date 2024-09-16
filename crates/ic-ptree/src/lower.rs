@@ -260,10 +260,7 @@ fn lower_interface_member(
         let param = |param: &Param| {
             let ty = lower_ty(state, &param.ty);
             let kind = param_kind(param.kind);
-            let decl = {
-                let ident = create_ident(&param.ident.name);
-                sys::create_decl(state, ident.as_ptr(), ptr::null_mut())
-            };
+            let decl = create_decl(state, &param.decl, std::ptr::null_mut());
             sys::create_param_dcl(state, decl, ty, kind)
         };
 
@@ -272,13 +269,9 @@ fn lower_interface_member(
             InterfaceMember::Proto(v) => {
                 let ident = create_ident(&v.ident.name);
                 let params = collect_with(state, sys::append_node, &v.params, param);
-                sys::create_interface_op(
-                    state,
-                    ident.as_ptr(),
-                    params,
-                    ptr::null_mut(),
-                    ptr::null_mut(),
-                )
+                let ret_ty = lower_ty(state, &v.ret);
+                let raises = decl_path_list(state, &v.raises);
+                sys::create_interface_op(state, ident.as_ptr(), params, ret_ty, raises)
             }
             InterfaceMember::Item(v) => lower_item(state, v),
         }

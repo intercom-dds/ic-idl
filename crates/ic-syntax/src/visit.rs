@@ -392,7 +392,7 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    visitor.visit_ident(&def.ident);
+    visitor.visit_declarator(&def.decl);
 }
 
 pub fn visit_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)

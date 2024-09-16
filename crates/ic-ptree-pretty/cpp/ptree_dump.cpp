@@ -286,6 +286,18 @@ static void recurse_node(ScopedPrinter& out, const ptree* node, std::set<const p
         recurse_node(scope, ann, seen);
     }
 
+    for (auto exception : node->setraises) {
+        ScopedPrinter scope(&out);
+        scope << attrib("setraises");
+        recurse_node(scope, exception, seen);
+    }
+
+    for (auto exception : node->getraises) {
+        ScopedPrinter scope(&out);
+        scope << attrib("getraises");
+        recurse_node(scope, exception, seen);
+    }
+
     // Iterate all over members regardless of whether the node is intended to have members or not
     for (auto mem : node->members) {
         ScopedPrinter scope(&out);

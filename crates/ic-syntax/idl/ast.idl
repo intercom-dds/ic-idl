@@ -551,7 +551,7 @@ enum ParamKind {
 @nested
 struct Param {
     /// Name of the parameter.
-    Ident ident;
+    Declarator decl;
 
     /// Type of the parameter.
     Type ty;

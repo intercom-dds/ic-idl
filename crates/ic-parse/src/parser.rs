@@ -937,19 +937,14 @@ fn parameter_dcls() -> impl IdlParser<Vec<Param>> {
 
 // Rule 85
 fn param_dcl() -> impl IdlParser<Param> {
+    // Minor deviation: we allow arrays as parameters. The standard doesn't
+    // specify this, but it's likely an oversight.
     let param = param_attribute()
         .or_not()
         .then(type_spec())
-        .then(simple_declarator());
+        .then(any_declarator());
 
-    param.map(|((kind, ty), decl)| Param {
-        ident: match decl {
-            Declarator::Simple(v) => v,
-            Declarator::Array(v) => v.ident,
-        },
-        ty,
-        kind,
-    })
+    param.map(|((kind, ty), decl)| Param { decl, ty, kind })
 }
 
 // Rule 86

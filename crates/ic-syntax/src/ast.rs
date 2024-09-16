@@ -3928,7 +3928,7 @@ impl ::intercom_cts::decode::EnumVisitor for ParamKind {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Param {
     /// Name of the parameter.
-    pub ident: crate::ast::Ident,
+    pub decl: crate::ast::Declarator,
     /// Type of the parameter.
     pub ty: crate::ast::Type,
     /// Specifies whether this is an `in`, `out`, or `inout` parameter.
@@ -3939,7 +3939,7 @@ impl Param {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
+            decl: <crate::ast::Declarator>::default(),
             ty: <crate::ast::Type>::default(),
             kind: None,
         }
@@ -3960,7 +3960,7 @@ impl ::intercom_cts::Marshal for Param {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("Param")?;
-        state.encode_field(0, "ident", &self.ident)?;
+        state.encode_field(0, "decl", &self.decl)?;
         state.encode_field(1, "ty", &self.ty)?;
         state.encode_field(2, "kind", &self.kind)?;
         state.end()
@@ -3975,7 +3975,7 @@ impl ::intercom_cts::Unmarshal for Param {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("Param")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
+        state.decode_field(0, "decl", &mut self.decl)?;
         state.decode_field(1, "ty", &mut self.ty)?;
         state.decode_field(2, "kind", &mut self.kind)?;
         Ok(())

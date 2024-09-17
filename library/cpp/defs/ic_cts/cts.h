@@ -25,7 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// IWYU pragma: begin_exports
+#include <except>
+#include <functional>
+#include <optional>
+
+#include "ic_cts/bounded.h"
 #include "ic_cts/member_info.h"
+#include "ic_cts/memory.h"
+#include "ic_cts/platform_config.h"
+#include "ic_cts/serialization.h"
+#include "ic_cts/span.h"
+// IWYU pragma: end_exports
 
 // Remove macros defined in mman-linux.h, conflicts with XTypes MAP_TYPE
 #ifdef MAP_TYPE
@@ -45,9 +56,6 @@ namespace ic_cts {
 struct Any {};
 struct Object {};
 
-}  // namespace ic_cts
-
-namespace IDL {  // NOLINT
 template <typename T>
 using traits = intercom::TypeTraits<T>;
 
@@ -68,4 +76,8 @@ using bounded_u32string = intercom::bounded_u32string<N>;
 
 template <uint32_t N>
 using bounded_wstring = intercom::bounded_wstring<N>;
-}  // namespace IDL
+}  // namespace ic_cts
+
+#ifndef IC_NO_IDL_NAMESPACE
+using namespace IDL = ic_cts;
+#endif

@@ -3094,10 +3094,10 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
 
         mprintf(
             &s_pk_file,
-            "#include <InterCOM/version.h>\n"
+            "#include <ic_cts/version.h>\n"
             "#ifndef INTERCOM_VERSION_" INTERCOM_VERSION_S
             "\n"
-            "#error \"CIDL-generated code does not match InterCOM product version: " INTERCOM_VERSION_S
+            "#error \"CIDL-generated code does not match ic-idl product version: " INTERCOM_VERSION_S
             "\"\n"
             "#endif // INTERCOM_VERSION_" INTERCOM_VERSION_S "\n\n"
         );
@@ -3109,13 +3109,6 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
             "#pragma warning(disable:4127)\n"
             "#endif\n\n"
         );
-
-        // This must come before the other includes
-        if (CommandLineOption::corba_types()) {
-            mprintf(&s_pk_file, "#ifndef INTERCOM_CORBA_TYPES\n");
-            mprintf(&s_pk_file, "#define INTERCOM_CORBA_TYPES\n");
-            mprintf(&s_pk_file, "#endif\n\n");
-        }
 
         if (CommandLineOption::dll_exp_sym() &&
             strcmp(CommandLineOption::dll_exp_sym(), INTERCOM_PUBLIC_MACRO_NAME) != 0) {
@@ -3164,18 +3157,12 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
             );
         }
 
-        mprintf(&s_pk_file, "#include <InterCOM/span.h>\n");
-        mprintf(&s_pk_file, "#include <InterCOM/cdr_serializer.h>\n");
+        mprintf(&s_pk_file, "#include <ic_cts/cts.h>\n");
+        mprintf(&s_pk_file, "#include <ic_cts/cdr_serializer.h>\n");
 
         if (module != "dds_xtypes_constants") {
-            mprintf(&s_pk_file, "#include <InterCOM/json_serializer.h>\n");
+            mprintf(&s_pk_file, "#include <ic_cts/json_serializer.h>\n");
         }
-
-        if (has_exceptions(tree)) {
-            mprintf(&s_pk_file, "#include <stdexcept>\n");
-        }
-        mprintf(&s_pk_file, "#include <functional>\n");
-        mprintf(&s_pk_file, "#include <optional>\n");
 
         include_dependencies(&s_pk_file, tree, g_current_include);
 
@@ -3201,7 +3188,7 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
         );
 
         mprintf(&g_prebd_file, "\n");
-        mprintf(&g_prebd_file, "#include <InterCOM/dds_xtypes_constants.h>\n");
+        mprintf(&g_prebd_file, "#include <ic_cts/dds_xtypes_constants.h>\n");
 
         mprintf(
             &g_prebd_file,

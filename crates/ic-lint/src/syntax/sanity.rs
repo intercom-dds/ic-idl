@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_syntax::visit::{
-    visit_struct_field, visit_tree, visit_typedef, visit_union_variant, Visitor,
+    visit_attribute, visit_struct_field, visit_tree, visit_typedef, visit_union_variant, Visitor,
 };
 use ic_syntax::{Declarator, Field, Ident, Item, Path, UnionField};
 
@@ -75,5 +75,10 @@ impl<'a> Visitor<'a> for Sanity {
     fn visit_union_variant(&mut self, variant: &'a ic_syntax::UnionField) {
         assert!(!variant.labels.is_empty());
         visit_union_variant(self, variant);
+    }
+
+    fn visit_attribute(&mut self, def: &'a ic_syntax::Attribute) {
+        assert!(!def.decl.is_empty());
+        visit_attribute(self, def);
     }
 }

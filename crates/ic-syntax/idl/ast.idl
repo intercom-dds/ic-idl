@@ -527,7 +527,10 @@ struct BitsetDef : IDef {
 @nested
 struct Attribute {
     /// Name of the attribute.
-    Ident ident;
+    sequence<Declarator> decl;
+
+    ///
+    sequence<Path> _raises;
 
     /// The type of the attribute.
     Type ty;

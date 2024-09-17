@@ -84,7 +84,7 @@ fn floating_pt_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::Float(v) => v };
     lit.map_with_span(|v, span| Literal {
         span,
-        value: todo!(),
+        value: LiteralValue::Float(0.0),
     })
 }
 
@@ -203,7 +203,9 @@ fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> +
 // Rule 4
 fn scoped_name() -> impl IdlParser<Path> {
     let leading = just(Kind::DColon).map_with_span(|_, span| span).or_not();
-    let path = leading.then(ident().separated_by(just(Kind::DColon)).at_least(1));
+    let path = leading
+        .then(ident().separated_by(just(Kind::DColon)).at_least(1))
+        .boxed();
 
     path.map(|(leading_colons, segments)| Path {
         leading_colons,
@@ -224,7 +226,8 @@ fn const_dcl() -> impl IdlParser<Item> {
         .then_ignore(just(Kind::Eq))
         .then(complex_const_expr())
         .annotated()
-        .then_ignore(just(Kind::Semi));
+        .then_ignore(just(Kind::Semi))
+        .boxed();
 
     def.map_with_span(|(ann, ((ty, decl), val)), span| Item::def_const(ann, decl, ty, val, span))
 }
@@ -385,6 +388,7 @@ fn type_dcl() -> impl IdlParser<Item> {
         bitset_dcl(),
         bitmask_dcl(),
     ))
+    .boxed()
 }
 
 // Rule 21 with the rule 216 extension
@@ -901,6 +905,7 @@ fn export() -> impl IdlParser<InterfaceMember> {
         except_dcl().map(InterfaceMember::Item),
         op_oneway_dcl().map(InterfaceMember::Proto),
     ))
+    .boxed()
 }
 
 // Rule 82
@@ -978,21 +983,24 @@ fn readonly_attr_spec() -> impl IdlParser<Attribute> {
         .then(readonly_attr_declarator())
         .then_ignore(just(Kind::Semi));
 
-    def.map(|((readonly, ty), _)| Attribute {
-        ident: todo!(),
+    def.map(|((readonly, ty), (decl, raises))| Attribute {
+        decl,
         ty,
         readonly: Some(readonly),
+        raises,
     })
 }
 
 // Rule 90
-fn readonly_attr_declarator() -> impl IdlParser<()> {
+fn readonly_attr_declarator() -> impl IdlParser<(Vec<Declarator>, Vec<Path>)> {
     choice((
-        simple_declarator().then(raises_expr()).ignored(),
+        simple_declarator()
+            .then(raises_expr())
+            .map(|(decl, raises)| (vec![decl], raises)),
         simple_declarator()
             .separated_by(just(Kind::Comma))
             .at_least(1)
-            .ignored(),
+            .map(|v| (v, vec![])),
     ))
 }
 
@@ -1002,29 +1010,37 @@ fn attr_spec() -> impl IdlParser<Attribute> {
         .ignore_then(type_spec())
         .then(attr_declarator());
 
-    def.map(|(ty, _)| Attribute {
-        ident: Ident::default(),
+    def.map(|(ty, (decl, raises))| Attribute {
+        decl,
+        raises,
         ty,
         readonly: None,
     })
 }
 
 // Rule 92
-fn attr_declarator() -> impl IdlParser<()> {
+fn attr_declarator() -> impl IdlParser<(Vec<Declarator>, Vec<Path>)> {
     choice((
-        simple_declarator().then(attr_raises_expr()).ignored(),
+        simple_declarator()
+            .then(attr_raises_expr())
+            .map(|(decl, raises)| (vec![decl], raises)),
         simple_declarator()
             .separated_by(just(Kind::Comma))
             .at_least(1)
-            .ignored(),
+            .map(|decl| (decl, vec![])),
     ))
 }
 
 // Rule 93
-fn attr_raises_expr() -> impl IdlParser<()> {
+fn attr_raises_expr() -> impl IdlParser<Vec<Path>> {
     choice((
-        get_excep_expr().then(set_excep_expr().or_not()).ignored(),
-        set_excep_expr().ignored(),
+        get_excep_expr()
+            .then(set_excep_expr().or_not())
+            .map(|(mut get, set)| {
+                get.extend(set.unwrap_or_default());
+                get
+            }),
+        set_excep_expr(),
     ))
 }
 

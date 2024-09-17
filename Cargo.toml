@@ -61,7 +61,6 @@ exclude = [
     "tools/explorer",
     "tools/fuzz",
     "tools/idlpp",
-    "external/chumsky",
 ]
 default-members = ["crates/ic-idl"]
 

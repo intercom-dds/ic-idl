@@ -3762,7 +3762,8 @@ impl ::intercom_cts::Unmarshal for BitsetDef {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Attribute {
     /// Name of the attribute.
-    pub ident: crate::ast::Ident,
+    pub decl: Vec<crate::ast::Declarator>,
+    pub raises: Vec<crate::ast::Path>,
     /// The type of the attribute.
     pub ty: crate::ast::Type,
     /// Indicates whether this attribute was marked as `readonly`, and if
@@ -3774,7 +3775,8 @@ impl Attribute {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
+            decl: <Vec<crate::ast::Declarator>>::default(),
+            raises: <Vec<crate::ast::Path>>::default(),
             ty: <crate::ast::Type>::default(),
             readonly: None,
         }
@@ -3795,9 +3797,10 @@ impl ::intercom_cts::Marshal for Attribute {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("Attribute")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "ty", &self.ty)?;
-        state.encode_field(2, "readonly", &self.readonly)?;
+        state.encode_field(0, "decl", &self.decl)?;
+        state.encode_field(1, "raises", &self.raises)?;
+        state.encode_field(2, "ty", &self.ty)?;
+        state.encode_field(3, "readonly", &self.readonly)?;
         state.end()
     }
 }
@@ -3810,9 +3813,10 @@ impl ::intercom_cts::Unmarshal for Attribute {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("Attribute")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
-        state.decode_field(2, "readonly", &mut self.readonly)?;
+        state.decode_field(0, "decl", &mut self.decl)?;
+        state.decode_field(1, "raises", &mut self.raises)?;
+        state.decode_field(2, "ty", &mut self.ty)?;
+        state.decode_field(3, "readonly", &mut self.readonly)?;
         Ok(())
     }
 }

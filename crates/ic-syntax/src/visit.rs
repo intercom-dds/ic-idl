@@ -374,7 +374,9 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    visitor.visit_ident(&def.ident);
+    for decl in &def.decl {
+        visitor.visit_declarator(decl);
+    }
 }
 
 pub fn visit_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)

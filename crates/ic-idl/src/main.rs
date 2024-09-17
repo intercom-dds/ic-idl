@@ -170,7 +170,6 @@ fn try_parse(
             // if options.unstable.hir_dump {
             //     println!("{hir:#?}");
             // }
-
             Ok(ic_ptree::lower_ast(&v))
         }
         Err(e) => {

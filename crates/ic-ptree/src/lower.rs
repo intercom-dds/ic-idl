@@ -350,9 +350,13 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             annotate(state, ty, &v.annotations)
         }
         Item::StructValue(v) => {
-            // TODO: parent
+            let parent = v
+                .parent
+                .as_ref()
+                .map_or(std::ptr::null_mut(), |v| lower_path(state, v));
+
             let ident = create_ident(&v.ident.name);
-            sys::create_struct_start(state, ident.as_ptr(), std::ptr::null_mut());
+            sys::create_struct_start(state, ident.as_ptr(), parent);
             let members = collect_with(state, sys::append_node, &v.members, |v| {
                 lower_field(state, v)
             });

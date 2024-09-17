@@ -295,38 +295,38 @@ struct Serializer<Archive, intercom::span<T>> {
     }
 };
 
-// TODO(idarcar):
-// vector<bool> is special, but should be serialized as a sequence of bytes
-// template <class Archive>
-// struct Serializer<Archive, std::vector<bool>> {
-//     void operator()(Archive& a, std::vector<bool>& value, const TypeInfo* type_info) {
-//         typename Archive::template VectorValue<bool> serializer(a, type_info);
-//         corba::Sequence<bool> copy;
-//         if (Archive::IS_WRITER) {
-//             copy.reserve(static_cast<uint32_t>(value.size()));
-//             for (auto elem : value) {
-//                 copy.push_back(elem != 0);
-//             }
-//         }
-//         serializer.io(copy);
-//         if (Archive::IS_READER) {
-//             value.clear();
-//             value.reserve(copy.size());
-//             for (auto elem : copy) {
-//                 value.push_back(elem != 0);
-//             }
-//         }
-//         if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
-//             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
-//                 value.resize(type_info->max_length);
-//             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
-//                 value.clear();
-//             } else {
-//                 throw std::runtime_error("Sequence length out of bounds in vector serializer");
-//             }
-//         }
-//     }
-// };
+template <class Archive>
+struct Serializer<Archive, std::vector<bool>> {
+    static_assert(sizeof(bool) == sizeof(uint8_t));
+
+    void operator()(Archive& a, std::vector<bool>& value, const TypeInfo* type_info) {
+        typename Archive::template VectorValue<bool> serializer(a, type_info);
+        std::vector<uint8_t> copy;
+        if (Archive::IS_WRITER) {
+            copy.reserve(value.size());
+            for (auto elem : value) {
+                copy.push_back(elem != 0);
+            }
+        }
+        serializer.io(reinterpret_cast<bool*>(copy.data()), copy.size());
+        if (Archive::IS_READER) {
+            value.clear();
+            value.reserve(copy.size());
+            for (auto elem : copy) {
+                value.push_back(elem != 0);
+            }
+        }
+        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+            if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
+                value.resize(type_info->max_length);
+            } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
+                value.clear();
+            } else {
+                throw std::runtime_error("Sequence length out of bounds in vector serializer");
+            }
+        }
+    }
+};
 
 template <class Archive>
 struct Serializer<Archive, std::wstring> {

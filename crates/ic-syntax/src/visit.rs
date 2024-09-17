@@ -348,7 +348,10 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_ident(&def.ident);
-    // TODO: inheritance
+
+    for base in &def.inherits {
+        visitor.visit_path(base);
+    }
     for proto in &def.members {
         match proto {
             InterfaceMember::Attr(v) => visitor.visit_attribute(v),

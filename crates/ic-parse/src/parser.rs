@@ -1008,7 +1008,8 @@ fn readonly_attr_declarator() -> impl IdlParser<(Vec<Declarator>, Vec<Path>)> {
 fn attr_spec() -> impl IdlParser<Attribute> {
     let def = keyword(Kw::Attribute)
         .ignore_then(type_spec())
-        .then(attr_declarator());
+        .then(attr_declarator())
+        .then_ignore(just(Kind::Semi));
 
     def.map(|(ty, (decl, raises))| Attribute {
         decl,

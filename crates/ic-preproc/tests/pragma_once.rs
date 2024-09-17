@@ -47,9 +47,6 @@ fn include_pragma_once() {
 
     let args = ProcArgs::default();
     let mut state = State::new();
-
-    // TODO: should we instead take ownership? and then let you consume the
-    // TokenIter and get the state back?... hmmm...
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     assert!(state.errors().is_empty());

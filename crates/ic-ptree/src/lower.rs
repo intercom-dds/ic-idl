@@ -208,7 +208,6 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
                     sys::create_decl(state, ident.as_ptr(), ptr::null_mut())
                 });
 
-                // TODO: missing type
                 let val = sys::create_const_node(
                     state,
                     declarator,
@@ -265,7 +264,21 @@ fn lower_interface_member(
         };
 
         match member {
-            InterfaceMember::Attr(_) => todo!(),
+            InterfaceMember::Attr(v) => {
+                let decl = create_decl_list(state, &v.decl, std::ptr::null_mut());
+                let ty = lower_ty(state, &v.ty);
+                let raises = decl_path_list(state, &v.raises);
+
+                // TODO: differentiate setraises/getraises
+                sys::create_attribute(
+                    state,
+                    decl,
+                    ty,
+                    std::ptr::null_mut(),
+                    raises,
+                    ffi::c_int::from(v.readonly.is_some()),
+                )
+            }
             InterfaceMember::Proto(v) => {
                 let ident = create_ident(&v.ident.name);
                 let params = collect_with(state, sys::append_node, &v.params, param);

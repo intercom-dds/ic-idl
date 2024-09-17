@@ -75,18 +75,18 @@ static void get_type_flag_name(std::string& flag, const ptree* obj) {
         int kind = get_extensibility(obj);
         switch (kind) {
         case FINAL_EXTENSIBILITY:
-            add_flag(flag, "intercom::dcps::xtypes::IS_FINAL");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_FINAL");
             break;
         case MUTABLE_EXTENSIBILITY:
-            add_flag(flag, "intercom::dcps::xtypes::IS_MUTABLE");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_MUTABLE");
             break;
         case EXTENSIBLE_EXTENSIBILITY:
         default:
-            add_flag(flag, "intercom::dcps::xtypes::IS_APPENDABLE");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_APPENDABLE");
             break;
         }
         if (is_nested(obj)) {
-            add_flag(flag, "intercom::dcps::xtypes::IS_NESTED");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_NESTED");
         }
     }
 }
@@ -100,13 +100,13 @@ static void get_member_flag_name(std::string& flag, const ptree* elem) {
             integer_value(get_annotation(elem, annotation_type_try_construct)->members->value);
         switch (try_construct) {
         case 0:  // use default
-            add_flag(flag, "intercom::dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT");
             break;
         case 1:  // discard
-            add_flag(flag, "intercom::dcps::xtypes::IS_DISCARD_TRY_CONSTRUCT");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_DISCARD_TRY_CONSTRUCT");
             break;
         case 2:  // trim
-            add_flag(flag, "intercom::dcps::xtypes::IS_TRIM_TRY_CONSTRUCT");
+            add_flag(flag, "ic_cts::dcps::xtypes::IS_TRIM_TRY_CONSTRUCT");
             break;
         default:
             break;
@@ -117,16 +117,16 @@ static void get_member_flag_name(std::string& flag, const ptree* elem) {
 static std::string get_member_flag_name(const ptree* obj) {
     std::string flag;
     if (is_key_member(obj)) {
-        add_flag(flag, "intercom::dcps::xtypes::IS_KEY");
+        add_flag(flag, "ic_cts::dcps::xtypes::IS_KEY");
     }
     if (is_optional(obj)) {
-        add_flag(flag, "intercom::dcps::xtypes::IS_OPTIONAL");
+        add_flag(flag, "ic_cts::dcps::xtypes::IS_OPTIONAL");
     }
     if (is_shared(obj)) {
-        add_flag(flag, "intercom::dcps::xtypes::IS_EXTERNAL");
+        add_flag(flag, "ic_cts::dcps::xtypes::IS_EXTERNAL");
     }
     if (is_must_understand(obj)) {
-        add_flag(flag, "intercom::dcps::xtypes::IS_MUST_UNDERSTAND");
+        add_flag(flag, "ic_cts::dcps::xtypes::IS_MUST_UNDERSTAND");
     }
     if (flag.empty()) {
         add_flag(flag, "0");
@@ -269,7 +269,7 @@ static std::string gen_array_type_info(
     if (indx < base->bounds.size()) {
         mprintf(
             memf,
-            "static intercom::TypeInfo {}_type_info_{} = {{ \"{}\", intercom::dcps::xtypes::{}, {}, {}, 0, {}, "
+            "static ic_cts::TypeInfo {}_type_info_{} = {{ \"{}\", ic_cts::dcps::xtypes::{}, {}, {}, 0, {}, "
             "nullptr, nullptr, nullptr, nullptr, {}, 0, nullptr }};\n",
             funcname,
             suffix,
@@ -289,46 +289,46 @@ static std::string gen_array_type_info(
 
 static const char* primitive_type_info(const ptree* obj) {
     if (obj == &boolean_type) {
-        return "::intercom::BOOLEAN_TYPE_INFO";
+        return "::ic_cts::BOOLEAN_TYPE_INFO";
     }
     if (obj == &int8_type) {
-        return "::intercom::INT8_TYPE_INFO";
+        return "::ic_cts::INT8_TYPE_INFO";
     }
     if (obj == &octet_type) {
-        return "::intercom::UINT8_TYPE_INFO";
+        return "::ic_cts::UINT8_TYPE_INFO";
     }
     if (obj == &char_type) {
-        return "::intercom::CHAR_TYPE_INFO";
+        return "::ic_cts::CHAR_TYPE_INFO";
     }
     if (obj == &wchar_type) {
-        return "::intercom::CHAR16_TYPE_INFO";
+        return "::ic_cts::CHAR16_TYPE_INFO";
     }
     if (obj == &short_type) {
-        return "::intercom::SHORT_TYPE_INFO";
+        return "::ic_cts::SHORT_TYPE_INFO";
     }
     if (obj == &ushort_type) {
-        return "::intercom::USHORT_TYPE_INFO";
+        return "::ic_cts::USHORT_TYPE_INFO";
     }
     if (obj == &long_type) {
-        return "::intercom::LONG_TYPE_INFO";
+        return "::ic_cts::LONG_TYPE_INFO";
     }
     if (obj == &ulong_type) {
-        return "::intercom::ULONG_TYPE_INFO";
+        return "::ic_cts::ULONG_TYPE_INFO";
     }
     if (obj == &longlong_type) {
-        return "::intercom::LONGLONG_TYPE_INFO";
+        return "::ic_cts::LONGLONG_TYPE_INFO";
     }
     if (obj == &ulonglong_type) {
-        return "::intercom::ULONGLONG_TYPE_INFO";
+        return "::ic_cts::ULONGLONG_TYPE_INFO";
     }
     if (obj == &float_type) {
-        return "::intercom::FLOAT_TYPE_INFO";
+        return "::ic_cts::FLOAT_TYPE_INFO";
     }
     if (obj == &double_type) {
-        return "::intercom::DOUBLE_TYPE_INFO";
+        return "::ic_cts::DOUBLE_TYPE_INFO";
     }
     if (obj == &ldouble_type) {
-        return "::intercom::LONG_DOUBLE_TYPE_INFO";
+        return "::ic_cts::LONG_DOUBLE_TYPE_INFO";
     }
     return "";
 }
@@ -347,11 +347,11 @@ static std::string gen_element_type_info(
     if (base->kind == N_ENUM || base->kind == N_BITMASK) {
         if ((get_bit_size(elem) != 0 && get_bit_size(elem) != get_bit_size(base)) || flags != "0") {
             auto name = fmt::format(
-                "intercom::TypeTraits<{}{}>::type_info", objname, is_bitmask(base) ? "Bits" : ""
+                "ic_cts::TypeTraits<{}{}>::type_info", objname, is_bitmask(base) ? "Bits" : ""
             );
             mprintf(
                 memf,
-                "static intercom::TypeInfo {}_type_info_{} = {{ {}.name, {}.kind, flags, {}, {}.value_offset, "
+                "static ic_cts::TypeInfo {}_type_info_{} = {{ {}.name, {}.kind, flags, {}, {}.value_offset, "
                 "{}.max_length, {}.default_value, {}.min_value, {}.max_value, {}.key_type, {}.element_type, "
                 "{}.member_count, "
                 "{}.members }};\n",
@@ -374,13 +374,13 @@ static std::string gen_element_type_info(
             return fmt::format("&{}_type_info_{}", funcname, suffix);
         }
         return fmt::format(
-            "&intercom::TypeTraits<{}{}>::type_info", objname, is_bitmask(base) ? "Bits" : ""
+            "&ic_cts::TypeTraits<{}{}>::type_info", objname, is_bitmask(base) ? "Bits" : ""
         );
     }
 
     if (base->kind == N_STRUCT || base->kind == N_UNION || base->kind == N_VALUETYPE ||
         base->kind == N_EXCEPTION) {
-        return fmt::format("&intercom::TypeTraits<{}>::type_info", objname);
+        return fmt::format("&ic_cts::TypeTraits<{}>::type_info", objname);
     }
 
     if (base->kind == N_STRING) {
@@ -409,10 +409,10 @@ static std::string gen_element_type_info(
             auto decimal_ann = get_annotation(elem, annotation_type_ext_vmf_decimal);
             auto char_len = integer_value(get_annotation_value(decimal_ann, "chars"));
             auto decimal_bits = integer_value(get_annotation_value(decimal_ann, "decimal_bits"));
-            add_flag(flags, "intercom::dcps::xtypes::IS_XRI_SEQUENCE");
+            add_flag(flags, "ic_cts::dcps::xtypes::IS_XRI_SEQUENCE");
             mprintf(
                 memf,
-                "static intercom::TypeInfo {}_type_info_{} = {{ \"{}\", intercom::dcps::xtypes::{}, {}, {}, {}, "
+                "static ic_cts::TypeInfo {}_type_info_{} = {{ \"{}\", ic_cts::dcps::xtypes::{}, {}, {}, {}, "
                 "{}, {}, nullptr, nullptr, nullptr, {}, 0, nullptr }};\n",
                 funcname,
                 suffix,
@@ -428,7 +428,7 @@ static std::string gen_element_type_info(
         } else {
             mprintf(
                 memf,
-                "static intercom::TypeInfo {}_type_info_{} = {{ \"{}\", intercom::dcps::xtypes::{}, {}, {}, 0, {}, "
+                "static ic_cts::TypeInfo {}_type_info_{} = {{ \"{}\", ic_cts::dcps::xtypes::{}, {}, {}, 0, {}, "
                 "{}, nullptr, nullptr, nullptr, {}, 0, nullptr }};\n",
                 funcname,
                 suffix,
@@ -452,14 +452,14 @@ static std::string gen_element_type_info(
             );
         }
         if (get_annotation(elem, annotation_type_ext_vmf_xri)) {
-            add_flag(flags, "intercom::dcps::xtypes::IS_XRI_SEQUENCE");
+            add_flag(flags, "ic_cts::dcps::xtypes::IS_XRI_SEQUENCE");
         }
         if (get_annotation(elem, annotation_type_ext_repeat_count)) {
-            add_flag(flags, "intercom::dcps::xtypes::HAS_DYNAMIC_ELEMENT_SIZE");
+            add_flag(flags, "ic_cts::dcps::xtypes::HAS_DYNAMIC_ELEMENT_SIZE");
         }
         mprintf(
             memf,
-            "static intercom::TypeInfo {}_type_info_{} = {{ \"{}\", intercom::dcps::xtypes::{}, {}, {}, 0, {}, "
+            "static ic_cts::TypeInfo {}_type_info_{} = {{ \"{}\", ic_cts::dcps::xtypes::{}, {}, {}, 0, {}, "
             "nullptr, nullptr, nullptr, nullptr, {}, 0, nullptr }};\n",
             funcname,
             suffix,
@@ -493,7 +493,7 @@ static std::string gen_element_type_info(
         }
         mprintf(
             memf,
-            "static intercom::TypeInfo {}_type_info_{} = {{ \"{}\", intercom::dcps::xtypes::{}, {}, {}, 0, {}, "
+            "static ic_cts::TypeInfo {}_type_info_{} = {{ \"{}\", ic_cts::dcps::xtypes::{}, {}, {}, 0, {}, "
             "nullptr, nullptr, nullptr, {}, "
             "{}, 0, nullptr }};\n",
             funcname,
@@ -524,10 +524,10 @@ static std::string gen_element_type_info(
                 );
         }
         if (elem->flags & OPT_SEQUENCE_LENGTH) {
-            add_flag(flags, "intercom::dcps::xtypes::IS_ELEMENT_SIZE");
+            add_flag(flags, "ic_cts::dcps::xtypes::IS_ELEMENT_SIZE");
         }
         if (get_direct_annotation(elem, annotation_type_ext_jaus_integer)) {
-            add_flag(flags, "intercom::dcps::xtypes::IS_INTEGER_RANGE_VALUE");
+            add_flag(flags, "ic_cts::dcps::xtypes::IS_INTEGER_RANGE_VALUE");
         }
         int bit_size = get_bit_size(elem) != 0 ? get_bit_size(elem) : get_bit_size(base);
         const ptree* primitive_elem = elem;
@@ -577,7 +577,7 @@ static std::string gen_element_type_info(
             }
             mprintf(
                 memf,
-                "static intercom::TypeInfo {}_type_info_{} = {{ {}.name, {}.kind, {}, {}, {}, {}.max_length, "
+                "static ic_cts::TypeInfo {}_type_info_{} = {{ {}.name, {}.kind, {}, {}, {}, {}.max_length, "
                 "{}, {}, {}, {}.key_type, {}.element_type, {}.member_count, {}.members }};\n",
                 funcname,
                 suffix,
@@ -599,7 +599,7 @@ static std::string gen_element_type_info(
         }
         return fmt::format("&{}", primitive_type_info(base));
     }
-    return fmt::format("&::intercom::{}_type_info", base->name);
+    return fmt::format("&::ic_cts::{}_type_info", base->name);
 }
 
 static std::string member_name(const ptree* obj) {
@@ -673,7 +673,7 @@ void intercom::cidl::gen_cpp_type_info(
             default_value_name = std::string("&") + default_value_name;
 
             mprintf(
-                memf, "static intercom::MemberInfo {}_members[{}] = {{\n", funcname, members.size()
+                memf, "static ic_cts::MemberInfo {}_members[{}] = {{\n", funcname, members.size()
             );
             for (auto it = members.begin(); it != members.end(); ++it) {
                 auto name = member_name(*it);
@@ -717,7 +717,7 @@ void intercom::cidl::gen_cpp_type_info(
                 }
                 if (count) {
                     auto label_name = fmt::format("{}_labels_{}", funcname, type_info_names.size());
-                    mprintf(memf, "static const intercom::Long {}[] = {{ {}", label_name, count);
+                    mprintf(memf, "static const uint32_t {}[] = {{ {}", label_name, count);
                     for (auto cas : member->members) {
                         if (base_type_of(cas)->kind == N_BITMASK) {
                             mprintf(memf, ", {}", get_const_value(cas->value, nullptr));
@@ -728,11 +728,11 @@ void intercom::cidl::gen_cpp_type_info(
                     mprintf(memf, " }};\n");
                     case_label_names.emplace_back(label_name);
                 } else {
-                    case_label_names.emplace_back("intercom::MEMBER_INFO_EMPTY_CASE_LABELS");
+                    case_label_names.emplace_back("ic_cts::MEMBER_INFO_EMPTY_CASE_LABELS");
                 }
             }
             mprintf(
-                memf, "static intercom::MemberInfo {}_members[{}] = {{\n", funcname, members.size()
+                memf, "static ic_cts::MemberInfo {}_members[{}] = {{\n", funcname, members.size()
             );
             bool has_key = false;
             for (auto& member : members) {
@@ -746,16 +746,16 @@ void intercom::cidl::gen_cpp_type_info(
                 member_id = get_member_id(*it, obj, prev_max);
                 prev_max = prev_max > member_id ? prev_max : member_id;
                 if ((*it)->name.compare(0, 35, "void_void_void_dummy_skipped_in_air") == 0) {
-                    add_flag(flag, "intercom::dcps::xtypes::IS_AIR_DUMMY");
+                    add_flag(flag, "ic_cts::dcps::xtypes::IS_AIR_DUMMY");
                 }
                 if (*it == obj->discriminator) {
-                    add_flag(flag, "intercom::dcps::xtypes::IS_DISCRIMINATOR");
+                    add_flag(flag, "ic_cts::dcps::xtypes::IS_DISCRIMINATOR");
                 }
                 if ((*it)->flags & OPT_DEFAULT) {
-                    add_flag(flag, "intercom::dcps::xtypes::IS_DEFAULT");
+                    add_flag(flag, "ic_cts::dcps::xtypes::IS_DEFAULT");
                 }
                 if (!has_key) {
-                    add_flag(flag, "intercom::dcps::xtypes::IS_IMPLICIT_KEY");
+                    add_flag(flag, "ic_cts::dcps::xtypes::IS_IMPLICIT_KEY");
                 }
                 if (it != members.begin()) {
                     mprintf(memf, ",\n");
@@ -787,13 +787,13 @@ void intercom::cidl::gen_cpp_type_info(
     }
     mprintf(
         memf,
-        "const intercom::TypeInfo intercom::TypeTraits<{}{}>::type_info = {{\n",
+        "const ic_cts::TypeInfo ic_cts::TypeTraits<{}{}>::type_info = {{\n",
         objname,
         is_bitmask(obj) ? "Bits" : ""
     );
     mprintf(
         memf,
-        "\"{}\", intercom::dcps::xtypes::{}, {}, {}, 0, 0, {}, {}, {}, nullptr, {}, {}, "
+        "\"{}\", ic_cts::dcps::xtypes::{}, {}, {}, 0, 0, {}, {}, {}, nullptr, {}, {}, "
         "{}{}\n}};\n\n",
         get_type_name(obj),
         get_type_kind_name(obj),

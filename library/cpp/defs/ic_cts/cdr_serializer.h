@@ -49,17 +49,17 @@ struct ParameterHeader {
     unsigned short length{0};
 };
 
-SerializerFlags encodingForEncapsulation(EncapsulationSchemeIdentifier a_scheme);
+SerializerFlags encoding_for_encapsulation(EncapsulationSchemeIdentifier a_scheme);
 
-void readEncapsulation(
-    intercom::span<const uint8_t> a_data,
+void read_encapsulation(
+    span<const uint8_t> a_data,
     SerializerFlags& a_encoding,
     uint32_t& a_data_length
 );
 
-void writeEncapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info);
+void write_encapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info);
 
-class CdrWriter : public GenericWriter {
+class CdrWriter : public dcps::cts::GenericWriter {
   public:
     CdrWriter(Buffer& a_out, SerializerFlags a_flags);
 
@@ -170,11 +170,11 @@ class CdrWriter : public GenericWriter {
 
     Buffer& m_buffer;
     SerializerFlags m_flags;
-    std::array<TypeStackElement, MAX_NESTED_DEPTH> m_type_stack;
+    std::array<TypeStackElement, dcps::cts::MAX_NESTED_DEPTH> m_type_stack;
     uint32_t m_level;
 };
 
-class CdrReader : public GenericReader {
+class CdrReader : public dcps::cts::GenericReader {
   public:
     CdrReader(const Buffer& a_out, SerializerFlags a_flags);
 
@@ -282,45 +282,44 @@ class CdrReader : public GenericReader {
 
     bool begin_optional_member(const MemberInfo& a_member);
 
-    void read_param_header_v1(xtypes::MemberId& id, uint32_t& flag, uint32_t& length);
+    void read_param_header_v1(dcps::xtypes::MemberId& id, uint32_t& flag, uint32_t& length);
 
-    void read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& length);
+    void read_param_header_v2(dcps::xtypes::MemberId& id, uint32_t& flag, uint32_t& length);
 
     const Buffer& m_buffer;
     SerializerFlags m_flags;
-    std::array<TypeStackElement, MAX_NESTED_DEPTH> m_type_stack;
+    std::array<TypeStackElement, dcps::cts::MAX_NESTED_DEPTH> m_type_stack;
     uint32_t m_level;
 };
 
-using CdrUnmarshal = TGenericUnmarshal<CdrReader>;
-using KeyOnlyCdrUnmarshal = TGenericUnmarshal<KeyOnlyReader<CdrReader>>;
+using CdrUnmarshal = dcps::cts::TGenericUnmarshal<CdrReader>;
+using KeyOnlyCdrUnmarshal = dcps::cts::TGenericUnmarshal<dcps::cts::KeyOnlyReader<CdrReader>>;
 
-using CdrMarshal = TGenericMarshal<CdrWriter>;
-using KeyOnlyCdrMarshal = TGenericMarshal<KeyOnlyWriter<CdrWriter>>;
+using CdrMarshal = dcps::cts::TGenericMarshal<CdrWriter>;
+using KeyOnlyCdrMarshal = dcps::cts::TGenericMarshal<dcps::cts::KeyOnlyWriter<CdrWriter>>;
 
 template <typename T>
-inline void marshal_cdr(dcps::Buffer& a_buffer, SerializerFlags a_encoding, const T& a_value) {
-    dcps::cts::CdrWriter writer(a_buffer, a_encoding);
-    dcps::cts::CdrMarshal(writer).io(a_value);
+inline void marshal_cdr(Buffer& a_buffer, SerializerFlags a_encoding, const T& a_value) {
+    CdrWriter writer(a_buffer, a_encoding);
+    CdrMarshal(writer).io(a_value);
 }
 
 template <typename T>
-inline void unmarshal_cdr(dcps::Buffer& a_buffer, SerializerFlags a_encoding, T& a_value) {
-    dcps::cts::CdrReader reader(a_buffer, a_encoding);
-    dcps::cts::CdrUnmarshal(reader).io(a_value);
+inline void unmarshal_cdr(Buffer& a_buffer, SerializerFlags a_encoding, T& a_value) {
+    CdrReader reader(a_buffer, a_encoding);
+    CdrUnmarshal(reader).io(a_value);
 }
 
 template <typename T>
-inline void
-unmarshal_cdr(intercom::span<const uint8_t> a_data, SerializerFlags a_encoding, T& a_value) {
-    dcps::Buffer buffer(a_data.data(), static_cast<uint32_t>(a_data.size()));
+inline void unmarshal_cdr(span<const uint8_t> a_data, SerializerFlags a_encoding, T& a_value) {
+    Buffer buffer(a_data.data(), static_cast<uint32_t>(a_data.size()));
     unmarshal_cdr(buffer, a_encoding, a_value);
 }
 
 void transform_cdr(
-    dcps::Buffer& a_out,
+    Buffer& a_out,
     SerializerFlags a_out_encoding,
-    dcps::Buffer& a_in,
+    Buffer& a_in,
     SerializerFlags a_in_encoding,
     const TypeInfo& a_type_info
 );

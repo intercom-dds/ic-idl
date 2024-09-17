@@ -26,9 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // IWYU pragma: begin_exports
-#include <except>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 
 #include "ic_cts/bounded.h"
 #include "ic_cts/member_info.h"
@@ -57,27 +57,9 @@ struct Any {};
 struct Object {};
 
 template <typename T>
-using traits = intercom::TypeTraits<T>;
-
-template <typename T, uint32_t N>
-using bounded_vector = intercom::bounded_vector<T, N>;
-
-template <typename K, typename V, uint32_t N>
-using bounded_map = intercom::bounded_map<K, V, N>;
-
-template <uint32_t N>
-using bounded_string = intercom::bounded_string<N>;
-
-template <uint32_t N>
-using bounded_u16string = intercom::bounded_u16string<N>;
-
-template <uint32_t N>
-using bounded_u32string = intercom::bounded_u32string<N>;
-
-template <uint32_t N>
-using bounded_wstring = intercom::bounded_wstring<N>;
+using traits = TypeTraits<T>;
 }  // namespace ic_cts
 
 #ifndef IC_NO_IDL_NAMESPACE
-using namespace IDL = ic_cts;
+namespace IDL = ic_cts;
 #endif

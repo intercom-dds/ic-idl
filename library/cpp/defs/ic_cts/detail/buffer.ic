@@ -33,7 +33,6 @@
 #include "ic_cts/buffer.h"
 
 namespace ic_cts {
-namespace dcps {
 
 inline Buffer::Buffer()
     : m_read_pointer(nullptr),
@@ -135,8 +134,8 @@ inline void Buffer::reset() const {
     set_read(nullptr);
 }
 
-inline void Buffer::set_read(const uint8_t* newPosition) const {
-    m_read_pointer = newPosition ? newPosition : m_pointer;
+inline void Buffer::set_read(const uint8_t* new_position) const {
+    m_read_pointer = new_position ? new_position : m_pointer;
 }
 
 inline void Buffer::advance_read(size_t bytes) const {
@@ -156,11 +155,11 @@ inline uint32_t Buffer::read_index() const {
     return uint32_t(m_read_pointer - m_pointer);
 }
 
-inline void Buffer::set_write(uint8_t* newPosition) {
+inline void Buffer::set_write(uint8_t* new_position) {
     if (!m_writeable) {
         throw std::runtime_error("Cannot advance the write-pointer of a non-writeable buffer");
     }
-    m_write_pointer = newPosition ? newPosition : m_pointer;
+    m_write_pointer = new_position ? new_position : m_pointer;
 }
 
 inline void Buffer::advance_write(size_t bytes) {
@@ -184,12 +183,12 @@ inline void Buffer::reserve_write(size_t bytes) {
     if (!m_writeable) {
         throw std::runtime_error("Cannot advance the write-pointer of a non-writeable buffer");
     }
-    size_t totalLength = bytes + (m_write_pointer - m_pointer);
-    if (totalLength > m_length) {
+    size_t total_length = bytes + (m_write_pointer - m_pointer);
+    if (total_length > m_length) {
         if (!m_owned) {
             throw std::runtime_error("The amount cannot be reserved, data not owned");
         }
-        allocate(static_cast<uint32_t>(totalLength));
+        allocate(static_cast<uint32_t>(total_length));
     }
 }
 
@@ -237,19 +236,19 @@ inline bool Buffer::owned() const {
     return m_owned;
 }
 
-inline intercom::span<const uint8_t> Buffer::span() const {
-    return intercom::span<const uint8_t>(m_read_pointer, readable_length());
+inline span<const uint8_t> Buffer::span() const {
+    return ic_cts::span<const uint8_t>(m_read_pointer, readable_length());
 }
 
-inline intercom::span<const uint8_t> Buffer::subspan(size_t pos, size_t length) const {
-    return intercom::span<const uint8_t>(m_read_pointer + pos, length);
+inline span<const uint8_t> Buffer::subspan(size_t pos, size_t length) const {
+    return ic_cts::span<const uint8_t>(m_read_pointer + pos, length);
 }
 
 inline bool Buffer::writeable() const {
     return m_writeable;
 }
 
-inline void Buffer::write(intercom::span<const uint8_t> a_data) {
+inline void Buffer::write(ic_cts::span<const uint8_t> a_data) {
     write(a_data.data(), static_cast<uint32_t>(a_data.size()));
 }
 
@@ -360,5 +359,4 @@ inline void Buffer::free_buffer() {
     m_write_pointer = nullptr;
 }
 
-}  // namespace dcps
 }  // namespace ic_cts

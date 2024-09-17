@@ -959,7 +959,7 @@ static void cpl_conv_gen(const ptree* obj) {
     mprintf(&g_hd_ts_file, "template <>\n");
     mprintf(
         &g_hd_ts_file,
-        "struct intercom::TypeTraits<{}{}> {{ //< \\private\n",
+        "struct ic_cts::TypeTraits<{}{}> {{ //< \\private\n",
         objname,
         is_bitmask(obj) ? "Bits" : ""
     );
@@ -1011,7 +1011,7 @@ static void cpl_conv_gen(const ptree* obj) {
     if ((obj->kind == N_ENUM || obj->kind == N_BITMASK) && !is_non_serialized(obj)) {
         mprintf(
             &g_hd_ts_file,
-            "template <class Archive>\nstruct intercom::Serializer<Archive, {}{}> {{\n",
+            "template <class Archive>\nstruct ic_cts::Serializer<Archive, {}{}> {{\n",
             objname,
             is_bitmask(obj) ? "Bits" : ""
         );
@@ -1027,7 +1027,7 @@ static void cpl_conv_gen(const ptree* obj) {
         );
         mprintf(
             &g_hd_ts_file,
-            "a_archive.primitive_io(integer_value, a_info ? a_info : &intercom::TypeTraits<{}{}>::type_info);\n",
+            "a_archive.primitive_io(integer_value, a_info ? a_info : &ic_cts::TypeTraits<{}{}>::type_info);\n",
             objname,
             is_bitmask(obj) ? "Bits" : ""
         );
@@ -1062,7 +1062,7 @@ static void cpl_conv_gen(const ptree* obj) {
 
         mprintf(
             &g_hd_ts_file,
-            "template <class Archive>\nstruct intercom::Serializer<Archive, {}> {{\n",
+            "template <class Archive>\nstruct ic_cts::Serializer<Archive, {}> {{\n",
             objname
         );
         mprintf(
@@ -1075,7 +1075,7 @@ static void cpl_conv_gen(const ptree* obj) {
         if (member_count(obj) > 0) {
             mprintf(
                 &g_hd_ts_file,
-                "const TypeInfo* {} = &intercom::TypeTraits<{}>::type_info;\n",
+                "const TypeInfo* {} = &ic_cts::TypeTraits<{}>::type_info;\n",
                 p_info,
                 objname
             );
@@ -1104,7 +1104,7 @@ static void cpl_conv_gen(const ptree* obj) {
         } else {
             mprintf(
                 &g_hd_ts_file,
-                "const TypeInfo* {} = &intercom::TypeTraits<{}>::type_info;\n",
+                "const TypeInfo* {} = &ic_cts::TypeTraits<{}>::type_info;\n",
                 p_info,
                 objname
             );
@@ -1273,7 +1273,7 @@ safe_copy(const std::string& parameter_name, bool suppress_indirection, const Me
     std::vector<std::string> fail_conditions{};
     const std::string exp = safe_copy(parameter_name, suppress_indirection, trace, fail_conditions);
     const std::string fallback =
-        is_optional(elem) ? fmt::format("intercom::optional<{}>{{}}", type_name(elem)) : "nullptr";
+        is_optional(elem) ? fmt::format("std::optional<{}>{{}}", type_name(elem)) : "nullptr";
     return fmt::format("{}{}", opt_ternary(combine_conds(fail_conditions, " || "), fallback), exp);
 }
 
@@ -1285,7 +1285,7 @@ safe_move(const std::string& parameter_name, bool suppress_indirection, const Me
     std::vector<std::string> fail_conditions{};
     std::string exp = safe_read(parameter_name, suppress_indirection, trace, fail_conditions);
     const std::string fallback =
-        is_optional(elem) ? fmt::format("intercom::optional<{}>{{}}", type_name(elem)) : "nullptr";
+        is_optional(elem) ? fmt::format("std::optional<{}>{{}}", type_name(elem)) : "nullptr";
     return fmt::format(
         "{}std::move({})", opt_ternary(combine_conds(fail_conditions, " || "), fallback), exp
     );
@@ -1749,7 +1749,7 @@ static void cpl_iostream_def(const ptree* obj) {
                 "inline std::ostream& operator<<(std::ostream& stream, const {}& value) {{\n",
                 cpp_type_name(obj, namespace_of(obj))
             );
-            mprintf(&g_hd_json_file, "return intercom::marshal_json(stream, value);\n");
+            mprintf(&g_hd_json_file, "return ic_cts::marshal_json(stream, value);\n");
             mprintf(&g_hd_json_file, "}}\n\n");
 
             mprintf(
@@ -1757,7 +1757,7 @@ static void cpl_iostream_def(const ptree* obj) {
                 "inline std::istream& operator>>(std::istream& stream, {}& value) {{\n",
                 cpp_type_name(obj, namespace_of(obj))
             );
-            mprintf(&g_hd_json_file, "return intercom::unmarshal_json(stream, value);\n");
+            mprintf(&g_hd_json_file, "return ic_cts::unmarshal_json(stream, value);\n");
             mprintf(&g_hd_json_file, "}}\n\n");
         }
         if (CommandLineOption::use_fmtlib()) {
@@ -1790,7 +1790,7 @@ static void cpl_union_construct_body(const ptree* obj, std::string_view param, b
             } else if (move) {
                 mprintf(
                     &g_hd_impl_file,
-                    "intercom::construct_at(&ic_union_value_.{}, std::move({}.ic_union_value_.{}));\n",
+                    "ic_cts::construct_at(&ic_union_value_.{}, std::move({}.ic_union_value_.{}));\n",
                     name(lhs),
                     param,
                     name(lhs)
@@ -1798,7 +1798,7 @@ static void cpl_union_construct_body(const ptree* obj, std::string_view param, b
             } else if (is_shared(lhs)) {
                 mprintf(
                     &g_hd_impl_file,
-                    "intercom::construct_at(&ic_union_value_.{}, new {}( *{}.ic_union_value_.{}));\n",
+                    "ic_cts::construct_at(&ic_union_value_.{}, new {}( *{}.ic_union_value_.{}));\n",
                     name(lhs),
                     cpp_type_name(lhs->type, obj),
                     param,
@@ -1807,7 +1807,7 @@ static void cpl_union_construct_body(const ptree* obj, std::string_view param, b
             } else {
                 mprintf(
                     &g_hd_impl_file,
-                    "intercom::construct_at(&ic_union_value_.{}, {}.ic_union_value_.{});\n",
+                    "ic_cts::construct_at(&ic_union_value_.{}, {}.ic_union_value_.{});\n",
                     name(lhs),
                     param,
                     name(lhs)
@@ -1968,7 +1968,7 @@ static void cpl_union_gen_setter(
     case set_by_rvalue_ref:
         mprintf(
             &g_hd_impl_file,
-            "intercom::construct_at(&ic_union_value_.{}, std::move({}));\n",
+            "ic_cts::construct_at(&ic_union_value_.{}, std::move({}));\n",
             member_name,
             param_name
         );
@@ -1980,7 +1980,7 @@ static void cpl_union_gen_setter(
         if (is_shared(member)) {
             mprintf(
                 &g_hd_impl_file,
-                "intercom::construct_at(&ic_union_value_.{}, new {}(*{}));\n",
+                "ic_cts::construct_at(&ic_union_value_.{}, new {}(*{}));\n",
                 member_name,
                 cpp_type_name(member->type, obj),
                 param_name
@@ -1997,7 +1997,7 @@ static void cpl_union_gen_setter(
         } else {
             mprintf(
                 &g_hd_impl_file,
-                "intercom::construct_at(&ic_union_value_.{}, {});\n",
+                "ic_cts::construct_at(&ic_union_value_.{}, {});\n",
                 member_name,
                 param_name
             );
@@ -2094,7 +2094,7 @@ static void cpl_union_gen_setter(
     case set_by_rvalue_ref:
         mprintf(
             &g_hd_impl_file,
-            "intercom::construct_at(&ic_union_value_.{}, std::move({}));\n",
+            "ic_cts::construct_at(&ic_union_value_.{}, std::move({}));\n",
             member_name,
             param_name
         );
@@ -2106,7 +2106,7 @@ static void cpl_union_gen_setter(
         if (is_shared(member)) {
             mprintf(
                 &g_hd_impl_file,
-                "intercom::construct_at(&ic_union_value_.{}, new {}(*{}));\n",
+                "ic_cts::construct_at(&ic_union_value_.{}, new {}(*{}));\n",
                 member_name,
                 cpp_type_name(member->type, obj),
                 param_name
@@ -2123,7 +2123,7 @@ static void cpl_union_gen_setter(
         } else {
             mprintf(
                 &g_hd_impl_file,
-                "intercom::construct_at(&ic_union_value_.{}, {});\n",
+                "ic_cts::construct_at(&ic_union_value_.{}, {});\n",
                 member_name,
                 param_name
             );
@@ -2170,9 +2170,7 @@ static void cpl_union_c_def(const ptree* obj) {
                 emit_default_value(&g_hd_impl_file, default_mem, namespace_of(obj));
             } else {
                 mprintf(
-                    &g_hd_impl_file,
-                    "intercom::construct_at(&ic_union_value_.{},",
-                    name(default_mem)
+                    &g_hd_impl_file, "ic_cts::construct_at(&ic_union_value_.{},", name(default_mem)
                 );
                 if (has_default_value(default_mem)) {
                     emit_default_value(&g_hd_impl_file, default_mem, namespace_of(obj));
@@ -2298,7 +2296,7 @@ static void cpl_union_c_def(const ptree* obj) {
                 mprintf(&g_hd_impl_file, "free_union_();\n");
                 if (!is_pass_by_value(lhs)) {
                     mprintf(
-                        &g_hd_impl_file, "intercom::construct_at(&ic_union_value_.{},", name(lhs)
+                        &g_hd_impl_file, "ic_cts::construct_at(&ic_union_value_.{},", name(lhs)
                     );
                     if (has_default_value(lhs)) {
                         emit_default_value(&g_hd_impl_file, lhs, obj);
@@ -2790,7 +2788,7 @@ static void cpl_prototype_c_def(const ptree* obj) {
             } else if (part_is_span) {
                 mprintf(
                     &g_hd_file,
-                    "::intercom::span<const {}>",
+                    "::ic_cts::span<const {}>",
                     scoped_name(base_type_of(part)->element_type, obj)
                 );
             } else {

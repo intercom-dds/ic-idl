@@ -42,10 +42,8 @@
 #endif
 
 namespace ic_cts {
-namespace dcps {
-namespace cts {
 
-inline SerializerFlags encodingForEncapsulation(EncapsulationSchemeIdentifier a_scheme) {
+inline SerializerFlags encoding_for_encapsulation(EncapsulationSchemeIdentifier a_scheme) {
     switch (a_scheme) {
     case ENC_CDR_BE:
     case ENC_PL_CDR_BE:
@@ -76,8 +74,8 @@ inline SerializerFlags encodingForEncapsulation(EncapsulationSchemeIdentifier a_
     }
 }
 
-inline void readEncapsulation(
-    intercom::span<const uint8_t> a_data,
+inline void read_encapsulation(
+    span<const uint8_t> a_data,
     SerializerFlags& a_encoding,
     uint32_t& a_data_length
 ) {
@@ -89,17 +87,17 @@ inline void readEncapsulation(
     if (a_data.size() < 4 + padding) {
         throw std::runtime_error("Buffer too short for padding in readEncapsulation");
     }
-    a_encoding = encodingForEncapsulation(scheme);
+    a_encoding = encoding_for_encapsulation(scheme);
     a_data_length = static_cast<uint32_t>(a_data.size()) - 4 - padding;
 }
 
 inline void
-writeEncapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info) {
+write_encapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info) {
     EncapsulationSchemeIdentifier scheme;
     if (a_encoding & CDR_XCDR2) {
-        if (a_type_info.flags & xtypes::IS_MUTABLE) {
+        if (a_type_info.flags & dcps::xtypes::IS_MUTABLE) {
             scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_PL_CDR2_LE : ENC_PL_CDR2_BE;
-        } else if (a_type_info.flags & xtypes::IS_APPENDABLE) {
+        } else if (a_type_info.flags & dcps::xtypes::IS_APPENDABLE) {
             scheme =
                 (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_DELIMITED_CDR2_LE : ENC_DELIMITED_CDR2_BE;
         } else  // final
@@ -109,7 +107,7 @@ writeEncapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo&
     } else if (a_encoding & CDR_XCDR_PLAIN) {
         scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_PLAIN_CDR_LE : ENC_PLAIN_CDR_BE;
     } else {
-        if (a_type_info.flags & xtypes::IS_MUTABLE) {
+        if (a_type_info.flags & dcps::xtypes::IS_MUTABLE) {
             scheme = (a_encoding & CDR_LITTLE_ENDIAN) ? ENC_PL_CDR_LE : ENC_PL_CDR_BE;
         } else  // final
         {
@@ -129,15 +127,15 @@ inline bool has_xcdr2_dheader(const TypeInfo* a_type_info) {
         return false;
     }
     switch (a_type_info->kind) {
-    case xtypes::TK_STRUCTURE:
-    case xtypes::TK_UNION:
-        return (a_type_info->flags & (xtypes::IS_APPENDABLE | xtypes::IS_MUTABLE)) != 0;
-    case xtypes::TK_SEQUENCE:
-    case xtypes::TK_ARRAY:
-        return a_type_info->element_type->kind >= xtypes::TK_STRING8;
-    case xtypes::TK_MAP:
-        return a_type_info->element_type->kind >= xtypes::TK_STRING8 ||
-               a_type_info->key_type->kind >= xtypes::TK_STRING8;
+    case dcps::xtypes::TK_STRUCTURE:
+    case dcps::xtypes::TK_UNION:
+        return (a_type_info->flags & (dcps::xtypes::IS_APPENDABLE | dcps::xtypes::IS_MUTABLE)) != 0;
+    case dcps::xtypes::TK_SEQUENCE:
+    case dcps::xtypes::TK_ARRAY:
+        return a_type_info->element_type->kind >= dcps::xtypes::TK_STRING8;
+    case dcps::xtypes::TK_MAP:
+        return a_type_info->element_type->kind >= dcps::xtypes::TK_STRING8 ||
+               a_type_info->key_type->kind >= dcps::xtypes::TK_STRING8;
     default:
         return false;
     }
@@ -145,23 +143,23 @@ inline bool has_xcdr2_dheader(const TypeInfo* a_type_info) {
 
 inline uint32_t get_xcdr2_dheader_lc(const TypeInfo* a_type_info) {
     switch (a_type_info->kind) {
-    case xtypes::TK_SEQUENCE:
-        if (a_type_info->element_type->kind == xtypes::TK_CHAR8 ||
-            a_type_info->element_type->kind == xtypes::TK_INT8 ||
-            a_type_info->element_type->kind == xtypes::TK_UINT8 ||
-            a_type_info->element_type->kind == xtypes::TK_BYTE) {
+    case dcps::xtypes::TK_SEQUENCE:
+        if (a_type_info->element_type->kind == dcps::xtypes::TK_CHAR8 ||
+            a_type_info->element_type->kind == dcps::xtypes::TK_INT8 ||
+            a_type_info->element_type->kind == dcps::xtypes::TK_UINT8 ||
+            a_type_info->element_type->kind == dcps::xtypes::TK_BYTE) {
             return 5;
-        } else if (a_type_info->element_type->kind == xtypes::TK_INT32 ||
-                   a_type_info->element_type->kind == xtypes::TK_UINT32 ||
-                   a_type_info->element_type->kind == xtypes::TK_FLOAT32) {
+        } else if (a_type_info->element_type->kind == dcps::xtypes::TK_INT32 ||
+                   a_type_info->element_type->kind == dcps::xtypes::TK_UINT32 ||
+                   a_type_info->element_type->kind == dcps::xtypes::TK_FLOAT32) {
             return 6;
-        } else if (a_type_info->element_type->kind == xtypes::TK_INT64 ||
-                   a_type_info->element_type->kind == xtypes::TK_UINT64 ||
-                   a_type_info->element_type->kind == xtypes::TK_FLOAT64) {
+        } else if (a_type_info->element_type->kind == dcps::xtypes::TK_INT64 ||
+                   a_type_info->element_type->kind == dcps::xtypes::TK_UINT64 ||
+                   a_type_info->element_type->kind == dcps::xtypes::TK_FLOAT64) {
             return 7;
         }
         break;
-    case xtypes::TK_STRING8:
+    case dcps::xtypes::TK_STRING8:
         return 5;
     default:
         break;
@@ -171,18 +169,18 @@ inline uint32_t get_xcdr2_dheader_lc(const TypeInfo* a_type_info) {
 
 template <>
 inline void CdrWriter::reserve<uint8_t>(uint32_t a_count) {
-    uint32_t totalLength = a_count + m_buffer.write_index();
-    if (totalLength > m_buffer.length()) {
-        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    uint32_t total_length = a_count + m_buffer.write_index();
+    if (total_length > m_buffer.length()) {
+        m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
 }
 
 template <>
 inline void CdrWriter::reserve<uint16_t>(uint32_t a_count) {
-    uint32_t to_pad = (m_buffer.write_index() - align_base()) & 1u;
-    uint32_t totalLength = a_count * sizeof(uint16_t) + to_pad + m_buffer.write_index();
-    if (totalLength > m_buffer.length()) {
-        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    uint32_t to_pad = (m_buffer.write_index() - align_base()) & 1U;
+    uint32_t total_length = a_count * sizeof(uint16_t) + to_pad + m_buffer.write_index();
+    if (total_length > m_buffer.length()) {
+        m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
     if (to_pad) {
         *m_buffer.m_write_pointer++ = '\0';
@@ -194,9 +192,9 @@ inline void CdrWriter::reserve<uint32_t>(uint32_t a_count) {
     uint32_t to_pad =
         (sizeof(uint32_t) - (m_buffer.write_index() - align_base()) % sizeof(uint32_t)) %
         sizeof(uint32_t);
-    uint32_t totalLength = a_count * sizeof(uint32_t) + to_pad + m_buffer.write_index();
-    if (totalLength > m_buffer.length()) {
-        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    uint32_t total_length = a_count * sizeof(uint32_t) + to_pad + m_buffer.write_index();
+    if (total_length > m_buffer.length()) {
+        m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
     for (size_t i = 0; i < to_pad; i++) {
         *m_buffer.m_write_pointer++ = '\0';
@@ -207,9 +205,9 @@ template <>
 inline void CdrWriter::reserve<uint64_t>(uint32_t a_count) {
     const uint32_t align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
     uint32_t to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
-    uint32_t totalLength = a_count * sizeof(uint64_t) + to_pad + m_buffer.write_index();
-    if (totalLength > m_buffer.length()) {
-        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    uint32_t total_length = a_count * sizeof(uint64_t) + to_pad + m_buffer.write_index();
+    if (total_length > m_buffer.length()) {
+        m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
     for (size_t i = 0; i < to_pad; i++) {
         *m_buffer.m_write_pointer++ = '\0';
@@ -220,9 +218,9 @@ template <>
 inline void CdrWriter::reserve<long double>(uint32_t a_count) {
     const uint32_t align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
     uint32_t to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
-    uint32_t totalLength = a_count * 16 + to_pad + m_buffer.write_index();
-    if (totalLength > m_buffer.length()) {
-        m_buffer.reserve_write(totalLength - m_buffer.write_index());
+    uint32_t total_length = a_count * 16 + to_pad + m_buffer.write_index();
+    if (total_length > m_buffer.length()) {
+        m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
     for (size_t i = 0; i < to_pad; i++) {
         *m_buffer.m_write_pointer++ = '\0';
@@ -235,7 +233,7 @@ inline uint32_t CdrWriter::align_base() const {
 
 template <typename T>
 void CdrWriter::write_value(uint8_t* buf, T value) {
-    using value_type = typename unsigned_type_of<T>::type;
+    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
     const char* bytes = reinterpret_cast<const char*>(&value);
     if (flags() & CDR_BIG_ENDIAN) {
         put_uint<BigEndian, value_type>(buf, *reinterpret_cast<const value_type*>(bytes));
@@ -246,7 +244,7 @@ void CdrWriter::write_value(uint8_t* buf, T value) {
 
 template <typename T>
 void CdrWriter::write_values(const T* a_values, uint32_t a_count) {
-    using value_type = typename unsigned_type_of<T>::type;
+    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
     reserve<value_type>(a_count);
     const char* bytes = reinterpret_cast<const char*>(a_values);
     uint8_t* ptr = m_buffer.m_write_pointer;
@@ -267,7 +265,7 @@ void CdrWriter::write_values(const T* a_values, uint32_t a_count) {
 }
 
 inline void CdrWriter::begin_type(const TypeInfo& a_type_info) {
-    if (m_level + 1 >= MAX_NESTED_DEPTH) {
+    if (m_level + 1 >= dcps::cts::MAX_NESTED_DEPTH) {
         throw std::runtime_error("Cannot serialize type, nesting too deep");
     }
     TypeStackElement& element = m_type_stack[m_level + 1];
@@ -289,7 +287,7 @@ inline void CdrWriter::end_type() {
         write_value<uint32_t>(m_buffer.pointer(offset), m_buffer.write_index() - element.type_base);
     }
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
-        (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         reserve<uint32_t>(1);
         uint16_t pid =
             (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
@@ -305,12 +303,13 @@ inline bool CdrWriter::begin_member(const MemberInfo& a_member_info) {
     element.member_info = &a_member_info;
 
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
-        ((element.type_info->flags & xtypes::IS_MUTABLE) != 0 ||
-         (a_member_info.flags & xtypes::IS_OPTIONAL) != 0)) {
+        ((element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0 ||
+         (a_member_info.flags & dcps::xtypes::IS_OPTIONAL) != 0)) {
         reserve<uint32_t>(1);
         m_buffer.m_write_pointer += sizeof(uint32_t);
         m_type_stack[m_level].align_base = m_buffer.write_index();
-    } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+    } else if ((flags() & CDR_XCDR2) != 0 &&
+               (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         begin_mutable_member_v2();
     }
     return true;
@@ -318,13 +317,14 @@ inline bool CdrWriter::begin_member(const MemberInfo& a_member_info) {
 
 inline bool CdrWriter::begin_optional_member(const MemberInfo& a_member_info, bool a_present) {
     TypeStackElement& element = m_type_stack[m_level];
-    if (!a_present && (element.type_info->flags & xtypes::IS_MUTABLE) != 0 &&
+    if (!a_present && (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0 &&
         (flags() & CDR_XCDR_PLAIN) == 0) {
         return false;
     }
     if ((flags() & CDR_XCDR_PLAIN) != 0 ||
         ((flags() & CDR_XCDR2) != 0 && (m_type_stack[m_level].type_info->flags &
-                                        (xtypes::IS_FINAL | xtypes::IS_APPENDABLE)) != 0)) {
+                                        (dcps::xtypes::IS_FINAL | dcps::xtypes::IS_APPENDABLE)) != 0
+        )) {
         m_buffer.reserve_write(1);
         write_value(m_buffer.m_write_pointer++, a_present);
     }
@@ -334,10 +334,11 @@ inline bool CdrWriter::begin_optional_member(const MemberInfo& a_member_info, bo
 inline void CdrWriter::end_member() {
     TypeStackElement& element = m_type_stack[m_level];
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
-        ((element.type_info->flags & xtypes::IS_MUTABLE) != 0 ||
-         (element.member_info->flags & xtypes::IS_OPTIONAL) != 0)) {
+        ((element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0 ||
+         (element.member_info->flags & dcps::xtypes::IS_OPTIONAL) != 0)) {
         end_mutable_member_v1();
-    } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+    } else if ((flags() & CDR_XCDR2) != 0 &&
+               (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         end_mutable_member_v2();
     }
     element.align_base = m_type_stack[m_level - 1].align_base;
@@ -421,7 +422,7 @@ inline void CdrReader::reserve<uint8_t>(uint32_t a_count) {
 
 template <>
 inline void CdrReader::reserve<uint16_t>(uint32_t a_count) {
-    uint32_t to_pad = (m_buffer.read_index() - align_base()) & 1u;
+    uint32_t to_pad = (m_buffer.read_index() - align_base()) & 1U;
     if (m_buffer.read_index() + to_pad + sizeof(uint16_t) * a_count > available_bytes()) {
         throw std::runtime_error("Attempting to read past end of available data");
     }
@@ -473,7 +474,7 @@ inline uint32_t CdrReader::align_base() const {
 
 template <typename T>
 void CdrReader::read_value(const uint8_t* buf, T& value) {
-    using value_type = typename unsigned_type_of<T>::type;
+    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
     char* bytes = reinterpret_cast<char*>(&value);
     if (flags() & CDR_BIG_ENDIAN) {
         get_uint<BigEndian, value_type>(buf, *reinterpret_cast<value_type*>(bytes));
@@ -484,7 +485,7 @@ void CdrReader::read_value(const uint8_t* buf, T& value) {
 
 template <typename T>
 void CdrReader::read_values(T* a_values, uint32_t a_count) {
-    using value_type = typename unsigned_type_of<T>::type;
+    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
     reserve<value_type>(a_count);
     char* bytes = reinterpret_cast<char*>(a_values);
     const uint8_t* ptr = m_buffer.m_read_pointer;
@@ -505,7 +506,7 @@ void CdrReader::read_values(T* a_values, uint32_t a_count) {
 }
 
 inline void CdrReader::begin_type(const TypeInfo& a_info) {
-    if (m_level + 2 >= MAX_NESTED_DEPTH) {
+    if (m_level + 2 >= dcps::cts::MAX_NESTED_DEPTH) {
         throw std::runtime_error("Cannot deserialize type, nesting too deep");
     }
     TypeStackElement& parent = m_type_stack[m_level];
@@ -513,7 +514,7 @@ inline void CdrReader::begin_type(const TypeInfo& a_info) {
     element.length_delimited = false;
     element.type_length = parent.member_length;
     if ((flags() & CDR_XCDR_PLAIN) == 0 && parent.type_info &&
-        (parent.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        (parent.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         // If parent is mutable, trust type length
         element.length_delimited = true;
     }
@@ -521,7 +522,7 @@ inline void CdrReader::begin_type(const TypeInfo& a_info) {
         // Length prefix, type starts after length value
         element.length_delimited = true;
         element.type_length = read_length();
-    } else if ((flags() & CDR_XCDR_PLAIN) == 0 && (a_info.flags & xtypes::IS_MUTABLE) != 0) {
+    } else if ((flags() & CDR_XCDR_PLAIN) == 0 && (a_info.flags & dcps::xtypes::IS_MUTABLE) != 0) {
         // Mutable type, header starts at four byte alignment
         reserve<uint32_t>(0);
     }
@@ -541,7 +542,7 @@ inline void CdrReader::end_type() {
     if (element.length_delimited) {
         m_buffer.read_index(element.type_base + element.type_length);
     } else if ((flags() & CDR_XCDR_PLAIN) == 0 &&
-               (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+               (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         if (element.member_base != element.type_base ||
             element.member_length != element.type_length) {
             m_buffer.read_index(element.member_base + element.member_length);
@@ -549,7 +550,7 @@ inline void CdrReader::end_type() {
             element.member_base = element.type_base;
             element.align_base = m_type_stack[m_level - 1].align_base;
         }
-        xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+        dcps::xtypes::MemberId curr = dcps::xtypes::MEMBER_ID_INVALID;
         uint16_t sentinel =
             (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
         while (curr != sentinel && available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
@@ -576,11 +577,13 @@ inline bool CdrReader::find_member(const MemberInfo& a_member) {
     }
 
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0 &&
-        (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+        (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         return begin_mutable_member_v1(a_member);
-    } else if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & xtypes::IS_MUTABLE) != 0) {
+    }
+    if ((flags() & CDR_XCDR2) != 0 && (element.type_info->flags & dcps::xtypes::IS_MUTABLE) != 0) {
         return begin_mutable_member_v2(a_member);
-    } else if ((a_member.flags & xtypes::IS_OPTIONAL) != 0) {
+    }
+    if ((a_member.flags & dcps::xtypes::IS_OPTIONAL) != 0) {
         return begin_optional_member(a_member);
     }
     return available_bytes() > m_buffer.read_index();
@@ -614,7 +617,7 @@ inline void CdrReader::read(std::string& a_value) {
         --len;
         a_value.resize(len);
         if (len > 0) {
-            read_values(&a_value[0], len);
+            read_values(a_value.data(), len);
         }
         m_buffer.m_read_pointer++;
     } else {
@@ -689,10 +692,10 @@ inline void CdrWriter::end_mutable_member_v1() {
 
         uint16_t pid = PID_EXTENDED;
         uint16_t length = 2 * sizeof(uint32_t);
-        if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
+        if (element.member_info->flags & dcps::xtypes::IS_MUST_UNDERSTAND) {
             pid |= PID_FLAG_MUST_UNDERSTAND;
         }
-        if (element.member_info->flags & xtypes::IS_VENDOR_EXTENSION) {
+        if (element.member_info->flags & dcps::xtypes::IS_VENDOR_EXTENSION) {
             pid |= PID_FLAG_IMPL_EXTENSION;
         }
         write_value(head, pid);
@@ -703,10 +706,10 @@ inline void CdrWriter::end_mutable_member_v1() {
         uint8_t* head = m_buffer.pointer(element.align_base - sizeof(uint32_t));
         auto pid = static_cast<uint16_t>(element.member_info->id);
         auto length = static_cast<uint16_t>(written);
-        if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
+        if (element.member_info->flags & dcps::xtypes::IS_MUST_UNDERSTAND) {
             pid |= PID_FLAG_MUST_UNDERSTAND;
         }
-        if (element.member_info->flags & xtypes::IS_VENDOR_EXTENSION) {
+        if (element.member_info->flags & dcps::xtypes::IS_VENDOR_EXTENSION) {
             pid |= PID_FLAG_IMPL_EXTENSION;
         }
         write_value(head, pid);
@@ -730,7 +733,7 @@ inline void CdrWriter::end_mutable_member_v2() {
     TypeStackElement& element = m_type_stack[m_level];
     uint32_t lc = get_xcdr2_dheader_lc(element.member_info->type);
     uint32_t element_header = 0;
-    if (element.member_info->flags & xtypes::IS_MUST_UNDERSTAND) {
+    if (element.member_info->flags & dcps::xtypes::IS_MUST_UNDERSTAND) {
         element_header |= (1 << 31);
     }
     element_header |= element.member_info->id & 0x0fffffff;
@@ -757,6 +760,8 @@ inline void CdrWriter::end_mutable_member_v2() {
             case 8:
                 element_header |= (3 << 28);
                 break;
+            default:
+                break;
             }
             write_value(
                 m_buffer.pointer(element.align_base - 2 * sizeof(uint32_t)), element_header
@@ -781,7 +786,7 @@ inline bool CdrReader::begin_mutable_member_v1(const MemberInfo& a_member) {
         (m_level == 1 && (flags() & CDR_XCDR_BUILTIN) != 0) ? PID_SENTINEL : PID_LIST_END;
     uint32_t search_start = m_buffer.read_index();
     for (int attempt = 0; attempt < 2; ++attempt) {
-        xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+        dcps::xtypes::MemberId curr = dcps::xtypes::MEMBER_ID_INVALID;
         while (curr != sentinel && available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
             if (attempt == 1 && m_buffer.read_index() > search_start) {
                 return false;
@@ -790,8 +795,8 @@ inline bool CdrReader::begin_mutable_member_v1(const MemberInfo& a_member) {
             uint32_t length;
             read_param_header_v1(curr, curr_flag, length);
             if (curr == a_member.id && length > 0 &&
-                (curr_flag & xtypes::IS_VENDOR_EXTENSION) ==
-                    (a_member.flags & xtypes::IS_VENDOR_EXTENSION)) {
+                (curr_flag & dcps::xtypes::IS_VENDOR_EXTENSION) ==
+                    (a_member.flags & dcps::xtypes::IS_VENDOR_EXTENSION)) {
                 element.member_base = m_buffer.read_index();
                 element.align_base = m_buffer.read_index();
                 element.member_length = length;
@@ -814,7 +819,7 @@ inline bool CdrReader::begin_mutable_member_v2(const MemberInfo& a_member) {
             if (attempt == 1 && m_buffer.read_index() > search_start) {
                 return false;
             }
-            xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+            dcps::xtypes::MemberId curr = dcps::xtypes::MEMBER_ID_INVALID;
             uint32_t curr_flag;
             uint32_t length;
             read_param_header_v2(curr, curr_flag, length);
@@ -837,7 +842,7 @@ inline bool CdrReader::begin_optional_member(const MemberInfo& a_member) {
     TypeStackElement& element = m_type_stack[m_level];
     if ((flags() & (CDR_XCDR1 | CDR_XCDR_BUILTIN)) != 0) {
         if (available_bytes() >= sizeof(uint32_t) + m_buffer.read_index()) {
-            xtypes::MemberId curr = xtypes::MEMBER_ID_INVALID;
+            dcps::xtypes::MemberId curr = dcps::xtypes::MEMBER_ID_INVALID;
             uint32_t curr_flag;
             uint32_t length;
             read_param_header_v1(curr, curr_flag, length);
@@ -859,15 +864,15 @@ inline bool CdrReader::begin_optional_member(const MemberInfo& a_member) {
 }
 
 inline void
-CdrReader::read_param_header_v1(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
+CdrReader::read_param_header_v1(dcps::xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
     reserve<uint32_t>(1);
     uint16_t header[2];
     read_values(header, 2);
     flag = 0;
-    flag |= (header[0] & PID_FLAG_MUST_UNDERSTAND) ? xtypes::IS_MUST_UNDERSTAND
-                                                   : xtypes::MemberFlagBits{};
-    flag |= (header[0] & PID_FLAG_IMPL_EXTENSION) ? xtypes::IS_VENDOR_EXTENSION
-                                                  : xtypes::MemberFlagExtendedBits{};
+    flag |= (header[0] & PID_FLAG_MUST_UNDERSTAND) ? dcps::xtypes::IS_MUST_UNDERSTAND
+                                                   : dcps::xtypes::MemberFlagBits{};
+    flag |= (header[0] & PID_FLAG_IMPL_EXTENSION) ? dcps::xtypes::IS_VENDOR_EXTENSION
+                                                  : dcps::xtypes::MemberFlagExtendedBits{};
     if ((header[0] & PID_PID_MASK) == PID_EXTENDED) {
         uint32_t extended[2];
         read_values(extended, 2);
@@ -887,10 +892,10 @@ CdrReader::read_param_header_v1(xtypes::MemberId& id, uint32_t& flag, uint32_t& 
 }
 
 inline void
-CdrReader::read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
+CdrReader::read_param_header_v2(dcps::xtypes::MemberId& id, uint32_t& flag, uint32_t& length) {
     read_values(&id, 1);
     flag = 0;
-    flag |= (id & (1 << 31)) ? xtypes::IS_MUST_UNDERSTAND : 0;
+    flag |= (id & (1 << 31)) ? dcps::xtypes::IS_MUST_UNDERSTAND : 0;
     uint32_t lc = (id >> 28) & 0x7;
     id &= 0x0fffffff;
     switch (lc) {
@@ -916,13 +921,15 @@ CdrReader::read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& 
         break;
     case 6:
         reserve<uint32_t>(1);
-        length = 4 * read_length() + sizeof(uint32_t);
+        length = 4UL * read_length() + sizeof(uint32_t);
         m_buffer.m_read_pointer -= sizeof(uint32_t);
         break;
     case 7:
         reserve<uint32_t>(1);
-        length = 8 * read_length() + sizeof(uint32_t);
+        length = 8UL * read_length() + sizeof(uint32_t);
         m_buffer.m_read_pointer -= sizeof(uint32_t);
+        break;
+    default:
         break;
     }
     if (length > available_bytes() || m_buffer.read_index() + length > available_bytes()) {
@@ -930,27 +937,24 @@ CdrReader::read_param_header_v2(xtypes::MemberId& id, uint32_t& flag, uint32_t& 
     }
 }
 
-}  // namespace cts
-}  // namespace dcps
-
 inline void transform_cdr(
-    dcps::Buffer& a_out,
+    Buffer& a_out,
     SerializerFlags a_out_encoding,
-    dcps::Buffer& a_in,
+    Buffer& a_in,
     SerializerFlags a_in_encoding,
     const TypeInfo& a_type_info
 ) {
-    dcps::cts::CdrWriter writer(a_out, a_out_encoding);
-    dcps::cts::CdrReader reader(a_in, a_in_encoding);
+    CdrWriter writer(a_out, a_out_encoding);
+    CdrReader reader(a_in, a_in_encoding);
     if ((a_in_encoding & SERIALIZER_KEY_ONLY) && (a_out_encoding & SERIALIZER_KEY_ONLY)) {
-        dcps::cts::KeyOnlyWriter<dcps::cts::CdrWriter> key_only_writer(writer);
-        dcps::cts::KeyOnlyReader<dcps::cts::CdrReader> key_only_reader(reader);
+        dcps::cts::KeyOnlyWriter<CdrWriter> key_only_writer(writer);
+        dcps::cts::KeyOnlyReader<CdrReader> key_only_reader(reader);
         dcps::cts::transform(key_only_writer, key_only_reader, a_type_info);
     } else if (a_in_encoding & SERIALIZER_KEY_ONLY) {
-        dcps::cts::KeyOnlyReader<dcps::cts::CdrReader> key_only_reader(reader);
+        dcps::cts::KeyOnlyReader<CdrReader> key_only_reader(reader);
         dcps::cts::transform(writer, key_only_reader, a_type_info);
     } else if (a_out_encoding & SERIALIZER_KEY_ONLY) {
-        dcps::cts::KeyOnlyWriter<dcps::cts::CdrWriter> key_only_writer(writer);
+        dcps::cts::KeyOnlyWriter<CdrWriter> key_only_writer(writer);
         dcps::cts::transform(key_only_writer, reader, a_type_info);
     } else {
         dcps::cts::transform(writer, reader, a_type_info);

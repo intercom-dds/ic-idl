@@ -170,9 +170,9 @@ class Buffer {
     /// @return true if the buffer is locally owned, false otherwise
     bool owned() const;
 
-    intercom::span<const uint8_t> span() const;
+    ic_cts::span<const uint8_t> span() const;
 
-    intercom::span<const uint8_t> subspan(size_t pos, size_t count = dynamic_extent) const;
+    ic_cts::span<const uint8_t> subspan(size_t pos, size_t count = dynamic_extent) const;
 
     /// This function is used to check if the buffer can be written to or not. A non-writeable
     /// buffer has been given a constant pointer as input data, which may point to a static
@@ -181,7 +181,7 @@ class Buffer {
     bool writeable() const;
 
     /// Safe write function
-    void write(intercom::span<const uint8_t> data);
+    void write(ic_cts::span<const uint8_t> data);
 
     /// Safe write function to copy from read position in a_data into the current write_position.
     void write(const Buffer& a_data);

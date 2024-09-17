@@ -25,18 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "InterCOM/json_serializer.h"
 #include "example.h"
+#include "ic_cts/json_serializer.h"
 
 int main(int, const char**) {
     foo2 my_foo;
     my_foo.value = "foobar";
 
     std::stringstream stream;
-    intercom::marshal_json(stream, my_foo);
+    ic_cts::marshal_json(stream, my_foo);
 
     foo2 roundtrip;
-    intercom::unmarshal_json(stream, roundtrip);
+    ic_cts::unmarshal_json(stream, roundtrip);
     assert(my_foo == roundtrip);
 
     return 0;

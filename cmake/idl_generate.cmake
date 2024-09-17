@@ -221,6 +221,7 @@ function(IDL_GENERATE)
                 RESULT_VARIABLE
                     _IC_RESULT
                 OUTPUT_STRIP_TRAILING_WHITESPACE )
+
             if( NOT _IC_RESULT EQUAL 0 )
                 message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_IC_ARGS_PRETTY}] returned ${_IC_RESULT}: ${_IC_ERROR}" )
             endif()
@@ -232,7 +233,10 @@ function(IDL_GENERATE)
             string( REGEX REPLACE "\n" ";" _IC_FILE_LIST "${_IC_FILE_LIST}")
 
             foreach( _OUTPUT_FILE ${_IC_FILE_LIST} )
-                list( APPEND _ABS_OUTPUT ${_OUTPUT_FILE} )
+                if (_OUTPUT_FILE MATCHES "^gen:")
+                    string(REGEX REPLACE "^gen:" "" _OUTPUT_FILE "${_OUTPUT_FILE}")
+                    list(APPEND _ABS_OUTPUT ${_OUTPUT_FILE})
+                endif()
             endforeach()
         else()
             message(FATAL_ERROR "Unable to locate the ic-idl executable ${CIDL_L_EXE}")

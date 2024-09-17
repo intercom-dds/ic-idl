@@ -1534,7 +1534,7 @@ mod tests {
         let state = pp(
             &mut vfs,
             r#"
-                #ifdef true foo
+                #ifdef tru foo
                 #endif
             "#,
         );
@@ -1547,7 +1547,7 @@ mod tests {
         let state = pp(
             &mut vfs,
             r#"
-                #ifndef true foo
+                #ifndef tru foo
                 #endif
             "#,
         );

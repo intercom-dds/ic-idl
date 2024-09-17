@@ -599,10 +599,10 @@ fn member() -> impl IdlParser<Field> {
         .then_ignore(just(Kind::Semi));
 
     field.map_with_span(|(annotations, (ty, names)), span| Field {
+        span,
+        annotations,
         names,
         ty,
-        annotations,
-        span,
     })
 }
 
@@ -742,8 +742,8 @@ fn enumerator() -> impl IdlParser<Enumerator> {
 
     def.map(|(annotations, (ident, value))| Enumerator {
         ident,
-        value,
         annotations,
+        value,
     })
 }
 
@@ -1204,10 +1204,10 @@ fn bitfield() -> impl IdlParser<Bitfield> {
         .annotated();
 
     def.map_with_span(|(annotations, ((size, ty), ident)), span| Bitfield {
+        span,
         annotations,
         ident,
         size,
-        span,
         ty,
     })
 }
@@ -1251,10 +1251,10 @@ fn bit_value() -> impl IdlParser<Bit> {
         .annotated();
 
     def.map_with_span(|(annotations, (ident, value)), span| Bit {
-        ident,
-        annotations,
-        value,
         span,
+        annotations,
+        ident,
+        value,
     })
 }
 

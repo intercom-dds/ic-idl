@@ -102,7 +102,7 @@ pub fn lower_ast(ast: &ic_parse::ParseResult) -> ParseResult {
     };
 
     let result = ParseResult { inner };
-    debug_assert_eq!(result.error_count(), 0, "{}", result.diagnostics().unwrap());
+    debug_assert_eq!(result.error_count(), 0, "{:?}", result.diagnostics());
     result
 }
 

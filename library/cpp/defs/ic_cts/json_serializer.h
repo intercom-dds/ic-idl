@@ -25,14 +25,48 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <utility>
+#pragma once
 
-namespace intercom {
+#include "ic_cts/json_parser.h"
+#include "ic_cts/serialization.h"
 
-template <typename T, typename... Args>
-constexpr T* construct_at(T* ptr, Args&&... args) {
-    return ::new (const_cast<void*>(static_cast<const volatile void*>(ptr)))
-        T(std::forward<Args>(args)...);
+namespace ic_cts {
+namespace dcps {
+namespace cts {
+using JsonMarshal = TGenericMarshal<JsonWriter>;
+using KeyOnlyJsonMarshal = TGenericMarshal<KeyOnlyWriter<JsonWriter>>;
+using JsonUnmarshal = TGenericUnmarshal<JsonReader>;
+using KeyOnlyJsonUnmarshal = TGenericUnmarshal<KeyOnlyReader<JsonReader>>;
+}  // namespace cts
+}  // namespace dcps
+
+template <typename T>
+std::ostream& marshal_json(std::ostream& stream, const T& value, bool pretty = false) {
+    SerializerFlags flags = pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{};
+    JsonWriter writer(stream, flags);
+    dcps::cts::GenericMarshal(writer).io(value);
+    return stream;
 }
 
-}  // namespace intercom
+template <typename T>
+std::ostream& marshal_json(std::ostream& stream, const T& value, SerializerFlags flags) {
+    JsonWriter writer(stream, flags);
+    dcps::cts::GenericMarshal(writer).io(value);
+    return stream;
+}
+
+template <typename T>
+std::istream& unmarshal_json(std::istream& stream, T& value, SerializerFlags flags) {
+    JsonReader reader(stream, flags);
+    dcps::cts::GenericUnmarshal(reader).io(value);
+    return stream;
+}
+
+template <typename T>
+std::istream& unmarshal_json(std::istream& stream, T& value, bool strict = false) {
+    SerializerFlags flags = strict ? SERIALIZER_STRICT : SerializerFlagsBits{};
+    JsonReader reader(stream, flags);
+    dcps::cts::GenericUnmarshal(reader).io(value);
+    return stream;
+}
+}  // namespace ic_cts

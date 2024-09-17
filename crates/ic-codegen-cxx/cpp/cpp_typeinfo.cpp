@@ -770,17 +770,16 @@ void intercom::cidl::gen_cpp_type_info(
                     type_info_names[index]
                 );
 
-                // TODO(idarcar):
-                // if (has_default_value(*it)) {
-                //     std::string value = json_value(
-                //         get_default_value(*it),
-                //         (*it)->type,
-                //         int(intercom::cidl::JsonValueFlags::FLAG_ESCAPED)
-                //     );
-                //     mprintf(memf, "{}", value);
-                // } else {
-                mprintf(memf, "nullptr");
-                // }
+                if (has_default_value(*it)) {
+                    std::string value = json_value(
+                        get_default_value(*it),
+                        (*it)->type,
+                        int(intercom::cidl::JsonValueFlags::FLAG_ESCAPED)
+                    );
+                    mprintf(memf, "{}", value);
+                } else {
+                    mprintf(memf, "nullptr");
+                }
                 mprintf(memf, " }}");
             }
         }

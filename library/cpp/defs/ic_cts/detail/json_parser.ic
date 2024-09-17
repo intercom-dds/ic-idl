@@ -33,11 +33,11 @@
 #include <cstdio>
 #include <memory>
 
-#include "InterCOM/dds_xtypes_constants.h"
-#include "InterCOM/json_parser.h"
-#include "InterCOM/member_info.h"
+#include "ic_cts/dds_xtypes_constants.h"
+#include "ic_cts/json_parser.h"
+#include "ic_cts/member_info.h"
 
-namespace intercom {
+namespace ic_cts {
 namespace detail {
 template <typename T>
 inline JsonNode json_error(const T& node, const char* str) {
@@ -1192,8 +1192,8 @@ inline void JsonWriter::write(const long double* a_values, uint32_t a_count, con
 
 template <typename T>
 inline void JsonWriter::write_integer(T& a_value, const TypeInfo& a_info) {
-    if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
-        a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
+    if (a_info.kind == ic_cts::dcps::xtypes::TK_ENUM ||
+        a_info.kind == ic_cts::dcps::xtypes::TK_BITMASK) {
         std::string str;
         if (enum_to_string(str, a_value, &a_info)) {
             if (m_type_stack[m_level].info.name != nullptr &&
@@ -1643,4 +1643,4 @@ inline void JsonReader::Stack::next_value() {
         current = JsonNode();
     }
 }
-}  // namespace intercom
+}  // namespace ic_cts

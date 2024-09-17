@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "InterCOM/serialization.h"
+#include "ic_cts/serialization.h"
 
 #ifndef HISTORY_JSON_PARSER_H
 #  define HISTORY_JSON_PARSER_H
@@ -46,7 +46,7 @@
 #    pragma warning(disable : 4251)
 #  endif
 
-namespace intercom {
+namespace ic_cts {
 enum JsonType {
     JSON_FLOAT,
     JSON_INTEGER,
@@ -562,7 +562,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
     uint32_t m_level{0};
 };
 
-}  // namespace intercom
+}  // namespace ic_cts
 
 #  ifdef _MSC_VER
 #    pragma warning(pop)

@@ -29,7 +29,7 @@
 
 #include <cstdint>
 
-namespace intercom {
+namespace ic_cts {
 enum CharacterEncoding { EIGHT_BIT = 0, UTF8 = 1, UTF16 = 2, UTF32 = 4 };
 
 #ifdef INTERCOM_DEFAULT_EIGHT_BIT_STRING
@@ -280,4 +280,4 @@ inline int write_char_code(wchar_t* buf, char32_t code) {
     );
 }
 
-}  // namespace intercom
+}  // namespace ic_cts

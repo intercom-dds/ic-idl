@@ -27,14 +27,14 @@
 
 #pragma once
 
-#include "InterCOM/buffer.h"
-#include "InterCOM/dds_xtypes_constants.h"
-#include "InterCOM/integer_types.h"
-#include "InterCOM/platform_config.h"
-#include "InterCOM/serialization.h"
-#include "InterCOM/span.h"
+#include "ic_cts/buffer.h"
+#include "ic_cts/dds_xtypes_constants.h"
+#include "ic_cts/integer_types.h"
+#include "ic_cts/platform_config.h"
+#include "ic_cts/serialization.h"
+#include "ic_cts/span.h"
 
-namespace intercom {
+namespace ic_cts {
 
 const SerializerFlags ENC_PLATFORM_ENDIAN =
     (INTERCOM_PLATFORM_ENDIAN == BigEndian) ? CDR_BIG_ENDIAN : CDR_LITTLE_ENDIAN;
@@ -48,9 +48,6 @@ struct ParameterHeader {
     ParameterId_t parameterId{0};
     unsigned short length{0};
 };
-
-namespace dcps {
-namespace cts {
 
 SerializerFlags encodingForEncapsulation(EncapsulationSchemeIdentifier a_scheme);
 
@@ -301,9 +298,6 @@ using KeyOnlyCdrUnmarshal = TGenericUnmarshal<KeyOnlyReader<CdrReader>>;
 using CdrMarshal = TGenericMarshal<CdrWriter>;
 using KeyOnlyCdrMarshal = TGenericMarshal<KeyOnlyWriter<CdrWriter>>;
 
-}  // namespace cts
-}  // namespace dcps
-
 template <typename T>
 inline void marshal_cdr(dcps::Buffer& a_buffer, SerializerFlags a_encoding, const T& a_value) {
     dcps::cts::CdrWriter writer(a_buffer, a_encoding);
@@ -331,6 +325,6 @@ void transform_cdr(
     const TypeInfo& a_type_info
 );
 
-}  // namespace intercom
+}  // namespace ic_cts
 
 #include "detail/cdr_serializer.ic"  // IWYU pragma: export

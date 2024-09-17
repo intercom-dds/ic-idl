@@ -33,11 +33,11 @@
 #include <sstream>
 #include <string>
 
-#include "InterCOM/integer_types.h"
 #include "cidl/commandline.h"
 #include "cidl/hdrs.h"
 #include "cidl/keywords.h"
 #include "cidl/ptree_helpers.h"
+#include "ic_cts/integer_types.h"
 #include "utils/md5.h"
 
 static void idl_scoped_name_rec(
@@ -262,7 +262,7 @@ uint32_t member_name_hash_id(const std::string& name) {
     uint32_t hash_id = 0;
     if (!name.empty()) {
         intercom::MD5 md5(reinterpret_cast<const unsigned char*>(name.c_str()), name.size());
-        intercom::get_uint<intercom::LittleEndian>(md5.digest().data(), hash_id);
+        ic_cts::get_uint<ic_cts::LittleEndian>(md5.digest().data(), hash_id);
         hash_id &= 0x0fffffffU;
     }
     return hash_id;

@@ -25,47 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "InterCOM/member_info.h"
-
-// Remove macros defined in mman-linux.h, conflicts with XTypes MAP_TYPE
-#ifdef MAP_TYPE
-#  undef MAP_TYPE
-#endif
-
-// Remove macros defined in VS2010 stdlib
-#ifdef min
-#  undef min
-#endif
-#ifdef max
-#  undef max
-#endif
+#include <utility>
 
 namespace ic_cts {
 
-struct Any {};
-struct Object {};
+template <typename T, typename... Args>
+constexpr T* construct_at(T* ptr, Args&&... args) {
+    return ::new (const_cast<void*>(static_cast<const volatile void*>(ptr)))
+        T(std::forward<Args>(args)...);
+}
 
 }  // namespace ic_cts
-
-namespace IDL {  // NOLINT
-template <typename T>
-using traits = intercom::TypeTraits<T>;
-
-template <typename T, uint32_t N>
-using bounded_vector = intercom::bounded_vector<T, N>;
-
-template <typename K, typename V, uint32_t N>
-using bounded_map = intercom::bounded_map<K, V, N>;
-
-template <uint32_t N>
-using bounded_string = intercom::bounded_string<N>;
-
-template <uint32_t N>
-using bounded_u16string = intercom::bounded_u16string<N>;
-
-template <uint32_t N>
-using bounded_u32string = intercom::bounded_u32string<N>;
-
-template <uint32_t N>
-using bounded_wstring = intercom::bounded_wstring<N>;
-}  // namespace IDL

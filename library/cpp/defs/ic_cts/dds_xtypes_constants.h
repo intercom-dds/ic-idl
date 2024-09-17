@@ -34,11 +34,11 @@
 #  pragma warning(disable : 4127)
 #endif
 
-#include "InterCOM/bounded.h"
+#include "ic_cts/bounded.h"
 
 // NOLINTBEGIN
 
-namespace intercom {
+namespace ic_cts {
 using ParameterId_t = uint16_t;
 const ParameterId_t PID_SENTINEL{0x1U};
 const ParameterId_t PID_EXTENDED{0x3f01U};
@@ -85,9 +85,9 @@ enum EncapsulationSchemeIdentifier : int32_t {
 };
 
 const uint16_t ENCAPSULATION_SIZE{4U};
-}  // namespace intercom
+}  // namespace ic_cts
 
-namespace intercom {
+namespace ic_cts {
 namespace dcps {
 namespace xtypes {
 using TypeKind = uint8_t;
@@ -136,9 +136,9 @@ const uint8_t TI_PLAIN_MAP_SMALL{0xa0U};
 const uint8_t TI_PLAIN_MAP_LARGE{0xa1U};
 const uint8_t TI_STRONGLY_CONNECTED_COMPONENT{0xb0U};
 const int32_t MEMBER_NAME_MAX_LENGTH{256};
-using MemberName = ::intercom::bounded_string<256>;
+using MemberName = ::ic_cts::bounded_string<256>;
 const int32_t TYPE_NAME_MAX_LENGTH{256};
-using QualifiedTypeName = ::intercom::bounded_string<256>;
+using QualifiedTypeName = ::ic_cts::bounded_string<256>;
 using PrimitiveTypeId = uint8_t;
 using EquivalenceHash = ::std::array<uint8_t, 14>;
 using NameHash = ::std::array<uint8_t, 4>;
@@ -210,7 +210,7 @@ using MemberId = uint32_t;
 const MemberId MEMBER_ID_INVALID{0xfffffffU};
 }  // namespace xtypes
 }  // namespace dcps
-}  // namespace intercom
+}  // namespace ic_cts
 
 #ifdef _WIN32
 #  pragma warning(pop)

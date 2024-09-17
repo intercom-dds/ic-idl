@@ -25,48 +25,47 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "ic_cts/member_info.h"
 
-#include "InterCOM/json_parser.h"
-#include "InterCOM/serialization.h"
+// Remove macros defined in mman-linux.h, conflicts with XTypes MAP_TYPE
+#ifdef MAP_TYPE
+#  undef MAP_TYPE
+#endif
 
-namespace intercom {
-namespace dcps {
-namespace cts {
-using JsonMarshal = TGenericMarshal<JsonWriter>;
-using KeyOnlyJsonMarshal = TGenericMarshal<KeyOnlyWriter<JsonWriter>>;
-using JsonUnmarshal = TGenericUnmarshal<JsonReader>;
-using KeyOnlyJsonUnmarshal = TGenericUnmarshal<KeyOnlyReader<JsonReader>>;
-}  // namespace cts
-}  // namespace dcps
+// Remove macros defined in VS2010 stdlib
+#ifdef min
+#  undef min
+#endif
+#ifdef max
+#  undef max
+#endif
 
+namespace ic_cts {
+
+struct Any {};
+struct Object {};
+
+}  // namespace ic_cts
+
+namespace IDL {  // NOLINT
 template <typename T>
-std::ostream& marshal_json(std::ostream& stream, const T& value, bool pretty = false) {
-    SerializerFlags flags = pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{};
-    JsonWriter writer(stream, flags);
-    dcps::cts::GenericMarshal(writer).io(value);
-    return stream;
-}
+using traits = intercom::TypeTraits<T>;
 
-template <typename T>
-std::ostream& marshal_json(std::ostream& stream, const T& value, SerializerFlags flags) {
-    JsonWriter writer(stream, flags);
-    dcps::cts::GenericMarshal(writer).io(value);
-    return stream;
-}
+template <typename T, uint32_t N>
+using bounded_vector = intercom::bounded_vector<T, N>;
 
-template <typename T>
-std::istream& unmarshal_json(std::istream& stream, T& value, SerializerFlags flags) {
-    JsonReader reader(stream, flags);
-    dcps::cts::GenericUnmarshal(reader).io(value);
-    return stream;
-}
+template <typename K, typename V, uint32_t N>
+using bounded_map = intercom::bounded_map<K, V, N>;
 
-template <typename T>
-std::istream& unmarshal_json(std::istream& stream, T& value, bool strict = false) {
-    SerializerFlags flags = strict ? SERIALIZER_STRICT : SerializerFlagsBits{};
-    JsonReader reader(stream, flags);
-    dcps::cts::GenericUnmarshal(reader).io(value);
-    return stream;
-}
-}  // namespace intercom
+template <uint32_t N>
+using bounded_string = intercom::bounded_string<N>;
+
+template <uint32_t N>
+using bounded_u16string = intercom::bounded_u16string<N>;
+
+template <uint32_t N>
+using bounded_u32string = intercom::bounded_u32string<N>;
+
+template <uint32_t N>
+using bounded_wstring = intercom::bounded_wstring<N>;
+}  // namespace IDL

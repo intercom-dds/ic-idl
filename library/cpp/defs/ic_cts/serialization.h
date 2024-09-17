@@ -32,9 +32,9 @@
 #include <set>
 #include <string>
 
-#include "InterCOM/character_encoding.h"
-#include "InterCOM/dds_xtypes_constants.h"
-#include "InterCOM/member_info.h"
+#include "ic_cts/character_encoding.h"
+#include "ic_cts/dds_xtypes_constants.h"
+#include "ic_cts/member_info.h"
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(push)
@@ -42,7 +42,7 @@
 #  pragma warning(disable : 4512)  // Assignment operator cannot be generated for classes
 #endif
 
-namespace intercom {
+namespace ic_cts {
 
 template <typename T>
 bool enum_to_string(std::string& res, T value, const TypeInfo* type);
@@ -991,7 +991,7 @@ template <typename WRITER, typename READER>
 void transform(WRITER& writer, READER& reader, const TypeInfo& type_info);
 
 }  // namespace dcps::cts
-}  // namespace intercom
+}  // namespace ic_cts
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(pop)

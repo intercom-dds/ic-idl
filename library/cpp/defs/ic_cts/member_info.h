@@ -30,9 +30,9 @@
 #include <cstdint>
 #include <vector>
 
-#include "InterCOM/bounded.h"
+#include "ic_cts/bounded.h"
 
-namespace intercom {
+namespace ic_cts {
 
 struct TypeInfo;
 
@@ -167,6 +167,6 @@ struct TypeTraits<bounded_map<K, V, N>> {
     using bound = std::integral_constant<uint32_t, N>;
 };
 
-}  // namespace intercom
+}  // namespace ic_cts
 
 #include "detail/member_info.ic"  // IWYU pragma: export

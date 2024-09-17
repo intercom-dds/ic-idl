@@ -30,7 +30,7 @@
 #include <cstdint>
 #include <stdexcept>
 
-namespace intercom {
+namespace ic_cts {
 
 enum EndianType {
     BigEndian = 0,
@@ -174,4 +174,4 @@ inline void put_uint<LittleEndian, long double>(uint8_t*, long double) {
     throw std::invalid_argument("long double serialization not supported");
 }
 
-}  // namespace intercom
+}  // namespace ic_cts

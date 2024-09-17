@@ -27,9 +27,9 @@
 
 #pragma once
 
-#include "InterCOM/member_info.h"
+#include "ic_cts/member_info.h"
 
-namespace intercom {
+namespace ic_cts {
 // xtypes::TK_NONE
 inline constexpr const TypeInfo NULL_TYPE_INFO =
     {"NULL", 0, 0, 8, 0, 0, nullptr, nullptr, nullptr, &NULL_TYPE_INFO, &NULL_TYPE_INFO, 0, nullptr
@@ -163,4 +163,4 @@ inline constexpr const TypeInfo TypeTraits<float>::type_info = FLOAT_TYPE_INFO;
 inline constexpr const TypeInfo TypeTraits<double>::type_info = DOUBLE_TYPE_INFO;
 inline constexpr const TypeInfo TypeTraits<long double>::type_info = LONG_DOUBLE_TYPE_INFO;
 
-}  // namespace intercom
+}  // namespace ic_cts

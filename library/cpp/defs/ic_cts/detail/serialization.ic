@@ -35,8 +35,8 @@
 #include <string>
 #include <vector>
 
-#include "InterCOM/json_parser.h"
-#include "InterCOM/member_info.h"
+#include "ic_cts/json_parser.h"
+#include "ic_cts/member_info.h"
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(push)
@@ -44,7 +44,7 @@
 #  pragma warning(disable : 4512)  // Assignment operator cannot be generated for some classes
 #endif
 
-namespace intercom {
+namespace ic_cts {
 
 template <typename T>
 inline bool enum_to_string(std::string& res, T value, const TypeInfo* type) {
@@ -230,7 +230,7 @@ struct Serializer<Archive, std::string> {
 };
 
 template <class Archive, typename CharT, uint32_t N>
-struct Serializer<Archive, intercom::bounded_basic_string<CharT, N>> {
+struct Serializer<Archive, ic_cts::bounded_basic_string<CharT, N>> {
     void operator()(Archive& a, std::basic_string<CharT>& value, const TypeInfo* type_info) {
         Serializer<Archive, std::basic_string<CharT>> serializer;
         serializer(a, value, type_info);
@@ -288,8 +288,8 @@ struct Serializer<Archive, std::array<T, N>> {
 };
 
 template <class Archive, typename T>
-struct Serializer<Archive, intercom::span<T>> {
-    void operator()(Archive& a, intercom::span<T>& value, const TypeInfo* type_info) {
+struct Serializer<Archive, ic_cts::span<T>> {
+    void operator()(Archive& a, ic_cts::span<T>& value, const TypeInfo* type_info) {
         typename Archive::template VectorValue<T> serializer(a, type_info);
         serializer.io(value.data(), static_cast<uint32_t>(value.size()));
     }
@@ -704,7 +704,7 @@ inline void copy_member(WRITER& writer, READER& reader, const MemberInfo& member
             }
         }
         if (!copied && !reader.can_skip_type()) {
-            intercom::dcps::cts::EmptyWriter empty_writer;
+            ic_cts::dcps::cts::EmptyWriter empty_writer;
             empty_writer.begin_member(member_info);
             transform(empty_writer, reader, *member_info.type);
             empty_writer.end_member();
@@ -724,7 +724,7 @@ inline void copy_member(WRITER& writer, READER& reader, const MemberInfo& member
                     );
                     transform(writer, json_reader, *member_info.type);
                 } else {
-                    intercom::dcps::cts::EmptyReader empty_reader;
+                    ic_cts::dcps::cts::EmptyReader empty_reader;
                     transform(writer, empty_reader, *member_info.type);
                 }
                 writer.end_member();
@@ -904,7 +904,7 @@ inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info)
 }
 
 }  // namespace dcps::cts
-}  // namespace intercom
+}  // namespace ic_cts
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(pop)

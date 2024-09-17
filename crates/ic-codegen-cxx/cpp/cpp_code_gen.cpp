@@ -30,7 +30,6 @@
 #include <cstring>
 #include <iostream>
 
-#include "InterCOM/version.h"
 #include "cidl/commandline.h"
 #include "cidl/constants.h"
 #include "cidl/hdrs.h"
@@ -39,6 +38,7 @@
 #include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
+#include "ic_cts/version.h"
 
 #define INTERCOM_PUBLIC_MACRO_NAME "INTERCOM_PUBLIC"
 
@@ -149,11 +149,9 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
     } else if (node == &ldouble_type) {
         out << "long double";
     } else if (node == &any_type) {
-        // TODO(idarcar):
-        out << "::intercom::corba::Any";
+        out << "::ic_cts::Any";
     } else if (node == &object_type) {
-        // TODO(idarcar):
-        out << "::intercom::corba::Object";
+        out << "::ic_cts::Object";
     } else if (node->kind == N_ARRAY) {
         cpp_array_name_rec(node, context, 0, out);
     } else if (node->kind == N_SEQUENCE) {

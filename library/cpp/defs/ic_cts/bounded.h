@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-namespace intercom {
+namespace ic_cts {
 
 // NOLINTBEGIN(hicpp-explicit-conversions)
 
@@ -124,6 +124,6 @@ using bounded_wstring = bounded_basic_string<wchar_t, N>;
 
 // NOLINTEND(hicpp-explicit-conversions)
 
-}  // namespace intercom
+}  // namespace ic_cts
 
 #include "detail/bounded.ic"  // IWYU pragma: export

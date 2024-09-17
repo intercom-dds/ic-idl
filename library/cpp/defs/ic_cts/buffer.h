@@ -27,9 +27,9 @@
 
 #pragma once
 
-#include "span.h"
+#include "ic_cts/span.h"
 
-namespace intercom::dcps {
+namespace ic_cts {
 
 class Buffer {
   public:
@@ -227,6 +227,6 @@ class Buffer {
     bool m_writeable;  ///< flag indicating if the buffer can be written to
 };
 
-}  // namespace intercom::dcps
+}  // namespace ic_cts
 
 #include "detail/buffer.ic"  // IWYU pragma: export

@@ -30,9 +30,9 @@
 #include <cstring>
 #include <memory>
 
-#include "InterCOM/buffer.h"
+#include "ic_cts/buffer.h"
 
-namespace intercom {
+namespace ic_cts {
 namespace dcps {
 
 inline Buffer::Buffer()
@@ -361,4 +361,4 @@ inline void Buffer::free_buffer() {
 }
 
 }  // namespace dcps
-}  // namespace intercom
+}  // namespace ic_cts

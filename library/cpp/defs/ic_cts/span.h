@@ -32,7 +32,7 @@
 #include <iterator>
 #include <type_traits>
 
-namespace intercom {
+namespace ic_cts {
 
 // NOLINTBEGIN(hicpp-explicit-conversions, readability-identifier-naming)
 
@@ -134,7 +134,7 @@ class span {
         return span(data() + size() - count, count);
     }
 
-    constexpr span subspan(size_type pos = 0, size_t count = intercom::dynamic_extent) const {
+    constexpr span subspan(size_type pos = 0, size_t count = ic_cts::dynamic_extent) const {
         return span(data() + pos, (std::min)(size() - pos, count));
     }
 
@@ -181,4 +181,4 @@ inline bool operator>=(const span<T>& lhs, const span<U>& rhs) {
 
 // NOLINTEND(hicpp-explicit-conversions, readability-identifier-naming)
 
-}  // namespace intercom
+}  // namespace ic_cts

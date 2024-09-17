@@ -25,19 +25,19 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "InterCOM/json_parser.h"
 #include "cidl/hdrs.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree.h"
 #include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
+#include "ic_cts/json_parser.h"
 
 using namespace intercom::cidl;
 
-static void print_json(intercom::JsonWriter& writer, const ptree* obj);
+static void print_json(ic_cts::JsonWriter& writer, const ptree* obj);
 
-static void print_annotations(intercom::JsonWriter& writer, const ptree* obj) {
+static void print_annotations(ic_cts::JsonWriter& writer, const ptree* obj) {
     if (obj) {
         writer.write_key("annotations");
         writer.start_object();
@@ -48,12 +48,12 @@ static void print_annotations(intercom::JsonWriter& writer, const ptree* obj) {
     }
 }
 
-static void print_kind(intercom::JsonWriter& writer, const std::string& kind) {
+static void print_kind(ic_cts::JsonWriter& writer, const std::string& kind) {
     writer.write_key("kind");
     writer.write_string(kind);
 }
 
-static void print_json_type(intercom::JsonWriter& writer, const ptree* type, const ptree* context) {
+static void print_json_type(ic_cts::JsonWriter& writer, const ptree* type, const ptree* context) {
     bool print_type = false;
     switch (type->kind) {
     case N_PRIMITIVE:
@@ -138,7 +138,7 @@ static void print_json_type(intercom::JsonWriter& writer, const ptree* type, con
     }
 }
 
-static void print_json_member(intercom::JsonWriter& writer, const ptree* member) {
+static void print_json_member(ic_cts::JsonWriter& writer, const ptree* member) {
     if (member->kind == N_MEMBER) {
         writer.start_object();
         for (auto cas : member->members) {
@@ -164,7 +164,7 @@ static void print_json_member(intercom::JsonWriter& writer, const ptree* member)
     }
 }
 
-static void print_json(intercom::JsonWriter& writer, const ptree* obj) {
+static void print_json(ic_cts::JsonWriter& writer, const ptree* obj) {
     if (obj->flags & OPT_DECLARATION) {
         switch (obj->kind) {
         case N_STRUCT:
@@ -441,7 +441,7 @@ static void print_json(intercom::JsonWriter& writer, const ptree* obj) {
 }
 
 static void print_node(
-    intercom::JsonWriter& writer,
+    ic_cts::JsonWriter& writer,
     const numeric& value,
     const ptree* context,
     bool value_flag = false
@@ -486,13 +486,9 @@ static void print_node(
     case STRING_KIND:
         writer.write_string(value.val.str());
         break;
-    case CHAR_KIND: {
-        // TODO(idarcar);
-        // intercom::corba::WString_var str;
-        // str.reserve(1);
-        // str[0] = static_cast<intercom::corba::WString_var::value_type>(value.val.c());
-        // writer.write_string(str);
-    } break;
+    case CHAR_KIND:
+        writer.write(static_cast<char>(value.val.c()));
+        break;
     case PTREE_KIND: {
         if (value.val.node()->members) {
             if (base_type_of(value.val.node())->kind == N_STRUCT) {
@@ -523,7 +519,7 @@ static void print_node(
     }
 }
 
-static void print_node(intercom::JsonWriter& writer, const ptree* node) {
+static void print_node(ic_cts::JsonWriter& writer, const ptree* node) {
     if (!node) {
         writer.write_null();
         return;
@@ -634,11 +630,11 @@ static void print_node(intercom::JsonWriter& writer, const ptree* node) {
 
 std::string intercom::cidl::json_value(const numeric& value, const ptree* context, int flags) {
     std::stringstream out;
-    intercom::JsonWriter writer(out);
+    ic_cts::JsonWriter writer(out);
     print_node(writer, value, context, (flags & int(JsonValueFlags::FLAG_NUMERICAL_VALUE)) != 0);
     if (flags & int(JsonValueFlags::FLAG_ESCAPED)) {
         std::stringstream escape_out;
-        intercom::JsonWriter escape_writer(escape_out);
+        ic_cts::JsonWriter escape_writer(escape_out);
         escape_writer.write_string(out.str());
         return escape_out.str();
     }
@@ -647,7 +643,7 @@ std::string intercom::cidl::json_value(const numeric& value, const ptree* contex
 
 std::string intercom::cidl::json_value(const ptree* obj) {
     std::stringstream out;
-    intercom::JsonWriter writer(out);
+    ic_cts::JsonWriter writer(out);
     print_node(writer, obj);
     return out.str();
 }
@@ -658,7 +654,7 @@ void intercom::cidl::code_gen_json(const parse_result* result, ic_list_t* list) 
         file_name += ".json";
         std::stringstream file;
         {
-            intercom::JsonWriter writer(file, true);
+            ic_cts::JsonWriter writer(file, true);
             writer.start_object();
             for (const auto& obj : result->tree) {
                 if (is_emit(obj, LANG_NONE) && obj->included_from == include) {
@@ -674,7 +670,7 @@ void intercom::cidl::code_gen_json(const parse_result* result, ic_list_t* list) 
 }
 
 void intercom::cidl::generate_json_type(std::ostream& stream, const ptree* tree) {
-    intercom::JsonWriter writer(stream, true);
+    ic_cts::JsonWriter writer(stream, true);
     writer.start_object();
     print_json(writer, tree);
     writer.end_object();

@@ -34,8 +34,7 @@
 #  pragma warning(disable : 4127)
 #endif
 
-#include <InterCOM/bounded.h>
-#include <InterCOM/span.h>
+#include "InterCOM/bounded.h"
 
 // NOLINTBEGIN
 

@@ -29,6 +29,7 @@
 
 #include "InterCOM/buffer.h"
 #include "InterCOM/dds_xtypes_constants.h"
+#include "InterCOM/integer_types.h"
 #include "InterCOM/platform_config.h"
 #include "InterCOM/serialization.h"
 #include "InterCOM/span.h"

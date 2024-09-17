@@ -27,13 +27,9 @@
 
 #pragma once
 
-#include <vector>
+#include "span.h"
 
-#include "InterCOM/integer_types.h"
-#include "InterCOM/span.h"
-
-namespace intercom {
-namespace dcps {
+namespace intercom::dcps {
 
 class Buffer {
   public:
@@ -43,7 +39,7 @@ class Buffer {
     Buffer();
 
     ///
-    Buffer(size_t length);
+    explicit Buffer(size_t length);
 
     ///
     Buffer(uint8_t* pointer, size_t length);
@@ -93,7 +89,7 @@ class Buffer {
 
     /// \param newPosition the new location of the m_read_pointer, or 0 to reset the read pointer to
     /// start of buffer.
-    void set_read(const uint8_t* newPosition = nullptr) const;
+    void set_read(const uint8_t* new_position = nullptr) const;
 
     /// \param bytes the number of bytes to increase the m_read_pointer by.
     void advance_read(size_t bytes) const;
@@ -107,7 +103,7 @@ class Buffer {
 
     /// \param newPosition the new location of the m_write_pointer, or 0 to reset the write pointer
     /// to start of buffer.
-    void set_write(uint8_t* newPosition = nullptr);
+    void set_write(uint8_t* new_position = nullptr);
 
     /// \param bytes number of bytes to increase the current write pointer by.
     /// The memory that is skipped will be undefined.
@@ -231,7 +227,6 @@ class Buffer {
     bool m_writeable;  ///< flag indicating if the buffer can be written to
 };
 
-}  // namespace dcps
-}  // namespace intercom
+}  // namespace intercom::dcps
 
 #include "detail/buffer.ic"  // IWYU pragma: export

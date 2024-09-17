@@ -30,7 +30,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "bounded.h"
+#include "InterCOM/bounded.h"
 
 namespace intercom {
 

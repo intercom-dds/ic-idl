@@ -39,8 +39,7 @@
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(push)
 #  pragma warning(disable : 4127)  // Conditional expression is constant in template instantiations
-#  pragma warning(disable : 4512 \
-  )  // Assignment operator cannot be generated for some serialization classes
+#  pragma warning(disable : 4512)  // Assignment operator cannot be generated for classes
 #endif
 
 namespace intercom {

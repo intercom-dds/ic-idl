@@ -176,8 +176,10 @@ impl fmt::Display for Kind {
             Kind::Comment(_) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
             Kind::Ident(_) => write!(f, "identifier"),
+            Kind::At => write!(f, "annotation"),
+            Kind::Float(_) => write!(f, "floating-point number"),
+            Kind::StringLit(_) => write!(f, "string"),
             Kind::Eoi => write!(f, "end of input"),
-            _ => write!(f, "TODO:"),
         }
     }
 }

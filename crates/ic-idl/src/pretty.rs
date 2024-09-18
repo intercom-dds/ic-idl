@@ -29,6 +29,7 @@ use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::{error_span, Label};
+use ic_parse::lexer::Kind;
 use ic_parse::{Error, Reason};
 use ic_vfs::SourceMap;
 
@@ -75,9 +76,13 @@ fn emit_error(error: &Error, vfs: &SourceMap) {
             let expected = if let Some(e) = error.label {
                 e.yellow()
             } else if let Some(e) = &error.expected {
-                format_slice(e)
+                if e.iter().find(|v| **v == Kind::Eoi).is_some() {
+                    "top-level definition".yellow()
+                } else {
+                    format_slice(e)
+                }
             } else {
-                "definition".to_string()
+                "definition".yellow()
             };
 
             let found = error

@@ -128,7 +128,7 @@ unsafe fn decl_path_list(state: *mut sys::parser_state, names: &[Path]) -> *mut 
     let mut list = ptr::null_mut();
     for name in names {
         let ident = create_ident(&path_str(name));
-        let decl = sys::create_decl(state, ident.as_ptr(), std::ptr::null_mut());
+        let decl = sys::create_decl(state, ident.as_ptr(), ptr::null_mut());
         list = sys::append_decl(list, decl);
     }
     list
@@ -242,7 +242,7 @@ unsafe fn lower_annotation_member(
     member: &AnnotationMember,
 ) -> *mut sys::ptree {
     let ty = lower_ty(state, &member.ty);
-    let decl = create_decl(state, &member.decl, std::ptr::null_mut());
+    let decl = create_decl(state, &member.decl, ptr::null_mut());
     let default = member
         .default
         .as_ref()
@@ -259,13 +259,13 @@ fn lower_interface_member(
         let param = |param: &Param| {
             let ty = lower_ty(state, &param.ty);
             let kind = param_kind(param.kind);
-            let decl = create_decl(state, &param.decl, std::ptr::null_mut());
+            let decl = create_decl(state, &param.decl, ptr::null_mut());
             sys::create_param_dcl(state, decl, ty, kind)
         };
 
         match member {
             InterfaceMember::Attr(v) => {
-                let decl = create_decl_list(state, &v.decl, std::ptr::null_mut());
+                let decl = create_decl_list(state, &v.decl, ptr::null_mut());
                 let ty = lower_ty(state, &v.ty);
                 let getraises = decl_path_list(state, &v.getraises);
                 let setraises = decl_path_list(state, &v.setraises);
@@ -295,7 +295,7 @@ unsafe fn lower_annotation_arg(
     arg: &AnnotationArg,
 ) -> *mut sys::ptree {
     let name = arg.ident.as_ref().map(|v| create_ident(&v.name));
-    let name = name.map_or(std::ptr::null(), |v| v.as_ptr());
+    let name = name.map_or(ptr::null(), |v| v.as_ptr());
     let value = lower_expr(state, &arg.value);
     sys::create_annotation_param(state, name, value)
 }
@@ -353,7 +353,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             let parent = v
                 .parent
                 .as_ref()
-                .map_or(std::ptr::null_mut(), |v| lower_path(state, v));
+                .map_or(ptr::null_mut(), |v| lower_path(state, v));
 
             let ident = create_ident(&v.ident.name);
             sys::create_struct_start(state, ident.as_ptr(), parent);
@@ -481,9 +481,10 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                     UnionElement::Null(_) => sys::create_null_node(state),
                 };
 
+                let annotations = lower_applied_annotations(state, &var.annotations);
                 let labels =
                     collect_with(state, sys::append_node, &var.labels, |v| label(state, v));
-                sys::create_union_member(state, mem, labels, ptr::null_mut())
+                sys::create_union_member(state, mem, labels, annotations)
             });
 
             let ident = create_ident("_d");

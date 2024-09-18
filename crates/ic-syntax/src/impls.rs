@@ -96,16 +96,10 @@ impl Item {
     }
 
     #[must_use]
-    pub fn def_const(
-        annotations: Vec<AnnotationAppl>,
-        decl: Declarator,
-        ty: Type,
-        value: Expr,
-        span: Span,
-    ) -> Self {
+    pub fn def_const(decl: Declarator, ty: Type, value: Expr, span: Span) -> Self {
         Self::ConstValue(ConstDef {
             span,
-            annotations,
+            annotations: vec![],
             decl,
             ty,
             value,

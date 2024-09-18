@@ -169,7 +169,7 @@ fn definition() -> impl IdlParser<Item> {
     // first rule that matches. To prevent "struct Foo {};" from matching with
     // `struct_forward_dcl`, we need to include the terminator in the rule.
     recursive(|defs| {
-        choice((
+        let def = choice((
             module_dcl(defs),
             const_dcl(),
             type_dcl(),
@@ -177,7 +177,9 @@ fn definition() -> impl IdlParser<Item> {
             interface_dcl(),
             annotation_dcl(),
             value_dcl(),
-        ))
+        ));
+
+        def.annotated().map(|(ann, item)| item.annotate(ann))
     })
 }
 
@@ -244,11 +246,10 @@ fn const_dcl() -> impl IdlParser<Item> {
         .then(declarator())
         .then_ignore(just(Kind::Eq))
         .then(complex_const_expr())
-        .annotated()
         .then_ignore(just(Kind::Semi))
         .boxed();
 
-    def.map_with_span(|(ann, ((ty, decl), val)), span| Item::def_const(ann, decl, ty, val, span))
+    def.map_with_span(|((ty, decl), val), span| Item::def_const(decl, ty, val, span))
 }
 
 // InterCOM extension for complex constants
@@ -606,11 +607,10 @@ fn struct_def() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then(parent.or_not())
         .then(fields)
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    struct_def.map_with_span(|(ann, ((ident, parent), members)), span| {
-        Item::def_struct(ident, members, parent, span).annotate(ann)
+    struct_def.map_with_span(|((ident, parent), members), span| {
+        Item::def_struct(ident, members, parent, span)
     })
 }
 
@@ -633,10 +633,9 @@ fn member() -> impl IdlParser<Field> {
 fn struct_forward_dcl() -> impl IdlParser<Item> {
     let decl = keyword(Kw::Struct)
         .ignore_then(ident())
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|(ann, name), span| Item::decl(name, DeclKind::Struct, span).annotate(ann))
+    decl.map_with_span(|name, span| Item::decl(name, DeclKind::Struct, span))
 }
 
 // Rule 49
@@ -659,12 +658,9 @@ fn union_def() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then(disc)
         .then(body)
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, ((ident, disc), cases)), span| {
-        Item::def_union(ident, disc, cases, span).annotate(ann)
-    })
+    def.map_with_span(|((ident, disc), cases), span| Item::def_union(ident, disc, cases, span))
 }
 
 // Rule 51
@@ -736,10 +732,9 @@ fn element_spec() -> impl IdlParser<UnionElement> {
 fn union_forward_dcl() -> impl IdlParser<Item> {
     let decl = keyword(Kw::Union)
         .ignore_then(ident())
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    decl.map_with_span(|(ann, name), span| Item::decl(name, DeclKind::Union, span).annotate(ann))
+    decl.map_with_span(|name, span| Item::decl(name, DeclKind::Union, span))
 }
 
 // Rule 57
@@ -751,12 +746,9 @@ fn enum_dcl() -> impl IdlParser<Item> {
     let def = keyword(Kw::Enum)
         .ignore_then(ident())
         .then(enumerators)
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, (name, fields)), span| {
-        Item::def_enum(name, fields, span).annotate(ann)
-    })
+    def.map_with_span(|(name, fields), span| Item::def_enum(name, fields, span))
 }
 
 // Rule 58
@@ -802,10 +794,9 @@ fn simple_declarator() -> impl IdlParser<Declarator> {
 fn typedef_dcl() -> impl IdlParser<Item> {
     let def = keyword(Kw::Typedef)
         .ignore_then(type_declarator())
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, (ty, decls)), span| Item::typedef(decls, ty, span).annotate(ann))
+    def.map_with_span(|(ty, decls), span| Item::typedef(decls, ty, span))
 }
 
 // Rule 64
@@ -862,13 +853,10 @@ fn interface_dcl() -> impl IdlParser<Item> {
 // Rule 74
 fn interface_def() -> impl IdlParser<Item> {
     let body = interface_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-    let def = interface_header()
-        .then(body)
-        .annotated()
-        .then_ignore(just(Kind::Semi));
+    let def = interface_header().then(body).then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, (((local, name), inherits), protos)), span| {
-        Item::interface(name, local, inherits, protos, span).annotate(ann)
+    def.map_with_span(|(((local, name), inherits), protos), span| {
+        Item::interface(name, local, inherits, protos, span)
     })
 }
 
@@ -876,12 +864,9 @@ fn interface_def() -> impl IdlParser<Item> {
 fn interface_forward_dcl() -> impl IdlParser<Item> {
     let def = interface_kind()
         .ignore_then(ident())
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, ident), span| {
-        Item::decl(ident, DeclKind::Interface, span).annotate(ann)
-    })
+    def.map_with_span(|ident, span| Item::decl(ident, DeclKind::Interface, span))
 }
 
 // Rule 76
@@ -936,15 +921,18 @@ fn op_dcl() -> impl IdlParser<Prototype> {
         .then(ident())
         .then(params)
         .then(raises_expr().or_not())
+        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    proto.map(|(((ret, ident), params), raises)| Prototype {
-        ident,
-        params,
-        raises: raises.unwrap_or_default(),
-        oneway: None,
-        ret,
-    })
+    proto.map(
+        |(_annotations, (((ret, ident), params), raises))| Prototype {
+            ident,
+            params,
+            raises: raises.unwrap_or_default(),
+            oneway: None,
+            ret,
+        },
+    )
 }
 
 // Rule 83
@@ -1183,7 +1171,7 @@ fn value_forward_dcl() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|name, span| Item::decl(name, DeclKind::Valuetype, span))
+    def.map_with_span(|ident, span| Item::decl(ident, DeclKind::Valuetype, span))
 }
 
 // Rule 119, 120, 121
@@ -1237,12 +1225,9 @@ fn bitset_dcl() -> impl IdlParser<Item> {
         .ignore_then(ident())
         .then(inherit)
         .then(body)
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, ((ident, parent), fields)), span| {
-        Item::bitset(ident, parent, fields, span).annotate(ann)
-    })
+    def.map_with_span(|((ident, parent), fields), span| Item::bitset(ident, parent, fields, span))
 }
 
 // Rule 201
@@ -1287,10 +1272,9 @@ fn bitmask_dcl() -> impl IdlParser<Item> {
     let def = keyword(Kw::Bitmask)
         .ignore_then(ident())
         .then(body)
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|(ann, (name, flags)), span| Item::bitmask(name, flags, span).annotate(ann))
+    def.map_with_span(|(name, flags), span| Item::bitmask(name, flags, span))
 }
 
 // Rule 205
@@ -1311,13 +1295,10 @@ fn bit_value() -> impl IdlParser<Bit> {
 fn annotation_dcl() -> impl IdlParser<Item> {
     let params = annotation_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
     let def = annotation_header()
-        .annotated()
         .then(params)
         .then_ignore(just(Kind::Semi));
 
-    def.map_with_span(|((ann, i), members), span| {
-        Item::def_annotation(i, members, span).annotate(ann)
-    })
+    def.map_with_span(|(ident, members), span| Item::def_annotation(ident, members, span))
 }
 
 // Rule 220

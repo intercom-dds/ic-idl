@@ -72,7 +72,7 @@ fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
 
 fn path_str(path: &Path) -> String {
     let mut str = if path.leading_colons.is_some() {
-        vec![]
+        vec!["::"]
     } else {
         vec![]
     };
@@ -267,15 +267,14 @@ fn lower_interface_member(
             InterfaceMember::Attr(v) => {
                 let decl = create_decl_list(state, &v.decl, std::ptr::null_mut());
                 let ty = lower_ty(state, &v.ty);
-                let raises = decl_path_list(state, &v.raises);
-
-                // TODO: differentiate setraises/getraises
+                let getraises = decl_path_list(state, &v.getraises);
+                let setraises = decl_path_list(state, &v.setraises);
                 sys::create_attribute(
                     state,
                     decl,
                     ty,
-                    std::ptr::null_mut(),
-                    raises,
+                    getraises,
+                    setraises,
                     ffi::c_int::from(v.readonly.is_some()),
                 )
             }

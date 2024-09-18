@@ -3780,7 +3780,8 @@ impl ::intercom_cts::Unmarshal for BitsetDef {
 pub struct Attribute {
     /// Name of the attribute.
     pub decl: Vec<crate::ast::Declarator>,
-    pub raises: Vec<crate::ast::Path>,
+    pub setraises: Vec<crate::ast::Path>,
+    pub getraises: Vec<crate::ast::Path>,
     /// The type of the attribute.
     pub ty: crate::ast::Type,
     /// Indicates whether this attribute was marked as `readonly`, and if
@@ -3793,7 +3794,8 @@ impl Attribute {
     pub fn new() -> Self {
         Self {
             decl: <Vec<crate::ast::Declarator>>::default(),
-            raises: <Vec<crate::ast::Path>>::default(),
+            setraises: <Vec<crate::ast::Path>>::default(),
+            getraises: <Vec<crate::ast::Path>>::default(),
             ty: <crate::ast::Type>::default(),
             readonly: None,
         }
@@ -3815,9 +3817,10 @@ impl ::intercom_cts::Marshal for Attribute {
 
         let mut state = ar.encode_struct("Attribute")?;
         state.encode_field(0, "decl", &self.decl)?;
-        state.encode_field(1, "raises", &self.raises)?;
-        state.encode_field(2, "ty", &self.ty)?;
-        state.encode_field(3, "readonly", &self.readonly)?;
+        state.encode_field(1, "setraises", &self.setraises)?;
+        state.encode_field(2, "getraises", &self.getraises)?;
+        state.encode_field(3, "ty", &self.ty)?;
+        state.encode_field(4, "readonly", &self.readonly)?;
         state.end()
     }
 }
@@ -3831,9 +3834,10 @@ impl ::intercom_cts::Unmarshal for Attribute {
 
         let mut state = ar.decode_struct("Attribute")?;
         state.decode_field(0, "decl", &mut self.decl)?;
-        state.decode_field(1, "raises", &mut self.raises)?;
-        state.decode_field(2, "ty", &mut self.ty)?;
-        state.decode_field(3, "readonly", &mut self.readonly)?;
+        state.decode_field(1, "setraises", &mut self.setraises)?;
+        state.decode_field(2, "getraises", &mut self.getraises)?;
+        state.decode_field(3, "ty", &mut self.ty)?;
+        state.decode_field(4, "readonly", &mut self.readonly)?;
         Ok(())
     }
 }

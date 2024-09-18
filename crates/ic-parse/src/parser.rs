@@ -1004,11 +1004,12 @@ fn readonly_attr_spec() -> impl IdlParser<Attribute> {
         .then(readonly_attr_declarator())
         .then_ignore(just(Kind::Semi));
 
-    def.map(|((readonly, ty), (decl, raises))| Attribute {
+    def.map(|((readonly, ty), (decl, getraises))| Attribute {
         decl,
         ty,
         readonly: Some(readonly),
-        raises,
+        getraises,
+        setraises: vec![],
     })
 }
 
@@ -1034,14 +1035,21 @@ fn attr_spec() -> impl IdlParser<Attribute> {
 
     def.map(|(ty, (decl, raises))| Attribute {
         decl,
-        raises,
+        getraises: raises.get,
+        setraises: raises.set,
         ty,
         readonly: None,
     })
 }
 
+#[derive(Default)]
+struct Raises {
+    set: Vec<Path>,
+    get: Vec<Path>,
+}
+
 // Rule 92
-fn attr_declarator() -> impl IdlParser<(Vec<Declarator>, Vec<Path>)> {
+fn attr_declarator() -> impl IdlParser<(Vec<Declarator>, Raises)> {
     choice((
         simple_declarator()
             .then(attr_raises_expr())
@@ -1049,20 +1057,23 @@ fn attr_declarator() -> impl IdlParser<(Vec<Declarator>, Vec<Path>)> {
         simple_declarator()
             .separated_by(just(Kind::Comma))
             .at_least(1)
-            .map(|decl| (decl, vec![])),
+            .map(|decl| (decl, Raises::default())),
     ))
 }
 
 // Rule 93
-fn attr_raises_expr() -> impl IdlParser<Vec<Path>> {
+fn attr_raises_expr() -> impl IdlParser<Raises> {
     choice((
         get_excep_expr()
             .then(set_excep_expr().or_not())
-            .map(|(mut get, set)| {
-                get.extend(set.unwrap_or_default());
-                get
+            .map(|(get, set)| Raises {
+                get,
+                set: set.unwrap_or_default(),
             }),
-        set_excep_expr(),
+        set_excep_expr().map(|setraises| Raises {
+            get: vec![],
+            set: setraises,
+        }),
     ))
 }
 

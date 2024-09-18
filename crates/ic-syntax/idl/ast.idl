@@ -530,7 +530,10 @@ struct Attribute {
     sequence<Declarator> decl;
 
     ///
-    sequence<Path> _raises;
+    sequence<Path> _setraises;
+
+    ///
+    sequence<Path> _getraises;
 
     /// The type of the attribute.
     Type ty;

@@ -72,7 +72,7 @@ fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
 
 fn path_str(path: &Path) -> String {
     let mut str = if path.leading_colons.is_some() {
-        vec!["::"]
+        vec![]
     } else {
         vec![]
     };
@@ -305,7 +305,8 @@ unsafe fn lower_applied_annotation(
     state: *mut sys::parser_state,
     annotation: &AnnotationAppl,
 ) -> *mut sys::ptree {
-    let ident = create_ident(&path_str(&annotation.ty));
+    let name = format!("@{}", path_str(&annotation.ty));
+    let ident = create_ident(&name);
     sys::create_annotation_start(state, ident.as_ptr());
     let params = collect_with(state, sys::append_node, &annotation.args, |arg| {
         lower_annotation_arg(state, arg)

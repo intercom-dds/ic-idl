@@ -142,7 +142,7 @@ fn bound() -> impl IdlParser<Option<Expr>> {
 fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
     let comment = select! { Kind::Comment(v) => v };
     comment.map_with_span(|value, span| AnnotationAppl {
-        ty: primitive_path("@doc", span),
+        ty: primitive_path("doc", span),
         span,
         args: vec![AnnotationArg {
             ident: None,
@@ -211,13 +211,19 @@ fn scoped_name() -> impl IdlParser<Path> {
     })
 }
 
-// Similar to scoped_name, but for applied annotations. This converts any
-// keywords into identifiers to handle things like "@default" and "@::default"
-fn annotation_ident() -> impl IdlParser<Path> {
+// Parser that accepts either an identifier or a keyword which is subsequently
+// converted to an identifier.
+fn ident_or_kw() -> impl IdlParser<Ident> {
     let keyword = select! { Kind::Keyword(v) => v.to_string() }
         .map_with_span(|name, span| Ident { name, span });
 
-    let ident = choice((ident(), keyword));
+    choice((ident(), keyword))
+}
+
+// Similar to scoped_name, but for applied annotations. This converts any
+// keywords into identifiers to handle things like "@default" and "@::default"
+fn annotation_ident() -> impl IdlParser<Path> {
+    let ident = ident_or_kw();
     let leading = just(Kind::DColon).map_with_span(|_, span| span).or_not();
     let path = leading
         .then(ident.separated_by(just(Kind::DColon)).at_least(1))
@@ -1305,7 +1311,8 @@ fn annotation_dcl() -> impl IdlParser<Item> {
 
 // Rule 220
 fn annotation_header() -> impl IdlParser<Ident> {
-    keyword(Kw::Annotation).ignore_then(ident())
+    // Annotation names are exempt from keywords
+    keyword(Kw::Annotation).ignore_then(ident_or_kw())
 }
 
 // Rule 221

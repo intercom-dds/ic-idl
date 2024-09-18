@@ -25,18 +25,19 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
+use ic_diagnostic::{warn_span, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{util, Item, UnionNull};
+use ic_syntax::Item;
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Warns when unsupported language items are used.
-#[derive(Default)]
-pub struct Unsupported(Vec<Diag>);
+pub struct Unsupported<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
 // TODO: check for long double
-impl<'a> Visitor<'a> for Unsupported {
+impl<'a> Visitor<'a> for Unsupported<'a> {
     fn visit_bitset(&mut self, bitset: &'a ic_syntax::BitsetDef) {
         let diag = warn_span(
             "bitsets are not supported",
@@ -44,24 +45,17 @@ impl<'a> Visitor<'a> for Unsupported {
         )
         .note("the bitset will be skipped during codegen");
 
-        self.0.push(diag);
+        self.ctx.report(diag);
     }
 }
 
-impl Lint for Unsupported {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for Unsupported<'a> {
+    fn category() -> Category {
         Category::Unsupported
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

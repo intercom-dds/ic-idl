@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, Diag, Label};
+use ic_diagnostic::{error_span, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::Item;
 

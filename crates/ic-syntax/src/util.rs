@@ -200,6 +200,14 @@ pub fn item_span(item: &Item) -> Span {
 }
 
 #[must_use]
+pub fn decl_span(decl: &Declarator) -> Span {
+    match decl {
+        Declarator::Simple(v) => v.span,
+        Declarator::Array(v) => v.ident.span,
+    }
+}
+
+#[must_use]
 pub fn item_variant_name(item: &Item) -> &'static str {
     match item {
         Item::AnnotationValue(_) => "annotation",

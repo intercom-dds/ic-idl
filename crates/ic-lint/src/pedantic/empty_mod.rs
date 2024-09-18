@@ -25,17 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{warn_span, Diag, Label};
+use ic_diagnostic::{warn_span, Label};
 use ic_syntax::visit::{visit_module, visit_tree, Visitor};
-use ic_syntax::{Item, UnionNull};
+use ic_syntax::Item;
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Checks for empty module declarations.
-#[derive(Default)]
-pub struct EmptyMod(Vec<Diag>);
+pub struct EmptyMod<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for EmptyMod {
+impl<'a> Visitor<'a> for EmptyMod<'a> {
     fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
         if def.definitions.is_empty() {
             let diag = warn_span(
@@ -43,26 +44,19 @@ impl<'a> Visitor<'a> for EmptyMod {
                 Label::new(def.span),
             )
             .help("either remove the declaration or add an item to it");
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
         visit_module(self, def);
     }
 }
 
-impl Lint for EmptyMod {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for EmptyMod<'a> {
+    fn category() -> Category {
         Category::Pedantic
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

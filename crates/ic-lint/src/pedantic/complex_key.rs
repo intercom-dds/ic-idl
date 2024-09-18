@@ -44,7 +44,7 @@ impl Lint for ComplexMapKey {
         Box::<Self>::default()
     }
 
-    fn category(&self) -> Category {
+    fn category() -> Category {
         Category::Pedantic
     }
 

@@ -25,18 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{warn_span, Diag, Label};
+use ic_diagnostic::{warn_span, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{util, Item, UnionNull};
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Lint that checks for enumerators and bitmask flags where a field was
 /// assigned a value using an assignment operator instead of an annotation.
-#[derive(Default)]
-pub struct AssignExpr(Vec<Diag>);
+pub struct AssignExpr<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for AssignExpr {
+impl<'a> Visitor<'a> for AssignExpr<'a> {
     fn visit_bitmask_bit(&mut self, flag: &'a ic_syntax::Bit) {
         if let Some(value) = &flag.value {
             let diag = warn_span(
@@ -45,7 +45,7 @@ impl<'a> Visitor<'a> for AssignExpr {
             )
             .help("use the `@position` annotation instead");
 
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
     }
 
@@ -57,26 +57,19 @@ impl<'a> Visitor<'a> for AssignExpr {
             )
             .help("use the `@value` annotation instead");
 
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
     }
 }
 
-impl Lint for AssignExpr {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for AssignExpr<'a> {
+    fn category() -> Category {
         Category::Pedantic
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, tree);
     }
 }
 

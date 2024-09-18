@@ -466,7 +466,7 @@ mod tests {
     #[test]
     fn weird_utf8() {
         let tokens = scan(
-            r#"
+            r"
             Ā Á Ă À
             ā á ă à
             Ǖ Ǘ Ǚ Ǜ
@@ -482,13 +482,13 @@ mod tests {
             图书馆来了
             我們剛才從
             圖書館來了
-            øæå"#,
+            øæå",
         );
         assert!(
             tokens
                 .iter()
                 .all(|v| matches!(v.kind, Kind::Ident | Kind::Newline))
-        )
+        );
     }
 
     #[test]

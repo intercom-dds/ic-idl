@@ -25,18 +25,19 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{warn_span, Diag, Label};
+use ic_diagnostic::{warn_span, Label};
 use ic_syntax::util::ty_span;
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{Item, Prototype, UnionNull};
+use ic_syntax::Item;
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Warns when the `in` keyword is omitted in prototypes.
-#[derive(Default)]
-pub struct OmittedIn(Vec<Diag>);
+pub struct OmittedIn<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for OmittedIn {
+impl<'a> Visitor<'a> for OmittedIn<'a> {
     fn visit_prototype_param(&mut self, def: &'a ic_syntax::Param) {
         if def.kind.is_none() {
             let diag = warn_span(
@@ -46,25 +47,18 @@ impl<'a> Visitor<'a> for OmittedIn {
             )
             .help("prefix the parameter with `in`");
 
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
     }
 }
 
-impl Lint for OmittedIn {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for OmittedIn<'a> {
+    fn category() -> Category {
         Category::Pedantic
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

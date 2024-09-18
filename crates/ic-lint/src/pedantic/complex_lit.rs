@@ -27,27 +27,28 @@
 
 use ic_diagnostic::{warn_span, Color, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{ConstDef, Expr, Item, Span, UnionNull};
+use ic_syntax::{util, ConstDef, Expr, Span};
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Warns when an initializer list is used, e.g. for complex constants or
 /// complex default values.
-#[derive(Default)]
-pub struct ComplexLit(Vec<Diag>);
+pub struct ComplexLit<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl ComplexLit {
+impl ComplexLit<'_> {
     fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
         let diag = Diag::warning("complex literals are an InterCOM extension")
             .label(Label::new(diag).message(msg).color(Color::Yellow))
             .label(Label::new(label_span).message(label).color(Color::Cyan))
             .note("only literals of trivial types are allowed in standard IDL");
 
-        self.0.push(diag);
+        self.ctx.report(diag);
     }
 }
 
-impl<'a> Visitor<'a> for ComplexLit {
+impl<'a> Visitor<'a> for ComplexLit<'a> {
     fn visit_annotation_appl(&mut self, def: &'a ic_syntax::AnnotationAppl) {
         for arg in &def.args {
             if let Expr::InitList(_) = &arg.value {
@@ -69,7 +70,7 @@ impl<'a> Visitor<'a> for ComplexLit {
                     def.value.span(),
                     "complex constants are an InterCOM extension",
                 ),
-                (def.ident.span, "const defined here"),
+                (util::decl_span(&def.decl), "const defined here"),
             );
         }
     }
@@ -82,25 +83,18 @@ impl<'a> Visitor<'a> for ComplexLit {
                 "initializer lists are an InterCOM extension",
                 Label::new(expr.span()),
             );
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
     }
 }
 
-impl Lint for ComplexLit {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for ComplexLit<'a> {
+    fn category() -> Category {
         Category::Pedantic
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, tree);
     }
 }

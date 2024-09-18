@@ -25,20 +25,21 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
+use ic_diagnostic::{Color, Diag, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{util, Item, ParamKind, Prototype, Type, UnionNull};
+use ic_syntax::{util, Item, ParamKind, Prototype};
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Checks that all prototypes marked as `oneway` have:
 ///   1. A `void` return type.
 ///   2. No exception specifications.
 ///   3. No out/inout parameters.
-#[derive(Default)]
-pub struct NonVoidOneway(Vec<Diag>);
+pub struct NonVoidOneway<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl NonVoidOneway {
+impl NonVoidOneway<'_> {
     fn chk_return_ty(&mut self, proto: &Prototype) {
         if util::type_name(&proto.ret) != "void" {
             let diag = Diag::error("oneway operations must have a `void` return type")
@@ -54,7 +55,7 @@ impl NonVoidOneway {
                 )
                 .help("change the return type to `void`");
 
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
     }
 
@@ -72,16 +73,16 @@ impl NonVoidOneway {
                         .color(Color::Red),
                 );
 
-            self.0.push(diag);
+            self.ctx.report(diag);
         }
     }
 
     fn chk_out_params(&mut self, proto: &Prototype) {
         for param in &proto.params {
-            if let Some(ParamKind::ParamOut | ParamKind::ParamInout) = param.kind {
+            if let Some(ParamKind::Out | ParamKind::Inout) = param.kind {
                 let diag = Diag::error("oneway operations cannot have `out` parameters")
                     .label(
-                        Label::new(param.ident.span)
+                        Label::new(util::decl_span(&param.decl))
                             .message("`out` parameter")
                             .color(Color::Blue),
                     )
@@ -91,13 +92,13 @@ impl NonVoidOneway {
                             .color(Color::Red),
                     );
 
-                self.0.push(diag);
+                self.ctx.report(diag);
             }
         }
     }
 }
 
-impl<'a> Visitor<'a> for NonVoidOneway {
+impl<'a> Visitor<'a> for NonVoidOneway<'a> {
     fn visit_prototype(&mut self, def: &'a ic_syntax::Prototype) {
         if let Some(oneway) = def.oneway {
             self.chk_return_ty(def);
@@ -107,20 +108,13 @@ impl<'a> Visitor<'a> for NonVoidOneway {
     }
 }
 
-impl Lint for NonVoidOneway {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for NonVoidOneway<'a> {
+    fn category() -> Category {
         Category::Syntax
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

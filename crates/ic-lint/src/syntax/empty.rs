@@ -25,22 +25,23 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, Diag, Label};
-use ic_syntax::util::{item_name, ItemTraits};
+use ic_diagnostic::{error_span, Label};
+use ic_syntax::util::ItemTraits;
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{Ident, Item, Span};
+use ic_syntax::{Item, Span};
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Verifies that enums, unions, bitmasks, exceptions and valuetypes have at
 /// least one member.
 ///
 /// Support for empty structs is allowed in the extended data-types building
 /// block.
-#[derive(Default)]
-pub struct EmptyTypes(Vec<Diag>);
+pub struct EmptyTypes<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl EmptyTypes {
+impl EmptyTypes<'_> {
     fn diagnose<T: ItemTraits>(&mut self, span: Span, def: &T, member: &str) {
         let ty = T::item_name();
         let note = format!("all {ty}s must have at least one {member}");
@@ -50,11 +51,11 @@ impl EmptyTypes {
         )
         .note(note);
 
-        self.0.push(diag);
+        self.ctx.report(diag);
     }
 }
 
-impl<'a> Visitor<'a> for EmptyTypes {
+impl<'a> Visitor<'a> for EmptyTypes<'a> {
     fn visit_enum(&mut self, def: &'a ic_syntax::EnumDef) {
         if def.fields.is_empty() {
             self.diagnose(def.ident.span, def, "enumerator");
@@ -86,20 +87,13 @@ impl<'a> Visitor<'a> for EmptyTypes {
     }
 }
 
-impl Lint for EmptyTypes {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> crate::Category {
+impl<'a> Lint<'a> for EmptyTypes<'a> {
+    fn category() -> crate::Category {
         Category::Syntax
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

@@ -25,17 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{warn_span, Diag, Label};
+use ic_diagnostic::{warn_span, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::{Item, UnionNull};
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
 /// Warns when the `null` keyword is used as a union member.
-#[derive(Default)]
-pub struct NullVariant(Vec<Diag>);
+pub struct NullVariant<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for NullVariant {
+impl<'a> Visitor<'a> for NullVariant<'a> {
     fn visit_union_null(&mut self, def: &'a UnionNull) {
         let diag = warn_span(
             "`null` variants are an InterCOM extension",
@@ -43,24 +44,17 @@ impl<'a> Visitor<'a> for NullVariant {
         )
         .note("all case labels must map to a value");
 
-        self.0.push(diag);
+        self.ctx.report(diag);
     }
 }
 
-impl Lint for NullVariant {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
-    fn category(&self) -> Category {
+impl<'a> Lint<'a> for NullVariant<'a> {
+    fn category() -> Category {
         Category::Pedantic
     }
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        visit_tree(&mut *self, ast);
-        self.0
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        visit_tree(&mut lint, ast);
     }
 }

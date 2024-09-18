@@ -26,44 +26,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![allow(dead_code, unused)]
-#![allow(clippy::new_ret_no_self)]
 
 use std::cell::RefCell;
 
 use ic_diagnostic::Diag;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
-use syntax::sanity;
 
 // mod annotation;
 mod pedantic;
-// mod semantic;
+mod semantic;
 mod syntax;
 mod unsupported;
-//
-
-// macro_rules! lints {
-//     ($($lint:ty),* $(,)?) => {
-//         type LintFn = fn() -> Box<dyn Lint>;
-//
-//         const LINTS: &[LintFn] = &[
-//             $(<$lint>::new,)*
-//         ];
-//     };
-// }
-//
-// lints! {
-//     // pedantic::assign_expr::AssignExpr,
-//     // pedantic::complex_lit::ComplexLit,
-//     // pedantic::empty_mod::EmptyMod,
-//     pedantic::lowercase_bool::LowercaseBool,
-//     // pedantic::null::NullVariant,
-//     // pedantic::omitted_in::OmittedIn,
-//     // semantic::oneway::NonVoidOneway,
-//     // semantic::unsupported::Unsupported,
-//     // syntax::ascii::AsciiIdent,
-//     // syntax::empty::EmptyTypes,
-// }
 
 /// The supported lint categories.
 #[derive(Copy, Clone, Debug)]
@@ -138,24 +112,27 @@ pub struct Report {
 /// [`lint_hir`].
 pub fn lint_syntax(tree: &[Item]) -> Report {
     let vfs = SourceMap::default();
-    let mut ctx = LintCtx {
+    let ctx = LintCtx {
         vfs: &vfs,
         diagnostics: RefCell::default(),
     };
 
     {
-        sanity::Sanity::check(&ctx, tree);
-        pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
         pedantic::array_param::ArrayParam::check(&ctx, tree);
-        syntax::ascii::AsciiIdent::check(&ctx, tree);
-        syntax::ann_members::AnnMembers::check(&ctx, tree);
+        pedantic::assign_expr::AssignExpr::check(&ctx, tree);
         pedantic::bitmask_ann::BitmaskAnn::check(&ctx, tree);
+        pedantic::complex_lit::ComplexLit::check(&ctx, tree);
+        pedantic::empty_mod::EmptyMod::check(&ctx, tree);
+        pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
+        pedantic::null::NullVariant::check(&ctx, tree);
+        pedantic::omitted_in::OmittedIn::check(&ctx, tree);
+        semantic::oneway::NonVoidOneway::check(&ctx, tree);
+        semantic::unsupported::Unsupported::check(&ctx, tree);
+        syntax::ann_members::AnnMembers::check(&ctx, tree);
+        syntax::ascii::AsciiIdent::check(&ctx, tree);
+        syntax::empty::EmptyTypes::check(&ctx, tree);
+        syntax::sanity::Sanity::check(&ctx, tree);
     }
-
-    // for lint in LINTS {
-    //     let pass = lint().check(&ctx, tree);
-    //     diagnostics.extend(pass.into_iter());
-    // }
 
     Report {
         diagnostics: ctx.diagnostics.take(),

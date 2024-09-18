@@ -1187,7 +1187,7 @@ pub fn to_string(
 mod tests {
     use super::*;
 
-    fn pp<'a>(vfs: &'a mut SourceMap, input: &str) -> State {
+    fn pp(vfs: &mut SourceMap, input: &str) -> State {
         let id = vfs.embed(input);
         let mut state = State::new();
         preprocess(id, ProcArgs::default(), &mut state, vfs).for_each(drop);
@@ -1260,11 +1260,11 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #define foo bar \
                     baz
                 123
-            "#,
+            ",
         );
 
         let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
@@ -1283,11 +1283,11 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #define foo \
                     bar \
                     baz
-            "#,
+            ",
         );
 
         let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
@@ -1305,10 +1305,10 @@ mod tests {
     #[test]
     fn expand_single() {
         let expanded = expand(
-            r#"
+            r"
                 #define foo bar
                 bar 123 bar
-            "#,
+            ",
         );
         assert_eq!(expanded, "bar 123 bar");
     }
@@ -1319,10 +1319,10 @@ mod tests {
         // "foo" in the macro definition is just treated as a normal identifier
         // and not a macro to be expanded.
         let expanded = expand(
-            r#"
+            r"
                 #define foo foo foo bar
                 foo
-            "#,
+            ",
         );
         assert_eq!(expanded, "foo foo bar");
     }
@@ -1330,12 +1330,12 @@ mod tests {
     #[test]
     fn recursively_expand() {
         let expanded = expand(
-            r#"
+            r"
                 #define baz 123
                 #define bar baz
                 #define foo bar
                 foo
-            "#,
+            ",
         );
         assert_eq!(expanded, "123");
     }
@@ -1344,22 +1344,22 @@ mod tests {
     fn recursive_cyclic() {
         // Recursion stops as soon as we find a macro we've already expanded.
         let expanded = expand(
-            r#"
+            r"
                 #define foo foo foo
                 #define bar baz
                 #define baz foo
 
                 foo bar baz
-            "#,
+            ",
         );
         assert_eq!(expanded, "foo foo foo foo foo foo");
 
         let expanded = expand(
-            r#"
+            r"
                 #define foo bar
                 #define bar foo
                 foo bar
-            "#,
+            ",
         );
         assert_eq!(expanded, "foo bar");
     }
@@ -1367,10 +1367,10 @@ mod tests {
     #[test]
     fn backslash() {
         let expanded = expand(
-            r#"
+            r"
                 #define foo \ a
                 foo
-            "#,
+            ",
         );
         assert_eq!(expanded, "\\ a");
     }
@@ -1395,10 +1395,10 @@ mod tests {
     fn comment_escaped_newl() {
         // We don't escape newlines in comments
         let expanded = expand(
-            r#"
+            r"
                 // some comment \
                 foo
-            "#,
+            ",
         );
         assert_eq!(expanded, "foo");
     }
@@ -1408,11 +1408,11 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #if 0
                 #warning foo
                 #endif
-            "#,
+            ",
         );
         assert!(state.warnings().is_empty());
     }
@@ -1422,11 +1422,11 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #if 0
                 #error foo
                 #endif
-            "#,
+            ",
         );
         assert!(state.errors().is_empty());
     }
@@ -1434,12 +1434,12 @@ mod tests {
     #[test]
     fn expand_inactive() {
         let expanded = expand(
-            r#"
+            r"
                 #define foo bar
                 #if 0
                 foo
                 #endif
-            "#,
+            ",
         );
         assert!(expanded.is_empty());
     }
@@ -1447,12 +1447,12 @@ mod tests {
     #[test]
     fn define_inactive() {
         let expanded = expand(
-            r#"
+            r"
                 #if 0
                 #define foo bar
                 #endif
                 foo
-            "#,
+            ",
         );
         assert_eq!(expanded, "foo");
     }
@@ -1462,11 +1462,11 @@ mod tests {
         let mut vfs = SourceMap::default();
         let mut state = pp(
             &mut vfs,
-            r#"
+            r"
                 #define foo 123
                 #define foo 456
                 #define foo bar
-            "#,
+            ",
         );
         // Not an error, and the value should be updated, but we should emit
         // a warning each time it is redefined.
@@ -1533,10 +1533,10 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #ifdef tru foo
                 #endif
-            "#,
+            ",
         );
         assert_eq!(state.warnings().len(), 1);
     }
@@ -1546,10 +1546,10 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #ifndef tru foo
                 #endif
-            "#,
+            ",
         );
         assert_eq!(state.warnings().len(), 1);
     }
@@ -1596,7 +1596,7 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(
             &mut vfs,
-            r#"
+            r"
                 #pragma once
                 #pragma foo bar baz
                 #pragma 🤠
@@ -1611,7 +1611,7 @@ mod tests {
                 #pragma warning(pop)
 
                 #pragma
-            "#,
+            ",
         );
         assert!(state.errors().is_empty());
         assert!(state.warnings().is_empty());
@@ -1620,7 +1620,7 @@ mod tests {
     #[test]
     fn invalid_expr() {
         let output = expand(
-            r#"
+            r"
                 #if a +
                     abc
                 #elif b +
@@ -1628,7 +1628,7 @@ mod tests {
                 #else
                     123
                 #endif
-            "#,
+            ",
         );
         // Invalid expressions will always evaluate to 0.
         assert_eq!(output, "123");
@@ -1637,14 +1637,14 @@ mod tests {
     #[test]
     fn undef_break_cycle() {
         let output = expand(
-            r#"
+            r"
                 #define foo bar
                 #define bar baz
                 foo // should be baz
 
                 #undef bar
                 foo // should be bar
-            "#,
+            ",
         );
         assert_eq!(output, "baz \n\nbar");
     }

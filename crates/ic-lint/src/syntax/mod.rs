@@ -27,7 +27,7 @@
 
 //! Collection of lints that check the syntactic validity of the syntax tree.
 
-pub mod ascii;
-// pub mod empty;
 pub mod ann_members;
+pub mod ascii;
+pub mod empty;
 pub mod sanity;

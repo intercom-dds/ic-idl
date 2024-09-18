@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{error_span, warn_span, Color, Diag, Label};
+use ic_diagnostic::{warn_span, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
 use ic_syntax::Declarator;
 
@@ -35,7 +35,7 @@ pub struct ArrayParam<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-impl<'a> Visitor<'a> for ArrayParam<'_> {
+impl<'a> Visitor<'a> for ArrayParam<'a> {
     fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
         if let Declarator::Array(decl) = &param.decl {
             let diag = warn_span(

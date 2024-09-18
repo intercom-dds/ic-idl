@@ -26,9 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_syntax::visit::{
-    visit_attribute, visit_struct_field, visit_tree, visit_typedef, visit_union_variant, Visitor,
+    visit_attribute, visit_struct_field, visit_tree, visit_union_variant, Visitor,
 };
-use ic_syntax::{Declarator, Field, Ident, Item, Path, UnionField};
+use ic_syntax::{Declarator, Ident, Item};
 
 use crate::{Category, Lint, LintCtx};
 

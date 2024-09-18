@@ -428,7 +428,7 @@ enum UnionElementKind {
 };
 
 @nested
-struct UnionMember : IDecl {
+struct UnionMember {
     @external Type ty;
     Declarator decl;
 };
@@ -447,9 +447,7 @@ case ELEMENT_NULL:
 };
 
 @nested
-struct UnionField {
-    sequence<AnnotationAppl> annotations;
-
+struct UnionField : IDecl {
     /// Case labels that map to this variant.
     sequence<Label> labels;
 

@@ -2841,17 +2841,6 @@ impl ::intercom_cts::decode::EnumVisitor for UnionElementKind {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionMember {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
-    pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
-    pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub ty: Box<crate::ast::Type>,
     pub decl: crate::ast::Declarator,
 }
@@ -2860,8 +2849,6 @@ impl UnionMember {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            span: <crate::ast::Span>::default(),
-            annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             ty: Box::new(<crate::ast::Type>::default()),
             decl: <crate::ast::Declarator>::default(),
         }
@@ -2882,8 +2869,6 @@ impl ::intercom_cts::Marshal for UnionMember {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("UnionMember")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
         state.encode_field(0, "ty", &self.ty)?;
         state.encode_field(1, "decl", &self.decl)?;
         state.end()
@@ -2898,8 +2883,6 @@ impl ::intercom_cts::Unmarshal for UnionMember {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("UnionMember")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
         state.decode_field(0, "ty", &mut self.ty)?;
         state.decode_field(1, "decl", &mut self.decl)?;
         Ok(())
@@ -3036,6 +3019,16 @@ impl ::intercom_cts::Unmarshal for UnionElement {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionField {
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    ///
+    /// The span of the above module will start at 'm' and end at '}'.
+    pub span: crate::ast::Span,
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     /// Case labels that map to this variant.
     pub labels: Vec<crate::ast::Label>,
@@ -3046,6 +3039,7 @@ impl UnionField {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             labels: <Vec<crate::ast::Label>>::default(),
             field: <crate::ast::UnionElement>::default(),
@@ -3067,9 +3061,10 @@ impl ::intercom_cts::Marshal for UnionField {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("UnionField")?;
-        state.encode_field(0, "annotations", &self.annotations)?;
-        state.encode_field(1, "labels", &self.labels)?;
-        state.encode_field(2, "field", &self.field)?;
+        state.encode_field(0, "span", &self.span)?;
+        state.encode_field(1, "annotations", &self.annotations)?;
+        state.encode_field(0, "labels", &self.labels)?;
+        state.encode_field(1, "field", &self.field)?;
         state.end()
     }
 }
@@ -3082,9 +3077,10 @@ impl ::intercom_cts::Unmarshal for UnionField {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("UnionField")?;
-        state.decode_field(0, "annotations", &mut self.annotations)?;
-        state.decode_field(1, "labels", &mut self.labels)?;
-        state.decode_field(2, "field", &mut self.field)?;
+        state.decode_field(0, "span", &mut self.span)?;
+        state.decode_field(1, "annotations", &mut self.annotations)?;
+        state.decode_field(0, "labels", &mut self.labels)?;
+        state.decode_field(1, "field", &mut self.field)?;
         Ok(())
     }
 }

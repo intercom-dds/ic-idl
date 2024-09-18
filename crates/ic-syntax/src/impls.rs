@@ -34,15 +34,10 @@ use crate::{
 
 impl Item {
     #[must_use]
-    pub fn def_module(
-        annotations: Vec<AnnotationAppl>,
-        ident: Ident,
-        definitions: Vec<Item>,
-        span: Span,
-    ) -> Self {
+    pub fn def_module(ident: Ident, definitions: Vec<Item>, span: Span) -> Self {
         Self::ModuleValue(ModuleDef {
             span,
-            annotations,
+            annotations: vec![],
             ident,
             definitions,
         })

@@ -192,12 +192,9 @@ fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> +
     let module_def = keyword(Kw::Module)
         .ignore_then(ident())
         .then(items)
-        .annotated()
         .then_ignore(just(Kind::Semi));
 
-    module_def.map_with_span(|(applied, (ident, defs)), span| {
-        Item::def_module(applied, ident, defs, span)
-    })
+    module_def.map_with_span(|(ident, defs), span| Item::def_module(ident, defs, span))
 }
 
 // Rule 4
@@ -681,10 +678,10 @@ fn case() -> impl IdlParser<UnionField> {
     let def = case_label()
         .repeated()
         .at_least(1)
-        .then(element_spec())
-        .annotated();
+        .then(element_spec().annotated());
 
-    def.map(|(annotations, (labels, field))| UnionField {
+    def.map_with_span(|(labels, (annotations, field)), span| UnionField {
+        span,
         annotations,
         labels,
         field,
@@ -714,14 +711,11 @@ fn element_spec() -> impl IdlParser<UnionElement> {
 
     let ty = type_spec()
         .then(declarator())
-        .annotated()
         .then_ignore(just(Kind::Semi))
-        .map_with_span(|(annotations, (ty, decl)), span| {
+        .map(|(ty, decl)| {
             UnionElement::Member(UnionMember {
                 ty: Box::new(ty),
                 decl,
-                span,
-                annotations,
             })
         });
 

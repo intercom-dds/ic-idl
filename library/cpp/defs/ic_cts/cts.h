@@ -38,11 +38,6 @@
 #include "ic_cts/span.h"
 // IWYU pragma: end_exports
 
-// Remove macros defined in mman-linux.h, conflicts with XTypes MAP_TYPE
-#ifdef MAP_TYPE
-#  undef MAP_TYPE
-#endif
-
 // Remove macros defined in VS2010 stdlib
 #ifdef min
 #  undef min
@@ -58,6 +53,7 @@ struct Object {};
 
 template <typename T>
 using traits = TypeTraits<T>;
+
 }  // namespace ic_cts
 
 #ifndef IC_NO_IDL_NAMESPACE

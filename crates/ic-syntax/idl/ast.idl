@@ -428,7 +428,7 @@ enum UnionElementKind {
 };
 
 @nested
-struct UnionMember {
+struct UnionMember : IDecl {
     @external Type ty;
     Declarator decl;
 };

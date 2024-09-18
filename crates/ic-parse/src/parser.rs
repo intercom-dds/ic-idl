@@ -701,10 +701,12 @@ fn element_spec() -> impl IdlParser<UnionElement> {
         .then(declarator())
         .annotated()
         .then_ignore(just(Kind::Semi))
-        .map(|(ann, (ty, decl))| {
+        .map_with_span(|(annotations, (ty, decl)), span| {
             UnionElement::Member(UnionMember {
                 ty: Box::new(ty),
                 decl,
+                span,
+                annotations,
             })
         });
 

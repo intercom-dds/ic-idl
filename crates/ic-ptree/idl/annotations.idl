@@ -173,7 +173,7 @@ module annotations {
     string name;
 };
 
-@annotation _oneway {
+@annotation oneway {
     boolean value default TRUE;
 };
 
@@ -182,7 +182,7 @@ module annotations {
 };
 
 // Old annotation for bitmask
-@annotation _bitset {};
+@annotation bitset {};
 
 // Old name for bit_bound
 @annotation bitbound {

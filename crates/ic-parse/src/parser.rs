@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused)]
-
 use chumsky::prelude::*;
 use chumsky::Parser;
 use ic_lexer::token::Kw;
@@ -84,7 +82,7 @@ fn floating_pt_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::Float(v) => v };
     lit.map_with_span(|v, span| Literal {
         span,
-        value: LiteralValue::Float(0.0),
+        value: LiteralValue::Float(v),
     })
 }
 
@@ -213,9 +211,24 @@ fn scoped_name() -> impl IdlParser<Path> {
     })
 }
 
-// Similar to scoped_name, but for applied annotations
+// Similar to scoped_name, but for applied annotations. This converts any
+// keywords into identifiers to handle things like "@default" and "@::default"
 fn annotation_ident() -> impl IdlParser<Path> {
-    just(Kind::At).ignore_then(scoped_name())
+    let keyword = select! { Kind::Keyword(v) => v.to_string() }
+        .map_with_span(|name, span| Ident { name, span });
+
+    let ident = choice((ident(), keyword));
+    let leading = just(Kind::DColon).map_with_span(|_, span| span).or_not();
+    let path = leading
+        .then(ident.separated_by(just(Kind::DColon)).at_least(1))
+        .boxed();
+
+    just(Kind::At)
+        .ignore_then(path)
+        .map(|(leading_colons, segments)| Path {
+            leading_colons,
+            segments,
+        })
 }
 
 // Rule 5

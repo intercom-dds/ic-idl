@@ -27,7 +27,7 @@
 
 # User Documentation:
 
-# Passing LANGUAGE <CPP|PYTHON|RUST|IDL|PROTOBUf> to cidl_generate() will cause
+# Passing LANGUAGE <CPP|PYTHON|RUST|IDL|PROTOBUf> to idl_generate() will cause
 # that language to be generated. If no LANGUAGE is specified CPP will be
 # generated. Multiple languages in the same statement is not supported.
 #
@@ -44,24 +44,24 @@
 # parsing the INPUT_IDL files. The idl-directory bundled with the InterCOM
 # redistributables are automatically included.
 #
-# FLAGS will be passed as options to CIDL when generating.
-# If CIDL_GENERATE_DEFAULT_FLAGS is defined, this will always be prepended to
+# FLAGS will be passed as options to IC when generating.
+# If IC_GENERATE_DEFAULT_FLAGS is defined, this will always be prepended to
 # all calls in the current scope.
 #
 # Any unparsed parameters will be added to the INPUT_IDL list.
-# "cidl_generate( myType )" will set ${CMAKE_CURRENT_SOURCE_DIR}/myType.idl
+# "idl_generate( myType )" will set ${CMAKE_CURRENT_SOURCE_DIR}/myType.idl
 # as your input.
 #
 # The OUTPUT_VAR list will be populated with ${DESTINATION}/<idl-file> and set
-# in PARENT_SCOPE. OUTPUT_VAR will default to being named CIDL_GENERATE_OUTPUTS,
+# in PARENT_SCOPE. OUTPUT_VAR will default to being named IC_GENERATE_OUTPUTS,
 # and is assigned in the parent scope. Note that OUTPUT_VAR will be overwritten
-# with each call to cidl_generate().
+# with each call to idl_generate().
 #
 # The OUTPUT_ACCUMULATED list will append to the variable, rather than
 # overwriting the entire list each time. This is useful for cases where
 # switches may change, but you would still like to give multiple outputs
 # to the same target. Avoid using the same variable for OUTPUT_VAR (default
-# CIDL_GENERATE_OUTPUTS) and OUTPUT_ACCUMULATED, as the former will overwrite
+# IC_GENERATE_OUTPUTS) and OUTPUT_ACCUMULATED, as the former will overwrite
 # the latter.
 #
 # If you know your generated code will not match the output expected by this
@@ -121,8 +121,8 @@ function(IDL_GENERATE)
 
     string( TOUPPER ${_IC_GENERATE_LANGUAGE} _IC_GENERATE_LANGUAGE )
 
-    if( CIDL_GENERATE_DEFAULT_FLAGS )
-        list( APPEND _IC_GENERATE_FLAGS ${CIDL_GENERATE_DEFAULT_FLAGS} )
+    if( IC_GENERATE_DEFAULT_FLAGS )
+        list( APPEND _IC_GENERATE_FLAGS ${IC_GENERATE_DEFAULT_FLAGS} )
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "PYTHON" )
@@ -180,10 +180,6 @@ function(IDL_GENERATE)
         endif()
     endif()
 
-    if( NOT CIDL_L_EXE AND TARGET InterCOM::cidl )
-        get_property( CIDL_L_EXE TARGET InterCOM::cidl PROPERTY LOCATION )
-    endif()
-
     foreach( _INPUT ${_IC_GENERATE_INPUT_IDL} )
 
         get_filename_component( _FILE_NAME "${_INPUT}" NAME )
@@ -210,10 +206,10 @@ function(IDL_GENERATE)
 
         if( _IC_GENERATE_OVERRIDE_OUTPUTS )
             set( _ABS_OUTPUT ${_IC_GENERATE_OVERRIDE_OUTPUTS} )
-        elseif(CIDL_L_EXE)
+        elseif(IC_L_EXE)
             execute_process(
                 COMMAND
-                    ${_ENV_CMD} ${CIDL_L_EXE} ${_IC_ARGS} -l
+                    ${_ENV_CMD} ${IC_L_EXE} ${_IC_ARGS} -l
                 OUTPUT_VARIABLE
                     _IC_FILE_LIST
                 ERROR_VARIABLE
@@ -223,11 +219,11 @@ function(IDL_GENERATE)
                 OUTPUT_STRIP_TRAILING_WHITESPACE )
 
             if( NOT _IC_RESULT EQUAL 0 )
-                message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_IC_ARGS_PRETTY}] returned ${_IC_RESULT}: ${_IC_ERROR}" )
+                message( FATAL_ERROR "[${IC_L_EXE} -l ${_IC_ARGS_PRETTY}] returned ${_IC_RESULT}: ${_IC_ERROR}" )
             endif()
 
             if( _IC_FILE_LIST STREQUAL "" )
-                message( FATAL_ERROR "[${CIDL_L_EXE} -l ${_IC_ARGS_PRETTY}] returned no output" )
+                message( FATAL_ERROR "[${IC_L_EXE} -l ${_IC_ARGS_PRETTY}] returned no output" )
             endif()
 
             string( REGEX REPLACE "\n" ";" _IC_FILE_LIST "${_IC_FILE_LIST}")
@@ -239,12 +235,12 @@ function(IDL_GENERATE)
                 endif()
             endforeach()
         else()
-            message(FATAL_ERROR "Unable to locate the ic-idl executable ${CIDL_L_EXE}")
+            message(FATAL_ERROR "Unable to locate the ic-idl executable ${IC_L_EXE}")
         endif()
 
         list( APPEND _OUTPUT_LIST ${_ABS_OUTPUT} )
 
-        if( CIDL_GENERATE_TRACE )
+        if( IC_GENERATE_TRACE )
             message( "" )
             message( "INPUT: ${_INPUT}" )
             message( "INPUT_INCLUDES: ${_INPUT_INCLUDES}" )
@@ -275,16 +271,16 @@ function(IDL_GENERATE)
             WORKING_DIRECTORY
                 ${_ABS_DIRECTORY}
             COMMENT
-                "[CIDL][${_FILE_BASENAME}] -> ${_ABS_DESTINATION}" )
+                "[IC][${_FILE_BASENAME}] -> ${_ABS_DESTINATION}" )
     endforeach()
 
     list( REMOVE_DUPLICATES _OUTPUT_LIST )
 
     if( NOT _IC_GENERATE_OUTPUT_VAR )
-        set( _IC_GENERATE_OUTPUT_VAR CIDL_GENERATE_OUTPUTS )
+        set( _IC_GENERATE_OUTPUT_VAR IC_GENERATE_OUTPUTS )
     endif()
 
-    # NB: CIDL_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE
+    # NB: IC_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE
     set( ${_IC_GENERATE_OUTPUT_VAR} ${_OUTPUT_LIST} PARENT_SCOPE )
 
     if( _IC_GENERATE_OUTPUT_ACCUMULATED )

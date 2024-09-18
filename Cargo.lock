@@ -194,6 +194,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-hir-tree"
+version = "0.0.0"
+dependencies = [
+ "ic-cli",
+]
+
+[[package]]
 name = "ic-hir-xform"
 version = "0.0.0"
 dependencies = [

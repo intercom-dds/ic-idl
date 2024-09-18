@@ -42,6 +42,7 @@ members = [
     "crates/ic-emit",
     "crates/ic-expr",
     "crates/ic-hir",
+    "crates/ic-hir-tree",
     "crates/ic-hir-xform",
     "crates/ic-idl",
     "crates/ic-lexer",

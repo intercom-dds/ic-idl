@@ -302,6 +302,12 @@ pub fn from_cursor(
                 ic_preproc::Kind::Newline => continue,
                 ic_preproc::Kind::Ident => {
                     let ident = iter.source_of(next.span).to_string();
+                    let ident = if let Some(v) = ident.strip_prefix('_') {
+                        v.to_string()
+                    } else {
+                        ident
+                    };
+
                     break Some(Token {
                         kind: Kind::Ident(ident),
                         span: next.span,

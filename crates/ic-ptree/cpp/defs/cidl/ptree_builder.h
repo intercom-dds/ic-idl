@@ -37,6 +37,8 @@ extern "C" {
 
 struct parser_state;
 
+void set_node_flags(struct ptree* p, enum ptree_opts flags);
+
 struct ptree* append_node(struct parser_state*, struct ptree* list, struct ptree* node);
 
 struct ptree* append_enum_node(struct parser_state*, struct ptree* list, struct ptree* node);

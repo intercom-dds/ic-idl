@@ -794,6 +794,10 @@ void clear_namespace_nodes(parser_state* state) {
     }
 }
 
+void set_node_flags(ptree* p, ptree_opts flags) {
+    p->flags = flags;
+}
+
 ptree* append_node(parser_state* state, ptree* list, ptree* node) {
     if (list == node) {
         return list;

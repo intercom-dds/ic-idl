@@ -46,7 +46,7 @@ const RECURSION_DEPTH: usize = 200;
 pub struct ProcArgs {
     include_dirs: HashSet<PathBuf>,
     defines: HashMap<String, Option<String>>,
-    strip_comments: bool,
+    skip_comments: bool,
     recursion_depth: usize,
 }
 
@@ -55,7 +55,7 @@ impl Default for ProcArgs {
         Self {
             include_dirs: HashSet::default(),
             defines: HashMap::default(),
-            strip_comments: false,
+            skip_comments: false,
             recursion_depth: RECURSION_DEPTH,
         }
     }
@@ -103,9 +103,13 @@ impl ProcArgs {
         self
     }
 
-    pub fn strip_comments(mut self, strip: bool) -> Self {
-        self.strip_comments = strip;
+    pub fn skip_comments(mut self, strip: bool) -> Self {
+        self.skip_comments = strip;
         self
+    }
+
+    pub fn get_skip_comments(&self) -> bool {
+        self.skip_comments
     }
 }
 

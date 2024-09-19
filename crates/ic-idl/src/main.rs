@@ -112,7 +112,8 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let args = ProcArgs::default()
         .define("__IC_IDL__", None)
         .defines(defines)
-        .includes(options.include.clone());
+        .includes(options.include.clone())
+        .skip_comments(options.ignore_comments);
 
     let mut trees = vec![];
     let files = collect_files(&options.files)?;

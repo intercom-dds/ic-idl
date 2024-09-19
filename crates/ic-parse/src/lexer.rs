@@ -293,6 +293,7 @@ where
 #[must_use]
 pub fn from_cursor(
     mut iter: TokenIter<'_, State>,
+    ignore_comments: bool,
 ) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
     let iter = std::iter::from_fn(move || {
         loop {
@@ -307,6 +308,9 @@ pub fn from_cursor(
                     });
                 }
                 ic_preproc::Kind::Comment => {
+                    if ignore_comments {
+                        continue;
+                    }
                     let comment = iter.source_of(next.span).to_string();
                     break Some(Token {
                         kind: Kind::Comment(comment),

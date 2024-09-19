@@ -192,8 +192,9 @@ pub fn from_file(
     args: ProcArgs,
     vfs: &mut SourceMap,
 ) -> Result<ParseResult, Vec<Error>> {
+    let skip = args.get_skip_comments();
     let iter = ic_preproc::preprocess(file_id, args, vfs);
-    let tokens = lexer::from_cursor(iter);
+    let tokens = lexer::from_cursor(iter, skip);
     let tree = parser::specification()
         .parse(tokens)
         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;

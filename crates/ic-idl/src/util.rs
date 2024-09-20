@@ -26,9 +26,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashSet;
+use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
+use ic_cli::color::Colorize;
 
 #[macro_export]
 macro_rules! error {
@@ -92,6 +94,32 @@ where
             std::fs::create_dir_all(p)?;
         }
         std::fs::write(path, contents)?;
+    }
+    Ok(())
+}
+
+pub fn safe_purge<P>(dir: P) -> anyhow::Result<()>
+where
+    P: AsRef<Path>,
+{
+    const BLACKLIST: &[&str] = &[".git", ".hg"];
+
+    let filter = |entry: DirEntry| {
+        BLACKLIST
+            .iter()
+            .find(|v| entry.file_name().eq_ignore_ascii_case(v))
+    };
+
+    if let Ok(v) = std::fs::metadata(&dir) {
+        if v.is_dir() {
+            if let Some(deny) = std::fs::read_dir(&dir)?.flatten().find_map(filter) {
+                bail!(
+                    "cowardly refusing to purge output directory that contains `{}`",
+                    deny.yellow(),
+                );
+            }
+            std::fs::remove_dir_all(&dir)?;
+        }
     }
     Ok(())
 }

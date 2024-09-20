@@ -214,11 +214,7 @@ fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<Fi
     {
         let dir = std::path::absolute(dir)?;
         if options.purge_dirs {
-            if let Ok(v) = std::fs::metadata(&dir) {
-                if v.is_dir() {
-                    std::fs::remove_dir_all(&dir)?;
-                }
-            }
+            util::safe_purge(&dir)?;
         }
 
         // Invoke the backend and update the file paths

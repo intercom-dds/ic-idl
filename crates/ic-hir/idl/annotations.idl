@@ -93,7 +93,7 @@ module annotations {
     boolean value default TRUE;
 };
 
-@annotation _default {
+@annotation default {
     any value;
 };
 
@@ -184,7 +184,7 @@ module annotations {
 };
 
 // Old annotation for bitmask
-@annotation _bitset {};
+@annotation bitset {};
 
 // Old name for bit_bound
 @annotation bitbound {

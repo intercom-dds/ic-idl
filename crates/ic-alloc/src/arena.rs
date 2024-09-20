@@ -36,7 +36,7 @@ use intercom_cts::decode::{Deserializer, FieldDeserializer};
 use intercom_cts::encode::{FieldSerializer, Serializer};
 use intercom_cts::{Marshal, Unmarshal};
 
-const ARENA_COUNT: AtomicU16 = AtomicU16::new(0);
+static ARENA_COUNT: AtomicU16 = AtomicU16::new(0);
 
 #[must_use]
 pub struct Id<T> {
@@ -159,6 +159,9 @@ impl<T> Arena<T> {
         index
     }
 
+    /// # Panics
+    ///
+    /// Panics if the given ID did not come from this arena.
     pub fn get<Q>(&self, id: Q) -> &T
     where
         Q: Borrow<Id<T>>,
@@ -168,6 +171,9 @@ impl<T> Arena<T> {
         &self.elements[id.id]
     }
 
+    /// # Panics
+    ///
+    /// Panics if the given ID did not come from this arena.
     pub fn get_mut<Q>(&mut self, id: Q) -> &mut T
     where
         Q: Borrow<Id<T>>,

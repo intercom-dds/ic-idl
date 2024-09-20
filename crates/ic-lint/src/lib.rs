@@ -39,6 +39,8 @@ mod semantic;
 mod syntax;
 mod unsupported;
 
+mod iter;
+
 /// The supported lint categories.
 #[derive(Copy, Clone, Debug)]
 pub enum Category {
@@ -74,8 +76,9 @@ impl LintCtx<'_> {
     }
 
     /// Returns a slice of the given span.
+    // TODO: spans can go across files, this has to be accounted for
     pub fn slice(&self, span: Span) -> &str {
-        todo!()
+        &self.vfs.source_str(span.start.file_id)[span.range()]
     }
 }
 
@@ -126,6 +129,7 @@ pub fn lint_syntax(tree: &[Item]) -> Report {
         pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
         pedantic::null::NullVariant::check(&ctx, tree);
         pedantic::omitted_in::OmittedIn::check(&ctx, tree);
+        pedantic::scoped_enum::ScopedEnum::check(&ctx, tree);
         semantic::oneway::NonVoidOneway::check(&ctx, tree);
         semantic::unsupported::Unsupported::check(&ctx, tree);
         syntax::ann_members::AnnMembers::check(&ctx, tree);

@@ -25,43 +25,45 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::color::Colorize;
-use ic_diagnostic::{warn_span, Label};
-use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{Item, Literal, LiteralValue};
+use std::fmt::Display;
+use std::iter::Enumerate;
 
-use crate::{Category, Lint, LintCtx};
-
-/// Lint that checks for uses of lowercase `true` or `false`, neither of which
-/// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
-pub struct LowercaseBool<'a> {
-    ctx: &'a LintCtx<'a>,
-}
-
-impl<'a> Lint<'a> for LowercaseBool<'a> {
-    fn category() -> Category {
-        Category::Pedantic
+pub trait IterExt: Iterator + Sized {
+    /// Joins all elements of an interator into a string with the specified
+    /// separator.
+    fn join(mut self, sep: &str) -> String
+    where
+        Self::Item: Display,
+    {
+        self.map(|v| v.to_string()).collect::<Vec<_>>().join("::")
     }
 
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
-        let mut lint = Self { ctx };
-        visit_tree(&mut lint, ast);
+    /// Skips the `N`-th elment of an iterator. Elements before and after the
+    /// `N`-th elements will be yielded as usual.
+    fn skip_nth(self, nth: usize) -> SkipNth<Self> {
+        SkipNth {
+            nth,
+            iter: self.enumerate(),
+        }
     }
 }
 
-impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_literal(&mut self, num: &'a Literal) {
-        if let LiteralValue::Bool(lit) = &num.value {
-            let slice = self.ctx.slice(num.span);
-            if slice.chars().any(char::is_lowercase) {
-                let fixed = slice.to_uppercase().green();
-                let diag = warn_span(
-                    "lowercase literals are InterCOM extension",
-                    Label::new(num.span).message("lowercase boolean literal"),
-                )
-                .help(format!("use `{fixed}` instead"));
-                self.ctx.report(diag);
+pub struct SkipNth<I> {
+    nth: usize,
+    iter: Enumerate<I>,
+}
+
+impl<I: Iterator> Iterator for SkipNth<I> {
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let (i, next) = self.iter.next()?;
+            if i != self.nth {
+                break Some(next);
             }
         }
     }
 }
+
+impl<T: Iterator> IterExt for T {}

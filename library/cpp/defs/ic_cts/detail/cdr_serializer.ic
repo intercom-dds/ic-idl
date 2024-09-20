@@ -178,7 +178,7 @@ inline void CdrWriter::reserve<uint8_t>(uint32_t a_count) {
 template <>
 inline void CdrWriter::reserve<uint16_t>(uint32_t a_count) {
     uint32_t to_pad = (m_buffer.write_index() - align_base()) & 1U;
-    uint32_t total_length = a_count * sizeof(uint16_t) + to_pad + m_buffer.write_index();
+    uint32_t total_length = (a_count * sizeof(uint16_t)) + to_pad + m_buffer.write_index();
     if (total_length > m_buffer.length()) {
         m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
@@ -192,7 +192,7 @@ inline void CdrWriter::reserve<uint32_t>(uint32_t a_count) {
     uint32_t to_pad =
         (sizeof(uint32_t) - (m_buffer.write_index() - align_base()) % sizeof(uint32_t)) %
         sizeof(uint32_t);
-    uint32_t total_length = a_count * sizeof(uint32_t) + to_pad + m_buffer.write_index();
+    uint32_t total_length = (a_count * sizeof(uint32_t)) + to_pad + m_buffer.write_index();
     if (total_length > m_buffer.length()) {
         m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
@@ -205,7 +205,7 @@ template <>
 inline void CdrWriter::reserve<uint64_t>(uint32_t a_count) {
     const uint32_t align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
     uint32_t to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
-    uint32_t total_length = a_count * sizeof(uint64_t) + to_pad + m_buffer.write_index();
+    uint32_t total_length = (a_count * sizeof(uint64_t)) + to_pad + m_buffer.write_index();
     if (total_length > m_buffer.length()) {
         m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
@@ -218,7 +218,7 @@ template <>
 inline void CdrWriter::reserve<long double>(uint32_t a_count) {
     const uint32_t align = (flags() & CDR_XCDR2) != 0 ? 4 : 8;
     uint32_t to_pad = (align - (m_buffer.write_index() - align_base()) % align) % align;
-    uint32_t total_length = a_count * 16 + to_pad + m_buffer.write_index();
+    uint32_t total_length = (a_count * 16) + to_pad + m_buffer.write_index();
     if (total_length > m_buffer.length()) {
         m_buffer.reserve_write(total_length - m_buffer.write_index());
     }
@@ -233,7 +233,7 @@ inline uint32_t CdrWriter::align_base() const {
 
 template <typename T>
 void CdrWriter::write_value(uint8_t* buf, T value) {
-    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
+    using value_type = typename unsigned_type_of<T>::type;
     const char* bytes = reinterpret_cast<const char*>(&value);
     if (flags() & CDR_BIG_ENDIAN) {
         put_uint<BigEndian, value_type>(buf, *reinterpret_cast<const value_type*>(bytes));
@@ -244,7 +244,7 @@ void CdrWriter::write_value(uint8_t* buf, T value) {
 
 template <typename T>
 void CdrWriter::write_values(const T* a_values, uint32_t a_count) {
-    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
+    using value_type = typename unsigned_type_of<T>::type;
     reserve<value_type>(a_count);
     const char* bytes = reinterpret_cast<const char*>(a_values);
     uint8_t* ptr = m_buffer.m_write_pointer;
@@ -265,7 +265,7 @@ void CdrWriter::write_values(const T* a_values, uint32_t a_count) {
 }
 
 inline void CdrWriter::begin_type(const TypeInfo& a_type_info) {
-    if (m_level + 1 >= dcps::cts::MAX_NESTED_DEPTH) {
+    if (m_level + 1 >= MAX_NESTED_DEPTH) {
         throw std::runtime_error("Cannot serialize type, nesting too deep");
     }
     TypeStackElement& element = m_type_stack[m_level + 1];
@@ -474,7 +474,7 @@ inline uint32_t CdrReader::align_base() const {
 
 template <typename T>
 void CdrReader::read_value(const uint8_t* buf, T& value) {
-    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
+    using value_type = typename unsigned_type_of<T>::type;
     char* bytes = reinterpret_cast<char*>(&value);
     if (flags() & CDR_BIG_ENDIAN) {
         get_uint<BigEndian, value_type>(buf, *reinterpret_cast<value_type*>(bytes));
@@ -485,7 +485,7 @@ void CdrReader::read_value(const uint8_t* buf, T& value) {
 
 template <typename T>
 void CdrReader::read_values(T* a_values, uint32_t a_count) {
-    using value_type = typename dcps::cts::unsigned_type_of<T>::type;
+    using value_type = typename unsigned_type_of<T>::type;
     reserve<value_type>(a_count);
     char* bytes = reinterpret_cast<char*>(a_values);
     const uint8_t* ptr = m_buffer.m_read_pointer;
@@ -506,7 +506,7 @@ void CdrReader::read_values(T* a_values, uint32_t a_count) {
 }
 
 inline void CdrReader::begin_type(const TypeInfo& a_info) {
-    if (m_level + 2 >= dcps::cts::MAX_NESTED_DEPTH) {
+    if (m_level + 2 >= MAX_NESTED_DEPTH) {
         throw std::runtime_error("Cannot deserialize type, nesting too deep");
     }
     TypeStackElement& parent = m_type_stack[m_level];
@@ -687,7 +687,7 @@ inline void CdrWriter::end_mutable_member_v1() {
         written > 0xFFFF) {
         reserve<uint32_t>(2);
         uint8_t* head = m_buffer.pointer(element.align_base - sizeof(uint32_t));
-        memmove(head + 3 * sizeof(uint32_t), head + sizeof(uint32_t), written);
+        memmove(head + (3 * sizeof(uint32_t)), head + sizeof(uint32_t), written);
         m_buffer.m_write_pointer += 2 * sizeof(uint32_t);
 
         uint16_t pid = PID_EXTENDED;
@@ -764,12 +764,12 @@ inline void CdrWriter::end_mutable_member_v2() {
                 break;
             }
             write_value(
-                m_buffer.pointer(element.align_base - 2 * sizeof(uint32_t)), element_header
+                m_buffer.pointer(element.align_base - (2 * sizeof(uint32_t))), element_header
             );
         } else {
             element_header |= (lc << 28);
             write_value(
-                m_buffer.pointer(element.align_base - 2 * sizeof(uint32_t)), element_header
+                m_buffer.pointer(element.align_base - (2 * sizeof(uint32_t))), element_header
             );
             write_value(m_buffer.pointer(element.align_base - sizeof(uint32_t)), written);
         }
@@ -879,8 +879,8 @@ CdrReader::read_param_header_v1(dcps::xtypes::MemberId& id, uint32_t& flag, uint
         id = extended[0] & 0xFFFFFFF;  // Upper 4 bits are reserved for future use
         length = extended[1];
         if (header[1] > 2 * sizeof(uint32_t)) {
-            reserve<uint8_t>(header[1] - 2 * sizeof(uint32_t));
-            m_buffer.advance_read(header[1] - 2 * sizeof(uint32_t));
+            reserve<uint8_t>(header[1] - (2 * sizeof(uint32_t)));
+            m_buffer.advance_read(header[1] - (2 * sizeof(uint32_t)));
         }
     } else {
         id = header[0] & PID_PID_MASK;
@@ -947,17 +947,17 @@ inline void transform_cdr(
     CdrWriter writer(a_out, a_out_encoding);
     CdrReader reader(a_in, a_in_encoding);
     if ((a_in_encoding & SERIALIZER_KEY_ONLY) && (a_out_encoding & SERIALIZER_KEY_ONLY)) {
-        dcps::cts::KeyOnlyWriter<CdrWriter> key_only_writer(writer);
-        dcps::cts::KeyOnlyReader<CdrReader> key_only_reader(reader);
-        dcps::cts::transform(key_only_writer, key_only_reader, a_type_info);
+        KeyOnlyWriter<CdrWriter> key_only_writer(writer);
+        KeyOnlyReader<CdrReader> key_only_reader(reader);
+        transform(key_only_writer, key_only_reader, a_type_info);
     } else if (a_in_encoding & SERIALIZER_KEY_ONLY) {
-        dcps::cts::KeyOnlyReader<CdrReader> key_only_reader(reader);
-        dcps::cts::transform(writer, key_only_reader, a_type_info);
+        KeyOnlyReader<CdrReader> key_only_reader(reader);
+        transform(writer, key_only_reader, a_type_info);
     } else if (a_out_encoding & SERIALIZER_KEY_ONLY) {
-        dcps::cts::KeyOnlyWriter<CdrWriter> key_only_writer(writer);
-        dcps::cts::transform(key_only_writer, reader, a_type_info);
+        KeyOnlyWriter<CdrWriter> key_only_writer(writer);
+        transform(key_only_writer, reader, a_type_info);
     } else {
-        dcps::cts::transform(writer, reader, a_type_info);
+        transform(writer, reader, a_type_info);
     }
 }
 

@@ -444,8 +444,6 @@ CTS_DEFINE_PRIMITIVE_TYPE(double);
 CTS_DEFINE_PRIMITIVE_TYPE(char16_t);
 CTS_DEFINE_PRIMITIVE_TYPE(char32_t);
 
-namespace dcps::cts {
-
 template <>
 struct unsigned_type_of<bool> {
     using type = uint8_t;
@@ -549,7 +547,7 @@ inline void TGenericUnmarshalBase<READER, UNMARSHAL>::StructValue::io(
                 a_member_info.default_value,
                 static_cast<uint32_t>(strlen(a_member_info.default_value))
             );
-            dcps::cts::GenericUnmarshal(reader).io(value);
+            GenericUnmarshal(reader).io(value);
         } else {
             EmptyUnmarshal empty;
             Serializer<EmptyUnmarshal, T> serialize;
@@ -704,7 +702,7 @@ inline void copy_member(WRITER& writer, READER& reader, const MemberInfo& member
             }
         }
         if (!copied && !reader.can_skip_type()) {
-            ic_cts::dcps::cts::EmptyWriter empty_writer;
+            EmptyWriter empty_writer;
             empty_writer.begin_member(member_info);
             transform(empty_writer, reader, *member_info.type);
             empty_writer.end_member();
@@ -724,7 +722,7 @@ inline void copy_member(WRITER& writer, READER& reader, const MemberInfo& member
                     );
                     transform(writer, json_reader, *member_info.type);
                 } else {
-                    ic_cts::dcps::cts::EmptyReader empty_reader;
+                    EmptyReader empty_reader;
                     transform(writer, empty_reader, *member_info.type);
                 }
                 writer.end_member();
@@ -903,7 +901,6 @@ inline void transform(WRITER& writer, READER& reader, const TypeInfo& type_info)
     writer.end_type();
 }
 
-}  // namespace dcps::cts
 }  // namespace ic_cts
 
 #ifdef INTERCOM_COMPILER_MICROSOFT

@@ -971,7 +971,7 @@ inline void JsonWriter::put(char c) {
 }
 
 inline void JsonWriter::begin_type(const TypeInfo& a_info) {
-    if (m_level + 1 >= dcps::cts::MAX_NESTED_DEPTH) {
+    if (m_level + 1 >= MAX_NESTED_DEPTH) {
         throw std::runtime_error("Cannot serialize type, nesting too deep");
     }
     maybe_comma();
@@ -1192,8 +1192,7 @@ inline void JsonWriter::write(const long double* a_values, uint32_t a_count, con
 
 template <typename T>
 inline void JsonWriter::write_integer(T& a_value, const TypeInfo& a_info) {
-    if (a_info.kind == ic_cts::dcps::xtypes::TK_ENUM ||
-        a_info.kind == ic_cts::dcps::xtypes::TK_BITMASK) {
+    if (a_info.kind == dcps::xtypes::TK_ENUM || a_info.kind == dcps::xtypes::TK_BITMASK) {
         std::string str;
         if (enum_to_string(str, a_value, &a_info)) {
             if (m_type_stack[m_level].info.name != nullptr &&
@@ -1221,7 +1220,7 @@ inline SerializerFlags JsonWriter::flags() const {
 }
 
 inline void JsonReader::begin_type(const TypeInfo& a_info) {
-    if (m_level >= dcps::cts::MAX_NESTED_DEPTH - 1) {
+    if (m_level >= MAX_NESTED_DEPTH - 1) {
         throw std::runtime_error("Cannot deserialize type, nesting too deep");
     }
     JsonNode current = m_type_stack[m_level].current;
@@ -1560,13 +1559,13 @@ inline bool JsonReader::read_from_string(T& a_value, const TypeInfo&) {
                 auto it = m_const_map.find(str);
                 if (it != m_const_map.end()) {
                     JsonReader reader(it->second);
-                    dcps::cts::GenericUnmarshal(reader).io(a_value);
+                    GenericUnmarshal(reader).io(a_value);
                     return true;
                 }
                 // Attempt to parse string as integer
                 JsonReader reader(str.c_str(), static_cast<uint32_t>(str.size()));
                 reader.m_const_map = m_const_map;
-                dcps::cts::GenericUnmarshal(reader).io(a_value);
+                GenericUnmarshal(reader).io(a_value);
                 return true;
             }
         } catch (...) {  // NOLINT

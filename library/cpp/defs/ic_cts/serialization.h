@@ -50,7 +50,6 @@ bool enum_to_string(std::string& res, T value, const TypeInfo* type);
 template <typename T>
 bool string_to_enum(T& value, const char* string, const TypeInfo* type);
 
-namespace dcps::cts {
 template <typename T>
 struct unsigned_type_of;
 
@@ -302,7 +301,7 @@ class KeyOnlyWriter : public GenericWriter {
     }
 
     bool is_relevant(const MemberInfo& a_member) override {
-        return (a_member.flags & xtypes::IS_KEY) != 0;
+        return (a_member.flags & dcps::xtypes::IS_KEY) != 0;
     }
 
     void begin_type(const TypeInfo& a_info) override {
@@ -314,17 +313,17 @@ class KeyOnlyWriter : public GenericWriter {
     }
 
     bool begin_member(const MemberInfo& a_member) override {
-        if (a_member.flags & xtypes::IS_KEY) {
+        if (a_member.flags & dcps::xtypes::IS_KEY) {
             return m_delegate.begin_member(a_member);
         }
-        if (type_level() > 1 && a_member.flags & xtypes::IS_IMPLICIT_KEY) {
+        if (type_level() > 1 && a_member.flags & dcps::xtypes::IS_IMPLICIT_KEY) {
             return m_delegate.begin_member(a_member);
         }
         return false;
     }
 
     bool begin_optional_member(const MemberInfo& a_member, bool a_present) override {
-        if (a_member.flags & xtypes::IS_KEY) {
+        if (a_member.flags & dcps::xtypes::IS_KEY) {
             return m_delegate.begin_optional_member(a_member, a_present);
         }
         return false;
@@ -416,10 +415,10 @@ class KeyOnlyReader : public GenericReader {
     }
 
     bool find_member(const MemberInfo& a_member) override {
-        if (a_member.flags & xtypes::IS_KEY) {
+        if (a_member.flags & dcps::xtypes::IS_KEY) {
             return m_delegate.find_member(a_member);
         }
-        if (type_level() > 1 && a_member.flags & xtypes::IS_IMPLICIT_KEY) {
+        if (type_level() > 1 && a_member.flags & dcps::xtypes::IS_IMPLICIT_KEY) {
             return m_delegate.find_member(a_member);
         }
         return false;
@@ -626,8 +625,9 @@ class TGenericMarshalBase {
         bool skip_member(const MemberInfo& a_member) {
             if (m_marshal.writer().flags() & SERIALIZER_KEY_ONLY) {
                 return (
-                    a_member.flags & xtypes::IS_KEY || (m_marshal.writer().type_level() > 1 &&
-                                                        a_member.flags & xtypes::IS_IMPLICIT_KEY)
+                    a_member.flags & dcps::xtypes::IS_KEY ||
+                    (m_marshal.writer().type_level() > 1 &&
+                     a_member.flags & dcps::xtypes::IS_IMPLICIT_KEY)
                 );
             }
             return false;
@@ -813,8 +813,9 @@ class TGenericUnmarshalBase {
         bool skip_member(const MemberInfo& a_member) {
             if (m_unmarshal.reader().flags() & SERIALIZER_KEY_ONLY) {
                 return (
-                    a_member.flags & xtypes::IS_KEY || (m_unmarshal.reader().type_level() > 1 &&
-                                                        a_member.flags & xtypes::IS_IMPLICIT_KEY)
+                    a_member.flags & dcps::xtypes::IS_KEY ||
+                    (m_unmarshal.reader().type_level() > 1 &&
+                     a_member.flags & dcps::xtypes::IS_IMPLICIT_KEY)
                 );
             }
             return false;
@@ -994,7 +995,6 @@ void transform(WRITER& writer, READER& reader);
 template <typename WRITER, typename READER>
 void transform(WRITER& writer, READER& reader, const TypeInfo& type_info);
 
-}  // namespace dcps::cts
 }  // namespace ic_cts
 
 #ifdef INTERCOM_COMPILER_MICROSOFT

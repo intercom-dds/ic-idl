@@ -264,7 +264,7 @@ class JsonNode {
     size_t m_value_count;
 };
 
-class JsonReader : public dcps::cts::GenericReader {
+class JsonReader : public GenericReader {
   public:
     explicit JsonReader(std::string_view a_text, SerializerFlags a_flags = 0);
 
@@ -348,10 +348,10 @@ class JsonReader : public dcps::cts::GenericReader {
     SerializerFlags m_flags{0};
     uint32_t m_level{0};
     std::map<std::string, JsonNode> m_const_map;
-    Stack m_type_stack[dcps::cts::MAX_NESTED_DEPTH];
+    Stack m_type_stack[MAX_NESTED_DEPTH];
 };
 
-class JsonWriter : public dcps::cts::GenericWriter {
+class JsonWriter : public GenericWriter {
   public:
     explicit JsonWriter(
         std::ostream& out,
@@ -558,7 +558,7 @@ class JsonWriter : public dcps::cts::GenericWriter {
     uint32_t m_indentLevel{0U};
     bool m_is_new_line{false};
     bool m_needComma{false};
-    Stack m_type_stack[dcps::cts::MAX_NESTED_DEPTH]{{}};
+    Stack m_type_stack[MAX_NESTED_DEPTH]{{}};
     uint32_t m_level{0};
 };
 

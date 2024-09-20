@@ -31,34 +31,30 @@
 #include "ic_cts/serialization.h"
 
 namespace ic_cts {
-namespace dcps {
-namespace cts {
 using JsonMarshal = TGenericMarshal<JsonWriter>;
 using KeyOnlyJsonMarshal = TGenericMarshal<KeyOnlyWriter<JsonWriter>>;
 using JsonUnmarshal = TGenericUnmarshal<JsonReader>;
 using KeyOnlyJsonUnmarshal = TGenericUnmarshal<KeyOnlyReader<JsonReader>>;
-}  // namespace cts
-}  // namespace dcps
 
 template <typename T>
 std::ostream& marshal_json(std::ostream& stream, const T& value, bool pretty = false) {
     SerializerFlags flags = pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{};
     JsonWriter writer(stream, flags);
-    dcps::cts::GenericMarshal(writer).io(value);
+    GenericMarshal(writer).io(value);
     return stream;
 }
 
 template <typename T>
 std::ostream& marshal_json(std::ostream& stream, const T& value, SerializerFlags flags) {
     JsonWriter writer(stream, flags);
-    dcps::cts::GenericMarshal(writer).io(value);
+    GenericMarshal(writer).io(value);
     return stream;
 }
 
 template <typename T>
 std::istream& unmarshal_json(std::istream& stream, T& value, SerializerFlags flags) {
     JsonReader reader(stream, flags);
-    dcps::cts::GenericUnmarshal(reader).io(value);
+    GenericUnmarshal(reader).io(value);
     return stream;
 }
 
@@ -66,7 +62,7 @@ template <typename T>
 std::istream& unmarshal_json(std::istream& stream, T& value, bool strict = false) {
     SerializerFlags flags = strict ? SERIALIZER_STRICT : SerializerFlagsBits{};
     JsonReader reader(stream, flags);
-    dcps::cts::GenericUnmarshal(reader).io(value);
+    GenericUnmarshal(reader).io(value);
     return stream;
 }
 }  // namespace ic_cts

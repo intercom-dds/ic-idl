@@ -59,7 +59,7 @@ void read_encapsulation(
 
 void write_encapsulation(Buffer& a_buffer, SerializerFlags a_encoding, const TypeInfo& a_type_info);
 
-class CdrWriter : public dcps::cts::GenericWriter {
+class CdrWriter : public GenericWriter {
   public:
     CdrWriter(Buffer& a_out, SerializerFlags a_flags);
 
@@ -170,11 +170,11 @@ class CdrWriter : public dcps::cts::GenericWriter {
 
     Buffer& m_buffer;
     SerializerFlags m_flags;
-    std::array<TypeStackElement, dcps::cts::MAX_NESTED_DEPTH> m_type_stack;
+    std::array<TypeStackElement, MAX_NESTED_DEPTH> m_type_stack;
     uint32_t m_level;
 };
 
-class CdrReader : public dcps::cts::GenericReader {
+class CdrReader : public GenericReader {
   public:
     CdrReader(const Buffer& a_out, SerializerFlags a_flags);
 
@@ -288,15 +288,15 @@ class CdrReader : public dcps::cts::GenericReader {
 
     const Buffer& m_buffer;
     SerializerFlags m_flags;
-    std::array<TypeStackElement, dcps::cts::MAX_NESTED_DEPTH> m_type_stack;
+    std::array<TypeStackElement, MAX_NESTED_DEPTH> m_type_stack;
     uint32_t m_level;
 };
 
-using CdrUnmarshal = dcps::cts::TGenericUnmarshal<CdrReader>;
-using KeyOnlyCdrUnmarshal = dcps::cts::TGenericUnmarshal<dcps::cts::KeyOnlyReader<CdrReader>>;
+using CdrUnmarshal = TGenericUnmarshal<CdrReader>;
+using KeyOnlyCdrUnmarshal = TGenericUnmarshal<KeyOnlyReader<CdrReader>>;
 
-using CdrMarshal = dcps::cts::TGenericMarshal<CdrWriter>;
-using KeyOnlyCdrMarshal = dcps::cts::TGenericMarshal<dcps::cts::KeyOnlyWriter<CdrWriter>>;
+using CdrMarshal = TGenericMarshal<CdrWriter>;
+using KeyOnlyCdrMarshal = TGenericMarshal<KeyOnlyWriter<CdrWriter>>;
 
 template <typename T>
 inline void marshal_cdr(Buffer& a_buffer, SerializerFlags a_encoding, const T& a_value) {

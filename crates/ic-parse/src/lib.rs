@@ -92,7 +92,6 @@ mod parser;
 #[derive(Debug)]
 pub struct ParseResult {
     pub tree: Vec<Item>,
-    pub sources: SourceMap,
 }
 
 #[derive(Clone, Debug)]
@@ -199,10 +198,7 @@ pub fn from_file(
         .parse(tokens)
         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
 
-    Ok(ParseResult {
-        tree,
-        sources: vfs.clone(),
-    })
+    Ok(ParseResult { tree })
 }
 
 /// Constructs an AST from the given token iterator.
@@ -222,8 +218,5 @@ where
         .parse(stream)
         .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
 
-    Ok(ParseResult {
-        tree,
-        sources: SourceMap::default(),
-    })
+    Ok(ParseResult { tree })
 }

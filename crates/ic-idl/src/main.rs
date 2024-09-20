@@ -144,7 +144,7 @@ fn try_parse(
             }
 
             // Lint the AST
-            let report = ic_lint::lint_syntax(&v.tree);
+            let report = ic_lint::lint_syntax(&v.tree, vfs);
 
             for diag in &report.diagnostics {
                 let mut buf = String::new();
@@ -167,7 +167,7 @@ fn try_parse(
             // if options.unstable.hir_dump {
             //     println!("{hir:#?}");
             // }
-            Ok(ic_ptree::lower_ast(&v))
+            Ok(ic_ptree::lower_ast(&v, &vfs))
         }
         Err(e) => {
             // TODO: collect + join for all files

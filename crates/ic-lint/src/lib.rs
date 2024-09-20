@@ -113,10 +113,9 @@ pub struct Report {
 /// Lints that operate on the AST are mostly syntactic. Other lints that
 /// require more in-depth semantic analysis is typically done on the HIR with
 /// [`lint_hir`].
-pub fn lint_syntax(tree: &[Item]) -> Report {
-    let vfs = SourceMap::default();
+pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
     let ctx = LintCtx {
-        vfs: &vfs,
+        vfs,
         diagnostics: RefCell::default(),
     };
 

@@ -54,7 +54,7 @@ pub enum Include {
 }
 
 #[must_use]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FileInfo {
     /// Absolute path of the file.
     pub path: PathBuf,
@@ -68,8 +68,7 @@ pub struct FileInfo {
     pub kind: Include,
 }
 
-// TODO: remove clone
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct SourceMap {
     sources: Arena<FileInfo>,
     files: BTreeMap<PathBuf, FileId>,

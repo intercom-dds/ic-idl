@@ -56,7 +56,7 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
             if slice.chars().any(char::is_lowercase) {
                 let fixed = slice.to_uppercase().green();
                 let diag = warn_span(
-                    "lowercase literals are InterCOM extension",
+                    "lowercase boolean literals are InterCOM extension",
                     Label::new(num.span).message("lowercase boolean literal"),
                 )
                 .help(format!("use `{fixed}` instead"));

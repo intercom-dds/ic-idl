@@ -493,7 +493,7 @@ int get_bit_size(const ptree* elem) {
 
 numeric get_annotation_value(const ptree* ann, std::string_view name) {
     for (const ptree* p : ann ? ann->members : nullptr) {
-        if (name.compare(p->name) == 0) {
+        if (name == p->name) {
             return p->value;
         }
     }

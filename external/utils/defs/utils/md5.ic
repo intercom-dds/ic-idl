@@ -316,28 +316,28 @@ inline void md5transform(intercom::MD5Context& a_context) {
     unsigned int C = a_context.state[2];
     unsigned int D = a_context.state[3];
     for (int i = 0; i < 4; i++) {
-        A = functionRound1(X, A, B, C, D, KSIround1[0 + 4 * i]);
-        D = functionRound1(X, D, A, B, C, KSIround1[1 + 4 * i]);
-        C = functionRound1(X, C, D, A, B, KSIround1[2 + 4 * i]);
-        B = functionRound1(X, B, C, D, A, KSIround1[3 + 4 * i]);
+        A = functionRound1(X, A, B, C, D, KSIround1[0 + (4 * i)]);
+        D = functionRound1(X, D, A, B, C, KSIround1[1 + (4 * i)]);
+        C = functionRound1(X, C, D, A, B, KSIround1[2 + (4 * i)]);
+        B = functionRound1(X, B, C, D, A, KSIround1[3 + (4 * i)]);
     }
     for (int i = 0; i < 4; i++) {
-        A = functionRound2(X, A, B, C, D, KSIround2[0 + 4 * i]);
-        D = functionRound2(X, D, A, B, C, KSIround2[1 + 4 * i]);
-        C = functionRound2(X, C, D, A, B, KSIround2[2 + 4 * i]);
-        B = functionRound2(X, B, C, D, A, KSIround2[3 + 4 * i]);
+        A = functionRound2(X, A, B, C, D, KSIround2[0 + (4 * i)]);
+        D = functionRound2(X, D, A, B, C, KSIround2[1 + (4 * i)]);
+        C = functionRound2(X, C, D, A, B, KSIround2[2 + (4 * i)]);
+        B = functionRound2(X, B, C, D, A, KSIround2[3 + (4 * i)]);
     }
     for (int i = 0; i < 4; i++) {
-        A = functionRound3(X, A, B, C, D, KSIround3[0 + 4 * i]);
-        D = functionRound3(X, D, A, B, C, KSIround3[1 + 4 * i]);
-        C = functionRound3(X, C, D, A, B, KSIround3[2 + 4 * i]);
-        B = functionRound3(X, B, C, D, A, KSIround3[3 + 4 * i]);
+        A = functionRound3(X, A, B, C, D, KSIround3[0 + (4 * i)]);
+        D = functionRound3(X, D, A, B, C, KSIround3[1 + (4 * i)]);
+        C = functionRound3(X, C, D, A, B, KSIround3[2 + (4 * i)]);
+        B = functionRound3(X, B, C, D, A, KSIround3[3 + (4 * i)]);
     }
     for (int i = 0; i < 4; i++) {
-        A = functionRound4(X, A, B, C, D, KSIround4[0 + 4 * i]);
-        D = functionRound4(X, D, A, B, C, KSIround4[1 + 4 * i]);
-        C = functionRound4(X, C, D, A, B, KSIround4[2 + 4 * i]);
-        B = functionRound4(X, B, C, D, A, KSIround4[3 + 4 * i]);
+        A = functionRound4(X, A, B, C, D, KSIround4[0 + (4 * i)]);
+        D = functionRound4(X, D, A, B, C, KSIround4[1 + (4 * i)]);
+        C = functionRound4(X, C, D, A, B, KSIround4[2 + (4 * i)]);
+        B = functionRound4(X, B, C, D, A, KSIround4[3 + (4 * i)]);
     }
     a_context.state[0] += A;
     a_context.state[1] += B;
@@ -421,7 +421,7 @@ inline std::string MD5::to_string() const {
     std::array<char, 32> str_digest{};
     for (int i = 0; i < 16; i++) {
         str_digest[2UL * i] = hex_char[m_digest[i] >> 4];
-        str_digest[2UL * i + 1] = hex_char[m_digest[i] & 0xf];
+        str_digest[(2UL * i) + 1] = hex_char[m_digest[i] & 0xf];
     }
     return {str_digest.data(), 32};
 }

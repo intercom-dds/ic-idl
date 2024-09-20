@@ -234,7 +234,7 @@ class JsonNode {
         }
 
         T max = (std::numeric_limits<T>::max)() / 10;
-        T lim = (std::numeric_limits<T>::max)() % 10 + (sign == -1);
+        T lim = ((std::numeric_limits<T>::max)() % 10) + (sign == -1);
 
         for (size_t i = 1; i < m_data.length(); ++i) {
             T digit = m_data.str()[i] - '0';

@@ -71,13 +71,18 @@ fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
 }
 
 fn path_str(path: &Path) -> String {
-    let mut str = if path.leading_colons.is_some() {
-        vec!["::"]
+    let str = path
+        .segments
+        .iter()
+        .map(|v| v.name.as_str())
+        .collect::<Vec<_>>()
+        .join("::");
+
+    if path.leading_colons.is_some() {
+        format!("::{str}")
     } else {
-        vec![]
-    };
-    str.extend(path.segments.iter().map(|v| v.name.as_str()));
-    str.join("::")
+        str
+    }
 }
 
 fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {

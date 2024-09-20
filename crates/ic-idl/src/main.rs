@@ -118,10 +118,6 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
     let mut trees = vec![];
     let files = collect_files(&options.files)?;
     for file in files {
-        if options.unstable.token_dump {
-            // println!("{:#?}", ic_parse::lexer::scan(&input));
-        }
-
         if options.preprocessor_only {
             let (output, _) = ic_preproc::to_string(&file, args.clone())?;
             println!("{output}");

@@ -225,10 +225,6 @@ pub struct Unstable {
     /// Print the ptree in a tree-like format
     #[option(long)]
     pub ptree_dump: bool,
-
-    /// Dump out the preprocessed IDL tokens
-    #[option(long)]
-    pub token_dump: bool,
 }
 
 impl convert::Convert for Unstable {
@@ -239,7 +235,6 @@ impl convert::Convert for Unstable {
                 "ast-dump" => this.ast_dump = true,
                 "hir-dump" => this.hir_dump = true,
                 "ptree-dump" => this.ptree_dump = true,
-                "token-dump" => this.token_dump = true,
                 "help" => crate::unstable::unstable_help(),
                 _ => {
                     return Err(ConvertError::InvalidValue(format!(

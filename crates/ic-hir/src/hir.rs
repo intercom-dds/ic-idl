@@ -306,6 +306,9 @@ pub struct ConstTy {
 pub struct BitmaskTy {
     /// The bitmask flags.
     pub flags: Vec<BitFlag>,
+
+    /// Underlying primitive type of the bitmask.
+    pub ty: Ty,
 }
 
 #[derive(Debug)]

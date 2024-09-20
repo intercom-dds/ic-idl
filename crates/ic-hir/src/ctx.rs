@@ -132,11 +132,12 @@ impl Context {
     ///
     /// Panics if the given type ID does not exist. This can only ever happen
     /// if there are multiple `Context`s whose arenas have been mixed up.
-    // pub fn type_of(&self, ty: TypeId) -> &Type {
-    //     self.types
-    //         .get(ty)
-    //         .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
-    // }
+    pub fn type_of(&self, _ty: TypeId) -> &Def {
+        todo!()
+        // self.types
+        //     .get(ty)
+        //     .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
+    }
 
     /// Similar to `type_of`, but will resolve the underlying type.
     ///

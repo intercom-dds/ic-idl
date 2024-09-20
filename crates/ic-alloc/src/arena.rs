@@ -30,22 +30,26 @@ use std::iter::Enumerate;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::slice;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 use intercom_cts::decode::{Deserializer, FieldDeserializer};
 use intercom_cts::encode::{FieldSerializer, Serializer};
 use intercom_cts::{Marshal, Unmarshal};
 
+const ARENA_COUNT: AtomicU16 = AtomicU16::new(0);
+
 #[must_use]
-#[repr(transparent)]
 pub struct Id<T> {
     id: usize,
+    arena_id: ArenaId,
     _marker: PhantomData<fn() -> T>,
 }
 
 impl<T> Id<T> {
-    fn new(id: usize) -> Self {
+    fn new(id: usize, arena_id: ArenaId) -> Self {
         Self {
             id,
+            arena_id,
             _marker: PhantomData,
         }
     }
@@ -54,7 +58,7 @@ impl<T> Id<T> {
     // where possible, but it's difficult to do so for generated code.
     #[doc(hidden)]
     pub fn _do_not_use() -> Self {
-        Self::new(usize::MAX)
+        Self::new(usize::MAX, ArenaId(u16::MAX))
     }
 }
 
@@ -116,25 +120,31 @@ impl<T> Unmarshal for Id<T> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+#[repr(transparent)]
+struct ArenaId(u16);
+
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct Arena<T> {
     elements: Vec<T>,
+    arena_id: ArenaId,
 }
 
 impl<T> Arena<T> {
     pub fn new() -> Self {
-        Self { elements: vec![] }
+        Self::with_capacity(16)
     }
 
     pub fn with_capacity(len: usize) -> Self {
         Self {
             elements: Vec::with_capacity(len),
+            arena_id: ArenaId(ARENA_COUNT.fetch_add(1, Ordering::SeqCst)),
         }
     }
 
     pub fn alloc(&mut self, value: T) -> Id<T> {
-        let index = Id::new(self.elements.len());
+        let index = Id::new(self.elements.len(), self.arena_id);
         self.elements.push(value);
         index
     }
@@ -143,7 +153,7 @@ impl<T> Arena<T> {
     where
         F: FnOnce(Id<T>) -> T,
     {
-        let index = Id::new(self.elements.len());
+        let index = Id::new(self.elements.len(), self.arena_id);
         let value = closure(index);
         self.elements.push(value);
         index
@@ -153,14 +163,18 @@ impl<T> Arena<T> {
     where
         Q: Borrow<Id<T>>,
     {
-        &self.elements[id.borrow().id]
+        let id = id.borrow();
+        assert_eq!(id.arena_id.0, self.arena_id.0);
+        &self.elements[id.id]
     }
 
     pub fn get_mut<Q>(&mut self, id: Q) -> &mut T
     where
         Q: Borrow<Id<T>>,
     {
-        &mut self.elements[id.borrow().id]
+        let id = id.borrow();
+        assert_eq!(id.arena_id.0, self.arena_id.0);
+        &mut self.elements[id.id]
     }
 
     #[must_use]
@@ -176,12 +190,14 @@ impl<T> Arena<T> {
     pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             iter: self.elements.iter().enumerate(),
+            arena_id: self.arena_id,
         }
     }
 
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             iter: self.elements.iter_mut().enumerate(),
+            arena_id: self.arena_id,
         }
     }
 }
@@ -210,13 +226,16 @@ impl<T> IndexMut<Id<T>> for Arena<T> {
 #[derive(Debug)]
 pub struct Iter<'a, T> {
     iter: Enumerate<slice::Iter<'a, T>>,
+    arena_id: ArenaId,
 }
 
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = (Id<T>, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(i, v)| (Id::new(i), v))
+        self.iter
+            .next()
+            .map(|(i, v)| (Id::new(i, self.arena_id), v))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -228,13 +247,16 @@ impl<'a, T> Iterator for Iter<'a, T> {
 #[derive(Debug)]
 pub struct IterMut<'a, T> {
     iter: Enumerate<slice::IterMut<'a, T>>,
+    arena_id: ArenaId,
 }
 
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = (Id<T>, &'a mut T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(i, v)| (Id::new(i), v))
+        self.iter
+            .next()
+            .map(|(i, v)| (Id::new(i, self.arena_id), v))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

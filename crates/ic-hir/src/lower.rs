@@ -769,7 +769,7 @@ impl<'a> Lower<'a> {
             ident: def.ident,
             annotations: vec![],
             span: def.span,
-            kind: DefKind::Bitmask(BitmaskTy { flags }),
+            kind: DefKind::Bitmask(BitmaskTy { flags, ty: todo!() }),
         })
     }
 

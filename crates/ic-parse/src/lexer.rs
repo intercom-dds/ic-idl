@@ -36,7 +36,6 @@ use ic_preproc::{State, TokenIter};
 use ic_syntax::Span;
 
 /// All tokens recognized by the lexer.
-// TODO: add K as a generic for keywords to the preprocessor?
 #[derive(Clone, Debug, PartialEq, DiscHash)]
 pub enum Kind {
     /// A valid UAX#31 identifier.

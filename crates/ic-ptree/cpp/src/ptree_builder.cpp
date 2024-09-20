@@ -2023,7 +2023,7 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
             }
         }
     }
-    if (member_count == 1) {
+    if (member_count == 1 && params) {
         node->value = params->value;
     }
     assign_members(state, node, params);

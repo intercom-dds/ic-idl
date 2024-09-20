@@ -60,13 +60,13 @@ contains the binary and serialization libraries.
 
 Run all tests:
 
-```
+```sh
 cargo test --workspace
 ```
 
 Development documentation can be generated with:
 
-```
+```sh
 cargo doc --document-private-items --no-deps --workspace
 ```
 

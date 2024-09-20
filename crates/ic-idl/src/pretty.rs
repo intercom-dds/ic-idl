@@ -76,7 +76,7 @@ fn emit_error(error: &Error, vfs: &SourceMap) {
             let expected = if let Some(e) = error.label {
                 e.yellow()
             } else if let Some(e) = &error.expected {
-                if e.iter().find(|v| **v == Kind::Eoi).is_some() {
+                if e.iter().any(|v| *v == Kind::Eoi) {
                     "top-level definition".yellow()
                 } else {
                     format_slice(e)

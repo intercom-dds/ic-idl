@@ -108,6 +108,7 @@ impl ProcArgs {
         self
     }
 
+    #[must_use]
     pub fn get_skip_comments(&self) -> bool {
         self.skip_comments
     }

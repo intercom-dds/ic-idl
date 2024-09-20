@@ -27,7 +27,7 @@
 
 #![allow(unused, clippy::doc_markdown)]
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use ic_cli::color::Colorize;
 use ic_cli::convert::{self, ConvertError};
@@ -138,7 +138,7 @@ pub struct CppOptions {
     #[option(long)]
     pub use_fmt: bool,
 
-    /// Use dllexport symbol
+    /// Use <sym> as dllexport symbol
     #[option(long, arg = "sym")]
     pub dll_export: Option<String>,
 

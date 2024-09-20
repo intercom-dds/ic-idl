@@ -761,10 +761,6 @@ class TGenericMarshalBase {
         const TypeInfo& m_type_info;
     };
 
-    explicit TGenericMarshalBase(WRITER& a_writer) : m_writer(&a_writer) {}
-
-    TGenericMarshalBase() : m_writer(nullptr) {}
-
     template <typename T>
     void io(const T& value, const TypeInfo* a_type_info = nullptr);
 
@@ -793,7 +789,13 @@ class TGenericMarshalBase {
     }
 
   private:
+    explicit TGenericMarshalBase(WRITER& a_writer) : m_writer(&a_writer) {}
+
+    TGenericMarshalBase() : m_writer(nullptr) {}
+
+  private:
     WRITER* m_writer;
+    friend MARSHAL;
 };
 
 template <typename READER, typename UNMARSHAL>
@@ -930,10 +932,6 @@ class TGenericUnmarshalBase {
         const TypeInfo& m_type_info;
     };
 
-    explicit TGenericUnmarshalBase(READER& a_reader) : m_reader(&a_reader) {}
-
-    TGenericUnmarshalBase() : m_reader(nullptr) {}
-
     template <typename T>
     void io(T& value, const TypeInfo* a_type_info = nullptr);
 
@@ -956,7 +954,13 @@ class TGenericUnmarshalBase {
     }
 
   private:
+    explicit TGenericUnmarshalBase(READER& a_reader) : m_reader(&a_reader) {}
+
+    TGenericUnmarshalBase() : m_reader(nullptr) {}
+
+  private:
     READER* m_reader;
+    friend UNMARSHAL;
 };
 
 template <typename READER>

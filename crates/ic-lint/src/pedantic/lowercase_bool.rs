@@ -51,15 +51,16 @@ impl<'a> Lint<'a> for LowercaseBool<'a> {
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
     fn visit_literal(&mut self, num: &'a Literal) {
-        if let LiteralValue::Bool(lit) = &num.value {
+        if let LiteralValue::Bool(lit) = num.value {
             let slice = self.ctx.slice(num.span);
             if slice.chars().any(char::is_lowercase) {
                 let fixed = slice.to_uppercase().green();
                 let diag = warn_span(
-                    "lowercase boolean literals are InterCOM extension",
+                    "lowercase boolean literals are an InterCOM extension",
                     Label::new(num.span).message("lowercase boolean literal"),
                 )
                 .help(format!("use `{fixed}` instead"));
+
                 self.ctx.report(diag);
             }
         }

@@ -33,7 +33,9 @@ use std::ops::{Neg, Not};
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
-use ic_alloc::insensitive::CaseMap;
+use ic_alloc::insensitive::{CaseMap, CaseSet};
+use ic_cli::color::Colorize;
+use ic_diagnostic::{error_span, Diag, Label};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
 use ic_syntax::visit::{visit_item, Visitor};
@@ -200,7 +202,7 @@ impl Interp<'_> {
 /// The HIR will alter the representation of the source code in some minor
 /// ways, such as expanding a typedef with multiple declarators to multiple
 /// typedefs with a single declarator each. More opinionated transformations of
-/// the source code happens as subsequent passes on the `HIR`.
+/// the source code happens as subsequent passes on the HIR.
 ///
 /// Note: non-critical warnings and errors are better implemented as lints.
 struct Lower<'a> {
@@ -208,11 +210,13 @@ struct Lower<'a> {
     order: Vec<TypeId>,
     decls: Vec<TypeId>,
     resolver: Resolver,
+    registered: CaseMap<'static, Span>,
 
     // Do we need to know the ID? don't think so? I think maybe the name is
     // enough?
     // global: Scope,
     scope: Vec<Scope>,
+    errors: Vec<Diag>,
 }
 
 // enum Scope {
@@ -232,30 +236,6 @@ struct Scope {
     // scopes: CaseMap<Scope>,
 }
 
-// with_scope can work if we separate out some parts... if we can...
-fn lower_mod(ctx: &mut Lower<'_>, def: ic_syntax::ModuleDef) -> DefId {
-    // how can we avoid this?
-    ctx.start_scope(&def.ident);
-
-    let definitions: Vec<_> = def
-        .definitions
-        .into_iter()
-        .map(|v| ctx.lower_item(v))
-        .collect();
-
-    ctx.finish_scope();
-
-    let id = ctx.ctx.definitions.alloc_with_id(|id| Def {
-        id,
-        ident: def.ident.clone(),
-        annotations: vec![],
-        span: def.span,
-        kind: DefKind::Module(ModuleTy { definitions }),
-    });
-    ctx.register_type(&def.ident, id);
-    id
-}
-
 impl<'a> Lower<'a> {
     fn with_ctx(ctx: &'a mut Context) -> Self {
         Self {
@@ -264,6 +244,8 @@ impl<'a> Lower<'a> {
             decls: vec![],
             resolver: Resolver::default(),
             scope: vec![],
+            registered: CaseMap::default(),
+            errors: vec![],
             // global: CaseMap::default(),
         }
     }
@@ -509,21 +491,31 @@ impl<'a> Lower<'a> {
         ret
     }
 
-    fn start_scope(&mut self, ident: &Ident) {
-        // TODO: need a pointer (or something) to the current scope...
+    // TODO: or constants? expr? numeric?
+    //
+    // or should we just store an enum with the respective ID?
+    fn register_symbol(&mut self, ident: &Ident) {
+        let name = self.qualified_name(ident);
+        tracing::info!("registering symbol: {name}");
 
-        // but popping a scope shouldn't cause anything to disappear...
-        // it needs to be persistent
+        match self.registered.entry(name) {
+            Entry::Occupied(prev) => {
+                let diag = error_span(
+                    format!("duplicate registration of `{}`", prev.key().yellow()),
+                    Label::new(ident.span).message("redefined here"),
+                );
+                self.errors.push(diag);
 
-        // self.scope.push(value)
-        // self.scope.push(Scope {
-        //     name: ident.name.clone(),
-        //     segm
-        // })
-    }
-
-    fn finish_scope(&mut self) {
-        // self.scope.pop();
+                tracing::error!(
+                    "duplicate registration of {}, first registered near {:?}",
+                    prev.key(),
+                    prev.get(),
+                );
+            }
+            Entry::Vacant(v) => {
+                v.insert(ident.span);
+            }
+        }
     }
 
     // TODO: we need to register symbols too, for things like constants...
@@ -531,44 +523,27 @@ impl<'a> Lower<'a> {
         // FIXME: this is already checked in the sanity lint. this can either
         // be removed or asserted
         if ident.name.is_empty() {
-            tracing::error!("attempted to register unnamed type");
-            return;
+            panic!("attempted to register unnamed type");
         }
+
+        self.register_symbol(ident);
 
         // TODO: Must handle forward dcls and check they are of the same type,
         // i.e. not a struct fwd dcl to a union def.
         let name = self.qualified_name(ident);
-        tracing::info!("registering item: {name}");
-
         match self.ctx.symbols.entry(name) {
-            Entry::Occupied(v) => {
-                // TODO: should report info about span of first reg
-                tracing::error!("duplicate registration of {}", v.key());
-            }
+            Entry::Occupied(_) => {}
             Entry::Vacant(v) => {
                 v.insert(ty);
             }
         }
     }
 
-    // TODO: do we even need a type map? if we implement the scope mechanism?
-    // ...yeah, we do...
-    // we need a way to look at modules in the parent scope, and then traverse
-    // down from there.
-    //
-    // TODO: maybe a with_scope helper function that pushes/pops + register
-    // everything?
-    //
-    // doing it this way means we don't register the module until it's done.
-    // is that fine?
-    //
-    // we can avoid this by just not filling out the definitions, and instead
-    // assigning it later? so leave an empty vec then populate it afterwards
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
         let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
             def.definitions
                 .into_iter()
-                .map(|v| this.lower_item(v))
+                .flat_map(|v| this.lower_item(v))
                 .collect()
         });
 
@@ -583,7 +558,6 @@ impl<'a> Lower<'a> {
         id
     }
 
-    // Keep a stack of IDs for the current scope? probably...
     fn lower_struct(&mut self, def: ic_syntax::StructDef) -> DefId {
         let parent = def.parent.map(|v| self.lookup_path(v));
         let members = self.with_scope(&def.ident, |this| {
@@ -602,22 +576,31 @@ impl<'a> Lower<'a> {
         });
 
         self.register_type(&def.ident, id);
-        // self.ctx.define(None, id);
         id
     }
 
+    fn define(&mut self, id: DefId) {
+        let ident = self.ctx.definitions.get(id).ident.clone();
+        self.register_type(&ident, id);
+    }
+
     fn lower_field(&mut self, field: ic_syntax::Field) -> Vec<Member> {
+        let annotations: Vec<_> = field
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
+
         field
             .names
             .into_iter()
             .map(|decl| {
                 let ty = self.lower_type(field.ty.clone());
                 let (ident, ty) = self.lower_declarator(decl, ty);
-
                 Member {
                     ident,
                     ty,
-                    annotations: vec![],
+                    annotations: annotations.clone(),
                 }
             })
             .collect()
@@ -652,19 +635,13 @@ impl<'a> Lower<'a> {
             })
             .collect();
 
-        let annotations = var
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
-
         match var.field {
             UnionElement::Member(v) => {
                 let ty = self.lower_type(*v.ty);
                 let (ident, ty) = self.lower_declarator(v.decl, ty);
 
                 Variant {
-                    annotations,
+                    annotations: vec![],
                     ident,
                     ty,
                     labels,
@@ -683,17 +660,11 @@ impl<'a> Lower<'a> {
                 .collect()
         });
 
-        let annotations = def
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
-
         let disc = self.lower_type(def.disc.ty);
         self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident,
-            annotations,
+            annotations: vec![],
             span: def.span,
             kind: DefKind::Union(UnionTy { disc, variants }),
         })
@@ -707,16 +678,11 @@ impl<'a> Lower<'a> {
             .map(|v| self.bound_expr(&v) as isize)
             .unwrap_or_else(|| *last + 1);
 
-        let annotations = lit
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
-
+        self.register_symbol(&lit.ident);
         EnumLit {
             ident: lit.ident,
             value: *last,
-            annotations,
+            annotations: vec![],
         }
     }
 
@@ -728,49 +694,53 @@ impl<'a> Lower<'a> {
             .map(|lit| self.lower_enum_lit(lit, &mut last))
             .collect();
 
-        let annotations = def
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
-
-        // TODO: should we check here that all enum names are unique? check
-        // what rustc does...
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        // TODO: report conflicts in the resolver. this can go on as before
+        // (though the member will not be registered(?)).
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
-            ident: def.ident,
-            annotations,
+            ident: def.ident.clone(),
+            annotations: vec![],
             span: def.span,
             kind: DefKind::Enum(EnumTy { fields }),
-        })
+        });
+        self.register_type(&def.ident, id);
+        id
+    }
+
+    fn lower_bitmask_flag(&mut self, lit: ic_syntax::Bit, last: &mut isize) -> BitFlag {
+        *last = lit
+            .value
+            .map(|v| self.bound_expr(&v) as isize)
+            .unwrap_or_else(|| *last + 1);
+
+        self.register_symbol(&lit.ident);
+        BitFlag {
+            ident: lit.ident,
+            value: *last as usize,
+            annotations: vec![],
+        }
     }
 
     fn lower_bitmask(&mut self, def: ic_syntax::BitmaskDef) -> DefId {
-        let mut last = -1;
-        let flags = def
+        let mut last = 0;
+        let flags: Vec<_> = def
             .bits
             .into_iter()
-            .map(|bit| {
-                last = bit
-                    .value
-                    .map(|v| self.bound_expr(&v) as isize)
-                    .unwrap_or_else(|| last + 1);
-
-                BitFlag {
-                    ident: bit.ident,
-                    value: last as usize,
-                    annotations: vec![],
-                }
-            })
+            .map(|lit| self.lower_bitmask_flag(lit, &mut last))
             .collect();
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
-            ident: def.ident,
+            ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
-            kind: DefKind::Bitmask(BitmaskTy { flags, ty: todo!() }),
-        })
+            kind: DefKind::Bitmask(BitmaskTy {
+                flags,
+                ty: Ty::Primitive(PrimitiveTy::UInt32),
+            }),
+        });
+        self.register_type(&def.ident, id);
+        id
     }
 
     fn lower_const(&mut self, def: ic_syntax::ConstDef) -> DefId {
@@ -843,7 +813,7 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_item(&mut self, item: ic_syntax::Item) -> DefId {
+    fn lower_item(&mut self, item: ic_syntax::Item) -> Vec<DefId> {
         use ic_syntax::Item;
         tracing::debug!("lowering item: {item:?} in scope {:?}", self.scope);
 
@@ -857,12 +827,9 @@ impl<'a> Lower<'a> {
             Item::BitmaskValue(v) => self.lower_bitmask(v),
             Item::ConstValue(v) => self.lower_const(v),
             Item::AliasValue(v) => {
-                // FIXME: refactor lower_item so we can return multiple IDs
-                // TODO: also need some way to skip bitsets
                 let ids = self.lower_alias(v);
-                let id = ids.first().copied().unwrap();
-                self.order.extend(ids);
-                id
+                self.order.extend(ids.iter());
+                return ids;
             }
             Item::InterfaceValue(v) => self.lower_interface(v),
             // Item::ValuetypeValue(_) => todo!(),
@@ -874,7 +841,7 @@ impl<'a> Lower<'a> {
         // TODO: should we perhaps only push top-level `DefId`s?
         // since everything else can be driven by examining the tree.
         self.order.push(id);
-        id
+        vec![id]
     }
 }
 
@@ -948,7 +915,7 @@ fn all_unique(types: &[TypeId]) -> bool {
     unique.len() == types.len()
 }
 
-pub fn from_ast<I>(ctx: &mut Context, ast: I) -> Vec<TypeId>
+pub fn from_ast<I>(ctx: &mut Context, ast: I) -> (Vec<TypeId>, Vec<Diag>)
 where
     I: IntoIterator<Item = ic_syntax::Item>,
 {
@@ -958,12 +925,13 @@ where
     }
     assert!(
         state.scope.is_empty(),
-        "a scope was opened but never closed",
+        "{} lexical scope(s) was opened but never closed",
+        state.scope.len(),
     );
     debug_assert!(
         all_unique(&state.order),
         "order of types contains duplicate entries",
     );
-    tracing::info!("lowered: {:?}", state.ctx);
-    state.order
+    tracing::info!("registered: {:#?}", state.registered);
+    (state.order, state.errors)
 }

@@ -60,6 +60,8 @@ pub struct ResolvedGraph {
     /// can be used to traverse the graph in the same order in which the types
     /// were defined.
     pub order: Vec<TypeId>,
+
+    pub errors: Vec<ic_diagnostic::Diag>,
 }
 
 pub fn lower_ast<I>(ast: I) -> ResolvedGraph
@@ -68,9 +70,13 @@ where
 {
     let mut context = Context::new();
     tracing::info!("lowering AST -> HIR: {context:?}");
-    let order = lower::from_ast(&mut context, ast);
+    let (order, errors) = lower::from_ast(&mut context, ast);
 
-    ResolvedGraph { context, order }
+    ResolvedGraph {
+        context,
+        order,
+        errors,
+    }
 }
 
 // pub fn resolve(tree: &[Item]) {

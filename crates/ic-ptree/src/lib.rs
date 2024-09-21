@@ -104,7 +104,9 @@ pub fn lower_ast(ast: &ic_parse::ParseResult, vfs: &SourceMap) -> ParseResult {
     };
 
     let result = ParseResult { inner };
-    debug_assert_eq!(result.error_count(), 0, "{:?}", result.diagnostics());
+    if let Some(err) = result.diagnostics() {
+        debug_assert!(false, "{err}");
+    }
     result
 }
 

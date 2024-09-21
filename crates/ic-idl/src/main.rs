@@ -32,6 +32,7 @@ use std::path::Path;
 use anyhow::anyhow;
 use config::Options;
 use ic_cli::{Command, ParseError};
+use ic_diagnostic::emit_diagnostic;
 use ic_emit::File;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
@@ -126,6 +127,7 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
             trees.push(ast);
         }
     }
+
     try_ptree(options, &trees)
 }
 
@@ -163,11 +165,29 @@ fn try_parse(
             }
 
             // Lower the AST to a HIR
-            // let hir = ic_hir::lower_ast(v.tree.clone());
-            // if options.unstable.hir_dump {
-            //     println!("{hir:#?}");
-            // }
-            Ok(ic_ptree::lower_ast(&v, &vfs))
+            let hir = ic_hir::lower_ast(v.tree.clone());
+            if options.unstable.hir_dump {
+                println!("{hir:#?}");
+            }
+
+            // TODO: temporary hack just to emit the errors
+            for diag in &hir.errors {
+                let input = std::fs::read_to_string(path).unwrap();
+                let mut buf = String::new();
+                ic_diagnostic::emit_diagnostic(
+                    &mut buf,
+                    path.to_string_lossy().as_ref(),
+                    &input,
+                    diag,
+                )?;
+                eprintln!("{buf}");
+            }
+
+            if hir.errors.is_empty() {
+                Ok(ic_ptree::lower_ast(&v, vfs))
+            } else {
+                Err(anyhow!("parsing failed"))
+            }
         }
         Err(e) => {
             // TODO: collect + join for all files

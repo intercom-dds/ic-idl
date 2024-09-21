@@ -29,7 +29,7 @@
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
 /// A copy-on-write string type that always performs case-insensitive
@@ -110,6 +110,38 @@ impl<'a, T> CaseMap<'a, T> {
 impl<T> Default for CaseMap<'_, T> {
     fn default() -> Self {
         Self(HashMap::default())
+    }
+}
+
+/// A case-insensitive set that stores the key in its initial form, but
+/// performs case-insensitive hashing and lookups.
+#[must_use]
+#[derive(Debug, Default)]
+pub struct CaseSet<'a>(HashSet<CaseString<'a>>);
+
+impl<'a> CaseSet<'a> {
+    pub fn insert<K>(&mut self, key: K) -> bool
+    where
+        K: Into<Cow<'a, str>>,
+    {
+        self.0.insert(CaseString(key.into()))
+    }
+
+    #[must_use]
+    pub fn remove(&mut self, key: &'a str) -> bool {
+        self.0.remove(&CaseString(Cow::Borrowed(key)))
+    }
+
+    #[must_use]
+    pub fn contains(&self, key: &str) -> bool {
+        self.0.contains(&CaseString(Cow::Borrowed(key)))
+    }
+
+    #[must_use]
+    pub fn get(&self, key: &'a str) -> Option<&str> {
+        self.0
+            .get(&CaseString(Cow::Borrowed(key)))
+            .map(|v| v.0.as_ref())
     }
 }
 

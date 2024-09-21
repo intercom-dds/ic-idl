@@ -188,6 +188,8 @@ name = "ic-hir"
 version = "0.0.0"
 dependencies = [
  "ic-alloc",
+ "ic-cli",
+ "ic-diagnostic",
  "ic-macros",
  "ic-syntax",
  "intercom-cts",

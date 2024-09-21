@@ -32,7 +32,7 @@ use std::iter::{Enumerate, Map};
 use ic_cli::color::Colorize;
 use ic_diagnostic::{warn_span, Label};
 use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{Declarator, EnumDef, Expr, Item, LiteralValue, Path};
+use ic_syntax::{BitmaskDef, Declarator, EnumDef, Expr, Item, LiteralValue, Path};
 
 use crate::iter::IterExt;
 use crate::{Category, Lint, LintCtx};
@@ -61,6 +61,10 @@ impl<'a> Visitor<'a> for ScopedEnum<'a> {
     // TODO: in the future we should use the HIR ctx to do lookups instead of
     // registering the type name here.
     fn visit_enum(&mut self, def: &'a EnumDef) {
+        self.seen.insert(&def.ident.name);
+    }
+
+    fn visit_bitmask(&mut self, def: &'a BitmaskDef) {
         self.seen.insert(&def.ident.name);
     }
 

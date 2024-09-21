@@ -30,6 +30,8 @@
 use std::fmt::{self, Display};
 
 use ic_cli::color::Colorize;
+use ic_cli::ParseResult;
+use ic_hir::hir::*;
 
 struct Pretty<T>(T);
 
@@ -103,4 +105,16 @@ impl<D: Display> Display for Leaf<D> {
 fn plural(word: &str, count: usize) -> String {
     let s = if count == 1 { "" } else { "s" };
     format!("{count} {word}{s}")
+}
+
+pub fn emit_tree(result: &ic_hir::ResolvedGraph) {
+    let mut root = leaf!(".");
+    for id in &result.order {
+        let def = result.context.type_of(id);
+        let node = leaf!("{}", def.ident.name.blue());
+        // match def.kind {}
+        root.push(node);
+    }
+
+    println!("{root}");
 }

@@ -284,6 +284,9 @@ pub struct Variant {
 #[derive(Debug)]
 pub struct EnumTy {
     pub fields: Vec<EnumLit>,
+
+    /// Underlying primitive type of the enum.
+    pub ty: Ty,
 }
 
 #[derive(Debug)]

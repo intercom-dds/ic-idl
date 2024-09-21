@@ -715,7 +715,10 @@ impl<'a> Lower<'a> {
             ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
-            kind: DefKind::Enum(EnumTy { fields }),
+            kind: DefKind::Enum(EnumTy {
+                fields,
+                ty: Ty::Primitive(PrimitiveTy::UInt32),
+            }),
         });
         self.register_type(&def.ident, id);
         id
@@ -851,10 +854,6 @@ impl<'a> Lower<'a> {
             // Item::BitsetValue(_) => return None,
             _ => todo!(),
         };
-
-        // TODO: should we perhaps only push top-level `DefId`s?
-        // since everything else can be driven by examining the tree.
-        self.order.push(id);
         vec![id]
     }
 }
@@ -934,8 +933,11 @@ where
     I: IntoIterator<Item = ic_syntax::Item>,
 {
     let mut state = Lower::with_ctx(ctx);
+    let mut order = vec![];
+
     for item in ast {
-        state.lower_item(item);
+        let ids = state.lower_item(item);
+        order.extend(ids);
     }
     assert!(
         state.scope.is_empty(),
@@ -946,6 +948,252 @@ where
         all_unique(&state.order),
         "order of types contains duplicate entries",
     );
+
+    state.order = order;
     tracing::info!("registered: {:#?}", state.registered);
+    foo::emit_tree(&state);
     (state.order, state.errors)
+}
+
+mod foo {
+    use std::fmt::{self, Display};
+
+    use ic_cli::color::Colorize;
+    use ic_cli::ParseResult;
+
+    use super::*;
+
+    struct Pretty<T>(T);
+
+    impl<T> From<Pretty<T>> for Leaf<String>
+    where
+        Pretty<T>: Display,
+    {
+        fn from(value: Pretty<T>) -> Self {
+            Self::from(format!("{value}"))
+        }
+    }
+
+    macro_rules! leaf {
+    ($($arg:tt)*) => {{
+        Leaf::from(format!($($arg)*))
+    }}
+}
+
+    struct Leaf<D: Display> {
+        root: D,
+        leaves: Vec<Leaf<D>>,
+    }
+
+    impl<D: Display> Leaf<D> {
+        fn push(&mut self, leaf: impl Into<Leaf<D>>) {
+            self.leaves.push(leaf.into());
+        }
+    }
+
+    impl<I, D: Display> Extend<I> for Leaf<D>
+    where
+        I: Into<Leaf<D>>,
+    {
+        fn extend<T: IntoIterator<Item = I>>(&mut self, iter: T) {
+            self.leaves.extend(iter.into_iter().map(|v| v.into()))
+        }
+    }
+
+    impl<D: Display> From<D> for Leaf<D> {
+        fn from(node: D) -> Self {
+            Self {
+                root: node,
+                leaves: vec![],
+            }
+        }
+    }
+
+    impl<D: Display> Display for Leaf<D> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn print_leaf<T: Display>(
+                f: &mut fmt::Formatter,
+                leaf: &Leaf<T>,
+                prefix: &str,
+                last: bool,
+            ) -> fmt::Result {
+                let (indent, glyph) = if last {
+                    ("   ", "└─")
+                } else {
+                    ("│  ", "├─")
+                };
+                writeln!(f, "{}{} {}", prefix.gray(), glyph.gray(), leaf.root)?;
+
+                let len = leaf.leaves.len();
+                for (index, c) in leaf.leaves.iter().enumerate() {
+                    let is_last = index == len - 1;
+                    print_leaf(f, c, &format!("{prefix}{indent}"), is_last)?;
+                }
+                Ok(())
+            }
+
+            writeln!(f, "{}", self.root)?;
+            for (index, child) in self.leaves.iter().enumerate() {
+                let is_last = index == self.leaves.len() - 1;
+                print_leaf(f, child, "", is_last)?;
+            }
+            Ok(())
+        }
+    }
+
+    fn plural(word: &str, count: usize) -> String {
+        let s = if count == 1 { "" } else { "s" };
+        format!("{count} {word}{s}")
+    }
+
+    fn emit_span(span: &Span) -> String {
+        format!(
+            "<{:?}:{}, {:?}:{}>",
+            span.start.file_id, span.start.offset, span.end.file_id, span.end.offset,
+        )
+        .yellow()
+    }
+
+    fn emit_ty(context: &Context, ty: &Ty) -> String {
+        let kind = match ty {
+            Ty::Any => "any",
+            Ty::Fixed => "fixed",
+            Ty::Primitive(kind) => match kind {
+                PrimitiveTy::Bool => "bool",
+                PrimitiveTy::Char => "char",
+                PrimitiveTy::WChar => "wchar",
+                PrimitiveTy::Int8 => "int8",
+                PrimitiveTy::UInt8 => "uint8",
+                PrimitiveTy::Int16 => "int16",
+                PrimitiveTy::UInt16 => "uint16",
+                PrimitiveTy::Int32 => "int32",
+                PrimitiveTy::UInt32 => "uint32",
+                PrimitiveTy::Int64 => "int64",
+                PrimitiveTy::UInt64 => "uint64",
+                PrimitiveTy::Float => "float",
+                PrimitiveTy::Double => "double",
+                PrimitiveTy::String => "string",
+                PrimitiveTy::WString => "wstring",
+            },
+            Ty::String { wide, bound } => {
+                let prefix = if *wide { "w" } else { "" };
+                let bound = if let Some(bound) = bound {
+                    format!("<{bound}>")
+                } else {
+                    String::new()
+                };
+                return format!("{prefix}string{bound}").cyan();
+            }
+            // Ty::Array { ty, len } => todo!(),
+            // Ty::Sequence { ty, bound } => todo!(),
+            // Ty::Map { key, elem, bound } => todo!(),
+            Ty::Adt(id) => {
+                let name = context.type_of(*id).ident.name.cyan();
+                return format!(
+                    "{}({}{}, {name})",
+                    "adt".cyan(),
+                    "def=".clear(),
+                    format!("0x{id:#02?}").blue(),
+                );
+            }
+            _ => todo!(),
+        };
+
+        kind.cyan()
+    }
+
+    fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
+        let def = context.definitions.get(id);
+        let kind = match def.kind {
+            DefKind::Module(_) => "module",
+            DefKind::Struct(_) => "struct",
+            DefKind::Except(_) => "exception",
+            DefKind::Union(_) => "union",
+            DefKind::Enum(_) => "enum",
+            DefKind::Const(_) => "const",
+            DefKind::Bitmask(_) => "bitmask",
+            DefKind::Alias(_) => "alias",
+            DefKind::Interface(_) => "interface",
+            DefKind::Decl(_) => "decl",
+        };
+
+        let span = emit_span(&def.span);
+        let mut node = leaf!(
+            "{} def={} {span} {} emit",
+            kind.green().bold(),
+            format!("0x{id:02X?}").blue(),
+            def.ident.name.cyan(),
+        );
+
+        match &def.kind {
+            DefKind::Module(v) => {
+                for def in &v.definitions {
+                    let nested = emit_def(context, *def);
+                    node.push(nested);
+                }
+            }
+            DefKind::Struct(v) => {
+                if let Some(_parent) = &v.parent {
+                    node.push(leaf!("{}", "parent".purple()));
+                }
+
+                for mem in &v.members {
+                    let span = emit_span(&mem.ident.span);
+                    let ty = emit_ty(context, &mem.ty);
+                    let mut member = leaf!(
+                        "{} {span} {} emit",
+                        "member".green().bold(),
+                        mem.ident.name.cyan(),
+                    );
+                    member.push(leaf!("{} {ty}", "type".purple()));
+                    node.push(member);
+                }
+            }
+            DefKind::Except(_) => todo!(),
+            DefKind::Union(_) => todo!(),
+            DefKind::Enum(v) => {
+                let ty = emit_ty(context, &v.ty);
+                node.push(leaf!("{} {ty} builtin", "type".purple()));
+
+                for var in &v.fields {
+                    let span = emit_span(&var.ident.span);
+                    node.push(leaf!(
+                        "{} {span} {} {}",
+                        "enumerator".green().bold(),
+                        &var.ident.name.cyan(),
+                        format!("'= {}'", var.value).purple(),
+                    ));
+                }
+            }
+            DefKind::Const(v) => {
+                let ty = emit_ty(context, &v.ty);
+                node.push(leaf!("{} {ty} builtin", "type".purple()));
+            }
+            DefKind::Bitmask(v) => {
+                let ty = emit_ty(context, &v.ty);
+                node.push(leaf!("{} {ty} builtin", "type".purple()));
+
+                for flag in &v.flags {
+                    let span = emit_span(&flag.ident.span);
+                    node.push(leaf!(
+                        "{} {span} {} {}",
+                        "flag".green().bold(),
+                        &flag.ident.name.cyan(),
+                        format!("'= {}'", flag.value).purple(),
+                    ));
+                }
+            }
+            DefKind::Alias(_) => todo!(),
+            DefKind::Interface(_) => todo!(),
+            DefKind::Decl(_) => todo!(),
+        }
+        node
+    }
+
+    pub fn emit_tree(result: &Lower<'_>) {
+        let leaves = result.order.iter().map(|id| emit_def(&result.ctx, *id));
+        let mut root = leaf!("{}", ".".gray());
+        root.extend(leaves);
+        println!("{root}");
+    }
 }

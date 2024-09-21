@@ -201,6 +201,7 @@ name = "ic-hir-tree"
 version = "0.0.0"
 dependencies = [
  "ic-cli",
+ "ic-hir",
 ]
 
 [[package]]

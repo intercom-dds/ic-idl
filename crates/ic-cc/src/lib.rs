@@ -37,7 +37,11 @@ const GLOBAL_INCLUDES: &[&str] = &[
 
 const SYSTEM_INCLUDES: &[&str] = &["../../external/fmt/defs"];
 
-const GLOBAL_DEFINES: &[(&str, &str)] = &[("FMT_HEADER_ONLY", "1"), ("FMT_CONSTEVAL", "")];
+const GLOBAL_DEFINES: &[(&str, &str)] = &[
+    ("FMT_HEADER_ONLY", "1"),
+    ("FMT_CONSTEVAL", ""),
+    ("_CRT_SECURE_NO_WARNINGS", "1"),
+];
 
 pub fn build<P>(name: &str, files: P)
 where

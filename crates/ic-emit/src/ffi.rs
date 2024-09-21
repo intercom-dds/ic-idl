@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::{CStr, OsStr};
-use std::os::unix::ffi::OsStrExt;
+use std::ffi::CStr;
 use std::path::PathBuf;
 
 use crate::File;
@@ -39,9 +38,8 @@ extern "C" fn ic_push_source(
 ) {
     unsafe {
         let path = {
-            let str = CStr::from_ptr(path);
-            let os_str = OsStr::from_bytes(str.to_bytes());
-            PathBuf::from(os_str)
+            let str = std::ffi::CStr::from_ptr(path).to_owned();
+            PathBuf::from(str.to_string_lossy().to_string())
         };
         let source = {
             let str = CStr::from_ptr(src);

@@ -69,6 +69,7 @@ default-members = ["crates/ic-idl"]
 version = "0.0.0"
 rust-version = "1.80"
 publish = false
+authors = ["KONGSBERG <kda.InterCOMDDS@kongsberg.com>"]
 
 [workspace.dependencies]
 proc-macro2 = "1.0"

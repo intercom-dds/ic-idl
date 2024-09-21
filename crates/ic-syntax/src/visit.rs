@@ -31,8 +31,8 @@ use crate::{
     AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Attribute, Binary,
     Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Declarator, Discriminator, EnumDef,
     Enumerator, ExceptDef, Expr, Field, Ident, InitList, InterfaceDef, InterfaceMember, Item,
-    ItemKind, Label, Literal, ModuleDef, Param, Path, Prototype, Span, StructDef, Type, Unary,
-    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
+    ItemKind, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, Span, StructDef, Type,
+    Unary, UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -143,20 +143,20 @@ pub trait Visitor<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match expr {
-            Expr::Unary(v) => self.visit_expr_unary(v),
-            Expr::Binary(v) => self.visit_expr_binary(v),
-            Expr::Literal(v) => self.visit_literal(v),
-            Expr::InitList(v) => self.visit_expr_init_list(v),
-            Expr::Path(v) => self.visit_path(v),
-        }
+        visit_expr(self, expr);
     }
 
-    fn visit_expr_unary(&mut self, binary: &'a Unary) {}
+    fn visit_expr_unary(&mut self, unary: &'a Unary) {
+        visit_expr_unary(self, unary);
+    }
 
-    fn visit_expr_binary(&mut self, binary: &'a Binary) {}
+    fn visit_expr_binary(&mut self, binary: &'a Binary) {
+        visit_expr_binary(self, binary);
+    }
 
-    fn visit_expr_init_list(&mut self, binary: &'a InitList) {}
+    fn visit_expr_init_list(&mut self, init_list: &'a InitList) {
+        visit_expr_init_list(self, init_list);
+    }
 
     fn visit_forward_decl(&mut self, decl: &'a Decl) {}
 
@@ -446,6 +446,43 @@ where
     visitor.visit_type(&def.ty);
     for decl in &def.decl {
         visitor.visit_declarator(decl);
+    }
+}
+
+pub fn visit_expr<'a, V>(visitor: &mut V, expr: &'a Expr)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match expr {
+        Expr::Unary(v) => visitor.visit_expr_unary(v),
+        Expr::Binary(v) => visitor.visit_expr_binary(v),
+        Expr::Literal(v) => visitor.visit_literal(v),
+        Expr::InitList(v) => visitor.visit_expr_init_list(v),
+        Expr::Path(v) => visitor.visit_path(v),
+    }
+}
+
+pub fn visit_expr_unary<'a, V>(visitor: &mut V, unary: &'a Unary)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_expr(&unary.expr);
+}
+
+pub fn visit_expr_binary<'a, V>(visitor: &mut V, binary: &'a Binary)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_expr(&binary.lhs);
+    visitor.visit_expr(&binary.rhs);
+}
+
+pub fn visit_expr_init_list<'a, V>(visitor: &mut V, init_list: &'a InitList)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for NamedExpr { value, .. } in &init_list.values {
+        visitor.visit_expr(value);
     }
 }
 

@@ -25,21 +25,27 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
 use std::iter::{Enumerate, Map};
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::{warn_span, Label};
-use ic_syntax::visit::{visit_tree, Visitor};
+use ic_syntax::visit::{visit_expr, visit_tree, Visitor};
 use ic_syntax::{BitmaskDef, Declarator, EnumDef, Expr, Item, LiteralValue, Path};
 
 use crate::iter::IterExt;
 use crate::{Category, Lint, LintCtx};
 
-pub struct ScopedEnum<'a> {
+#[derive(Copy, Clone)]
+enum Kind {
+    Bitmask,
+    Enum,
+}
+
+pub struct ScopedLit<'a> {
     ctx: &'a LintCtx<'a>,
-    seen: HashSet<&'a str>,
+    seen: HashMap<&'a str, Kind>,
 }
 
 fn fixed_path(path: &Path) -> String {
@@ -57,45 +63,54 @@ fn fixed_path(path: &Path) -> String {
     }
 }
 
-impl<'a> Visitor<'a> for ScopedEnum<'a> {
+impl<'a> Visitor<'a> for ScopedLit<'a> {
     // TODO: in the future we should use the HIR ctx to do lookups instead of
     // registering the type name here.
     fn visit_enum(&mut self, def: &'a EnumDef) {
-        self.seen.insert(&def.ident.name);
+        self.seen.insert(&def.ident.name, Kind::Enum);
     }
 
     fn visit_bitmask(&mut self, def: &'a BitmaskDef) {
-        self.seen.insert(&def.ident.name);
+        self.seen.insert(&def.ident.name, Kind::Bitmask);
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         if let Expr::Path(path) = expr {
             if let Some(v) = path.segments.iter().rev().nth(1) {
-                if self.seen.contains(v.name.as_str()) {
+                if let Some(kind) = self.seen.get(v.name.as_str()) {
+                    let (ty, member) = match kind {
+                        Kind::Bitmask => ("bitmask", "bitmask flags"),
+                        Kind::Enum => ("enum", "enumerators"),
+                    };
+
                     let fixed = fixed_path(path).green();
                     let label = warn_span(
-                        "scoped enums are an InterCOM extension",
+                        format!("scoped {ty}s are an InterCOM extension"),
                         Label::new(v.span).message("used here"),
                     )
-                    .note("enumerators are registered in the parent scope")
+                    .note(format!("{member} are registered in the parent scope"))
                     .help(format!("remove the type name: `{fixed}`"));
 
                     self.ctx.report(label);
                 }
             }
+        } else {
+            // Continue traversal -- this may be a binary expression of bitmask
+            // flags, so we'll want to check those as well.
+            visit_expr(self, expr);
         }
     }
 }
 
-impl<'a> Lint<'a> for ScopedEnum<'_> {
+impl<'a> Lint<'a> for ScopedLit<'_> {
     fn category() -> Category {
         Category::Pedantic
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[Item]) {
-        let mut lint = ScopedEnum {
+        let mut lint = ScopedLit {
             ctx,
-            seen: HashSet::default(),
+            seen: HashMap::default(),
         };
         visit_tree(&mut lint, tree);
     }

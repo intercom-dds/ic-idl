@@ -36,4 +36,4 @@ pub mod empty_mod;
 pub mod lowercase_bool;
 pub mod null;
 pub mod omitted_in;
-pub mod scoped_enum;
+pub mod scoped_lit;

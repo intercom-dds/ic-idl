@@ -32,7 +32,6 @@ use std::path::Path;
 use anyhow::anyhow;
 use config::Options;
 use ic_cli::{Command, ParseError};
-use ic_diagnostic::emit_diagnostic;
 use ic_emit::File;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;

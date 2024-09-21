@@ -25,10 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Def, DefKind, EnumTy};
+use crate::{Def, DefKind, EnumTy, Ty};
 
 pub trait Visitor<'a> {
     fn visit_enum(&mut self, ty: &'a EnumTy) {}
+
+    fn visit_ty(&mut self, ty: &'a Ty) {}
 }
 
 pub fn visit_def<'a, V>(visitor: &mut V, item: &'a Def)

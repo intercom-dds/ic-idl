@@ -139,6 +139,13 @@ impl Context {
         //     .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
     }
 
+    pub fn base_type_of(&self, _ty: TypeId) -> &Def {
+        todo!()
+        // self.types
+        //     .get(ty)
+        //     .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
+    }
+
     /// Similar to `type_of`, but will resolve the underlying type.
     ///
     /// # Panics

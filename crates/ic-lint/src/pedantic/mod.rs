@@ -30,7 +30,7 @@
 pub mod array_param;
 pub mod assign_expr;
 pub mod bitmask_ann;
-// pub mod complex_key;
+pub mod complex_key;
 pub mod complex_lit;
 pub mod empty_mod;
 pub mod lowercase_bool;

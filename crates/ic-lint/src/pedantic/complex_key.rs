@@ -25,30 +25,41 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{warn_span, Color, Diag, Label};
-use ic_hir::hir::Type;
-use ic_syntax::Item;
+use ic_diagnostic::{warn_span, Label};
+use ic_hir::hir::{DefKind, Ty};
+use ic_hir::visit::Visitor;
+use ic_vfs::Span;
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
-/// Warns when an initializer list is used, e.g. for complex constants or
-/// complex default values.
-#[derive(Default)]
-pub struct ComplexMapKey(Vec<Diag>);
+/// Lint that checks if map keys are primitive types. Produces a warning when
+/// complex types are used.
+pub struct ComplexMapKey<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl Lint for ComplexMapKey {
-    fn new() -> Box<dyn Lint>
-    where
-        Self: Sized,
-    {
-        Box::<Self>::default()
-    }
-
+impl<'a> Lint<'a> for ComplexMapKey<'a> {
     fn category() -> Category {
         Category::Pedantic
     }
+}
 
-    fn check(mut self: Box<Self>, ast: &[Item]) -> Vec<Diag> {
-        vec![]
+impl<'a> Visitor<'a> for ComplexMapKey<'a> {
+    // TODO: span of Ty
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        let ctx = ic_hir::Context::new();
+        if let Ty::Map { key, .. } = ty {
+            // TODO: base_type_of
+            // let key_id = ctx.resolve_type(&ty);
+            if let Ty::Adt(adt) = key.as_ref() {
+                let diag = warn_span(
+                    "complex types as map keys is not standard",
+                    Label::new(Span::default()).message("non-primitive map key"),
+                )
+                .note("only integers, strings, and enums may be used as map keys");
+
+                self.ctx.report(diag);
+            }
+        }
     }
 }

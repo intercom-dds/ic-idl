@@ -539,6 +539,10 @@ impl<'a> Lower<'a> {
         }
     }
 
+    fn is_registered(&self, ident: &Ident) -> bool {
+        self.registered.get(&ident.name).is_some()
+    }
+
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
         let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
             def.definitions
@@ -547,14 +551,24 @@ impl<'a> Lower<'a> {
                 .collect()
         });
 
+        let annotations = def
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
+
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
-            annotations: vec![],
+            annotations,
             span: def.span,
             kind: DefKind::Module(ModuleTy { definitions }),
         });
-        self.register_type(&def.ident, id);
+
+        // Modules can be re-opened
+        if !self.is_registered(&def.ident) {
+            self.register_type(&def.ident, id);
+        }
         id
     }
 

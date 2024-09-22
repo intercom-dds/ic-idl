@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_syntax::visit::{
-    visit_attribute, visit_struct_field, visit_tree, visit_union_variant, Visitor,
+    Visitor, visit_attribute, visit_struct_field, visit_tree, visit_union_variant,
 };
 use ic_syntax::{Declarator, Ident, Item};
 

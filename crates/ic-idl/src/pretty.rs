@@ -28,7 +28,7 @@
 use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{error_span, Label};
+use ic_diagnostic::{Label, error_span};
 use ic_parse::lexer::Kind;
 use ic_parse::{Error, Reason};
 use ic_vfs::SourceMap;

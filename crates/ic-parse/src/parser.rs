@@ -25,8 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use chumsky::prelude::*;
 use chumsky::Parser;
+use chumsky::prelude::*;
 use ic_lexer::token::Kw;
 use ic_syntax::{
     AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, AnyType, ArrayDeclarator,

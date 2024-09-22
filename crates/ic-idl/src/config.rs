@@ -29,9 +29,9 @@
 
 use std::path::PathBuf;
 
+use ic_cli::Command;
 use ic_cli::color::Colorize;
 use ic_cli::convert::{self, ConvertError};
-use ic_cli::Command;
 
 use crate::warn;
 

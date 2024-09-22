@@ -31,12 +31,12 @@
 use ic_emit::case;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Punct, TokenTree};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    parse_macro_input, Attribute, Data, DataEnum, DataStruct, DeriveInput, ExprLit, Field, Meta,
-    Path, Token, Type,
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, ExprLit, Field, Meta, Path, Token, Type,
+    parse_macro_input,
 };
 
 fn derive_short(input: &Ident, value: &Option<syn::LitChar>) -> char {

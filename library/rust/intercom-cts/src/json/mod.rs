@@ -37,7 +37,7 @@ pub use error::Error;
 pub use ser::{to_bytes, to_string};
 #[doc(inline)]
 pub use value::value;
-pub use value::{to_value, Number, Value};
+pub use value::{Number, Value, to_value};
 
 /// Alias for a `Result` with the error type [`json::Error`].
 ///

@@ -29,7 +29,7 @@ use std::collections::HashSet;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use ic_cli::color::Colorize;
 
 #[macro_export]

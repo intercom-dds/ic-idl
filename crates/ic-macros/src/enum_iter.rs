@@ -27,7 +27,7 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput};
+use syn::{Data, DeriveInput, parse_macro_input};
 
 fn enum_iter(data: &Data) -> proc_macro2::TokenStream {
     let mut variants = proc_macro2::TokenStream::new();

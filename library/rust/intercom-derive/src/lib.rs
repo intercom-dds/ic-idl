@@ -48,7 +48,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, Data, DataEnum, DeriveInput};
+use syn::{Data, DataEnum, DeriveInput, parse_macro_input};
 
 mod attr;
 mod field;

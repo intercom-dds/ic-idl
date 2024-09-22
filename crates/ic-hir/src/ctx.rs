@@ -25,15 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
 
 use crate::resolve::Lc;
-use crate::{hir, Def, DefId, PrimitiveTy, TypeId};
+use crate::{Def, DefId, PrimitiveTy, TypeId, hir};
 
 // TODO: should a Type point to the definition instead?
 //

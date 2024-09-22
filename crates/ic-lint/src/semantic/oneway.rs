@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Color, Diag, Label};
-use ic_syntax::visit::{visit_tree, Visitor};
-use ic_syntax::{util, Item, ParamKind, Prototype};
+use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::{Item, ParamKind, Prototype, util};
 
 use crate::{Category, Lint, LintCtx};
 

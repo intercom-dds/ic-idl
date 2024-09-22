@@ -29,8 +29,8 @@
 
 use std::fmt::{self, Display};
 
-use ic_cli::color::Colorize;
 use ic_cli::ParseResult;
+use ic_cli::color::Colorize;
 use ic_hir::hir::*;
 
 struct Pretty<T>(T);

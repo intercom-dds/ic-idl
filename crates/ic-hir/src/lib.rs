@@ -27,8 +27,8 @@
 
 #![allow(clippy::all, warnings)]
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::num::NonZero;
 use std::rc::Rc;

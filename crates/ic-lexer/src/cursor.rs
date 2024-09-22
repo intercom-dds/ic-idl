@@ -29,7 +29,7 @@ use std::rc::Rc;
 
 use ic_vfs::{FileId, Location, Span};
 
-use crate::iter::{OwnedChars, EOF};
+use crate::iter::{EOF, OwnedChars};
 use crate::token::{Base, Kind, Kw, Token};
 
 #[must_use]
@@ -382,32 +382,20 @@ mod tests {
         assert_eq!(single("0777"), Kind::Number { base: Base::Octal });
 
         // decimal
-        assert_eq!(
-            single("999"),
-            Kind::Number {
-                base: Base::Decimal
-            }
-        );
-        assert_eq!(
-            single("1000"),
-            Kind::Number {
-                base: Base::Decimal
-            }
-        );
+        assert_eq!(single("999"), Kind::Number {
+            base: Base::Decimal
+        });
+        assert_eq!(single("1000"), Kind::Number {
+            base: Base::Decimal
+        });
 
         // hex
-        assert_eq!(
-            single("0x0"),
-            Kind::Number {
-                base: Base::Hexadecimal
-            }
-        );
-        assert_eq!(
-            single("0xFFF"),
-            Kind::Number {
-                base: Base::Hexadecimal
-            }
-        );
+        assert_eq!(single("0x0"), Kind::Number {
+            base: Base::Hexadecimal
+        });
+        assert_eq!(single("0xFFF"), Kind::Number {
+            base: Base::Hexadecimal
+        });
 
         // separation checks
         assert_eq!(scan("a123").len(), 1);

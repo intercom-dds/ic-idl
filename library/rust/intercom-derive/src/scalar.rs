@@ -26,13 +26,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::{DeriveInput, Error, ExprLit, Ident, Result, Variant};
 
-use crate::attr::is_unique;
 use crate::Marshal;
+use crate::attr::is_unique;
 
 struct Scalar {
     value: u32,

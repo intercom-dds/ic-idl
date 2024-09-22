@@ -27,11 +27,11 @@
 
 use std::marker::PhantomData;
 
+use crate::Marshal;
 use crate::encode::{
     ArraySerializer, EnumSerializer, FieldSerializer, MapSerializer, SeqSerializer, UnionSerializer,
 };
 use crate::error::Error;
-use crate::Marshal;
 
 /// Gratuitously skips all types, always returning `Ok`.
 pub struct Skip<Ok, Err> {

@@ -37,7 +37,7 @@ use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, SourceMap};
 
-use crate::{time, ProcArgs, Span};
+use crate::{ProcArgs, Span, time};
 
 #[derive(Debug)]
 pub enum Macro {
@@ -1226,12 +1226,9 @@ mod tests {
 
         let mut iter = def.iter();
         assert_eq!(iter.next().unwrap().kind, Kind::Ident);
-        assert_eq!(
-            iter.next().unwrap().kind,
-            Kind::Number {
-                base: Base::Decimal
-            }
-        );
+        assert_eq!(iter.next().unwrap().kind, Kind::Number {
+            base: Base::Decimal
+        });
         assert!(iter.next().is_none());
     }
 

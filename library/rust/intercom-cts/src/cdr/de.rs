@@ -27,8 +27,8 @@
 
 use std::marker::PhantomData;
 
-use super::endian::{Big, Endian, Little};
 use super::Error;
+use super::endian::{Big, Endian, Little};
 use crate::decode::{
     ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, FieldDeserializer,
     MapDeserializer, SeqDeserializer, UnionDeserializer, Unmarshal,

@@ -35,10 +35,10 @@ use std::rc::Rc;
 use ic_alloc::arena::{Arena, Id};
 use ic_alloc::insensitive::{CaseMap, CaseSet};
 use ic_cli::color::Colorize;
-use ic_diagnostic::{error_span, Diag, Label};
+use ic_diagnostic::{Diag, Label, error_span};
 use ic_macros::EnumIter;
 use ic_syntax::util::{path_name, type_name};
-use ic_syntax::visit::{visit_item, Visitor};
+use ic_syntax::visit::{Visitor, visit_item};
 use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
 use crate::hir::{Variant, *};
@@ -958,8 +958,8 @@ where
 mod foo {
     use std::fmt::{self, Display};
 
-    use ic_cli::color::Colorize;
     use ic_cli::ParseResult;
+    use ic_cli::color::Colorize;
 
     use super::*;
 

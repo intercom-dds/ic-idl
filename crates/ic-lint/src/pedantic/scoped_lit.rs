@@ -30,8 +30,8 @@ use std::fmt::{Display, Write as _};
 use std::iter::{Enumerate, Map};
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{warn_span, Label};
-use ic_syntax::visit::{visit_expr, visit_tree, Visitor};
+use ic_diagnostic::{Label, warn_span};
+use ic_syntax::visit::{Visitor, visit_expr, visit_tree};
 use ic_syntax::{BitmaskDef, Declarator, EnumDef, Expr, Item, LiteralValue, Path};
 
 use crate::iter::IterExt;

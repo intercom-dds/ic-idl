@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_preproc::{with_state, ProcArgs, State};
+use ic_preproc::{ProcArgs, State, with_state};
 use ic_vfs::{Include, SourceMap};
 
 #[test]

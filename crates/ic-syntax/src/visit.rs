@@ -219,7 +219,7 @@ where
 {
     match def {
         AnnotationField::Item(v) => visitor.visit_item(v),
-        AnnotationField::Member(v) => todo!(),
+        AnnotationField::Member(_) => (),
     }
 }
 

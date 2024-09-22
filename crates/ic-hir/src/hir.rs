@@ -105,6 +105,7 @@ pub struct Def {
 
 #[derive(Debug)]
 pub enum DefKind {
+    Annotation(AnnotationTy),
     Module(ModuleTy),
     Struct(StructTy),
     Except(ExceptTy),
@@ -225,6 +226,14 @@ pub enum Numeric {
         ty: TypeId,
         values: Box<[(Numeric, Numeric)]>,
     },
+}
+
+#[derive(Debug)]
+pub struct AnnotationTy {
+    pub members: Vec<Member>,
+
+    /// Types defined inside the annotation.
+    pub types: Vec<DefId>,
 }
 
 #[derive(Debug)]

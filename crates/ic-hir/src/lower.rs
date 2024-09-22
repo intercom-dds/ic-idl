@@ -543,6 +543,43 @@ impl<'a> Lower<'a> {
         self.registered.get(&ident.name).is_some()
     }
 
+    fn lower_annotation_def(&mut self, def: ic_syntax::AnnotationDef) -> DefId {
+        use ic_syntax::AnnotationField;
+
+        let mut members = vec![];
+        let mut types = vec![];
+
+        for field in def.params {
+            match field {
+                AnnotationField::Item(v) => {
+                    let ids = self.lower_item(*v);
+                    types.extend(ids);
+                }
+                AnnotationField::Member(v) => {
+                    // TODO: default val
+                    let ty = self.lower_type(v.ty);
+                    let (ident, ty) = self.lower_declarator(v.decl, ty);
+                    members.push(Member {
+                        ident,
+                        ty,
+                        annotations: vec![],
+                    });
+                }
+            }
+        }
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Annotation(AnnotationTy { members, types }),
+            flags: DefFlags::default(),
+        });
+        self.register_type(&def.ident, id);
+        id
+    }
+
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
         let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
             def.definitions
@@ -835,7 +872,7 @@ impl<'a> Lower<'a> {
         tracing::debug!("lowering item: {item:?} in scope {:?}", self.scope);
 
         let id = match item {
-            // Item::AnnotationValue(_) => todo!(),
+            Item::AnnotationValue(v) => self.lower_annotation_def(v),
             Item::ModuleValue(v) => self.lower_mod(v),
             Item::StructValue(v) => self.lower_struct(v),
             Item::UnionValue(v) => self.lower_union(v),
@@ -843,16 +880,21 @@ impl<'a> Lower<'a> {
             Item::ExceptionValue(v) => self.lower_except(v),
             Item::BitmaskValue(v) => self.lower_bitmask(v),
             Item::ConstValue(v) => self.lower_const(v),
+            Item::InterfaceValue(v) => self.lower_interface(v),
+            Item::DeclValue(v) => self.lower_decl(v),
             Item::AliasValue(v) => {
                 let ids = self.lower_alias(v);
                 self.order.extend(ids.iter());
                 return ids;
             }
-            Item::InterfaceValue(v) => self.lower_interface(v),
-            // Item::ValuetypeValue(_) => todo!(),
-            Item::DeclValue(v) => self.lower_decl(v),
-            // Item::BitsetValue(_) => return None,
-            _ => todo!(),
+            Item::ValuetypeValue(_) => {
+                // skipped for now
+                return vec![];
+            }
+            Item::BitsetValue(_) => {
+                // not supported, omitted from the HIR
+                return vec![];
+            }
         };
         vec![id]
     }
@@ -1102,9 +1144,40 @@ mod foo {
         kind.cyan()
     }
 
+    fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
+        let span = emit_span(&mem.ident.span);
+        let ty = emit_ty(context, &mem.ty);
+        let mut member = leaf!(
+            "{} {span} {} emit",
+            "member".green().bold(),
+            mem.ident.name.cyan(),
+        );
+        member.push(leaf!("{} {ty}", "type".purple()));
+        member
+    }
+
+    fn emit_variant(context: &Context, var: &Variant) -> Leaf<String> {
+        let span = emit_span(&var.ident.span);
+        let default = if var.is_default { "default" } else { "" };
+
+        let mut node = leaf!(
+            "{} {span} '{}' emit {default}",
+            "variant".green().bold(),
+            &var.ident.name.cyan(),
+        );
+        let ty = emit_ty(context, &var.ty);
+        node.push(leaf!("{} {}", "type".purple(), ty));
+
+        for label in &var.labels {
+            node.push(leaf!("{} {label:?}", "label".green().bold()));
+        }
+        node
+    }
+
     fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         let def = context.definitions.get(id);
         let kind = match def.kind {
+            DefKind::Annotation(_) => "annotation",
             DefKind::Module(_) => "module",
             DefKind::Struct(_) => "struct",
             DefKind::Except(_) => "exception",
@@ -1126,11 +1199,16 @@ mod foo {
         );
 
         match &def.kind {
+            DefKind::Annotation(v) => {
+                let nested = v.types.iter().map(|&v| emit_def(context, v));
+                node.extend(nested);
+
+                let members = v.members.iter().map(|v| emit_member(context, v));
+                node.extend(members);
+            }
             DefKind::Module(v) => {
-                for def in &v.definitions {
-                    let nested = emit_def(context, *def);
-                    node.push(nested);
-                }
+                let nested = v.definitions.iter().map(|&v| emit_def(context, v));
+                node.extend(nested);
             }
             DefKind::Struct(v) => {
                 if let Some(_parent) = &v.parent {

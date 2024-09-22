@@ -31,7 +31,7 @@ use std::process::Command;
 
 fn commit_hash() -> String {
     let output = Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "--short=8", "HEAD"])
         .output()
         .unwrap();
 

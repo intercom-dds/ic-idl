@@ -204,7 +204,7 @@ fn try_parse(
 fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<File>> {
     let merged = ic_ptree::merge_trees(parsed);
     if options.unstable.ptree_dump {
-        ic_ptree_pretty::ptree_dump(&merged);
+        ic_ptree_dump::ptree_dump(&merged);
     }
 
     let backends: &[(_, fn(_) -> _)] = &[

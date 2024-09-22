@@ -51,7 +51,7 @@ members = [
     "crates/ic-parse",
     "crates/ic-preproc",
     "crates/ic-ptree",
-    "crates/ic-ptree-pretty",
+    "crates/ic-ptree-dump",
     "crates/ic-syntax",
     "crates/ic-vfs",
     "tools/xtask",

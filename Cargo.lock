@@ -231,7 +231,7 @@ dependencies = [
  "ic-parse",
  "ic-preproc",
  "ic-ptree",
- "ic-ptree-pretty",
+ "ic-ptree-dump",
  "ic-vfs",
  "intercom-cts",
  "tracing-subscriber",
@@ -298,7 +298,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-ptree-pretty"
+name = "ic-ptree-dump"
 version = "0.0.0"
 dependencies = [
  "ic-cc",

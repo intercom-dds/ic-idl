@@ -32,12 +32,18 @@ use crate::{Declarator, Expr, Path, Span, Type};
 
 #[must_use]
 pub fn path_name(path: &Path) -> String {
-    let mut segments = vec![];
+    let segments = path
+        .segments
+        .iter()
+        .map(|v| v.name.as_str())
+        .collect::<Vec<_>>()
+        .join("::");
+
     if path.leading_colons.is_some() {
-        segments.push("::");
+        format!("::{segments}")
+    } else {
+        segments
     }
-    segments.extend(path.segments.iter().map(|v| v.name.as_str()));
-    segments.join("::")
 }
 
 #[must_use]

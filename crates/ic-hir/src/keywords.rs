@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub const IDL_KEYWORDS: &[&'static str] = &[
+pub const IDL_KEYWORDS: &[&str] = &[
     "abstract",
     "any",
     "alias",

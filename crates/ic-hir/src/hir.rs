@@ -64,7 +64,7 @@ pub enum PrimitiveTy {
 
 intercom_cts::bitmask! {
     #[derive(Copy, Clone)]
-    DefFlags: u32 {
+    pub DefFlags: u32 {
         /// Indicates whether the type is recursive.
         IS_CIRCULAR = 1 << 0,
 
@@ -78,9 +78,18 @@ intercom_cts::bitmask! {
         /// Marker for synthesized types.
         IS_SYNTHESIZED = 1 << 3,
 
+        /// Marker for non-suppressed types.
+        IS_EMIT = 1 << 3,
+
         /// Indicates whether the type consists of members that can form an
         /// ordinal sequence, i.e. a well-ordered set.
         TOTAL_ORDER = 1 << 4,
+    }
+}
+
+impl Default for DefFlags {
+    fn default() -> Self {
+        Self::IS_EMIT
     }
 }
 
@@ -101,6 +110,8 @@ pub struct Def {
 
     /// Variant-specific data.
     pub kind: DefKind,
+
+    pub flags: DefFlags,
 }
 
 #[derive(Debug)]
@@ -284,6 +295,7 @@ pub struct Variant {
     pub ty: Ty,
 
     /// All switch cases that map to this variant.
+    // TODO: should this be a const?
     pub labels: Vec<Numeric>,
 
     /// Indicates whether this variant has a default label.

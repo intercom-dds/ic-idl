@@ -32,7 +32,6 @@ use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
 
-use crate::resolve::Lc;
 use crate::{Def, DefId, PrimitiveTy, TypeId, hir};
 
 // TODO: should a Type point to the definition instead?
@@ -170,15 +169,8 @@ impl Context {
     pub fn define(&mut self, scope: Option<DefId>, def: DefId) {
         let def = self.definitions.get(def);
         match self.registered.entry(def.ident.name.clone()) {
-            Entry::Occupied(v) => {
-                tracing::error!(
-                    "duplicate registration of `{}`, first registered as `{}`",
-                    def.ident.name,
-                    v.key(),
-                );
-            }
+            Entry::Occupied(v) => {}
             Entry::Vacant(v) => {
-                tracing::info!("registered type");
                 v.insert(def.id);
             }
         }
@@ -188,14 +180,13 @@ impl Context {
     pub fn resolve_type(&self, name: &ic_syntax::Type) -> TypeId {
         let name = type_name(name);
         let id = *self.symbols.get(&name).expect("unknown type");
-        tracing::trace!("resolving type `{name}` => {id:?}");
         id
     }
 
     pub fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
         let name = path_name(path);
+        println!("lokup: {name:?}");
         let ty = *self.symbols.get(&name).expect("unknown type");
-        tracing::trace!("resolving path `{name}` => {ty:?}");
         ty
     }
 

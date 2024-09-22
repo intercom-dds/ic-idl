@@ -41,13 +41,16 @@ use ic_syntax::util::{self, path_name, type_name};
 use ic_syntax::visit::{Visitor, walk_item};
 use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
-use crate::hir::{Variant, *};
-use crate::resolve::Resolver;
+use crate::hir::{
+    AliasTy, AnnotationTy, BitFlag, BitmaskTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
+    EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, PrimitiveTy, StructTy, Ty,
+    UnionTy, Variant,
+};
+use crate::resolve::{self, Resolver, Symbol, SymbolKind};
 use crate::{Context, TypeId};
 
-#[derive(Debug)]
 pub struct Interp<'a> {
-    ctx: &'a Context,
+    lower: &'a Lower<'a>,
 }
 
 impl Interp<'_> {
@@ -70,7 +73,7 @@ impl Interp<'_> {
             Numeric::Double(v) => Numeric::Double(v.neg()),
 
             Numeric::Const(_) => todo!(),
-            _ => panic!("tried to negate non-primitive type"),
+            _ => unreachable!("tried to negate non-primitive type"),
         }
     }
 
@@ -86,7 +89,7 @@ impl Interp<'_> {
             Numeric::Int32(v) => *v = v.not(),
             Numeric::Int64(v) => *v = v.not(),
             Numeric::Const(_) => todo!(),
-            _ => panic!("tried to negate non-primitive or floating-point type"),
+            _ => unreachable!("tried to negate non-primitive or floating-point type"),
         }
         num
     }
@@ -99,7 +102,7 @@ impl Interp<'_> {
             OpKind::Sub => -val,
             OpKind::Not => !val,
             OpKind::Add => val,
-            _ => panic!("invalid operator in unary expression"),
+            _ => unreachable!("invalid operator in unary expression"),
         }
     }
 
@@ -119,7 +122,7 @@ impl Interp<'_> {
             OpKind::Or => lhs | rhs,
             OpKind::Xor => lhs ^ rhs,
             OpKind::And => lhs & rhs,
-            OpKind::Not => panic!("expected binary op, found bitwise NOT"),
+            OpKind::Not => unreachable!("expected binary op, found bitwise NOT"),
         }
     }
 
@@ -146,9 +149,9 @@ impl Interp<'_> {
 
         match expr {
             Expr::Literal(v) => Numeric::Octet(0),
-            Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
-            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v) as i64),
-            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v) as i64),
+            Expr::Path(v) => Numeric::Const(self.lower.resolver.resolve_path(v).unwrap()),
+            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
+            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
             Expr::InitList(_) => todo!(),
         }
     }
@@ -167,11 +170,13 @@ impl Interp<'_> {
                 LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
                 LiteralValue::Char(v) => Numeric::Char(*v),
                 LiteralValue::String(ref v) => Numeric::String(v.clone()),
-                _ => todo!(),
+                LiteralValue::Float(_) => todo!(),
             },
-            Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
-            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v) as i64),
-            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v) as i64),
+            // TODO: this should always be a constant, enumerator of bitflag.
+            // ...should we just register everything? probaby...
+            Expr::Path(v) => Numeric::Const(DefId::_do_not_use()),
+            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
+            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
             Expr::InitList(v) => todo!(),
         }
     }
@@ -187,7 +192,7 @@ impl Interp<'_> {
             Expr::Literal(_) => Numeric::from(T::try_from(0)?),
             Expr::Unary(v) => Numeric::from(T::try_from(self.eval_unary(v))?),
             Expr::Binary(v) => Numeric::from(T::try_from(self.eval_binary(v))?),
-            Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
+            Expr::Path(v) => todo!(),
             Expr::InitList(_) => todo!(),
         };
         Ok(num)
@@ -208,14 +213,8 @@ impl Interp<'_> {
 struct Lower<'a> {
     ctx: &'a mut Context,
     order: Vec<TypeId>,
-    decls: Vec<TypeId>,
     resolver: Resolver,
     registered: CaseMap<'static, Span>,
-
-    // Do we need to know the ID? don't think so? I think maybe the name is
-    // enough?
-    // global: Scope,
-    scope: Vec<Scope>,
     errors: Vec<Diag>,
 }
 
@@ -241,9 +240,7 @@ impl<'a> Lower<'a> {
         Self {
             ctx,
             order: vec![],
-            decls: vec![],
-            resolver: Resolver::default(),
-            scope: vec![],
+            resolver: Resolver::new(),
             registered: CaseMap::default(),
             errors: vec![],
             // global: CaseMap::default(),
@@ -381,9 +378,9 @@ impl<'a> Lower<'a> {
         }
     }
 
-    pub(crate) fn eval_expr(&mut self, expr: &ic_syntax::Expr) -> Numeric {
+    pub(crate) fn eval_expr(&self, expr: &ic_syntax::Expr) -> Numeric {
         // TODO: can we make this accept TypeId instead?
-        Interp { ctx: &self.ctx }.eval_expr_ty::<i64>(expr)
+        Interp { lower: self }.eval_expr_ty::<i64>(expr)
     }
 
     pub(crate) fn bound_expr(&mut self, expr: &ic_syntax::Expr) -> usize {
@@ -416,13 +413,38 @@ impl<'a> Lower<'a> {
     //     })
     // }
 
-    fn lookup_path(&mut self, path: ic_syntax::Path) -> DefId {
-        self.ctx
-            .definitions
-            .iter()
-            .find(|(id, def)| def.ident.name == path.segments.last().as_ref().unwrap().name)
-            .unwrap()
-            .0
+    /// **NB**: If lookup fails, this will produce an error. It should not be
+    /// used for fallible lookups.
+    fn lookup_path(&mut self, path: ic_syntax::Path) -> Option<DefId> {
+        let qualified = {
+            let segments = path
+                .segments
+                .iter()
+                .map(|v| v.name.as_str())
+                .collect::<Vec<_>>()
+                .join("::");
+
+            if path.leading_colons.is_some() {
+                format!("::{segments}")
+            } else {
+                segments
+            }
+        };
+        tracing::info!("lookup: {qualified:?}");
+
+        // TODO: we may want to provide more granular spans, so we can pinpoint
+        // which ident in the path failed to resolve.
+        let resolved = self.resolver.resolve_path(&path);
+
+        // TODO: propagate kind, so we can specify "module" instead of "type"
+        if let Err(span) = resolved {
+            let diag = error_span(
+                format!("failed to resolve type `{}`", qualified.yellow()),
+                Label::new(span).message("unknown type"),
+            );
+            self.errors.push(diag);
+        }
+        resolved.ok()
     }
 
     fn array_type(&mut self, mut ty: Ty, bounds: &[ic_syntax::Expr]) -> Ty {
@@ -440,11 +462,56 @@ impl<'a> Lower<'a> {
 
     fn qualified_name(&self, ident: &Ident) -> String {
         let mut segments: Vec<&str> = vec![];
-        for scope in &self.scope {
-            segments.push(&scope.name);
-        }
+        // for scope in &self.scope {
+        //     segments.push(&scope.name);
+        // }
         segments.push(&ident.name);
-        segments.join("::")
+        format!("::{}", segments.join("::"))
+    }
+
+    fn with_scope<R>(&mut self, ident: &Ident, f: impl FnOnce(&mut Self) -> R) -> R {
+        // self.resolver.start_module(&def.ident);
+        let res = f(self);
+        // self.resolver.finish_module();
+        res
+    }
+
+    // TODO: or constants? expr? numeric?
+    // or should we just store an enum with the respective ID?
+    fn register_symbol(&mut self, ident: &Ident) {
+        let name = self.qualified_name(ident);
+
+        match self.registered.entry(name) {
+            Entry::Occupied(_) => {
+                // let diag = error_span(
+                //     format!("duplicate registration of `{}`", prev.key().yellow()),
+                //     Label::new(ident.span).message("redefined here"),
+                // );
+                // self.errors.push(diag);
+            }
+            Entry::Vacant(v) => {
+                v.insert(ident.span);
+            }
+        }
+    }
+
+    // TODO: we need to register symbols too, for things like constants...
+    fn register_type(&mut self, ident: &Ident, ty: TypeId) {
+        // FIXME: this is already checked in the sanity lint. this can either
+        // be removed or asserted
+        assert!(!ident.name.is_empty(), "attempted to register unnamed type");
+
+        // TODO: Must handle forward dcls and check they are of the same type,
+        // i.e. not a struct fwd dcl to a union def.
+        let name = self.qualified_name(ident);
+        self.register_symbol(ident);
+
+        match self.ctx.symbols.entry(name) {
+            Entry::Occupied(_) => {}
+            Entry::Vacant(v) => {
+                v.insert(ty);
+            }
+        }
     }
 
     /// Destructures a declarator into an (ident, type) tuple. For arrays, this
@@ -478,69 +545,16 @@ impl<'a> Lower<'a> {
                 elem: Box::new(self.lower_type(*v.value)),
                 bound: v.bound.map(|e| self.bound_expr(&e)),
             },
-            Type::Path(v) => Ty::Adt(self.lookup_path(v)),
-        }
-    }
-
-    fn with_scope<R>(&mut self, ident: &Ident, f: impl FnOnce(&mut Self) -> R) -> R {
-        self.scope.push(Scope {
-            name: ident.name.clone(),
-        });
-        let ret = f(self);
-        self.scope.pop();
-        ret
-    }
-
-    // TODO: or constants? expr? numeric?
-    //
-    // or should we just store an enum with the respective ID?
-    fn register_symbol(&mut self, ident: &Ident) {
-        let name = self.qualified_name(ident);
-        tracing::info!("registering symbol: {name}");
-
-        match self.registered.entry(name) {
-            Entry::Occupied(prev) => {
-                let diag = error_span(
-                    format!("duplicate registration of `{}`", prev.key().yellow()),
-                    Label::new(ident.span).message("redefined here"),
-                );
-                self.errors.push(diag);
-
-                tracing::error!(
-                    "duplicate registration of {}, first registered near {:?}",
-                    prev.key(),
-                    prev.get(),
-                );
-            }
-            Entry::Vacant(v) => {
-                v.insert(ident.span);
+            Type::Path(v) => {
+                if let Some(v) = self.lookup_path(v) {
+                    Ty::Adt(v)
+                } else {
+                    // TODO: this function should be fallible.
+                    // return `Any` for now.
+                    Ty::Any
+                }
             }
         }
-    }
-
-    // TODO: we need to register symbols too, for things like constants...
-    fn register_type(&mut self, ident: &Ident, ty: TypeId) {
-        // FIXME: this is already checked in the sanity lint. this can either
-        // be removed or asserted
-        if ident.name.is_empty() {
-            panic!("attempted to register unnamed type");
-        }
-
-        self.register_symbol(ident);
-
-        // TODO: Must handle forward dcls and check they are of the same type,
-        // i.e. not a struct fwd dcl to a union def.
-        let name = self.qualified_name(ident);
-        match self.ctx.symbols.entry(name) {
-            Entry::Occupied(_) => {}
-            Entry::Vacant(v) => {
-                v.insert(ty);
-            }
-        }
-    }
-
-    fn is_registered(&self, ident: &Ident) -> bool {
-        self.registered.get(&ident.name).is_some()
     }
 
     fn lower_annotation_def(&mut self, def: ic_syntax::AnnotationDef) -> DefId {
@@ -568,19 +582,28 @@ impl<'a> Lower<'a> {
             }
         }
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+        self.alloc_type(&def.ident, |id| Def {
             id,
             ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Annotation(AnnotationTy { members, types }),
             flags: DefFlags::default(),
-        });
-        self.register_type(&def.ident, id);
+        })
+    }
+
+    fn alloc_type<F>(&mut self, ident: &Ident, closure: F) -> DefId
+    where
+        F: FnOnce(DefId) -> Def,
+    {
+        let id = self.ctx.definitions.alloc_with_id(closure);
+        // self.resolver.define_type(None, ident, id);
+        self.register_type(ident, id);
         id
     }
 
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
+        self.resolver.start_module(&def.ident);
         let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
             def.definitions
                 .into_iter()
@@ -600,17 +623,15 @@ impl<'a> Lower<'a> {
             annotations,
             span: def.span,
             kind: DefKind::Module(ModuleTy { definitions }),
+            flags: DefFlags::default(),
         });
 
-        // Modules can be re-opened
-        if !self.is_registered(&def.ident) {
-            self.register_type(&def.ident, id);
-        }
+        self.resolver.finish_module();
         id
     }
 
     fn lower_struct(&mut self, def: ic_syntax::StructDef) -> DefId {
-        let parent = def.parent.map(|v| self.lookup_path(v));
+        let parent = def.parent.and_then(|v| self.lookup_path(v));
         let members = self.with_scope(&def.ident, |this| {
             def.members
                 .into_iter()
@@ -618,15 +639,25 @@ impl<'a> Lower<'a> {
                 .collect()
         });
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.alloc_type(&def.ident, |id| Def {
             id,
             ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Struct(StructTy { parent, members }),
+            flags: DefFlags::default(),
         });
 
-        self.register_type(&def.ident, id);
+        if !self
+            .resolver
+            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Struct))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", def.ident.name.yellow()),
+                Label::new(def.ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
         id
     }
 
@@ -665,26 +696,45 @@ impl<'a> Lower<'a> {
                 .collect()
         });
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.alloc_type(&def.ident, |id| Def {
             id,
-            ident: def.ident,
+            ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Except(ExceptTy { members }),
-        })
+            flags: DefFlags::default(),
+        });
+
+        if !self
+            .resolver
+            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Exception))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", def.ident.name.yellow()),
+                Label::new(def.ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
+        id
     }
 
     fn lower_variant(&mut self, var: ic_syntax::UnionField) -> Variant {
         use ic_syntax::{Label, UnionElement};
 
-        let labels: Vec<_> = var
-            .labels
-            .into_iter()
-            .map(|label| match label {
-                Label::Case(v) => self.eval_expr(&v),
-                Label::Default(_) => todo!(),
-            })
-            .collect();
+        let mut is_default = false;
+        let mut labels = vec![];
+
+        for label in &var.labels {
+            match label {
+                Label::Case(v) => {
+                    let num = self.eval_expr(v);
+                    labels.push(num);
+                }
+                Label::Default(_) => {
+                    is_default = true;
+                }
+            }
+        }
 
         match var.field {
             UnionElement::Member(v) => {
@@ -696,7 +746,7 @@ impl<'a> Lower<'a> {
                     ident,
                     ty,
                     labels,
-                    is_default: false,
+                    is_default,
                 }
             }
             UnionElement::Null(_) => todo!(),
@@ -712,24 +762,41 @@ impl<'a> Lower<'a> {
         });
 
         let disc = self.lower_type(def.disc.ty);
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.alloc_type(&def.ident, |id| Def {
             id,
-            ident: def.ident,
+            ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Union(UnionTy { disc, variants }),
-        })
+            flags: DefFlags::default(),
+        });
+
+        if !self
+            .resolver
+            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Union))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", def.ident.name.yellow()),
+                Label::new(def.ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
+        id
     }
 
-    fn lower_annotation(&mut self, _ann: ic_syntax::AnnotationAppl) {}
+    fn lower_annotation(&self, _ann: ic_syntax::AnnotationAppl) {}
+
+    fn lower_annotations(&mut self, ann: Vec<ic_syntax::AnnotationAppl>) -> Vec<()> {
+        ann.into_iter().map(|v| self.lower_annotation(v)).collect()
+    }
 
     fn lower_enum_lit(&mut self, lit: ic_syntax::Enumerator, last: &mut isize) -> EnumLit {
         *last = lit
             .value
-            .map(|v| self.bound_expr(&v) as isize)
-            .unwrap_or_else(|| *last + 1);
+            .map_or_else(|| *last + 1, |v| self.bound_expr(&v) as isize);
 
         self.register_symbol(&lit.ident);
+
         EnumLit {
             ident: lit.ident,
             value: *last,
@@ -747,7 +814,7 @@ impl<'a> Lower<'a> {
 
         // TODO: report conflicts in the resolver. this can go on as before
         // (though the member will not be registered(?)).
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.alloc_type(&def.ident, |id| Def {
             id,
             ident: def.ident.clone(),
             annotations: vec![],
@@ -756,16 +823,26 @@ impl<'a> Lower<'a> {
                 fields,
                 ty: Ty::Primitive(PrimitiveTy::UInt32),
             }),
+            flags: DefFlags::default(),
         });
-        self.register_type(&def.ident, id);
+
+        if !self
+            .resolver
+            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Enum))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", def.ident.name.yellow()),
+                Label::new(def.ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
         id
     }
 
     fn lower_bitmask_flag(&mut self, lit: ic_syntax::Bit, last: &mut isize) -> BitFlag {
         *last = lit
             .value
-            .map(|v| self.bound_expr(&v) as isize)
-            .unwrap_or_else(|| *last + 1);
+            .map_or_else(|| *last + 1, |v| self.bound_expr(&v) as isize);
 
         self.register_symbol(&lit.ident);
         BitFlag {
@@ -783,7 +860,7 @@ impl<'a> Lower<'a> {
             .map(|lit| self.lower_bitmask_flag(lit, &mut last))
             .collect();
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.alloc_type(&def.ident, |id| Def {
             id,
             ident: def.ident.clone(),
             annotations: vec![],
@@ -792,8 +869,19 @@ impl<'a> Lower<'a> {
                 flags,
                 ty: Ty::Primitive(PrimitiveTy::UInt32),
             }),
+            flags: DefFlags::default(),
         });
-        self.register_type(&def.ident, id);
+
+        if !self
+            .resolver
+            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Bitmask))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", def.ident.name.yellow()),
+                Label::new(def.ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
         id
     }
 
@@ -802,13 +890,26 @@ impl<'a> Lower<'a> {
         let ty = self.lower_type(def.ty);
         let (ident, ty) = self.lower_declarator(def.decl, ty);
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
-            ident,
+            ident: ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Const(ConstTy { value, ty }),
-        })
+            flags: DefFlags::default(),
+        });
+
+        if !self
+            .resolver
+            .define_type(&ident, Symbol::Adt(id, SymbolKind::Const))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", ident.name.yellow()),
+                Label::new(ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
+        id
     }
 
     // A typedef with multiple declarators will be expanded to multiple,
@@ -819,13 +920,26 @@ impl<'a> Lower<'a> {
             .into_iter()
             .map(|decl| {
                 let (ident, ty) = self.lower_declarator(decl, ty.clone());
-                self.ctx.definitions.alloc_with_id(|id| Def {
+                let id = self.ctx.definitions.alloc_with_id(|id| Def {
                     id,
-                    ident,
+                    ident: ident.clone(),
                     annotations: vec![],
                     span: def.span,
                     kind: DefKind::Alias(AliasTy { ty }),
-                })
+                    flags: DefFlags::default(),
+                });
+
+                if !self
+                    .resolver
+                    .define_type(&ident, Symbol::Adt(id, SymbolKind::Typedef))
+                {
+                    let diag = error_span(
+                        format!("duplicate registration of `{}`", ident.name.yellow()),
+                        Label::new(ident.span).message("redefined here"),
+                    );
+                    self.errors.push(diag);
+                }
+                id
             })
             .collect()
     }
@@ -835,22 +949,35 @@ impl<'a> Lower<'a> {
         let prototypes = vec![];
         let attributes = vec![];
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let id = self.alloc_type(&def.ident, |id| Def {
             id,
-            ident: def.ident,
+            ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
             kind: DefKind::Interface(InterfaceTy {
                 prototypes,
                 attributes,
             }),
-        })
+            flags: DefFlags::default(),
+        });
+
+        if !self
+            .resolver
+            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Interface))
+        {
+            let diag = error_span(
+                format!("duplicate registration of `{}`", def.ident.name.yellow()),
+                Label::new(def.ident.span).message("redefined here"),
+            );
+            self.errors.push(diag);
+        }
+        id
     }
 
-    fn lower_decl(&mut self, def: ic_syntax::Decl) -> DefId {
+    fn lower_decl(&mut self, decl: ic_syntax::Decl) -> DefId {
         use ic_syntax::DeclKind;
 
-        let kind = match def.kind {
+        let kind = match decl.kind {
             DeclKind::Struct => Decl::Struct,
             DeclKind::Union => Decl::Union,
             DeclKind::Native => Decl::Native,
@@ -858,18 +985,35 @@ impl<'a> Lower<'a> {
             DeclKind::Valuetype => Decl::Valuetype,
         };
 
-        self.ctx.definitions.alloc_with_id(|id| Def {
+        let annotations = decl
+            .annotations
+            .into_iter()
+            .map(|v| self.lower_annotation(v))
+            .collect();
+
+        let id = self.alloc_type(&decl.ident, |id| Def {
             id,
-            ident: def.ident,
-            annotations: vec![],
-            span: def.span,
+            ident: decl.ident.clone(),
+            annotations,
+            span: decl.span,
             kind: DefKind::Decl(kind),
-        })
+            flags: DefFlags::default(),
+        });
+
+        let res_ty = match decl.kind {
+            DeclKind::Struct => SymbolKind::Struct,
+            DeclKind::Union => SymbolKind::Union,
+            DeclKind::Valuetype => SymbolKind::Valuetype,
+            _ => SymbolKind::Interface,
+        };
+
+        self.resolver
+            .declare_type(&decl.ident, Symbol::Decl(id, res_ty));
+        id
     }
 
     fn lower_item(&mut self, item: ic_syntax::Item) -> Vec<DefId> {
         use ic_syntax::Item;
-        tracing::debug!("lowering item: {item:?} in scope {:?}", self.scope);
 
         let id = match item {
             Item::AnnotationValue(v) => self.lower_annotation_def(v),
@@ -887,12 +1031,8 @@ impl<'a> Lower<'a> {
                 self.order.extend(ids.iter());
                 return ids;
             }
-            Item::ValuetypeValue(_) => {
+            Item::ValuetypeValue(_) | Item::BitsetValue(_) => {
                 // skipped for now
-                return vec![];
-            }
-            Item::BitsetValue(_) => {
-                // not supported, omitted from the HIR
                 return vec![];
             }
         };
@@ -954,7 +1094,7 @@ impl<'a, 'cx> ic_syntax::visit::Visitor<'a> for HirBuilder<'a, 'cx> {
     // }
 }
 
-fn lower_item<'cx>(lower: &mut Lower<'cx>, item: &ic_syntax::Item) -> Vec<TypeId> {
+fn lower_item(lower: &mut Lower<'_>, item: &ic_syntax::Item) -> Vec<TypeId> {
     let mut builder = HirBuilder {
         lower,
         defined: vec![],
@@ -981,19 +1121,19 @@ where
         let ids = state.lower_item(item);
         order.extend(ids);
     }
-    assert!(
-        state.scope.is_empty(),
-        "{} lexical scope(s) was opened but never closed",
-        state.scope.len(),
-    );
+
     debug_assert!(
         all_unique(&state.order),
         "order of types contains duplicate entries",
     );
 
     state.order = order;
-    tracing::info!("registered: {:#?}", state.registered);
     foo::emit_tree(&state);
+
+    // Perform some additional validation to ensure all types have been defined
+    // and all scopes have been correctly closed.
+    state.resolver.finish();
+
     (state.order, state.errors)
 }
 
@@ -1038,7 +1178,7 @@ mod foo {
         I: Into<Leaf<D>>,
     {
         fn extend<T: IntoIterator<Item = I>>(&mut self, iter: T) {
-            self.leaves.extend(iter.into_iter().map(|v| v.into()))
+            self.leaves.extend(iter.into_iter().map(Into::into));
         }
     }
 
@@ -1187,7 +1327,7 @@ mod foo {
             DefKind::Bitmask(_) => "bitmask",
             DefKind::Alias(_) => "alias",
             DefKind::Interface(_) => "interface",
-            DefKind::Decl(_) => "decl",
+            DefKind::Decl { .. } => "decl",
         };
 
         let span = emit_span(&def.span);
@@ -1214,21 +1354,20 @@ mod foo {
                 if let Some(_parent) = &v.parent {
                     node.push(leaf!("{}", "parent".purple()));
                 }
-
-                for mem in &v.members {
-                    let span = emit_span(&mem.ident.span);
-                    let ty = emit_ty(context, &mem.ty);
-                    let mut member = leaf!(
-                        "{} {span} {} emit",
-                        "member".green().bold(),
-                        mem.ident.name.cyan(),
-                    );
-                    member.push(leaf!("{} {ty}", "type".purple()));
-                    node.push(member);
-                }
+                let members = v.members.iter().map(|v| emit_member(context, v));
+                node.extend(members);
             }
-            DefKind::Except(_) => todo!(),
-            DefKind::Union(_) => todo!(),
+            DefKind::Except(v) => {
+                let members = v.members.iter().map(|v| emit_member(context, v));
+                node.extend(members);
+            }
+            DefKind::Union(v) => {
+                let disc_ty = emit_ty(context, &v.disc);
+                node.push(leaf!("{} {disc_ty}", "disc".purple()));
+
+                let variants = v.variants.iter().map(|v| emit_variant(context, v));
+                node.extend(variants);
+            }
             DefKind::Enum(v) => {
                 let ty = emit_ty(context, &v.ty);
                 node.push(leaf!("{} {ty} builtin", "type".purple()));
@@ -1261,15 +1400,27 @@ mod foo {
                     ));
                 }
             }
-            DefKind::Alias(_) => todo!(),
+            DefKind::Alias(v) => {
+                let ty = emit_ty(context, &v.ty);
+                node.push(leaf!("{} {ty}", "type".purple()));
+            }
             DefKind::Interface(_) => todo!(),
-            DefKind::Decl(_) => todo!(),
+            DefKind::Decl(kind) => {
+                let kind = match kind {
+                    Decl::Struct => "struct",
+                    Decl::Union => "union",
+                    Decl::Native => "native",
+                    Decl::Interface => "interface",
+                    Decl::Valuetype => "valuetype",
+                };
+                node.push(leaf!("{} {}", "kind".green(), kind.cyan()));
+            }
         }
         node
     }
 
     pub fn emit_tree(result: &Lower<'_>) {
-        let leaves = result.order.iter().map(|id| emit_def(&result.ctx, *id));
+        let leaves = result.order.iter().map(|id| emit_def(result.ctx, *id));
         let mut root = leaf!("{}", ".".gray());
         root.extend(leaves);
 

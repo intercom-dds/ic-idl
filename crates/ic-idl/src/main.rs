@@ -33,7 +33,6 @@ use config::Options;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
 use ic_preproc::ProcArgs;
-use ic_ptree::ParseResult;
 use ic_vfs::SourceMap;
 use tracing_subscriber::filter::LevelFilter;
 use util::{Error, collect_files, write_if_changed};

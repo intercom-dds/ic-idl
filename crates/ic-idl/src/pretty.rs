@@ -35,7 +35,6 @@ use ic_parse::Reason;
 use ic_parse::lexer::Kind;
 use ic_vfs::SourceMap;
 
-use crate::error;
 use crate::util::Error;
 
 fn rel_path(path: &Path) -> PathBuf {

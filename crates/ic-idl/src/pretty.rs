@@ -60,7 +60,7 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
     }
 }
 
-fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write) {
+fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write) -> fmt::Result {
     let diag = match &error.reason {
         Reason::Unclosed { span, delimiter } => error_span(
             format!("unclosed delimiter {delimiter}"),
@@ -104,23 +104,25 @@ fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write
 
     let file = vfs.file_info(error.span.start.file_id);
     let relative = rel_path(&file.path).to_string_lossy().to_string();
-    let _ = ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag);
+    ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag)
 }
 
 pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
     let mut buf = String::new();
+    let prefix = "error:".red().bold();
+
     for err in errors {
         if !buf.is_empty() {
             _ = writeln!(&mut buf);
         }
 
-        match err {
-            Error::Preproc(e) => error!("{e}"),
-            Error::Io(e) => error!("{e}"),
-            Error::Custom(e) => error!("{e}"),
+        _ = match err {
+            Error::Preproc(e) => writeln!(&mut buf, "{prefix} {e}"),
+            Error::Io(e) => writeln!(&mut buf, "{prefix} {e}"),
+            Error::Custom(e) => writeln!(&mut buf, "{prefix} {e}"),
             Error::Parse(e) => emit_error(e, vfs, &mut buf),
-            Error::Diagnostic(diag) => _ = ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag),
-        }
+            Error::Diagnostic(diag) => ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag),
+        };
     }
     eprintln!("{buf}");
 }

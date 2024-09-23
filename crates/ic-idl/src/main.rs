@@ -127,7 +127,7 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
         trees.push(ast);
     }
 
-    try_ptree(options, &trees, vfs)
+    try_ptree(options, &trees, vfs).map_err(|e| vec![e])
 }
 
 // To report as much information as possible at once, we keep going even if we
@@ -171,7 +171,7 @@ fn try_ptree(
     options: &Options,
     parsed: &[ic_parse::ParseResult],
     vfs: &SourceMap,
-) -> Result<Vec<File>, Vec<Error>> {
+) -> Result<Vec<File>, Error> {
     // Lower the AST to a ptree
     let lowered: Vec<_> = parsed
         .iter()
@@ -199,44 +199,25 @@ fn try_ptree(
         ),
     ];
 
-    let mut errors = vec![];
     let mut generated = vec![];
     for (dir, backend) in backends
         .iter()
         .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
     {
-        if let Err(e) = try_emit(dir, options, &merged, backend, &mut generated) {
-            errors.push(e);
+        let dir = std::path::absolute(dir)?;
+        if options.purge_dirs {
+            util::safe_purge(&dir)?;
         }
-    }
 
-    if errors.is_empty() {
-        Ok(generated)
-    } else {
-        Err(errors)
+        // Invoke the backend and update the file paths
+        let files = backend(&merged).into_iter().map(|v| match v {
+            File::Generated { path, source } => File::Generated {
+                path: dir.join(path),
+                source,
+            },
+            File::Dep(_) => v,
+        });
+        generated.extend(files);
     }
-}
-
-fn try_emit<'a>(
-    dir: &Path,
-    options: &Options,
-    merged: &'a ParseResult,
-    backend: impl Fn(&'a ParseResult) -> Vec<File> + 'a,
-    generated: &mut Vec<File>,
-) -> Result<(), Error> {
-    let dir = std::path::absolute(dir)?;
-    if options.purge_dirs {
-        util::safe_purge(&dir)?;
-    }
-
-    // Invoke the backend and update the file paths
-    let files = backend(merged).into_iter().map(|v| match v {
-        File::Generated { path, source } => File::Generated {
-            path: dir.join(path),
-            source,
-        },
-        File::Dep(_) => v,
-    });
-    generated.extend(files);
-    Ok(())
+    Ok(generated)
 }

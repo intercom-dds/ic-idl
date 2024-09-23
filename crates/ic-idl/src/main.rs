@@ -29,7 +29,6 @@
 
 use std::path::Path;
 
-use anyhow::anyhow;
 use config::Options;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
@@ -37,7 +36,7 @@ use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
 use ic_vfs::SourceMap;
 use tracing_subscriber::filter::LevelFilter;
-use util::{collect_files, write_if_changed};
+use util::{Error, collect_files, write_if_changed};
 
 mod config;
 mod info;
@@ -84,10 +83,16 @@ fn main() {
         .with_max_level(LevelFilter::TRACE)
         .init();
 
-    let generated = match try_main(&options) {
+    let mut vfs = SourceMap::default();
+    let generated = match try_main(&options, &mut vfs) {
         Ok(v) => v,
         Err(e) => {
-            error!("{e}");
+            pretty::emit_errors(&e, &vfs);
+            error!(
+                "aborting due to {} previous error{}",
+                e.len(),
+                if e.len() > 1 { "s" } else { "" },
+            );
             std::process::exit(1);
         }
     };
@@ -101,9 +106,7 @@ fn main() {
     }
 }
 
-fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
-    let mut vfs = SourceMap::default();
-
+fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Error>> {
     let defines = options.define.iter().map(|v| {
         v.split_once('=')
             .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
@@ -116,93 +119,67 @@ fn try_main(options: &Options) -> anyhow::Result<Vec<File>> {
         .skip_comments(options.ignore_comments);
 
     let mut trees = vec![];
-    let files = collect_files(&options.files)?;
+    let files = collect_files(&options.files)
+        .map_err(|e| e.into_iter().map(Error::Io).collect::<Vec<_>>())?;
+
     for file in files {
-        if options.preprocessor_only {
-            let (output, _) = ic_preproc::to_string(&file, args.clone())?;
-            println!("{output}");
-        } else {
-            let ast = try_parse(options, args.clone(), &file, &mut vfs)?;
-            trees.push(ast);
-        }
+        let ast = try_parse(options, args.clone(), &file, vfs)?;
+        trees.push(ast);
     }
 
-    try_ptree(options, &trees)
+    try_ptree(options, &trees, vfs)
 }
 
+// To report as much information as possible at once, we keep going even if we
+// meet an error and instead summarize everything at the end. This also applies
+// to syntax errors in the input: the parser will attempt to recover so we can
+// continue parsing and construct a partial AST.
 fn try_parse(
     options: &Options,
     proc: ProcArgs,
     path: &Path,
     vfs: &mut SourceMap,
-) -> anyhow::Result<ParseResult> {
-    let ast = ic_parse::from_path(path, proc, vfs);
+) -> Result<ic_parse::ParseResult, Vec<Error>> {
+    let mut errors = vec![];
+    let (ast, err) = ic_parse::from_path(path, proc, vfs);
+    errors.extend(err.into_iter().map(Into::into));
 
-    match ast {
-        Ok(v) => {
-            if options.unstable.ast_dump {
-                println!("{:#?}", v.tree);
-            }
+    if options.unstable.ast_dump {
+        println!("{:#?}", ast.tree);
+    }
 
-            // Lint the AST
-            let report = ic_lint::lint_syntax(&v.tree, vfs);
+    // Lint the AST
+    let report = ic_lint::lint_syntax(&ast.tree, vfs);
+    errors.extend(report.diagnostics.into_iter().map(Into::into));
 
-            for diag in &report.diagnostics {
-                let mut buf = String::new();
+    // Lower the AST to a HIR
+    let hir = ic_hir::lower_ast(ast.tree.clone());
+    errors.extend(hir.errors.into_iter().map(Into::into));
 
-                // TODO: propagate file id here so we don't have to reopen it.
-                // this isn't necessarily the correct file either, we need
-                // to retrieve the FileId from the error
-                let input = std::fs::read_to_string(path).unwrap();
-                ic_diagnostic::emit_diagnostic(
-                    &mut buf,
-                    path.to_string_lossy().as_ref(),
-                    &input,
-                    diag,
-                )?;
-                eprintln!("{buf}");
-            }
+    // Lint the HIR
+    let report = ic_lint::lint_hir(&hir.context);
+    errors.extend(report.diagnostics.into_iter().map(Into::into));
 
-            // Lower the AST to a HIR
-            let hir = ic_hir::lower_ast(v.tree.clone());
-            if options.unstable.hir_dump {
-                println!("{hir:#?}");
-            }
-
-            // TODO: temporary hack just to emit the errors
-            for diag in &hir.errors {
-                let input = std::fs::read_to_string(path).unwrap();
-                let mut buf = String::new();
-                ic_diagnostic::emit_diagnostic(
-                    &mut buf,
-                    path.to_string_lossy().as_ref(),
-                    &input,
-                    diag,
-                )?;
-                eprintln!("{buf}");
-            }
-
-            if hir.errors.is_empty() {
-                Ok(ic_ptree::lower_ast(&v, vfs))
-            } else {
-                Err(anyhow!("parsing failed"))
-            }
-        }
-        Err(e) => {
-            // TODO: collect + join for all files
-            pretty::emit_errors(&e, vfs);
-            error!(
-                "aborting due to {} previous error{}",
-                e.len(),
-                if e.len() > 1 { "s" } else { "" },
-            );
-            Err(anyhow!("parsing failed"))
-        }
+    if errors.is_empty() {
+        Ok(ast)
+    } else {
+        Err(errors)
     }
 }
 
-fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<File>> {
-    let merged = ic_ptree::merge_trees(parsed);
+fn try_ptree(
+    options: &Options,
+    parsed: &[ic_parse::ParseResult],
+    vfs: &SourceMap,
+) -> Result<Vec<File>, Vec<Error>> {
+    // Lower the AST to a ptree
+    let lowered: Vec<_> = parsed
+        .iter()
+        .map(|ast| ic_ptree::lower_ast(ast, vfs))
+        .collect();
+
+    // Merge multiple ptrees into one
+    let merged = ic_ptree::merge_trees(&lowered);
     if options.unstable.ptree_dump {
         ic_ptree_dump::ptree_dump(&merged);
     }
@@ -222,25 +199,44 @@ fn try_ptree(options: &Options, parsed: &[ParseResult]) -> anyhow::Result<Vec<Fi
         ),
     ];
 
+    let mut errors = vec![];
     let mut generated = vec![];
     for (dir, backend) in backends
         .iter()
         .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
     {
-        let dir = std::path::absolute(dir)?;
-        if options.purge_dirs {
-            util::safe_purge(&dir)?;
+        if let Err(e) = try_emit(dir, options, &merged, backend, &mut generated) {
+            errors.push(e);
         }
-
-        // Invoke the backend and update the file paths
-        let files = backend(&merged).into_iter().map(|v| match v {
-            File::Generated { path, source } => File::Generated {
-                path: dir.join(path),
-                source,
-            },
-            File::Dep(_) => v,
-        });
-        generated.extend(files);
     }
-    Ok(generated)
+
+    if errors.is_empty() {
+        Ok(generated)
+    } else {
+        Err(errors)
+    }
+}
+
+fn try_emit<'a>(
+    dir: &Path,
+    options: &Options,
+    merged: &'a ParseResult,
+    backend: impl Fn(&'a ParseResult) -> Vec<File> + 'a,
+    generated: &mut Vec<File>,
+) -> Result<(), Error> {
+    let dir = std::path::absolute(dir)?;
+    if options.purge_dirs {
+        util::safe_purge(&dir)?;
+    }
+
+    // Invoke the backend and update the file paths
+    let files = backend(merged).into_iter().map(|v| match v {
+        File::Generated { path, source } => File::Generated {
+            path: dir.join(path),
+            source,
+        },
+        File::Dep(_) => v,
+    });
+    generated.extend(files);
+    Ok(())
 }

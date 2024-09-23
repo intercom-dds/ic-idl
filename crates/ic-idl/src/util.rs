@@ -27,9 +27,9 @@
 
 use std::collections::HashSet;
 use std::fs::DirEntry;
+use std::io::{self, Result};
 use std::path::{Path, PathBuf};
 
-use anyhow::{Result, bail};
 use ic_cli::color::Colorize;
 
 #[macro_export]
@@ -48,19 +48,43 @@ macro_rules! warn {
     }}
 }
 
+#[derive(Debug)]
+#[allow(unused)]
+pub enum Error {
+    Diagnostic(Box<ic_diagnostic::Diag>),
+    Parse(Box<ic_parse::Error>),
+    Preproc(ic_preproc::ProcError),
+    Io(std::io::Error),
+    Custom(String),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Self::Io(value)
+    }
+}
+
+impl From<ic_diagnostic::Diag> for Error {
+    fn from(value: ic_diagnostic::Diag) -> Self {
+        Self::Diagnostic(Box::new(value))
+    }
+}
+
+impl From<ic_parse::Error> for Error {
+    fn from(value: ic_parse::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
 /// Recursively iterates a directory and collects and IDL files.
-pub fn collect_files<'a, I>(paths: I) -> Result<HashSet<PathBuf>>
+pub fn collect_files<'a, I>(paths: I) -> std::result::Result<HashSet<PathBuf>, Vec<io::Error>>
 where
     I: IntoIterator<Item = &'a PathBuf>,
 {
     fn collect(p: &Path, files: &mut HashSet<PathBuf>) -> Result<()> {
         let meta = std::fs::metadata(p)?;
         if meta.is_dir() {
-            let iter = match std::fs::read_dir(p) {
-                Ok(v) => v,
-                Err(e) => bail!("couldn't open {}: {e}", p.display()),
-            };
-
+            let iter = std::fs::read_dir(p)?;
             for file in iter.flatten() {
                 collect(&file.path(), files)?;
             }
@@ -72,15 +96,23 @@ where
         Ok(())
     }
 
+    let mut errors = vec![];
     let mut files = HashSet::new();
     for path in paths {
         if std::fs::metadata(path).map_or(false, |v| v.is_dir()) {
-            collect(path, &mut files)?;
+            if let Err(e) = collect(path, &mut files) {
+                errors.push(e);
+            }
         } else {
             files.insert(path.clone());
         }
     }
-    Ok(files)
+
+    if errors.is_empty() {
+        Ok(files)
+    } else {
+        Err(errors)
+    }
 }
 
 pub fn write_if_changed<P>(path: P, contents: &str) -> Result<()>
@@ -98,7 +130,7 @@ where
     Ok(())
 }
 
-pub fn safe_purge<P>(dir: P) -> anyhow::Result<()>
+pub fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
 where
     P: AsRef<Path>,
 {
@@ -113,10 +145,10 @@ where
     if let Ok(v) = std::fs::metadata(&dir) {
         if v.is_dir() {
             if let Some(deny) = std::fs::read_dir(&dir)?.flatten().find_map(filter) {
-                bail!(
+                Err(Error::Custom(format!(
                     "cowardly refusing to purge output directory that contains `{}`",
                     deny.yellow(),
-                );
+                )))?;
             }
             std::fs::remove_dir_all(&dir)?;
         }

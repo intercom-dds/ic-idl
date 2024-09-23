@@ -538,8 +538,8 @@ where
 }
 
 unsafe fn inject_builtin(state: *mut sys::parser_state) {
-    let builtin =
-        ic_parse::from_str(BUILTIN_ANNOTATIONS).expect("failed to parse built-in annotations");
+    let (builtin, errors) = ic_parse::from_str(BUILTIN_ANNOTATIONS);
+    assert!(errors.is_empty(), "failed to parse built-in annotations");
 
     // Discard the generated nodes -- we don't want to include the built-in
     // types in the tree. They just need to be registered in the symbol map with

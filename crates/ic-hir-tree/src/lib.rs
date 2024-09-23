@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused)]
+#![allow(unused, clippy::print_stdout)]
 
 use std::fmt::{self, Display};
 
@@ -110,7 +110,7 @@ fn plural(word: &str, count: usize) -> String {
 pub fn emit_tree(result: &ic_hir::ResolvedGraph) {
     let mut root = leaf!(".");
     for id in &result.order {
-        let def = result.context.type_of(id);
+        let def = result.context.type_of(*id);
         let node = leaf!("{}", def.ident.name.blue());
         // match def.kind {}
         root.push(node);

@@ -37,8 +37,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-anyhow = "1.0"
-
 ic-cli = { path = "../ic-cli" }
 ic-diagnostic = { path = "../ic-diagnostic" }
 ic-emit = { path = "../ic-emit" }

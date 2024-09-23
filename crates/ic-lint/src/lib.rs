@@ -30,6 +30,7 @@
 use std::cell::RefCell;
 
 use ic_diagnostic::Diag;
+use ic_hir::ResolvedGraph;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
 
@@ -144,4 +145,8 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
 }
 
 /// Set of lints that operates on the HIR.
-pub fn lint_hir() {}
+pub fn lint_hir(_hir: &ic_hir::Context) -> Report {
+    Report {
+        diagnostics: vec![],
+    }
+}

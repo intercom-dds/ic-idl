@@ -160,7 +160,8 @@ impl std::fmt::Display for Error {
 /// # Errors
 ///
 /// # Panics
-pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
+#[must_use]
+pub fn from_str(input: &str) -> (ParseResult, Vec<Error>) {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(input);
     let args = ProcArgs::default();
@@ -172,11 +173,8 @@ pub fn from_str(input: &str) -> Result<ParseResult, Vec<Error>> {
 /// # Errors
 ///
 /// # Panics
-pub fn from_path(
-    path: &Path,
-    args: ProcArgs,
-    vfs: &mut SourceMap,
-) -> Result<ParseResult, Vec<Error>> {
+#[must_use]
+pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> (ParseResult, Vec<Error>) {
     let (file_id, _) = vfs.open(path, Include::Static).unwrap();
     from_file(file_id, args, vfs)
 }
@@ -186,19 +184,20 @@ pub fn from_path(
 /// # Errors
 ///
 /// # Panics
+#[must_use]
 pub fn from_file(
     file_id: FileId,
     args: ProcArgs,
     vfs: &mut SourceMap,
-) -> Result<ParseResult, Vec<Error>> {
+) -> (ParseResult, Vec<Error>) {
     let skip = args.get_skip_comments();
     let iter = ic_preproc::preprocess(file_id, args, vfs);
     let tokens = lexer::from_cursor(iter, skip);
-    let tree = parser::specification()
-        .parse(tokens)
-        .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
+    let (tree, errors) = parser::specification().parse_recovery(tokens);
+    let tree = tree.unwrap_or_default();
+    let errors = errors.into_iter().map(Error::from).collect();
 
-    Ok(ParseResult { tree })
+    (ParseResult { tree }, errors)
 }
 
 /// Constructs an AST from the given token iterator.

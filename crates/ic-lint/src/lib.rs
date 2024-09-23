@@ -33,7 +33,7 @@ use ic_diagnostic::Diag;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
 
-// mod annotation;
+mod annotation;
 mod pedantic;
 mod semantic;
 mod syntax;
@@ -120,6 +120,7 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
     };
 
     {
+        annotation::decl::AnnotatedDecl::check(&ctx, tree);
         pedantic::array_param::ArrayParam::check(&ctx, tree);
         pedantic::assign_expr::AssignExpr::check(&ctx, tree);
         pedantic::bitmask_ann::BitmaskAnn::check(&ctx, tree);

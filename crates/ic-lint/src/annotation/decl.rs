@@ -25,8 +25,45 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod decl;
-pub mod range_bound;
-pub mod topic_nested;
-pub mod unnamed_args;
+use ic_cli::color::Color;
+use ic_diagnostic::{Label, warn_span};
+use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::{Declarator, util};
+
+use crate::{Category, Lint, LintCtx};
+
+pub struct AnnotatedDecl<'a> {
+    ctx: &'a LintCtx<'a>,
+}
+
+impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
+    fn visit_forward_decl(&mut self, decl: &'a ic_syntax::Decl) {
+        // only issue one diagnostic per decl
+        if let Some(ann) = decl.annotations.first() {
+            let span = util::path_span(&ann.ty);
+            let diag = warn_span(
+                "annotations on forward declarations are ignored",
+                Label::new(span).message("defined here"),
+            )
+            .label(
+                Label::new(decl.ident.span)
+                    .message("applied to this declaration")
+                    .color(Color::Cyan),
+            )
+            .help("move the annotation to the definition of the type");
+
+            self.ctx.report(diag);
+        }
+    }
+}
+
+impl<'a> Lint<'a> for AnnotatedDecl<'_> {
+    fn category() -> Category {
+        Category::Pedantic
+    }
+
+    fn check(ctx: &'a crate::LintCtx<'_>, tree: &[ic_syntax::Item]) {
+        let mut lint = AnnotatedDecl { ctx };
+        visit_tree(&mut lint, tree);
+    }
+}

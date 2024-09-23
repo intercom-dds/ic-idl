@@ -294,7 +294,7 @@ pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::R
     // TODO; we assume all labels come form the same file -- this is not necessarily accurate.
     if let Some(label) = diag.labels.first() {
         let info = vfs.file_info(label.span.start.file_id);
-        let name = info.path.file_stem().unwrap().to_string_lossy().to_string();
+        let name = info.included_as.to_string_lossy().to_string();
         with_source(f, &name, &info.source, diag)
     } else {
         Ok(())

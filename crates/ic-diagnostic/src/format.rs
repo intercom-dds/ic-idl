@@ -25,12 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(dead_code)]
+#![allow(dead_code, clippy::cast_possible_truncation)]
 
 use std::fmt;
 use std::ops::Range;
 
 use ic_cli::color::Colorize;
+use ic_vfs::{SourceMap, Span};
 
 use crate::{Color, Diag, Label};
 
@@ -68,7 +69,7 @@ impl Charset {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Line {
     pub text: &'static str,
     pub color: Color,
@@ -94,11 +95,11 @@ fn line_col(input: &str, offset: usize) -> (usize, usize) {
 }
 
 /// Returns the span of the line in which the given byte offset exists.
-fn line_span(input: &str, offset: usize) -> Range<usize> {
+fn line_span(input: &str, offset: u32) -> Range<usize> {
     let start = input
         .bytes()
         .enumerate()
-        .take(offset)
+        .take(offset as usize)
         .rfind(|(_, v)| *v == b'\n')
         .map_or(0, |v| v.0 + 1);
 
@@ -106,7 +107,7 @@ fn line_span(input: &str, offset: usize) -> Range<usize> {
         .trim_end()
         .bytes()
         .enumerate()
-        .skip(offset)
+        .skip(offset as usize)
         .find(|(_, v)| *v == b'\n')
         .map_or(input.len(), |v| v.0);
 
@@ -115,13 +116,13 @@ fn line_span(input: &str, offset: usize) -> Range<usize> {
 
 /// If the given span contains a newline, it will truncate the span to the
 /// first line.
-fn line_or_span(input: &str, span: &Range<usize>) -> Range<usize> {
-    let end = input[span.start..span.end]
+fn line_or_span(input: &str, span: &Span) -> Range<usize> {
+    let end = input[span.start.offset as usize..span.end.offset as usize]
         .find('\n')
-        .map_or(span.end, |v| span.start + v);
+        .map_or(span.end.offset as usize, |v| span.start.offset as usize + v);
 
     Range {
-        start: span.start,
+        start: span.start.offset as usize,
         end,
     }
 }
@@ -166,8 +167,12 @@ impl<'a> Formatter<'a> {
 
     fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
         // Determine the necessary indentation based on length of the linenu
-        let (line_number, col) =
-            line_col(self.source, diag.labels.first().map_or(0, |v| v.span.start));
+        let (line_number, col) = line_col(
+            self.source,
+            diag.labels
+                .first()
+                .map_or(0, |v| v.span.start.offset as usize),
+        );
         let indent = line_number.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
@@ -189,7 +194,10 @@ impl<'a> Formatter<'a> {
         )?;
 
         // Embed the origin of the diagnostic
-        let range = line_span(self.source, diag.labels.first().map_or(0, |v| v.span.start));
+        let range = line_span(
+            self.source,
+            diag.labels.first().map_or(0, |v| v.span.start.offset),
+        );
         writeln!(f, " {}", self.source[range].trim_end())?;
 
         // Draw all labels
@@ -202,12 +210,12 @@ impl<'a> Formatter<'a> {
     /// Highlights the relevant portion of the line. A highlight is a sequence
     /// of `^` characters.
     fn emit_highlight(&self, f: &mut dyn fmt::Write, ordered: &[&Label]) -> fmt::Result {
-        let last_idx = ordered.first().map_or(0, |v| v.span.start);
-        let mut last_idx = line_span(self.source, last_idx).start;
+        let last_idx = ordered.first().map_or(0, |v| v.span.start.offset);
+        let mut last_idx = line_span(self.source, last_idx).start as u32;
 
         for label in ordered {
             // Determine the indentation needed to reach the highlighted region
-            let indent = " ".repeat(label.span.start.saturating_sub(last_idx));
+            let indent = " ".repeat(label.span.start.offset.saturating_sub(last_idx) as usize);
 
             // Emit the highlight. If the label spans multiple lines, we
             // should only emit highlights for the first line.
@@ -219,7 +227,7 @@ impl<'a> Formatter<'a> {
                 "{indent}{}",
                 self.chars.highlight.repeat(len).bold().fg(label.color),
             )?;
-            last_idx = label.span.end;
+            last_idx = label.span.end.offset;
         }
         Ok(())
     }
@@ -249,17 +257,17 @@ impl<'a> Formatter<'a> {
 
             // Iterate over all remaining labels, drawing a vertical line
             // at the appropriate location.
-            let last_idx = ordered.first().map_or(0, |v| v.span.start);
-            let mut last_idx = line_span(self.source, last_idx).start;
+            let last_idx = ordered.first().map_or(0, |v| v.span.start.offset);
+            let mut last_idx = line_span(self.source, last_idx).start as u32;
 
             for rem in iter.clone() {
-                let padding = " ".repeat(rem.span.start - last_idx);
-                last_idx = rem.span.start + 1;
+                let padding = " ".repeat((rem.span.start.offset - last_idx) as usize);
+                last_idx = rem.span.start.offset + 1;
                 write!(f, "{padding}{}", self.chars.vertical.fg(rem.color))?;
             }
 
             // Emit the message of the current label
-            let padding = " ".repeat(label.span.start - last_idx);
+            let padding = " ".repeat((label.span.start.offset - last_idx) as usize);
             write!(
                 f,
                 "{padding}{} ",
@@ -279,6 +287,17 @@ impl fmt::Display for Diag {
             chars: Charset::unicode(),
         };
         fmt.report(f, self)
+    }
+}
+
+pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
+    // TODO; we assume all labels come form the same file -- this is not necessarily accurate.
+    if let Some(label) = diag.labels.first() {
+        let info = vfs.file_info(label.span.start.file_id);
+        let name = info.path.file_stem().unwrap().to_string_lossy().to_string();
+        with_source(f, &name, &info.source, diag)
+    } else {
+        Ok(())
     }
 }
 

@@ -33,9 +33,9 @@
 mod format;
 
 use std::fmt;
-use std::ops::Range;
 
 use format::Line;
+use ic_vfs::{SourceMap, Span};
 
 /// Different ways a diagnostic can be formatted.
 pub enum Style {
@@ -138,13 +138,13 @@ impl Diag {
 #[must_use]
 #[derive(Debug)]
 pub struct Label {
-    span: Range<usize>,
+    span: Span,
     msg: String,
     color: Color,
 }
 
 impl Label {
-    pub fn new(span: impl Into<Range<usize>>) -> Self {
+    pub fn new(span: impl Into<Span>) -> Self {
         Self {
             span: span.into(),
             msg: String::new(),
@@ -176,7 +176,14 @@ pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
 /// # Errors
 ///
 /// May fail if writing to the given buffer fails.
-pub fn emit_diagnostic(
+pub fn emit_diagnostic(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
+    format::with_file(f, vfs, diag)
+}
+
+/// # Errors
+///
+/// May fail if writing to the given buffer fails.
+pub fn emit_with_source(
     f: &mut dyn fmt::Write,
     name: &str,
     source: &str,

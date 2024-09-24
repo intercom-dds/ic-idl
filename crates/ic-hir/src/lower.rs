@@ -1266,9 +1266,24 @@ mod foo {
                 };
                 return format!("{prefix}string{bound}").cyan();
             }
-            // Ty::Array { ty, len } => todo!(),
-            // Ty::Sequence { ty, bound } => todo!(),
-            // Ty::Map { key, elem, bound } => todo!(),
+            Ty::Array { ty, len } => {
+                let ty = emit_ty(context, ty);
+                return format!("array<{ty}, {len}>").cyan();
+            }
+            Ty::Sequence { ty, bound } => {
+                let ty = emit_ty(context, ty);
+                let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
+                return format!("sequence<{ty}{bound}>").cyan();
+            }
+            Ty::Map { key, elem, bound } => {
+                let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
+                return format!(
+                    "map<{}, {}{bound}>",
+                    emit_ty(context, key),
+                    emit_ty(context, elem)
+                )
+                .cyan();
+            }
             Ty::Adt(id) => {
                 let name = context.type_of(*id).ident.name.cyan();
                 return format!(
@@ -1278,7 +1293,6 @@ mod foo {
                     format!("0x{id:#02?}").blue(),
                 );
             }
-            _ => todo!(),
         };
 
         kind.cyan()

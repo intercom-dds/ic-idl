@@ -93,7 +93,7 @@ pub struct ScopeKind {
 
     /// A set of IDs of forward declarations that have not yet been defined.
     /// Once defined, the corresponding ID will be removed from this set.
-    decls: HashSet<DefId>,
+    decls: HashSet<String>,
 }
 
 /// Contains all the logic required to resolve all types and expressions in the
@@ -297,6 +297,12 @@ impl Resolver {
 
     /// Declares the existance of a type and its kind.
     pub fn declare_type(&mut self, ident: &Ident, symbol: Symbol) {
+        if self.local_symbol(ident).is_none() {
+            self.current_scope().decls.insert(ident.name.clone());
+        }
+
+        // Go through the motions of defining the type -- even if it has
+        // already been defined -- so we can report type errors.
         self.define_type(ident, symbol);
     }
 
@@ -308,7 +314,14 @@ impl Resolver {
         let qualified = self.qualified_symbol(ident);
         tracing::info!("registering {qualified}");
 
+        // If the type was previously declared, remove the declaration in
+        // favor of the definition.
+        if !matches!(symbol, Symbol::Decl(_, _)) {
+            self.current_scope().decls.remove(&ident.name);
+        }
+
         if let Some(prev) = self.local_symbol(ident) {
+            // TODO: replace decls with def
             // TODO: returning a bool here is not sufficient. leads to weird errors
             Self::is_compatible(ident, prev, &symbol)
         } else {
@@ -323,7 +336,7 @@ impl Resolver {
     ///
     /// # Errors
     ///
-    /// Returns an `Err` that contains the span of the identifier that did not
+    /// Returns an error that contains the span of the identifier that did not
     /// resolve correctly.
     //
     // TODO: fn relative_path
@@ -357,8 +370,7 @@ impl Resolver {
         for seg in segments {
             let entry = scope.symbols.get(&seg.name).ok_or(seg.span)?;
             match entry {
-                Symbol::Adt(v, _) => return Ok(*v),
-                Symbol::Decl(_, _) => todo!(),
+                Symbol::Adt(v, _) | Symbol::Decl(v, _) => return Ok(*v),
                 Symbol::Const => todo!(),
                 Symbol::Module(v) => {
                     scope = self.lexical_scopes.get(*v);
@@ -376,6 +388,12 @@ impl Resolver {
     /// Verifies that all declarations have been defined, and that all modules
     /// and other lexical scopes have been correctly closed.
     pub fn finish(self) {
+        for (_, scope) in &self.lexical_scopes {
+            for decl in &scope.decls {
+                tracing::error!("type {decl} was declared but not defined");
+            }
+        }
+
         let len = self.current_scope.len();
         debug_assert_eq!(len, 1, "type resolution finished with a length of {len}");
     }

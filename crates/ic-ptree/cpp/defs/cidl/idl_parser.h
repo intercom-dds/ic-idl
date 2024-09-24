@@ -86,6 +86,11 @@ struct parser_state::error_stream {
         return *this;
     }
 
+    error_stream& operator<<(ptree* node) {
+        m_stream << intercom::cidl::idl_scoped_name(node, nullptr);
+        return *this;
+    }
+
     error_stream& operator<<(const ptree* node) {
         m_stream << intercom::cidl::idl_scoped_name(node, nullptr);
         return *this;

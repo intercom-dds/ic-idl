@@ -998,7 +998,7 @@ where
 }
 
 mod foo {
-    use std::fmt::{self, Display};
+    use std::fmt::{self, Display, Write as _};
 
     use ic_cli::ParseResult;
     use ic_cli::color::Colorize;
@@ -1272,6 +1272,14 @@ mod foo {
         let leaves = result.order.iter().map(|id| emit_def(&result.ctx, *id));
         let mut root = leaf!("{}", ".".gray());
         root.extend(leaves);
-        println!("{root}");
+
+        let mut buf = String::new();
+        _ = writeln!(&mut buf, "{root}");
+        _ = write!(
+            &mut buf,
+            "{} definitions",
+            result.ctx.definitions.len().green(),
+        );
+        println!("{buf}");
     }
 }

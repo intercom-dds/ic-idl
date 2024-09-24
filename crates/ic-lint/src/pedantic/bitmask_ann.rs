@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, warn_span};
-use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -55,6 +55,6 @@ impl<'a> Lint<'a> for BitmaskAnn<'_> {
 
     fn check(ctx: &'a crate::LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = BitmaskAnn { ctx };
-        visit_tree(&mut lint, tree);
+        walk_tree(&mut lint, tree);
     }
 }

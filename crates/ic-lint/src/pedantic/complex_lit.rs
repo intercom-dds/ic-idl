@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Color, Diag, Label, warn_span};
-use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{ConstDef, Expr, Span, util};
 
 use crate::{Category, Lint, LintCtx};
@@ -95,6 +95,6 @@ impl<'a> Lint<'a> for ComplexLit<'a> {
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = Self { ctx };
-        visit_tree(&mut lint, tree);
+        walk_tree(&mut lint, tree);
     }
 }

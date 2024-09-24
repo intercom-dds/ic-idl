@@ -27,7 +27,7 @@
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::{Label, warn_span};
-use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Literal, LiteralValue};
 
 use crate::{Category, Lint, LintCtx};
@@ -45,7 +45,7 @@ impl<'a> Lint<'a> for LowercaseBool<'a> {
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
-        visit_tree(&mut lint, ast);
+        walk_tree(&mut lint, ast);
     }
 }
 

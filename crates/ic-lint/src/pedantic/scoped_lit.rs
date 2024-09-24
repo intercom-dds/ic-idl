@@ -31,7 +31,7 @@ use std::iter::{Enumerate, Map};
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::{Label, warn_span};
-use ic_syntax::visit::{Visitor, visit_expr, visit_tree};
+use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
 use ic_syntax::{BitmaskDef, Declarator, EnumDef, Expr, Item, LiteralValue, Path};
 
 use crate::iter::IterExt;
@@ -97,7 +97,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
         } else {
             // Continue traversal -- this may be a binary expression of bitmask
             // flags, so we'll want to check those as well.
-            visit_expr(self, expr);
+            walk_expr(self, expr);
         }
     }
 }
@@ -112,6 +112,6 @@ impl<'a> Lint<'a> for ScopedLit<'_> {
             ctx,
             seen: HashMap::default(),
         };
-        visit_tree(&mut lint, tree);
+        walk_tree(&mut lint, tree);
     }
 }

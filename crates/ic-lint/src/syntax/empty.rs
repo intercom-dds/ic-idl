@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Label, error_span};
 use ic_syntax::util::ItemTraits;
-use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Span};
 
 use crate::{Category, Lint, LintCtx};
@@ -94,6 +94,6 @@ impl<'a> Lint<'a> for EmptyTypes<'a> {
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
-        visit_tree(&mut lint, ast);
+        walk_tree(&mut lint, ast);
     }
 }

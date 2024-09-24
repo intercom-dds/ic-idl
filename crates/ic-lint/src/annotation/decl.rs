@@ -27,7 +27,7 @@
 
 use ic_cli::color::Color;
 use ic_diagnostic::{Label, warn_span};
-use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Declarator, util};
 
 use crate::{Category, Lint, LintCtx};
@@ -64,6 +64,6 @@ impl<'a> Lint<'a> for AnnotatedDecl<'_> {
 
     fn check(ctx: &'a crate::LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = AnnotatedDecl { ctx };
-        visit_tree(&mut lint, tree);
+        walk_tree(&mut lint, tree);
     }
 }

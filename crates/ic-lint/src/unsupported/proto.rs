@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Diag, Label, error_span};
+use ic_hir::hir;
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint};
@@ -34,7 +35,7 @@ use crate::{Category, Lint};
 pub struct Proto(Vec<Diag>);
 
 impl<'a> Visitor<'a> for Proto {
-    fn visit_enum(&mut self, ty: &'a ic_hir::hir::EnumTy) {
+    fn visit_enum(&mut self, def: &'a hir::Def, ty: &'a hir::EnumTy) {
         if let Some(field) = ty.fields.first() {
             if field.value != 0 {
                 let diag = error_span(
@@ -56,11 +57,9 @@ impl<'a> Lint<'a> for Proto {
     fn check(_: &'a crate::LintCtx<'_>, _: &[ic_syntax::Item]) {}
 
     #[must_use]
-    fn check_hir(_: &ic_hir::Context, hir: &[ic_hir::hir::Def]) -> Vec<Diag> {
+    fn check_hir(_: &ic_hir::Context, hir: &[hir::Def]) -> Vec<Diag> {
         let mut res = Proto::default();
-        for item in hir {
-            ic_hir::visit::visit_def(&mut res, item);
-        }
+        ic_hir::visit::walk_tree(&mut res, hir);
         res.0
     }
 }

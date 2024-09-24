@@ -25,9 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::visit::{
-    Visitor, visit_attribute, visit_struct_field, visit_tree, visit_union_variant,
-};
+use ic_syntax::visit::{Visitor, walk_attribute, walk_struct_field, walk_tree, walk_union_variant};
 use ic_syntax::{Declarator, Ident, Item};
 
 use crate::{Category, Lint, LintCtx};
@@ -48,7 +46,7 @@ impl<'a> Lint<'a> for Sanity {
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self;
-        visit_tree(&mut lint, ast);
+        walk_tree(&mut lint, ast);
     }
 }
 
@@ -69,16 +67,16 @@ impl<'a> Visitor<'a> for Sanity {
 
     fn visit_struct_field(&mut self, def: &'a ic_syntax::Field) {
         assert!(!def.names.is_empty());
-        visit_struct_field(self, def);
+        walk_struct_field(self, def);
     }
 
     fn visit_union_variant(&mut self, variant: &'a ic_syntax::UnionField) {
         assert!(!variant.labels.is_empty());
-        visit_union_variant(self, variant);
+        walk_union_variant(self, variant);
     }
 
     fn visit_attribute(&mut self, def: &'a ic_syntax::Attribute) {
         assert!(!def.decl.is_empty());
-        visit_attribute(self, def);
+        walk_attribute(self, def);
     }
 }

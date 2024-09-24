@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Label, error_span};
 use ic_syntax::Item;
-use ic_syntax::visit::{Visitor, visit_tree};
+use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -73,6 +73,6 @@ impl<'a> Lint<'a> for AsciiIdent<'a> {
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = AsciiIdent { ctx };
-        visit_tree(&mut lint, ast);
+        walk_tree(&mut lint, ast);
     }
 }

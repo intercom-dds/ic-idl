@@ -37,51 +37,51 @@ use crate::{
 
 pub trait Visitor<'a> {
     fn visit_item(&mut self, item: &'a Item) {
-        visit_item(self, item);
+        walk_item(self, item);
     }
 
     fn visit_annotation_def(&mut self, def: &'a AnnotationDef) {
-        visit_annotation_def(self, def);
+        walk_annotation_def(self, def);
     }
 
     fn visit_annotation_field(&mut self, def: &'a AnnotationField) {
-        visit_annotation_field(self, def);
+        walk_annotation_field(self, def);
     }
 
     fn visit_annotation_appl(&mut self, def: &'a AnnotationAppl) {
-        visit_annotation_appl(self, def);
+        walk_annotation_appl(self, def);
     }
 
     fn visit_annotation_arg(&mut self, def: &'a AnnotationArg) {
-        visit_annotation_arg(self, def);
+        walk_annotation_arg(self, def);
     }
 
     fn visit_module(&mut self, module: &'a ModuleDef) {
-        visit_module(self, module);
+        walk_module(self, module);
     }
 
     fn visit_struct(&mut self, def: &'a StructDef) {
-        visit_struct(self, def);
+        walk_struct(self, def);
     }
 
     fn visit_struct_field(&mut self, def: &'a Field) {
-        visit_struct_field(self, def);
+        walk_struct_field(self, def);
     }
 
     fn visit_union(&mut self, def: &'a UnionDef) {
-        visit_union(self, def);
+        walk_union(self, def);
     }
 
     fn visit_discriminant(&mut self, def: &'a Discriminator) {
-        visit_discriminant(self, def);
+        walk_discriminant(self, def);
     }
 
     fn visit_union_variant(&mut self, variant: &'a UnionField) {
-        visit_union_variant(self, variant);
+        walk_union_variant(self, variant);
     }
 
     fn visit_union_label(&mut self, def: &'a Label) {
-        visit_union_label(self, def);
+        walk_union_label(self, def);
     }
 
     fn visit_union_member(&mut self, def: &'a UnionMember) {}
@@ -89,73 +89,73 @@ pub trait Visitor<'a> {
     fn visit_union_null(&mut self, def: &'a UnionNull) {}
 
     fn visit_enum(&mut self, def: &'a EnumDef) {
-        visit_enum(self, def);
+        walk_enum(self, def);
     }
 
     fn visit_enum_variant(&mut self, enumerator: &'a Enumerator) {
-        visit_enum_variant(self, enumerator);
+        walk_enum_variant(self, enumerator);
     }
 
     fn visit_exception(&mut self, exception: &'a ExceptDef) {
-        visit_exception(self, exception);
+        walk_exception(self, exception);
     }
 
     fn visit_interface(&mut self, interface: &'a InterfaceDef) {
-        visit_interface(self, interface);
+        walk_interface(self, interface);
     }
 
     fn visit_valuetype(&mut self, def: &'a ValuetypeDef) {
-        visit_valuetype(self, def);
+        walk_valuetype(self, def);
     }
 
     fn visit_attribute(&mut self, def: &'a Attribute) {
-        visit_attribute(self, def);
+        walk_attribute(self, def);
     }
 
     fn visit_prototype(&mut self, def: &'a Prototype) {
-        visit_prototype(self, def);
+        walk_prototype(self, def);
     }
 
     fn visit_prototype_param(&mut self, param: &'a Param) {
-        visit_param(self, param);
+        walk_param(self, param);
     }
 
     fn visit_bitmask(&mut self, bitmask: &'a BitmaskDef) {
-        visit_bitmask(self, bitmask);
+        walk_bitmask(self, bitmask);
     }
 
     fn visit_bitmask_bit(&mut self, bit: &'a Bit) {
-        visit_bitmask_bit(self, bit);
+        walk_bitmask_bit(self, bit);
     }
 
     fn visit_bitset(&mut self, bitset: &'a BitsetDef) {
-        visit_bitset(self, bitset);
+        walk_bitset(self, bitset);
     }
 
     fn visit_bitfield(&mut self, bitfield: &'a Bitfield) {}
 
     fn visit_const(&mut self, def: &'a ConstDef) {
-        visit_const(self, def);
+        walk_const(self, def);
     }
 
     fn visit_typedef(&mut self, def: &'a AliasDef) {
-        visit_typedef(self, def);
+        walk_typedef(self, def);
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        visit_expr(self, expr);
+        walk_expr(self, expr);
     }
 
     fn visit_expr_unary(&mut self, unary: &'a Unary) {
-        visit_expr_unary(self, unary);
+        walk_expr_unary(self, unary);
     }
 
     fn visit_expr_binary(&mut self, binary: &'a Binary) {
-        visit_expr_binary(self, binary);
+        walk_expr_binary(self, binary);
     }
 
     fn visit_expr_init_list(&mut self, init_list: &'a InitList) {
-        visit_expr_init_list(self, init_list);
+        walk_expr_init_list(self, init_list);
     }
 
     fn visit_forward_decl(&mut self, decl: &'a Decl) {}
@@ -165,7 +165,7 @@ pub trait Visitor<'a> {
     fn visit_declarator(&mut self, decl: &'a Declarator) {}
 
     fn visit_path(&mut self, path: &'a Path) {
-        visit_path(self, path);
+        walk_path(self, path);
     }
 
     fn visit_type(&mut self, ident: &'a Type) {}
@@ -173,7 +173,7 @@ pub trait Visitor<'a> {
     fn visit_literal(&mut self, num: &'a Literal) {}
 }
 
-pub fn visit_tree<'a, V>(visitor: &mut V, tree: &'a [Item])
+pub fn walk_tree<'a, V>(visitor: &mut V, tree: &'a [Item])
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -182,7 +182,7 @@ where
     }
 }
 
-pub fn visit_item<'a, V>(visitor: &mut V, item: &'a Item)
+pub fn walk_item<'a, V>(visitor: &mut V, item: &'a Item)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -203,7 +203,7 @@ where
     }
 }
 
-pub fn visit_annotation_def<'a, V>(visitor: &mut V, def: &'a AnnotationDef)
+pub fn walk_annotation_def<'a, V>(visitor: &mut V, def: &'a AnnotationDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -213,7 +213,7 @@ where
     }
 }
 
-pub fn visit_annotation_field<'a, V>(visitor: &mut V, def: &'a AnnotationField)
+pub fn walk_annotation_field<'a, V>(visitor: &mut V, def: &'a AnnotationField)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -223,7 +223,7 @@ where
     }
 }
 
-pub fn visit_annotation_appl<'a, V>(visitor: &mut V, def: &'a AnnotationAppl)
+pub fn walk_annotation_appl<'a, V>(visitor: &mut V, def: &'a AnnotationAppl)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -233,7 +233,7 @@ where
     }
 }
 
-pub fn visit_annotation_arg<'a, V>(visitor: &mut V, def: &'a AnnotationArg)
+pub fn walk_annotation_arg<'a, V>(visitor: &mut V, def: &'a AnnotationArg)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -243,7 +243,7 @@ where
     visitor.visit_expr(&def.value);
 }
 
-pub fn visit_module<'a, V>(visitor: &mut V, module: &'a ModuleDef)
+pub fn walk_module<'a, V>(visitor: &mut V, module: &'a ModuleDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -253,7 +253,7 @@ where
     }
 }
 
-pub fn visit_struct<'a, V>(visitor: &mut V, def: &'a StructDef)
+pub fn walk_struct<'a, V>(visitor: &mut V, def: &'a StructDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -263,7 +263,7 @@ where
     }
 }
 
-pub fn visit_struct_field<'a, V>(visitor: &mut V, def: &'a Field)
+pub fn walk_struct_field<'a, V>(visitor: &mut V, def: &'a Field)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -273,7 +273,7 @@ where
     }
 }
 
-pub fn visit_union<'a, V>(visitor: &mut V, def: &'a UnionDef)
+pub fn walk_union<'a, V>(visitor: &mut V, def: &'a UnionDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -284,14 +284,14 @@ where
     }
 }
 
-pub fn visit_discriminant<'a, V>(visitor: &mut V, def: &'a Discriminator)
+pub fn walk_discriminant<'a, V>(visitor: &mut V, def: &'a Discriminator)
 where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
 }
 
-pub fn visit_union_variant<'a, V>(visitor: &mut V, def: &'a UnionField)
+pub fn walk_union_variant<'a, V>(visitor: &mut V, def: &'a UnionField)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -304,7 +304,7 @@ where
     }
 }
 
-pub fn visit_union_label<'a, V>(visitor: &mut V, def: &'a Label)
+pub fn walk_union_label<'a, V>(visitor: &mut V, def: &'a Label)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -313,7 +313,7 @@ where
     }
 }
 
-pub fn visit_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)
+pub fn walk_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -323,7 +323,7 @@ where
     }
 }
 
-pub fn visit_enum_variant<'a, V>(visitor: &mut V, def: &'a Enumerator)
+pub fn walk_enum_variant<'a, V>(visitor: &mut V, def: &'a Enumerator)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -333,7 +333,7 @@ where
     }
 }
 
-pub fn visit_exception<'a, V>(visitor: &mut V, def: &'a ExceptDef)
+pub fn walk_exception<'a, V>(visitor: &mut V, def: &'a ExceptDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -343,7 +343,7 @@ where
     }
 }
 
-pub fn visit_interface<'a, V>(visitor: &mut V, def: &'a InterfaceDef)
+pub fn walk_interface<'a, V>(visitor: &mut V, def: &'a InterfaceDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -361,7 +361,7 @@ where
     }
 }
 
-pub fn visit_valuetype<'a, V>(visitor: &mut V, def: &'a ValuetypeDef)
+pub fn walk_valuetype<'a, V>(visitor: &mut V, def: &'a ValuetypeDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -372,7 +372,7 @@ where
     }
 }
 
-pub fn visit_attribute<'a, V>(visitor: &mut V, def: &'a Attribute)
+pub fn walk_attribute<'a, V>(visitor: &mut V, def: &'a Attribute)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -382,7 +382,7 @@ where
     }
 }
 
-pub fn visit_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)
+pub fn walk_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -392,7 +392,7 @@ where
     }
 }
 
-pub fn visit_param<'a, V>(visitor: &mut V, def: &'a Param)
+pub fn walk_param<'a, V>(visitor: &mut V, def: &'a Param)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -400,7 +400,7 @@ where
     visitor.visit_declarator(&def.decl);
 }
 
-pub fn visit_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)
+pub fn walk_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -410,7 +410,7 @@ where
     }
 }
 
-pub fn visit_bitmask_bit<'a, V>(visitor: &mut V, def: &'a Bit)
+pub fn walk_bitmask_bit<'a, V>(visitor: &mut V, def: &'a Bit)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -420,7 +420,7 @@ where
     }
 }
 
-pub fn visit_bitset<'a, V>(visitor: &mut V, def: &'a BitsetDef)
+pub fn walk_bitset<'a, V>(visitor: &mut V, def: &'a BitsetDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -430,7 +430,7 @@ where
     }
 }
 
-pub fn visit_const<'a, V>(visitor: &mut V, def: &'a ConstDef)
+pub fn walk_const<'a, V>(visitor: &mut V, def: &'a ConstDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -439,7 +439,7 @@ where
     visitor.visit_expr(&def.value);
 }
 
-pub fn visit_typedef<'a, V>(visitor: &mut V, def: &'a AliasDef)
+pub fn walk_typedef<'a, V>(visitor: &mut V, def: &'a AliasDef)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -449,7 +449,7 @@ where
     }
 }
 
-pub fn visit_expr<'a, V>(visitor: &mut V, expr: &'a Expr)
+pub fn walk_expr<'a, V>(visitor: &mut V, expr: &'a Expr)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -462,14 +462,14 @@ where
     }
 }
 
-pub fn visit_expr_unary<'a, V>(visitor: &mut V, unary: &'a Unary)
+pub fn walk_expr_unary<'a, V>(visitor: &mut V, unary: &'a Unary)
 where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_expr(&unary.expr);
 }
 
-pub fn visit_expr_binary<'a, V>(visitor: &mut V, binary: &'a Binary)
+pub fn walk_expr_binary<'a, V>(visitor: &mut V, binary: &'a Binary)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -477,7 +477,7 @@ where
     visitor.visit_expr(&binary.rhs);
 }
 
-pub fn visit_expr_init_list<'a, V>(visitor: &mut V, init_list: &'a InitList)
+pub fn walk_expr_init_list<'a, V>(visitor: &mut V, init_list: &'a InitList)
 where
     V: Visitor<'a> + ?Sized,
 {
@@ -486,63 +486,11 @@ where
     }
 }
 
-pub fn visit_path<'a, V>(visitor: &mut V, path: &'a Path)
+pub fn walk_path<'a, V>(visitor: &mut V, path: &'a Path)
 where
     V: Visitor<'a> + ?Sized,
 {
     for p in &path.segments {
         visitor.visit_ident(p);
-    }
-}
-
-pub trait Visit {
-    fn visit<'a, V>(&'a self, visitor: &mut V)
-    where
-        V: Visitor<'a> + ?Sized;
-}
-
-impl<T: Visit> Visit for Option<T> {
-    fn visit<'a, V>(&'a self, visitor: &mut V)
-    where
-        V: Visitor<'a> + ?Sized,
-    {
-        if let Some(v) = self {
-            v.visit(visitor);
-        }
-    }
-}
-
-impl Visit for Item {
-    fn visit<'a, V>(&'a self, visitor: &mut V)
-    where
-        V: Visitor<'a> + ?Sized,
-    {
-        match &self {
-            Item::AnnotationValue(v) => visitor.visit_annotation_def(v),
-            Item::ModuleValue(v) => visitor.visit_module(v),
-            Item::StructValue(v) => visitor.visit_struct(v),
-            Item::UnionValue(v) => visitor.visit_union(v),
-            Item::EnumValue(v) => visitor.visit_enum(v),
-            Item::ExceptionValue(v) => visitor.visit_exception(v),
-            Item::BitmaskValue(v) => visitor.visit_bitmask(v),
-            Item::BitsetValue(v) => visitor.visit_bitset(v),
-            Item::ConstValue(v) => visitor.visit_const(v),
-            Item::AliasValue(v) => visitor.visit_typedef(v),
-            Item::DeclValue(v) => visitor.visit_forward_decl(v),
-            Item::InterfaceValue(v) => visitor.visit_interface(v),
-            Item::ValuetypeValue(v) => visitor.visit_valuetype(v),
-        }
-    }
-}
-
-impl Visit for ModuleDef {
-    fn visit<'a, V>(&'a self, visitor: &mut V)
-    where
-        V: Visitor<'a> + ?Sized,
-    {
-        visitor.visit_ident(&self.ident);
-        for item in &self.definitions {
-            visitor.visit_item(item);
-        }
     }
 }

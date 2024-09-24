@@ -37,8 +37,8 @@ use ic_alloc::insensitive::{CaseMap, CaseSet};
 use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span};
 use ic_macros::EnumIter;
-use ic_syntax::util::{path_name, type_name};
-use ic_syntax::visit::{Visitor, visit_item};
+use ic_syntax::util::{self, path_name, type_name};
+use ic_syntax::visit::{Visitor, walk_item};
 use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
 use crate::hir::{Variant, *};
@@ -961,7 +961,7 @@ fn lower_item<'cx>(lower: &mut Lower<'cx>, item: &ic_syntax::Item) -> Vec<TypeId
         items: vec![],
         declared: HashSet::new(),
     };
-    visit_item(&mut builder, item);
+    walk_item(&mut builder, item);
     builder.defined
 }
 

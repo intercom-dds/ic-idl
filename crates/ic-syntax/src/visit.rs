@@ -365,10 +365,19 @@ pub fn walk_valuetype<'a, V>(visitor: &mut V, def: &'a ValuetypeDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
 
     for proto in &def.prototypes {
         visitor.visit_prototype(proto);
+    }
+    for def in &def.definitions {
+        visitor.visit_item(def);
+    }
+    for mem in &def.members {
+        todo!();
     }
 }
 

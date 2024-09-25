@@ -27,7 +27,7 @@
 
 use crate::{
     AliasTy, BitmaskTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy, InterfaceTy, ModuleTy,
-    StructTy, Ty, UnionTy,
+    StructTy, Ty, UnionTy, ValueTy,
 };
 
 pub trait Visitor<'a> {
@@ -52,6 +52,8 @@ pub trait Visitor<'a> {
     fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {}
 
     fn visit_interface(&mut self, def: &'a Def, data: &'a InterfaceTy) {}
+
+    fn visit_valuetype(&mut self, def: &'a Def, data: &'a ValueTy) {}
 
     fn visit_decl(&mut self, def: &'a Def, data: &'a Decl) {}
 
@@ -82,6 +84,7 @@ where
         DefKind::Bitmask(v) => visitor.visit_bitmask(def, v),
         DefKind::Alias(v) => visitor.visit_alias(def, v),
         DefKind::Interface(v) => visitor.visit_interface(def, v),
+        DefKind::Valuetype(v) => visitor.visit_valuetype(def, v),
         DefKind::Decl(v) => visitor.visit_decl(def, v),
     }
 }

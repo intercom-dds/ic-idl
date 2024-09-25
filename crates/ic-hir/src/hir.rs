@@ -78,12 +78,15 @@ intercom_cts::bitmask! {
         /// Marker for synthesized types.
         IS_SYNTHESIZED = 1 << 3,
 
+        /// Marker for incomplete types.
+        IS_INCOMPLETE = 1 << 4,
+
         /// Marker for non-suppressed types.
-        IS_EMIT = 1 << 3,
+        IS_EMIT = 1 << 5,
 
         /// Indicates whether the type consists of members that can form an
         /// ordinal sequence, i.e. a well-ordered set.
-        TOTAL_ORDER = 1 << 4,
+        TOTAL_ORDER = 1 << 6,
     }
 }
 
@@ -126,6 +129,7 @@ pub enum DefKind {
     Bitmask(BitmaskTy),
     Alias(AliasTy),
     Interface(InterfaceTy),
+    Valuetype(ValueTy),
     Decl(Decl),
 }
 
@@ -348,10 +352,18 @@ pub struct BitFlag {
     pub annotations: Vec<()>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InterfaceTy {
     pub prototypes: Vec<()>,
     pub attributes: Vec<()>,
+    pub definitions: Vec<DefId>,
+}
+
+#[derive(Debug, Default)]
+pub struct ValueTy {
+    pub prototypes: Vec<()>,
+    pub members: Vec<()>,
+    pub definitions: Vec<DefId>,
 }
 
 #[derive(Debug)]

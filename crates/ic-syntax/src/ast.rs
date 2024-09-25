@@ -4216,6 +4216,7 @@ pub struct ValuetypeDef {
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::ValueMember>,
     pub prototypes: Vec<crate::ast::Prototype>,
+    pub definitions: Vec<crate::ast::Item>,
     pub inherits: Option<crate::ast::Path>,
     pub supports: Option<crate::ast::Path>,
 }
@@ -4229,6 +4230,7 @@ impl ValuetypeDef {
             ident: <crate::ast::Ident>::default(),
             members: <Vec<crate::ast::ValueMember>>::default(),
             prototypes: <Vec<crate::ast::Prototype>>::default(),
+            definitions: <Vec<crate::ast::Item>>::default(),
             inherits: None,
             supports: None,
         }
@@ -4254,8 +4256,9 @@ impl ::intercom_cts::Marshal for ValuetypeDef {
         state.encode_field(0, "ident", &self.ident)?;
         state.encode_field(0, "members", &self.members)?;
         state.encode_field(1, "prototypes", &self.prototypes)?;
-        state.encode_field(2, "inherits", &self.inherits)?;
-        state.encode_field(3, "supports", &self.supports)?;
+        state.encode_field(2, "definitions", &self.definitions)?;
+        state.encode_field(3, "inherits", &self.inherits)?;
+        state.encode_field(4, "supports", &self.supports)?;
         state.end()
     }
 }
@@ -4273,8 +4276,9 @@ impl ::intercom_cts::Unmarshal for ValuetypeDef {
         state.decode_field(0, "ident", &mut self.ident)?;
         state.decode_field(0, "members", &mut self.members)?;
         state.decode_field(1, "prototypes", &mut self.prototypes)?;
-        state.decode_field(2, "inherits", &mut self.inherits)?;
-        state.decode_field(3, "supports", &mut self.supports)?;
+        state.decode_field(2, "definitions", &mut self.definitions)?;
+        state.decode_field(3, "inherits", &mut self.inherits)?;
+        state.decode_field(4, "supports", &mut self.supports)?;
         Ok(())
     }
 }

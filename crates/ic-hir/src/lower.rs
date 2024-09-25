@@ -47,7 +47,7 @@ use crate::hir::{
     UnionTy, Variant,
 };
 use crate::resolve::{self, Resolver, Symbol, SymbolKind};
-use crate::{Context, TypeId};
+use crate::{Context, TypeId, ValueTy};
 
 pub struct Interp<'a> {
     lower: &'a Lower<'a>,
@@ -602,6 +602,13 @@ impl<'a> Lower<'a> {
         id
     }
 
+    fn update_type(&mut self, id: DefId, data: DefKind) {
+        tracing::info!("updating partial type {id:?} with {data:?}");
+        let def = self.ctx.definitions.get_mut(id);
+        def.kind = data;
+        def.flags.unset(DefFlags::IS_INCOMPLETE);
+    }
+
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
         self.resolver.start_module(&def.ident);
         let definitions: Vec<_> = self.with_scope(&def.ident, |this| {
@@ -626,7 +633,7 @@ impl<'a> Lower<'a> {
             flags: DefFlags::default(),
         });
 
-        self.resolver.finish_module();
+        self.resolver.finish_scope();
         id
     }
 
@@ -944,33 +951,120 @@ impl<'a> Lower<'a> {
             .collect()
     }
 
-    fn lower_interface(&mut self, def: ic_syntax::InterfaceDef) -> DefId {
-        // TODO:
-        let prototypes = vec![];
-        let attributes = vec![];
+    fn lower_attrib(&mut self, def: ic_syntax::Attribute) -> Vec<()> {
+        let ty = self.lower_type(def.ty);
+        for decl in def.decl {
+            let (_ident, _ty) = self.lower_declarator(decl, ty.clone());
+        }
+        vec![]
+    }
 
+    fn lower_interface(&mut self, def: ic_syntax::InterfaceDef) -> DefId {
+        use ic_syntax::InterfaceMember;
+
+        // Registers an incomplete definition of the type. This is necessary
+        // because interfaces can be self-referential, i.e. they may indirectly
+        // contain themselves and so we need to be able to resolve the path of
+        // the interface before it has been fully defined.
         let id = self.alloc_type(&def.ident, |id| Def {
             id,
             ident: def.ident.clone(),
             annotations: vec![],
             span: def.span,
-            kind: DefKind::Interface(InterfaceTy {
-                prototypes,
-                attributes,
-            }),
-            flags: DefFlags::default(),
+            kind: DefKind::Interface(InterfaceTy::default()),
+            flags: DefFlags::IS_INCOMPLETE,
         });
 
-        if !self
-            .resolver
-            .define_type(&def.ident, Symbol::Adt(id, SymbolKind::Interface))
-        {
-            let diag = error_span(
-                format!("duplicate registration of `{}`", def.ident.name.yellow()),
-                Label::new(def.ident.span).message("redefined here"),
-            );
-            self.errors.push(diag);
+        // Alternatively, we can declare it here and then define it later.
+        // Still need a stack, though, but that can then perhaps be more
+        // generic?
+        let mut prototypes = vec![];
+        let mut attributes = vec![];
+        let mut definitions = vec![];
+
+        // TODO: instead of start/finish, we could just return the ScopeId and
+        // propagate that into Resolver. That may be better?
+        self.resolver.start_interface(&def.ident, id);
+
+        for mem in def.members {
+            match mem {
+                InterfaceMember::Attr(v) => {
+                    let attrib = self.lower_attrib(v);
+                    attributes.extend(attrib);
+                }
+                InterfaceMember::Proto(_) => todo!(),
+                InterfaceMember::Item(item) => {
+                    let ids = self.lower_item(item);
+                    definitions.extend(ids);
+                }
+            }
         }
+        self.resolver.finish_interface();
+
+        // Update the now-complete definition
+        self.update_type(
+            id,
+            DefKind::Interface(InterfaceTy {
+                prototypes,
+                attributes,
+                definitions,
+            }),
+        );
+
+        println!("{:?}", self.resolver);
+
+        // TODO: need to register the type as a definition. but for that we
+        // need the ScopeId...
+        // if !self
+        //     .resolver
+        //     .define_type(&ident, Symbol::Adt(id, SymbolKind::Const))
+        // {
+        //     let diag = error_span(
+        //         format!("duplicate registration of `{}`", ident.name.yellow()),
+        //         Label::new(ident.span).message("redefined here"),
+        //     );
+        //     self.errors.push(diag);
+        // }
+        id
+    }
+
+    fn lower_valuetype(&mut self, def: ic_syntax::ValuetypeDef) -> DefId {
+        use ic_syntax::ValueMember;
+
+        // Registers an incomplete definition of the type. This is necessary
+        // because interfaces can be self-referential, i.e. they may indirectly
+        // contain themselves and so we need to be able to resolve the path of
+        // the interface before it has been fully defined.
+        let id = self.alloc_type(&def.ident, |id| Def {
+            id,
+            ident: def.ident.clone(),
+            annotations: vec![],
+            span: def.span,
+            kind: DefKind::Valuetype(ValueTy::default()),
+            flags: DefFlags::IS_INCOMPLETE,
+        });
+
+        let mut prototypes = vec![];
+        let mut members = vec![];
+        let mut definitions = vec![];
+
+        // TODO: instead of start/finish, we could just return the ScopeId and
+        // propagate that into Resolver. That may be better?
+        self.resolver.start_interface(&def.ident, id);
+
+        // for mem in def.members
+
+        self.resolver.finish_interface();
+
+        // Update the now-complete definition
+        self.update_type(
+            id,
+            DefKind::Valuetype(ValueTy {
+                prototypes,
+                members,
+                definitions,
+            }),
+        );
         id
     }
 
@@ -1341,6 +1435,7 @@ mod foo {
             DefKind::Bitmask(_) => "bitmask",
             DefKind::Alias(_) => "alias",
             DefKind::Interface(_) => "interface",
+            DefKind::Valuetype(_) => "valuetype",
             DefKind::Decl { .. } => "decl",
         };
 
@@ -1418,7 +1513,16 @@ mod foo {
                 let ty = emit_ty(context, &v.ty);
                 node.push(leaf!("{} {ty}", "type".purple()));
             }
-            DefKind::Interface(_) => todo!(),
+            DefKind::Interface(v) => {
+                for def in &v.definitions {
+                    node.push(emit_def(context, *def));
+                }
+            }
+            DefKind::Valuetype(v) => {
+                for def in &v.definitions {
+                    node.push(emit_def(context, *def));
+                }
+            }
             DefKind::Decl(kind) => {
                 let kind = match kind {
                     Decl::Struct => "struct",

@@ -598,6 +598,7 @@ struct ValueMember {
 struct ValuetypeDef : IDef {
     sequence<ValueMember> members;
     sequence<Prototype> prototypes;
+    sequence<Item> definitions;
     @optional Path inherits;
     @optional Path _supports;
 };

@@ -1091,7 +1091,7 @@ fn value_def() -> impl IdlParser<Item> {
     let def = value_header().then(body).then_ignore(just(Kind::Semi));
 
     def.map_with_span(|((ident, (inherits, supports)), _), span| {
-        Item::valuetype(ident, vec![], inherits, supports, span)
+        Item::valuetype(ident, vec![], vec![], vec![], inherits, supports, span)
     })
 }
 

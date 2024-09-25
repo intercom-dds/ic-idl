@@ -359,7 +359,7 @@ pub struct InterfaceTy {
     pub definitions: Vec<DefId>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ValueTy {
     pub prototypes: Vec<Prototype>,
     pub members: Vec<()>,

@@ -32,14 +32,13 @@ use std::hash::Hash;
 use ic_alloc::arena::{self, Arena};
 use ic_alloc::insensitive::{CaseMap, CaseSet};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, ItemKind, Path, Span, util};
-use tracing::{Instrument, debug};
 
 use crate::{Context, Decl, Def, DefId};
 
 pub type SymbolKind = ItemKind;
 
 /// An ID of a lexical scope.
-type ScopeId = arena::Id<Scope>;
+pub type ScopeId = arena::Id<Scope>;
 
 #[derive(Debug)]
 pub enum Symbol {
@@ -89,10 +88,13 @@ pub enum ResolveError {
     /// The requested type failed to resolve because it was not defined.
     Undefined(Span),
 
-    Mismatch {
-        expected: Decl,
-        defined: Decl,
-    },
+    /// Type registration failed because another item with the same name
+    /// already exists in the same scope.
+    Redefined(Span),
+
+    /// A mismatch between a declaration and definition occurred, for example
+    /// if a type was declared as a `struct` but later defined as a `union`.
+    DeclMismatch { decl: Decl, def: Decl, span: Span },
 }
 
 /// Contains all the logic required to resolve all types and expressions in the
@@ -320,6 +322,39 @@ impl Resolver {
         self.current_scope.push(scope);
     }
 
+    pub(crate) fn is_defined(&mut self, ident: &Ident) -> bool {
+        self.local_symbol(ident).is_some()
+    }
+
+    pub fn start_scope(&mut self, ident: &Ident, def: DefId, kind: SymbolKind) -> ScopeId {
+        // if let Some(sym) = self.local_symbol(ident) {
+        //     if !matches!(sym, Symbol::Decl(_, _)) {
+        //         tracing::error!(
+        //             "interface {} was previously registered as a different symbol",
+        //             ident.name,
+        //         );
+        //     }
+        // }
+
+        let scope = self.lexical_scopes.alloc(Scope {
+            name: ident.name.clone(),
+            symbols: HashMap::default(),
+            decls: HashSet::default(),
+        });
+
+        // Register the module
+        self.current_scope()
+            .symbols
+            .insert(ident.name.clone(), Symbol::Lexical {
+                def,
+                scope,
+                kind: SymbolKind::Interface,
+            });
+
+        self.current_scope.push(scope);
+        scope
+    }
+
     pub fn finish_interface(&mut self) {
         // TODO: if start_interface fails, this will pop the wrong stack
         self.finish_scope();
@@ -446,7 +481,14 @@ impl Resolver {
                     // Narrow down the span so we can provide better diagnostics
                     span = seg.span;
                 }
-                Symbol::Lexical { .. } => todo!(),
+                Symbol::Lexical { def, scope: id, .. } => {
+                    if segments.peek().is_some() {
+                        scope = self.lexical_scopes.get(*id);
+                        span = seg.span;
+                    } else {
+                        return Ok(*def);
+                    }
+                }
             }
         }
 

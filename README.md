@@ -85,3 +85,4 @@ semver-breaking change.
 - IDL keywords cannot be used in preprocessor directives.
 - Diagnostics may emit labels that are incorrectly placed.
 - All diagnostics are treated as errors, even if they are warnings.
+- `valuetype`s are parsed but not type checkad and emitted.

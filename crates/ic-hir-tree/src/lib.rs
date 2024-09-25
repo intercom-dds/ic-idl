@@ -250,6 +250,9 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
                 }
                 node.push(proto);
             }
+            for _ in &v.attributes {
+                node.push("attrib".green());
+            }
         }
         DefKind::Valuetype(v) => {
             for def in &v.definitions {

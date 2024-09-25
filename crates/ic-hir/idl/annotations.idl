@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include "builtins.idl"
+
 module intercom {
 module annotations {
 

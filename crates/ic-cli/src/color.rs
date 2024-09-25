@@ -45,32 +45,32 @@ pub enum Color {
 pub trait Colorize: Display {
     fn fg(&self, color: Color) -> String {
         let c = match color {
-            Color::Black => "30m",
-            Color::Red => "31m",
-            Color::Green => "32m",
-            Color::Yellow => "33m",
-            Color::Blue => "34m",
-            Color::Purple => "35m",
-            Color::Cyan => "36m",
-            Color::White => "37m",
-            Color::Gray => "90m",
-            Color::Clear => "0m",
+            Color::Black => "\x1b[30m",
+            Color::Red => "\x1b[31m",
+            Color::Green => "\x1b[32m",
+            Color::Yellow => "\x1b[33m",
+            Color::Blue => "\x1b[34m",
+            Color::Purple => "\x1b[35m",
+            Color::Cyan => "\x1b[36m",
+            Color::White => "\x1b[37m",
+            Color::Gray => "\x1b[90m",
+            Color::Clear => "\x1b[0m",
         };
         fmt_ansi(c, self)
     }
 
     fn bg(&self, color: Color) -> String {
         let c = match color {
-            Color::Black => "40m",
-            Color::Red => "41m",
-            Color::Green => "42m",
-            Color::Yellow => "43m",
-            Color::Blue => "44m",
-            Color::Purple => "45m",
-            Color::Cyan => "46m",
-            Color::White => "47m",
-            Color::Gray => "100m",
-            Color::Clear => "49m",
+            Color::Black => "\x1b[40m",
+            Color::Red => "\x1b[41m",
+            Color::Green => "\x1b[42m",
+            Color::Yellow => "\x1b[43m",
+            Color::Blue => "\x1b[44m",
+            Color::Purple => "\x1b[45m",
+            Color::Cyan => "\x1b[46m",
+            Color::White => "\x1b[47m",
+            Color::Gray => "\x1b[100m",
+            Color::Clear => "\x1b[49m",
         };
         fmt_ansi(c, self)
     }
@@ -112,7 +112,7 @@ pub trait Colorize: Display {
     }
 
     fn bold(&self) -> String {
-        fmt_ansi("1m", self)
+        fmt_ansi("\x1b[1m", self)
     }
 
     fn clear(&self) -> String {
@@ -123,8 +123,20 @@ pub trait Colorize: Display {
 impl<T: Display> Colorize for T {}
 
 fn fmt_ansi<T: Display>(code: &str, input: T) -> String {
+    const CLEAR: &str = "\x1b[0m";
+
     if has_colors() {
-        format!("\x1b[{code}{input}\x1b[0m")
+        let mut input = input.to_string();
+        let matches: Vec<_> = input.match_indices(CLEAR).map(|(i, _)| i).collect();
+
+        for (i, offset) in matches.into_iter().enumerate() {
+            let mut offset = offset + CLEAR.len() + i * code.len();
+            for c in code.chars() {
+                input.insert(offset, c);
+                offset += 1;
+            }
+        }
+        format!("{code}{input}{CLEAR}")
     } else {
         input.to_string()
     }

@@ -220,6 +220,7 @@ dependencies = [
  "ic-diagnostic",
  "ic-emit",
  "ic-hir",
+ "ic-hir-tree",
  "ic-lint",
  "ic-parse",
  "ic-preproc",

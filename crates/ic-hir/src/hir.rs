@@ -354,16 +354,30 @@ pub struct BitFlag {
 
 #[derive(Debug, Default)]
 pub struct InterfaceTy {
-    pub prototypes: Vec<()>,
+    pub prototypes: Vec<Prototype>,
     pub attributes: Vec<()>,
     pub definitions: Vec<DefId>,
 }
 
 #[derive(Debug, Default)]
 pub struct ValueTy {
-    pub prototypes: Vec<()>,
+    pub prototypes: Vec<Prototype>,
     pub members: Vec<()>,
     pub definitions: Vec<DefId>,
+}
+
+#[derive(Debug)]
+pub struct Prototype {
+    pub ident: Ident,
+    pub ty: Ty,
+    pub params: Vec<Parameter>,
+}
+
+#[derive(Debug)]
+pub struct Parameter {
+    pub ident: Ident,
+    pub ty: Ty,
+    pub kind: ParamKind,
 }
 
 #[derive(Debug)]

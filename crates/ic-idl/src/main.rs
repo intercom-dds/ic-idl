@@ -153,6 +153,9 @@ fn try_parse(
 
     // Lower the AST to a HIR
     let hir = ic_hir::lower_ast(ast.tree.clone());
+    if options.unstable.hir_dump {
+        ic_hir_tree::emit_tree(&hir);
+    }
     errors.extend(hir.errors.into_iter().map(Into::into));
 
     // Lint the HIR

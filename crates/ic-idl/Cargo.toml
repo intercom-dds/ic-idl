@@ -41,6 +41,7 @@ ic-cli = { path = "../ic-cli" }
 ic-diagnostic = { path = "../ic-diagnostic" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
+ic-hir-tree = { path = "../ic-hir-tree" }
 ic-lint = { path = "../ic-lint" }
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }

@@ -69,7 +69,7 @@ impl<'a> Visitor<'a> for EmptyTypes<'a> {
     }
 
     fn visit_valuetype(&mut self, def: &'a ic_syntax::ValuetypeDef) {
-        if def.prototypes.is_empty() {
+        if def.members.is_empty() {
             self.diagnose(def.ident.span, def, "member or prototype");
         }
     }

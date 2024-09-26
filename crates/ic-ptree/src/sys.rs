@@ -420,6 +420,9 @@ extern "C" {
     pub static mut annotation_type_jaus: *mut ptree;
 }
 extern "C" {
+    pub fn set_node_flags(p: *mut ptree, flags: ptree_opts);
+}
+extern "C" {
     pub fn append_node(arg1: *mut parser_state, list: *mut ptree, node: *mut ptree) -> *mut ptree;
 }
 extern "C" {
@@ -589,6 +592,13 @@ extern "C" {
     pub fn create_union_start(
         arg1: *mut parser_state,
         ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
+}
+extern "C" {
+    pub fn create_union_discriminator(
+        arg1: *mut parser_state,
+        type_: *mut ptree,
+        annotations: *mut ptree,
     ) -> *mut ptree;
 }
 extern "C" {

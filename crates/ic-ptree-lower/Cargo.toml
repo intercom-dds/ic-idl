@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-idl"
+name = "ic-ptree-lower"
 edition = "2021"
 
 publish.workspace = true
@@ -37,26 +37,5 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-ic-cli = { path = "../ic-cli" }
-ic-diagnostic = { path = "../ic-diagnostic" }
-ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
-ic-hir-tree = { path = "../ic-hir-tree" }
-ic-lint = { path = "../ic-lint" }
-ic-parse = { path = "../ic-parse" }
-ic-preproc = { path = "../ic-preproc" }
 ic-ptree = { path = "../ic-ptree" }
-ic-ptree-dump = { path = "../ic-ptree-dump" }
-ic-ptree-lower = { path = "../ic-ptree-lower" }
-ic-vfs = { path = "../ic-vfs" }
-
-ic-codegen-cxx = { path = "../ic-codegen-cxx" }
-ic-codegen-idl = { path = "../ic-codegen-idl" }
-ic-codegen-json = { path = "../ic-codegen-json" }
-ic-codegen-protobuf = { path = "../ic-codegen-protobuf" }
-ic-codegen-python = { path = "../ic-codegen-python" }
-ic-codegen-rust = { path = "../ic-codegen-rust" }
-
-intercom-cts.workspace = true
-
-tracing-subscriber = "0.3.18"

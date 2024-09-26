@@ -1268,6 +1268,11 @@ ptree* create_union_start(parser_state* state, const char* ident) {
     return create_context_node(state, N_UNION, ident);
 }
 
+ptree* create_union_discriminator(parser_state* state, ptree* type, ptree* annotations) {
+    auto decl = create_decl(state, "_d", nullptr);
+    return create_member(state, decl, type, annotations);
+}
+
 ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* members) {
     if (discriminator) {
         ptree* prev_case = nullptr;

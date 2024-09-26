@@ -492,10 +492,11 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                 sys::create_union_member(state, mem, labels, annotations)
             });
 
-            let ident = create_ident("_d");
-            let decl = sys::create_decl(state, ident.as_ptr(), ptr::null_mut());
-            let disc =
-                sys::create_member(state, decl, lower_ty(state, &v.disc.ty), ptr::null_mut());
+            let disc = sys::create_union_discriminator(
+                state,
+                lower_ty(state, &v.disc.ty),
+                ptr::null_mut(),
+            );
             let ty = sys::create_union_finish(state, disc, members);
             annotate(state, ty, &v.annotations)
         }

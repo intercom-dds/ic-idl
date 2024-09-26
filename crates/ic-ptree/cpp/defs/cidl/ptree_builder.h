@@ -121,6 +121,9 @@ struct ptree* create_struct_dcl(struct parser_state*, const char* ident);
 struct ptree* create_union_start(struct parser_state*, const char* ident);
 
 struct ptree*
+create_union_discriminator(struct parser_state*, struct ptree* type, struct ptree* annotations);
+
+struct ptree*
 create_union_finish(struct parser_state*, struct ptree* discriminator, struct ptree* members);
 
 struct ptree* create_union_dcl(struct parser_state*, const char* ident);

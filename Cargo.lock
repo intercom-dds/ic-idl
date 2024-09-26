@@ -226,6 +226,7 @@ dependencies = [
  "ic-preproc",
  "ic-ptree",
  "ic-ptree-dump",
+ "ic-ptree-lower",
  "ic-vfs",
  "intercom-cts",
  "tracing-subscriber",
@@ -296,6 +297,14 @@ name = "ic-ptree-dump"
 version = "0.0.0"
 dependencies = [
  "ic-cc",
+ "ic-ptree",
+]
+
+[[package]]
+name = "ic-ptree-lower"
+version = "0.0.0"
+dependencies = [
+ "ic-hir",
  "ic-ptree",
 ]
 

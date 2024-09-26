@@ -55,6 +55,10 @@ impl ParseResult {
     pub fn as_raw(&self) -> *mut sys::parse_result {
         self.inner
     }
+
+    pub unsafe fn from_raw(inner: *mut sys::parse_result) -> Self {
+        Self { inner }
+    }
 }
 
 impl Drop for ParseResult {

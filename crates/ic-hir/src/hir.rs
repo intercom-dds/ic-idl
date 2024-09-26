@@ -56,10 +56,34 @@ pub enum PrimitiveTy {
     UInt32,
     Int64,
     UInt64,
-    Float,
-    Double,
+    Float32,
+    Float64,
+    Float128,
     String,
     WString,
+}
+
+impl PrimitiveTy {
+    pub fn name(&self) -> &str {
+        match self {
+            PrimitiveTy::Bool => "boolean",
+            PrimitiveTy::Char => "char",
+            PrimitiveTy::WChar => "wchar",
+            PrimitiveTy::Int8 => "int8",
+            PrimitiveTy::UInt8 => "uint8",
+            PrimitiveTy::Int16 => "int16",
+            PrimitiveTy::UInt16 => "uint16",
+            PrimitiveTy::Int32 => "int32",
+            PrimitiveTy::UInt32 => "uint64",
+            PrimitiveTy::Int64 => "int64",
+            PrimitiveTy::UInt64 => "uint64",
+            PrimitiveTy::Float32 => "float",
+            PrimitiveTy::Float64 => "double",
+            PrimitiveTy::Float128 => "long double",
+            PrimitiveTy::String => "string",
+            PrimitiveTy::WString => "wstring",
+        }
+    }
 }
 
 intercom_cts::bitmask! {
@@ -354,20 +378,20 @@ pub struct BitFlag {
 
 #[derive(Debug, Default)]
 pub struct InterfaceTy {
-    pub prototypes: Vec<Prototype>,
+    pub prototypes: Vec<ProtoTy>,
     pub attributes: Vec<()>,
     pub definitions: Vec<DefId>,
 }
 
 #[derive(Debug)]
 pub struct ValueTy {
-    pub prototypes: Vec<Prototype>,
+    pub prototypes: Vec<ProtoTy>,
     pub members: Vec<()>,
     pub definitions: Vec<DefId>,
 }
 
 #[derive(Debug)]
-pub struct Prototype {
+pub struct ProtoTy {
     pub ident: Ident,
     pub ty: Ty,
     pub params: Vec<Parameter>,

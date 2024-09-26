@@ -47,23 +47,9 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
     let kind = match ty {
         Ty::Any => "any",
         Ty::Fixed => "fixed",
-        Ty::Primitive(kind) => match kind {
-            PrimitiveTy::Bool => "bool",
-            PrimitiveTy::Char => "char",
-            PrimitiveTy::WChar => "wchar",
-            PrimitiveTy::Int8 => "int8",
-            PrimitiveTy::UInt8 => "uint8",
-            PrimitiveTy::Int16 => "int16",
-            PrimitiveTy::UInt16 => "uint16",
-            PrimitiveTy::Int32 => "int32",
-            PrimitiveTy::UInt32 => "uint32",
-            PrimitiveTy::Int64 => "int64",
-            PrimitiveTy::UInt64 => "uint64",
-            PrimitiveTy::Float => "float",
-            PrimitiveTy::Double => "double",
-            PrimitiveTy::String => "string",
-            PrimitiveTy::WString => "wstring",
-        },
+        Ty::Primitive(kind) => {
+            return kind.to_string().to_ascii_lowercase().cyan();
+        }
         Ty::String { wide, bound } => {
             let prefix = if *wide { "w" } else { "" };
             let bound = if let Some(bound) = bound {

@@ -32,7 +32,7 @@ use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
 
-use crate::{Def, DefId, PrimitiveTy, TypeId, hir};
+use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, TypeId};
 
 // TODO: should a Type point to the definition instead?
 //
@@ -83,111 +83,29 @@ impl Context {
         }
     }
 
-    /// # Panics
-    ///
-    /// Panics if the given type ID does not exist. This can only ever happen
-    /// if there are multiple `Context`s whose arenas have been mixed up.
-    // pub fn ty(&self, id: Id<Type>) -> &Type {
-    //     self.try_ty(id)
-    //         .expect(&format!("type {id:?} does not exist"))
-    // }
-
-    /// # Panics
-    // pub fn try_ty(&self, id: Id<Type>) -> Option<&Type> {
-    //     self.arena.get(id)
-    // }
-
-    pub fn primitive_type(&self, _kind: PrimitiveTy) -> &Type {
-        todo!()
-    }
-
-    // pub fn lookup_type(&self, name: &str) -> Option<&Type> {
-    //     let ty = self.types.get(name)?;
-    //     self.try_ty(*ty)
-    // }
-
-    // fn register_type<I>(&mut self, name: I, ty: Type) -> TypeId
-    // where
-    //     I: Into<String>,
-    // {
-    //     let name = name.into();
-    //     tracing::info!("registering type {name}: {ty:?}");
-    //
-    //     match self.symbols.entry(name) {
-    //         Entry::Occupied(v) => {
-    //             panic!("type {} was registered multiple times", v.key());
-    //         }
-    //         Entry::Vacant(v) => {
-    //             let id = self.types.alloc(ty);
-    //             v.insert(id);
-    //             id
-    //         }
-    //     }
-    // }
-
     /// Returns the type definition of the specified type.
     ///
     /// # Panics
     ///
     /// Panics if the given type ID does not exist. This can only ever happen
     /// if there are multiple `Context`s whose arenas have been mixed up.
-    pub fn type_of(&self, id: TypeId) -> &Def {
+    pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
-        // self.types
-        //     .get(ty)
-        //     .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
-    }
-
-    pub fn base_type_of(&self, _ty: TypeId) -> &Def {
-        todo!()
-        // self.types
-        //     .get(ty)
-        //     .unwrap_or_else(|| panic!("type {ty:?} does not exist"))
     }
 
     /// Similar to `type_of`, but will resolve the underlying type.
     ///
     /// # Panics
     ///
-    /// Panics if the given type ID does not exist. This can only ever happen
-    /// if there are multiple `Context`s whose arenas have been mixed up.
-    // pub fn base_type_of(&self, ty: TypeId) -> &Type {
-    //     let ty = self.type_of(ty);
-    //     if let Type::Alias(alias) = ty {
-    //         self.type_of(alias.ty)
-    //     } else {
-    //         ty
-    //     }
-    // }
-
-    pub fn declare(&mut self, scope: Option<DefId>, def: &Def) {
-        let name = def.ident.name.clone();
-        // TODO: check that kind + capitalization matches
-        self.registered.insert(name, def.id);
-    }
-
-    pub fn define(&mut self, scope: Option<DefId>, def: DefId) {
-        let def = self.definitions.get(def);
-        match self.registered.entry(def.ident.name.clone()) {
-            Entry::Occupied(v) => {}
-            Entry::Vacant(v) => {
-                v.insert(def.id);
-            }
-        }
-    }
-
-    // TODO: handle this in `Resolver` instead -- we should only operate on IDs.
-    pub fn resolve_type(&self, name: &ic_syntax::Type) -> TypeId {
-        let name = type_name(name);
-        let id = *self.symbols.get(&name).expect("unknown type");
-        id
+    /// Panics if the given type ID does not exist, or if the ID came from a
+    /// different arena. This can only ever happen if there are multiple
+    /// `Context`s whose arenas have been mixed up.
+    pub fn base_type_of(&self, mut id: DefId) -> &Def {
+        todo!()
     }
 
     pub fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
-        let name = path_name(path);
-        println!("lokup: {name:?}");
-        let ty = *self.symbols.get(&name).expect("unknown type");
-        ty
+        todo!()
     }
 
     // TODO: or should it be TypeId? that must be a ConstTy?

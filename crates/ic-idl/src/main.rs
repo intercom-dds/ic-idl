@@ -152,7 +152,7 @@ fn try_parse(
     errors.extend(report.diagnostics.into_iter().map(Into::into));
 
     // Lower the AST to a HIR
-    let hir = ic_hir::lower_ast(ast.tree.clone());
+    let hir = ic_hir::from_ast(ast.tree.clone());
     if options.unstable.hir_dump {
         ic_hir_tree::emit_tree(&hir);
     }

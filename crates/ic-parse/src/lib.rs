@@ -173,7 +173,6 @@ pub fn from_str(input: &str) -> (ParseResult, Vec<Error>) {
 /// # Errors
 ///
 /// # Panics
-#[must_use]
 pub fn from_path(
     path: &Path,
     args: ProcArgs,

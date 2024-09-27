@@ -28,8 +28,8 @@
 use std::collections::HashMap;
 use std::{ffi, ptr};
 
-use ic_hir::Context;
 use ic_hir::hir::{Decl, DefId, DefKind, Ident, PrimitiveTy, ProtoTy, Ty, Variant};
+use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 
 use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
@@ -40,7 +40,7 @@ struct TreeBuilder<'a> {
     lowered: HashMap<DefId, *mut sys::ptree>,
 }
 
-impl TreeBuilder<'_> {
+impl<'a> TreeBuilder<'a> {
     unsafe fn lower_ty(&self, ty: &Ty) -> *mut sys::ptree {
         match ty {
             Ty::Any => ptr::addr_of_mut!(sys::any_type),
@@ -230,19 +230,43 @@ impl TreeBuilder<'_> {
         self.lowered.insert(id, node);
         node
     }
+
+    unsafe fn lower_tree(
+        state: *mut sys::parser_state,
+        tree: &'a ResolvedGraph,
+    ) -> *mut sys::ptree {
+        let mut builder = Self {
+            state,
+            ctx: &tree.context,
+            lowered: HashMap::new(),
+        };
+
+        collect_with(state, sys::append_node, &tree.order, |id| {
+            builder.lower_def(*id)
+        })
+    }
 }
 
-pub unsafe fn lower(tree: &ic_hir::ResolvedGraph) -> ParseResult {
-    let state = unsafe { sys::ic_parser_create() };
-    let mut builder = TreeBuilder {
-        state,
-        ctx: &tree.context,
-        lowered: HashMap::new(),
-    };
+unsafe fn inject_builtin(state: *mut sys::parser_state) {
+    let builtin = common::parse_builtin();
+    let hir = ic_hir::from_ast(builtin.tree);
+    assert!(hir.errors.is_empty());
 
-    let tree = collect_with(state, sys::append_node, &tree.order, |id| {
-        builder.lower_def(*id)
-    });
-    let result = sys::ic_parser_result(builder.state, tree);
+    // Discard the generated nodes -- we don't want to include the built-in
+    // types in the tree. They just need to be registered in the symbol map with
+    // their respective definitions.
+    let tree = TreeBuilder::lower_tree(state, &hir);
+    assert!(!tree.is_null());
+}
+
+pub unsafe fn lower(hir: &ResolvedGraph) -> ParseResult {
+    let state = unsafe { sys::ic_parser_create() };
+
+    // Inject the built-in annotations
+    inject_builtin(state);
+
+    // Lower the tree
+    let tree = TreeBuilder::lower_tree(state, hir);
+    let result = sys::ic_parser_result(state, tree);
     ParseResult::from_raw(result)
 }

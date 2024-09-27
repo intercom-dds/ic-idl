@@ -30,7 +30,7 @@ use std::ffi::{self, CString};
 use ic_ptree::sys;
 use ic_syntax::ParamKind;
 
-pub const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
+const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 
 #[allow(unused_unsafe)]
 pub static mut NUM_UNDEF: *const sys::numeric = unsafe { std::ptr::addr_of!(sys::num_undef) };
@@ -55,6 +55,7 @@ type Appender = unsafe extern "C" fn(
     *mut sys::ptree,
 ) -> *mut sys::ptree;
 
+#[must_use]
 pub unsafe fn collect_with<I, C, T>(
     state: *mut sys::parser_state,
     appender: Appender,
@@ -73,4 +74,10 @@ where
         }
     }
     list
+}
+
+pub fn parse_builtin() -> ic_parse::ParseResult {
+    let (builtin, errors) = ic_parse::from_str(BUILTIN_ANNOTATIONS);
+    assert!(errors.is_empty(), "failed to parse built-in annotations");
+    builtin
 }

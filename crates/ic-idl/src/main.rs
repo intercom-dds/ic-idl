@@ -156,7 +156,12 @@ fn try_parse(
     if options.unstable.hir_dump {
         ic_hir_tree::emit_tree(&hir);
     }
+
+    // Lower the HIR to a ptree
+    let ptree = ic_ptree_lower::from_hir(&hir);
     errors.extend(hir.errors.into_iter().map(Into::into));
+    dbg!(ptree.diagnostics());
+    ic_ptree_dump::ptree_dump(&ptree);
 
     // Lint the HIR
     let report = ic_lint::lint_hir(&hir.context);
@@ -177,7 +182,7 @@ fn try_ptree(
     // Lower the AST to a ptree
     let lowered: Vec<_> = parsed
         .iter()
-        .map(|ast| ic_ptree::lower_ast(ast, vfs))
+        .map(|ast| ic_ptree_lower::from_ast(ast, vfs))
         .collect();
 
     // Merge multiple ptrees into one

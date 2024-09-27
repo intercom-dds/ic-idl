@@ -288,8 +288,6 @@ name = "ic-ptree"
 version = "0.0.0"
 dependencies = [
  "ic-cc",
- "ic-parse",
- "ic-syntax",
 ]
 
 [[package]]
@@ -305,7 +303,10 @@ name = "ic-ptree-lower"
 version = "0.0.0"
 dependencies = [
  "ic-hir",
+ "ic-parse",
  "ic-ptree",
+ "ic-syntax",
+ "ic-vfs",
 ]
 
 [[package]]

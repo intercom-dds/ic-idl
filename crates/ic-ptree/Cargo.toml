@@ -36,9 +36,5 @@ version.workspace = true
 [lints]
 workspace = true
 
-[dependencies]
-ic-parse = { path = "../ic-parse" }
-ic-syntax = { path = "../ic-syntax" }
-
 [build-dependencies]
 ic-cc = { path = "../ic-cc" }

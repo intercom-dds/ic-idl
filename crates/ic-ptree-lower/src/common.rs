@@ -25,20 +25,51 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_ptree::ParseResult;
+use std::ffi::{self, CString};
 
-mod ast;
-mod common;
-mod hir;
+use ic_ptree::sys;
+use ic_syntax::ParamKind;
 
-/// Lowers the HIR into a `ptree`. This process should be infallible, as
-/// everything should have been resolved and type checked prior to this.
-pub fn from_hir(tree: &ic_hir::ResolvedGraph) -> ParseResult {
-    unsafe { hir::lower(tree) }
+pub const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
+
+#[allow(unused_unsafe)]
+pub static mut NUM_UNDEF: *const sys::numeric = unsafe { std::ptr::addr_of!(sys::num_undef) };
+
+pub fn create_ident(name: &str) -> CString {
+    CString::new(name).unwrap()
 }
 
-/// Lowers the AST into a `ptree`. This process should be infallible, as
-/// long as a HIR has been successfully constructed from the same AST.
-pub fn from_ast(ast: &ic_parse::ParseResult, vfs: &ic_vfs::SourceMap) -> ParseResult {
-    unsafe { ast::lower(&ast.tree, vfs) }
+pub fn param_kind(kind: ParamKind) -> ffi::c_int {
+    let c = match kind {
+        ParamKind::In => sys::OPT_IN,
+        ParamKind::Out => sys::OPT_OUT,
+        ParamKind::Inout => sys::OPT_INOUT,
+    };
+    c as ffi::c_int
+}
+
+type Appender = unsafe extern "C" fn(
+    *mut sys::parser_state,
+    *mut sys::ptree,
+    *mut sys::ptree,
+) -> *mut sys::ptree;
+
+pub unsafe fn collect_with<I, C, T>(
+    state: *mut sys::parser_state,
+    appender: Appender,
+    iter: I,
+    mut cb: C,
+) -> *mut sys::ptree
+where
+    I: IntoIterator<Item = T>,
+    C: FnMut(T) -> *mut sys::ptree,
+{
+    let mut list = std::ptr::null_mut();
+    unsafe {
+        for elem in iter {
+            let node = cb(elem);
+            list = appender(state, list, node);
+        }
+    }
+    list
 }

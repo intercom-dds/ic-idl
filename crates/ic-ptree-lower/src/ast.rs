@@ -31,18 +31,14 @@ use std::ffi::{self, CString};
 use std::ptr;
 
 use ic_parse::SourceMap;
+use ic_ptree::{ParseResult, sys};
 use ic_syntax::{
     AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, DeclKind, Declarator, Expr,
     Field, InterfaceMember, Item, Label, LiteralValue, Op, OpKind, Param, ParamKind, Path, Type,
     UnionElement,
 };
 
-use crate::sys;
-
-const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
-
-#[allow(unused_unsafe)]
-static mut NUM_UNDEF: *const sys::numeric = unsafe { ptr::addr_of!(sys::num_undef) };
+use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
 
 fn op_kind(op: Op) -> ffi::c_char {
     let c = match op.kind {
@@ -62,12 +58,10 @@ fn op_kind(op: Op) -> ffi::c_char {
 }
 
 fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
-    let c = match kind {
-        Some(ParamKind::Out) => sys::OPT_OUT,
-        Some(ParamKind::Inout) => sys::OPT_INOUT,
-        _ => sys::OPT_IN,
-    };
-    c as ffi::c_int
+    match kind {
+        Some(v) => common::param_kind(v),
+        None => sys::OPT_IN as ffi::c_int,
+    }
 }
 
 fn path_str(path: &Path) -> String {
@@ -88,10 +82,6 @@ fn path_str(path: &Path) -> String {
 fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {
     path.as_ref()
         .map_or(ptr::null_mut(), |p| lower_path(state, p))
-}
-
-fn create_ident(name: &str) -> CString {
-    CString::new(name).unwrap()
 }
 
 unsafe fn create_decl(
@@ -394,7 +384,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             annotate(state, ty, &v.annotations)
         }
         Item::BitmaskValue(v) => {
-            let values = collect_with(state, sys::append_node, &v.bits, |bit| {
+            let values = collect_with(state, sys::append_enum_node, &v.bits, |bit| {
                 let ident = create_ident(&bit.ident.name);
                 let expr = bit
                     .value
@@ -512,34 +502,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
     }
 }
 
-type Appender = unsafe extern "C" fn(
-    *mut sys::parser_state,
-    *mut sys::ptree,
-    *mut sys::ptree,
-) -> *mut sys::ptree;
-
-unsafe fn collect_with<I, C, T>(
-    state: *mut sys::parser_state,
-    appender: Appender,
-    iter: I,
-    cb: C,
-) -> *mut sys::ptree
-where
-    I: IntoIterator<Item = T>,
-    C: Fn(T) -> *mut sys::ptree,
-{
-    let mut list = ptr::null_mut();
-    unsafe {
-        for elem in iter {
-            let node = cb(elem);
-            list = appender(state, list, node);
-        }
-    }
-    list
-}
-
 unsafe fn inject_builtin(state: *mut sys::parser_state) {
-    let (builtin, errors) = ic_parse::from_str(BUILTIN_ANNOTATIONS);
+    let (builtin, errors) = ic_parse::from_str(common::BUILTIN_ANNOTATIONS);
     assert!(errors.is_empty(), "failed to parse built-in annotations");
 
     // Discard the generated nodes -- we don't want to include the built-in
@@ -552,7 +516,7 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     assert!(!list.is_null());
 }
 
-pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -> *mut sys::ptree {
+fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -> *mut sys::ptree {
     unsafe {
         inject_builtin(state);
 
@@ -566,4 +530,18 @@ pub fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -
             sys::create_include_finish(state, node)
         })
     }
+}
+
+pub unsafe fn lower(ast: &[Item], vfs: &SourceMap) -> ParseResult {
+    let result = unsafe {
+        let state = sys::ic_parser_create();
+        let tree = lower_ast(state, ast, vfs);
+        let inner = sys::ic_parser_result(state, tree);
+        ParseResult::from_raw(inner)
+    };
+
+    if let Some(err) = result.diagnostics() {
+        debug_assert!(false, "{err}");
+    }
+    result
 }

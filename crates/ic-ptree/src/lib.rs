@@ -27,9 +27,6 @@
 
 use std::ffi::{CStr, NulError};
 
-use ic_parse::SourceMap;
-
-mod lower;
 pub mod sys;
 
 #[must_use]
@@ -96,34 +93,4 @@ pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
     let inner = unsafe { sys::ic_ptree_merge(trees.as_mut_ptr()) };
     debug_assert!(!inner.is_null());
     ParseResult { inner }
-}
-
-/// Lowers the AST into a `ptree`. This process should be infallible, as
-/// everything should have been type checked prior to this.
-pub fn lower_ast(ast: &ic_parse::ParseResult, vfs: &SourceMap) -> ParseResult {
-    let inner = unsafe {
-        let state = sys::ic_parser_create();
-        let tree = lower::lower_ast(state, &ast.tree, vfs);
-        sys::ic_parser_result(state, tree)
-    };
-
-    let result = ParseResult { inner };
-    if let Some(err) = result.diagnostics() {
-        debug_assert!(false, "{err}");
-    }
-    result
-}
-
-#[macro_export]
-macro_rules! define_backend {
-    ($fn_name:tt, $ffi_name:tt) => {
-        #[must_use]
-        pub fn $fn_name(result: &$crate::ParseResult, directory: &std::path::Path) -> Vec<String> {
-            let dir = std::ffi::CString::new(directory.to_string_lossy().as_bytes()).unwrap();
-            unsafe {
-                $crate::sys::$ffi_name(result.as_raw(), dir.as_ptr());
-            }
-            vec![]
-        }
-    };
 }

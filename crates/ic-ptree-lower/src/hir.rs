@@ -1,0 +1,230 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+use std::collections::HashMap;
+use std::{ffi, ptr};
+
+use ic_hir::Context;
+use ic_hir::hir::*;
+use ic_ptree::{ParseResult, sys};
+
+use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
+
+struct TreeBuilder<'a> {
+    ctx: &'a Context,
+    state: *mut sys::parser_state,
+    lowered: HashMap<DefId, *mut sys::ptree>,
+}
+
+impl TreeBuilder<'_> {
+    unsafe fn lower_ty(&self, ty: &Ty) -> *mut sys::ptree {
+        match ty {
+            Ty::Any => ptr::addr_of_mut!(sys::any_type),
+            Ty::Fixed => ptr::addr_of_mut!(sys::fixed_type),
+            Ty::Primitive(kind) => match kind {
+                PrimitiveTy::Bool => ptr::addr_of_mut!(sys::boolean_type),
+                PrimitiveTy::Char => ptr::addr_of_mut!(sys::char_type),
+                PrimitiveTy::WChar => ptr::addr_of_mut!(sys::wchar_type),
+                PrimitiveTy::Int8 => ptr::addr_of_mut!(sys::int8_type),
+                PrimitiveTy::UInt8 => ptr::addr_of_mut!(sys::octet_type),
+                PrimitiveTy::Int16 => ptr::addr_of_mut!(sys::short_type),
+                PrimitiveTy::UInt16 => ptr::addr_of_mut!(sys::ushort_type),
+                PrimitiveTy::Int32 => ptr::addr_of_mut!(sys::long_type),
+                PrimitiveTy::UInt32 => ptr::addr_of_mut!(sys::ulong_type),
+                PrimitiveTy::Int64 => ptr::addr_of_mut!(sys::longlong_type),
+                PrimitiveTy::UInt64 => ptr::addr_of_mut!(sys::ulonglong_type),
+                PrimitiveTy::Float32 => ptr::addr_of_mut!(sys::float_type),
+                PrimitiveTy::Float64 => ptr::addr_of_mut!(sys::double_type),
+                PrimitiveTy::Float128 => ptr::addr_of_mut!(sys::ldouble_type),
+            },
+            // Ty::Array { .. } => (),
+            // Ty::Sequence { .. } => (),
+            Ty::String { wide, .. } => {
+                if *wide {
+                    sys::create_wstring(self.state, NUM_UNDEF)
+                } else {
+                    sys::create_string(self.state, NUM_UNDEF)
+                }
+            }
+            // Ty::Map { .. } => (),
+            Ty::Adt(id) => *self.lowered.get(id).unwrap(),
+            _ => todo!(),
+        }
+    }
+
+    unsafe fn lower_decl(&self, ident: &Ident) -> *mut sys::declarator {
+        let ident = create_ident(&ident.name);
+        sys::create_decl(self.state, ident.as_ptr(), ptr::null_mut())
+    }
+
+    unsafe fn lower_proto(&self, proto: &ProtoTy) -> *mut sys::ptree {
+        let params = collect_with(self.state, sys::append_node, &proto.params, |param| {
+            let ty = self.lower_ty(&param.ty);
+            let kind = common::param_kind(param.kind);
+            let decl = self.lower_decl(&param.ident);
+            sys::create_param_dcl(self.state, decl, ty, kind as ffi::c_int)
+        });
+
+        let ident = create_ident(&proto.ident.name);
+        let ret = self.lower_ty(&proto.ty);
+        sys::create_interface_op(self.state, ident.as_ptr(), params, ret, ptr::null_mut())
+    }
+
+    unsafe fn lower_def(&mut self, id: DefId) -> *mut sys::ptree {
+        // If this has been lowered before, return the corresponding node
+        if let Some(v) = self.lowered.get(&id) {
+            return *v;
+        }
+
+        let def = self.ctx.type_of(id);
+        let ident = create_ident(&def.ident.name);
+        let ident = ident.as_ptr();
+
+        let node = match &def.kind {
+            DefKind::Annotation(v) => {
+                sys::create_annotation_dcl_start(self.state, ident);
+                let types = collect_with(self.state, sys::append_node, &v.types, |id| {
+                    self.lower_def(*id)
+                });
+                let fields = collect_with(self.state, sys::append_node, &v.members, |mem| {
+                    let ty = self.lower_ty(&mem.ty);
+                    let decl = self.lower_decl(&mem.ident);
+                    sys::create_annotation_member(self.state, decl, ty, NUM_UNDEF)
+                });
+                let members = sys::append_node(self.state, types, fields);
+                sys::create_annotation_dcl_finish(self.state, members)
+            }
+            DefKind::Module(v) => {
+                sys::create_module_start(self.state, ident);
+                let members = collect_with(self.state, sys::append_node, &v.definitions, |id| {
+                    self.lower_def(*id)
+                });
+                sys::create_module_finish(self.state, members)
+            }
+            DefKind::Struct(v) => {
+                let parent = v
+                    .parent
+                    .map(|id| self.lower_def(id))
+                    .unwrap_or(ptr::null_mut());
+
+                sys::create_struct_start(self.state, ident, parent);
+                let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
+                    let ty = self.lower_ty(&mem.ty);
+                    let decl = self.lower_decl(&mem.ident);
+                    sys::create_member(self.state, decl, ty, ptr::null_mut())
+                });
+                sys::create_struct_finish(self.state, members)
+            }
+            DefKind::Except(v) => {
+                sys::create_exception_start(self.state, ident);
+                let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
+                    let ty = self.lower_ty(&mem.ty);
+                    let decl = self.lower_decl(&mem.ident);
+                    sys::create_member(self.state, decl, ty, ptr::null_mut())
+                });
+                sys::create_exception_finish(self.state, members)
+            }
+            DefKind::Union(v) => {
+                sys::create_union_start(self.state, ident);
+                let variants = collect_with(self.state, sys::append_node, &v.variants, |var| {
+                    let cases = collect_with(self.state, sys::append_node, &var.labels, |_| {
+                        sys::create_case_label(self.state, NUM_UNDEF)
+                    });
+
+                    let decl = self.lower_decl(&var.ident);
+                    let ty = self.lower_ty(&var.ty);
+                    let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
+                    sys::create_union_member(self.state, mem, cases, ptr::null_mut())
+                });
+
+                let ty = self.lower_ty(&v.disc);
+                let disc = sys::create_union_discriminator(self.state, ty, ptr::null_mut());
+                sys::create_union_finish(self.state, disc, variants)
+            }
+            DefKind::Enum(v) => {
+                let values = collect_with(self.state, sys::append_enum_node, &v.fields, |var| {
+                    let name = create_ident(&var.ident.name);
+                    sys::create_enum_value(self.state, name.as_ptr(), NUM_UNDEF)
+                });
+                sys::create_enum(self.state, ident, values)
+            }
+            DefKind::Const(v) => {
+                let ty = self.lower_ty(&v.ty);
+                let decl = self.lower_decl(&def.ident);
+                sys::create_const_node(self.state, decl, ty, NUM_UNDEF)
+            }
+            DefKind::Bitmask(v) => {
+                let values = collect_with(self.state, sys::append_enum_node, &v.flags, |flag| {
+                    let name = create_ident(&flag.ident.name);
+                    sys::create_bitmask_value(self.state, name.as_ptr(), NUM_UNDEF)
+                });
+                sys::create_bitmask(self.state, ident, values)
+            }
+            DefKind::Alias(v) => {
+                let ty = self.lower_ty(&v.ty);
+                let decl = self.lower_decl(&def.ident);
+                sys::create_type(self.state, decl, ty)
+            }
+            DefKind::Interface(v) => {
+                sys::create_interface_start(self.state, ident, ptr::null_mut(), 0);
+                let members = collect_with(self.state, sys::append_node, &v.prototypes, |proto| {
+                    self.lower_proto(proto)
+                });
+                sys::create_interface_finish(self.state, members)
+            }
+            DefKind::Valuetype(_) => {
+                sys::create_valuetype_start(self.state, ident, ptr::null_mut(), ptr::null_mut());
+                sys::create_valuetype_finish(self.state, ptr::null_mut())
+            }
+            DefKind::Decl(v) => match v {
+                Decl::Struct => sys::create_struct_dcl(self.state, ident),
+                Decl::Union => sys::create_union_dcl(self.state, ident),
+                Decl::Native => sys::create_native_type(self.state, ident),
+                Decl::Interface => sys::create_interface_dcl(self.state, ident, 0),
+                Decl::Valuetype => sys::create_valuetype_dcl(self.state, ident),
+            },
+        };
+
+        self.lowered.insert(id, node);
+        node
+    }
+}
+
+pub unsafe fn lower(tree: &ic_hir::ResolvedGraph) -> ParseResult {
+    let state = unsafe { sys::ic_parser_create() };
+    let mut builder = TreeBuilder {
+        state,
+        ctx: &tree.context,
+        lowered: HashMap::new(),
+    };
+
+    let tree = collect_with(state, sys::append_node, &tree.order, |id| {
+        builder.lower_def(*id)
+    });
+    let result = sys::ic_parser_result(builder.state, tree);
+    ParseResult::from_raw(result)
+}

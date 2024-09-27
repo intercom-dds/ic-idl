@@ -38,4 +38,7 @@ workspace = true
 
 [dependencies]
 ic-hir = { path = "../ic-hir" }
+ic-parse = { path = "../ic-parse" }
 ic-ptree = { path = "../ic-ptree" }
+ic-syntax = { path = "../ic-syntax" }
+ic-vfs = { path = "../ic-vfs" }

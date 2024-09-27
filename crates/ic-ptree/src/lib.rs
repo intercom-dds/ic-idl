@@ -53,6 +53,11 @@ impl ParseResult {
         self.inner
     }
 
+    /// # Safety
+    ///
+    /// This function assumes the `parse_result` is correctly initialized and
+    /// is not NULL. The `ParseResult` will take ownership of the object and
+    /// free the memory when it gets dropped.
     pub unsafe fn from_raw(inner: *mut sys::parse_result) -> Self {
         Self { inner }
     }

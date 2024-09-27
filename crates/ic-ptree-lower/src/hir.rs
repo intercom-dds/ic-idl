@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use std::{ffi, ptr};
 
 use ic_hir::Context;
-use ic_hir::hir::*;
+use ic_hir::hir::{Decl, DefId, DefKind, Ident, PrimitiveTy, ProtoTy, Ty, Variant};
 use ic_ptree::{ParseResult, sys};
 
 use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
@@ -94,6 +94,17 @@ impl TreeBuilder<'_> {
         sys::create_interface_op(self.state, ident.as_ptr(), params, ret, ptr::null_mut())
     }
 
+    unsafe fn lower_variant(&self, var: &Variant) -> *mut sys::ptree {
+        let cases = collect_with(self.state, sys::append_node, &var.labels, |_| {
+            sys::create_case_label(self.state, NUM_UNDEF)
+        });
+
+        let decl = self.lower_decl(&var.ident);
+        let ty = self.lower_ty(&var.ty);
+        let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
+        sys::create_union_member(self.state, mem, cases, ptr::null_mut())
+    }
+
     unsafe fn lower_def(&mut self, id: DefId) -> *mut sys::ptree {
         // If this has been lowered before, return the corresponding node
         if let Some(v) = self.lowered.get(&id) {
@@ -126,12 +137,13 @@ impl TreeBuilder<'_> {
                 sys::create_module_finish(self.state, members)
             }
             DefKind::Struct(v) => {
-                let parent = v
-                    .parent
-                    .map(|id| self.lower_def(id))
-                    .unwrap_or(ptr::null_mut());
+                let parent = v.parent.map_or(ptr::null_mut(), |id| self.lower_def(id));
+                let ty = sys::create_struct_start(self.state, ident, parent);
 
-                sys::create_struct_start(self.state, ident, parent);
+                // Structs may be self-referential so we need to cache the node
+                // before lowering any of its members.
+                self.lowered.insert(id, ty);
+
                 let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
@@ -140,7 +152,9 @@ impl TreeBuilder<'_> {
                 sys::create_struct_finish(self.state, members)
             }
             DefKind::Except(v) => {
-                sys::create_exception_start(self.state, ident);
+                let ty = sys::create_exception_start(self.state, ident);
+                self.lowered.insert(id, ty);
+
                 let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
@@ -149,16 +163,11 @@ impl TreeBuilder<'_> {
                 sys::create_exception_finish(self.state, members)
             }
             DefKind::Union(v) => {
-                sys::create_union_start(self.state, ident);
-                let variants = collect_with(self.state, sys::append_node, &v.variants, |var| {
-                    let cases = collect_with(self.state, sys::append_node, &var.labels, |_| {
-                        sys::create_case_label(self.state, NUM_UNDEF)
-                    });
+                let ty = sys::create_union_start(self.state, ident);
+                self.lowered.insert(id, ty);
 
-                    let decl = self.lower_decl(&var.ident);
-                    let ty = self.lower_ty(&var.ty);
-                    let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
-                    sys::create_union_member(self.state, mem, cases, ptr::null_mut())
+                let variants = collect_with(self.state, sys::append_node, &v.variants, |var| {
+                    self.lower_variant(var)
                 });
 
                 let ty = self.lower_ty(&v.disc);
@@ -190,14 +199,22 @@ impl TreeBuilder<'_> {
                 sys::create_type(self.state, decl, ty)
             }
             DefKind::Interface(v) => {
-                sys::create_interface_start(self.state, ident, ptr::null_mut(), 0);
+                let ty = sys::create_interface_start(self.state, ident, ptr::null_mut(), 0);
+                self.lowered.insert(id, ty);
+
                 let members = collect_with(self.state, sys::append_node, &v.prototypes, |proto| {
                     self.lower_proto(proto)
                 });
                 sys::create_interface_finish(self.state, members)
             }
             DefKind::Valuetype(_) => {
-                sys::create_valuetype_start(self.state, ident, ptr::null_mut(), ptr::null_mut());
+                let ty = sys::create_valuetype_start(
+                    self.state,
+                    ident,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                );
+                self.lowered.insert(id, ty);
                 sys::create_valuetype_finish(self.state, ptr::null_mut())
             }
             DefKind::Decl(v) => match v {

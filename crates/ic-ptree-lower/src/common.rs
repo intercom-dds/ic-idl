@@ -39,6 +39,7 @@ pub fn create_ident(name: &str) -> CString {
     CString::new(name).unwrap()
 }
 
+#[allow(clippy::cast_possible_wrap)]
 pub fn param_kind(kind: ParamKind) -> ffi::c_int {
     let c = match kind {
         ParamKind::In => sys::OPT_IN,

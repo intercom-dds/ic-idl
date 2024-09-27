@@ -157,13 +157,13 @@ struct ptree* create_type(struct parser_state*, struct declarator* declarators, 
 
 struct ptree* create_native_type(struct parser_state*, const char* ident);
 
-void create_exception_start(struct parser_state*, const char* ident);
+struct ptree* create_exception_start(struct parser_state*, const char* ident);
 
 struct ptree* create_exception_finish(struct parser_state*, struct ptree* members);
 
 struct ptree* create_interface_dcl(struct parser_state*, const char* ident, int is_local);
 
-void create_interface_start(
+struct ptree* create_interface_start(
     struct parser_state*,
     const char* ident,
     struct declarator* parents,

@@ -48,8 +48,7 @@
  * type of a member may refer to a node earlier in the tree.
  *
  * kind: The node kind, see node_kind enum for legal values
- * name: The node name. Not NULL. Points into a set of names with no duplicates, so if
- *       strcmp(n1->name, n2->name) == 0, then n1->name == n2->name
+ * name: The node name. Guaranteed to not be empty.
  * next: Next node on the same level (e.g. next member in a struct or next element in a module).
  * scope: The lexical scope of a node.
  * type: The type for of a member, alias, const, case and prototype.
@@ -59,12 +58,11 @@
  * discriminator: The discriminator of a union
  * members: A list of all members in a module, enum, bitset, bitmask, struct, union or valuetype
  * annotations: All annotations applied to node
- * parents: A NULL-terminated array of parents. Not NULL. (For nodes with no parents, *parents ==
- * NULL) getraises: A NULL-terminated array of exceptions. Not NULL. setraises: A NULL-terminated
- * array of exceptions. Not NULL. included_from: Node of include file. NULL for nodes from the main
- * IDL file. bounds: An array of bounds, not NULL. The first value contains the number of bounds.
- *         For nodes with no bounds, bounds == {0}. For e.g. a string<13>, bounds == {1, 13}
- *         and for long x[3][4], bounds == {2, 3, 4}.
+ * parents: A list of parents.
+ * getraises: A list of exceptions.
+ * setraises: A list of exceptions.
+ * included_from: Node of include file. Empty for nodes from the main IDL file.
+ * bounds: An list of bounds.
  * flags: A bitmask of flags applied to the node
  * file_name: The name of the IDL source file
  * value: The value of a const node (from a const expression or a member of an enum or bitmask)

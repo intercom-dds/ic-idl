@@ -667,7 +667,10 @@ extern "C" {
     ) -> *mut ptree;
 }
 extern "C" {
-    pub fn create_exception_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char);
+    pub fn create_exception_start(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+    ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_exception_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;
@@ -685,7 +688,7 @@ extern "C" {
         ident: *const ::std::os::raw::c_char,
         parents: *mut declarator,
         is_local: ::std::os::raw::c_int,
-    );
+    ) -> *mut ptree;
 }
 extern "C" {
     pub fn create_interface_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;

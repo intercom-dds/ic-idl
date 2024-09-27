@@ -1482,8 +1482,8 @@ ptree* create_native_type(parser_state* state, const char* ident) {
     return node;
 }
 
-void create_exception_start(parser_state* state, const char* ident) {
-    create_context_node(state, N_EXCEPTION, ident);
+ptree* create_exception_start(parser_state* state, const char* ident) {
+    return create_context_node(state, N_EXCEPTION, ident);
 }
 
 ptree* create_exception_finish(parser_state* state, ptree* members) {
@@ -1502,16 +1502,15 @@ ptree* create_interface_dcl(parser_state* state, const char* ident, int is_local
     return node;
 }
 
-void create_interface_start(
-    parser_state* state,
-    const char* ident,
-    declarator* parents,
-    int is_local
-) {
-    create_context_node(state, N_INTERFACE, ident, create_node_list(state, parents, N_INTERFACE));
+ptree*
+create_interface_start(parser_state* state, const char* ident, declarator* parents, int is_local) {
+    auto node = create_context_node(
+        state, N_INTERFACE, ident, create_node_list(state, parents, N_INTERFACE)
+    );
     if (is_local) {
         peek_context(state)->flags |= OPT_LOCAL;
     }
+    return node;
 }
 
 ptree* create_interface_finish(parser_state* state, ptree* members) {

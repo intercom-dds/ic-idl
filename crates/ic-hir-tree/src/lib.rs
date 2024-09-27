@@ -30,7 +30,7 @@ mod tree;
 use std::fmt::Write;
 
 use ic_cli::color::Colorize;
-use ic_hir::hir::*;
+use ic_hir::hir::{Decl, DefFlags, DefId, DefKind, Member, ParamKind, Span, Ty, Variant};
 use ic_hir::{Context, ResolvedGraph};
 
 use crate::tree::Leaf;
@@ -41,6 +41,40 @@ fn emit_span(span: &Span) -> String {
         span.start.file_id, span.start.offset, span.end.file_id, span.end.offset,
     )
     .yellow()
+}
+
+fn emit_param_kind(kind: ParamKind) -> &'static str {
+    match kind {
+        ParamKind::In => "in",
+        ParamKind::Out => "out",
+        ParamKind::Inout => "inout",
+    }
+}
+
+fn emit_flags(flags: DefFlags) -> String {
+    let mut buf = vec![];
+    if flags.contains(DefFlags::IS_CIRCULAR) {
+        buf.push("circular");
+    }
+    if flags.contains(DefFlags::IS_TRIVIAL) {
+        buf.push("trivial");
+    }
+    if flags.contains(DefFlags::IS_BUILTIN) {
+        buf.push("builtin");
+    }
+    if flags.contains(DefFlags::IS_SYNTHESIZED) {
+        buf.push("synth");
+    }
+    if flags.contains(DefFlags::IS_INCOMPLETE) {
+        buf.push("incomplete");
+    }
+    if flags.contains(DefFlags::IS_EMIT) {
+        buf.push("emit");
+    }
+    if flags.contains(DefFlags::TOTAL_ORDER) {
+        buf.push("ord");
+    }
+    buf.join(" ")
 }
 
 fn emit_ty(context: &Context, ty: &Ty) -> String {
@@ -121,6 +155,7 @@ fn emit_variant(context: &Context, var: &Variant) -> Leaf<String> {
     node
 }
 
+#[allow(clippy::too_many_lines)]
 fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
     let def = context.definitions.get(id);
     let kind = match def.kind {
@@ -140,10 +175,11 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
 
     let span = emit_span(&def.span);
     let mut node = leaf!(
-        "{} def={} {span} {} emit",
+        "{} def={} {span} {} {}",
         kind.green().bold(),
         format!("0x{id:02X?}").blue(),
         def.ident.name.cyan(),
+        emit_flags(def.flags),
     );
 
     match &def.kind {
@@ -159,8 +195,9 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             node.extend(nested);
         }
         DefKind::Struct(v) => {
-            if let Some(_parent) = &v.parent {
-                node.push(leaf!("{}", "parent".purple()));
+            if let Some(parent) = v.parent {
+                let parent = &context.type_of(parent).ident.name;
+                node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
             }
             let members = v.members.iter().map(|v| emit_member(context, v));
             node.extend(members);
@@ -219,17 +256,17 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             for def in &v.prototypes {
                 let span = emit_span(&def.ident.span);
                 let mut proto = leaf!(
-                    "{} {span} {} emit",
+                    "{} {span} {}",
                     "prototype".green().bold(),
-                    def.ident.name.cyan()
+                    def.ident.name.cyan(),
                 );
                 proto.push(leaf!("{} {}", "return".purple(), emit_ty(context, &def.ty)));
                 for param in &def.params {
-                    // TODO: in/inout/out
                     let mut arg = leaf!(
-                        "{} {} inout",
+                        "{} {} {}",
                         "param".green().bold(),
-                        param.ident.name.cyan()
+                        param.ident.name.cyan(),
+                        emit_param_kind(param.kind),
                     );
                     arg.push(leaf!("{} {}", "type".purple(), emit_ty(context, &param.ty)));
                     proto.push(arg);
@@ -264,6 +301,7 @@ fn plural(word: &str, count: usize) -> String {
     format!("{} {word}{s}", count.green())
 }
 
+#[allow(clippy::print_stdout)]
 pub fn emit_tree(result: &ResolvedGraph) {
     let leaves = result.order.iter().map(|id| emit_def(&result.context, *id));
     let mut root = leaf!("{}", ".".gray());

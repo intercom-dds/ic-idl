@@ -105,6 +105,7 @@ impl TreeBuilder<'_> {
         sys::create_union_member(self.state, mem, cases, ptr::null_mut())
     }
 
+    #[allow(clippy::too_many_lines)]
     unsafe fn lower_def(&mut self, id: DefId) -> *mut sys::ptree {
         // If this has been lowered before, return the corresponding node
         if let Some(v) = self.lowered.get(&id) {

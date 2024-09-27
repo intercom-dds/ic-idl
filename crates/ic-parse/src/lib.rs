@@ -174,9 +174,13 @@ pub fn from_str(input: &str) -> (ParseResult, Vec<Error>) {
 ///
 /// # Panics
 #[must_use]
-pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> (ParseResult, Vec<Error>) {
-    let (file_id, _) = vfs.open(path, Include::Static).unwrap();
-    from_file(file_id, args, vfs)
+pub fn from_path(
+    path: &Path,
+    args: ProcArgs,
+    vfs: &mut SourceMap,
+) -> std::io::Result<(ParseResult, Vec<Error>)> {
+    let (file_id, _) = vfs.open(path, Include::Static)?;
+    Ok(from_file(file_id, args, vfs))
 }
 
 /// Parses the specified file and constructs an AST.

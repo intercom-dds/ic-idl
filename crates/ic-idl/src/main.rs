@@ -30,6 +30,7 @@
 use std::path::Path;
 
 use config::Options;
+use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
 use ic_preproc::ProcArgs;
@@ -140,7 +141,12 @@ fn try_parse(
     vfs: &mut SourceMap,
 ) -> Result<ic_parse::ParseResult, Vec<Error>> {
     let mut errors = vec![];
-    let (ast, err) = ic_parse::from_path(path, proc, vfs);
+    let (ast, err) = ic_parse::from_path(path, proc, vfs).map_err(|e| {
+        vec![Error::Custom(format!(
+            "failed to open `{}`: {e}",
+            path.display().yellow()
+        ))]
+    })?;
     errors.extend(err.into_iter().map(Into::into));
 
     if options.unstable.ast_dump {

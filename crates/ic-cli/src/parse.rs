@@ -160,7 +160,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn maybe_help(&self, opt: &str) -> Result<(), ParseError> {
+        if opt == "h" || opt == "help" {
+            Err(ParseError::Help(self.ctx.help()))
+        } else {
+            Ok(())
+        }
+    }
+
     fn find_opt(&mut self, opt: &str) -> Result<&mut Opt, ParseError> {
+        self.maybe_help(opt)?;
         self.result
             .options
             .get_mut(opt)
@@ -203,17 +212,11 @@ impl<'a> Parser<'a> {
                 .ok_or_else(|| format!("argument to '{}' is missing", prefixed(name)))?;
 
             if arg.starts_with('-') {
-                let err = if arg == "-h" || arg == "--help" {
-                    ParseError::Help(self.ctx.help())
-                } else {
-                    format!(
-                        "expected argument to '{}', found option '{}'",
-                        prefixed(name),
-                        arg.yellow(),
-                    )
-                    .into()
-                };
-                return Err(err);
+                return Err(ParseError::Status(format!(
+                    "expected argument to '{}', found option '{}'",
+                    prefixed(name),
+                    arg.yellow(),
+                )));
             }
             arg.to_string()
         };

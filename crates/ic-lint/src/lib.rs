@@ -133,11 +133,11 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
         pedantic::scoped_lit::ScopedLit::check(&ctx, tree);
         semantic::keywords::KwIdent::check(&ctx, tree);
         semantic::oneway::NonVoidOneway::check(&ctx, tree);
-        semantic::unsupported::Unsupported::check(&ctx, tree);
         syntax::ann_members::AnnMembers::check(&ctx, tree);
         syntax::ascii::AsciiIdent::check(&ctx, tree);
         syntax::empty::EmptyTypes::check(&ctx, tree);
         syntax::sanity::Sanity::check(&ctx, tree);
+        unsupported::items::Unsupported::check(&ctx, tree);
     }
 
     Report {

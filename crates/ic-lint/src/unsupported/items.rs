@@ -47,6 +47,21 @@ impl<'a> Visitor<'a> for Unsupported<'a> {
 
         self.ctx.report(diag);
     }
+
+    fn visit_path(&mut self, path: &'a ic_syntax::Path) {
+        if path.segments.len() == 1 {
+            let ty = &path.segments[0];
+            if ty.name == "long double" {
+                let diag = warn_span(
+                    "long double is not supported",
+                    Label::new(ty.span).message("used here"),
+                )
+                .note("long double will be treated as a normal double during codegen");
+
+                self.ctx.report(diag);
+            }
+        }
+    }
 }
 
 impl<'a> Lint<'a> for Unsupported<'a> {

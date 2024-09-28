@@ -42,7 +42,7 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
         let invalid = ident
             .name
             .chars()
-            .any(|v| !v.is_ascii_alphanumeric() && v != '_');
+            .any(|v| !v.is_ascii_alphanumeric() && v != '_' && !v.is_whitespace());
 
         if invalid {
             let diag = error_span(

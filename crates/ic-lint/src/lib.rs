@@ -131,6 +131,7 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
         pedantic::null::NullVariant::check(&ctx, tree);
         pedantic::omitted_in::OmittedIn::check(&ctx, tree);
         pedantic::scoped_lit::ScopedLit::check(&ctx, tree);
+        semantic::keywords::KwIdent::check(&ctx, tree);
         semantic::oneway::NonVoidOneway::check(&ctx, tree);
         semantic::unsupported::Unsupported::check(&ctx, tree);
         syntax::ann_members::AnnMembers::check(&ctx, tree);

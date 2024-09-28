@@ -330,10 +330,3 @@ pub fn from_cursor(
     let end = Span::default();
     Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
 }
-
-// Exhaustively tokenizes the entire input string, returning a list of all
-// lexed tokens.
-// #[must_use]
-// pub fn scan(input: &str) -> Vec<Token> {
-//     lexer(input).collect()
-// }

@@ -120,24 +120,28 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
         diagnostics: RefCell::default(),
     };
 
-    {
-        annotation::decl::AnnotatedDecl::check(&ctx, tree);
-        pedantic::array_param::ArrayParam::check(&ctx, tree);
-        pedantic::assign_expr::AssignExpr::check(&ctx, tree);
-        pedantic::bitmask_ann::BitmaskAnn::check(&ctx, tree);
-        pedantic::complex_lit::ComplexLit::check(&ctx, tree);
-        pedantic::empty_mod::EmptyMod::check(&ctx, tree);
-        pedantic::lowercase_bool::LowercaseBool::check(&ctx, tree);
-        pedantic::null::NullVariant::check(&ctx, tree);
-        pedantic::omitted_in::OmittedIn::check(&ctx, tree);
-        pedantic::scoped_lit::ScopedLit::check(&ctx, tree);
-        semantic::keywords::KwIdent::check(&ctx, tree);
-        semantic::oneway::NonVoidOneway::check(&ctx, tree);
-        syntax::ann_members::AnnMembers::check(&ctx, tree);
-        syntax::ascii::AsciiIdent::check(&ctx, tree);
-        syntax::empty::EmptyTypes::check(&ctx, tree);
-        syntax::sanity::Sanity::check(&ctx, tree);
-        unsupported::items::Unsupported::check(&ctx, tree);
+    let lints = &[
+        annotation::decl::AnnotatedDecl::check,
+        pedantic::array_param::ArrayParam::check,
+        pedantic::assign_expr::AssignExpr::check,
+        pedantic::bitmask_ann::BitmaskAnn::check,
+        pedantic::complex_lit::ComplexLit::check,
+        pedantic::empty_mod::EmptyMod::check,
+        pedantic::lowercase_bool::LowercaseBool::check,
+        pedantic::null::NullVariant::check,
+        pedantic::omitted_in::OmittedIn::check,
+        pedantic::scoped_lit::ScopedLit::check,
+        semantic::keywords::KwIdent::check,
+        semantic::oneway::NonVoidOneway::check,
+        syntax::ann_members::AnnMembers::check,
+        syntax::ascii::AsciiIdent::check,
+        syntax::empty::EmptyTypes::check,
+        syntax::sanity::Sanity::check,
+        unsupported::items::Unsupported::check,
+    ];
+
+    for check in lints {
+        check(&ctx, tree);
     }
 
     Report {

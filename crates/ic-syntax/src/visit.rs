@@ -168,7 +168,9 @@ pub trait Visitor<'a> {
         walk_path(self, path);
     }
 
-    fn visit_type(&mut self, ident: &'a Type) {}
+    fn visit_type(&mut self, ident: &'a Type) {
+        walk_type(self, ident);
+    }
 
     fn visit_literal(&mut self, num: &'a Literal) {}
 }
@@ -501,5 +503,33 @@ where
 {
     for p in &path.segments {
         visitor.visit_ident(p);
+    }
+}
+
+pub fn walk_type<'a, V>(visitor: &mut V, ty: &'a Type)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match ty {
+        Type::Any(_) | Type::Fixed(_) => (),
+        Type::Sequence(v) => {
+            visitor.visit_type(&v.ty);
+            if let Some(expr) = &v.bound {
+                visitor.visit_expr(expr);
+            }
+        }
+        Type::String(v) => {
+            if let Some(expr) = &v.bound {
+                visitor.visit_expr(expr);
+            }
+        }
+        Type::Map(v) => {
+            visitor.visit_type(&v.key);
+            visitor.visit_type(&v.value);
+            if let Some(expr) = &v.bound {
+                visitor.visit_expr(expr);
+            }
+        }
+        Type::Path(v) => visitor.visit_path(v),
     }
 }

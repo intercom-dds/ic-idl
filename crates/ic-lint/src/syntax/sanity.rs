@@ -41,7 +41,7 @@ pub struct Sanity;
 
 impl<'a> Lint<'a> for Sanity {
     fn category() -> Category {
-        Category::Pedantic
+        Category::Syntax
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

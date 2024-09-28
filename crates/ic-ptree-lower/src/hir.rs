@@ -26,14 +26,15 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
+use std::ffi::CString;
 use std::{ffi, ptr};
 
-use ic_hir::hir::{Decl, DefId, DefKind, Ident, PrimitiveTy, ProtoTy, Ty, Variant};
+use ic_hir::hir::{Ann, Decl, DefId, DefKind, Ident, Numeric, PrimitiveTy, ProtoTy, Ty, Variant};
 use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
 
-use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
+use crate::common::{self, NUM_UNDEF, collect_with, create_ident, path_str};
 
 struct TreeBuilder<'a> {
     ctx: &'a Context,
@@ -132,6 +133,50 @@ impl<'a> TreeBuilder<'a> {
         let ty = self.lower_ty(&var.ty);
         let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
         sys::create_union_member(self.state, mem, cases, ptr::null_mut())
+    }
+
+    unsafe fn lower_numeric(&mut self, num: &Numeric) -> *const sys::numeric {
+        match num {
+            Numeric::Bool(v) => sys::create_bool(self.state, ffi::c_int::from(*v)),
+            Numeric::Char(v) => sys::create_char(self.state, *v as ffi::c_char),
+            Numeric::Int8(v) => sys::create_i64(self.state, i64::from(*v), 10),
+            Numeric::Octet(v) => sys::create_u64(self.state, u64::from(*v), 10),
+            Numeric::Int16(v) => sys::create_i64(self.state, i64::from(*v), 10),
+            Numeric::UInt16(v) => sys::create_u64(self.state, u64::from(*v), 10),
+            Numeric::Int32(v) => sys::create_i64(self.state, i64::from(*v), 10),
+            Numeric::UInt32(v) => sys::create_u64(self.state, u64::from(*v), 10),
+            Numeric::Int64(v) => sys::create_i64(self.state, *v, 10),
+            Numeric::UInt64(v) => sys::create_u64(self.state, *v, 10),
+            Numeric::Float(v) => sys::create_float(self.state, *v),
+            Numeric::Double(v) => sys::create_double(self.state, *v),
+            Numeric::String(v) => {
+                let str = CString::new(v.clone()).unwrap();
+                sys::create_str(self.state, str.as_ptr())
+            }
+            Numeric::Const(_) => todo!(),
+            _ => todo!(),
+        }
+    }
+
+    unsafe fn lower_annotation(&mut self, ann: &Ann) -> *mut sys::ptree {
+        let name = format!("@{}", path_str(&ann.path));
+        let ident = create_ident(&name);
+
+        sys::create_annotation_start(self.state, ident.as_ptr());
+        let params = collect_with(self.state, sys::append_node, &ann.args, |arg| {
+            let decl = arg.ident.as_ref().map(|v| create_ident(&v.name));
+            let decl = decl.map_or(ptr::null(), |v| v.as_ptr());
+            let val = self.lower_numeric(&arg.value);
+            sys::create_annotation_param(self.state, decl, val)
+        });
+        sys::create_annotation_finish(self.state, params)
+    }
+
+    unsafe fn annotate(&mut self, node: *mut sys::ptree, anns: &[Ann]) {
+        let annotations = collect_with(self.state, sys::append_node, anns, |ann| {
+            self.lower_annotation(ann)
+        });
+        sys::annotate(self.state, node, annotations);
     }
 
     #[allow(clippy::too_many_lines)]
@@ -256,6 +301,8 @@ impl<'a> TreeBuilder<'a> {
             },
         };
 
+        // Apply annotations
+        self.annotate(node, &def.annotations);
         self.lowered.insert(id, node);
         node
     }

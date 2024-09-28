@@ -142,7 +142,7 @@ fn bound() -> impl IdlParser<Option<Expr>> {
 fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
     let comment = select! { Kind::Comment(v) => v };
     comment.map_with_span(|value, span| AnnotationAppl {
-        ty: primitive_path("doc", span),
+        ident: primitive_path("doc", span),
         span,
         args: vec![AnnotationArg {
             ident: None,
@@ -1348,7 +1348,7 @@ fn annotation_appl() -> impl IdlParser<AnnotationAppl> {
 
     annotation_ident()
         .then(members)
-        .map_with_span(|(ty, args), span| AnnotationAppl { ty, span, args })
+        .map_with_span(|(ident, args), span| AnnotationAppl { ident, span, args })
 }
 
 // Rule 226

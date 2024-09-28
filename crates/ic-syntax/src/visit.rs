@@ -229,7 +229,7 @@ pub fn walk_annotation_appl<'a, V>(visitor: &mut V, def: &'a AnnotationAppl)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_path(&def.ty);
+    visitor.visit_path(&def.ident);
     for arg in &def.args {
         visitor.visit_annotation_arg(arg);
     }

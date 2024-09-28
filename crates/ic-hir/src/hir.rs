@@ -27,15 +27,16 @@
 
 //! Type definitions of the HIR.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::num::NonZero;
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
 use ic_macros::EnumIter;
-pub use ic_syntax::{Ident, Span};
+use ic_syntax::Path;
+pub use ic_syntax::{Ident, ParamKind, Span};
 
 pub type DefId = ic_alloc::arena::Id<Def>;
 
@@ -125,7 +126,7 @@ pub struct Def {
     pub ident: Ident,
 
     /// Annotations attached to the definition.
-    pub annotations: Vec<()>,
+    pub annotations: Vec<Ann>,
 
     /// Span of the whole definition of the type, typically from the type's
     /// keyword to the terminating semicolon.
@@ -200,7 +201,7 @@ pub enum Ty {
     Adt(TypeId),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Numeric {
     /// A boolean literal.
     Bool(bool),
@@ -287,7 +288,7 @@ pub struct StructTy {
 pub struct Member {
     pub ident: Ident,
     pub ty: Ty,
-    pub annotations: Vec<()>,
+    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug)]
@@ -308,7 +309,7 @@ pub struct UnionTy {
 #[derive(Debug)]
 pub struct Variant {
     /// Annotations attached to the variant.
-    pub annotations: Vec<()>,
+    pub annotations: Vec<Ann>,
 
     /// Name of the variant.
     pub ident: Ident,
@@ -336,7 +337,7 @@ pub struct EnumTy {
 pub struct EnumLit {
     pub ident: Ident,
     pub value: isize,
-    pub annotations: Vec<()>,
+    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug)]
@@ -367,7 +368,7 @@ pub struct BitFlag {
     // pub value: Numeric,
     pub value: usize,
 
-    pub annotations: Vec<()>,
+    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug, Default)]
@@ -405,6 +406,29 @@ pub struct Parameter {
 pub struct AliasTy {
     /// The type to which this alias points.
     pub ty: Ty,
+}
+
+/// An applied annotation
+#[derive(Clone, Debug)]
+pub struct Ann {
+    pub path: Path,
+
+    // We don't resolve the type for now as that would require knowing about
+    // all the built-in annotations.
+    // pub ty: Ty,
+    pub args: Vec<AnnArg>,
+}
+
+// TODO: we should create a better representation that more cleanly maps from
+// an applied annotation to an annotation def.
+#[derive(Clone, Debug)]
+pub struct AnnArg {
+    // TODO: should never be none, we should insert the name
+    pub ident: Option<Ident>,
+
+    // TODO: we should resolve these as well
+    // pub ty: Ty,
+    pub value: Numeric,
 }
 
 macro_rules! numeric_from {

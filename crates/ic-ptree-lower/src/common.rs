@@ -28,15 +28,32 @@
 use std::ffi::{self, CString};
 
 use ic_ptree::sys;
-use ic_syntax::ParamKind;
+use ic_syntax::{ParamKind, Path};
 
 const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 
 #[allow(unused_unsafe)]
 pub static mut NUM_UNDEF: *const sys::numeric = unsafe { std::ptr::addr_of!(sys::num_undef) };
 
+#[must_use]
 pub fn create_ident(name: &str) -> CString {
     CString::new(name).unwrap()
+}
+
+#[must_use]
+pub fn path_str(path: &Path) -> String {
+    let str = path
+        .segments
+        .iter()
+        .map(|v| v.name.as_str())
+        .collect::<Vec<_>>()
+        .join("::");
+
+    if path.leading_colons.is_some() {
+        format!("::{str}")
+    } else {
+        str
+    }
 }
 
 #[allow(clippy::cast_possible_wrap)]

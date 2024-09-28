@@ -38,7 +38,7 @@ use ic_syntax::{
     UnionElement,
 };
 
-use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
+use crate::common::{self, NUM_UNDEF, collect_with, create_ident, path_str};
 
 fn op_kind(op: Op) -> ffi::c_char {
     let c = match op.kind {
@@ -61,21 +61,6 @@ fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
     match kind {
         Some(v) => common::param_kind(v),
         None => sys::OPT_IN as ffi::c_int,
-    }
-}
-
-fn path_str(path: &Path) -> String {
-    let str = path
-        .segments
-        .iter()
-        .map(|v| v.name.as_str())
-        .collect::<Vec<_>>()
-        .join("::");
-
-    if path.leading_colons.is_some() {
-        format!("::{str}")
-    } else {
-        str
     }
 }
 
@@ -293,7 +278,7 @@ unsafe fn lower_applied_annotation(
     state: *mut sys::parser_state,
     annotation: &AnnotationAppl,
 ) -> *mut sys::ptree {
-    let name = format!("@{}", path_str(&annotation.ty));
+    let name = format!("@{}", path_str(&annotation.ident));
     let ident = create_ident(&name);
     sys::create_annotation_start(state, ident.as_ptr());
     let params = collect_with(state, sys::append_node, &annotation.args, |arg| {

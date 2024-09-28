@@ -44,9 +44,9 @@ use ic_syntax::{Expr, Ident, LiteralValue, Span};
 
 use crate::Context;
 use crate::hir::{
-    AliasTy, AnnotationTy, BitFlag, BitmaskTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
-    EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, Parameter,
-    PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, ValueTy, Variant,
+    AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, ConstTy, Decl, Def, DefFlags, DefId,
+    DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, ParamKind,
+    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, ValueTy, Variant,
 };
 use crate::interp::Interp;
 use crate::resolve::{self, Resolver, Symbol, SymbolKind};
@@ -649,9 +649,22 @@ impl<'a> Lower<'a> {
         })
     }
 
-    fn lower_annotation(&self, _ann: ic_syntax::AnnotationAppl) {}
+    fn lower_annotation(&mut self, ann: ic_syntax::AnnotationAppl) -> Ann {
+        // let ty = self.lower_type(ic_syntax::Type::Path(ann.ident));
+        let path = ann.ident;
+        let args = ann
+            .args
+            .into_iter()
+            .map(|v| AnnArg {
+                ident: v.ident,
+                value: self.eval_expr(&v.value),
+            })
+            .collect();
 
-    fn lower_annotations(&mut self, ann: Vec<ic_syntax::AnnotationAppl>) -> Vec<()> {
+        Ann { path, args }
+    }
+
+    fn lower_annotations(&mut self, ann: Vec<ic_syntax::AnnotationAppl>) -> Vec<Ann> {
         ann.into_iter().map(|v| self.lower_annotation(v)).collect()
     }
 

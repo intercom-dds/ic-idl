@@ -1896,7 +1896,7 @@ impl ::intercom_cts::Unmarshal for AnnotationArg {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationAppl {
-    pub ty: crate::ast::Path,
+    pub ident: crate::ast::Path,
     pub span: crate::ast::Span,
     pub args: Vec<crate::ast::AnnotationArg>,
 }
@@ -1905,7 +1905,7 @@ impl AnnotationAppl {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ty: <crate::ast::Path>::default(),
+            ident: <crate::ast::Path>::default(),
             span: <crate::ast::Span>::default(),
             args: <Vec<crate::ast::AnnotationArg>>::default(),
         }
@@ -1926,7 +1926,7 @@ impl ::intercom_cts::Marshal for AnnotationAppl {
         use ::intercom_cts::encode::FieldSerializer as _;
 
         let mut state = ar.encode_struct("AnnotationAppl")?;
-        state.encode_field(0, "ty", &self.ty)?;
+        state.encode_field(0, "ident", &self.ident)?;
         state.encode_field(1, "span", &self.span)?;
         state.encode_field(2, "args", &self.args)?;
         state.end()
@@ -1941,7 +1941,7 @@ impl ::intercom_cts::Unmarshal for AnnotationAppl {
         use ::intercom_cts::decode::FieldDeserializer as _;
 
         let mut state = ar.decode_struct("AnnotationAppl")?;
-        state.decode_field(0, "ty", &mut self.ty)?;
+        state.decode_field(0, "ident", &mut self.ident)?;
         state.decode_field(1, "span", &mut self.span)?;
         state.decode_field(2, "args", &mut self.args)?;
         Ok(())

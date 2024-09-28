@@ -164,7 +164,7 @@ fn try_parse(
     }
 
     // Lower the HIR to a ptree
-    let ptree = ic_ptree_lower::from_hir(&hir);
+    let ptree = ic_ptree_lower::from_hir(&hir, vfs);
     errors.extend(hir.errors.into_iter().map(Into::into));
     dbg!(ptree.diagnostics());
     // ic_ptree_dump::ptree_dump(&ptree);

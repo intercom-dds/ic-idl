@@ -43,6 +43,7 @@ use crate::resolve::Resolver;
 
 mod ctx;
 mod hygiene;
+mod interp;
 mod lower;
 mod resolve;
 mod typechk;
@@ -99,10 +100,7 @@ pub struct DefIter<'a> {
 
 impl<'a> DefIter<'a> {
     pub fn new(hir: &'a ResolvedGraph) -> Self {
-        Self {
-            ctx: &hir.context,
-            iter: hir.order.iter(),
-        }
+        Self::with_order(&hir.context, &hir.order)
     }
 
     pub fn with_order(ctx: &'a Context, order: &'a [hir::DefId]) -> Self {

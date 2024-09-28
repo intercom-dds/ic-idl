@@ -48,160 +48,11 @@ use crate::hir::{
     EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, Parameter,
     PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, ValueTy, Variant,
 };
+use crate::interp::Interp;
 use crate::resolve::{self, Resolver, Symbol, SymbolKind};
 
-pub struct Interp<'a> {
-    lower: &'a Lower<'a>,
-}
-
-impl Interp<'_> {
-    fn sub_num(&mut self, num: Numeric) -> Numeric {
-        match num {
-            // Use the NOT operator for unsigned numbers to simulate an
-            // unsigned overflow
-            Numeric::Bool(v) => Numeric::Int8(i8::from(v).not()),
-            Numeric::Octet(v) => Numeric::Octet(v.not()),
-            Numeric::UInt16(v) => Numeric::UInt16(v.not()),
-            Numeric::UInt32(v) => Numeric::UInt32(v.not()),
-            Numeric::UInt64(v) => Numeric::UInt64(v.not()),
-
-            // Signed numbers are negated
-            Numeric::Int8(v) => Numeric::Int8(v.neg()),
-            Numeric::Int16(v) => Numeric::Int16(v.neg()),
-            Numeric::Int32(v) => Numeric::Int32(v.neg()),
-            Numeric::Int64(v) => Numeric::Int64(v.neg()),
-            Numeric::Float(v) => Numeric::Float(v.neg()),
-            Numeric::Double(v) => Numeric::Double(v.neg()),
-
-            Numeric::Const(_) => todo!(),
-            _ => unreachable!("tried to negate non-primitive type"),
-        }
-    }
-
-    fn not_num(&mut self, mut num: Numeric) -> Numeric {
-        match &mut num {
-            Numeric::Bool(v) => *v = v.not(),
-            Numeric::Octet(v) => *v = v.not(),
-            Numeric::UInt16(v) => *v = v.not(),
-            Numeric::UInt32(v) => *v = v.not(),
-            Numeric::UInt64(v) => *v = v.not(),
-            Numeric::Int8(v) => *v = v.not(),
-            Numeric::Int16(v) => *v = v.not(),
-            Numeric::Int32(v) => *v = v.not(),
-            Numeric::Int64(v) => *v = v.not(),
-            Numeric::Const(_) => todo!(),
-            _ => unreachable!("tried to negate non-primitive or floating-point type"),
-        }
-        num
-    }
-
-    fn eval_unary(&mut self, unary: &ic_syntax::Unary) -> i64 {
-        use ic_syntax::OpKind;
-
-        let val = self.to_value(&unary.expr);
-        match unary.op.kind {
-            OpKind::Sub => -val,
-            OpKind::Not => !val,
-            OpKind::Add => val,
-            _ => unreachable!("invalid operator in unary expression"),
-        }
-    }
-
-    fn eval_binary(&mut self, binary: &ic_syntax::Binary) -> i64 {
-        use ic_syntax::OpKind;
-
-        let lhs = self.to_value(&binary.lhs);
-        let rhs = self.to_value(&binary.rhs);
-        match binary.op.kind {
-            OpKind::Add => lhs + rhs,
-            OpKind::Sub => lhs - rhs,
-            OpKind::Multiply => lhs * rhs,
-            OpKind::Divide => lhs / rhs,
-            OpKind::Modulo => lhs % rhs,
-            OpKind::Lshift => lhs << rhs,
-            OpKind::Rshift => lhs >> rhs,
-            OpKind::Or => lhs | rhs,
-            OpKind::Xor => lhs ^ rhs,
-            OpKind::And => lhs & rhs,
-            OpKind::Not => unreachable!("expected binary op, found bitwise NOT"),
-        }
-    }
-
-    pub(crate) fn to_value(&mut self, expr: &ic_syntax::Expr) -> i64 {
-        use ic_syntax::{Expr, LitKind};
-
-        match expr {
-            Expr::Literal(v) => match &v.value {
-                LiteralValue::Bool(v) => i64::from(*v),
-                LiteralValue::Int(v) => *v as i64,
-                LiteralValue::Float(_) => todo!(),
-                LiteralValue::Char(_) => todo!(),
-                LiteralValue::String(_) => todo!(),
-            },
-            // ic_syntax::Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
-            Expr::Unary(v) => self.eval_unary(v),
-            Expr::Binary(v) => self.eval_binary(v),
-            _ => panic!("called to_value on a non-primitive numeric"),
-        }
-    }
-
-    pub(crate) fn eval_expr(&mut self, expr: &ic_syntax::Expr) -> Numeric {
-        use ic_syntax::Expr;
-
-        match expr {
-            Expr::Literal(v) => Numeric::Octet(0),
-            Expr::Path(v) => Numeric::Const(self.lower.resolver.resolve_path(v).unwrap()),
-            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
-            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
-            Expr::InitList(_) => todo!(),
-        }
-    }
-
-    pub(crate) fn eval_expr_ty<T>(&mut self, expr: &ic_syntax::Expr) -> Numeric
-    where
-        T: TryFrom<i64>,
-        T::Error: Debug,
-        Numeric: From<T>,
-    {
-        use ic_syntax::{Expr, LitKind};
-
-        match expr {
-            Expr::Literal(v) => match &v.value {
-                LiteralValue::Bool(v) => Numeric::Bool(*v),
-                LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
-                LiteralValue::Char(v) => Numeric::Char(*v),
-                LiteralValue::String(ref v) => Numeric::String(v.clone()),
-                LiteralValue::Float(_) => todo!(),
-            },
-            // TODO: this should always be a constant, enumerator of bitflag.
-            // ...should we just register everything? probaby...
-            Expr::Path(v) => Numeric::Const(DefId::_do_not_use()),
-            Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
-            Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
-            Expr::InitList(v) => todo!(),
-        }
-    }
-
-    pub(crate) fn truncate<T>(&mut self, expr: &ic_syntax::Expr) -> Result<Numeric, T::Error>
-    where
-        T: TryFrom<i64>,
-        Numeric: From<T>,
-    {
-        use ic_syntax::Expr;
-
-        let num = match expr {
-            Expr::Literal(_) => Numeric::from(T::try_from(0)?),
-            Expr::Unary(v) => Numeric::from(T::try_from(self.eval_unary(v))?),
-            Expr::Binary(v) => Numeric::from(T::try_from(self.eval_binary(v))?),
-            Expr::Path(v) => todo!(),
-            Expr::InitList(_) => todo!(),
-        };
-        Ok(num)
-    }
-}
-
 /// Responsible for lowering the AST to a HIR. This process will, amongst other
-/// things, perform type checking, evaluate expressions, assign values to
+/// things, perform type resolution, evaluate expressions, assign values to
 /// things like enumerators, and ultimately construct the type-resolved graph
 /// that is the HIR.
 ///
@@ -211,10 +62,10 @@ impl Interp<'_> {
 /// the source code happens as subsequent passes on the HIR.
 ///
 /// Note: non-critical warnings and errors are better implemented as lints.
-struct Lower<'a> {
+pub(crate) struct Lower<'a> {
     ctx: &'a mut Context,
     order: Vec<TypeId>,
-    resolver: Resolver,
+    pub resolver: Resolver,
     registered: CaseMap<'static, Span>,
     errors: Vec<Diag>,
 }
@@ -230,14 +81,14 @@ impl<'a> Lower<'a> {
         }
     }
 
-    pub(crate) fn check_name_consistency(&self, lhs: &Ident, rhs: &Ident) -> bool {
+    fn check_name_consistency(&self, lhs: &Ident, rhs: &Ident) -> bool {
         lhs.name.eq_ignore_ascii_case(&rhs.name)
     }
 
     /// Determines if two annotation definitions are consistent. The standard
     /// doesn't clarify what "consistent" means, but I've interpreted it as the
     /// two definitions being identical.
-    pub(crate) fn check_ann_consistency(
+    fn check_ann_consistency(
         &mut self,
         lhs: &ic_syntax::AnnotationDef,
         rhs: &ic_syntax::AnnotationDef,
@@ -269,7 +120,7 @@ impl<'a> Lower<'a> {
     /// Determines if two sets of declarators are semantically consistent. They
     /// must resolve to the same types with the same bounds for them to be
     /// considered consistent.
-    pub(crate) fn check_decl_consistency(
+    fn check_decl_consistency(
         &mut self,
         lhs: &[ic_syntax::Declarator],
         rhs: &[ic_syntax::Declarator],
@@ -295,7 +146,7 @@ impl<'a> Lower<'a> {
 
     /// Determines if two bounds are consistent. Two consistent bounds may
     /// contain different expression, but they must yield the same value.
-    pub(crate) fn check_bound_consistency(
+    fn check_bound_consistency(
         &mut self,
         lhs: Option<&ic_syntax::Expr>,
         rhs: Option<&ic_syntax::Expr>,
@@ -310,22 +161,14 @@ impl<'a> Lower<'a> {
     /// Determines if two expressions are consistent. They must yield the same
     /// value -- i.e. the exact same bit pattern -- to be considered
     /// consistent.
-    pub(crate) fn check_expr_consistency(
-        &mut self,
-        lhs: &ic_syntax::Expr,
-        rhs: &ic_syntax::Expr,
-    ) -> bool {
+    fn check_expr_consistency(&mut self, lhs: &ic_syntax::Expr, rhs: &ic_syntax::Expr) -> bool {
         self.eval_expr(lhs) == self.eval_expr(rhs)
     }
 
     /// Determines if two types are semantically consistent. Collection types
     /// are treated as consistent if they have the same bound and resolve to
     /// the same element type.
-    pub(crate) fn check_type_consistency(
-        &mut self,
-        lhs: &ic_syntax::Type,
-        rhs: &ic_syntax::Type,
-    ) -> bool {
+    fn check_type_consistency(&mut self, lhs: &ic_syntax::Type, rhs: &ic_syntax::Type) -> bool {
         use ic_syntax::{FixedType, Type};
 
         match (lhs, rhs) {
@@ -361,12 +204,12 @@ impl<'a> Lower<'a> {
         }
     }
 
-    pub(crate) fn eval_expr(&self, expr: &ic_syntax::Expr) -> Numeric {
+    fn eval_expr(&self, expr: &ic_syntax::Expr) -> Numeric {
         // TODO: can we make this accept TypeId instead?
         Interp { lower: self }.eval_expr_ty::<i64>(expr)
     }
 
-    pub(crate) fn bound_expr(&self, expr: &ic_syntax::Expr) -> usize {
+    fn bound_expr(&self, expr: &ic_syntax::Expr) -> usize {
         match self.eval_expr(expr) {
             Numeric::Int32(v) => v as usize,
             Numeric::UInt32(v) => v as usize,

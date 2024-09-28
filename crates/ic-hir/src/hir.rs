@@ -59,8 +59,6 @@ pub enum PrimitiveTy {
     Float32,
     Float64,
     Float128,
-    String,
-    WString,
 }
 
 impl PrimitiveTy {
@@ -80,8 +78,6 @@ impl PrimitiveTy {
             PrimitiveTy::Float32 => "float",
             PrimitiveTy::Float64 => "double",
             PrimitiveTy::Float128 => "long double",
-            PrimitiveTy::String => "string",
-            PrimitiveTy::WString => "wstring",
         }
     }
 }
@@ -250,8 +246,6 @@ pub enum Numeric {
     Const(DefId),
 
     /// Initializer list of numerics.
-    //
-    // TODO: map this to an index and ty of a struct?
     InitList(Vec<Numeric>),
 
     /// Fixed-size array elements, e.g. `{1, 2, 3}`.
@@ -323,7 +317,7 @@ pub struct Variant {
     pub ty: Ty,
 
     /// All switch cases that map to this variant.
-    // TODO: should this be a const?
+    // TODO: should this be a const? It can have a name, so maybe?
     pub labels: Vec<Numeric>,
 
     /// Indicates whether this variant has a default label.
@@ -378,6 +372,7 @@ pub struct BitFlag {
 
 #[derive(Debug, Default)]
 pub struct InterfaceTy {
+    pub parents: Vec<DefId>,
     pub prototypes: Vec<ProtoTy>,
     pub attributes: Vec<()>,
     pub definitions: Vec<DefId>,
@@ -385,6 +380,8 @@ pub struct InterfaceTy {
 
 #[derive(Debug)]
 pub struct ValueTy {
+    pub parent: Option<DefId>,
+    pub extends: Option<DefId>,
     pub prototypes: Vec<ProtoTy>,
     pub members: Vec<()>,
     pub definitions: Vec<DefId>,

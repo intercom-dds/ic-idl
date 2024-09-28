@@ -25,15 +25,17 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{
-    AliasTy, BitmaskTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy, InterfaceTy, ModuleTy,
-    StructTy, Ty, UnionTy, ValueTy,
+use crate::hir::{
+    AliasTy, AnnotationTy, BitmaskTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy, InterfaceTy,
+    ModuleTy, Numeric, StructTy, Ty, UnionTy, ValueTy,
 };
 
 pub trait Visitor<'a> {
     fn visit_def(&mut self, def: &'a Def) {
         walk_def(self, def);
     }
+
+    fn visit_annotation(&mut self, def: &'a Def, data: &'a AnnotationTy) {}
 
     fn visit_module(&mut self, def: &'a Def, data: &'a ModuleTy) {}
 
@@ -58,6 +60,8 @@ pub trait Visitor<'a> {
     fn visit_decl(&mut self, def: &'a Def, data: &'a Decl) {}
 
     fn visit_ty(&mut self, ty: &'a Ty) {}
+
+    fn visit_numeric(&mut self, num: &'a Numeric) {}
 }
 
 pub fn walk_tree<'a, V>(visitor: &mut V, tree: &'a [Def])
@@ -74,7 +78,7 @@ where
     V: Visitor<'a> + ?Sized,
 {
     match &def.kind {
-        DefKind::Annotation(_) => todo!(),
+        DefKind::Annotation(v) => visitor.visit_annotation(def, v),
         DefKind::Module(v) => visitor.visit_module(def, v),
         DefKind::Struct(v) => visitor.visit_struct(def, v),
         DefKind::Except(v) => visitor.visit_except(def, v),

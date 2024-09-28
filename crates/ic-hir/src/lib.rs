@@ -66,6 +66,14 @@ pub struct ResolvedGraph {
     pub errors: Vec<ic_diagnostic::Diag>,
 }
 
+impl ResolvedGraph {
+    /// Returns an iterator of the definitions, iterating over all top-level
+    /// definitions in the order they were defined.
+    pub fn iter(&self) -> DefIter<'_> {
+        DefIter::new(self)
+    }
+}
+
 pub fn from_ast<I>(ast: I) -> ResolvedGraph
 where
     I: IntoIterator<Item = ic_syntax::Item>,
@@ -81,5 +89,32 @@ where
         context,
         order,
         errors,
+    }
+}
+
+pub struct DefIter<'a> {
+    ctx: &'a Context,
+    iter: std::slice::Iter<'a, hir::DefId>,
+}
+
+impl<'a> DefIter<'a> {
+    pub fn new(hir: &'a ResolvedGraph) -> Self {
+        Self {
+            ctx: &hir.context,
+            iter: hir.order.iter(),
+        }
+    }
+
+    pub fn with_order(ctx: &'a Context, order: &'a [hir::DefId]) -> Self {
+        let iter = order.iter();
+        Self { ctx, iter }
+    }
+}
+
+impl<'a> Iterator for DefIter<'a> {
+    type Item = &'a hir::Def;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|v| self.ctx.type_of(*v))
     }
 }

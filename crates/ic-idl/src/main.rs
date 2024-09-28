@@ -167,7 +167,7 @@ fn try_parse(
     let ptree = ic_ptree_lower::from_hir(&hir);
     errors.extend(hir.errors.into_iter().map(Into::into));
     dbg!(ptree.diagnostics());
-    ic_ptree_dump::ptree_dump(&ptree);
+    // ic_ptree_dump::ptree_dump(&ptree);
 
     // Lint the HIR
     let report = ic_lint::lint_hir(&hir.context);

@@ -30,15 +30,17 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use ic_alloc::arena::{self, Arena};
-use ic_alloc::insensitive::{CaseMap, CaseSet};
 use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, ItemKind, Path, Span, util};
 
-use crate::{Context, Decl, Def, DefId};
+use crate::Context;
+use crate::hir::{Decl, Def, DefId};
 
 pub type SymbolKind = ItemKind;
 
 /// An ID of a lexical scope.
 pub type ScopeId = arena::Id<Scope>;
+
+pub type Result<T> = std::result::Result<T, ResolveError>;
 
 #[derive(Debug)]
 pub enum Symbol {
@@ -55,9 +57,6 @@ pub enum Symbol {
     /// A unique lexical scope that may contain nested type definitions, but
     /// which cannot be redefined. Used for interfaces, valuetypes, and
     /// annotations.
-    //
-    // TODO: can we avoid this by instead having a notion of a `current` type?
-    // So we don't have to register an intermediate declaration for interfaces.
     Lexical {
         def: DefId,
         scope: ScopeId,
@@ -68,6 +67,39 @@ pub enum Symbol {
     /// arena in the resolver, which can be used to retrieve the lexical scope
     /// of the module.
     Module(ScopeId),
+}
+
+#[derive(Debug)]
+pub enum ResolveError {
+    /// The requested type failed to resolve because it was not defined.
+    Undefined(Span),
+
+    /// Type registration failed because another item with the same name
+    /// already exists in the same scope.
+    Redefined(Span),
+
+    /// A mismatch between a declaration and definition occurred, for example
+    /// if a type was declared as a `struct` but later defined as a `union`.
+    DeclMismatch { decl: Decl, def: Decl, span: Span },
+
+    /// A part of the path resolved to a type, but there were superfluous
+    /// segments. For example `a::b::c`, where `b` is a `struct`.
+    Superfluous(Span),
+
+    /// A path resolved to a module when a type was expected.
+    Module(Span),
+}
+
+impl ResolveError {
+    pub fn primary_span(&self) -> Span {
+        match self {
+            Self::Undefined(span)
+            | Self::Redefined(span)
+            | Self::Module(span)
+            | Self::Superfluous(span)
+            | Self::DeclMismatch { span, .. } => *span,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -83,18 +115,14 @@ pub struct Scope {
     decls: HashSet<String>,
 }
 
-#[derive(Debug)]
-pub enum ResolveError {
-    /// The requested type failed to resolve because it was not defined.
-    Undefined(Span),
-
-    /// Type registration failed because another item with the same name
-    /// already exists in the same scope.
-    Redefined(Span),
-
-    /// A mismatch between a declaration and definition occurred, for example
-    /// if a type was declared as a `struct` but later defined as a `union`.
-    DeclMismatch { decl: Decl, def: Decl, span: Span },
+impl Scope {
+    fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            symbols: HashMap::default(),
+            decls: HashSet::default(),
+        }
+    }
 }
 
 /// Contains all the logic required to resolve all types and expressions in the
@@ -115,22 +143,18 @@ pub struct Resolver {
 
     /// Maps fully qualified names to each type's respective definition. This
     /// is not used during type resolution, but it is useful in later stages.
-    type_map: CaseMap<'static, DefId>,
+    type_map: HashMap<String, DefId>,
 }
 
 impl Resolver {
     pub fn new() -> Self {
         let mut arena = Arena::default();
-        let global = arena.alloc(Scope {
-            name: "<global>".to_string(),
-            symbols: HashMap::default(),
-            decls: HashSet::default(),
-        });
+        let global = arena.alloc(Scope::new("<global>"));
 
         Self {
             lexical_scopes: arena,
             current_scope: vec![global],
-            type_map: CaseMap::default(),
+            type_map: HashMap::default(),
         }
     }
 
@@ -170,7 +194,7 @@ impl Resolver {
         self.current_scope
             .iter()
             .rev()
-            .find_map(|id| self.lexical_scopes.get(*id).symbols.get(&ident.name))
+            .find_map(move |id| self.lexical_scopes.get(*id).symbols.get(&ident.name))
     }
 
     /// Determines if two symbols are compatible. Compatible in this case means
@@ -205,14 +229,14 @@ impl Resolver {
 
     /// Performs a downward search for a symbol. This will never look at parent
     /// scopes, it will only search the specified scope and its children.
-    fn symbol_in_scope<'a>(
-        &'a self,
-        mut scope: &'a Scope,
-        path: &Path,
-    ) -> Result<&'a Symbol, Span> {
+    fn symbol_in_scope<'a>(&'a self, mut scope: &'a Scope, path: &'a Path) -> Result<&'a Symbol> {
         let mut segments = path.segments.iter();
         while let Some(seg) = segments.next() {
-            let entry = scope.symbols.get(&seg.name).ok_or(seg.span)?;
+            let entry = scope
+                .symbols
+                .get(&seg.name)
+                .ok_or(ResolveError::Undefined(seg.span))?;
+
             match entry {
                 Symbol::Module(v) => {
                     scope = self.lexical_scopes.get(*v);
@@ -224,11 +248,9 @@ impl Resolver {
                 _ => {
                     if segments.next().is_some() {
                         tracing::error!("path resolved to type with superfluous segments");
-                        return Err(seg.span);
+                        return Err(ResolveError::Superfluous(seg.span));
                     }
                     return Ok(entry);
-                    // TODO: should verify that this is the last segment
-                    // todo!()
                 }
             }
         }
@@ -238,7 +260,7 @@ impl Resolver {
     }
 
     /// Tries to resolve the given path starting from the global scope.
-    fn global_symbol(&self, path: &Path) -> Result<&Symbol, Span> {
+    fn global_symbol<'a>(&'a self, path: &'a Path) -> Result<&'a Symbol> {
         let global = self.global_scope();
         self.symbol_in_scope(global, path)
     }
@@ -254,35 +276,27 @@ impl Resolver {
     /// Creates a new module if it did not already exist. Future type
     /// registrations will be registered in the scope of the newly created
     /// module.
-    pub fn start_module(&mut self, ident: &Ident) {
-        // TODO: should this return a result, or do we want to keep going even
-        // in case of a collision? for AST lowering, that would imply skipping
-        // all definitions inside the module. I don't think that's ideal since
-        // it will cause spurious errors when the skipped types are used.
+    ///
+    /// # Errors
+    ///
+    /// If an error is returned, a scope is not created and the implementation
+    /// should skip processing any items found within the module.
+    pub fn start_module(&mut self, ident: &Ident) -> Result<()> {
         if let Some(sym) = self.local_symbol(ident) {
             match sym {
                 Symbol::Module(v) => {
                     let id = *v;
                     self.current_scope.push(id);
+                    Ok(())
                 }
-                Symbol::Adt(_, _) | Symbol::Decl(_, _) => {
+                _ => {
                     tracing::error!("symbol {} was previously registered as a type", ident.name);
+                    Err(ResolveError::Redefined(ident.span))
                 }
-                Symbol::Const => {
-                    tracing::error!(
-                        "symbol {} was previously registered as a constant",
-                        ident.name,
-                    );
-                }
-                Symbol::Lexical { .. } => todo!(),
             }
         } else {
             // TODO: might be a good idea to let each mod know what the parent ID is.
-            let id = self.lexical_scopes.alloc(Scope {
-                name: ident.name.clone(),
-                symbols: HashMap::default(),
-                decls: HashSet::default(),
-            });
+            let id = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
 
             // Register the module
             self.current_scope()
@@ -290,6 +304,7 @@ impl Resolver {
                 .insert(ident.name.clone(), Symbol::Module(id));
 
             self.current_scope.push(id);
+            Ok(())
         }
     }
 
@@ -304,11 +319,7 @@ impl Resolver {
             }
         }
 
-        let scope = self.lexical_scopes.alloc(Scope {
-            name: ident.name.clone(),
-            symbols: HashMap::default(),
-            decls: HashSet::default(),
-        });
+        let scope = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
 
         // Register the module
         self.current_scope()
@@ -322,8 +333,17 @@ impl Resolver {
         self.current_scope.push(scope);
     }
 
-    pub(crate) fn is_defined(&mut self, ident: &Ident) -> bool {
-        self.local_symbol(ident).is_some()
+    /// Returns `true` if the given symbol has been fully defined. This will
+    /// return `false` for declarations and incomplete types.
+    pub fn is_defined(&mut self, ident: &Ident) -> bool {
+        if let Some(sym) = self.local_symbol(ident) {
+            match sym {
+                Symbol::Decl(_, _) => false,
+                _ => true,
+            }
+        } else {
+            false
+        }
     }
 
     pub fn start_scope(&mut self, ident: &Ident, def: DefId, kind: SymbolKind) -> ScopeId {
@@ -336,13 +356,10 @@ impl Resolver {
         //     }
         // }
 
-        let scope = self.lexical_scopes.alloc(Scope {
-            name: ident.name.clone(),
-            symbols: HashMap::default(),
-            decls: HashSet::default(),
-        });
+        let scope = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
 
         // Register the module
+        // TODO: we always register Lexical right now, should be Adt.
         self.current_scope()
             .symbols
             .insert(ident.name.clone(), Symbol::Lexical {
@@ -425,7 +442,7 @@ impl Resolver {
     ///
     /// Returns an error that contains the span of the identifier that did not
     /// resolve correctly.
-    pub fn resolve_path(&self, path: &Path) -> Result<DefId, Span> {
+    pub fn resolve_path(&self, path: &Path) -> Result<DefId> {
         let mut segments = path.segments.iter().peekable();
 
         let scope = if path.leading_colons.is_some() {
@@ -436,13 +453,16 @@ impl Resolver {
             // parent scopes. We pick the first that matches -- modules with
             // the same name in any of the upper scopes are ignored.
             if let Some(first) = segments.next() {
-                let sym = self.parent_symbol(first).ok_or(first.span)?;
+                let sym = self
+                    .parent_symbol(first)
+                    .ok_or(ResolveError::Undefined(first.span))?;
+
                 match sym {
                     Symbol::Const => todo!(),
                     Symbol::Adt(v, _) | Symbol::Decl(v, _) => {
                         if segments.peek().is_some() {
                             tracing::error!("path resolved to type with superfluous segments");
-                            return Err(first.span);
+                            return Err(ResolveError::Superfluous(first.span));
                         }
                         return Ok(*v);
                     }
@@ -466,12 +486,17 @@ impl Resolver {
         let mut scope = scope.unwrap_or_else(|| self.global_scope());
 
         while let Some(seg) = segments.next() {
-            let entry = scope.symbols.get(&seg.name).ok_or(seg.span)?;
+            let entry = scope
+                .symbols
+                .get(&seg.name)
+                .ok_or(ResolveError::Undefined(seg.span))?;
+
             match entry {
                 Symbol::Adt(v, _) | Symbol::Decl(v, _) => {
                     if segments.next().is_some() {
+                        panic!();
                         tracing::error!("path resolved to type with superfluous segments");
-                        return Err(seg.span);
+                        return Err(ResolveError::Superfluous(seg.span));
                     }
                     return Ok(*v);
                 }
@@ -494,7 +519,7 @@ impl Resolver {
 
         // Reaching this means all paths resolved, but the last segment
         // resolved to a module and not an actual type.
-        Err(span)
+        Err(ResolveError::Module(span))
     }
 
     /// Resolves the path `other` relative to `origin`. Unlike `resolve_path`,
@@ -504,7 +529,7 @@ impl Resolver {
     ///
     /// Returns an error that contains the span of the identifier that did not
     /// resolve correctly. This applies to both `origin` and `other`.
-    pub fn relative_path(&self, origin: &Path, other: &Path) -> Result<DefId, Span> {
+    pub fn relative_path(&self, origin: &Path, other: &Path) -> Result<DefId> {
         let origin = match self.global_symbol(origin)? {
             Symbol::Adt(_, _) => todo!(),
             Symbol::Decl(_, _) => todo!(),
@@ -605,3 +630,14 @@ fn is_type_consistent(ctx: &Context, lhs: &ic_syntax::Type, rhs: &ic_syntax::Typ
         _ => lhs.disc() == rhs.disc(),
     }
 }
+
+// /// Inserts primitive types and built-in annotations into the context.
+// fn init_ctx_state(ctx: &mut Resolver) {
+//     for ty in PrimitiveTy::iter() {
+//         let name = ty.name();
+//         // ctx.current_scope().symbols.insert(ty.name(), Symbol::)
+//         // let name = name.into();
+//         tracing::info!("registering type {name}: {ty:?}");
+//         // ctx.register_type(ty.name(), Type::Primitive(ty));
+//     }
+// }

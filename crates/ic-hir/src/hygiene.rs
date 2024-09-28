@@ -27,12 +27,12 @@
 
 use ic_alloc::insensitive::CaseSet;
 
-use crate::Context;
 use crate::hir::{
     BitmaskTy, Def, DefId, DefKind, EnumTy, ExceptTy, Ident, InterfaceTy, ProtoTy, StructTy,
     UnionTy,
 };
 use crate::visit::{Visitor, walk_def};
+use crate::{Context, DefIter};
 
 struct Hygiene<'a> {
     ctx: &'a Context,
@@ -93,15 +93,15 @@ impl<'a> Visitor<'a> for Hygiene<'_> {
     }
 
     fn visit_interface(&mut self, def: &'a Def, data: &'a InterfaceTy) {
-        // TODO: attributes and nested items
+        // TODO: attributes and nested items. continue traversing nested defs.
         Self::check_def(data.prototypes.iter().map(|v| &v.ident));
     }
 }
 
 pub fn check(ctx: &Context, order: &[DefId]) {
+    let iter = DefIter::with_order(ctx, order);
     let mut hygiene = Hygiene { ctx };
-    for id in order {
-        let def = ctx.type_of(*id);
+    for def in iter {
         walk_def(&mut hygiene, def);
     }
 }

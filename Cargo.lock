@@ -221,6 +221,7 @@ dependencies = [
  "ic-emit",
  "ic-hir",
  "ic-hir-tree",
+ "ic-hir-xform",
  "ic-lint",
  "ic-parse",
  "ic-preproc",

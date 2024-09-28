@@ -29,8 +29,8 @@ use std::borrow::Borrow;
 use std::iter::Enumerate;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use std::slice;
 use std::sync::atomic::{AtomicU16, Ordering};
+use std::{panic, slice};
 
 use intercom_cts::decode::{Deserializer, FieldDeserializer};
 use intercom_cts::encode::{FieldSerializer, Serializer};
@@ -181,6 +181,27 @@ impl<T> Arena<T> {
         let id = id.borrow();
         assert_eq!(id.arena_id.0, self.arena_id.0);
         &mut self.elements[id.id]
+    }
+
+    /// # Panics
+    ///
+    /// Panics if the given ID did not come from this arena.
+    pub fn fold<Q, F>(&mut self, id: Q, f: F)
+    where
+        Q: Borrow<Id<T>>,
+        F: FnOnce(T) -> T,
+    {
+        let val = self.get_mut(id);
+
+        // SAFETY: If the given closure panics, the process will be aborted
+        // to uphold the variance of T.
+        unsafe {
+            let old = std::ptr::read(val);
+            let Ok(folded) = panic::catch_unwind(panic::AssertUnwindSafe(|| f(old))) else {
+                std::process::abort();
+            };
+            std::ptr::write(val, folded);
+        }
     }
 
     #[must_use]

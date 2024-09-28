@@ -29,6 +29,7 @@ use ic_emit::File;
 use ic_ptree::ParseResult;
 
 #[must_use]
+#[allow(clippy::undocumented_unsafe_blocks)]
 pub fn codegen_proto(result: &ParseResult) -> Vec<File> {
     let mut generated = vec![];
     unsafe {

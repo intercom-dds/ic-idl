@@ -31,20 +31,18 @@ use std::path::PathBuf;
 use crate::File;
 
 #[no_mangle]
-extern "C" fn ic_push_source(
+unsafe extern "C" fn ic_push_source(
     list: *mut Vec<File>,
     path: *const std::ffi::c_char,
     src: *const std::ffi::c_char,
 ) {
-    unsafe {
-        let path = {
-            let str = std::ffi::CStr::from_ptr(path).to_owned();
-            PathBuf::from(str.to_string_lossy().to_string())
-        };
-        let source = {
-            let str = CStr::from_ptr(src);
-            str.to_string_lossy().to_string()
-        };
-        (*list).push(File::Generated { path, source });
-    }
+    let path = {
+        let str = std::ffi::CStr::from_ptr(path).to_owned();
+        PathBuf::from(str.to_string_lossy().to_string())
+    };
+    let source = {
+        let str = CStr::from_ptr(src);
+        str.to_string_lossy().to_string()
+    };
+    (*list).push(File::Generated { path, source });
 }

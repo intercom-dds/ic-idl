@@ -29,6 +29,7 @@ use ic_emit::File;
 use ic_ptree::ParseResult;
 
 #[must_use]
+#[allow(clippy::undocumented_unsafe_blocks)]
 pub fn codegen_cpp(result: &ParseResult) -> Vec<File> {
     let options = ic_ptree::sys::cpp_options_t {
         header_postfix: std::ptr::null(),

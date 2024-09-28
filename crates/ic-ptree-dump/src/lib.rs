@@ -29,5 +29,6 @@ use ic_ptree::ParseResult;
 
 /// Dumps the ptree to `stdout` in a tree-like format.
 pub fn ptree_dump(result: &ParseResult) {
+    // SAFETY: Constructing a `ParseResult` will assert the correctness of the `ptree`.
     unsafe { ic_ptree::sys::ic_ptree_dump(result.as_raw()) }
 }

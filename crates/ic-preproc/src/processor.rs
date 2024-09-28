@@ -461,6 +461,9 @@ where
         } else {
             &self.vfs.source_str(span.start.file_id)[span.range()]
         };
+
+        // SAFETY: The strings are guaranteed to be owned by `SourceMap`, whose
+        // lifetimes is bound by 'a.
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 

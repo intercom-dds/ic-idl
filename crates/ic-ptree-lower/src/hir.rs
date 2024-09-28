@@ -31,6 +31,7 @@ use std::{ffi, ptr};
 use ic_hir::hir::{Decl, DefId, DefKind, Ident, PrimitiveTy, ProtoTy, Ty, Variant};
 use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
+use ic_vfs::SourceMap;
 
 use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
 
@@ -41,6 +42,14 @@ struct TreeBuilder<'a> {
 }
 
 impl<'a> TreeBuilder<'a> {
+    fn new(state: *mut sys::parser_state, tree: &'a ResolvedGraph) -> Self {
+        Self {
+            state,
+            ctx: &tree.context,
+            lowered: HashMap::new(),
+        }
+    }
+
     unsafe fn lower_ty(&self, ty: &Ty) -> *mut sys::ptree {
         match ty {
             Ty::Any => ptr::addr_of_mut!(sys::any_type),
@@ -230,21 +239,6 @@ impl<'a> TreeBuilder<'a> {
         self.lowered.insert(id, node);
         node
     }
-
-    unsafe fn lower_tree(
-        state: *mut sys::parser_state,
-        tree: &'a ResolvedGraph,
-    ) -> *mut sys::ptree {
-        let mut builder = Self {
-            state,
-            ctx: &tree.context,
-            lowered: HashMap::new(),
-        };
-
-        collect_with(state, sys::append_node, &tree.order, |id| {
-            builder.lower_def(*id)
-        })
-    }
 }
 
 unsafe fn inject_builtin(state: *mut sys::parser_state) {
@@ -255,18 +249,32 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     // Discard the generated nodes -- we don't want to include the built-in
     // types in the tree. They just need to be registered in the symbol map with
     // their respective definitions.
-    let tree = TreeBuilder::lower_tree(state, &hir);
+    let mut builder = TreeBuilder::new(state, &hir);
+    let tree = collect_with(state, sys::append_node, &hir.order, |id| {
+        builder.lower_def(*id)
+    });
+
     assert!(!tree.is_null());
 }
 
-pub unsafe fn lower(hir: &ResolvedGraph) -> ParseResult {
+pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     let state = unsafe { sys::ic_parser_create() };
 
     // Inject the built-in annotations
     inject_builtin(state);
 
     // Lower the tree
-    let tree = TreeBuilder::lower_tree(state, hir);
+    let mut builder = TreeBuilder::new(state, hir);
+    let tree = collect_with(state, sys::append_node, &hir.order, |id| {
+        let def = builder.ctx.definitions.get(id);
+        let defined_in = format!("{}", vfs.name(def.span.start.file_id).display());
+        let include = create_ident(&defined_in);
+
+        sys::create_include_start(state, include.as_ptr(), 0);
+        let node = builder.lower_def(*id);
+        sys::create_include_finish(state, node)
+    });
+
     let result = sys::ic_parser_result(state, tree);
     ParseResult::from_raw(result)
 }

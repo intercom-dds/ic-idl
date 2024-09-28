@@ -33,8 +33,8 @@ mod hir;
 
 /// Lowers the HIR into a `ptree`. This process should be infallible, as
 /// everything should have been resolved and type checked prior to this.
-pub fn from_hir(tree: &ic_hir::ResolvedGraph) -> ParseResult {
-    unsafe { hir::lower(tree) }
+pub fn from_hir(tree: &ic_hir::ResolvedGraph, vfs: &ic_vfs::SourceMap) -> ParseResult {
+    unsafe { hir::lower(tree, vfs) }
 }
 
 /// Lowers the AST into a `ptree`. This process should be infallible, as

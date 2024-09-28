@@ -79,7 +79,7 @@ fn path_str(path: &Path) -> String {
     }
 }
 
-fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {
+unsafe fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {
     path.as_ref()
         .map_or(ptr::null_mut(), |p| lower_path(state, p))
 }
@@ -216,20 +216,16 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
     }
 }
 
-fn lower_path(state: *mut sys::parser_state, path: &Path) -> *mut sys::ptree {
-    unsafe {
-        let ident = create_ident(&path_str(path));
-        sys::lookup_type(state, ident.as_ptr())
-    }
+unsafe fn lower_path(state: *mut sys::parser_state, path: &Path) -> *mut sys::ptree {
+    let ident = create_ident(&path_str(path));
+    sys::lookup_type(state, ident.as_ptr())
 }
 
-fn lower_field(state: *mut sys::parser_state, field: &Field) -> *mut sys::ptree {
-    unsafe {
-        let ty = lower_ty(state, &field.ty);
-        let annotations = lower_applied_annotations(state, &field.annotations);
-        let decls = create_decl_list(state, &field.names, ptr::null_mut());
-        sys::create_member(state, decls, ty, annotations)
-    }
+unsafe fn lower_field(state: *mut sys::parser_state, field: &Field) -> *mut sys::ptree {
+    let ty = lower_ty(state, &field.ty);
+    let annotations = lower_applied_annotations(state, &field.annotations);
+    let decls = create_decl_list(state, &field.names, ptr::null_mut());
+    sys::create_member(state, decls, ty, annotations)
 }
 
 unsafe fn lower_annotation_member(
@@ -246,42 +242,40 @@ unsafe fn lower_annotation_member(
     sys::create_annotation_member(state, decl, ty, default)
 }
 
-fn lower_interface_member(
+unsafe fn lower_interface_member(
     state: *mut sys::parser_state,
     member: &InterfaceMember,
 ) -> *mut sys::ptree {
-    unsafe {
-        let param = |param: &Param| {
-            let ty = lower_ty(state, &param.ty);
-            let kind = param_kind(param.kind);
-            let decl = create_decl(state, &param.decl, ptr::null_mut());
-            sys::create_param_dcl(state, decl, ty, kind)
-        };
+    let param = |param: &Param| {
+        let ty = lower_ty(state, &param.ty);
+        let kind = param_kind(param.kind);
+        let decl = create_decl(state, &param.decl, ptr::null_mut());
+        sys::create_param_dcl(state, decl, ty, kind)
+    };
 
-        match member {
-            InterfaceMember::Attr(v) => {
-                let decl = create_decl_list(state, &v.decl, ptr::null_mut());
-                let ty = lower_ty(state, &v.ty);
-                let getraises = decl_path_list(state, &v.getraises);
-                let setraises = decl_path_list(state, &v.setraises);
-                sys::create_attribute(
-                    state,
-                    decl,
-                    ty,
-                    getraises,
-                    setraises,
-                    ffi::c_int::from(v.readonly.is_some()),
-                )
-            }
-            InterfaceMember::Proto(v) => {
-                let ident = create_ident(&v.ident.name);
-                let params = collect_with(state, sys::append_node, &v.params, param);
-                let ret_ty = lower_ty(state, &v.ret);
-                let raises = decl_path_list(state, &v.raises);
-                sys::create_interface_op(state, ident.as_ptr(), params, ret_ty, raises)
-            }
-            InterfaceMember::Item(v) => lower_item(state, v),
+    match member {
+        InterfaceMember::Attr(v) => {
+            let decl = create_decl_list(state, &v.decl, ptr::null_mut());
+            let ty = lower_ty(state, &v.ty);
+            let getraises = decl_path_list(state, &v.getraises);
+            let setraises = decl_path_list(state, &v.setraises);
+            sys::create_attribute(
+                state,
+                decl,
+                ty,
+                getraises,
+                setraises,
+                ffi::c_int::from(v.readonly.is_some()),
+            )
         }
+        InterfaceMember::Proto(v) => {
+            let ident = create_ident(&v.ident.name);
+            let params = collect_with(state, sys::append_node, &v.params, param);
+            let ret_ty = lower_ty(state, &v.ret);
+            let raises = decl_path_list(state, &v.raises);
+            sys::create_interface_op(state, ident.as_ptr(), params, ret_ty, raises)
+        }
+        InterfaceMember::Item(v) => lower_item(state, v),
     }
 }
 
@@ -515,20 +509,22 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
     assert!(!list.is_null());
 }
 
-fn lower_ast(state: *mut sys::parser_state, ast: &[Item], vfs: &SourceMap) -> *mut sys::ptree {
-    unsafe {
-        inject_builtin(state);
+unsafe fn lower_ast(
+    state: *mut sys::parser_state,
+    ast: &[Item],
+    vfs: &SourceMap,
+) -> *mut sys::ptree {
+    inject_builtin(state);
 
-        collect_with(state, sys::append_node, ast, |item| {
-            let span = ic_syntax::util::item_span(item);
-            let defined_in = format!("{}", vfs.name(span.start.file_id).display());
-            let include = create_ident(&defined_in);
+    collect_with(state, sys::append_node, ast, |item| {
+        let span = ic_syntax::util::item_span(item);
+        let defined_in = format!("{}", vfs.name(span.start.file_id).display());
+        let include = create_ident(&defined_in);
 
-            sys::create_include_start(state, include.as_ptr(), 0);
-            let node = lower_item(state, item);
-            sys::create_include_finish(state, node)
-        })
-    }
+        sys::create_include_start(state, include.as_ptr(), 0);
+        let node = lower_item(state, item);
+        sys::create_include_finish(state, node)
+    })
 }
 
 pub unsafe fn lower(ast: &[Item], vfs: &SourceMap) -> ParseResult {

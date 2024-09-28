@@ -34,6 +34,7 @@ use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
 use ic_preproc::ProcArgs;
+use ic_ptree::ParseResult;
 use ic_vfs::SourceMap;
 use tracing_subscriber::filter::LevelFilter;
 use util::{Error, collect_files, write_if_changed};
@@ -123,11 +124,11 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
         .map_err(|e| e.into_iter().map(Error::Io).collect::<Vec<_>>())?;
 
     for file in files {
-        let ast = try_parse(options, args.clone(), &file, vfs)?;
-        trees.push(ast);
+        let ptree = try_parse(options, args.clone(), &file, vfs)?;
+        trees.push(ptree);
     }
 
-    try_ptree(options, &trees, vfs).map_err(|e| vec![e])
+    try_ptree(options, &trees).map_err(|e| vec![e])
 }
 
 // To report as much information as possible at once, we keep going even if we
@@ -139,7 +140,7 @@ fn try_parse(
     proc: ProcArgs,
     path: &Path,
     vfs: &mut SourceMap,
-) -> Result<ic_parse::ParseResult, Vec<Error>> {
+) -> Result<ParseResult, Vec<Error>> {
     let mut errors = vec![];
     let (ast, err) = ic_parse::from_path(path, proc, vfs).map_err(|e| {
         vec![Error::Custom(format!(
@@ -158,41 +159,31 @@ fn try_parse(
     errors.extend(report.diagnostics.into_iter().map(Into::into));
 
     // Lower the AST to a HIR
-    let hir = ic_hir::from_ast(ast.tree.clone());
+    let hir = ic_hir::from_ast(ast.tree);
     if options.unstable.hir_dump {
         ic_hir_tree::emit_tree(&hir);
     }
-
-    // Lower the HIR to a ptree
-    let ptree = ic_ptree_lower::from_hir(&hir, vfs);
-    errors.extend(hir.errors.into_iter().map(Into::into));
-    dbg!(ptree.diagnostics());
-    // ic_ptree_dump::ptree_dump(&ptree);
 
     // Lint the HIR
     let report = ic_lint::lint_hir(&hir.context);
     errors.extend(report.diagnostics.into_iter().map(Into::into));
 
+    // Lower the HIR to a ptree
+    let ptree = ic_ptree_lower::from_hir(&hir, vfs);
+    errors.extend(hir.errors.into_iter().map(Into::into));
+    dbg!(ptree.diagnostics());
+    ic_ptree_dump::ptree_dump(&ptree);
+
     if errors.is_empty() {
-        Ok(ast)
+        Ok(ptree)
     } else {
         Err(errors)
     }
 }
 
-fn try_ptree(
-    options: &Options,
-    parsed: &[ic_parse::ParseResult],
-    vfs: &SourceMap,
-) -> Result<Vec<File>, Error> {
-    // Lower the AST to a ptree
-    let lowered: Vec<_> = parsed
-        .iter()
-        .map(|ast| ic_ptree_lower::from_ast(ast, vfs))
-        .collect();
-
+fn try_ptree(options: &Options, parsed: &[ParseResult]) -> Result<Vec<File>, Error> {
     // Merge multiple ptrees into one
-    let merged = ic_ptree::merge_trees(&lowered);
+    let merged = ic_ptree::merge_trees(parsed);
     if options.unstable.ptree_dump {
         ic_ptree_dump::ptree_dump(&merged);
     }

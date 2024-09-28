@@ -50,7 +50,13 @@ impl<'a> TreeBuilder<'a> {
         }
     }
 
-    unsafe fn lower_ty(&self, ty: &Ty) -> *mut sys::ptree {
+    unsafe fn lower_bound(&self, bound: &Option<usize>) -> *const sys::numeric {
+        bound.map_or(NUM_UNDEF, |bound| {
+            sys::create_u64(self.state, bound as u64, 10)
+        })
+    }
+
+    unsafe fn lower_ty(&mut self, ty: &Ty) -> *mut sys::ptree {
         match ty {
             Ty::Any => ptr::addr_of_mut!(sys::any_type),
             Ty::Fixed => ptr::addr_of_mut!(sys::fixed_type),
@@ -70,18 +76,32 @@ impl<'a> TreeBuilder<'a> {
                 PrimitiveTy::Float64 => ptr::addr_of_mut!(sys::double_type),
                 PrimitiveTy::Float128 => ptr::addr_of_mut!(sys::ldouble_type),
             },
-            // Ty::Array { .. } => (),
-            // Ty::Sequence { .. } => (),
-            Ty::String { wide, .. } => {
+            Ty::Array { ty, len } => {
+                let ty = self.lower_ty(ty);
+                let bound = sys::create_u64(self.state, (*len + 1) as u64, 10);
+                let decl = sys::append_array_size(self.state, ptr::null_mut(), bound);
+                sys::create_array_type(self.state, decl, ty)
+            }
+            Ty::Sequence { ty, bound } => {
+                let ty = self.lower_ty(ty);
+                let bound = self.lower_bound(bound);
+                sys::create_sequence(self.state, ty, bound)
+            }
+            Ty::String { wide, bound } => {
+                let bound = self.lower_bound(bound);
                 if *wide {
-                    sys::create_wstring(self.state, NUM_UNDEF)
+                    sys::create_wstring(self.state, bound)
                 } else {
-                    sys::create_string(self.state, NUM_UNDEF)
+                    sys::create_string(self.state, bound)
                 }
             }
-            // Ty::Map { .. } => (),
-            Ty::Adt(id) => *self.lowered.get(id).unwrap(),
-            _ => todo!(),
+            Ty::Map { key, elem, bound } => {
+                let key = self.lower_ty(key);
+                let elem = self.lower_ty(elem);
+                let bound = self.lower_bound(bound);
+                sys::create_map(self.state, key, elem, bound)
+            }
+            Ty::Adt(id) => self.lower_def(*id),
         }
     }
 
@@ -90,7 +110,7 @@ impl<'a> TreeBuilder<'a> {
         sys::create_decl(self.state, ident.as_ptr(), ptr::null_mut())
     }
 
-    unsafe fn lower_proto(&self, proto: &ProtoTy) -> *mut sys::ptree {
+    unsafe fn lower_proto(&mut self, proto: &ProtoTy) -> *mut sys::ptree {
         let params = collect_with(self.state, sys::append_node, &proto.params, |param| {
             let ty = self.lower_ty(&param.ty);
             let kind = common::param_kind(param.kind);
@@ -103,7 +123,7 @@ impl<'a> TreeBuilder<'a> {
         sys::create_interface_op(self.state, ident.as_ptr(), params, ret, ptr::null_mut())
     }
 
-    unsafe fn lower_variant(&self, var: &Variant) -> *mut sys::ptree {
+    unsafe fn lower_variant(&mut self, var: &Variant) -> *mut sys::ptree {
         let cases = collect_with(self.state, sys::append_node, &var.labels, |_| {
             sys::create_case_label(self.state, NUM_UNDEF)
         });

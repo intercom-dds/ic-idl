@@ -167,12 +167,12 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
             }
         } else {
             if (node->bounds.empty()) {
-                out << "::std::vector< " << cpp_type_name(node->element_type, context)
-                    << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << " >";
+                out << "::std::vector<" << cpp_type_name(node->element_type, context)
+                    << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ">";
             } else {
-                out << "::intercom::bounded_vector< " << cpp_type_name(node->element_type, context)
+                out << "::intercom::bounded_vector<" << cpp_type_name(node->element_type, context)
                     << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ", "
-                    << unsigned_value(node->bounds[0]) << " >";
+                    << unsigned_value(node->bounds[0]) << ">";
             }
         }
     } else if (node->kind == N_STRING) {
@@ -186,7 +186,7 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
             }
             out << "String_var";
             if (!node->bounds.empty()) {
-                out << "< " << unsigned_value(node->bounds[0]) << " >";
+                out << "<" << unsigned_value(node->bounds[0]) << ">";
             }
         } else {
             if (node->bounds.empty()) {
@@ -199,21 +199,21 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
             }
             out << "string";
             if (!node->bounds.empty()) {
-                out << "< " << unsigned_value(node->bounds[0]) << " >";
+                out << "<" << unsigned_value(node->bounds[0]) << ">";
             }
         }
     } else if (node->kind == N_MAP) {
         if (node->bounds.empty()) {
-            out << "::std::map< " << cpp_type_name(node->key_type, context)
+            out << "::std::map<" << cpp_type_name(node->key_type, context)
                 << (base_type_of(node->key_type)->kind == N_INTERFACE ? "*" : "") << ", "
                 << cpp_type_name(node->element_type, context)
-                << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << " >";
+                << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ">";
         } else {
-            out << "::intercom::bounded_map< " << cpp_type_name(node->key_type, context)
+            out << "::intercom::bounded_map<" << cpp_type_name(node->key_type, context)
                 << (base_type_of(node->key_type)->kind == N_INTERFACE ? "*" : "") << ", "
                 << cpp_type_name(node->element_type, context)
                 << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ", "
-                << unsigned_value(node->bounds[0]) << " >";
+                << unsigned_value(node->bounds[0]) << ">";
         }
     } else if (node == context) {
         out << safe_name(node, node->name, LANG_CPP);
@@ -493,7 +493,7 @@ static void emit_const_value(
 }
 
 std::string get_const_value(const numeric& value, const ptree* scope) {
-    struct memf tmp {};
+    struct memf tmp{};
     memset(&tmp, 0, sizeof(struct memf));
     mreset(&tmp);
     emit_const_value(&tmp, value, scope, scope);

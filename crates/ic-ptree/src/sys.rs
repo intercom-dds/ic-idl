@@ -573,6 +573,9 @@ extern "C" {
     pub fn create_double(arg1: *mut parser_state, value: f64) -> *const numeric;
 }
 extern "C" {
+    pub fn create_numeric_node(arg1: *mut parser_state, node: *mut ptree) -> *const numeric;
+}
+extern "C" {
     pub fn create_struct_start(
         arg1: *mut parser_state,
         ident: *const ::std::os::raw::c_char,

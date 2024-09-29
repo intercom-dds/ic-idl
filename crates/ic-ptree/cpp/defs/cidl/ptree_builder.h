@@ -112,6 +112,8 @@ const struct numeric* create_float(struct parser_state*, float value);
 
 const struct numeric* create_double(struct parser_state*, double value);
 
+const struct numeric* create_numeric_node(struct parser_state*, struct ptree* node);
+
 struct ptree* create_struct_start(struct parser_state*, const char* ident, struct ptree* parent);
 
 struct ptree* create_struct_finish(struct parser_state*, struct ptree* members);

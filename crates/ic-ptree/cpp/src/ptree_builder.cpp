@@ -1236,6 +1236,12 @@ const numeric* create_double(parser_state* state, double value) {
     return n;
 }
 
+const numeric* create_numeric_node(parser_state* state, ptree* node) {
+    auto n = new_numeric(state, PTREE_KIND);
+    n->val.node(node);
+    return n;
+}
+
 ptree* create_struct_start(parser_state* state, const char* ident, ptree* parent) {
     std::vector<ptree*> parents;
     if (parent) {

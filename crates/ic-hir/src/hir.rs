@@ -377,6 +377,7 @@ pub struct InterfaceTy {
     pub prototypes: Vec<ProtoTy>,
     pub attributes: Vec<()>,
     pub definitions: Vec<DefId>,
+    pub is_local: bool,
 }
 
 #[derive(Debug)]

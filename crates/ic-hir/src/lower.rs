@@ -66,7 +66,6 @@ pub(crate) struct Lower<'a> {
     ctx: &'a mut Context,
     order: Vec<TypeId>,
     pub resolver: Resolver,
-    registered: CaseMap<'static, Span>,
     errors: Vec<Diag>,
 }
 
@@ -76,7 +75,6 @@ impl<'a> Lower<'a> {
             ctx,
             order: vec![],
             resolver: Resolver::new(),
-            registered: CaseMap::default(),
             errors: vec![],
         }
     }
@@ -238,8 +236,6 @@ impl<'a> Lower<'a> {
         };
         tracing::info!("lookup: {qualified:?}");
 
-        // TODO: we may want to provide more granular spans, so we can pinpoint
-        // which ident in the path failed to resolve.
         let resolved = self.resolver.resolve_path(&path);
 
         // TODO: propagate kind, so we can specify "module" instead of "type"
@@ -285,54 +281,6 @@ impl<'a> Lower<'a> {
         // }
         segments.push(&ident.name);
         format!("::{}", segments.join("::"))
-    }
-
-    // TODO: or constants? expr? numeric?
-    // or should we just store an enum with the respective ID?
-    fn register_symbol(&mut self, ident: &Ident) {
-        let name = self.qualified_name(ident);
-
-        match self.registered.entry(name) {
-            Entry::Occupied(_) => {
-                // let diag = error_span(
-                //     format!("duplicate registration of `{}`", prev.key().yellow()),
-                //     Label::new(ident.span).message("redefined here"),
-                // );
-                // self.errors.push(diag);
-            }
-            Entry::Vacant(v) => {
-                v.insert(ident.span);
-            }
-        }
-    }
-
-    // TODO: we need to register symbols too, for things like constants...
-    fn register_type(&mut self, ident: &Ident, ty: TypeId) {
-        // FIXME: this is already checked in the sanity lint. this can either
-        // be removed or asserted
-        assert!(!ident.name.is_empty(), "attempted to register unnamed type");
-
-        // TODO: Must handle forward dcls and check they are of the same type,
-        // i.e. not a struct fwd dcl to a union def.
-        let name = self.qualified_name(ident);
-        self.register_symbol(ident);
-
-        match self.ctx.symbols.entry(name) {
-            Entry::Occupied(_) => {}
-            Entry::Vacant(v) => {
-                v.insert(ty);
-            }
-        }
-    }
-
-    fn alloc_type<F>(&mut self, ident: &Ident, closure: F) -> DefId
-    where
-        F: FnOnce(DefId) -> Def,
-    {
-        let id = self.ctx.definitions.alloc_with_id(closure);
-        // self.resolver.define_type(None, ident, id);
-        self.register_type(ident, id);
-        id
     }
 
     fn update_type(&mut self, id: DefId, data: DefKind) {
@@ -447,6 +395,7 @@ impl<'a> Lower<'a> {
 
     fn lower_struct(&mut self, def: ic_syntax::StructDef) -> DefId {
         let parent = def.parent.and_then(|v| self.lookup_path(v));
+        let annotations = self.lower_annotations(def.annotations);
 
         self.with_scope(def.ident, SymbolKind::Struct, |this, ident, id| {
             let members = def
@@ -458,7 +407,7 @@ impl<'a> Lower<'a> {
             Def {
                 id,
                 ident,
-                annotations: vec![],
+                annotations,
                 span: def.span,
                 kind: DefKind::Struct(StructTy { parent, members }),
                 flags: DefFlags::default(),
@@ -486,7 +435,7 @@ impl<'a> Lower<'a> {
                 bound: v.bound.map(|e| self.bound_expr(&e)),
             },
             Type::Path(v) => {
-                // TODO: placeholder
+                // TODO: probably better to let the parser resolve these
                 let kind = match v.segments[0].name.as_str() {
                     "boolean" => PrimitiveTy::Bool,
                     "char" => PrimitiveTy::Char,
@@ -553,12 +502,7 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_field(&mut self, field: ic_syntax::Field) -> Vec<Member> {
-        let annotations: Vec<_> = field
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
-
+        let annotations = self.lower_annotations(field.annotations);
         field
             .names
             .into_iter()
@@ -575,6 +519,8 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_except(&mut self, def: ic_syntax::ExceptDef) -> DefId {
+        let annotations = self.lower_annotations(def.annotations);
+
         self.with_scope(def.ident, SymbolKind::Exception, |this, ident, id| {
             let members = def
                 .members
@@ -585,7 +531,7 @@ impl<'a> Lower<'a> {
             Def {
                 id,
                 ident,
-                annotations: vec![],
+                annotations,
                 span: def.span,
                 kind: DefKind::Except(ExceptTy { members }),
                 flags: DefFlags::default(),
@@ -598,6 +544,7 @@ impl<'a> Lower<'a> {
 
         let mut is_default = false;
         let mut labels = vec![];
+        let annotations = self.lower_annotations(var.annotations);
 
         for label in &var.labels {
             match label {
@@ -617,7 +564,7 @@ impl<'a> Lower<'a> {
                 let (ident, ty) = self.lower_declarator(v.decl, ty);
 
                 Variant {
-                    annotations: vec![],
+                    annotations,
                     ident,
                     ty,
                     labels,
@@ -630,6 +577,7 @@ impl<'a> Lower<'a> {
 
     fn lower_union(&mut self, def: ic_syntax::UnionDef) -> DefId {
         let disc = self.lower_type(def.disc.ty);
+        let annotations = self.lower_annotations(def.annotations);
 
         self.with_scope(def.ident, SymbolKind::Union, |this, ident, id| {
             let variants = def
@@ -641,7 +589,7 @@ impl<'a> Lower<'a> {
             Def {
                 id,
                 ident,
-                annotations: vec![],
+                annotations,
                 span: def.span,
                 kind: DefKind::Union(UnionTy { disc, variants }),
                 flags: DefFlags::default(),
@@ -670,12 +618,12 @@ impl<'a> Lower<'a> {
 
     fn lower_enum_lit(&mut self, lit: ic_syntax::Enumerator, last: &mut Option<isize>) -> EnumLit {
         let value = self.increment_value(&lit.value, last);
-        self.register_symbol(&lit.ident);
+        let annotations = self.lower_annotations(lit.annotations);
 
         EnumLit {
             ident: lit.ident,
             value,
-            annotations: vec![],
+            annotations,
         }
     }
 
@@ -688,13 +636,12 @@ impl<'a> Lower<'a> {
             .collect();
 
         let ty = Ty::Primitive(PrimitiveTy::UInt32);
+        let annotations = self.lower_annotations(def.annotations);
 
-        // TODO: report conflicts in the resolver. this can go on as before
-        // (though the member will not be registered(?)).
         self.with_scope(def.ident, SymbolKind::Struct, |this, ident, id| Def {
             id,
             ident,
-            annotations: vec![],
+            annotations,
             span: def.span,
             kind: DefKind::Enum(EnumTy { fields, ty }),
             flags: DefFlags::default(),
@@ -703,18 +650,19 @@ impl<'a> Lower<'a> {
 
     fn lower_bitmask_flag(&mut self, lit: ic_syntax::Bit, last: &mut Option<isize>) -> BitFlag {
         let value = self.increment_value(&lit.value, last) as usize;
-        self.register_symbol(&lit.ident);
+        let annotations = self.lower_annotations(lit.annotations);
 
         BitFlag {
             ident: lit.ident,
             value,
-            annotations: vec![],
+            annotations,
         }
     }
 
     fn lower_bitmask(&mut self, def: ic_syntax::BitmaskDef) -> DefId {
         let mut last_val = None;
         let ty = Ty::Primitive(PrimitiveTy::UInt32);
+        let annotations = self.lower_annotations(def.annotations);
 
         self.with_scope(def.ident, SymbolKind::Enum, |this, ident, id| {
             let flags = def
@@ -726,7 +674,7 @@ impl<'a> Lower<'a> {
             Def {
                 id,
                 ident,
-                annotations: vec![],
+                annotations,
                 span: def.span,
                 kind: DefKind::Bitmask(BitmaskTy { flags, ty }),
                 flags: DefFlags::default(),
@@ -738,23 +686,30 @@ impl<'a> Lower<'a> {
         let value = self.eval_expr(&def.value);
         let ty = self.lower_type(def.ty);
         let (ident, ty) = self.lower_declarator(def.decl, ty);
+        let annotations = self.lower_annotations(def.annotations);
 
         self.with_scope(ident, SymbolKind::Const, |_, ident, id| Def {
             id,
             ident,
-            annotations: vec![],
+            annotations,
             span: def.span,
             kind: DefKind::Const(ConstTy { value, ty }),
             flags: DefFlags::default(),
         })
     }
 
-    fn create_alias(&mut self, decl: ic_syntax::Declarator, ty: Ty, span: Span) -> DefId {
+    fn create_alias(
+        &mut self,
+        decl: ic_syntax::Declarator,
+        ty: Ty,
+        span: Span,
+        annotations: Vec<Ann>,
+    ) -> DefId {
         let (ident, ty) = self.lower_declarator(decl, ty);
         self.with_scope(ident, SymbolKind::Typedef, |this, ident, id| Def {
             id,
             ident,
-            annotations: vec![],
+            annotations,
             span,
             kind: DefKind::Alias(AliasTy { ty }),
             flags: DefFlags::default(),
@@ -764,9 +719,10 @@ impl<'a> Lower<'a> {
     // A typedef with multiple declarators will be expanded to multiple,
     fn lower_alias(&mut self, def: ic_syntax::AliasDef) -> Vec<DefId> {
         let ty = self.lower_type(def.ty);
+        let annotations = self.lower_annotations(def.annotations);
         def.decl
             .into_iter()
-            .map(|decl| self.create_alias(decl, ty.clone(), def.span))
+            .map(|decl| self.create_alias(decl, ty.clone(), def.span, annotations.clone()))
             .collect()
     }
 
@@ -784,6 +740,8 @@ impl<'a> Lower<'a> {
         let mut prototypes = vec![];
         let mut attributes = vec![];
         let mut definitions = vec![];
+        let is_local = def.local.is_some();
+        let annotations = self.lower_annotations(def.annotations);
 
         let parents = def
             .inherits
@@ -812,13 +770,14 @@ impl<'a> Lower<'a> {
             Def {
                 id,
                 ident,
-                annotations: vec![],
+                annotations,
                 span: def.span,
                 kind: DefKind::Interface(InterfaceTy {
                     parents,
                     prototypes,
                     attributes,
                     definitions,
+                    is_local,
                 }),
                 flags: DefFlags::default(),
             }
@@ -826,7 +785,6 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_prototype(&mut self, def: ic_syntax::Prototype) -> ProtoTy {
-        // TODO: new lexical scope for parameters
         let ident = def.ident;
         let ty = self.lower_type(def.ret);
         let params = def
@@ -856,12 +814,7 @@ impl<'a> Lower<'a> {
             DeclKind::Valuetype => Decl::Valuetype,
         };
 
-        let annotations = decl
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
-
+        let annotations = self.lower_annotations(decl.annotations);
         self.with_scope(decl.ident, SymbolKind::Decl, |this, ident, id| Def {
             id,
             ident,
@@ -870,10 +823,6 @@ impl<'a> Lower<'a> {
             kind: DefKind::Decl(kind),
             flags: DefFlags::default(),
         })
-
-        // self.resolver
-        //     .declare_type(&decl.ident, Symbol::Decl(id, res_ty));
-        // id
     }
 
     fn lower_item(&mut self, item: ic_syntax::Item) -> Vec<DefId> {

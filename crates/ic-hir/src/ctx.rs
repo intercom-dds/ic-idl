@@ -32,39 +32,22 @@ use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
 
-use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, TypeId};
+use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, Ty, TypeId};
 
-// TODO: should a Type point to the definition instead?
-//
-// So type {
-//     def_id: Id,
-//     ??? whatever else
-// }
 #[derive(Debug)]
 pub struct Type;
-
-// No reason for the namespace to not be monomorphed -- we retain module-level
-// definitions, so this is just for type resolution (which is fine!).
-#[derive(Debug, Default)]
-pub struct Namespace {
-    /// All symbols defined in the current namespace.
-    pub symbols: CaseMap<'static, DefId>,
-}
 
 #[derive(Debug)]
 pub struct Context {
     pub types: Arena<Type>,
     pub definitions: Arena<hir::Def>,
 
-    // Qualified type name => Type ID
-    pub symbols: HashMap<String, TypeId>,
+    // Fully qualified type name => DefId
     pub registered: CaseMap<'static, DefId>,
-
-    pub namespaces: CaseMap<'static, Namespace>,
 }
 
 impl Context {
-    /// Creates a new context where primitive types and built-in annotations
+    /// Creates a new context where built-in type definitions and annotations
     /// have been injected.
     pub fn new() -> Self {
         let mut ctx = Self::empty();
@@ -77,9 +60,7 @@ impl Context {
         Self {
             types: Arena::default(),
             definitions: Arena::default(),
-            symbols: HashMap::new(),
             registered: CaseMap::default(),
-            namespaces: CaseMap::default(),
         }
     }
 
@@ -87,8 +68,9 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// Panics if the given type ID does not exist. This can only ever happen
-    /// if there are multiple `Context`s whose arenas have been mixed up.
+    /// Panics if the given type ID does not exist, or if the ID came from a
+    /// different arena. This can only ever happen if there are multiple
+    /// `Context`s whose arenas have been mixed up.
     pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
     }
@@ -100,20 +82,33 @@ impl Context {
     /// Panics if the given type ID does not exist, or if the ID came from a
     /// different arena. This can only ever happen if there are multiple
     /// `Context`s whose arenas have been mixed up.
-    pub fn base_type_of(&self, mut id: DefId) -> &Def {
-        todo!()
+    pub fn base_type_of(&self, id: DefId) -> Ty {
+        let ty = self.type_of(id);
+        match &ty.kind {
+            DefKind::Alias(v) => match v.ty {
+                Ty::Adt(v) => self.base_type_of(v),
+                _ => v.ty.clone(),
+            },
+            _ => Ty::Adt(id),
+        }
+    }
+
+    /// Returns the `DefId` of the given type, if one exists. For arrays,
+    /// sequences, and maps, this will return the element type if it points to
+    /// a definition.
+    pub fn def_of(&self, ty: &Ty) -> Option<DefId> {
+        match ty {
+            Ty::Array { ty, .. } | Ty::Sequence { ty, .. } | Ty::Map { elem: ty, .. } => {
+                self.def_of(ty)
+            }
+            Ty::Adt(id) => Some(*id),
+            _ => None,
+        }
     }
 
     pub fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
         todo!()
     }
-
-    // TODO: or should it be TypeId? that must be a ConstTy?
-    // fn resolve_const(&self, path: &ic_syntax::Path) -> Type {
-    //     todo!()
-    //     // let name = path_name(path);
-    //     // *self.symbols.get(&name).expect("unknown const")
-    // }
 }
 
 /// Inserts primitive types and built-in annotations into the context.

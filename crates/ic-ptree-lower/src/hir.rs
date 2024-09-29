@@ -288,7 +288,12 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_type(self.state, decl, ty)
             }
             DefKind::Interface(v) => {
-                let ty = sys::create_interface_start(self.state, ident, ptr::null_mut(), 0);
+                let ty = sys::create_interface_start(
+                    self.state,
+                    ident,
+                    ptr::null_mut(),
+                    ffi::c_int::from(v.is_local),
+                );
                 self.lowered.insert(id, ty);
 
                 let members = collect_with(self.state, sys::append_node, &v.prototypes, |proto| {

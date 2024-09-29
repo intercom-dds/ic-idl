@@ -274,15 +274,6 @@ impl<'a> Lower<'a> {
         ty
     }
 
-    fn qualified_name(&self, ident: &Ident) -> String {
-        let mut segments: Vec<&str> = vec![];
-        // for scope in &self.scope {
-        //     segments.push(&scope.name);
-        // }
-        segments.push(&ident.name);
-        format!("::{}", segments.join("::"))
-    }
-
     fn update_type(&mut self, id: DefId, data: DefKind) {
         tracing::info!("updating partial type {id:?} with {data:?}");
         let def = self.ctx.definitions.get_mut(id);
@@ -297,16 +288,22 @@ impl<'a> Lower<'a> {
     ///
     /// This function allocates a placeholder declaration for the type,
     /// registers it in the resolver, and replaces the previously allocated
-    /// declaration with the complete definition when it has been created.
     //
-    // TODO: It might be better to have an arena of `enum { Complete(..), Incompletee(..) }`
-    // to better handle incomplete types.
     fn with_scope(
         &mut self,
         ident: Ident,
         kind: SymbolKind,
         f: impl FnOnce(&mut Self, Ident, DefId) -> Def,
     ) -> DefId {
+        // TODO: It might be better to have an arena of
+        // ```
+        // enum {
+        //     Complete(..),
+        //     Incomplete(..),
+        // }
+        // ````
+        // to better handle incomplete types instead of allocating a
+        // temporary definition.
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
@@ -800,22 +797,26 @@ impl<'a> Lower<'a> {
     fn lower_decl(&mut self, decl: ic_syntax::Decl) -> DefId {
         use ic_syntax::DeclKind;
 
-        let kind = match decl.kind {
-            DeclKind::Struct => Decl::Struct,
-            DeclKind::Union => Decl::Union,
-            DeclKind::Native => Decl::Native,
-            DeclKind::Interface => Decl::Interface,
-            DeclKind::Valuetype => Decl::Valuetype,
+        let (kind, symbol) = match decl.kind {
+            DeclKind::Struct => (Decl::Struct, SymbolKind::Struct),
+            DeclKind::Union => (Decl::Union, SymbolKind::Union),
+            DeclKind::Native => (Decl::Native, SymbolKind::Valuetype),
+            DeclKind::Interface => (Decl::Interface, SymbolKind::Interface),
+            DeclKind::Valuetype => (Decl::Valuetype, SymbolKind::Valuetype),
         };
 
-        let annotations = self.lower_annotations(decl.annotations);
-        self.with_scope(decl.ident, SymbolKind::Decl, |this, ident, id| Def {
-            id,
-            ident,
-            annotations,
-            span: decl.span,
-            kind: DefKind::Decl(kind),
-            flags: DefFlags::default(),
+        self.ctx.definitions.alloc_with_id(|id| {
+            self.resolver
+                .declare_type(&decl.ident, Symbol::Decl(id, symbol));
+
+            Def {
+                id,
+                ident: decl.ident,
+                annotations: vec![],
+                span: decl.span,
+                kind: DefKind::Decl(kind),
+                flags: DefFlags::default(),
+            }
         })
     }
 

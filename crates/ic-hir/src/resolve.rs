@@ -92,18 +92,6 @@ pub enum ResolveError {
     Module(Span),
 }
 
-impl ResolveError {
-    pub fn primary_span(&self) -> Span {
-        match self {
-            Self::Undefined(span)
-            | Self::Redefined(span)
-            | Self::Module(span)
-            | Self::Superfluous(span)
-            | Self::DeclMismatch { span, .. } => *span,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Scope {
     /// Name of the current scope.
@@ -506,8 +494,8 @@ impl Resolver {
 
             match entry {
                 Symbol::Adt(v, _) | Symbol::Decl(v, _) => {
-                    if segments.next().is_some() {
-                        return Err(ResolveError::Superfluous(seg.span));
+                    if let Some(next) = segments.next() {
+                        return Err(ResolveError::Superfluous(next.span));
                     }
                     return Ok(*v);
                 }

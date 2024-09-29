@@ -229,17 +229,10 @@ impl<'a> Lower<'a> {
         };
 
         let resolved = self.resolver.resolve_path(&path);
-
-        // TODO: propagate kind, so we can specify "module" instead of "type"
         match resolved {
             Ok(id) => Some(id),
             Err(err) => {
-                let span = err.primary_span();
-                let diag = error_span(
-                    format!("failed to resolve type `{}`", qualified.yellow()),
-                    Label::new(span).message("unknown type"),
-                );
-                self.errors.push(diag);
+                Self::report_error(&qualified, err, &mut self.errors);
                 None
             }
         }
@@ -306,10 +299,13 @@ impl<'a> Lower<'a> {
     // problematic when it's already borrowed in some closures. Ideally we
     // should have a separate error-reporting mechanism that is more flexible
     // than a vector.
-    fn report_error(ident: &Ident, error: ResolveError, errors: &mut Vec<Diag>) {
-        let ident = ident.name.yellow();
+    fn report_error(name: &str, error: ResolveError, errors: &mut Vec<Diag>) {
+        let ident = name.yellow();
         let diag = match error {
-            ResolveError::Undefined(_) => todo!(),
+            ResolveError::Undefined(span) => error_span(
+                format!("failed to resolve `{ident}`"),
+                Label::new(span).message("unknown type"),
+            ),
             ResolveError::Redefined(span) => error_span(
                 format!("duplicate registration of `{ident}`"),
                 Label::new(span).message("redefined here"),
@@ -318,9 +314,14 @@ impl<'a> Lower<'a> {
                 format!("`{ident}` was previously declared as a {}", decl.name()),
                 Label::new(span).message("inconsistent type"),
             ),
-
-            ResolveError::Superfluous(_) => todo!(),
-            ResolveError::Module(_) => todo!(),
+            ResolveError::Superfluous(span) => error_span(
+                format!("failed to resolve `{ident}`"),
+                Label::new(span).message("unknown type"),
+            ),
+            ResolveError::Module(span) => error_span(
+                format!("`{ident}` resolved to a module"),
+                Label::new(span).message("expected type, found module"),
+            ),
         };
         errors.push(diag);
     }
@@ -335,7 +336,7 @@ impl<'a> Lower<'a> {
     ) -> DefId {
         self.alloc_in_place(ident, kind, |this, ident, id| {
             if let Err(e) = this.resolver.define_type(&ident, id, kind) {
-                Self::report_error(&ident, e, &mut this.errors);
+                Self::report_error(&ident.name, e, &mut this.errors);
             }
             f(this, ident, id)
         })
@@ -353,7 +354,7 @@ impl<'a> Lower<'a> {
         self.alloc_in_place(ident, kind, |this, ident, id| {
             let res = this.resolver.start_scope(&ident, id, kind);
             if let Err(e) = res {
-                Self::report_error(&ident, e, &mut this.errors);
+                Self::report_error(&ident.name, e, &mut this.errors);
             }
 
             let def = f(this, ident, id);
@@ -826,7 +827,7 @@ impl<'a> Lower<'a> {
                 .resolver
                 .declare_type(&decl.ident, Symbol::Decl(id, symbol))
             {
-                Self::report_error(&decl.ident, e, &mut self.errors);
+                Self::report_error(&decl.ident.name, e, &mut self.errors);
             }
 
             Def {

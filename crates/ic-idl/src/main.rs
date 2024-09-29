@@ -168,13 +168,12 @@ fn try_parse(
     let report = ic_lint::lint_hir(&hir.context);
     errors.extend(report.diagnostics.into_iter().map(Into::into));
 
-    // Lower the HIR to a ptree
-    let ptree = ic_ptree_lower::from_hir(&hir, vfs);
-    errors.extend(hir.errors.into_iter().map(Into::into));
-
-    if errors.is_empty() {
+    // Lower the HIR to a ptree, but only if construction of the HIR succeeded
+    if errors.is_empty() && hir.errors.is_empty() {
+        let ptree = ic_ptree_lower::from_hir(&hir, vfs);
         Ok(ptree)
     } else {
+        errors.extend(hir.errors.into_iter().map(Into::into));
         Err(errors)
     }
 }

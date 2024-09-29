@@ -34,6 +34,7 @@ use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
 
+use crate::ast;
 use crate::common::{self, NUM_UNDEF, collect_with, create_ident, path_str};
 
 struct TreeBuilder<'a> {
@@ -125,8 +126,9 @@ impl<'a> TreeBuilder<'a> {
     }
 
     unsafe fn lower_variant(&mut self, var: &Variant) -> *mut sys::ptree {
-        let cases = collect_with(self.state, sys::append_node, &var.labels, |_| {
-            sys::create_case_label(self.state, NUM_UNDEF)
+        let cases = collect_with(self.state, sys::append_node, &var.labels, |label| {
+            let value = self.lower_numeric(label);
+            sys::create_case_label(self.state, value)
         });
 
         let decl = self.lower_decl(&var.ident);
@@ -264,7 +266,8 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Enum(v) => {
                 let values = collect_with(self.state, sys::append_enum_node, &v.fields, |var| {
                     let name = create_ident(&var.ident.name);
-                    let node = sys::create_enum_value(self.state, name.as_ptr(), NUM_UNDEF);
+                    let value = sys::create_i64(self.state, var.value as i64, 10);
+                    let node = sys::create_enum_value(self.state, name.as_ptr(), value);
                     self.annotate(node, &var.annotations)
                 });
                 sys::create_enum(self.state, ident, values)
@@ -272,12 +275,14 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Const(v) => {
                 let ty = self.lower_ty(&v.ty);
                 let decl = self.lower_decl(&def.ident);
-                sys::create_const_node(self.state, decl, ty, NUM_UNDEF)
+                let value = self.lower_numeric(&v.value);
+                sys::create_const_node(self.state, decl, ty, value)
             }
             DefKind::Bitmask(v) => {
                 let values = collect_with(self.state, sys::append_enum_node, &v.flags, |flag| {
                     let name = create_ident(&flag.ident.name);
-                    let node = sys::create_bitmask_value(self.state, name.as_ptr(), NUM_UNDEF);
+                    let value = sys::create_u64(self.state, flag.value as u64, 10);
+                    let node = sys::create_bitmask_value(self.state, name.as_ptr(), value);
                     self.annotate(node, &flag.annotations)
                 });
                 sys::create_bitmask(self.state, ident, values)
@@ -327,7 +332,7 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
-unsafe fn inject_builtin(state: *mut sys::parser_state) {
+unsafe fn _inject_builtin(state: *mut sys::parser_state) {
     let builtin = common::parse_builtin();
     let hir = ic_hir::from_ast(builtin.tree);
     assert!(hir.errors.is_empty());
@@ -346,8 +351,9 @@ unsafe fn inject_builtin(state: *mut sys::parser_state) {
 pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     let state = unsafe { sys::ic_parser_create() };
 
-    // Inject the built-in annotations
-    inject_builtin(state);
+    // Inject the built-in annotations. We use the AST version to preserve the
+    // default values that are not yet included in the HIR.
+    ast::inject_builtin(state);
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);

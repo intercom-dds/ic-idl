@@ -431,7 +431,7 @@ impl<'a> Lower<'a> {
                     "char" => PrimitiveTy::Char,
                     "wchar" => PrimitiveTy::WChar,
                     "int8" => PrimitiveTy::Int8,
-                    "uint8" => PrimitiveTy::UInt8,
+                    "octet" | "uint8" => PrimitiveTy::UInt8,
                     "int16" => PrimitiveTy::Int16,
                     "uint16" => PrimitiveTy::UInt16,
                     "int32" => PrimitiveTy::Int32,

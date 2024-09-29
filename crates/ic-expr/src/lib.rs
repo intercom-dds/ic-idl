@@ -79,8 +79,6 @@ pub trait Handler<T, R> {
     fn eval_lit(lit: &T) -> R;
 }
 
-// I guess we could pass a trait or callback that deals with Lit(T)?
-// The issue here is that we need a notion of types.
 #[allow(clippy::needless_pass_by_value)]
 pub fn eval<T, H, R>(_expr: &Expr<T>, _handler: H) -> R
 where

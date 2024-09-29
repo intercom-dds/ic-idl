@@ -481,7 +481,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
     }
 }
 
-unsafe fn inject_builtin(state: *mut sys::parser_state) {
+pub unsafe fn inject_builtin(state: *mut sys::parser_state) {
     let builtin = common::parse_builtin();
 
     // Discard the generated nodes -- we don't want to include the built-in

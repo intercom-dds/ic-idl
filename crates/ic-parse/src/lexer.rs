@@ -257,7 +257,7 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Star => Kind::Star,
             ic_preproc::Kind::Slash => Kind::Slash,
             ic_preproc::Kind::Modulo => Kind::Modulo,
-            ic_preproc::Kind::Number { .. } => Kind::Decimal(0),
+            ic_preproc::Kind::Number { .. } => Kind::Decimal(1),
             ic_preproc::Kind::Float => Kind::Float(0.0),
             ic_preproc::Kind::Newline => todo!(),
             ic_preproc::Kind::Backslash => todo!(),

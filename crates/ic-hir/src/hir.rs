@@ -73,7 +73,7 @@ impl PrimitiveTy {
             PrimitiveTy::Int16 => "int16",
             PrimitiveTy::UInt16 => "uint16",
             PrimitiveTy::Int32 => "int32",
-            PrimitiveTy::UInt32 => "uint64",
+            PrimitiveTy::UInt32 => "uint32",
             PrimitiveTy::Int64 => "int64",
             PrimitiveTy::UInt64 => "uint64",
             PrimitiveTy::Float32 => "float",

@@ -96,13 +96,13 @@ impl Interp<'_> {
         let lhs = self.to_value(&binary.lhs);
         let rhs = self.to_value(&binary.rhs);
         match binary.op.kind {
-            OpKind::Add => lhs + rhs,
-            OpKind::Sub => lhs - rhs,
-            OpKind::Multiply => lhs * rhs,
-            OpKind::Divide => lhs / rhs,
+            OpKind::Add => lhs.overflowing_add(rhs).0,
+            OpKind::Sub => lhs.overflowing_sub(rhs).0,
+            OpKind::Multiply => lhs.overflowing_mul(rhs).0,
+            OpKind::Divide => lhs.overflowing_div(rhs).0,
             OpKind::Modulo => lhs % rhs,
-            OpKind::Lshift => lhs << rhs,
-            OpKind::Rshift => lhs >> rhs,
+            OpKind::Lshift => lhs.overflowing_shl(rhs as u32).0,
+            OpKind::Rshift => lhs.overflowing_shr(rhs as u32).0,
             OpKind::Or => lhs | rhs,
             OpKind::Xor => lhs ^ rhs,
             OpKind::And => lhs & rhs,

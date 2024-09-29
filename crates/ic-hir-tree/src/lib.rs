@@ -230,6 +230,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         DefKind::Const(v) => {
             let ty = emit_ty(context, &v.ty);
             node.push(leaf!("{} {ty} builtin", "type".purple()));
+            node.push(leaf!("{} {:?}", "value".purple(), v.value));
         }
         DefKind::Bitmask(v) => {
             let ty = emit_ty(context, &v.ty);

@@ -451,13 +451,7 @@ impl<'a> Lower<'a> {
                     "float" => PrimitiveTy::Float32,
                     "double" => PrimitiveTy::Float64,
                     "long double" => PrimitiveTy::Float128,
-                    _ => {
-                        return if let Some(v) = self.lookup_path(v) {
-                            Ty::Adt(v)
-                        } else {
-                            Ty::Any
-                        };
-                    }
+                    _ => return self.lookup_path(v).map_or(Ty::Any, Ty::Adt),
                 };
                 Ty::Primitive(kind)
             }

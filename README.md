@@ -58,6 +58,12 @@ contains the binary and serialization libraries.
 
 ## Development
 
+Build and run `ic-idl`:
+
+```sh
+cargo run
+```
+
 Run all tests:
 
 ```sh
@@ -83,6 +89,11 @@ semver-breaking change.
 - Variadic macros are not supported.
 - \_Pragma is not supported.
 - IDL keywords cannot be used in preprocessor directives.
-- Diagnostics may emit labels that are incorrectly placed.
+- Diagnostics may emit labels that are incorrectly placed, especially for
+  multi-label diagnostics.
 - All diagnostics are treated as errors, even if they are warnings.
-- `valuetype`s are parsed but not type checkad and emitted.
+- `valuetype`s are parsed but not resolved or emitted.
+- Preprocessor errors are not displayed.
+- Expressions are not type checked.
+- The Python backend has not been updated and will still generate code that
+  targets InterCOM DDS.

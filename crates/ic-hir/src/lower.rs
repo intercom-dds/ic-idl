@@ -227,7 +227,6 @@ impl<'a> Lower<'a> {
                 segments
             }
         };
-        tracing::info!("lookup: {qualified:?}");
 
         let resolved = self.resolver.resolve_path(&path);
 
@@ -261,7 +260,6 @@ impl<'a> Lower<'a> {
     }
 
     fn update_type(&mut self, id: DefId, data: DefKind) {
-        tracing::info!("updating partial type {id:?} with {data:?}");
         let def = self.ctx.definitions.get_mut(id);
         def.kind = data;
         def.flags.unset(DefFlags::IS_INCOMPLETE);

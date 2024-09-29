@@ -36,7 +36,6 @@ use ic_emit::File;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
 use ic_vfs::SourceMap;
-use tracing_subscriber::filter::LevelFilter;
 use util::{Error, collect_files, write_if_changed};
 
 mod config;
@@ -77,12 +76,6 @@ fn main() {
 
     // Install a panic handler to catch failed asserts.
     panic::install_hook();
-
-    // Configure logging
-    tracing_subscriber::fmt()
-        .with_ansi(true)
-        .with_max_level(LevelFilter::TRACE)
-        .init();
 
     let mut vfs = SourceMap::default();
     let generated = match try_main(&options, &mut vfs) {

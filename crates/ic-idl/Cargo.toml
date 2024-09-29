@@ -59,5 +59,3 @@ ic-codegen-python = { path = "../ic-codegen-python" }
 ic-codegen-rust = { path = "../ic-codegen-rust" }
 
 intercom-cts.workspace = true
-
-tracing-subscriber = "0.3.18"

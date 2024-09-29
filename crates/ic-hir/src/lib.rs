@@ -72,11 +72,10 @@ where
     I: IntoIterator<Item = ic_syntax::Item>,
 {
     let mut context = Context::new();
-    tracing::info!("lowering AST -> HIR: {context:?}");
-    let (order, errors) = lower::from_ast(&mut context, ast);
+    let (order, mut errors) = lower::from_ast(&mut context, ast);
 
     // Check for non-type name collisions, like struct members, etc.
-    hygiene::check(&context, &order);
+    hygiene::check(&context, &order, &mut errors);
 
     ResolvedGraph {
         context,

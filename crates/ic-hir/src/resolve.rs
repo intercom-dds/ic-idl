@@ -210,8 +210,8 @@ impl Resolver {
     /// Determines if two symbols are compatible. Compatible in this case means
     /// they can co-exist in the same lexical scope, for example if a type was
     /// forward declared then later defined.
-    fn is_compatible(ident: &Ident, lhs: &Symbol, rhs: &Symbol) -> bool {
-        let eq = match (lhs, rhs) {
+    fn is_compatible(lhs: &Symbol, rhs: &Symbol) -> bool {
+        match (lhs, rhs) {
             // Modules are open-ended
             (Symbol::Module(_), Symbol::Module(_)) => true,
 
@@ -226,15 +226,7 @@ impl Resolver {
                 _ => false,
             },
             _ => false,
-        };
-
-        if !eq {
-            tracing::error!(
-                "incompatible: {} was previously defined as ....",
-                ident.name,
-            );
         }
-        eq
     }
 
     /// Performs a downward search for a symbol. This will never look at parent
@@ -257,7 +249,6 @@ impl Resolver {
                 }
                 _ => {
                     if segments.next().is_some() {
-                        tracing::error!("path resolved to type with superfluous segments");
                         return Err(ResolveError::Superfluous(seg.span));
                     }
                     return Ok(entry);
@@ -299,10 +290,7 @@ impl Resolver {
                     self.current_scope.push(id);
                     Ok(())
                 }
-                _ => {
-                    tracing::error!("symbol {} was previously registered as a type", ident.name);
-                    Err(ResolveError::Redefined(ident.span))
-                }
+                _ => Err(ResolveError::Redefined(ident.span)),
             }
         } else {
             // TODO: might be a good idea to let each mod know what the parent ID is.
@@ -379,10 +367,6 @@ impl Resolver {
     /// Wraps up the current module and restores the previous scope.
     pub fn finish_scope(&mut self) {
         let last = self.current_scope.pop();
-        tracing::info!(
-            "finished scope: {:?}",
-            self.lexical_scopes.get(last.unwrap()),
-        );
         debug_assert!(
             !self.current_scope.is_empty(),
             "closed scope but stack is empty",
@@ -396,7 +380,7 @@ impl Resolver {
         }
 
         if let Some(prev) = self.local_symbol(ident) {
-            if Self::is_compatible(ident, prev, &symbol) {
+            if Self::is_compatible(prev, &symbol) {
                 Ok(())
             } else {
                 // TODO: should be mismatch
@@ -413,9 +397,6 @@ impl Resolver {
 
     /// Registers a new type in the current scope.
     pub fn define_type_old(&mut self, ident: &Ident, symbol: Symbol) -> bool {
-        let qualified = self.qualified_symbol(ident);
-        tracing::info!("registering {qualified}");
-
         // If the type was previously declared, remove the declaration in
         // favor of the definition.
         if !matches!(symbol, Symbol::Decl(_, _)) {
@@ -423,7 +404,7 @@ impl Resolver {
         }
 
         if let Some(prev) = self.local_symbol(ident) {
-            Self::is_compatible(ident, prev, &symbol)
+            Self::is_compatible(prev, &symbol)
         } else {
             self.current_scope()
                 .symbols
@@ -494,7 +475,6 @@ impl Resolver {
                     Symbol::Const => todo!(),
                     Symbol::Adt(v, _) | Symbol::Decl(v, _) => {
                         if segments.peek().is_some() {
-                            tracing::error!("path resolved to type with superfluous segments");
                             return Err(ResolveError::Superfluous(first.span));
                         }
                         return Ok(*v);
@@ -527,8 +507,6 @@ impl Resolver {
             match entry {
                 Symbol::Adt(v, _) | Symbol::Decl(v, _) => {
                     if segments.next().is_some() {
-                        panic!();
-                        tracing::error!("path resolved to type with superfluous segments");
                         return Err(ResolveError::Superfluous(seg.span));
                     }
                     return Ok(*v);
@@ -584,7 +562,8 @@ impl Resolver {
     pub fn finish(self) {
         for (_, scope) in &self.lexical_scopes {
             for decl in &scope.decls {
-                tracing::error!("type {decl} was declared but not defined");
+                // TODO: this should produce an error, not panic
+                panic!("type {decl} was declared but not defined");
             }
         }
 

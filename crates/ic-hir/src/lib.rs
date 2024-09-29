@@ -25,21 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::all, warnings)]
+#![allow(dead_code, unused)]
 
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
-use std::num::NonZero;
-use std::rc::Rc;
 
 use ic_alloc::arena::{self, Arena};
-use ic_macros::EnumIter;
-use ic_syntax::util::{path_name, type_name};
-use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, Item, Span};
 
 pub use crate::ctx::Context;
-use crate::resolve::Resolver;
 
 mod ctx;
 mod hygiene;

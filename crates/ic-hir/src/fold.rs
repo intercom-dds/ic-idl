@@ -25,10 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::hir::{
-    AliasTy, AnnotationTy, BitmaskTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy, InterfaceTy,
-    ModuleTy, Numeric, StructTy, Ty, UnionTy, ValueTy,
-};
+use crate::hir::{Decl, Def, Numeric, Ty};
 
 pub trait Fold {
     fn fold_def(&mut self, def: Def) -> Def {

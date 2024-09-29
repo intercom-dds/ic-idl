@@ -25,9 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
@@ -106,7 +103,7 @@ impl Context {
         }
     }
 
-    pub fn resolve_path(&self, path: &ic_syntax::Path) -> TypeId {
+    pub fn resolve_path(&self, _path: &ic_syntax::Path) -> TypeId {
         todo!()
     }
 }

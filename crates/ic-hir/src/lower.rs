@@ -25,28 +25,21 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use std::mem::MaybeUninit;
-use std::num::NonZero;
-use std::ops::{Neg, Not};
+use std::collections::HashSet;
 use std::rc::Rc;
 
-use ic_alloc::arena::{Arena, Id};
-use ic_alloc::insensitive::{CaseMap, CaseSet};
+use ic_alloc::insensitive::CaseMap;
 use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span};
 use ic_macros::EnumIter;
 use ic_syntax::util::{self, path_name, type_name};
-use ic_syntax::visit::{Visitor, walk_item};
-use ic_syntax::{Expr, Ident, LiteralValue, Span};
+use ic_syntax::{Expr, Ident, Span};
 
 use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, ConstTy, Decl, Def, DefFlags, DefId,
     DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, ParamKind,
-    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, ValueTy, Variant,
+    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, Variant,
 };
 use crate::interp::Interp;
 use crate::resolve::{self, Resolver, Symbol, SymbolKind};
@@ -332,7 +325,7 @@ impl<'a> Lower<'a> {
                 return id;
             }
         } else {
-            self.resolver.start_scope(&ident, id, kind);
+            _ = self.resolver.start_scope(&ident, id, kind);
         }
 
         let res = f(self, ident, id);
@@ -349,7 +342,7 @@ impl<'a> Lower<'a> {
         } else {
             prev.map_or(0, |v| v + 1)
         };
-        prev.insert(val);
+        _ = prev.insert(val);
         val
     }
 
@@ -589,7 +582,6 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_annotation(&mut self, ann: ic_syntax::AnnotationAppl) -> Ann {
-        // let ty = self.lower_type(ic_syntax::Type::Path(ann.ident));
         let path = ann.ident;
         let args = ann
             .args

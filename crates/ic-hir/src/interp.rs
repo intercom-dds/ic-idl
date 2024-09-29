@@ -25,15 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::mem::MaybeUninit;
-use std::num::NonZero;
 use std::ops::{Neg, Not};
 use std::rc::Rc;
 
-use crate::Context;
 use crate::hir::{DefId, Numeric};
 use crate::lower::Lower;
 use crate::resolve::{self, Resolver, Symbol, SymbolKind};

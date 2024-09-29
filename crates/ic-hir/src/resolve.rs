@@ -25,12 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 
 use ic_alloc::arena::{self, Arena};
-use ic_syntax::{AnnotationDef, AnnotationField, Expr, Ident, ItemKind, Path, Span, util};
+use ic_syntax::{AnnotationDef, AnnotationField, Ident, ItemKind, Path, Span, util};
 
 use crate::Context;
 use crate::hir::{Decl, Def, DefId};

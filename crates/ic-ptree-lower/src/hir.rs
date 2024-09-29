@@ -132,7 +132,8 @@ impl<'a> TreeBuilder<'a> {
         let decl = self.lower_decl(&var.ident);
         let ty = self.lower_ty(&var.ty);
         let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
-        sys::create_union_member(self.state, mem, cases, ptr::null_mut())
+        let annotations = self.lower_annotations(&var.annotations);
+        sys::create_union_member(self.state, mem, cases, annotations)
     }
 
     unsafe fn lower_numeric(&mut self, num: &Numeric) -> *const sys::numeric {
@@ -153,8 +154,12 @@ impl<'a> TreeBuilder<'a> {
                 let str = CString::new(v.clone()).unwrap();
                 sys::create_str(self.state, str.as_ptr())
             }
-            Numeric::Const(_) => todo!(),
-            _ => todo!(),
+            Numeric::Const(v) => {
+                let node = self.lower_def(*v);
+                let numeric = sys::create_numeric_node(self.state, node);
+                sys::create_value_node(self.state, numeric, ptr::null_mut())
+            }
+            _ => ptr::null(),
         }
     }
 
@@ -172,11 +177,16 @@ impl<'a> TreeBuilder<'a> {
         sys::create_annotation_finish(self.state, params)
     }
 
-    unsafe fn annotate(&mut self, node: *mut sys::ptree, anns: &[Ann]) {
-        let annotations = collect_with(self.state, sys::append_node, anns, |ann| {
+    unsafe fn lower_annotations(&mut self, anns: &[Ann]) -> *mut sys::ptree {
+        collect_with(self.state, sys::append_node, anns, |ann| {
             self.lower_annotation(ann)
-        });
+        })
+    }
+
+    unsafe fn annotate(&mut self, node: *mut sys::ptree, anns: &[Ann]) -> *mut sys::ptree {
+        let annotations = self.lower_annotations(anns);
         sys::annotate(self.state, node, annotations);
+        node
     }
 
     #[allow(clippy::too_many_lines)]
@@ -222,7 +232,8 @@ impl<'a> TreeBuilder<'a> {
                 let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
-                    sys::create_member(self.state, decl, ty, ptr::null_mut())
+                    let ann = self.lower_annotations(&mem.annotations);
+                    sys::create_member(self.state, decl, ty, ann)
                 });
                 sys::create_struct_finish(self.state, members)
             }
@@ -233,7 +244,8 @@ impl<'a> TreeBuilder<'a> {
                 let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
-                    sys::create_member(self.state, decl, ty, ptr::null_mut())
+                    let ann = self.lower_annotations(&mem.annotations);
+                    sys::create_member(self.state, decl, ty, ann)
                 });
                 sys::create_exception_finish(self.state, members)
             }
@@ -252,7 +264,8 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Enum(v) => {
                 let values = collect_with(self.state, sys::append_enum_node, &v.fields, |var| {
                     let name = create_ident(&var.ident.name);
-                    sys::create_enum_value(self.state, name.as_ptr(), NUM_UNDEF)
+                    let node = sys::create_enum_value(self.state, name.as_ptr(), NUM_UNDEF);
+                    self.annotate(node, &var.annotations)
                 });
                 sys::create_enum(self.state, ident, values)
             }
@@ -264,7 +277,8 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Bitmask(v) => {
                 let values = collect_with(self.state, sys::append_enum_node, &v.flags, |flag| {
                     let name = create_ident(&flag.ident.name);
-                    sys::create_bitmask_value(self.state, name.as_ptr(), NUM_UNDEF)
+                    let node = sys::create_bitmask_value(self.state, name.as_ptr(), NUM_UNDEF);
+                    self.annotate(node, &flag.annotations)
                 });
                 sys::create_bitmask(self.state, ident, values)
             }

@@ -27,3 +27,35 @@
 
 //! Moves nested type definitions to their parent scope. This currently only
 //! applies to types defined inside interfaces and valuetypes.
+
+use ic_hir::fold::Fold;
+use ic_hir::{hir, ResolvedGraph};
+
+struct TyShift;
+
+impl Fold for TyShift {
+    fn fold_def(&mut self, def: hir::Def) -> hir::Def {
+        match &def.kind {
+            hir::DefKind::Interface(v) => {
+                def
+            }
+            _ => def,
+        }
+    }
+
+    fn fold_decl(&mut self, decl: hir::Decl) -> hir::Decl {
+        decl
+    }
+
+    fn fold_ty(&mut self, ty: hir::Ty) -> hir::Ty {
+        ty
+    }
+
+    fn fold_numeric(&mut self, num: hir::Numeric) -> hir::Numeric {
+        num
+    }
+}
+
+pub fn transform(hir: ResolvedGraph) -> ResolvedGraph {
+    hir
+}

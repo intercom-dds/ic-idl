@@ -387,11 +387,7 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_mod(&mut self, def: ic_syntax::ModuleDef) -> DefId {
-        let annotations = def
-            .annotations
-            .into_iter()
-            .map(|v| self.lower_annotation(v))
-            .collect();
+        let annotations = self.lower_annotations(def.annotations);
 
         self.with_scope(def.ident, SymbolKind::Module, |this, ident, id| {
             let definitions = def

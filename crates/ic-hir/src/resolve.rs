@@ -78,7 +78,11 @@ pub enum ResolveError {
 
     /// A mismatch between a declaration and definition occurred, for example
     /// if a type was declared as a `struct` but later defined as a `union`.
-    DeclMismatch { decl: Decl, def: Decl, span: Span },
+    DeclMismatch {
+        decl: SymbolKind,
+        def: SymbolKind,
+        span: Span,
+    },
 
     /// A part of the path resolved to a type, but there were superfluous
     /// segments. For example `a::b::c`, where `b` is a `struct`.
@@ -171,6 +175,14 @@ impl Resolver {
     /// Performs a lookup of the given identifier in the current scope.
     fn local_symbol(&mut self, ident: &Ident) -> Option<&mut Symbol> {
         self.current_scope().symbols.get_mut(&ident.name)
+    }
+
+    /// Returns the local scope if it is a module or non-ADT type.
+    fn local_scope(&mut self, ident: &Ident) -> Option<ScopeId> {
+        match self.local_symbol(ident)? {
+            Symbol::Module(scope) | Symbol::Lexical { scope, .. } => Some(*scope),
+            _ => None,
+        }
     }
 
     /// Returns a fully qualified name of the given identifier. This assumes
@@ -306,31 +318,6 @@ impl Resolver {
         }
     }
 
-    // TODO: generalize this and merge it with create_type and finish_type.
-    pub fn start_interface(&mut self, ident: &Ident, def: DefId) {
-        if let Some(sym) = self.local_symbol(ident) {
-            if !matches!(sym, Symbol::Decl(_, _)) {
-                tracing::error!(
-                    "interface {} was previously registered as a different symbol",
-                    ident.name,
-                );
-            }
-        }
-
-        let scope = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
-
-        // Register the module
-        self.current_scope()
-            .symbols
-            .insert(ident.name.clone(), Symbol::Lexical {
-                def,
-                scope,
-                kind: SymbolKind::Interface,
-            });
-
-        self.current_scope.push(scope);
-    }
-
     /// Returns `true` if the given symbol has been fully defined. This will
     /// return `false` for declarations and incomplete types.
     pub fn is_defined(&mut self, ident: &Ident) -> bool {
@@ -344,44 +331,49 @@ impl Resolver {
         }
     }
 
-    pub fn start_scope(&mut self, ident: &Ident, def: DefId, kind: SymbolKind) -> ScopeId {
-        // if let Some(sym) = self.local_symbol(ident) {
-        //     if !matches!(sym, Symbol::Decl(_, _)) {
-        //         tracing::error!(
-        //             "interface {} was previously registered as a different symbol",
-        //             ident.name,
-        //         );
-        //     }
-        // }
-
+    fn alloc_scope(&mut self, ident: &Ident, def: DefId, kind: SymbolKind) -> ScopeId {
         let scope = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
+        let symbol = match kind {
+            SymbolKind::Module => Symbol::Module(scope),
+            SymbolKind::Interface | SymbolKind::Valuetype => Symbol::Lexical { def, scope, kind },
+            _ => unreachable!(),
+        };
 
-        // Register the module
-        // TODO: we always register Lexical right now, should be Adt.
         self.current_scope()
             .symbols
-            .insert(ident.name.clone(), Symbol::Lexical {
-                def,
-                scope,
-                kind: SymbolKind::Interface,
-            });
-
-        self.current_scope.push(scope);
+            .insert(ident.name.clone(), symbol);
         scope
     }
 
-    pub fn finish_interface(&mut self) {
-        // TODO: if start_interface fails, this will pop the wrong stack
-        self.finish_scope();
-        // let last = self.current_scope.pop().unwrap();
-        // let last = self.lexical_scopes.get(last);
-        // match self.current_scope().symbols.get(&last.name).unwrap() {
-        //     Symbol::Adt(_, _) => todo!(),
-        //     Symbol::Decl(_, _) => todo!(),
-        //     Symbol::Const => todo!(),
-        //     Symbol::Lexical { scope } => todo!(),
-        //     Symbol::Module(_) => todo!(),
-        // }
+    pub fn start_scope(&mut self, ident: &Ident, def: DefId, kind: SymbolKind) -> Result<()> {
+        // Does the given symbol already exist? If not, create it.
+        let mut err = None;
+        let scope_id = if let Some(sym) = self.local_symbol(ident) {
+            match sym {
+                Symbol::Module(v) => *v,
+                Symbol::Decl(_, decl) => {
+                    if *decl != kind {
+                        err = Some(ResolveError::DeclMismatch {
+                            decl: *decl,
+                            def: kind,
+                            span: ident.span,
+                        });
+                    }
+
+                    // TODO: must replace decl with def
+                    self.alloc_scope(ident, def, kind)
+                }
+                _ => {
+                    panic!("already defined");
+                }
+            }
+        } else {
+            self.alloc_scope(ident, def, kind)
+        };
+
+        // Create a symbol for the definition
+        self.current_scope.push(scope_id);
+        err.map_or(Ok(()), Err)
     }
 
     /// Wraps up the current module and restores the previous scope.
@@ -398,21 +390,29 @@ impl Resolver {
     }
 
     /// Declares the existance of a type and its kind.
-    pub fn declare_type(&mut self, ident: &Ident, symbol: Symbol) {
+    pub fn declare_type(&mut self, ident: &Ident, symbol: Symbol) -> Result<()> {
         if self.local_symbol(ident).is_none() {
             self.current_scope().decls.insert(ident.name.clone());
         }
 
-        // Go through the motions of defining the type -- even if it has
-        // already been defined -- so we can report type errors.
-        self.define_type(ident, symbol);
+        if let Some(prev) = self.local_symbol(ident) {
+            if Self::is_compatible(ident, prev, &symbol) {
+                Ok(())
+            } else {
+                // TODO: should be mismatch
+                Err(ResolveError::Redefined(ident.span))
+            }
+        } else {
+            self.current_scope()
+                .symbols
+                .insert(ident.name.clone(), symbol);
+
+            Ok(())
+        }
     }
 
-    // TODO: this is only ever used for Adts. We should have separate functions
-    // for decls, types, consts, etc.
-    //
     /// Registers a new type in the current scope.
-    pub fn define_type(&mut self, ident: &Ident, symbol: Symbol) -> bool {
+    pub fn define_type_old(&mut self, ident: &Ident, symbol: Symbol) -> bool {
         let qualified = self.qualified_symbol(ident);
         tracing::info!("registering {qualified}");
 
@@ -423,14 +423,49 @@ impl Resolver {
         }
 
         if let Some(prev) = self.local_symbol(ident) {
-            // TODO: replace decls with def
-            // TODO: returning a bool here is not sufficient. leads to weird errors
             Self::is_compatible(ident, prev, &symbol)
         } else {
             self.current_scope()
                 .symbols
                 .insert(ident.name.clone(), symbol)
                 .is_none()
+        }
+    }
+
+    /// Registers a new type in the current scope.
+    pub fn define_type(&mut self, ident: &Ident, id: DefId, kind: SymbolKind) -> Result<()> {
+        if let Some(sym) = self.local_symbol(ident) {
+            match sym {
+                Symbol::Decl(_, decl) => {
+                    if *decl == kind {
+                        *sym = Symbol::Adt(id, kind);
+                        self.current_scope().decls.remove(&ident.name);
+                        Ok(())
+                    } else {
+                        Err(ResolveError::DeclMismatch {
+                            decl: *decl,
+                            def: kind,
+                            span: ident.span,
+                        })
+                    }
+                }
+                Symbol::Const => Ok(()),
+                Symbol::Adt(_, _) => Err(ResolveError::Redefined(ident.span)),
+                _ => unreachable!("non-ADT registered as a type"),
+            }
+        } else {
+            let symbol = match kind {
+                ItemKind::Decl => Symbol::Adt(id, kind),
+                ItemKind::Interface | ItemKind::Valuetype | ItemKind::Module => {
+                    unreachable!("non-ADT was registered as a type")
+                }
+                _ => Symbol::Adt(id, kind),
+            };
+
+            self.current_scope()
+                .symbols
+                .insert(ident.name.to_string(), symbol);
+            Ok(())
         }
     }
 

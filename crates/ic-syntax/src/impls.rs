@@ -28,8 +28,8 @@
 use crate::{
     AliasDef, AnnotationAppl, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef,
     ConstDef, Decl, DeclKind, Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Ident, InterfaceDef, InterfaceMember, Item, ModuleDef, Path, Prototype, Span, StructDef,
-    Type, UnionDef, UnionField, ValueMember, ValuetypeDef,
+    Field, Ident, InterfaceDef, InterfaceMember, Item, ItemKind, ModuleDef, Path, Prototype, Span,
+    StructDef, Type, UnionDef, UnionField, ValueMember, ValuetypeDef,
 };
 
 impl Item {
@@ -215,5 +215,25 @@ impl Item {
             Item::DeclValue(v) => v.annotations = annotations,
         }
         self
+    }
+}
+
+impl ItemKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Annotation => "annotation",
+            Self::Module => "module",
+            Self::Struct => "struct",
+            Self::Union => "union",
+            Self::Enum => "enum",
+            Self::Exception => "exception",
+            Self::Bitmask => "bitmask",
+            Self::Bitset => "bitset",
+            Self::Const => "const",
+            Self::Typedef => "typedef",
+            Self::Interface => "interface",
+            Self::Valuetype => "valuetype",
+            Self::Decl => "decl",
+        }
     }
 }

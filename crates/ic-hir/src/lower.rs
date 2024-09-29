@@ -42,7 +42,7 @@ use crate::hir::{
     Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, Variant,
 };
 use crate::interp::Interp;
-use crate::resolve::{self, Resolver, Symbol, SymbolKind};
+use crate::resolve::{self, ResolveError, Resolver, Symbol, SymbolKind};
 
 /// Responsible for lowering the AST to a HIR. This process will, amongst other
 /// things, perform type resolution, evaluate expressions, assign values to
@@ -235,14 +235,7 @@ impl<'a> Lower<'a> {
         match resolved {
             Ok(id) => Some(id),
             Err(err) => {
-                let span = match err {
-                    resolve::ResolveError::Undefined(span)
-                    | resolve::ResolveError::Redefined(span)
-                    | resolve::ResolveError::Module(span)
-                    | resolve::ResolveError::Superfluous(span)
-                    | resolve::ResolveError::DeclMismatch { span, .. } => span,
-                };
-
+                let span = err.primary_span();
                 let diag = error_span(
                     format!("failed to resolve type `{}`", qualified.yellow()),
                     Label::new(span).message("unknown type"),
@@ -279,10 +272,10 @@ impl<'a> Lower<'a> {
     /// a definition can directly refer to itself, the symbol must also be
     /// registered before the type's members have been processed.
     ///
-    /// This function allocates a placeholder declaration for the type,
-    /// registers it in the resolver, and replaces the previously allocated
-    //
-    fn with_scope(
+    /// This function allocates a placeholder declaration for the type, calls
+    /// the given closure and then replaces the previously allocated
+    /// placeholder in-place with the definition returned by the closure.
+    fn alloc_in_place(
         &mut self,
         ident: Ident,
         kind: SymbolKind,
@@ -306,32 +299,69 @@ impl<'a> Lower<'a> {
             flags: DefFlags::IS_INCOMPLETE,
         });
 
-        if !matches!(kind, SymbolKind::Module | SymbolKind::Decl)
-            && self.resolver.is_defined(&ident)
-        {
-            let diag = error_span(
-                format!("duplicate registration of `{}`", ident.name.yellow()),
-                Label::new(ident.span).message("redefined here"),
-            );
-            self.errors.push(diag);
-        }
-
-        // TODO: should we skip the definition altogether? or do we still want
-        // to return an ID?
-        if matches!(kind, SymbolKind::Module) {
-            if let Err(e) = self.resolver.start_module(&ident) {
-                let diag = error_span(format!("error: {e:?}"), Label::new(e.primary_span()));
-                self.errors.push(diag);
-                return id;
-            }
-        } else {
-            _ = self.resolver.start_scope(&ident, id, kind);
-        }
-
         let res = f(self, ident, id);
-        self.resolver.finish_scope();
         *self.ctx.definitions.get_mut(id) = res;
         id
+    }
+
+    // This is not a member function as borrowing the entirety of `Self` is
+    // problematic when it's already borrowed in some closures. Ideally we
+    // should have a separate error-reporting mechanism that is more flexible
+    // than a vector.
+    fn report_error(ident: &Ident, error: ResolveError, errors: &mut Vec<Diag>) {
+        let ident = ident.name.yellow();
+        let diag = match error {
+            ResolveError::Undefined(_) => todo!(),
+            ResolveError::Redefined(span) => error_span(
+                format!("duplicate registration of `{ident}`"),
+                Label::new(span).message("redefined here"),
+            ),
+            ResolveError::DeclMismatch { decl, span, .. } => error_span(
+                format!("`{ident}` was previously declared as a {}", decl.name()),
+                Label::new(span).message("inconsistent type"),
+            ),
+
+            ResolveError::Superfluous(_) => todo!(),
+            ResolveError::Module(_) => todo!(),
+        };
+        errors.push(diag);
+    }
+
+    /// Allocates a definition and registers the type in the resolver. This is
+    /// only inteded to be used with ADTs.
+    fn construct_type(
+        &mut self,
+        ident: Ident,
+        kind: SymbolKind,
+        f: impl FnOnce(&mut Self, Ident, DefId) -> Def,
+    ) -> DefId {
+        self.alloc_in_place(ident, kind, |this, ident, id| {
+            if let Err(e) = this.resolver.define_type(&ident, id, kind) {
+                Self::report_error(&ident, e, &mut this.errors);
+            }
+            f(this, ident, id)
+        })
+    }
+
+    /// Creates a new lexical scope with the given `kind`. This is a helper
+    /// function for dealing with modules, interfaces, valuetypes and
+    /// annotations, all of which may contain nested type definitions.
+    fn with_scope(
+        &mut self,
+        ident: Ident,
+        kind: SymbolKind,
+        f: impl FnOnce(&mut Self, Ident, DefId) -> Def,
+    ) -> DefId {
+        self.alloc_in_place(ident, kind, |this, ident, id| {
+            let res = this.resolver.start_scope(&ident, id, kind);
+            if let Err(e) = res {
+                Self::report_error(&ident, e, &mut this.errors);
+            }
+
+            let def = f(this, ident, id);
+            this.resolver.finish_scope();
+            def
+        })
     }
 
     /// Helper function for incrementing values in bitmasks and enums, where
@@ -387,7 +417,7 @@ impl<'a> Lower<'a> {
         let parent = def.parent.and_then(|v| self.lookup_path(v));
         let annotations = self.lower_annotations(def.annotations);
 
-        self.with_scope(def.ident, SymbolKind::Struct, |this, ident, id| {
+        self.construct_type(def.ident, SymbolKind::Struct, |this, ident, id| {
             let members = def
                 .members
                 .into_iter()
@@ -505,7 +535,7 @@ impl<'a> Lower<'a> {
     fn lower_except(&mut self, def: ic_syntax::ExceptDef) -> DefId {
         let annotations = self.lower_annotations(def.annotations);
 
-        self.with_scope(def.ident, SymbolKind::Exception, |this, ident, id| {
+        self.construct_type(def.ident, SymbolKind::Exception, |this, ident, id| {
             let members = def
                 .members
                 .into_iter()
@@ -563,7 +593,7 @@ impl<'a> Lower<'a> {
         let disc = self.lower_type(def.disc.ty);
         let annotations = self.lower_annotations(def.annotations);
 
-        self.with_scope(def.ident, SymbolKind::Union, |this, ident, id| {
+        self.construct_type(def.ident, SymbolKind::Union, |this, ident, id| {
             let variants = def
                 .fields
                 .into_iter()
@@ -621,7 +651,7 @@ impl<'a> Lower<'a> {
         let ty = Ty::Primitive(PrimitiveTy::UInt32);
         let annotations = self.lower_annotations(def.annotations);
 
-        self.with_scope(def.ident, SymbolKind::Struct, |this, ident, id| Def {
+        self.construct_type(def.ident, SymbolKind::Struct, |this, ident, id| Def {
             id,
             ident,
             annotations,
@@ -647,7 +677,7 @@ impl<'a> Lower<'a> {
         let ty = Ty::Primitive(PrimitiveTy::UInt32);
         let annotations = self.lower_annotations(def.annotations);
 
-        self.with_scope(def.ident, SymbolKind::Enum, |this, ident, id| {
+        self.construct_type(def.ident, SymbolKind::Enum, |this, ident, id| {
             let flags = def
                 .bits
                 .into_iter()
@@ -671,7 +701,7 @@ impl<'a> Lower<'a> {
         let (ident, ty) = self.lower_declarator(def.decl, ty);
         let annotations = self.lower_annotations(def.annotations);
 
-        self.with_scope(ident, SymbolKind::Const, |_, ident, id| Def {
+        self.construct_type(ident, SymbolKind::Const, |_, ident, id| Def {
             id,
             ident,
             annotations,
@@ -689,7 +719,7 @@ impl<'a> Lower<'a> {
         annotations: Vec<Ann>,
     ) -> DefId {
         let (ident, ty) = self.lower_declarator(decl, ty);
-        self.with_scope(ident, SymbolKind::Typedef, |this, ident, id| Def {
+        self.construct_type(ident, SymbolKind::Typedef, |this, ident, id| Def {
             id,
             ident,
             annotations,
@@ -798,8 +828,12 @@ impl<'a> Lower<'a> {
         };
 
         self.ctx.definitions.alloc_with_id(|id| {
-            self.resolver
-                .declare_type(&decl.ident, Symbol::Decl(id, symbol));
+            if let Err(e) = self
+                .resolver
+                .declare_type(&decl.ident, Symbol::Decl(id, symbol))
+            {
+                Self::report_error(&decl.ident, e, &mut self.errors);
+            }
 
             Def {
                 id,

@@ -45,6 +45,9 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
 
     fn visit_annotation_def(&mut self, _: &'a ic_syntax::AnnotationDef) {}
 
+    // don't visit types
+    fn visit_type(&mut self, _: &'a ic_syntax::Type) {}
+
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
         if IDL_KEYWORDS.contains(&ident.name.as_str())
             && (ident.span.end.offset - ident.span.start.offset) as usize == ident.name.len()

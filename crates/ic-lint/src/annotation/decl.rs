@@ -40,7 +40,7 @@ impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
     fn visit_forward_decl(&mut self, decl: &'a ic_syntax::Decl) {
         // only issue one diagnostic per decl
         if let Some(ann) = decl.annotations.first() {
-            let span = util::path_span(&ann.ty);
+            let span = util::path_span(&ann.ident);
             let diag = warn_span(
                 "annotations on forward declarations are ignored",
                 Label::new(span).message("defined here"),

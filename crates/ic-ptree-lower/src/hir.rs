@@ -356,6 +356,13 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
         sys::create_include_finish(state, node)
     });
 
-    let result = sys::ic_parser_result(state, tree);
-    ParseResult::from_raw(result)
+    let result = {
+        let inner = sys::ic_parser_result(state, tree);
+        ParseResult::from_raw(inner)
+    };
+
+    if let Some(err) = result.diagnostics() {
+        debug_assert!(false, "{err}");
+    }
+    result
 }

@@ -28,7 +28,7 @@
 use std::borrow::Borrow;
 use std::iter::Enumerate;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::{panic, slice};
 
@@ -246,6 +246,22 @@ impl<T> Index<Id<T>> for Arena<T> {
 impl<T> IndexMut<Id<T>> for Arena<T> {
     fn index_mut(&mut self, index: Id<T>) -> &mut Self::Output {
         &mut self.elements[index.id]
+    }
+}
+
+impl<T> Deref for Arena<T> {
+    type Target = [T];
+
+    #[inline]
+    fn deref(&self) -> &[T] {
+        &self.elements
+    }
+}
+
+impl<T> DerefMut for Arena<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [T] {
+        &mut self.elements
     }
 }
 

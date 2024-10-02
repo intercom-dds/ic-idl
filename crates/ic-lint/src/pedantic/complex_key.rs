@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, warn_span};
+use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefKind, Ty};
 use ic_hir::visit::Visitor;
 use ic_vfs::Span;
@@ -36,29 +37,43 @@ use crate::{Category, Lint, LintCtx};
 /// complex types are used.
 pub struct ComplexMapKey<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for ComplexMapKey<'a> {
     fn category() -> Category {
         Category::Pedantic
     }
+
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
+        let mut res = ComplexMapKey { ctx, hir };
+        ic_hir::visit::walk_tree(&mut res, &hir.context.definitions);
+    }
+}
+
+fn is_complex(ctx: &ic_hir::Context, ty: &Ty) -> bool {
+    match ty {
+        Ty::Primitive(_) | Ty::String { .. } => false,
+        Ty::Adt(id) => match &ctx.type_of(*id).kind {
+            DefKind::Enum(_) | DefKind::Bitmask(_) => false,
+            DefKind::Alias(v) => is_complex(ctx, &v.ty),
+            _ => true,
+        },
+        _ => true,
+    }
 }
 
 impl<'a> Visitor<'a> for ComplexMapKey<'a> {
-    // TODO: span of Ty
     fn visit_ty(&mut self, ty: &'a Ty) {
-        let ctx = ic_hir::Context::new();
         if let Ty::Map { key, .. } = ty {
-            // TODO: base_type_of
-            // let key_id = ctx.resolve_type(&ty);
-            if let Ty::Adt(adt) = key.as_ref() {
-                let diag = warn_span(
-                    "complex types as map keys is not standard",
-                    Label::new(Span::default()).message("non-primitive map key"),
-                )
-                .note("only integers, strings, and enums may be used as map keys");
-
-                self.ctx.report(diag);
+            if is_complex(&self.hir.context, key) {
+                // TODO: we need the span of the type
+                // let diag = warn_span(
+                //     "complex types as map keys is not standard",
+                //     Label::new().message("non-primitive map key"),
+                // )
+                // .note("only integers, strings, and enums may be used as map keys");
+                // self.ctx.report(diag);
             }
         }
     }

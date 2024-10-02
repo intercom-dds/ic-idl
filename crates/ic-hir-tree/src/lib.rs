@@ -291,7 +291,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
                 Decl::Interface => "interface",
                 Decl::Valuetype => "valuetype",
             };
-            node.push(leaf!("{} {}", "kind".green(), kind.cyan()));
+            node.push(leaf!("{} {}", "kind".purple(), kind.cyan()));
         }
     }
     node

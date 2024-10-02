@@ -41,7 +41,9 @@ pub trait Visitor<'a> {
 
     fn visit_module(&mut self, def: &'a Def, data: &'a ModuleTy) {}
 
-    fn visit_struct(&mut self, def: &'a Def, data: &'a StructTy) {}
+    fn visit_struct(&mut self, def: &'a Def, data: &'a StructTy) {
+        walk_struct(self, data)
+    }
 
     fn visit_except(&mut self, def: &'a Def, data: &'a ExceptTy) {}
 
@@ -92,5 +94,14 @@ where
         DefKind::Interface(v) => visitor.visit_interface(def, v),
         DefKind::Valuetype(v) => visitor.visit_valuetype(def, v),
         DefKind::Decl(v) => visitor.visit_decl(def, v),
+    }
+}
+
+pub fn walk_struct<'a, V>(visitor: &mut V, data: &'a StructTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for mem in &data.members {
+        visitor.visit_ty(&mem.ty);
     }
 }

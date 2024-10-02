@@ -219,6 +219,7 @@ impl Item {
 }
 
 impl ItemKind {
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Annotation => "annotation",

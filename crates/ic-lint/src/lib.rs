@@ -97,10 +97,7 @@ pub trait Lint<'a>: Sized {
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
-    #[must_use]
-    fn check_hir(context: &ic_hir::Context, graph: &[ic_hir::hir::Def]) -> Vec<Diag> {
-        todo!()
-    }
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {}
 }
 
 #[must_use]
@@ -150,8 +147,19 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
 }
 
 /// Set of lints that operates on the HIR.
-pub fn lint_hir(_hir: &ic_hir::Context) -> Report {
+pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
+    let ctx = LintCtx {
+        vfs,
+        diagnostics: RefCell::default(),
+    };
+
+    let lints = &[pedantic::complex_key::ComplexMapKey::check_hir];
+
+    for check in lints {
+        check(&ctx, hir);
+    }
+
     Report {
-        diagnostics: vec![],
+        diagnostics: ctx.diagnostics.take(),
     }
 }

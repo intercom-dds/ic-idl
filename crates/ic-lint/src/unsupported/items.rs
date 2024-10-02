@@ -36,7 +36,6 @@ pub struct Unsupported<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-// TODO: check for long double
 impl<'a> Visitor<'a> for Unsupported<'a> {
     fn visit_bitset(&mut self, bitset: &'a ic_syntax::BitsetDef) {
         let diag = warn_span(

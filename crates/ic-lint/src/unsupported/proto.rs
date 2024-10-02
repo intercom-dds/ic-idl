@@ -29,12 +29,13 @@ use ic_diagnostic::{Diag, Label, error_span};
 use ic_hir::hir;
 use ic_hir::visit::Visitor;
 
-use crate::{Category, Lint};
+use crate::{Category, Lint, LintCtx};
 
-#[derive(Default)]
-pub struct Proto(Vec<Diag>);
+pub struct Proto<'a> {
+    ctx: &'a LintCtx<'a>,
+}
 
-impl<'a> Visitor<'a> for Proto {
+impl<'a> Visitor<'a> for Proto<'_> {
     fn visit_enum(&mut self, def: &'a hir::Def, ty: &'a hir::EnumTy) {
         if let Some(field) = ty.fields.first() {
             if field.value != 0 {
@@ -43,23 +44,19 @@ impl<'a> Visitor<'a> for Proto {
                     Label::new(field.ident.span)
                         .message(format!("this field has the value {}", field.value)),
                 );
-                self.0.push(diag);
+                self.ctx.report(diag);
             }
         }
     }
 }
 
-impl<'a> Lint<'a> for Proto {
+impl<'a> Lint<'a> for Proto<'_> {
     fn category() -> Category {
         Category::Unsupported
     }
 
-    fn check(_: &'a crate::LintCtx<'_>, _: &[ic_syntax::Item]) {}
-
-    #[must_use]
-    fn check_hir(_: &ic_hir::Context, hir: &[hir::Def]) -> Vec<Diag> {
-        let mut res = Proto::default();
-        ic_hir::visit::walk_tree(&mut res, hir);
-        res.0
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
+        let mut res = Proto { ctx };
+        ic_hir::visit::walk_tree(&mut res, &hir.context.definitions);
     }
 }

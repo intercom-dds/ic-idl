@@ -158,7 +158,7 @@ fn try_parse(
     }
 
     // Lint the HIR
-    let report = ic_lint::lint_hir(&hir.context);
+    let report = ic_lint::lint_hir(&hir, vfs);
     errors.extend(report.diagnostics.into_iter().map(Into::into));
 
     // Lower the HIR to a ptree, but only if construction of the HIR succeeded

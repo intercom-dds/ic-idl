@@ -39,7 +39,7 @@ use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, ConstTy, Decl, Def, DefFlags, DefId,
     DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, ParamKind,
-    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TypeId, UnionTy, Variant,
+    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, TypeId, UnionTy, Variant,
 };
 use crate::interp::Interp;
 use crate::resolve::{self, ResolveError, Resolver, Symbol, SymbolKind};
@@ -244,9 +244,13 @@ impl<'a> Lower<'a> {
         let mut bounds = bounds.iter().rev();
         for b in bounds {
             let len = self.bound_expr(b);
-            ty = Ty::Array {
-                ty: Box::new(ty),
-                len,
+            let span = ty.span;
+            ty = Ty {
+                kind: TyKind::Array {
+                    ty: Box::new(ty),
+                    len,
+                },
+                span,
             };
         }
         ty
@@ -434,24 +438,40 @@ impl<'a> Lower<'a> {
         use ic_syntax::Type;
 
         match ty {
-            Type::Any(_) => Ty::Any,
-            Type::Fixed(_) => Ty::Fixed,
-            Type::Sequence(v) => Ty::Sequence {
-                ty: Box::new(self.lower_type(*v.ty)),
-                bound: v.bound.map(|e| self.bound_expr(&e)),
+            Type::Any(v) => Ty {
+                kind: TyKind::Any,
+                span: v.span,
             },
-            Type::String(v) => Ty::String {
-                wide: v.wide,
-                bound: v.bound.map(|e| self.bound_expr(&e)),
+            Type::Fixed(v) => Ty {
+                kind: TyKind::Fixed,
+                span: v.span,
             },
-            Type::Map(v) => Ty::Map {
-                key: Box::new(self.lower_type(*v.key)),
-                elem: Box::new(self.lower_type(*v.value)),
-                bound: v.bound.map(|e| self.bound_expr(&e)),
+            Type::Sequence(v) => Ty {
+                kind: TyKind::Sequence {
+                    ty: Box::new(self.lower_type(*v.ty)),
+                    bound: v.bound.map(|e| self.bound_expr(&e)),
+                },
+                span: v.span,
+            },
+            Type::String(v) => Ty {
+                kind: TyKind::String {
+                    wide: v.wide,
+                    bound: v.bound.map(|e| self.bound_expr(&e)),
+                },
+                span: v.span,
+            },
+            Type::Map(v) => Ty {
+                kind: TyKind::Map {
+                    key: Box::new(self.lower_type(*v.key)),
+                    elem: Box::new(self.lower_type(*v.value)),
+                    bound: v.bound.map(|e| self.bound_expr(&e)),
+                },
+                span: v.span,
             },
             Type::Path(v) => {
                 // TODO: probably better to let the parser resolve these
-                let kind = match v.segments[0].name.as_str() {
+                let path = &v.segments[0];
+                let kind = match path.name.as_str() {
                     "boolean" => PrimitiveTy::Bool,
                     "char" => PrimitiveTy::Char,
                     "wchar" => PrimitiveTy::WChar,
@@ -466,9 +486,16 @@ impl<'a> Lower<'a> {
                     "float" => PrimitiveTy::Float32,
                     "double" => PrimitiveTy::Float64,
                     "long double" => PrimitiveTy::Float128,
-                    _ => return self.lookup_path(v).map_or(Ty::Any, Ty::Adt),
+                    _ => {
+                        let span = util::path_span(&v);
+                        let kind = self.lookup_path(v).map_or(TyKind::Any, TyKind::Adt);
+                        return Ty { kind, span };
+                    }
                 };
-                Ty::Primitive(kind)
+                Ty {
+                    kind: TyKind::Primitive(kind),
+                    span: path.span,
+                }
             }
         }
     }
@@ -608,6 +635,7 @@ impl<'a> Lower<'a> {
 
     fn lower_annotation(&mut self, ann: ic_syntax::AnnotationAppl) -> Ann {
         let path = ann.ident;
+        let ty = None;
         let args = ann
             .args
             .into_iter()
@@ -617,7 +645,7 @@ impl<'a> Lower<'a> {
             })
             .collect();
 
-        Ann { path, args }
+        Ann { path, ty, args }
     }
 
     fn lower_annotations(&mut self, ann: Vec<ic_syntax::AnnotationAppl>) -> Vec<Ann> {
@@ -643,7 +671,10 @@ impl<'a> Lower<'a> {
             .map(|lit| self.lower_enum_lit(lit, &mut last))
             .collect();
 
-        let ty = Ty::Primitive(PrimitiveTy::UInt32);
+        let ty = Ty {
+            kind: TyKind::Primitive(PrimitiveTy::UInt32),
+            span: def.span,
+        };
         let annotations = self.lower_annotations(def.annotations);
 
         self.construct_type(def.ident, SymbolKind::Struct, |this, ident, id| Def {
@@ -669,7 +700,10 @@ impl<'a> Lower<'a> {
 
     fn lower_bitmask(&mut self, def: ic_syntax::BitmaskDef) -> DefId {
         let mut last_val = None;
-        let ty = Ty::Primitive(PrimitiveTy::UInt32);
+        let ty = Ty {
+            kind: TyKind::Primitive(PrimitiveTy::UInt32),
+            span: def.span,
+        };
         let annotations = self.lower_annotations(def.annotations);
 
         self.construct_type(def.ident, SymbolKind::Enum, |this, ident, id| {

@@ -29,7 +29,9 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::{ffi, ptr};
 
-use ic_hir::hir::{Ann, Decl, DefId, DefKind, Ident, Numeric, PrimitiveTy, ProtoTy, Ty, Variant};
+use ic_hir::hir::{
+    Ann, Decl, DefId, DefKind, Ident, Numeric, PrimitiveTy, ProtoTy, Ty, TyKind, Variant,
+};
 use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
@@ -59,10 +61,10 @@ impl<'a> TreeBuilder<'a> {
     }
 
     unsafe fn lower_ty(&mut self, ty: &Ty) -> *mut sys::ptree {
-        match ty {
-            Ty::Any => ptr::addr_of_mut!(sys::any_type),
-            Ty::Fixed => ptr::addr_of_mut!(sys::fixed_type),
-            Ty::Primitive(kind) => match kind {
+        match &ty.kind {
+            TyKind::Any => ptr::addr_of_mut!(sys::any_type),
+            TyKind::Fixed => ptr::addr_of_mut!(sys::fixed_type),
+            TyKind::Primitive(kind) => match kind {
                 PrimitiveTy::Bool => ptr::addr_of_mut!(sys::boolean_type),
                 PrimitiveTy::Char => ptr::addr_of_mut!(sys::char_type),
                 PrimitiveTy::WChar => ptr::addr_of_mut!(sys::wchar_type),
@@ -78,18 +80,18 @@ impl<'a> TreeBuilder<'a> {
                 PrimitiveTy::Float64 => ptr::addr_of_mut!(sys::double_type),
                 PrimitiveTy::Float128 => ptr::addr_of_mut!(sys::ldouble_type),
             },
-            Ty::Array { ty, len } => {
+            TyKind::Array { ty, len } => {
                 let ty = self.lower_ty(ty);
                 let bound = sys::create_u64(self.state, (*len + 1) as u64, 10);
                 let decl = sys::append_array_size(self.state, ptr::null_mut(), bound);
                 sys::create_array_type(self.state, decl, ty)
             }
-            Ty::Sequence { ty, bound } => {
+            TyKind::Sequence { ty, bound } => {
                 let ty = self.lower_ty(ty);
                 let bound = self.lower_bound(bound);
                 sys::create_sequence(self.state, ty, bound)
             }
-            Ty::String { wide, bound } => {
+            TyKind::String { wide, bound } => {
                 let bound = self.lower_bound(bound);
                 if *wide {
                     sys::create_wstring(self.state, bound)
@@ -97,13 +99,13 @@ impl<'a> TreeBuilder<'a> {
                     sys::create_string(self.state, bound)
                 }
             }
-            Ty::Map { key, elem, bound } => {
+            TyKind::Map { key, elem, bound } => {
                 let key = self.lower_ty(key);
                 let elem = self.lower_ty(elem);
                 let bound = self.lower_bound(bound);
                 sys::create_map(self.state, key, elem, bound)
             }
-            Ty::Adt(id) => self.lower_def(*id),
+            TyKind::Adt(id) => self.lower_def(*id),
         }
     }
 

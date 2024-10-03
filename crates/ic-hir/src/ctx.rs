@@ -29,7 +29,7 @@ use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
 
-use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, Ty, TypeId};
+use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, Ty, TyKind, TypeId};
 
 #[derive(Debug)]
 pub struct Type;
@@ -82,11 +82,14 @@ impl Context {
     pub fn base_type_of(&self, id: DefId) -> Ty {
         let ty = self.type_of(id);
         match &ty.kind {
-            DefKind::Alias(v) => match v.ty {
-                Ty::Adt(v) => self.base_type_of(v),
+            DefKind::Alias(v) => match v.ty.kind {
+                TyKind::Adt(id) => self.base_type_of(id),
                 _ => v.ty.clone(),
             },
-            _ => Ty::Adt(id),
+            _ => Ty {
+                kind: TyKind::Adt(id),
+                span: ty.span,
+            },
         }
     }
 
@@ -94,11 +97,11 @@ impl Context {
     /// sequences, and maps, this will return the element type if it points to
     /// a definition.
     pub fn def_of(&self, ty: &Ty) -> Option<DefId> {
-        match ty {
-            Ty::Array { ty, .. } | Ty::Sequence { ty, .. } | Ty::Map { elem: ty, .. } => {
-                self.def_of(ty)
-            }
-            Ty::Adt(id) => Some(*id),
+        match &ty.kind {
+            TyKind::Array { ty, .. }
+            | TyKind::Sequence { ty, .. }
+            | TyKind::Map { elem: ty, .. } => self.def_of(ty),
+            TyKind::Adt(id) => Some(*id),
             _ => None,
         }
     }

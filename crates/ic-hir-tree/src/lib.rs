@@ -30,7 +30,7 @@ mod tree;
 use std::fmt::Write;
 
 use ic_cli::color::Colorize;
-use ic_hir::hir::{Decl, DefFlags, DefId, DefKind, Member, ParamKind, Span, Ty, Variant};
+use ic_hir::hir::{Decl, DefFlags, DefId, DefKind, Member, ParamKind, Span, Ty, TyKind, Variant};
 use ic_hir::{Context, ResolvedGraph};
 
 use crate::tree::Leaf;
@@ -78,13 +78,13 @@ fn emit_flags(flags: DefFlags) -> String {
 }
 
 fn emit_ty(context: &Context, ty: &Ty) -> String {
-    let kind = match ty {
-        Ty::Any => "any",
-        Ty::Fixed => "fixed",
-        Ty::Primitive(kind) => {
+    let kind = match &ty.kind {
+        TyKind::Any => "any",
+        TyKind::Fixed => "fixed",
+        TyKind::Primitive(kind) => {
             return kind.to_string().to_ascii_lowercase().cyan();
         }
-        Ty::String { wide, bound } => {
+        TyKind::String { wide, bound } => {
             let prefix = if *wide { "w" } else { "" };
             let bound = if let Some(bound) = bound {
                 format!("<{bound}>")
@@ -93,16 +93,16 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
             };
             return format!("{prefix}string{bound}").cyan();
         }
-        Ty::Array { ty, len } => {
+        TyKind::Array { ty, len } => {
             let ty = emit_ty(context, ty);
             return format!("array<{ty}, {len}>").cyan();
         }
-        Ty::Sequence { ty, bound } => {
+        TyKind::Sequence { ty, bound } => {
             let ty = emit_ty(context, ty);
             let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
             return format!("sequence<{ty}{bound}>").cyan();
         }
-        Ty::Map { key, elem, bound } => {
+        TyKind::Map { key, elem, bound } => {
             let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
             return format!(
                 "map<{}, {}{bound}>",
@@ -111,7 +111,7 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
             )
             .cyan();
         }
-        Ty::Adt(id) => {
+        TyKind::Adt(id) => {
             let name = context.type_of(*id).ident.name.cyan();
             return format!(
                 "{}({}{}, {name})",

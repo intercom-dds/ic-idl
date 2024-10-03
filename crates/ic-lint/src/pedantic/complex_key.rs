@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Label, warn_span};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefKind, Ty};
+use ic_hir::hir::{DefKind, Ty, TyKind};
 use ic_hir::visit::Visitor;
 use ic_vfs::Span;
 
@@ -52,9 +52,9 @@ impl<'a> Lint<'a> for ComplexMapKey<'a> {
 }
 
 fn is_complex(ctx: &ic_hir::Context, ty: &Ty) -> bool {
-    match ty {
-        Ty::Primitive(_) | Ty::String { .. } => false,
-        Ty::Adt(id) => match &ctx.type_of(*id).kind {
+    match &ty.kind {
+        TyKind::Primitive(_) | TyKind::String { .. } => false,
+        TyKind::Adt(id) => match &ctx.type_of(*id).kind {
             DefKind::Enum(_) | DefKind::Bitmask(_) => false,
             DefKind::Alias(v) => is_complex(ctx, &v.ty),
             _ => true,
@@ -65,15 +65,14 @@ fn is_complex(ctx: &ic_hir::Context, ty: &Ty) -> bool {
 
 impl<'a> Visitor<'a> for ComplexMapKey<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
-        if let Ty::Map { key, .. } = ty {
+        if let TyKind::Map { key, .. } = &ty.kind {
             if is_complex(&self.hir.context, key) {
-                // TODO: we need the span of the type
-                // let diag = warn_span(
-                //     "complex types as map keys is not standard",
-                //     Label::new().message("non-primitive map key"),
-                // )
-                // .note("only integers, strings, and enums may be used as map keys");
-                // self.ctx.report(diag);
+                let diag = warn_span(
+                    "complex types as map keys are not standard",
+                    Label::new(key.span).message("non-primitive map key"),
+                )
+                .note("only integers, strings, and enums may be used as map keys");
+                self.ctx.report(diag);
             }
         }
     }

@@ -164,7 +164,13 @@ pub enum Decl {
 }
 
 #[derive(Clone, Debug)]
-pub enum Ty {
+pub struct Ty {
+    pub span: Span,
+    pub kind: TyKind,
+}
+
+#[derive(Clone, Debug)]
+pub enum TyKind {
     /// The `any` type.
     Any,
 
@@ -198,7 +204,7 @@ pub enum Ty {
     },
 
     /// An algebraic data type.
-    Adt(TypeId),
+    Adt(DefId),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -355,6 +361,7 @@ pub struct BitmaskTy {
     pub flags: Vec<BitFlag>,
 
     /// Underlying primitive type of the bitmask.
+    // TODO: consider replacing with `PrimitiveTy`
     pub ty: Ty,
 }
 
@@ -413,10 +420,7 @@ pub struct AliasTy {
 #[derive(Clone, Debug)]
 pub struct Ann {
     pub path: Path,
-
-    // We don't resolve the type for now as that would require knowing about
-    // all the built-in annotations.
-    // pub ty: Ty,
+    pub ty: Option<Ty>,
     pub args: Vec<AnnArg>,
 }
 

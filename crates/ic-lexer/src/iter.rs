@@ -66,7 +66,7 @@ where
     pred: P,
 }
 
-impl<'a, I, P> Iterator for TakeWhilePeek<'a, I, P>
+impl<I, P> Iterator for TakeWhilePeek<'_, I, P>
 where
     I: Iterator,
     P: FnMut(&I::Item) -> bool,

@@ -213,7 +213,7 @@ trait PragmaHandler<S: BorrowMut<State>> {
 struct PragmaOnce;
 
 impl<S: BorrowMut<State>> PragmaHandler<S> for PragmaOnce {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "once"
     }
 

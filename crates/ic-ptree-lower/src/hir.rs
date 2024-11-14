@@ -54,7 +54,7 @@ impl<'a> TreeBuilder<'a> {
         }
     }
 
-    unsafe fn lower_bound(&self, bound: &Option<usize>) -> *const sys::numeric {
+    unsafe fn lower_bound(&self, bound: Option<usize>) -> *const sys::numeric {
         bound.map_or(NUM_UNDEF, |bound| {
             sys::create_u64(self.state, bound as u64, 10)
         })
@@ -88,11 +88,11 @@ impl<'a> TreeBuilder<'a> {
             }
             TyKind::Sequence { ty, bound } => {
                 let ty = self.lower_ty(ty);
-                let bound = self.lower_bound(bound);
+                let bound = self.lower_bound(*bound);
                 sys::create_sequence(self.state, ty, bound)
             }
             TyKind::String { wide, bound } => {
-                let bound = self.lower_bound(bound);
+                let bound = self.lower_bound(*bound);
                 if *wide {
                     sys::create_wstring(self.state, bound)
                 } else {
@@ -102,7 +102,7 @@ impl<'a> TreeBuilder<'a> {
             TyKind::Map { key, elem, bound } => {
                 let key = self.lower_ty(key);
                 let elem = self.lower_ty(elem);
-                let bound = self.lower_bound(bound);
+                let bound = self.lower_bound(*bound);
                 sys::create_map(self.state, key, elem, bound)
             }
             TyKind::Adt(id) => self.lower_def(*id),

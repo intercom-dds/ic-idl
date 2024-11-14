@@ -64,7 +64,7 @@ fn param_kind(kind: Option<ParamKind>) -> ffi::c_int {
     }
 }
 
-unsafe fn path_or_null(state: *mut sys::parser_state, path: &Option<Path>) -> *mut sys::ptree {
+unsafe fn path_or_null(state: *mut sys::parser_state, path: Option<&Path>) -> *mut sys::ptree {
     path.as_ref()
         .map_or(ptr::null_mut(), |p| lower_path(state, p))
 }
@@ -411,7 +411,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                 sys::create_bitfield(state, ident.as_ptr(), size, ty)
             });
 
-            let parent = path_or_null(state, &v.parent);
+            let parent = path_or_null(state, v.parent.as_ref());
             let ident = create_ident(&v.ident.name);
             let ty = sys::create_bitset(state, ident.as_ptr(), bitfields, parent);
             annotate(state, ty, &v.annotations)
@@ -471,8 +471,8 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
         }
         Item::ValuetypeValue(v) => {
             let ident = create_ident(&v.ident.name);
-            let parent = path_or_null(state, &v.inherits);
-            let supports = path_or_null(state, &v.supports);
+            let parent = path_or_null(state, v.inherits.as_ref());
+            let supports = path_or_null(state, v.supports.as_ref());
             sys::create_valuetype_start(state, ident.as_ptr(), parent, supports);
             // TODO: members
             let ty = sys::create_valuetype_finish(state, ptr::null_mut());

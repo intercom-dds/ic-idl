@@ -882,7 +882,7 @@ impl Marshal for String {
     }
 }
 
-impl<'a> Marshal for WChar<&'a char> {
+impl Marshal for WChar<&char> {
     #[inline]
     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
@@ -892,7 +892,7 @@ impl<'a> Marshal for WChar<&'a char> {
     }
 }
 
-impl<'a> Marshal for WString<&'a str> {
+impl Marshal for WString<&str> {
     #[inline]
     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
@@ -902,7 +902,7 @@ impl<'a> Marshal for WString<&'a str> {
     }
 }
 
-impl<'a> Marshal for WString<&'a String> {
+impl Marshal for WString<&String> {
     #[inline]
     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where

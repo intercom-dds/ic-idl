@@ -890,7 +890,7 @@ impl Unmarshal for String {
     }
 }
 
-impl<'a> Unmarshal for WChar<&'a mut char> {
+impl Unmarshal for WChar<&mut char> {
     #[inline]
     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
     where
@@ -900,7 +900,7 @@ impl<'a> Unmarshal for WChar<&'a mut char> {
     }
 }
 
-impl<'a> Unmarshal for WString<&'a mut String> {
+impl Unmarshal for WString<&mut String> {
     #[inline]
     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
     where

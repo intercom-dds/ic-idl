@@ -237,7 +237,7 @@ impl<'a, W: Write> JsonObject<'a, W> {
     }
 }
 
-impl<'a, W: Write> Deref for JsonObject<'a, W> {
+impl<W: Write> Deref for JsonObject<'_, W> {
     type Target = JsonWriter<W>;
 
     fn deref(&self) -> &Self::Target {
@@ -245,13 +245,13 @@ impl<'a, W: Write> Deref for JsonObject<'a, W> {
     }
 }
 
-impl<'a, W: Write> DerefMut for JsonObject<'a, W> {
+impl<W: Write> DerefMut for JsonObject<'_, W> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.writer
     }
 }
 
-impl<'a, W: Write> FieldSerializer for JsonObject<'a, W> {
+impl<W: Write> FieldSerializer for JsonObject<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -268,7 +268,7 @@ impl<'a, W: Write> FieldSerializer for JsonObject<'a, W> {
     }
 }
 
-impl<'a, W: Write> UnionSerializer for JsonObject<'a, W> {
+impl<W: Write> UnionSerializer for JsonObject<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -297,7 +297,7 @@ impl<'a, W: Write> UnionSerializer for JsonObject<'a, W> {
     }
 }
 
-impl<'a, W: Write> MapSerializer for JsonObject<'a, W> {
+impl<W: Write> MapSerializer for JsonObject<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -339,7 +339,7 @@ impl<'a, W: Write> JsonArray<'a, W> {
     }
 }
 
-impl<'a, W: Write> SeqSerializer for JsonArray<'a, W> {
+impl<W: Write> SeqSerializer for JsonArray<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -361,7 +361,7 @@ impl<'a, W: Write> SeqSerializer for JsonArray<'a, W> {
     }
 }
 
-impl<'a, W: Write> ArraySerializer for JsonArray<'a, W> {
+impl<W: Write> ArraySerializer for JsonArray<'_, W> {
     type Ok = ();
     type Error = Error;
 

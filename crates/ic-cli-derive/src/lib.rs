@@ -39,7 +39,7 @@ use syn::{
     parse_macro_input,
 };
 
-fn derive_short(input: &Ident, value: &Option<syn::LitChar>) -> char {
+fn derive_short(input: &Ident, value: Option<&syn::LitChar>) -> char {
     if let Some(value) = value {
         value.value()
     } else {
@@ -51,7 +51,7 @@ fn derive_short(input: &Ident, value: &Option<syn::LitChar>) -> char {
     }
 }
 
-fn derive_long(input: &Ident, value: &Option<syn::LitStr>) -> String {
+fn derive_long(input: &Ident, value: Option<&syn::LitStr>) -> String {
     if let Some(value) = value {
         value.value()
     } else {
@@ -242,10 +242,10 @@ fn handle_option(field: &Field) -> Option<Opt> {
     }
 
     if attrs.short.0 {
-        tokens.push(derive_short(ident, &attrs.short.1).to_string());
+        tokens.push(derive_short(ident, attrs.short.1.as_ref()).to_string());
     }
     if attrs.long.0 {
-        tokens.push(derive_long(ident, &attrs.long.1));
+        tokens.push(derive_long(ident, attrs.long.1.as_ref()));
     }
 
     let (kind, path) = if let Type::Path(ref ty) = field.ty {
@@ -397,9 +397,9 @@ fn struct_parse(input: &DataStruct) -> proc_macro2::TokenStream {
             }
         } else {
             let token = if attrs.long.0 {
-                derive_long(field.ident.as_ref().unwrap(), &attrs.long.1)
+                derive_long(field.ident.as_ref().unwrap(), attrs.long.1.as_ref()).to_string()
             } else {
-                derive_short(field.ident.as_ref().unwrap(), &attrs.short.1).to_string()
+                derive_short(field.ident.as_ref().unwrap(), attrs.short.1.as_ref()).to_string()
             };
 
             quote! {

@@ -129,7 +129,7 @@ fn bound_error<T, const N: usize, E: Error>() -> E {
 
 pub struct Bound<T, const N: usize>(pub T);
 
-impl<'a, T, const N: usize> Marshal for Bound<&'a T, N>
+impl<T, const N: usize> Marshal for Bound<&T, N>
 where
     T: Container + Marshal,
 {
@@ -146,7 +146,7 @@ where
     }
 }
 
-impl<'a, T, const N: usize> Unmarshal for Bound<&'a mut T, N>
+impl<T, const N: usize> Unmarshal for Bound<&mut T, N>
 where
     T: Container + Unmarshal,
 {
@@ -166,7 +166,7 @@ where
 
 pub struct Min<T, N>(pub T, pub N);
 
-impl<'a, T, N> Marshal for Min<&'a T, N>
+impl<T, N> Marshal for Min<&T, N>
 where
     T: Marshal + PartialOrd<N>,
 {
@@ -183,7 +183,7 @@ where
     }
 }
 
-impl<'a, T, N> Unmarshal for Min<&'a mut T, N>
+impl<T, N> Unmarshal for Min<&mut T, N>
 where
     T: Unmarshal + PartialOrd<N>,
 {
@@ -203,7 +203,7 @@ where
 
 pub struct Max<T, N>(pub T, pub N);
 
-impl<'a, T, N> Marshal for Max<&'a T, N>
+impl<T, N> Marshal for Max<&T, N>
 where
     T: Marshal + PartialOrd<N>,
 {
@@ -220,7 +220,7 @@ where
     }
 }
 
-impl<'a, T, N> Unmarshal for Max<&'a mut T, N>
+impl<T, N> Unmarshal for Max<&mut T, N>
 where
     T: Unmarshal + PartialOrd<N>,
 {
@@ -244,7 +244,7 @@ pub struct Range<T, N, M> {
     pub max: M,
 }
 
-impl<'a, T, N, M> Marshal for Range<&'a T, N, M>
+impl<T, N, M> Marshal for Range<&T, N, M>
 where
     T: Marshal + PartialOrd<N> + PartialOrd<M>,
 {
@@ -261,7 +261,7 @@ where
     }
 }
 
-impl<'a, T, N, M> Unmarshal for Range<&'a mut T, N, M>
+impl<T, N, M> Unmarshal for Range<&mut T, N, M>
 where
     T: Unmarshal + PartialOrd<N> + PartialOrd<M>,
 {

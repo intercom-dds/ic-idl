@@ -234,7 +234,7 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
     }
 }
 
-impl<'a, 'de, E: Endian> FieldDeserializer for &'a mut CdrReader<'de, E> {
+impl<E: Endian> FieldDeserializer for &mut CdrReader<'_, E> {
     type Error = <Self as Deserializer>::Error;
 
     #[inline]
@@ -247,7 +247,7 @@ impl<'a, 'de, E: Endian> FieldDeserializer for &'a mut CdrReader<'de, E> {
     }
 }
 
-impl<'a, 'de, E: Endian> UnionDeserializer for &'a mut CdrReader<'de, E> {
+impl<E: Endian> UnionDeserializer for &mut CdrReader<'_, E> {
     type Ok = Self;
     type Error = <Self as Deserializer>::Error;
 
@@ -269,7 +269,7 @@ impl<'a, 'de, E: Endian> UnionDeserializer for &'a mut CdrReader<'de, E> {
     }
 }
 
-impl<'a, 'de, E: Endian> EnumDeserializer for &'a mut CdrReader<'de, E> {
+impl<E: Endian> EnumDeserializer for &mut CdrReader<'_, E> {
     type Error = <Self as Deserializer>::Error;
 
     #[inline]
@@ -286,7 +286,7 @@ pub struct MemberSeq<'a, 'de, E: Endian> {
     len: usize,
 }
 
-impl<'a, 'de, E: Endian> SeqDeserializer for MemberSeq<'a, 'de, E> {
+impl<E: Endian> SeqDeserializer for MemberSeq<'_, '_, E> {
     type Error = Error;
 
     #[inline]
@@ -309,7 +309,7 @@ impl<'a, 'de, E: Endian> SeqDeserializer for MemberSeq<'a, 'de, E> {
     }
 }
 
-impl<'a, 'de, E: Endian> ArrayDeserializer for MemberSeq<'a, 'de, E> {
+impl<E: Endian> ArrayDeserializer for MemberSeq<'_, '_, E> {
     type Error = Error;
 
     #[inline]
@@ -327,7 +327,7 @@ impl<'a, 'de, E: Endian> ArrayDeserializer for MemberSeq<'a, 'de, E> {
     }
 }
 
-impl<'a, 'de, E: Endian> MapDeserializer for MemberSeq<'a, 'de, E> {
+impl<E: Endian> MapDeserializer for MemberSeq<'_, '_, E> {
     type Error = Error;
 
     #[inline]

@@ -133,7 +133,7 @@ struct Formatter<'a> {
     chars: Charset,
 }
 
-impl<'a> Formatter<'a> {
+impl Formatter<'_> {
     fn report(self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
         // Header
         let title = format!("{}:", diag.title.text);

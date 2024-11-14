@@ -27,14 +27,12 @@
 
 //! Type definitions of the HIR.
 
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::num::NonZero;
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
-use ic_macros::EnumIter;
+use ic_macros::{EnumIter, ToString};
 use ic_syntax::Path;
 pub use ic_syntax::{Ident, ParamKind, Span};
 

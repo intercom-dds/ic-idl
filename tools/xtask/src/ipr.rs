@@ -45,7 +45,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use ic_cli::color::Colorize;
@@ -85,8 +85,12 @@ fn check_file(contents: &str) -> bool {
 }
 
 fn whitelist(name: &str) -> bool {
-    !name.ends_with(".json")
-        && !name.ends_with(".snap")
+    let p = &Path::new(name);
+    let extension = p.extension().map_or(false, |ext| {
+        ext.eq_ignore_ascii_case("json") || ext.eq_ignore_ascii_case("snap")
+    });
+
+    !extension
         && !name.starts_with("external/fmt")
         && !name.contains("Cargo.lock")
         && name != "LICENSE"

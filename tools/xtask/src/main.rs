@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::print_stdout, clippy::print_stderr)]
+
 use ic_cli::Command;
 
 mod bootstrap;
@@ -51,7 +53,7 @@ fn main() {
         Commands::Setup(_) => setup::install(),
         Commands::Bootstrap(_) => bootstrap::build(),
         Commands::Ipr(_) => ipr::check(),
-        Commands::Release(_) => release::build(),
+        Commands::Release(v) => release::build(v),
         Commands::Deny(_) => deny::check(),
     }
 }

@@ -60,7 +60,8 @@ fn dump_backtrace(info: &std::panic::PanicInfo) {
         eprintln!("{trace:#?}");
     }
     eprintln!(
-        "This is a compiler bug. Please report it to KONGSBERG <kda.InterCOMDDS@kongsberg.com>.",
+        "This is a compiler bug. \
+        Please report it to KONGSBERG <DDS-InterCOM@kda.kongsberg.com>.",
     );
 }
 

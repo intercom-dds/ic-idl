@@ -41,6 +41,7 @@
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "rust_common.h"
+#include "utils/string_utils.h"
 
 // TODO(idarcar): fix before release
 enum : uint8_t {
@@ -57,15 +58,15 @@ class NumSep : public std::numpunct<char> {
   public:
     explicit NumSep(std::string grouping) : m_group(std::move(grouping)) {}
 
-    char do_thousands_sep() const override {
+    [[nodiscard]] char do_thousands_sep() const override {
         return '_';
     }
 
-    char do_decimal_point() const override {
+    [[nodiscard]] char do_decimal_point() const override {
         return '.';
     }
 
-    std::string do_grouping() const override {
+    [[nodiscard]] std::string do_grouping() const override {
         return m_group;
     }
 
@@ -104,7 +105,7 @@ class Twine {
         m_curr.set_indent_size(4U);
     }
 
-    const Module& modules() const {
+    [[nodiscard]] const Module& modules() const {
         return m_root;
     }
 
@@ -119,7 +120,7 @@ class Twine {
         return *this;
     }
 
-    std::string str() const {
+    [[nodiscard]] std::string str() const {
         return m_curr.str();
     }
 
@@ -201,9 +202,9 @@ class Twine {
     }
 
     template <typename T, typename... Args>
-    void print(const T& arg, Args... args) {
+    void print(const T& arg, Args&&... args) {
         print(arg);
-        print(args...);
+        print(std::forward<Args>(args)...);
     }
 
   private:
@@ -214,14 +215,14 @@ class Twine {
 }  // namespace
 
 template <typename... Args>
-static std::string str(Args... args) {
+static std::string str(Args&&... args) {
     Twine out;
     out(std::forward<Args>(args)...);
     return out.str();
 }
 
 template <typename T>
-static std::string quoted(const T& value) {
+static std::string quote(const T& value) {
     return str('"', value, '"');
 }
 
@@ -243,6 +244,8 @@ static std::vector<const ptree*> struct_members(const ptree*);
 static void emit_const_value(Twine&, const numeric&, const ptree*, const ptree*);
 
 static bool is_trivial(const ptree*);
+
+static bool is_copy(const ptree*);
 
 bool no_struct_or_enum_filter(const ptree*);
 
@@ -321,6 +324,22 @@ static void array_value(Twine& out, const ptree* node) {
     out(']');
 }
 
+static void array_default(Twine& out, const ptree* node, size_t pos) {
+    if (pos < node->bounds.size()) {
+        if (is_copy(node->element_type)) {
+            out('[');
+            array_default(out, node, pos + 1);
+            out("; ", string_value(node->bounds[pos]), ']');
+        } else {
+            out("std::array::from_fn(|_| ");
+            array_default(out, node, pos + 1);
+            out(")");
+        }
+    } else {
+        emit_const_value(out, node->value, node->element_type, node);
+    }
+}
+
 static void map_value(Twine& out, const ptree* node) {
     out("::std::collections::BTreeMap::from([\n");
     for (auto v : node->members) {
@@ -362,8 +381,9 @@ static std::string scoped_name(const ptree* node, const ptree*) {
     };
 
     auto full_name = idl_scoped_name(node, nullptr);
-    if (!CommandLineOption::intercom_build() && (strncmp(full_name.c_str(), "types", 5) == 0 ||
-                                                 strncmp(full_name.c_str(), "core", 4) == 0)) {
+    std::string_view view(full_name);
+    if (!CommandLineOption::intercom_build() &&
+        (string_utils::starts_with(view, "types") || string_utils::starts_with(view, "core"))) {
         out("intercom");
     } else {
         out("crate");
@@ -397,6 +417,9 @@ static std::string param_type(const ptree* node, const ptree* ctx) {
 }
 
 static std::string rust_type(const ptree* node, const ptree* ctx) {
+    if (node == &any_type || node == &object_type) {
+        return "()";
+    }
     if (node == &boolean_type) {
         return "bool";
     }
@@ -578,7 +601,7 @@ static std::string union_member_name(const ptree* node, const ptree* cas) {
 }
 
 template <typename T>
-static void emit_literal(Twine& out, T value, int base, std::streamsize precision = 0) {
+static void emit_literal(Twine& out, const T& value, int base, std::streamsize precision = 0) {
     std::stringstream stream;
     stream.precision(precision);
 
@@ -613,7 +636,11 @@ static void emit_const_value(Twine& out, const numeric& val, const ptree* node, 
     switch (val.kind()) {
     case UNDEF_KIND: {
         auto type = node->kind == N_MEMBER ? node->type : node;
-        out("<", rust_type(type, ctx), ">", "::default()");
+        if (type->kind == N_ARRAY) {
+            array_default(out, type, 0);
+        } else {
+            out("<", rust_type(type, ctx), ">", "::default()");
+        }
         break;
     }
     case BOOLEAN_KIND:
@@ -788,7 +815,10 @@ static void emit_docs(Twine& out, const ptree* node) {
         while ((pos = input.find('\n')) != std::string_view::npos) {
             auto line = input.substr(0, pos);
             input.remove_prefix(pos + 1);
-            out << "/// " << line << endl;
+
+            if (node->kind != N_MODULE) {
+                out << "/// " << line << endl;
+            }
         }
     }
 }
@@ -1005,7 +1035,7 @@ static void emit_enum_impl(Twine& out, const ptree* node) {
     out("fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {\n");
     out("match self {\n");
     for (auto mem : node->members) {
-        out("Self::", mem, " => f.write_str(", quoted(seri_name(mem)), "),\n");
+        out("Self::", mem, " => f.write_str(", quote(seri_name(mem)), "),\n");
     }
     out("}\n");
     out("}\n");
@@ -1208,7 +1238,7 @@ static void emit_marshal(Twine& out, const ptree* node) {
 
     auto members = struct_members(node);
     auto mut = members.empty() ? "" : "mut ";
-    auto name = quoted(seri_name(node));
+    auto name = quote(seri_name(node));
 
     if (node->kind == N_STRUCT || node->kind == N_EXCEPTION || node->kind == N_VALUETYPE) {
         out("use ", cts_prefix, "::encode::FieldSerializer as _;\n\n");
@@ -1220,7 +1250,7 @@ static void emit_marshal(Twine& out, const ptree* node) {
             auto mem_var = str("&self.", mem);
             auto accessor = seri_accesor(mem, mem_var, false);
             auto id = member_id(mem);
-            out("state.encode_field(", id, ", ", quoted(seri_name(mem)), ", ", accessor, ")?;\n");
+            out("state.encode_field(", id, ", ", quote(seri_name(mem)), ", ", accessor, ")?;\n");
         }
         out("state.end()\n");
     } else if (node->kind == N_UNION) {
@@ -1243,7 +1273,7 @@ static void emit_marshal(Twine& out, const ptree* node) {
                     out("state.encode_variant(",
                         id,
                         ", ",
-                        quoted(seri_name(mem)),
+                        quote(seri_name(mem)),
                         ", ",
                         accessor,
                         "),\n");
@@ -1259,11 +1289,11 @@ static void emit_marshal(Twine& out, const ptree* node) {
     } else if (node->kind == N_ENUM) {
         auto type = rust_type(base_type_of(node)->element_type, nullptr);
         out("use ", cts_prefix, "::encode::EnumSerializer as _;\n\n");
-        out("let state = ar.encode_enum(", quoted(seri_name(node)), ")?;\n");
+        out("let state = ar.encode_enum(", quote(seri_name(node)), ")?;\n");
         out("match self {\n");
         for (auto mem : node->members) {
             out("Self::", mem, " => state.encode_variant::<", type, ">(");
-            out(quoted(seri_name(mem)), ", ", value(mem, node), "),\n");
+            out(quote(seri_name(mem)), ", ", value(mem, node), "),\n");
         }
         out("}\n");
     }
@@ -1299,10 +1329,10 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
             out("use ", cts_prefix, "::decode::FieldDeserializer as _;\n\n");
             out("let mut state = ");
         }
-        out("ar.decode_struct(", quoted(node), ")?;\n");
+        out("ar.decode_struct(", quote(node), ")?;\n");
         for (auto mem : members) {
             if (!is_non_serialized(mem)) {
-                auto name = quoted(seri_name(mem));
+                auto name = quote(seri_name(mem));
                 auto accessor = seri_accesor(mem, str("self.", mem), true);
                 auto id = member_id(mem);
                 out("state.decode_field(", id, ", ", name, ", ", accessor, ")?;\n");
@@ -1311,13 +1341,13 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
         out("Ok(())\n");
     } else if (node->kind == N_ENUM) {
         out("use ", cts_prefix, "::decode::EnumDeserializer as _;\n\n");
-        out("let state = ar.decode_enum(", quoted(seri_name(node)), ")?;\n");
+        out("let state = ar.decode_enum(", quote(seri_name(node)), ")?;\n");
         out("*self = state.decode_enumerator(*self)?;\n");
         out("Ok(())\n");
     } else if (node->kind == N_UNION) {
         auto disc = rust_type(node->discriminator->type, node);
         out("use ", cts_prefix, "::decode::UnionDeserializer as _;\n\n");
-        out("let mut state = ar.decode_union(", quoted(seri_name(node)), ")?;\n");
+        out("let mut state = ar.decode_union(", quote(seri_name(node)), ")?;\n");
         out("let mut disc = ", disc, "::default();\n");
         out("state.decode_discriminant(&mut disc)?;\n");
         out("*self = match disc {\n");
@@ -1341,7 +1371,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
                         out("state.decode_variant(",
                             id,
                             ", ",
-                            quoted(seri_name(mem)),
+                            quote(seri_name(mem)),
                             ", ",
                             accessor,
                             ")?;\n");
@@ -1366,7 +1396,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
                 out("state.decode_variant(",
                     id,
                     ", ",
-                    quoted(seri_name(def_mem)),
+                    quote(seri_name(def_mem)),
                     ", ",
                     accessor,
                     ")?;\n");
@@ -1414,7 +1444,7 @@ static void emit_visitor(Twine& out, const ptree* node) {
     for (auto mem : node->members) {
         out(value(mem, node), " => Self::", mem, ",\n");
     }
-    out("_ => return Err(D::Error::custom(", quoted("Invalid enum value"), ")),\n");
+    out("_ => return Err(D::Error::custom(", quote("Invalid enum value"), ")),\n");
     out("};\n");
     out("Ok(value)\n");
     out("}\n\n");
@@ -1427,9 +1457,9 @@ static void emit_visitor(Twine& out, const ptree* node) {
     out("use ", cts_prefix, "::error::Error as _;\n\n");
     out("let value = match name {\n");
     for (auto mem : node->members) {
-        out(quoted(seri_name(mem)), " => Self::", mem, ",\n");
+        out(quote(seri_name(mem)), " => Self::", mem, ",\n");
     }
-    out("_ => return Err(D::Error::custom(", quoted("Invalid enum value"), ")),\n");
+    out("_ => return Err(D::Error::custom(", quote("Invalid enum value"), ")),\n");
     out("};\n");
     out("Ok(value)\n");
     out("}\n");

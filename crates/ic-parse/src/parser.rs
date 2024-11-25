@@ -644,8 +644,7 @@ fn union_dcl() -> impl IdlParser<Item> {
 fn union_def() -> impl IdlParser<Item> {
     // `switch(foo)`
     let disc = keyword(Kw::Switch)
-        .ignore_then(switch_type_spec().parenthesized())
-        .annotated()
+        .ignore_then(switch_type_spec().annotated().parenthesized())
         .map(|(annotations, ty)| Discriminator { annotations, ty });
 
     // Case labels + members

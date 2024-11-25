@@ -30,7 +30,7 @@
 use std::fmt;
 
 use chumsky::Stream;
-use ic_lexer::token::Kw;
+use ic_lexer::token::{Base, Kw};
 use ic_macros::DiscHash;
 use ic_preproc::{State, TokenIter};
 use ic_syntax::Span;
@@ -257,7 +257,7 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Star => Kind::Star,
             ic_preproc::Kind::Slash => Kind::Slash,
             ic_preproc::Kind::Modulo => Kind::Modulo,
-            ic_preproc::Kind::Number { .. } => Kind::Decimal(1),
+            ic_preproc::Kind::Number { .. } => Kind::Decimal(0),
             ic_preproc::Kind::Float => Kind::Float(0.0),
             ic_preproc::Kind::Newline => todo!(),
             ic_preproc::Kind::Backslash => todo!(),
@@ -289,6 +289,14 @@ where
     Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
 }
 
+fn kind_number(base: Base, value: u64) -> Kind {
+    match base {
+        Base::Octal => Kind::Octal(value),
+        Base::Decimal => Kind::Decimal(value),
+        Base::Hexadecimal => Kind::Hex(value),
+    }
+}
+
 #[must_use]
 pub fn from_cursor(
     mut iter: TokenIter<'_, State>,
@@ -309,6 +317,17 @@ pub fn from_cursor(
 
                     break Some(Token {
                         kind: Kind::Ident(ident),
+                        span: next.span,
+                    });
+                }
+                ic_preproc::Kind::Number { base } => {
+                    let src = iter.source_of(next.span);
+                    let kind = u64::from_str_radix(src, base as u32)
+                        .ok()
+                        .map_or(Kind::Invalid, |v| kind_number(base, v));
+
+                    break Some(Token {
+                        kind,
                         span: next.span,
                     });
                 }

@@ -152,7 +152,7 @@ fn try_parse(
     errors.extend(report.diagnostics.into_iter().map(Into::into));
 
     // Lower the AST to a HIR
-    let hir = ic_hir::from_ast(ast.tree);
+    let hir = ic_hir::from_ast(ast.tree.clone());
     if options.unstable.hir_dump {
         ic_hir_tree::emit_tree(&hir);
     }
@@ -163,7 +163,8 @@ fn try_parse(
 
     // Lower the HIR to a ptree, but only if construction of the HIR succeeded
     if errors.is_empty() && hir.errors.is_empty() {
-        let ptree = ic_ptree_lower::from_hir(&hir, vfs);
+        // FIXME: in the future we should construct the ptree from the HIR
+        let ptree = ic_ptree_lower::from_ast(&ast, vfs);
         Ok(ptree)
     } else {
         errors.extend(hir.errors.into_iter().map(Into::into));

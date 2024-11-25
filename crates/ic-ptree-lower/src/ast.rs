@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::cast_possible_wrap, clippy::too_many_lines, dead_code)]
+#![allow(clippy::cast_possible_wrap, clippy::too_many_lines)]
 
 use std::ffi::{self, CString};
 use std::ptr;
@@ -355,7 +355,9 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                     .value
                     .as_ref()
                     .map_or(NUM_UNDEF, |v| lower_expr(state, v));
-                sys::create_enum_value(state, ident.as_ptr(), expr)
+
+                let val = sys::create_enum_value(state, ident.as_ptr(), expr);
+                annotate(state, val, &field.annotations)
             });
 
             let ident = create_ident(&v.ident.name);

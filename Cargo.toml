@@ -60,7 +60,6 @@ members = [
 exclude = [
     "crates/ic-bootstrap",
     "tools/bindgen",
-    "tools/explorer",
     "tools/fuzz",
     "tools/idlpp",
 ]

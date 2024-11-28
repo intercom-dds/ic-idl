@@ -81,14 +81,11 @@ pub trait Deserializer {
     ///
     /// # Example
     ///
-    /// ```
-    /// # use intercom_cts::decode::{Deserializer, Type, Unmarshal};
+    /// ```ignore
+    /// # use intercom_cts::decode::{Deserializer, Type}, Unmarshal};
     /// # use std::collections::HashMap;
     /// #
-    /// #[derive(Default)]
     /// enum Value {
-    ///     #[default]
-    ///     Null,
     ///     Bool(bool),
     ///     String(String),
     ///     Object(HashMap<String, Value>),
@@ -977,25 +974,27 @@ where
 
 impl<T, const N: usize> Unmarshal for [T; N]
 where
-    T: Unmarshal + Default,
+    T: Unmarshal,
 {
+    fn unmarshal<D>(archive: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer,
+        Self: Default,
+    {
+        let mut value = Self::default();
+        value.unmarshal_mut(archive)?;
+        Ok(value)
+    }
+
     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
     where
         D: Deserializer,
     {
         let mut state = archive.decode_array(N)?;
-        let mut iter = self.iter_mut();
-
-        for elem in iter.by_ref() {
+        for elem in self.iter_mut() {
             if !state.decode_next(elem)? {
-                *elem = T::default();
-                break;
+                return Err(D::Error::custom("too few elements in array"));
             }
-        }
-
-        // Default construct all remaining elements in the array
-        for elem in iter {
-            *elem = T::default();
         }
         Ok(())
     }

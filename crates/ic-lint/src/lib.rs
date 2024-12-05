@@ -29,8 +29,9 @@
 
 use ic_parse::syntax::Definition;
 
-mod pedantic;
 mod annotation;
+mod pedantic;
+mod syntax;
 
 /// Traverses the AST and produces diagnostics for all enabled lints.
 ///

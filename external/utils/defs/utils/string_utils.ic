@@ -202,7 +202,6 @@ inline void split_string(
         return;
     }
     // strtok is destructive, so start by copying input string
-    // intercom::corba::String_var copy(std::string(str).c_str());
     std::string copy(str);
     char* strtok_state;
     char* token = string_utils::strtok_r(&copy[0], delim, &strtok_state);

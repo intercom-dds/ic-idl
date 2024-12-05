@@ -150,7 +150,6 @@ struct GlobalOptions {
     unstable: Vec<String>,
 }
 
-// TODO: expand Command to return a Vec<(option, description)>
 /// Generic IDL code generator
 #[derive(Command, Default)]
 struct Options {
@@ -227,17 +226,17 @@ struct Unstable {
     #[option(long)]
     hir_pretty: bool,
 
+    /// Dump out the AST exactly as it was parsed
+    #[option(long)]
+    ast_dump: bool,
+
     /// Print the ptree in a tree-like format
     #[option(long)]
     ptree_dump: bool,
 
-    /// Dump the AST as JSON
+    /// Dump the ptree as JSON
     #[option(long)]
     ptree_json: bool,
-
-    /// Insert IPR header in generated files
-    #[option(long, arg = "file")]
-    ipr_header: bool,
 }
 
 macro_rules! error {
@@ -265,15 +264,6 @@ fn unstable_help() {
         "{} unstable flags may change at any time in backward-incompatible ways",
         "warning:".yellow(),
     );
-}
-
-fn _backend_help() {
-    let opts = Options::command().help();
-    let command = CodegenOptions::command();
-    let flags = command.format_args(|_| true).join("\n");
-    println!("{opts}");
-    println!("{}", "\nbackends".yellow());
-    println!("{flags}");
 }
 
 fn parse_file(options: &Options, path: &Path) -> anyhow::Result<String> {
@@ -319,8 +309,11 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     // container, and (2) we can error out earlier.
     let input = options.files.iter().next().unwrap();
     let input = std::fs::read_to_string(input)?;
-    let tokens = ic_parse::lexer::scan(&input).unwrap();
-    println!("{tokens:#?}");
+    // let tokens = ic_parse::lexer::scan(&input);
+    // println!("tokens: {tokens:#?}");
+
+    let ast = ic_parse::from_str(&input).unwrap();
+    dbg!(&ast.tree);
 
     Ok(())
 }
@@ -372,8 +365,6 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     if let Some(msg) = merged.diagnostics() {
         warn!("{msg}");
     }
-
-    // ic_parse::syntax::dummy();
 
     Ok(())
 }

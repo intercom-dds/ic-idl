@@ -37,18 +37,33 @@
 //! [`Interner`]: ../../ic_alloc/interner/index.html
 
 use ic_alloc::inline_vec::InlineVec;
+use ic_alloc::interner::SymbolId;
 use ic_alloc::ptr::P;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Symbol;
 
+impl Symbol {
+    pub fn as_str(&self) -> &str {
+        todo!()
+    }
+}
+
 #[derive(Debug)]
+pub struct Document {
+    /// Name of the file
+    pub name: Symbol,
+
+    pub definitions: InlineVec<Definition>,
+}
+
+#[derive(Default, Debug)]
 pub struct Ident {
     pub name: Symbol,
     pub span: Span,
 }
 
-#[derive(Debug, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Span {
     pub index: u32,
     pub len: u32,
@@ -60,9 +75,23 @@ pub type Definition = Item<ItemKind>;
 
 #[derive(Debug)]
 pub struct Item<K> {
-    pub ident: Ident,
+    /// Name and span of the item.
+    pub name: Ident,
+
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    ///
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: Span,
+
+    /// Annotations that were applied to this item.
     pub annotations: AnnotationVec,
+
+    /// Data of the underlying item type.
     pub kind: K,
 }
 
@@ -113,7 +142,7 @@ pub enum Type {
 /// A definition of an annotation, e.g. `@annotation foo {};`.
 #[derive(Debug)]
 pub struct AnnotationDef {
-    pub fields: InlineVec<AnnotationField>,
+    pub params: InlineVec<AnnotationField>,
 }
 
 /// The items that can be placed inside a definition of an annotation.
@@ -128,9 +157,9 @@ pub enum AnnotationField {
 /// A parameter inside an applied annotation, e.g. `value=true` in
 /// `@optional(value=true)`.
 #[derive(Debug)]
-pub struct AnnotationParam {
+pub struct AnnotationArg {
     /// Name of the parameter if one was specified.
-    /// May be omitted for annotations with only a single,  non-default member.
+    /// May be omitted for annotations with only a single, non-default member.
     pub name: Option<Ident>,
 
     /// Span of the entire parameter.
@@ -142,9 +171,9 @@ pub struct AnnotationParam {
 
 #[derive(Debug)]
 pub struct AnnotationAppl {
-    pub ident: Ident,
+    pub name: Ident,
     pub span: Span,
-    pub params: InlineVec<AnnotationParam>,
+    pub args: InlineVec<AnnotationArg>,
 }
 
 #[derive(Debug)]
@@ -182,8 +211,12 @@ pub struct BitmaskDef {
 
 #[derive(Debug)]
 pub struct Bit {
-    pub value: Ident,
+    pub name: Ident,
     pub annotations: InlineVec<AnnotationAppl>,
+
+    /// An explicit value, e.g. `bitmask Foo { VALUE = 1 };`
+    /// The `@position` annotation will *not* populate this field.
+    pub value: Option<Expr>,
 }
 
 #[derive(Debug)]
@@ -255,17 +288,20 @@ pub struct Numeric {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NumericKind {
-    Bool(bool),
+    Bool,
     Int,
     Float,
-    Char(char),
-    String(Symbol),
-    Ident(Symbol),
+    Char,
+    String,
+    Ident,
 }
 
 #[derive(Debug)]
 pub struct Op {
+    /// Span of the token.
     pub span: Span,
+
+    /// The token type.
     pub kind: OpKind,
 }
 
@@ -291,41 +327,4 @@ pub enum Expr {
     Numeric(Numeric),
     Unary { op: Op, expr: P<Expr> },
     Binary { lhs: P<Expr>, op: Op, rhs: P<Expr> },
-}
-
-pub fn dummy() {
-    let defs = Item {
-        ident: Ident {
-            name: Symbol,
-            span: Span::default(),
-        },
-        span: Span::default(),
-        annotations: vec![],
-        kind: ItemKind::Module(P(ModuleDef {
-            defs: vec![Item {
-                ident: Ident {
-                    name: Symbol,
-                    span: Span::default(),
-                },
-                span: Span::default(),
-                annotations: vec![AnnotationAppl {
-                    ident: Ident {
-                        name: Symbol,
-                        span: Span::default(),
-                    },
-                    span: Span::default(),
-                    params: vec![],
-                }],
-                kind: ItemKind::Const(P(ConstDef {
-                    value: Expr::Numeric(Numeric {
-                        kind: NumericKind::Bool(true),
-                        span: Span::default(),
-                    }),
-                    annotations: vec![],
-                })),
-            }],
-        })),
-    };
-
-    println!("{defs:#?}");
 }

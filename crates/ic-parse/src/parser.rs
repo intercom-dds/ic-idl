@@ -31,28 +31,37 @@ mod tests;
 use anyhow::Result;
 use chumsky::prelude::*;
 use chumsky::text::{Character, TextParser};
-use chumsky::{Error, Parser as _, Stream};
+use chumsky::{Error, Parser, Stream};
+use ic_alloc::ptr::P;
 
-use crate::lexer::Token;
-use crate::syntax::Definition;
+use crate::lexer::{Kind, Token};
+use crate::syntax::{Definition, Ident, ItemKind, ModuleDef, Span};
 
 // Workaround until trait aliases are stabilized
-pub trait Parser<T>: chumsky::Parser<char, T, Error = Simple<char>> + Clone {}
+pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone {}
 
 // Blanket impl because we really just want an alias
-impl<T, U: chumsky::Parser<char, T, Error = Simple<char>> + Clone> Parser<T> for U {}
+impl<T, U: chumsky::Parser<Kind, T, Error = Simple<Kind>> + Clone> IdlParser<T> for U {}
 
-/// Creates a parser that lazily constructs an AST as it gets fed tokens.
-pub fn parse() -> Result<Vec<Definition>> {
-    Ok(vec![])
+#[must_use]
+pub fn specification() -> impl IdlParser<Vec<Definition>> {
+    just(Kind::Module)
+        .ignore_then(just(Kind::Ident).map(|_| Definition {
+            name: Ident::default(),
+            span: Span::default(),
+            annotations: vec![],
+            kind: ItemKind::Module(P(ModuleDef { defs: vec![] })),
+        }))
+        // .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
+        .then_ignore(just(Kind::LBrace))
+        .then_ignore(definition().repeated())
+        .then_ignore(just(Kind::RBrace))
+        .then_ignore(just(Kind::Semi))
+        // .then_ignore(just([Kind::LBrace, Kind::RBrace, Kind::Semi]))
+        .repeated()
+        .then_ignore(end())
 }
 
-/// Constructs an AST from the given tokens.
-pub fn from_tokens(_tokens: &[Token]) -> Result<Vec<Definition>> {
-    // let ast = parser::specification().parse(stream);
-    Ok(vec![])
+fn definition() -> impl IdlParser<()> {
+    just([Kind::Struct, Kind::Ident, Kind::Semi]).ignored()
 }
-
-// fn specification() -> impl Parser<Vec<Definition>> {
-//     todo!()
-// }

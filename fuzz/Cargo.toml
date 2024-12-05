@@ -31,3 +31,10 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+libfuzzer-sys = "0.4.7"
+
+ic-parse = { path = "../crates/ic-parse" }
+
+[[bin]]
+name = "lexer"
+path = "bin/lexer.rs"

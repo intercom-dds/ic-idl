@@ -27,16 +27,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# ic-parse
+# ic-diagnostic
 
-An IDL 4.2-compliant parser.
-
-This crate contains the code for the lexer, parser, and the AST. The AST is a
-pure transcription of the source code. For a higher-level parse tree where
-types have been resolved, see `ic-hir`, which can be constructed from the
-syntax tree.
-
-The output of the parser is not guaranteed to be valid IDL, neither
-syntactically nor semantically. The parser follows a relaxed version of the IDL
-grammar for the sake of ease of parsing, and instead relies on traversing the
-AST afterwards to detect deviations and syntax errors.
+Machinery for crafting diagnostics, mapping them to source files, and
+pretty-printing them.

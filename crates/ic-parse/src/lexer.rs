@@ -28,261 +28,259 @@
 #[cfg(test)]
 mod tests;
 
-use chumsky::prelude::*;
-use chumsky::text::{Character, TextParser};
-use chumsky::{Error, Parser as _};
+use std::fmt;
 
-// use crate::syntax::Span;
+use chumsky::chain::Chain;
+use chumsky::Stream;
+use ic_alloc::inline_str::InlineStr;
+use logos::{Lexer, Logos, Source};
 
-type Span = std::ops::Range<usize>;
+macro_rules! tokens {
+    ($(
+        $(#[$meta:meta])*
+        $var:ident $(= $func:ident($val:expr))?,
+    )*) => {
+        #[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+        #[logos(skip r"[ \t\n\f]+")]
+        #[logos(subpattern digits = "[0-9][_0-9]*")]
+        pub enum Kind {
+            $(
+                $(#[$meta])*
+                $(#[$func($val)])*
+                $var,
+            )*
+        }
+    };
+}
 
-// Workaround until trait aliases are stabilized
-pub trait Lexer<T>: chumsky::Parser<char, T, Error = Simple<char>> + Clone {}
-
-// Blanket impl because we really just want an alias
-impl<T, U: chumsky::Parser<char, T, Error = Simple<char>> + Clone> Lexer<T> for U {}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Token {
-    // Types and related keywords
+#[derive(Logos, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[logos(skip r"[ \t\n\f]+")]
+#[logos(subpattern digits = "[0-9][_0-9]*")]
+pub enum Kind {
+    #[token("annotation")]
     Annotation,
-    Struct,
-    Enum,
-    Bitmask,
-    Exception,
-    Const,
+
+    #[token("module")]
     Module,
-    Typedef,
 
-    // Union
-    Union,
-    Switch,
-    Case,
-    Default,
-    Null,
+    #[token("struct")]
+    Struct,
 
-    // Interface
-    Local,
-    Interface,
-    In,
-    Out,
-    Inout,
-    Raises,
-    GetRaises,
-    SetRaises,
-    Attribute,
-    ReadOnly,
+    #[token("const")]
+    Const,
 
-    // Valuetype
-    Valuetype,
-    Public,
-    Private,
-    Factory,
+    #[token("bitmask")]
+    Bitmask,
 
-    // Bitset
+    #[token("bitset")]
     Bitset,
+
+    #[token("bitfield")]
     Bitfield,
 
-    // CORBA-isms
-    Any,
-    Void,
-    Object,
+    #[token("exception")]
+    Exception,
 
-    // Collections
-    Sequence,
-    Map,
+    #[token("union")]
+    Union,
 
-    // Other keywords
+    #[token("switch")]
+    Switch,
+
+    #[token("default")]
+    Default,
+
+    #[token("null")]
+    Null,
+
+    #[token("local")]
+    Local,
+
+    #[token("interface")]
+    Interface,
+
+    #[token("raises")]
+    Raises,
+
+    #[token("getraises")]
+    GetRaises,
+
+    #[token("setraises")]
+    SetRaises,
+
+    #[token("attribute")]
+    Attribute,
+
+    #[token("readonly")]
+    ReadOnly,
+
+    #[token("in")]
+    In,
+
+    #[token("out")]
+    Out,
+
+    #[token("inout")]
+    InOut,
+
+    #[token(",")]
+    Comma,
+
+    #[token(":")]
+    Colon,
+
+    #[token(";")]
+    Semi,
+
+    #[token("=")]
+    Eq,
+
+    #[token("{")]
+    LBrace,
+
+    #[token("}")]
+    RBrace,
+
+    #[token("(")]
+    LParen,
+
+    #[token(")")]
+    RParen,
+
+    #[token("[")]
+    LBracket,
+
+    #[token("]")]
+    RBracket,
+
+    #[regex("true|TRUE")]
     True,
+
+    #[regex("false|FALSE")]
     False,
 
-    // Identifiers
-    Ctrl(char),
-    Ident(String),
+    #[regex("0[1-9]+")]
+    Octal,
 
-    // TODO: remove
-    AnnAppl(String),
-    Literal(Literal),
+    #[regex("[1-9][0-9]*")]
+    Decimal,
+
+    #[regex("0[xX][a-fA-F0-9]+")]
+    Hex,
+
+    #[regex(r"(?&digits)(?:[eE](?&digits)|\.(?&digits)(?:[eE](?&digits))?)")]
+    Float,
+
+    /// String literal. Handles escaped quotes.
+    #[regex(r#""(?:[^"]|\\")*""#)]
+    String,
+
+    /// A valid UAX#31 identifier.
+    #[regex(r#"[\p{XID_Start}_]\p{XID_Continue}*"#)]
+    Ident,
+
+    /// Any single UTF-8 character surrounded by single quotes.
+    #[regex(r"'(?:\\.|[^\\'])?'", to_char)]
+    Char(Option<char>),
+
+    /// Fallback for invalid tokens
+    Invalid,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Number {
-    // Signed(isize),
-    Unsigned(usize),
-    // Float(f64),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Literal {
-    Boolean(bool),
-    Char(char),
-    String(String),
-    Integer(Number),
-}
-
-fn separator() -> impl Lexer<()> {
-    choice((
-        end(),
-        filter(|c: &char| c.is_ascii_punctuation() || c.is_whitespace()).ignored(),
-    ))
-}
-
-/// Handles case-insensitive keywords.
-fn keyword(kw: &'static str) -> impl Lexer<()> {
-    text::ident().try_map(move |s: String, span| {
-        s.eq_ignore_ascii_case(kw)
-            .then_some(())
-            .ok_or_else(|| Simple::expected_input_found(span, None, None))
-    })
-}
-
-fn idl_keyword(ident: String) -> Token {
-    match ident.as_str() {
-        "annotation" => Token::Annotation,
-        "struct" => Token::Struct,
-        "enum" => Token::Enum,
-        "bitmask" => Token::Bitmask,
-        "exception" => Token::Exception,
-        "const" => Token::Const,
-        "module" => Token::Module,
-        "typedef" => Token::Typedef,
-        "union" => Token::Union,
-        "switch" => Token::Switch,
-        "case" => Token::Case,
-        "default" => Token::Default,
-        "null" => Token::Null,
-        "local" => Token::Local,
-        "interface" => Token::Interface,
-        "in" => Token::In,
-        "out" => Token::Out,
-        "inout" => Token::Inout,
-        "raises" => Token::Raises,
-        "getraises" => Token::GetRaises,
-        "setraises" => Token::SetRaises,
-        "attribute" => Token::Attribute,
-        "readonly" => Token::ReadOnly,
-        "valuetype" => Token::Valuetype,
-        "public" => Token::Public,
-        "private" => Token::Private,
-        "factory" => Token::Factory,
-        "bitset" => Token::Bitset,
-        "bitfield" => Token::Bitfield,
-        "any" => Token::Any,
-        "void" => Token::Void,
-        "object" => Token::Object,
-        "sequence" => Token::Sequence,
-        "map" => Token::Map,
-        _ => Token::Ident(ident),
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Kind::Annotation => write!(f, "annotation"),
+            Kind::Struct => write!(f, "struct"),
+            // Kind::Enum => write!(f, "enum"),
+            Kind::Bitmask => write!(f, "bitmask"),
+            Kind::Exception => write!(f, "exception"),
+            Kind::Const => write!(f, "const"),
+            Kind::Module => write!(f, "module"),
+            Kind::Semi => write!(f, "`;`"),
+            // Kind::Typedef => write!(f, "typedef"),
+            // Kind::Union => write!(f, "union"),
+            // Kind::Switch => write!(f, "switch"),
+            // Kind::Case => write!(f, "case"),
+            // Kind::Default => write!(f, "default"),
+            // Kind::Null => write!(f, "null"),
+            // Kind::Local => write!(f, "local"),
+            // Kind::Interface => write!(f, "interface"),
+            // Kind::In => write!(f, "in"),
+            // Kind::Out => write!(f, "out"),
+            // Kind::Inout => write!(f, "inout"),
+            // Kind::Raises => write!(f, "raises"),
+            // Kind::GetRaises => write!(f, "getraises"),
+            // Kind::SetRaises => write!(f, "setraises"),
+            // Kind::Attribute => write!(f, "attribute"),
+            // Kind::ReadOnly => write!(f, "readonly"),
+            // Kind::Valuetype => write!(f, "valuetype"),
+            // Kind::Public => write!(f, "public"),
+            // Kind::Private => write!(f, "private"),
+            // Kind::Bitset => write!(f, "bitset"),
+            // Kind::Bitfield => write!(f, "bitfield"),
+            // Kind::Sequence => write!(f, "sequence"),
+            // Kind::Map => write!(f, "map"),
+            _ => write!(f, "unknown"),
+        }
     }
 }
 
-fn ident() -> impl Lexer<Token> {
-    choice((
-        just('_')
-            .ignore_then(text::ident())
-            .map(|ident: String| Token::Ident(ident))
-            .labelled("identifier"),
-        just('@')
-            .ignore_then(text::ident())
-            .map(|ident: String| Token::AnnAppl(ident))
-            .labelled("annotation"),
-        text::ident()
-            .then_ignore(separator())
-            .map(|ident: String| idl_keyword(ident))
-            .labelled("identifier"),
-    ))
+// Empty character literals are permitted during parsing and instead gets
+// checked later during the linting stage.
+fn to_char(lex: &mut Lexer<Kind>) -> Option<char> {
+    match lex.slice().len() {
+        // Empty character literal
+        2 => None,
+
+        // Single UTF-8 character literal
+        3 => lex.slice().chars().nth(1),
+
+        // An escaped single-quote character
+        4 => Some('\''),
+
+        // The regex will never match more than 4 characters
+        _ => unreachable!(),
+    }
 }
 
-fn integer_lit() -> impl Lexer<Number> {
-    let hex = just("0x")
-        .ignore_then(text::int(16))
-        .map(|v: String| usize::from_str_radix(&v, 16).unwrap())
-        .labelled("hexadecimal number");
+/// file from which it was read.
+pub type Span = std::ops::Range<usize>;
 
-    let oct = just('0')
-        .ignore_then(text::int(8))
-        .map(|v: String| usize::from_str_radix(&v, 8).unwrap())
-        .labelled("octal number");
-
-    let dec = text::int(10)
-        .map(|v: String| v.parse().unwrap())
-        .labelled("number");
-
-    choice((hex, oct, dec))
-        .map(Number::Unsigned)
-        .then_ignore(separator())
+/// A lexed token. Contains the span of the token and its kind.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Token {
+    pub span: Span,
+    pub kind: Kind,
 }
 
-fn bool_lit() -> impl Lexer<bool> {
-    keyword("true")
-        .to(true)
-        .or(keyword("false").to(false))
-        // .then_ignore(separator())
-        .labelled("boolean")
-}
-
-fn char_lit() -> impl Lexer<char> {
-    just('\'')
-        .ignore_then(filter(|v: &char| v.is_ascii()))
-        .then_ignore(just('\''))
-        .labelled("character")
-}
-
-fn string_lit() -> impl Lexer<String> {
-    just('"')
-        .ignore_then(none_of('"').repeated())
-        .then_ignore(just('"'))
-        .collect::<String>()
-        .labelled("string")
-}
-
-fn literal() -> impl Lexer<Literal> {
-    choice((
-        bool_lit().map(Literal::Boolean),
-        char_lit().map(Literal::Char),
-        integer_lit().map(Literal::Integer),
-        string_lit().map(Literal::String),
-    ))
-}
-
-fn comment() -> impl Lexer<String> {
-    let line = just("//")
-        .ignore_then(take_until(text::newline()))
-        .padded()
-        .map(|(v, _)| v)
-        .collect();
-
-    let block = just("/*")
-        .ignore_then(take_until(just("*/")))
-        .padded()
-        .map(|(v, _)| v)
-        .collect();
-
-    line.or(block).labelled("comment")
-}
-
-fn token() -> impl Lexer<Token> {
-    let ctrl = one_of("()[]{}<>;,+-/*=").map(Token::Ctrl);
-    let lit = literal().map(Token::Literal);
-    choice((ctrl, lit, ident()))
-}
-
+/// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
+/// backtracking and some other required features.
 #[must_use]
-pub fn lexer() -> impl Lexer<Vec<(Token, Span)>> {
-    let token = token()
-        .map_with_span(|t, span| (t, span))
-        .padded_by(comment().repeated())
-        .padded();
+#[allow(clippy::range_plus_one)]
+pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
+    let lexer = lexer(input);
+    let len = input.len();
+    Stream::from_iter(len..len + 1, lexer.map(move |tok| (tok.kind, tok.span)))
+}
 
-    token.repeated().then_ignore(end())
+/// Constructs an iterator that lazily lexes the input.
+///
+/// Lexing is infallible: any invalid tokens or characters will be mapped to an
+/// `Kind::Invalid` token.
+pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
+    // If push comes to shove, we create an invalid token that spans from the
+    // current position until the next delimiter. This makes lexing infallible,
+    // and lets us better handle the error during parsing.
+    Kind::lexer(input).spanned().map(|(token, span)| Token {
+        kind: token.unwrap_or(Kind::Invalid),
+        span,
+    })
 }
 
 /// Exhaustively tokenizes the entire input string, returning a list of all
 /// lexed tokens.
-///
-/// # Errors
-///
-///
-pub fn scan(input: &str) -> Result<Vec<(Token, Span)>, Vec<Simple<char>>> {
-    lexer().parse(input)
+#[must_use]
+pub fn scan(input: &str) -> Vec<Token> {
+    lexer(input).collect()
 }

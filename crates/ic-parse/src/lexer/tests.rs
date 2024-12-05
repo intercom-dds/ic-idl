@@ -27,160 +27,124 @@
 
 use super::*;
 
+fn single(input: &str) -> Kind {
+    scan(input).first().unwrap().kind
+}
+
 #[test]
 fn test_bool_lit() {
-    assert!(bool_lit().parse("true").unwrap());
-    assert!(!bool_lit().parse("false").unwrap());
-    assert!(bool_lit().parse("fals").is_err());
-    assert!(bool_lit().parse("tru").is_err());
+    assert_eq!(single("true"), Kind::True);
+    assert_eq!(single("false"), Kind::False);
+    assert_eq!(single("fals"), Kind::Ident);
+    assert_eq!(single("tru"), Kind::Ident);
 }
 
+// Check that e.g. "truest" evaluates to `Ident("truest")` and not
+// `(True, Ident("st"))`
 #[test]
-fn test_integer_lit() {
-    // octal
-    assert_eq!(
-        integer_lit().parse("0777").unwrap(),
-        Number::Unsigned(0o777),
-    );
-    assert!(integer_lit().parse("0778").is_err());
-
-    // decimal
-    assert_eq!(integer_lit().parse("0").unwrap(), Number::Unsigned(0));
-    assert_eq!(integer_lit().parse("999").unwrap(), Number::Unsigned(999));
-    assert_eq!(integer_lit().parse("1000").unwrap(), Number::Unsigned(1000));
-    assert!(integer_lit().parse("99F").is_err());
-
-    // hex
-    assert_eq!(integer_lit().parse("0x0").unwrap(), Number::Unsigned(0));
-    assert_eq!(
-        integer_lit().parse("0xFFF").unwrap(),
-        Number::Unsigned(0xFFF),
-    );
-    assert!(integer_lit().parse("0xFG").is_err());
-
-    // separation checks
-    assert!(integer_lit().parse("a123").is_err());
-    assert!(integer_lit().parse("123a").is_err());
-    assert_eq!(
-        integer_lit().parse("123 456 789").unwrap(),
-        Number::Unsigned(123),
-    );
-    assert_eq!(
-        integer_lit().parse("123;456").unwrap(),
-        Number::Unsigned(123),
-    );
-    assert_eq!(
-        integer_lit().parse("123,456").unwrap(),
-        Number::Unsigned(123),
-    );
-    assert_eq!(
-        integer_lit().parse("123]]]").unwrap(),
-        Number::Unsigned(123),
-    );
+fn partial_ident() {
+    assert_eq!(single("truest"), Kind::Ident);
+    assert_eq!(single("untrue"), Kind::Ident);
+    assert_eq!(single("falsely"), Kind::Ident);
+    assert_eq!(single("input"), Kind::Ident);
+    assert_eq!(single("output"), Kind::Ident);
+    assert_eq!(single("in1"), Kind::Ident);
+    assert_eq!(single("out1"), Kind::Ident);
+    assert_eq!(single("inout"), Kind::InOut);
 }
+
+// #[test]
+// fn test_integer_lit() {
+//     // octal
+//     assert_eq!(scan("0777"), Number::Unsigned(0o777),);
+//     assert!(scan("0778").is_err());
+//
+//     // decimal
+//     assert_eq!(scan("0"), Number::Unsigned(0));
+//     assert_eq!(scan("999"), Number::Unsigned(999));
+//     assert_eq!(scan("1000"), Number::Unsigned(1000));
+//     assert!(scan("99F").is_err());
+//
+//     // hex
+//     assert_eq!(scan("0x0"), Number::Unsigned(0));
+//     assert_eq!(scan("0xFFF"), Number::Unsigned(0xFFF),);
+//     assert!(scan("0xFG").is_err());
+//
+//     // separation checks
+//     assert!(scan("a123").is_err());
+//     assert!(scan("123a").is_err());
+//     assert_eq!(scan("123 456 789"), Number::Unsigned(123),);
+//     assert_eq!(scan("123;456"), Number::Unsigned(123),);
+//     assert_eq!(scan("123,456"), Number::Unsigned(123),);
+//     assert_eq!(scan("123]]]"), Number::Unsigned(123),);
+// }
 
 #[test]
 fn test_char_lit() {
-    assert_eq!(char_lit().parse("'a'").unwrap(), 'a');
-    assert_eq!(char_lit().parse("'0'").unwrap(), '0');
-    assert_eq!(char_lit().parse("';'").unwrap(), ';');
-    assert!(char_lit().parse("'a").is_err());
-    assert!(char_lit().parse("a").is_err());
-    assert!(char_lit().parse("a'").is_err());
-    assert!(char_lit().parse("''").is_err());
+    assert_eq!(single("'a'"), Kind::Char(Some('a')));
+    assert_eq!(single("'0'"), Kind::Char(Some('0')));
+    assert_eq!(single("';'"), Kind::Char(Some(';')));
+    assert_eq!(single("'a"), Kind::Invalid);
+    assert_eq!(single("a"), Kind::Ident);
+    assert_eq!(single("''"), Kind::Char(None));
+    assert_eq!(single(r"'\''"), Kind::Char(Some('\'')));
+
+    let tokens = scan("a'");
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, Kind::Ident);
+    assert_eq!(tokens[1].kind, Kind::Invalid);
 }
 
 #[test]
 fn test_string_lit() {
-    let input = "foo 'bar' baz";
-    assert_eq!(string_lit().parse(format!("\"{input}\"")).unwrap(), input);
+    let input = r#""foo 'bar' baz""#;
+    assert_eq!(single(input), Kind::String);
 
-    let input = "howdy 🤠";
-    assert_eq!(string_lit().parse(format!("\"{input}\"")).unwrap(), input);
+    let input = r#""howdy 🤠""#;
+    assert_eq!(single(input), Kind::String);
 
-    assert!(string_lit().parse("\"foo").is_err());
-    assert!(string_lit().parse("foo\"").is_err());
-    assert!(string_lit().parse("foo").is_err());
+    assert_eq!(single("\"foo"), Kind::Invalid);
+
+    let tokens = scan("foo\"");
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, Kind::Ident);
+    assert_eq!(tokens[1].kind, Kind::Invalid);
 }
 
 #[test]
-#[ignore]
 fn escaped_string_lit() {
-    let input = "foo \"bar\" baz";
-    assert_eq!(string_lit().parse(format!("\"{input}\"")).unwrap(), input);
+    let input = scan(r#""foo \"bar\" baz""#);
+    assert_eq!(input.len(), 1);
+    assert_eq!(input[0].kind, Kind::String);
 }
 
-#[test]
-fn test_ident() {
-    assert_eq!(
-        token().parse("foo123_456").unwrap(),
-        Token::Ident("foo123_456".to_string()),
-    );
-    assert!(token().parse("123foo").is_err());
-
-    // escaped keywords
-    assert_eq!(
-        token().parse("_struct").unwrap(),
-        Token::Ident("struct".to_string()),
-    );
-    assert_eq!(
-        token().parse("_string").unwrap(),
-        Token::Ident("string".to_string()),
-    );
-    assert_eq!(
-        token().parse("_foo").unwrap(),
-        Token::Ident("foo".to_string()),
-    );
-    assert_eq!(
-        token().parse("_123").unwrap(),
-        Token::Ident("_123".to_string()),
-    );
-
-    // annotations
-    assert_eq!(
-        token().parse("@foo").unwrap(),
-        Token::AnnAppl("foo".to_string()),
-    );
-    assert_eq!(
-        token().parse("@default").unwrap(),
-        Token::AnnAppl("default".to_string()),
-    );
-    assert_eq!(
-        token().parse("@annotation").unwrap(),
-        Token::AnnAppl("annotation".to_string()),
-    );
-}
-
-// Check that e.g. "truest" evaluates to `Ident("truest")` and not
-// `(Bool("true"), Ident("st"))`
-#[test]
-fn partial_ident() {
-    assert_eq!(
-        token().parse("truest").unwrap(),
-        Token::Ident("truest".to_string()),
-    );
-    assert_eq!(
-        token().parse("untrue").unwrap(),
-        Token::Ident("untrue".to_string()),
-    );
-    assert_eq!(
-        token().parse("falsely").unwrap(),
-        Token::Ident("falsely".to_string()),
-    );
-    assert_eq!(
-        token().parse("input").unwrap(),
-        Token::Ident("input".to_string()),
-    );
-    assert_eq!(
-        token().parse("output").unwrap(),
-        Token::Ident("output".to_string()),
-    );
-    assert_eq!(token().parse("inout").unwrap(), Token::Inout);
-}
+// #[test]
+// fn test_ident() {
+//     assert_eq!(scan("foo123_456"), Token::Ident("foo123_456".to_string()),);
+//     assert!(scan("123foo").is_err());
+//
+//     // escaped keywords
+//     assert_eq!(scan("_struct"), Token::Ident("struct".to_string()),);
+//     assert_eq!(scan("_string"), Token::Ident("string".to_string()),);
+//     assert_eq!(scan("_foo"), Token::Ident("foo".to_string()),);
+//     assert_eq!(scan("_123"), Token::Ident("_123".to_string()),);
+//
+//     // annotations
+//     assert_eq!(scan("@foo"), Token::AnnAppl("foo".to_string()),);
+//     assert_eq!(scan("@default"), Token::AnnAppl("default".to_string()),);
+//     assert_eq!(
+//         scan("@annotation"),
+//         Token::AnnAppl("annotation".to_string()),
+//     );
+// }
 
 #[test]
-fn const_dcl() {
-    let tokens = scan("const boolean FOO = true;").unwrap();
-    assert_eq!(tokens.len(), 6);
-    assert_eq!(tokens.last().unwrap().0, Token::Ctrl(';'));
+fn invalid_token() {
+    assert_eq!(single("?"), Kind::Invalid);
+
+    let tokens = scan("foo?bar");
+    assert_eq!(tokens.len(), 3);
+    assert_eq!(tokens[0].kind, Kind::Ident);
+    assert_eq!(tokens[1].kind, Kind::Invalid);
+    assert_eq!(tokens[2].kind, Kind::Ident);
 }

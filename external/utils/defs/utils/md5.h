@@ -81,4 +81,4 @@ class MD5 {
 
 }  // namespace intercom
 
-#include "utils/md5.ic"
+#include "md5.ic"

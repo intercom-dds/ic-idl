@@ -54,7 +54,7 @@ impl<T: 'static + Clone> Clone for P<T> {
 
 impl<T: Debug + ?Sized> Debug for P<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Ptr").field(&self.ptr).finish()
+        Debug::fmt(&self.ptr, f)
     }
 }
 

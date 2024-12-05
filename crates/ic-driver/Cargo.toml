@@ -40,6 +40,7 @@ workspace = true
 anyhow = "1.0"
 ic-cli = { path = "../ic-cli" }
 ic-preproc = { path = "../ic-preproc" }
+ic-diagnostic = { path = "../ic-diagnostic" }
 ic-ptree = { path = "../ic-ptree", optional = true }
 
 # HIR-related deps

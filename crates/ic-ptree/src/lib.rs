@@ -30,6 +30,7 @@ use std::path::Path;
 
 mod ffi;
 
+#[must_use]
 #[derive(Debug)]
 pub struct ParseResult {
     inner: *mut ffi::parse_result,
@@ -46,7 +47,7 @@ impl Drop for ParseResult {
 /// Parses the given IDL. The parser assumes the input has already been
 /// preprocessed; no preprocessor directives will be expanded or evaluated.
 ///
-/// # Error
+/// # Errors
 ///
 /// This function may fail if the input IDL contains a nul byte.
 pub fn parse_idl(input: &str) -> Result<ParseResult, NulError> {

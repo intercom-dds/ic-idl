@@ -25,6 +25,9 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+[alias]
+xtask = "run --package xtask --bin xtask --"
+
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
 
@@ -49,31 +52,8 @@ rustflags = [
     "-Wfuture_incompatible",
     "-Wnonstandard_style",
 
-    "-Aclippy::must_use_candidate",
-    "-Aclippy::missing_errors_doc",
-    "-Aclippy::module_name_repetitions",
-    "-Aclippy::missing_errors_doc",
     "-Aclippy::missing_panics_doc",
-
-    "-Aclippy::multiple_crate_versions",
-    "-Aclippy::unused_async",
-    "-Aclippy::ignored_unit_patterns",
+    "-Aclippy::missing_errors_doc",
     "-Aclippy::struct_excessive_bools",
-
-    "-Aclippy::ptr_as_ptr",
-    "-Aclippy::doc_markdown",
-    "-Aclippy::missing_docs_in_private_items",
-    "-Aclippy::exhaustive_structs",
-    "-Aclippy::std_instead_of_core",
-    "-Aclippy::undocumented_unsafe_blocks",
-    "-Aclippy::missing_inline_in_public_items",
-    "-Aclippy::missing_const_for_fn",
-    "-Aclippy::cargo_common_metadata",
-    "-Aclippy::cast_possible_wrap",
-    "-Aclippy::cast_sign_loss",
-    "-Aclippy::derive_partial_eq_without_eq",
-    "-Aclippy::wildcard_imports",
-    "-Aclippy::similar_names",
-    "-Aclippy::option_if_let_else",
-    "-Aclippy::no_effect_underscore_binding",
+    "-Aclippy::module_name_repetitions",
 ]

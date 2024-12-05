@@ -53,6 +53,7 @@ pub trait Convert: Sized {
     fn from_result(input: &[String]) -> Result<Self>;
 }
 
+#[must_use]
 pub fn convert_exit<T: Convert>(input: &[String]) -> T {
     match T::from_result(input) {
         Ok(v) => v,

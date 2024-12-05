@@ -269,7 +269,7 @@ fn main() {
     let options = Options::parse();
 
     if options.version {
-        println!("{}", info::version_info());
+        println!("{}", info::version());
         return;
     }
 

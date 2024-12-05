@@ -165,6 +165,7 @@ impl CommandLine {
         self
     }
 
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -204,6 +205,7 @@ impl CommandLine {
         result
     }
 
+    #[must_use]
     pub fn help(&self) -> String {
         let mut lines: Vec<String> = vec![];
 
@@ -368,6 +370,7 @@ pub struct Category {
 }
 
 impl Category {
+    #[must_use]
     pub fn with_commands(name: &'static str, commands: Vec<CommandLine>) -> Self {
         Self { name, commands }
     }
@@ -448,6 +451,7 @@ pub enum Value {
 pub trait Command {
     fn command() -> CommandLine;
 
+    #[must_use]
     fn from_args<I>(args: I) -> Self
     where
         Self: Sized,
@@ -457,6 +461,7 @@ pub trait Command {
         Self::from_result(&result)
     }
 
+    #[must_use]
     fn parse() -> Self
     where
         Self: Sized,
@@ -464,5 +469,6 @@ pub trait Command {
         Self::from_args(env::args().skip(1))
     }
 
+    #[must_use]
     fn from_result(result: &ParseResult) -> Self;
 }

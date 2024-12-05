@@ -28,6 +28,7 @@
 use crate::index::IndexMap;
 use crate::{CommandLine, Opt, Value};
 
+#[must_use]
 pub struct ParseResult {
     pub(crate) name: String,
     pub(crate) options: IndexMap<String, Opt>,
@@ -45,10 +46,12 @@ impl ParseResult {
         }
     }
 
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&String> {
         self.options
             .get(key)
@@ -56,6 +59,7 @@ impl ParseResult {
             .unwrap_or_default()
     }
 
+    #[must_use]
     pub fn get_vec(&self, key: &str) -> Option<&Vec<String>> {
         if let Some(value) = self.options.get(key).map(|v| &v.values) {
             if !value.is_empty() {
@@ -65,18 +69,22 @@ impl ParseResult {
         None
     }
 
+    #[must_use]
     pub fn count(&self, key: &str) -> usize {
         self.options.get(key).map_or(0, |v| v.count)
     }
 
+    #[must_use]
     pub fn is_present(&self, key: &str) -> bool {
         self.count(key) != 0
     }
 
+    #[must_use]
     pub fn subcommand(&self) -> Option<&ParseResult> {
         self.subcommand.as_deref()
     }
 
+    #[must_use]
     pub fn positionals(&self) -> &Vec<String> {
         &self.positionals
     }
@@ -127,7 +135,7 @@ where
             had_option = true;
         }
 
-        if had_option {
+        if had_option || (context.subcommands.is_empty() && !context.positionals) {
             Ok(())
         } else {
             Err(ParseError::Help(context.help()))

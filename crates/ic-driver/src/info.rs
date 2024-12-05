@@ -41,7 +41,7 @@ const PKG_NAME: &str = env!("CARGO_PKG_NAME");
 
 const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub struct VersionInfo {
+pub struct Version {
     install_dir: String,
 }
 
@@ -56,7 +56,7 @@ fn exe_dir() -> String {
     inner().unwrap_or_else(|| "unknown".to_string())
 }
 
-impl Display for VersionInfo {
+impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
@@ -70,8 +70,8 @@ impl Display for VersionInfo {
     }
 }
 
-pub fn version_info() -> VersionInfo {
-    VersionInfo {
+pub fn version() -> Version {
+    Version {
         install_dir: exe_dir(),
     }
 }

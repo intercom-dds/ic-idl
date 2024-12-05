@@ -32,23 +32,16 @@ used everywhere in CMake as a temporary hack to make things work.
 
 ## Building
 
-MSRV is 1.70.
-
 `ic-idl` is bootstrapped. To build a full-fledged version, we first need to
 compile a reduced, C++-only version of `ic-idl` that is capable of emitting
 simplified type definitions. This will be used to generate types we need for
-the full-fledged version. This process is automated through `cargo-make`.
+the full-fledged version. This process is automated through the `xtask`
+application.
 
-First, install cargo-make:
-
-```sh
-cargo install --no-default-features --force cargo-make
-```
-
-Then build the full-fledged version through `cargo-make`:
+To build a full release:
 
 ```sh
-cargo make release
+cargo xtask release
 ```
 
 The system's default C/C++ toolchain will be used unless otherwise is
@@ -61,25 +54,23 @@ respectively.
 Build a bootstrapped version first:
 
 ```sh
-cargo make bootstrap
+cargo xtask bootstrap
 ```
 
 Once compiled, `cargo` can be invoked as usual, e.g.:
 
 ```
-cargo test
+cargo test --workspace
 ```
-
-For working with C++, a `compile_commands.json` file can be generated with:
-
-```
-cargo make cmake
-```
-
-This will create a `build` directory which contains `compile_commands.json`.
 
 Development documentation can be generated with:
 
 ```
 cargo doc --document-private-items --no-deps
 ```
+
+## MSRV
+
+MSRV is 1.70. The MSRV may change between minor version updates and is not
+considered a semver-breaking change.
+

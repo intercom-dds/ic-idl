@@ -1,3 +1,4 @@
+#!/bin/sh
 # Copyright 2024 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,31 +26,24 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[workspace]
-resolver = "2"
-members = [
-    "crates/ic-alloc",
-    "crates/ic-cli",
-    "crates/ic-cli-derive",
-    "crates/ic-driver",
-    "crates/ic-emit",
-    "crates/ic-hir",
-    "crates/ic-hir-derive",
-    "crates/ic-hir-pretty",
-    "crates/ic-lint",
-    "crates/ic-parse",
-    "crates/ic-preproc",
-    "crates/ic-ptree",
-    "xtask",
-]
-default-members = ["crates/ic-driver"]
-exclude = ["fuzz", "crates/ic-bootstrap"]
+STATUS=0
 
-[workspace.package]
-rust-version = "1.70"
-publish = false
+run() {
+    local msg="$1"
+    shift
+    OUTPUT=$("$@" 2>&1)
 
-[workspace.dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "2.0"
+    if [ $? -ne 0 ]; then
+        printf "==> \e[0;31merror:\e[0m $msg:\n"
+        printf "$OUTPUT\n\n"
+        STATUS=1
+    fi
+}
+
+# Check formatting
+run "code is not properly formatted" cargo +nightly fmt --check
+
+# Check that all files have an IPR header
+run "missing IPR headers" cargo --quiet xtask ipr
+
+exit $STATUS

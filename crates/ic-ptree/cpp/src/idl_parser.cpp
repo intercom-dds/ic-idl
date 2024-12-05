@@ -27,11 +27,12 @@
 
 #include "cidl/idl_parser.h"
 
-#include <cpplight/PreProcessor.h>
-#include <cpplight/ProcessorUtilities.h>
+#include <cpplight/internal/PreProcessor.h>
+#include <cpplight/internal/ProcessorUtilities.h>
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -39,16 +40,15 @@
 #include <sstream>
 #include <string>
 
-#include "InterCOM/detail/filesystem.h"
+#include "cidl/commandline.h"
 #include "cidl/constants.h"
-#include "cidl/internal/commandline.h"
-#include "cidl/internal/hdrs.h"
-#include "cidl/internal/idl_rpc_gen.h"
-#include "cidl/internal/ptree_builder.h"
+// #include "cidl/idl_rpc_gen.h"
 #include "cidl/ptree.h"
+#include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
 #include "fmt/core.h"
+#include "fmt/std.h"
 
 extern "C" {
 int scan_string(const char* str);
@@ -611,7 +611,7 @@ const char* g_rpc_types =
 intercom::cidl::parse_result g_parse_result;
 
 std::stringstream& msgout() {
-    static auto s_messages = std::unique_ptr<std::stringstream>(new std::stringstream);
+    static auto s_messages = std::make_unique<std::stringstream>();
     return *s_messages;
 }
 }  // namespace
@@ -673,10 +673,10 @@ static void reset_top_level() {
     g_top_level = ptree();
 }
 
-static intercom::RefPointer<parser> g_rpc_initial_state;
+static std::shared_ptr<parser> g_rpc_initial_state;
 
-static void init_parser_state(const intercom::RefPointer<parser>& state) {
-    static auto s_initial_state = []() -> intercom::RefPointer<parser> {
+static void init_parser_state(const std::shared_ptr<parser>& state) {
+    static auto s_initial_state = []() -> std::shared_ptr<parser> {
         const CommandLineOption::ScopeDefaultWarnings scp;
         auto initial = std::make_shared<parser>();
         g_state = initial;
@@ -764,7 +764,7 @@ void generate_code(struct ptree* node) {
     while (node) {
         current_input_file = get_symbol(node->file_name.c_str());
         g_state->include_context.push_back(node->included_from);
-        node->generated = append_node(node->generated, generate_rpc_structs(node));
+        // node->generated = append_node(node->generated, generate_rpc_structs(node));
         push_context(node);
         generate_code(node->members);
         g_state->include_context.pop_back();
@@ -901,8 +901,8 @@ static parse_result run_parser_on_file(FILE* input) {
     return get_parse_result();
 }
 
-namespace intercom {
-namespace cidl {
+namespace intercom::cidl {
+
 namespace {
 void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
     std::set<std::string> input_file_set;
@@ -1209,10 +1209,9 @@ static void collect_files_from_directory(
     const std::filesystem::path& a_dir,
     FileList& a_files
 ) {
-    for (const auto& f : std::filesystem::read_dir(a_dir)) {
-        if (std::filesystem::is_directory(f)) {
-            collect_files_from_directory(a_base, f, a_files);
-        } else if (f.extension() == ".idl" || f.extension() == ".IDL") {
+    for (const auto& f : std::filesystem::recursive_directory_iterator(a_dir)) {
+        const auto& path = f.path();
+        if (!f.is_directory() && (path.extension() == ".idl" || path.extension() == ".IDL")) {
             a_files.emplace_back(f, std::filesystem::relative(f, a_base));
         }
     }
@@ -1227,32 +1226,13 @@ parse_result run_parser(
     FileList expanded_files;
 
     for (auto file : input_files) {
-        // try tilde expansion on invalid path
-        if (!std::filesystem::exists(file)) {
-            std::string expansion_error;
-            std::string expanded_path = std::filesystem::tilde_expand_path(file, expansion_error);
-            if (expanded_path.empty()) {
-                parse_result err;
-                err.error_count++;
-                if (expansion_error.empty()) {
-                    err.msg = fmt::format("failed to open file \"{}\"\n", file);
-                } else {
-                    err.msg = fmt::format(
-                        "tilde expansion on invalid file path \"{}\" failed: {}\n",
-                        file,
-                        expansion_error
-                    );
-                }
-                return err;
-            }
-            file = expanded_path;
-        }
         if (!std::filesystem::exists(file)) {
             parse_result err;
             err.error_count++;
             err.msg = fmt::format("failed to open file \"{}\"\n", file);
             return err;
         }
+
         if (std::filesystem::is_directory(file)) {
             collect_files_from_directory(file, file, expanded_files);
         } else {
@@ -1297,19 +1277,20 @@ parse_result run_parser(
         // Stop after preprocessing?
         if ((flags & PREPROCESS_ONLY) == 0) {
             parse_result* result = nullptr;
-            JsonParser json_parser;
-            XmlParser xml_parser;
+            // TODO(idarcar):
+            // JsonParser json_parser;
+            // XmlParser xml_parser;
             IdlParser idl_parser;
-            if (json_input) {
-                json_parser.run(ostream.str(), file.first);
-                result = &json_parser.result();
-            } else if (xml_input) {
-                xml_parser.run(ostream.str(), file.first);
-                result = &xml_parser.result();
-            } else {
-                idl_parser.run(ostream.str());
-                result = &idl_parser.result();
-            }
+            // if (json_input) {
+            // json_parser.run(ostream.str(), file.first);
+            // result = &json_parser.result();
+            // } else if (xml_input) {
+            // xml_parser.run(ostream.str(), file.first);
+            // result = &xml_parser.result();
+            // } else {
+            idl_parser.run(ostream.str());
+            result = &idl_parser.result();
+            // }
             parsed_trees.push_back(*result);
         } else {
             parse_result result;
@@ -1328,18 +1309,19 @@ parse_result run_parser(
 
 struct IdlParserImpl {
     parse_result result;
-    RefPointer<parser> state;
+    std::shared_ptr<parser> state;
 };
 
-struct JsonParserImpl {
-    parse_result result;
-    RefPointer<parser> state;
-};
-
-struct XmlParserImpl {
-    parse_result result;
-    RefPointer<parser> state;
-};
+// TODO(idarcar):
+// struct JsonParserImpl {
+//     parse_result result;
+//     std::shared_ptr<parser> state;
+// };
+//
+// struct XmlParserImpl {
+//     parse_result result;
+//     std::shared_ptr<parser> state;
+// };
 
 std::mutex g_parse_mutex;
 
@@ -1363,7 +1345,7 @@ void IdlParser::run(const std::string& input) {
     scan_string(input.c_str());
     m_impl->result = get_parse_result();
     m_impl->result.state = m_impl->state;
-    g_state = RefPointer<parser>();
+    g_state = std::make_shared<parser>();
     reset_top_level();
 }
 
@@ -1373,7 +1355,7 @@ void IdlParser::run(FILE* input) {
     scan_file(input);
     m_impl->result = get_parse_result();
     m_impl->result.state = m_impl->state;
-    g_state = RefPointer<parser>();
+    g_state = std::make_shared<parser>();
     reset_top_level();
 }
 
@@ -1385,87 +1367,87 @@ void IdlParser::run(const std::function<ptree*()>& input) {
     g_top_level.next = node;
     m_impl->result = get_parse_result();
     m_impl->result.state = m_impl->state;
-    g_state = RefPointer<parser>();
+    g_state = std::make_shared<parser>();
     reset_top_level();
 }
 
-intercom::RefPointer<parser> IdlParser::state() {
+std::shared_ptr<parser> IdlParser::state() {
     return m_impl->state;
 }
 
-JsonParser::JsonParser() : m_impl(new JsonParserImpl()) {
-    m_impl->state = std::make_shared<parser>();
-}
-
-JsonParser::~JsonParser() = default;
-
-const parse_result& JsonParser::result() const {
-    return m_impl->result;
-}
-
-parse_result& JsonParser::result() {
-    return m_impl->result;
-}
-
-void JsonParser::run(const std::string& input, const std::string& input_file_name) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    init_parser_state(m_impl->state);
-    create_include_start(create_identifier(input_file_name.c_str()));
-    std::string canonical_file_name;
-    try {
-        canonical_file_name = std::filesystem::canonical(input_file_name);
-    } catch (std::exception&) {
-        canonical_file_name = input_file_name;
-    }
-    current_input_file = canonical_file_name.c_str();
-    g_top_level.next = create_include_finish(parse_json_ptree(input));
-    m_impl->result = get_parse_result();
-    m_impl->result.state = m_impl->state;
-    g_state = RefPointer<parser>();
-    current_input_file = "";
-    reset_top_level();
-}
-
-void JsonParser::run(std::istream& input, const std::string& input_file_name) {
-    std::stringstream stream;
-    stream << input.rdbuf();
-    run(stream.str(), input_file_name);
-}
-
-intercom::RefPointer<parser> JsonParser::state() {
-    return m_impl->state;
-}
-
-XmlParser::XmlParser() : m_impl(new XmlParserImpl()) {
-    m_impl->state = std::make_shared<parser>();
-}
-
-XmlParser::~XmlParser() = default;
-
-const parse_result& XmlParser::result() const {
-    return m_impl->result;
-}
-
-parse_result& XmlParser::result() {
-    return m_impl->result;
-}
-
-void XmlParser::run(const std::string& input, const std::string& input_file_name) {
-    std::lock_guard<std::mutex> guard(g_parse_mutex);
-    init_parser_state(m_impl->state);
-
-    auto inc_name = fmt::format("\"{}\"", input_file_name);
-    create_include_start(create_identifier(inc_name.c_str()));
-    current_input_file = get_symbol(inc_name.c_str());
-    g_top_level.next = create_include_finish(parse_xml(input));
-    m_impl->result = get_parse_result();
-    m_impl->result.state = m_impl->state;
-    g_state = RefPointer<parser>();
-    reset_top_level();
-}
-
-intercom::RefPointer<parser> XmlParser::state() {
-    return m_impl->state;
-}
-}  // namespace cidl
-}  // namespace intercom
+// TODO(idarcar):
+// JsonParser::JsonParser() : m_impl(new JsonParserImpl()) {
+//     m_impl->state = std::make_shared<parser>();
+// }
+//
+// JsonParser::~JsonParser() = default;
+//
+// const parse_result& JsonParser::result() const {
+//     return m_impl->result;
+// }
+//
+// parse_result& JsonParser::result() {
+//     return m_impl->result;
+// }
+//
+// void JsonParser::run(const std::string& input, const std::string& input_file_name) {
+//     std::lock_guard<std::mutex> guard(g_parse_mutex);
+//     init_parser_state(m_impl->state);
+//     create_include_start(create_identifier(input_file_name.c_str()));
+//     std::string canonical_file_name;
+//     try {
+//         canonical_file_name = std::filesystem::canonical(input_file_name);
+//     } catch (std::exception&) {
+//         canonical_file_name = input_file_name;
+//     }
+//     current_input_file = canonical_file_name.c_str();
+//     g_top_level.next = create_include_finish(parse_json_ptree(input));
+//     m_impl->result = get_parse_result();
+//     m_impl->result.state = m_impl->state;
+//     g_state = std::make_shared<parser>();
+//     current_input_file = "";
+//     reset_top_level();
+// }
+//
+// void JsonParser::run(std::istream& input, const std::string& input_file_name) {
+//     std::stringstream stream;
+//     stream << input.rdbuf();
+//     run(stream.str(), input_file_name);
+// }
+//
+// std::shared_ptr<parser> JsonParser::state() {
+//     return m_impl->state;
+// }
+//
+// XmlParser::XmlParser() : m_impl(new XmlParserImpl()) {
+//     m_impl->state = std::make_shared<parser>();
+// }
+//
+// XmlParser::~XmlParser() = default;
+//
+// const parse_result& XmlParser::result() const {
+//     return m_impl->result;
+// }
+//
+// parse_result& XmlParser::result() {
+//     return m_impl->result;
+// }
+//
+// void XmlParser::run(const std::string& input, const std::string& input_file_name) {
+//     std::lock_guard<std::mutex> guard(g_parse_mutex);
+//     init_parser_state(m_impl->state);
+//
+//     auto inc_name = fmt::format("\"{}\"", input_file_name);
+//     create_include_start(create_identifier(inc_name.c_str()));
+//     current_input_file = get_symbol(inc_name.c_str());
+//     g_top_level.next = create_include_finish(parse_xml(input));
+//     m_impl->result = get_parse_result();
+//     m_impl->result.state = m_impl->state;
+//     g_state = std::make_shared<parser>();
+//     reset_top_level();
+// }
+//
+// std::shared_ptr<parser> XmlParser::state() {
+//     return m_impl->state;
+// }
+}  // namespace intercom::cidl

@@ -31,6 +31,8 @@
 
 #include "cidl/constants.h"
 
+namespace intercom::cidl {
+
 enum Language {
     LANG_CPP,
     LANG_CS,
@@ -69,3 +71,5 @@ INTERCOM_PUBLIC std::string idl_scoped_name(const ptree* node, const ptree* cont
 INTERCOM_PUBLIC std::string idl_internal_scoped_name(const ptree* node, const ptree* context);
 /// \note do not use in idl output
 INTERCOM_PUBLIC std::string lc_scoped_name(const ptree* p);
+
+}  // namespace intercom::cidl

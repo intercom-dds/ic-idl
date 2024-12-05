@@ -28,7 +28,6 @@
 #pragma once
 
 #include <iomanip>
-#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -84,12 +83,12 @@ struct ptree {
         using pointer = value_type*;
         using reference = value_type&;
 
-        explicit iterator(value_type node) : node(node) {}
+        explicit iterator(value_type node) : m_node(node) {}
         iterator(const iterator&) = default;
         iterator& operator=(const iterator&) = default;
 
         iterator& operator++() {
-            node = node->next;
+            m_node = m_node->next;
             return *this;
         }
         iterator operator++(int) {
@@ -98,17 +97,17 @@ struct ptree {
             return prev;
         }
         bool operator==(const iterator& other) const {
-            return node == other.node;
+            return m_node == other.m_node;
         }
         bool operator!=(const iterator& other) const {
-            return node != other.node;
+            return m_node != other.m_node;
         }
         value_type operator*() const {
-            return node;
+            return m_node;
         }
 
       private:
-        value_type node;
+        value_type m_node;
     };
 
     struct const_iterator {
@@ -118,12 +117,12 @@ struct ptree {
         using pointer = value_type*;
         using reference = value_type&;
 
-        explicit const_iterator(value_type node) : node(node) {}
+        explicit const_iterator(value_type node) : m_node(node) {}
         const_iterator(const const_iterator&) = default;
         const_iterator& operator=(const const_iterator&) = default;
 
         const_iterator& operator++() {
-            node = node->next;
+            m_node = m_node->next;
             return *this;
         }
         const_iterator operator++(int) {
@@ -132,17 +131,17 @@ struct ptree {
             return prev;
         }
         bool operator==(const const_iterator& other) const {
-            return node == other.node;
+            return m_node == other.m_node;
         }
         bool operator!=(const const_iterator& other) const {
-            return node != other.node;
+            return m_node != other.m_node;
         }
         value_type operator*() const {
-            return node;
+            return m_node;
         }
 
       private:
-        value_type node;
+        value_type m_node;
     };
 
     node_kind kind{N_UNDEF};
@@ -166,10 +165,10 @@ struct ptree {
     std::vector<numeric> bounds;
     unsigned int flags{0};
     std::string file_name;
-    position pos;
-    position pos_end;
+    position pos{};
+    position pos_end{};
     numeric value;
-    parser* state;
+    parser* state{};
 };
 
 struct declarator {
@@ -180,7 +179,7 @@ struct declarator {
         annotations = nullptr;
         next = nullptr;
     }
-    struct identifier ident;
+    struct identifier ident {};
     std::vector<numeric> bounds;
     struct ptree* annotations;
     struct declarator* next;

@@ -126,6 +126,8 @@ struct GlobalOptions {
     version: bool,
 
     /// Unstable flags, see `-Z help` for details
+    // TODO: trait Parseable? So that we can manually impl that for UnstableFlags
+    // and make the parser accept T: Parseable types.
     #[option(short = 'Z', arg = "flag")]
     unstable: Vec<String>,
 }
@@ -267,4 +269,8 @@ fn main() {
     if options.preprocessor_only {
         println!("{}", generated.join("\n"));
     }
+
+    let parsed: Vec<_> = generated.iter().map(|v| ic_ptree::parse_idl(v)).collect();
+    let merged = ic_ptree::merge_trees(&parsed);
+    ic_ptree::ast_dump(&merged);
 }

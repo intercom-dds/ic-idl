@@ -35,6 +35,8 @@
 #include "cidl/symbols.h"
 #include "utils/StringUtils.h"
 
+namespace intercom::cidl {
+
 const ptree* base_type_of(const ptree* obj) {
     if (obj && obj->type) {
         obj = obj->type;
@@ -716,3 +718,5 @@ bool is_pre_doc(const ptree* annotation) {
 bool is_post_doc(const ptree* annotation) {
     return is_doc_with_placement(annotation, PlacementKind::AFTER_DECLARATION);
 }
+
+}  // namespace intercom::cidl

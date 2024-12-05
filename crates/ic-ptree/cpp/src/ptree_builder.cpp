@@ -3287,9 +3287,10 @@ void validate_node(ptree* node) {
             }
         }
 
-        if (CommandLineOption::proto_target_directory()) {
-            validate_proto(node);
-        }
+        // TODO(idarcar);
+        // if (CommandLineOption::proto_target_directory()) {
+        //     validate_proto(node);
+        // }
 
         validate_node(node->type);
         validate_node(node->key_type);

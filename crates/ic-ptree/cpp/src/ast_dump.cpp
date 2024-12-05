@@ -246,7 +246,7 @@ static void recurse_node(ScopedPrinter& out, const ptree* node) {
     }
 }
 
-void ast_dump(struct parse_result* result) {
+void intercom::cidl::ast_dump(const parse_result* result) {
     ScopedPrinter out(nullptr);
     for (auto node : result->tree) {
         recurse_node(out, node);

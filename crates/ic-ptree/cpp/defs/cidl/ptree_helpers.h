@@ -33,6 +33,8 @@
 #include "cidl/ptree.h"
 #include "cidl/symbols.h"
 
+namespace intercom::cidl {
+
 using AnnotationGetter = ptree* (*)(const ptree*, const ptree*);
 
 INTERCOM_PUBLIC ptree* get_annotation(const ptree* node, const ptree* annot_type);
@@ -115,3 +117,5 @@ INTERCOM_PUBLIC bool is_doc_with_placement(const ptree* annotation, int placemen
 INTERCOM_PUBLIC bool is_pre_doc(const ptree* annotation);
 /// post-declaration documentation
 INTERCOM_PUBLIC bool is_post_doc(const ptree* annotation);
+
+}  // namespace intercom::cidl

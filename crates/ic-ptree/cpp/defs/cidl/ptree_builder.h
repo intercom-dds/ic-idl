@@ -384,7 +384,7 @@ void parse_alert(
     const char* msg,
     const char* file_name,
     int line_number,
-    CommandLineOption::WarningType warning_type
+    intercom::cidl::CommandLineOption::WarningType warning_type
 );
 
 /// creates error, warning, or nothing depending on commandline user inputs
@@ -392,16 +392,16 @@ void parse_alert(
       intercom::cidl::ParserMessage msg(parse_alert, warning_type); \
       msg
 
-#  define ERR                                                         \
-      intercom::cidl::ParserMessage msg(                              \
-          parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_ERROR \
-      );                                                              \
+#  define ERR                                                                         \
+      intercom::cidl::ParserMessage msg(                                              \
+          parse_alert, intercom::cidl::CommandLineOption::WARNING_UNCATEGORIZED_ERROR \
+      );                                                                              \
       msg
 
-#  define WARN                                                          \
-      intercom::cidl::ParserMessage msg(                                \
-          parse_alert, CommandLineOption::WARNING_UNCATEGORIZED_WARNING \
-      );                                                                \
+#  define WARN                                                                          \
+      intercom::cidl::ParserMessage msg(                                                \
+          parse_alert, intercom::cidl::CommandLineOption::WARNING_UNCATEGORIZED_WARNING \
+      );                                                                                \
       msg
 
 #endif

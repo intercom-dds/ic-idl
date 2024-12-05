@@ -27,12 +27,11 @@
 
 #pragma once
 
-#include <list>
+#include <string>
 
 #include "InterCOM/dyn_link.h"
 
-namespace intercom {
-namespace cidl {
+namespace intercom::cidl {
 
 struct Config {
     bool disable_header_follow = false;
@@ -85,5 +84,4 @@ inline bool operator<(const File& lhs, const File& rhs) {
 // INTERCOM_PUBLIC std::list<File> code_gen_idl(const Config& config, parse_result* result);
 // INTERCOM_PUBLIC std::list<File> code_gen_json_schema(const Config& config, parse_result* result);
 
-}  // namespace cidl
-}  // namespace intercom
+}  // namespace intercom::cidl

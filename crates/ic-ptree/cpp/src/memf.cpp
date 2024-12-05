@@ -25,60 +25,22 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <fcntl.h>
-#include <fmt/chrono.h>
+#include "cidl/memf.h"
 
-#include <cassert>
-#include <chrono>
-#include <climits>
-#include <cstdarg>
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <string_view>
+#include <sstream>
 
 #include "cidl/commandline.h"
 #include "cidl/hdrs.h"
-#include "cidl/ptree_builder.h"
-
-#ifdef _WIN32
-#  include <direct.h>
-#  include <fcntl.h>
-#  include <io.h>
-#  include <stdio.h>
-#  include <sys/stat.h>
-#  include <sys/types.h>
-#  define mkdir(x, y) _mkdir(x)
-#else
-#  include <sys/stat.h>
-#  include <sys/types.h>
-#  include <unistd.h>
-#endif
-
-const int MAX_STATEMENTS = MEMF_MAX_STATEMENTS - 1;
-
-bool is_path_sep(char c) {
-#ifdef INTERCOM_PLATFORM_WINDOWS
-    return c == '/' || c == '\\';
-#else
-    return c == '/';
-#endif
-}
-
-std::string trim_include_name(std::filesystem::path name, bool trim_absolute) {
-    auto file = name.replace_extension();
-    std::string native = name.string();
-    if (trim_absolute && (is_path_sep(native[0]) ||
-                          (native[0] != '\0' && native[1] == ':' && is_path_sep(native[2])) ||
-                          (native[0] == '.' && native[1] == '.' && is_path_sep(native[2])))) {
-        return file.stem();
-    }
-    return file;
-}
 
 #define MAX_LINE_LENGTH (90000)
 
-void madjsize(struct memf* memf, int extra) {
+#define CMP(str) (strncmp(str, ppp, sizeof(str) - 1) == 0)
+
+static const int MAX_STATEMENTS = MEMF_MAX_STATEMENTS - 1;
+
+namespace intercom::cidl {
+
+static void madjsize(struct memf* memf, int extra) {
     size_t has_size = memf->memp - memf->memfile;
     if ((has_size + MAX_LINE_LENGTH + extra) > static_cast<size_t>(memf->size)) {
         if (extra == 0) {
@@ -90,19 +52,53 @@ void madjsize(struct memf* memf, int extra) {
     }
 }
 
-void set_indent(struct memf* a_memf, int a_indent) {
+static void set_indent(struct memf* a_memf, int a_indent) {
     if (!a_memf->extern_lock_indent) {
         a_memf->indent = a_indent;
     }
 }
 
-void incr_indent(struct memf* a_memf, int a_count) {
+static void incr_indent(struct memf* a_memf, int a_count) {
     if (!a_memf->extern_lock_indent) {
         a_memf->indent += a_count;
     }
 }
 
-#define CMP(str) (strncmp(str, ppp, sizeof(str) - 1) == 0)
+int mempty(struct memf* memf) {
+    return memf->memp == memf->memfile;
+}
+
+void memfcat(struct memf* f1, struct memf* f2) {
+    size_t size = f2->memp - f2->memfile;
+    if (size > 0) {
+        madjsize(f1, size);
+        memcpy(f1->memp, f2->memfile, size);
+        f1->memp += size;
+    }
+}
+
+void memfcat_str(struct memf* f1, const char* f2) {
+    size_t size = strlen(f2);
+    madjsize(f1, size);
+    memcpy(f1->memp, f2, size);
+    f1->memp += size;
+}
+
+void mreset(struct memf* memf) {
+    mreset_l(memf, C_JAVA_FILE);
+}
+
+void mreset_l(struct memf* memf, lang_kind_t lang_kind) {
+    free(memf->memfile);
+    memf->memfile = nullptr;
+    memf->indent = memf->do_indent = 0;
+    memf->size = 0;
+    memf->memp = memf->memfile;
+    memf->lang_kind = lang_kind;
+    memf->current_statement = 0;
+    memf->statement_indent[0] = 0;
+    memf->statement_end[0] = 127;
+}
 
 /*
   Format modifiers:
@@ -254,85 +250,6 @@ void mprintflv(struct memf** memfl, std::string_view format, std::string_view st
     }
 }
 
-void memfcat(struct memf* f1, struct memf* f2) {
-    size_t size = f2->memp - f2->memfile;
-    if (size > 0) {
-        madjsize(f1, size);
-        memcpy(f1->memp, f2->memfile, size);
-        f1->memp += size;
-    }
-}
-
-void memfcat_str(struct memf* f1, const char* f2) {
-    size_t size = strlen(f2);
-    madjsize(f1, size);
-    memcpy(f1->memp, f2, size);
-    f1->memp += size;
-}
-
-void mreset(struct memf* memf) {
-    mreset_l(memf, C_JAVA_FILE);
-}
-
-void mreset_l(struct memf* memf, lang_kind_t lang_kind) {
-    free(memf->memfile);
-    memf->memfile = nullptr;
-    memf->indent = memf->do_indent = 0;
-    memf->size = 0;
-    memf->memp = memf->memfile;
-    memf->lang_kind = lang_kind;
-    memf->current_statement = 0;
-    memf->statement_indent[0] = 0;
-    memf->statement_end[0] = 127;
-}
-
-int mempty(struct memf* memf) {
-    return memf->memp == memf->memfile;
-}
-
-bool write_if_changed(const std::string& file_name, const std::string& content) {
-    bool file_changed = true;
-    std::ifstream current_file_content{file_name};
-    if (current_file_content.is_open()) {
-        std::stringstream current;
-        current << current_file_content.rdbuf();
-        file_changed = (current.str() != content);
-        current_file_content.close();
-    }
-    if (file_changed) {
-        try {
-            std::filesystem::create_directories(std::filesystem::path(file_name).parent_path());
-            std::ofstream output{file_name};
-            if (output.is_open()) {
-                output << content;
-            } else {
-                fmt::print(stderr, "Could not write to file \"{}\"\n", file_name);
-                return false;
-            }
-        } catch (const std::exception& e) {
-            fmt::print(stderr, "Could not write to file \"{}\": {}\n", file_name, e.what());
-            return false;
-        }
-    }
-    return true;
-}
-
-parse_result clone_tree(const parse_result* result) {
-    IdlParser parser;
-    parser.run([&] { return duplicate_tree(result->tree); });
-    g_state = parser.state();
-
-    auto clone = parser.result();
-    clone.error_count = result->error_count;
-    clone.warning_count = result->warning_count;
-    clone.modules = result->modules;
-    clone.msg = result->msg;
-    for (auto inc : result->includes) {
-        clone.includes.emplace(duplicate_node(inc));
-    }
-    return clone;
-}
-
 void savememf(
     struct memf* memf,
     struct memf* memf2,
@@ -399,14 +316,4 @@ File memf_to_file(
     return {fullfilename, std::string(memf->memfile, size)};
 }
 
-std::string copyright_header(const std::string& comment_str) {
-    constexpr const char* header =
-        "{0} KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,\n"
-        "{0} contain information which is proprietary and confidential to KONGSBERG or its licensors.\n"
-        "{0} Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed\n"
-        "{0} with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,\n"
-        "{0} or disassemble the software, unless such acts are allowed under applicable mandatory law or\n"
-        "{0} explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,\n"
-        "{0} must include this legend. (C) {1:%Y} KONGSBERG - All rights reserved\n";
-    return fmt::format(header, comment_str, std::chrono::system_clock::now());
-}
+}  // namespace intercom::cidl

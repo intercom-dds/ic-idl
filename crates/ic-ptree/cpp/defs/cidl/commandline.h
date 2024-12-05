@@ -32,6 +32,8 @@
 
 #include "cidl/codegen.h"
 
+namespace intercom::cidl {
+
 class CommandLineOption {
   public:
     enum WarningType {
@@ -117,3 +119,5 @@ class CommandLineOption {
     static bool suppress_error(WarningType warning);
     static bool suppress_alert(WarningType warning);
 };
+
+}  // namespace intercom::cidl

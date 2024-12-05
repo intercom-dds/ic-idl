@@ -25,18 +25,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[workspace]
-resolver = "2"
-members = [
-    "crates/ic-cli",
-    "crates/ic-cli-derive",
-    "crates/ic-driver",
-    "crates/ic-lint",
-    # "crates/ic-driver",
-    # "crates/ic-hir",
-    # "crates/ic-hir-pretty",
-    # "crates/ic-parser",
-    "crates/ic-preproc",
-    "crates/ic-ptree",
-]
-exclude = ["fuzz"]
+[package]
+name = "ic-ptree"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+cmake = "0.1"

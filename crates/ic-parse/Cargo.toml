@@ -26,12 +26,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-preproc"
+name = "ic-parse"
 version = "0.0.0"
 edition = "2021"
 
 publish.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+ic-alloc = { path = "../ic-alloc" }
 
 [build-dependencies]
 cmake = "0.1"

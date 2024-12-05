@@ -302,8 +302,8 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     }
 
     let parsed = preprocessed
-        .into_iter()
-        .map(|v| ic_ptree::parse_idl(&v))
+        .iter()
+        .map(|v| ic_ptree::parse_idl(v))
         .collect::<Result<Vec<_>, _>>()?;
 
     let merged = ic_ptree::merge_trees(&parsed);

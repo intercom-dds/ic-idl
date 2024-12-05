@@ -28,11 +28,13 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/ic-alloc",
     "crates/ic-cli",
     "crates/ic-cli-derive",
     "crates/ic-driver",
     "crates/ic-emit",
     "crates/ic-lint",
+    "crates/ic-parse",
     "crates/ic-preproc",
     "crates/ic-ptree",
     # "crates/ic-driver",

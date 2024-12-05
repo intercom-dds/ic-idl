@@ -44,11 +44,9 @@
 #include "utils/string_utils.h"
 
 // TODO(idarcar): fix before release
-enum : uint8_t {
-    INTERCOM_VERSION_MAJOR = 0,
-    INTERCOM_VERSION_MINOR = 0,
-    INTERCOM_VERSION_PATCH = 0
-};
+#define INTERCOM_VERSION_MAJOR 0
+#define INTERCOM_VERSION_MINOR 1
+#define INTERCOM_VERSION_PATCH 0
 
 using namespace intercom::rust;
 using namespace intercom::cidl;
@@ -796,12 +794,15 @@ static void emit_prelude(std::ostream& out) {
     if (CommandLineOption::copyright_notice()) {
         out << copyright_header() << "\n";
     }
-    if (!CommandLineOption::no_typesupport()) {
-        out << "const _: () = " << prefix << "::version_check(";
-        out << INTERCOM_VERSION_MAJOR << ", " << INTERCOM_VERSION_MINOR << ", "
-            << INTERCOM_VERSION_PATCH;
-        out << ");\n\n";
-    }
+    out << "\n";
+
+    // Omitted for now
+    // if (!CommandLineOption::no_typesupport()) {
+    //     out << "const _: () = " << prefix << "::version_check(";
+    //     out << INTERCOM_VERSION_MAJOR << ", " << INTERCOM_VERSION_MINOR << ", "
+    //         << INTERCOM_VERSION_PATCH;
+    //     out << ");\n\n";
+    // }
 }
 
 static void emit_docs(Twine& out, const ptree* node) {

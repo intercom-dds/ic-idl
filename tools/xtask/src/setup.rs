@@ -25,11 +25,37 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-pub mod assign_expr;
-pub mod complex_default;
-pub mod complex_key;
-pub mod empty_mod;
-pub mod lowercase_bool;
-pub mod scoped_enum;
+const PRE_COMMIT_SRC: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/etc/pre-commit.sh");
+
+const PRE_COMMIT_DST: &str = "hooks/pre-commit";
+
+/// Install pre-commit Git hooks
+#[derive(ic_cli::Command, Default)]
+pub struct Options;
+
+fn git_root() -> PathBuf {
+    let output = Command::new("git")
+        .args(["rev-parse", "--git-common-dir"])
+        .output()
+        .unwrap();
+
+    PathBuf::from(std::str::from_utf8(&output.stdout).unwrap().trim())
+}
+
+pub fn install() {
+    let root = git_root();
+    let dst = Path::new(&root).join(PRE_COMMIT_DST);
+
+    if dst.exists() {
+        eprintln!("error: pre-commit hook already exists. refusing to overwrite.");
+        std::process::exit(1);
+    }
+
+    match std::fs::copy(PRE_COMMIT_SRC, dst) {
+        Ok(_) => println!("pre-commit hook succesfully installed"),
+        Err(e) => eprintln!("error: failed to install pre-commit hook: {e}"),
+    }
+}

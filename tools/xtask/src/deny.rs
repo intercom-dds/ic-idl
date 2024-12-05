@@ -25,11 +25,35 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+use std::process::Command;
 
-pub mod assign_expr;
-pub mod complex_default;
-pub mod complex_key;
-pub mod empty_mod;
-pub mod lowercase_bool;
-pub mod scoped_enum;
+/// Check licenses of all dependencies
+#[derive(ic_cli::Command, Default)]
+pub struct Options;
+
+fn is_installed() -> bool {
+    Command::new("cargo")
+        .args(["deny", "--version"])
+        .output()
+        .is_ok_and(|v| v.status.success())
+}
+
+fn install_deny() {
+    println!("installing cargo-deny");
+
+    Command::new("cargo")
+        .args(["install", "--locked", "cargo-deny"])
+        .status()
+        .expect("failed to install cargo-deny");
+}
+
+pub fn check() {
+    if !is_installed() {
+        install_deny();
+    }
+
+    Command::new("cargo")
+        .args(["deny", "--all-features", "check"])
+        .status()
+        .expect("failed to run cargo-deny");
+}

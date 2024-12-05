@@ -37,4 +37,5 @@ rust-version.workspace = true
 workspace = true
 
 [build-dependencies]
+bindgen = "0.69.4"
 cmake = "0.1"

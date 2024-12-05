@@ -312,8 +312,16 @@ fn try_main(options: &Options) -> anyhow::Result<()> {
     // let tokens = ic_parse::lexer::scan(&input);
     // println!("tokens: {tokens:#?}");
 
-    let ast = ic_parse::from_str(&input).unwrap();
-    dbg!(&ast.tree);
+    let ast = ic_parse::from_str(&input);
+    match ast {
+        Ok(v) => {
+            dbg!(&v.tree);
+        }
+        Err(e) => {
+            // TODO: emit summary of errors + warnings
+            error!("aborting due to 1 previous error")
+        }
+    }
 
     Ok(())
 }

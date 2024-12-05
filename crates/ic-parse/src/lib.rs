@@ -94,7 +94,14 @@ pub fn from_str(input: &str) -> anyhow::Result<ParseResult> {
     let mut tokens = lexer::stream(input);
     let ast = parser::specification().parse(tokens);
 
-    todo!()
+    if let Ok(tree) = ast {
+        Ok(ParseResult {
+            tree,
+            interner: Interner::default(),
+        })
+    } else {
+        Err(anyhow::anyhow!("parsing failed"))
+    }
 }
 
 /// Constructs an AST from the given token iterator.

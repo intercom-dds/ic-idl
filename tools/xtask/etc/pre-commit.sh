@@ -1,3 +1,4 @@
+#!/bin/sh
 # Copyright 2024 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,50 +26,35 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[workspace]
-resolver = "2"
-members = [
-    "crates/ic-alloc",
-    "crates/ic-cli",
-    "crates/ic-cli-derive",
-    "crates/ic-diagnostic",
-    "crates/ic-driver",
-    "crates/ic-emit",
-    "crates/ic-hir",
-    "crates/ic-lint",
-    "crates/ic-parse",
-    "crates/ic-preproc",
-    "crates/ic-ptree",
-    "crates/ic-syntax",
-    "tools/xtask",
-]
-default-members = ["crates/ic-driver"]
-exclude = ["fuzz", "crates/ic-bootstrap", "tools/bindgen"]
+STATUS=0
 
-[workspace.package]
-rust-version = "1.74"
-publish = false
+run() {
+    local msg="$1"
+    shift
+    OUTPUT=$("$@" 2>&1)
 
-[workspace.dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "2.0"
+    if [ $? -ne 0 ]; then
+        printf "==> \e[0;31merror:\e[0m $msg:\n"
+        printf "$OUTPUT\n\n"
+        STATUS=1
+    fi
+}
 
-intercom-cts = { path = "library/rust/intercom-cts", features = ["derive"] }
+check_fmt() {
+    git diff --cached --name-only --diff-filter=ACM | \
+        while read file_name; do
+            if [ ${file_name##*.} = "rs" ]; then
+                rustup run nightly rustfmt --check $file_name
+            fi
+        done
 
-[workspace.lints.rust]
-future_incompatible = "deny"
-nonstandard_style = "warn"
+    return $?
+}
 
-[workspace.lints.clippy]
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-cargo = { level = "warn", priority = -1 }
+# Check formatting
+run "code is not properly formatted" check_fmt
 
-# Disable some annoying style lints
-module_name_repetitions = "allow"
-struct_excessive_bools = "allow"
-ignored_unit_patterns = "allow"
+# Check that all files have an IPR header
+run "missing IPR headers" cargo --quiet xtask ipr
 
-# TODO: fix before release
-cargo_common_metadata = "allow"
+exit $STATUS

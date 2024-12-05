@@ -25,11 +25,33 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+use ic_cli::Command;
 
-pub mod assign_expr;
-pub mod complex_default;
-pub mod complex_key;
-pub mod empty_mod;
-pub mod lowercase_bool;
-pub mod scoped_enum;
+mod bootstrap;
+mod deny;
+mod ipr;
+mod release;
+mod setup;
+
+/// Polyfill for building and releasing ic-idl
+#[derive(Command)]
+enum Commands {
+    Setup(setup::Options),
+    Ipr(ipr::Options),
+    Deny(deny::Options),
+    Bootstrap(bootstrap::Options),
+    Release(release::Options),
+}
+
+fn main() {
+    let result = Commands::command().hide_flags(true, true).parse();
+    let cmd = Commands::from_result(&result);
+
+    match cmd {
+        Commands::Setup(_) => setup::install(),
+        Commands::Bootstrap(_) => bootstrap::build(),
+        Commands::Ipr(_) => ipr::check(),
+        Commands::Release(_) => release::build(),
+        Commands::Deny(_) => deny::check(),
+    }
+}

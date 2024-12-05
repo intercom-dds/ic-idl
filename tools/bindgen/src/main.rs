@@ -25,11 +25,24 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+use std::env;
 
-pub mod assign_expr;
-pub mod complex_default;
-pub mod complex_key;
-pub mod empty_mod;
-pub mod lowercase_bool;
-pub mod scoped_enum;
+const PTREE: &str = "../../crates/ic-ptree/cpp/defs";
+
+fn main() {
+    // Generate bindings for `ptree_builder`
+    let bindings = bindgen::builder()
+        .header(format!("{PTREE}/cidl/ptree_builder.h"))
+        .clang_args(["-I", PTREE])
+        .allowlist_file(".*cidl/.*")
+        .prepend_enum_name(false)
+        .generate()
+        .unwrap();
+
+    let out_path = env::current_dir().unwrap().join("ptree.rs");
+    bindings
+        .write_to_file(&out_path)
+        .expect("Couldn't write bindings");
+
+    println!("{}", out_path.to_string_lossy());
+}

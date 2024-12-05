@@ -29,6 +29,7 @@ use std::ffi::{CStr, CString, NulError};
 use std::path::Path;
 
 mod ffi;
+pub mod ptree;
 
 #[must_use]
 #[derive(Debug)]

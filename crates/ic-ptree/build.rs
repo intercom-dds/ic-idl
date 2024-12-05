@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::env;
+use std::path::PathBuf;
 
 use cmake::Config;
 
@@ -36,6 +37,7 @@ const MSVCRT_LIB: &str = "msvcrtd";
 const MSVCRT_LIB: &str = "msvcrt";
 
 fn main() {
+    // Build the C++ module
     let dst = Config::new("cpp")
         .generator("Ninja")
         .define("CMAKE_EXPORT_COMPILE_COMMANDS", "true")
@@ -44,6 +46,21 @@ fn main() {
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=ic_ptree");
     emit_link_cxx();
+
+    // Generate bindings for `ptree_builder`
+    let bindings = bindgen::builder()
+        .header("cpp/defs/cidl/ptree_builder.h")
+        .clang_arg("-Icpp/defs")
+        .allowlist_file(".*cidl/.*")
+        .prepend_enum_name(false)
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .generate()
+        .unwrap();
+
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .unwrap();
 }
 
 fn emit_link_cxx() {

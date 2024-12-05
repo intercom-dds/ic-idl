@@ -25,11 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Collection of lints that are guarded behind the `-Wpedantic` flag.
+/// Build a release version of ic-idl
+#[derive(ic_cli::Command, Default)]
+pub struct Options;
 
-pub mod assign_expr;
-pub mod complex_default;
-pub mod complex_key;
-pub mod empty_mod;
-pub mod lowercase_bool;
-pub mod scoped_enum;
+pub fn build() {}

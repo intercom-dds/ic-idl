@@ -251,15 +251,11 @@ static std::ostream& prefix(std::ostream& out) {
     if (CommandLineOption::intercom_build()) {
         return out << "crate";
     }
-    return out << (CommandLineOption::no_typesupport() ? "::intercom_cts" : "::intercom");
+    return out << "::intercom_cts";
 }
 
 static std::ostream& cts_prefix(std::ostream& out) {
-    out << prefix;
-    if (!CommandLineOption::no_typesupport()) {
-        out << "::cts";
-    }
-    return out;
+    return out << prefix;
 }
 
 std::string intercom::cidl::rust_name(const ptree* node) {

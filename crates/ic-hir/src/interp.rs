@@ -117,9 +117,7 @@ impl Interp<'_> {
             Expr::Literal(v) => match &v.value {
                 LiteralValue::Bool(v) => i64::from(*v),
                 LiteralValue::Int(v) => *v as i64,
-                LiteralValue::Float(_) => todo!(),
-                LiteralValue::Char(_) => todo!(),
-                LiteralValue::String(_) => todo!(),
+                LiteralValue::Float(_) | LiteralValue::Char(_) | LiteralValue::String(_) => 0,
             },
             // ic_syntax::Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
             Expr::Unary(v) => self.eval_unary(v),
@@ -154,7 +152,7 @@ impl Interp<'_> {
                 LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
                 LiteralValue::Char(v) => Numeric::Char(*v),
                 LiteralValue::String(ref v) => Numeric::String(v.clone()),
-                LiteralValue::Float(_) => todo!(),
+                LiteralValue::Float(_) => Numeric::Double(0.0),
             },
             // TODO: this should always be a constant, enumerator oo bitflag.
             Expr::Path(v) => Numeric::Const(DefId::_do_not_use()),

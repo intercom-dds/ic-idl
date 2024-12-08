@@ -331,6 +331,14 @@ pub fn from_cursor(
                         span: next.span,
                     });
                 }
+                ic_preproc::Kind::Float => {
+                    let src = iter.source_of(next.span);
+                    let kind = src.parse::<f64>().map_or(Kind::Invalid, Kind::Float);
+                    break Some(Token {
+                        kind,
+                        span: next.span,
+                    });
+                }
                 ic_preproc::Kind::Comment => {
                     if ignore_comments {
                         continue;
@@ -338,6 +346,19 @@ pub fn from_cursor(
                     let comment = iter.source_of(next.span).to_string();
                     break Some(Token {
                         kind: Kind::Comment(comment),
+                        span: next.span,
+                    });
+                }
+                ic_preproc::Kind::String { .. } => {
+                    let str = iter
+                        .source_of(next.span)
+                        .strip_prefix('"')
+                        .and_then(|v| v.strip_suffix('"'))
+                        .unwrap()
+                        .to_string();
+
+                    break Some(Token {
+                        kind: Kind::StringLit(str),
                         span: next.span,
                     });
                 }

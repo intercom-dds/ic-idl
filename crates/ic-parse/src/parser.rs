@@ -1361,7 +1361,7 @@ fn annotation_appl_params() -> impl IdlParser<Vec<AnnotationArg>> {
     // Minor deviation: we allow multiple unnamed arguments here. This is
     // later checked in a lint. Enforcing this restriction through the grammar
     // will produce errors that are somewhat unclear.
-    choice((unnamed, annotation_appl_param())).separated_by(just(Kind::Comma))
+    choice((annotation_appl_param(), unnamed)).separated_by(just(Kind::Comma))
 }
 
 // Rule 227

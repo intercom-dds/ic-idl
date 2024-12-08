@@ -269,7 +269,7 @@ unsafe fn lower_annotation_arg(
     arg: &AnnotationArg,
 ) -> *mut sys::ptree {
     let name = arg.ident.as_ref().map(|v| create_ident(&v.name));
-    let name = name.map_or(ptr::null(), |v| v.as_ptr());
+    let name = name.as_ref().map_or(ptr::null(), |v| v.as_ptr());
     let value = lower_expr(state, &arg.value);
     sys::create_annotation_param(state, name, value)
 }

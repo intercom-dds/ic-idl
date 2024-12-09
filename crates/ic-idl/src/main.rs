@@ -183,7 +183,13 @@ fn try_ptree(options: &Options, parsed: &[ParseResult]) -> Result<Vec<File>, Err
         (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
         (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
         (&options.codegen.json_out, ic_codegen_json::codegen_json),
+        (&options.codegen.xml_out, ic_codegen_xml::codegen_xml),
         (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
+        (&options.codegen.json_out, ic_codegen_json::codegen_json),
+        (
+            &options.codegen.json_schema_out,
+            ic_codegen_json_schema::codegen_json_schema,
+        ),
         (
             &options.codegen.proto_out,
             ic_codegen_protobuf::codegen_proto,

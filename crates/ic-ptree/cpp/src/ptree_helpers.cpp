@@ -699,4 +699,38 @@ bool is_post_doc(const ptree* annotation) {
     return is_doc_with_placement(annotation, PlacementKind::AFTER_DECLARATION);
 }
 
+static void include_type(const ptree* obj, const ptree* curr_include, std::set<ptree*>& includes) {
+    if (obj) {
+        if (obj->included_from && obj->included_from != curr_include) {
+            includes.insert(obj->included_from);
+        }
+        for (auto parent : obj->parents) {
+            include_type(parent, curr_include, includes);
+        }
+        include_type(obj->type, curr_include, includes);
+        include_type(obj->element_type, curr_include, includes);
+        include_type(obj->key_type, curr_include, includes);
+    }
+}
+
+void include_dependencies(
+    const ptree* obj,
+    const ptree* curr_include,
+    Language lang,
+    std::set<ptree*>& includes
+) {
+    for (; obj; obj = obj->next) {
+        if (!is_emit(obj, lang)) {
+            continue;
+        }
+        if (obj->included_from == curr_include) {
+            include_type(obj, curr_include, includes);
+            if (obj->value.kind() == PTREE_KIND) {
+                include_type(obj->value.val.node(), curr_include, includes);
+            }
+        }
+        include_dependencies(obj->members, curr_include, lang, includes);
+    }
+}
+
 }  // namespace intercom::cidl

@@ -305,37 +305,7 @@ static std::string idl_const_value(const numeric& value, const ptree* context) {
     return out.str();
 }
 
-static void include_type(const ptree* obj, const ptree* curr_include, std::set<ptree*>& includes) {
-    if (obj) {
-        if (obj->included_from && obj->included_from != curr_include) {
-            includes.insert(obj->included_from);
-        }
-        for (auto parent : obj->parents) {
-            include_type(parent, curr_include, includes);
-        }
-        include_type(obj->type, curr_include, includes);
-        include_type(obj->element_type, curr_include, includes);
-        include_type(obj->key_type, curr_include, includes);
-    }
-}
-
 static void code_gen_idl_compound(const ptree* obj, ModuleMap& out);
-
-static void
-include_dependencies(const ptree* obj, const ptree* curr_include, std::set<ptree*>& includes) {
-    for (; obj; obj = obj->next) {
-        if (!is_emit(obj, LANG_IDL)) {
-            continue;
-        }
-        if (obj->included_from == curr_include) {
-            include_type(obj, curr_include, includes);
-            if (obj->value.kind() == PTREE_KIND) {
-                include_type(obj->value.val.node(), curr_include, includes);
-            }
-        }
-        include_dependencies(obj->members, curr_include, includes);
-    }
-}
 
 static void code_gen_idl_comments_post(const ptree* obj, ModuleMap& out) {
     for (auto ann : obj->annotations) {
@@ -897,7 +867,7 @@ void intercom::cidl::code_gen_idl(const parse_result* result, ic_list_t* list) {
     for (auto it = result->includes.begin(); it != result->includes.end(); ++it) {
         const ptree* include = *it;
         std::set<ptree*> includes;
-        include_dependencies(result->tree, include, includes);
+        include_dependencies(result->tree, include, LANG_IDL, includes);
         code_gen_idl_write(out, include->name, include->name, includes, list);
     }
 }

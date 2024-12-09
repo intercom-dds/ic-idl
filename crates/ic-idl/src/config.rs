@@ -210,6 +210,11 @@ pub struct CodegenOptions {
     /// Generate JSON files in <dir>
     #[option(long, arg = "dir")]
     pub json_out: Option<PathBuf>,
+
+    /// Generate XML files in <dir>
+    #[option(long, arg = "dir")]
+    pub xml_out: Option<PathBuf>,
+
 }
 
 #[derive(Command, Debug, Default)]

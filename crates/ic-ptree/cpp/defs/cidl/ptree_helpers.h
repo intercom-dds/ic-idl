@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include <set>
 #include <string_view>
 #include <vector>
 
@@ -97,6 +98,13 @@ const ptree* original_node(const ptree* node);
 
 const ptree* default_union_member(const ptree* node);
 
+void include_dependencies(
+    const ptree* obj,
+    const ptree* curr_include,
+    Language lang,
+    std::set<ptree*>& includes
+);
+
 /// \returns #nodes in linked list
 size_t list_len(const ptree* list);
 
@@ -131,9 +139,9 @@ size_t value_dimensions(const numeric& value);
 /// entire path from first \@merge to final non \@merge member
 using MergeTrace = std::vector<const ptree*>;
 
-/// \notabene every element in every trace derives from ptree->original_members, except for the last
-/// element; it derives from ptree->members. This ensures that the last member will have the correct
-/// 'inherited' annotations, as opposed to the original annotations of the type.
+/// \notabene every element in every trace derives from ptree->original_members, except for the
+/// last element; it derives from ptree->members. This ensures that the last member will have
+/// the correct 'inherited' annotations, as opposed to the original annotations of the type.
 std::vector<MergeTrace> get_merge_traces(const ptree* node);
 
 /// Returns true if node is a doc annotation with specified placement

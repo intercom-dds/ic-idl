@@ -58,6 +58,8 @@ void ic_codegen_proto(const struct parse_result* result, struct ic_list_t* list)
 
 void ic_codegen_json(const struct parse_result* result, struct ic_list_t* list);
 
+void ic_codegen_xml(const struct parse_result* result, struct ic_list_t* list);
+
 struct python_options_t {
     uint8_t use_pep8;
     const char* global_postfix;

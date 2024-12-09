@@ -92,3 +92,8 @@ void ic_codegen_json(const parse_result* result, ic_list_t* list) {
 void ic_codegen_json_schema(const parse_result* result, const char*) {
     intercom::cidl::code_gen_json_schema(result);
 }
+
+void ic_codegen_xml(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_xml(result, list);
+}
+

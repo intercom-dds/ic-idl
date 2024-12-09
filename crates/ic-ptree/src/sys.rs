@@ -945,6 +945,9 @@ extern "C" {
 extern "C" {
     pub fn ic_codegen_json(result: *const parse_result, list: *mut ic_list_t);
 }
+extern "C" {
+    pub fn ic_codegen_xml(result: *const parse_result, list: *mut ic_list_t);
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct python_options_t {

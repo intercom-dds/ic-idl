@@ -65,6 +65,8 @@ void code_gen_proto(const parse_result* result, ic_list_t* list);
 
 void code_gen_idl(const parse_result* result, ic_list_t* list);
 
+void code_gen_xml(const parse_result* result, ic_list_t* list);
+
 void generate_json_type(std::ostream& stream, const ptree* tree);
 
 void emit_docs(struct memf* f, const ptree* obj);

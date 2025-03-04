@@ -717,7 +717,7 @@ void intercom::cidl::gen_cpp_type_info(
                 }
                 if (count) {
                     auto label_name = fmt::format("{}_labels_{}", funcname, type_info_names.size());
-                    mprintf(memf, "static const uint32_t {}[] = {{ {}", label_name, count);
+                    mprintf(memf, "static const int32_t {}[] = {{ {}", label_name, count);
                     for (auto cas : member->members) {
                         if (base_type_of(cas)->kind == N_BITMASK) {
                             mprintf(memf, ", {}", get_const_value(cas->value, nullptr));

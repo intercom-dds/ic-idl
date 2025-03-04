@@ -208,6 +208,16 @@ inline bool enum_to_string(std::string& res, T value, const TypeInfo* type) {
         }                                                                                        \
     };  // end of CTS_DEFINE_PRIMITIVE_TYPE
 
+template <class Archive, typename T>
+struct Serializer<Archive, T*> {
+    void operator()(Archive& a, T* value, uint32_t count, const TypeInfo* type_info) {
+        Serializer<Archive, T> serialize;
+        for (uint32_t i = 0; i < count; ++i) {
+            serialize(a, value[i], type_info);
+        }
+    }
+};
+
 template <class Archive>
 struct Serializer<Archive, std::string> {
     void operator()(Archive& a, std::string& value, const TypeInfo* type_info) {

@@ -26,16 +26,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // IWYU pragma: begin_exports
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
-#include "ic_cts/bounded.h"
-#include "ic_cts/member_info.h"
-#include "ic_cts/memory.h"
-#include "ic_cts/platform_config.h"
-#include "ic_cts/serialization.h"
-#include "ic_cts/span.h"
+#include "bounded.h"
+#include "member_info.h"
+#include "memory.h"
+#include "platform_config.h"
+#include "serialization.h"
+#include "span.h"
 // IWYU pragma: end_exports
 
 // Remove macros defined in VS2010 stdlib

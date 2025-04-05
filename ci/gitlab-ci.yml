@@ -31,9 +31,6 @@ default:
     - apk add --no-cache rustup cmake mold git gcc g++ samurai musl-dev clang-extra-tools
     - rustup-init --profile minimal -y
     - source $HOME/.cargo/env
-  tags:
-    - linux
-    - internet
 
 stages:
   - lint

@@ -25,7 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::cast_possible_wrap, clippy::too_many_lines)]
+#![allow(
+    unsafe_op_in_unsafe_fn,
+    clippy::cast_possible_wrap,
+    clippy::too_many_lines
+)]
 
 use std::ffi::{self, CString};
 use std::ptr;

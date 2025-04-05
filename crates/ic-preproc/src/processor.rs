@@ -505,7 +505,7 @@ where
     /// are currently parsing is active, i.e. whether we should yield tokens
     /// for the current region or if they should be skipped.
     fn is_active(&mut self) -> bool {
-        self.if_state().last().map_or(true, IfState::is_active)
+        self.if_state().last().is_none_or(IfState::is_active)
     }
 
     /// Searches through all include directories for a matching file.

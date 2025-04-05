@@ -67,9 +67,9 @@ fn check_file(contents: &str) -> bool {
 
 fn whitelist(name: &str) -> bool {
     let p = &Path::new(name);
-    let extension = p.extension().map_or(false, |ext| {
-        ext.eq_ignore_ascii_case("json") || ext.eq_ignore_ascii_case("snap")
-    });
+    let extension = p
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("json") || ext.eq_ignore_ascii_case("snap"));
 
     !extension
         && !name.starts_with("external/fmt")

@@ -36,6 +36,7 @@ unsafe extern "C" fn ic_push_source(
     path: *const std::ffi::c_char,
     src: *const std::ffi::c_char,
 ) {
+    // SAFETY: invariants guaranteed by caller
     unsafe {
         let path = {
             let str = std::ffi::CStr::from_ptr(path).to_owned();

@@ -207,6 +207,9 @@ pub enum TyKind {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Numeric {
+    /// A `null` literal.
+    Null,
+
     /// A boolean literal.
     Bool(bool),
 

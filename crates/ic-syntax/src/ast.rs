@@ -135,6 +135,7 @@ impl ::intercom_cts::Unmarshal for Path {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum LitKind {
+    Null,
     Bool,
     Int,
     Float,
@@ -145,7 +146,7 @@ pub enum LitKind {
 impl LitKind {
     #[must_use]
     pub const fn new() -> Self {
-        crate::ast::LitKind::Bool
+        crate::ast::LitKind::Null
     }
 }
 
@@ -154,6 +155,7 @@ impl ::std::str::FromStr for LitKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
+            "LIT_NULL" => Ok(Self::Null),
             "LIT_BOOL" => Ok(Self::Bool),
             "LIT_INT" => Ok(Self::Int),
             "LIT_FLOAT" => Ok(Self::Float),
@@ -167,6 +169,7 @@ impl ::std::str::FromStr for LitKind {
 impl ::std::fmt::Display for LitKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
+            Self::Null => f.write_str("LIT_NULL"),
             Self::Bool => f.write_str("LIT_BOOL"),
             Self::Int => f.write_str("LIT_INT"),
             Self::Float => f.write_str("LIT_FLOAT"),
@@ -191,11 +194,12 @@ impl ::intercom_cts::Marshal for LitKind {
 
         let state = ar.encode_enum("LitKind")?;
         match self {
-            Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 0),
-            Self::Int => state.encode_variant::<i32>("LIT_INT", 1),
-            Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 2),
-            Self::Char => state.encode_variant::<i32>("LIT_CHAR", 3),
-            Self::String => state.encode_variant::<i32>("LIT_STRING", 4),
+            Self::Null => state.encode_variant::<i32>("LIT_NULL", 0),
+            Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 1),
+            Self::Int => state.encode_variant::<i32>("LIT_INT", 2),
+            Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 3),
+            Self::Char => state.encode_variant::<i32>("LIT_CHAR", 4),
+            Self::String => state.encode_variant::<i32>("LIT_STRING", 5),
         }
     }
 }
@@ -221,11 +225,12 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match de.decode_i32()? {
-            0 => Self::Bool,
-            1 => Self::Int,
-            2 => Self::Float,
-            3 => Self::Char,
-            4 => Self::String,
+            0 => Self::Null,
+            1 => Self::Bool,
+            2 => Self::Int,
+            3 => Self::Float,
+            4 => Self::Char,
+            5 => Self::String,
             _ => return Err(D::Error::custom("Invalid enum value")),
         };
         Ok(value)
@@ -238,6 +243,7 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
         use ::intercom_cts::error::Error as _;
 
         let value = match name {
+            "LIT_NULL" => Self::Null,
             "LIT_BOOL" => Self::Bool,
             "LIT_INT" => Self::Int,
             "LIT_FLOAT" => Self::Float,
@@ -251,6 +257,7 @@ impl ::intercom_cts::decode::EnumVisitor for LitKind {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum LiteralValue {
+    Null,
     Bool(bool),
     Int(u64),
     Float(f64),
@@ -261,12 +268,13 @@ pub enum LiteralValue {
 impl LiteralValue {
     #[must_use]
     pub fn new() -> Self {
-        Self::Bool(false)
+        Self::Null
     }
 
     #[must_use]
     pub const fn disc(&self) -> crate::ast::LitKind {
         match self {
+            Self::Null => crate::ast::LitKind::Null,
             Self::Bool(_) => crate::ast::LitKind::Bool,
             Self::Int(_) => crate::ast::LitKind::Int,
             Self::Float(_) => crate::ast::LitKind::Float,
@@ -279,6 +287,7 @@ impl LiteralValue {
 impl From<crate::ast::LitKind> for LiteralValue {
     fn from(disc: crate::ast::LitKind) -> Self {
         match disc {
+            crate::ast::LitKind::Null => Self::Null,
             crate::ast::LitKind::Bool => Self::Bool(false),
             crate::ast::LitKind::Int => Self::Int(0),
             crate::ast::LitKind::Float => Self::Float(0_f64),
@@ -304,11 +313,12 @@ impl ::intercom_cts::Marshal for LiteralValue {
         let mut state = ar.encode_union("LiteralValue")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Bool(v) => state.encode_variant(0, "bool", v),
-            Self::Int(v) => state.encode_variant(1, "int", v),
-            Self::Float(v) => state.encode_variant(2, "float", v),
-            Self::Char(v) => state.encode_variant(3, "char", v),
-            Self::String(v) => state.encode_variant(4, "string", v),
+            Self::Bool(v) => state.encode_variant(2, "bool", v),
+            Self::Int(v) => state.encode_variant(3, "int", v),
+            Self::Float(v) => state.encode_variant(4, "float", v),
+            Self::Char(v) => state.encode_variant(5, "char", v),
+            Self::String(v) => state.encode_variant(6, "string", v),
+            _ => state.encode_null(),
         }
     }
 }
@@ -324,29 +334,30 @@ impl ::intercom_cts::Unmarshal for LiteralValue {
         let mut disc = crate::ast::LitKind::default();
         state.decode_discriminant(&mut disc)?;
         *self = match disc {
+            crate::ast::LitKind::Null => Self::Null,
             crate::ast::LitKind::Bool => {
                 let mut value = false;
-                state.decode_variant(0, "bool", &mut value)?;
+                state.decode_variant(2, "bool", &mut value)?;
                 Self::Bool(value)
             }
             crate::ast::LitKind::Int => {
                 let mut value = 0;
-                state.decode_variant(1, "int", &mut value)?;
+                state.decode_variant(3, "int", &mut value)?;
                 Self::Int(value)
             }
             crate::ast::LitKind::Float => {
                 let mut value = 0_f64;
-                state.decode_variant(2, "float", &mut value)?;
+                state.decode_variant(4, "float", &mut value)?;
                 Self::Float(value)
             }
             crate::ast::LitKind::Char => {
                 let mut value = '\x00';
-                state.decode_variant(3, "char", &mut value)?;
+                state.decode_variant(5, "char", &mut value)?;
                 Self::Char(value)
             }
             crate::ast::LitKind::String => {
                 let mut value = <String>::default();
-                state.decode_variant(4, "string", &mut value)?;
+                state.decode_variant(6, "string", &mut value)?;
                 Self::String(value)
             }
         };
@@ -843,11 +854,11 @@ impl ::intercom_cts::Marshal for Expr {
         let mut state = ar.encode_union("Expr")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Literal(v) => state.encode_variant(0, "literal", v),
-            Self::Path(v) => state.encode_variant(1, "path", v),
-            Self::Unary(v) => state.encode_variant(2, "unary", v),
-            Self::Binary(v) => state.encode_variant(3, "binary", v),
-            Self::InitList(v) => state.encode_variant(4, "init_list", v),
+            Self::Literal(v) => state.encode_variant(1, "literal", v),
+            Self::Path(v) => state.encode_variant(2, "path", v),
+            Self::Unary(v) => state.encode_variant(3, "unary", v),
+            Self::Binary(v) => state.encode_variant(4, "binary", v),
+            Self::InitList(v) => state.encode_variant(5, "init_list", v),
         }
     }
 }
@@ -865,27 +876,27 @@ impl ::intercom_cts::Unmarshal for Expr {
         *self = match disc {
             crate::ast::ExprKind::Literal => {
                 let mut value = <crate::ast::Literal>::default();
-                state.decode_variant(0, "literal", &mut value)?;
+                state.decode_variant(1, "literal", &mut value)?;
                 Self::Literal(value)
             }
             crate::ast::ExprKind::Path => {
                 let mut value = <crate::ast::Path>::default();
-                state.decode_variant(1, "path", &mut value)?;
+                state.decode_variant(2, "path", &mut value)?;
                 Self::Path(value)
             }
             crate::ast::ExprKind::Unary => {
                 let mut value = Box::new(<crate::ast::Unary>::default());
-                state.decode_variant(2, "unary", &mut value)?;
+                state.decode_variant(3, "unary", &mut value)?;
                 Self::Unary(value)
             }
             crate::ast::ExprKind::Binary => {
                 let mut value = Box::new(<crate::ast::Binary>::default());
-                state.decode_variant(3, "binary", &mut value)?;
+                state.decode_variant(4, "binary", &mut value)?;
                 Self::Binary(value)
             }
             crate::ast::ExprKind::InitList => {
                 let mut value = <crate::ast::InitList>::default();
-                state.decode_variant(4, "init_list", &mut value)?;
+                state.decode_variant(5, "init_list", &mut value)?;
                 Self::InitList(value)
             }
         };
@@ -1546,12 +1557,12 @@ impl ::intercom_cts::Marshal for Type {
         let mut state = ar.encode_union("Type")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Any(v) => state.encode_variant(0, "any", v),
-            Self::Sequence(v) => state.encode_variant(1, "sequence", v),
-            Self::String(v) => state.encode_variant(2, "string", v),
-            Self::Map(v) => state.encode_variant(3, "map", v),
-            Self::Fixed(v) => state.encode_variant(4, "fixed", v),
-            Self::Path(v) => state.encode_variant(5, "path", v),
+            Self::Any(v) => state.encode_variant(1, "any", v),
+            Self::Sequence(v) => state.encode_variant(2, "sequence", v),
+            Self::String(v) => state.encode_variant(3, "string", v),
+            Self::Map(v) => state.encode_variant(4, "map", v),
+            Self::Fixed(v) => state.encode_variant(5, "fixed", v),
+            Self::Path(v) => state.encode_variant(6, "path", v),
         }
     }
 }
@@ -1569,32 +1580,32 @@ impl ::intercom_cts::Unmarshal for Type {
         *self = match disc {
             crate::ast::TypeKind::Any => {
                 let mut value = <crate::ast::AnyType>::default();
-                state.decode_variant(0, "any", &mut value)?;
+                state.decode_variant(1, "any", &mut value)?;
                 Self::Any(value)
             }
             crate::ast::TypeKind::Sequence => {
                 let mut value = <crate::ast::SequenceType>::default();
-                state.decode_variant(1, "sequence", &mut value)?;
+                state.decode_variant(2, "sequence", &mut value)?;
                 Self::Sequence(value)
             }
             crate::ast::TypeKind::String => {
                 let mut value = <crate::ast::StringType>::default();
-                state.decode_variant(2, "string", &mut value)?;
+                state.decode_variant(3, "string", &mut value)?;
                 Self::String(value)
             }
             crate::ast::TypeKind::Map => {
                 let mut value = <crate::ast::MapType>::default();
-                state.decode_variant(3, "map", &mut value)?;
+                state.decode_variant(4, "map", &mut value)?;
                 Self::Map(value)
             }
             crate::ast::TypeKind::Fixed => {
                 let mut value = <crate::ast::FixedType>::default();
-                state.decode_variant(4, "fixed", &mut value)?;
+                state.decode_variant(5, "fixed", &mut value)?;
                 Self::Fixed(value)
             }
             crate::ast::TypeKind::Path => {
                 let mut value = <crate::ast::Path>::default();
-                state.decode_variant(5, "path", &mut value)?;
+                state.decode_variant(6, "path", &mut value)?;
                 Self::Path(value)
             }
         };
@@ -1801,8 +1812,8 @@ impl ::intercom_cts::Marshal for Declarator {
         let mut state = ar.encode_union("Declarator")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Simple(v) => state.encode_variant(0, "simple", v),
-            Self::Array(v) => state.encode_variant(1, "array", v),
+            Self::Simple(v) => state.encode_variant(1, "simple", v),
+            Self::Array(v) => state.encode_variant(2, "array", v),
         }
     }
 }
@@ -1820,12 +1831,12 @@ impl ::intercom_cts::Unmarshal for Declarator {
         *self = match disc {
             crate::ast::DeclaratorKind::Simple => {
                 let mut value = <crate::ast::Ident>::default();
-                state.decode_variant(0, "simple", &mut value)?;
+                state.decode_variant(1, "simple", &mut value)?;
                 Self::Simple(value)
             }
             crate::ast::DeclaratorKind::Array => {
                 let mut value = <crate::ast::ArrayDeclarator>::default();
-                state.decode_variant(1, "array", &mut value)?;
+                state.decode_variant(2, "array", &mut value)?;
                 Self::Array(value)
             }
         };
@@ -2094,9 +2105,9 @@ impl ::intercom_cts::Marshal for AnnotationMember {
         let mut state = ar.encode_struct("AnnotationMember")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "decl", &self.decl)?;
-        state.encode_field(1, "ty", &self.ty)?;
-        state.encode_field(2, "default", &self.default)?;
+        state.encode_field(2, "decl", &self.decl)?;
+        state.encode_field(3, "ty", &self.ty)?;
+        state.encode_field(4, "default", &self.default)?;
         state.end()
     }
 }
@@ -2111,9 +2122,9 @@ impl ::intercom_cts::Unmarshal for AnnotationMember {
         let mut state = ar.decode_struct("AnnotationMember")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "decl", &mut self.decl)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
-        state.decode_field(2, "default", &mut self.default)?;
+        state.decode_field(2, "decl", &mut self.decl)?;
+        state.decode_field(3, "ty", &mut self.ty)?;
+        state.decode_field(4, "default", &mut self.default)?;
         Ok(())
     }
 }
@@ -2168,8 +2179,8 @@ impl ::intercom_cts::Marshal for AnnotationField {
         let mut state = ar.encode_union("AnnotationField")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Item(v) => state.encode_variant(0, "item", v),
-            Self::Member(v) => state.encode_variant(1, "member", v),
+            Self::Item(v) => state.encode_variant(1, "item", v),
+            Self::Member(v) => state.encode_variant(2, "member", v),
         }
     }
 }
@@ -2187,12 +2198,12 @@ impl ::intercom_cts::Unmarshal for AnnotationField {
         *self = match disc {
             crate::ast::AnnotationFieldKind::FieldDefinition => {
                 let mut value = Box::new(<crate::ast::Item>::default());
-                state.decode_variant(0, "item", &mut value)?;
+                state.decode_variant(1, "item", &mut value)?;
                 Self::Item(value)
             }
             crate::ast::AnnotationFieldKind::FieldMember => {
                 let mut value = Box::new(<crate::ast::AnnotationMember>::default());
-                state.decode_variant(1, "member", &mut value)?;
+                state.decode_variant(2, "member", &mut value)?;
                 Self::Member(value)
             }
         };
@@ -2246,8 +2257,8 @@ impl ::intercom_cts::Marshal for AnnotationDef {
         let mut state = ar.encode_struct("AnnotationDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "params", &self.params)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "params", &self.params)?;
         state.end()
     }
 }
@@ -2262,8 +2273,8 @@ impl ::intercom_cts::Unmarshal for AnnotationDef {
         let mut state = ar.decode_struct("AnnotationDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "params", &mut self.params)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "params", &mut self.params)?;
         Ok(())
     }
 }
@@ -2314,8 +2325,8 @@ impl ::intercom_cts::Marshal for ModuleDef {
         let mut state = ar.encode_struct("ModuleDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "definitions", &self.definitions)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "definitions", &self.definitions)?;
         state.end()
     }
 }
@@ -2330,8 +2341,8 @@ impl ::intercom_cts::Unmarshal for ModuleDef {
         let mut state = ar.decode_struct("ModuleDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "definitions", &mut self.definitions)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "definitions", &mut self.definitions)?;
         Ok(())
     }
 }
@@ -2381,8 +2392,8 @@ impl ::intercom_cts::Marshal for Field {
         let mut state = ar.encode_struct("Field")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "names", &self.names)?;
-        state.encode_field(1, "ty", &self.ty)?;
+        state.encode_field(2, "names", &self.names)?;
+        state.encode_field(3, "ty", &self.ty)?;
         state.end()
     }
 }
@@ -2397,8 +2408,8 @@ impl ::intercom_cts::Unmarshal for Field {
         let mut state = ar.decode_struct("Field")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "names", &mut self.names)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
+        state.decode_field(2, "names", &mut self.names)?;
+        state.decode_field(3, "ty", &mut self.ty)?;
         Ok(())
     }
 }
@@ -2451,9 +2462,9 @@ impl ::intercom_cts::Marshal for StructDef {
         let mut state = ar.encode_struct("StructDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "members", &self.members)?;
-        state.encode_field(1, "parent", &self.parent)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "members", &self.members)?;
+        state.encode_field(4, "parent", &self.parent)?;
         state.end()
     }
 }
@@ -2468,9 +2479,9 @@ impl ::intercom_cts::Unmarshal for StructDef {
         let mut state = ar.decode_struct("StructDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "members", &mut self.members)?;
-        state.decode_field(1, "parent", &mut self.parent)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "members", &mut self.members)?;
+        state.decode_field(4, "parent", &mut self.parent)?;
         Ok(())
     }
 }
@@ -2708,8 +2719,8 @@ impl ::intercom_cts::Marshal for Label {
         let mut state = ar.encode_union("Label")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Case(v) => state.encode_variant(0, "case", v),
-            Self::Default(v) => state.encode_variant(1, "default", v),
+            Self::Case(v) => state.encode_variant(1, "case", v),
+            Self::Default(v) => state.encode_variant(2, "default", v),
         }
     }
 }
@@ -2727,12 +2738,12 @@ impl ::intercom_cts::Unmarshal for Label {
         *self = match disc {
             crate::ast::LabelKind::Case => {
                 let mut value = <crate::ast::Expr>::default();
-                state.decode_variant(0, "case", &mut value)?;
+                state.decode_variant(1, "case", &mut value)?;
                 Self::Case(value)
             }
             crate::ast::LabelKind::Default => {
                 let mut value = <crate::ast::Empty>::default();
-                state.decode_variant(1, "default", &mut value)?;
+                state.decode_variant(2, "default", &mut value)?;
                 Self::Default(value)
             }
         };
@@ -2985,8 +2996,8 @@ impl ::intercom_cts::Marshal for UnionElement {
         let mut state = ar.encode_union("UnionElement")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Member(v) => state.encode_variant(0, "member", v),
-            Self::Null(v) => state.encode_variant(1, "null", v),
+            Self::Member(v) => state.encode_variant(1, "member", v),
+            Self::Null(v) => state.encode_variant(2, "null", v),
         }
     }
 }
@@ -3004,12 +3015,12 @@ impl ::intercom_cts::Unmarshal for UnionElement {
         *self = match disc {
             crate::ast::UnionElementKind::ElementMember => {
                 let mut value = <crate::ast::UnionMember>::default();
-                state.decode_variant(0, "member", &mut value)?;
+                state.decode_variant(1, "member", &mut value)?;
                 Self::Member(value)
             }
             crate::ast::UnionElementKind::ElementNull => {
                 let mut value = <crate::ast::UnionNull>::default();
-                state.decode_variant(1, "null", &mut value)?;
+                state.decode_variant(2, "null", &mut value)?;
                 Self::Null(value)
             }
         };
@@ -3063,8 +3074,8 @@ impl ::intercom_cts::Marshal for UnionField {
         let mut state = ar.encode_struct("UnionField")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "labels", &self.labels)?;
-        state.encode_field(1, "field", &self.field)?;
+        state.encode_field(2, "labels", &self.labels)?;
+        state.encode_field(3, "field", &self.field)?;
         state.end()
     }
 }
@@ -3079,8 +3090,8 @@ impl ::intercom_cts::Unmarshal for UnionField {
         let mut state = ar.decode_struct("UnionField")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "labels", &mut self.labels)?;
-        state.decode_field(1, "field", &mut self.field)?;
+        state.decode_field(2, "labels", &mut self.labels)?;
+        state.decode_field(3, "field", &mut self.field)?;
         Ok(())
     }
 }
@@ -3136,9 +3147,9 @@ impl ::intercom_cts::Marshal for UnionDef {
         let mut state = ar.encode_struct("UnionDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "disc", &self.disc)?;
-        state.encode_field(1, "fields", &self.fields)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "disc", &self.disc)?;
+        state.encode_field(4, "fields", &self.fields)?;
         state.end()
     }
 }
@@ -3153,9 +3164,9 @@ impl ::intercom_cts::Unmarshal for UnionDef {
         let mut state = ar.decode_struct("UnionDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "disc", &mut self.disc)?;
-        state.decode_field(1, "fields", &mut self.fields)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "disc", &mut self.disc)?;
+        state.decode_field(4, "fields", &mut self.fields)?;
         Ok(())
     }
 }
@@ -3207,9 +3218,9 @@ impl ::intercom_cts::Marshal for ConstDef {
         let mut state = ar.encode_struct("ConstDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "decl", &self.decl)?;
-        state.encode_field(1, "ty", &self.ty)?;
-        state.encode_field(2, "value", &self.value)?;
+        state.encode_field(2, "decl", &self.decl)?;
+        state.encode_field(3, "ty", &self.ty)?;
+        state.encode_field(4, "value", &self.value)?;
         state.end()
     }
 }
@@ -3224,9 +3235,9 @@ impl ::intercom_cts::Unmarshal for ConstDef {
         let mut state = ar.decode_struct("ConstDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "decl", &mut self.decl)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
-        state.decode_field(2, "value", &mut self.value)?;
+        state.decode_field(2, "decl", &mut self.decl)?;
+        state.decode_field(3, "ty", &mut self.ty)?;
+        state.decode_field(4, "value", &mut self.value)?;
         Ok(())
     }
 }
@@ -3333,8 +3344,8 @@ impl ::intercom_cts::Marshal for EnumDef {
         let mut state = ar.encode_struct("EnumDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "fields", &self.fields)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "fields", &self.fields)?;
         state.end()
     }
 }
@@ -3349,8 +3360,8 @@ impl ::intercom_cts::Unmarshal for EnumDef {
         let mut state = ar.decode_struct("EnumDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "fields", &mut self.fields)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "fields", &mut self.fields)?;
         Ok(())
     }
 }
@@ -3401,8 +3412,8 @@ impl ::intercom_cts::Marshal for ExceptDef {
         let mut state = ar.encode_struct("ExceptDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "members", &self.members)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "members", &self.members)?;
         state.end()
     }
 }
@@ -3417,8 +3428,8 @@ impl ::intercom_cts::Unmarshal for ExceptDef {
         let mut state = ar.decode_struct("ExceptDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "members", &mut self.members)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "members", &mut self.members)?;
         Ok(())
     }
 }
@@ -3470,8 +3481,8 @@ impl ::intercom_cts::Marshal for AliasDef {
         let mut state = ar.encode_struct("AliasDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "decl", &self.decl)?;
-        state.encode_field(1, "ty", &self.ty)?;
+        state.encode_field(2, "decl", &self.decl)?;
+        state.encode_field(3, "ty", &self.ty)?;
         state.end()
     }
 }
@@ -3486,8 +3497,8 @@ impl ::intercom_cts::Unmarshal for AliasDef {
         let mut state = ar.decode_struct("AliasDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "decl", &mut self.decl)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
+        state.decode_field(2, "decl", &mut self.decl)?;
+        state.decode_field(3, "ty", &mut self.ty)?;
         Ok(())
     }
 }
@@ -3538,8 +3549,8 @@ impl ::intercom_cts::Marshal for Bit {
         let mut state = ar.encode_struct("Bit")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "value", &self.value)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "value", &self.value)?;
         state.end()
     }
 }
@@ -3554,8 +3565,8 @@ impl ::intercom_cts::Unmarshal for Bit {
         let mut state = ar.decode_struct("Bit")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "value", &mut self.value)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "value", &mut self.value)?;
         Ok(())
     }
 }
@@ -3606,8 +3617,8 @@ impl ::intercom_cts::Marshal for BitmaskDef {
         let mut state = ar.encode_struct("BitmaskDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "bits", &self.bits)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "bits", &self.bits)?;
         state.end()
     }
 }
@@ -3622,8 +3633,8 @@ impl ::intercom_cts::Unmarshal for BitmaskDef {
         let mut state = ar.decode_struct("BitmaskDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "bits", &mut self.bits)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "bits", &mut self.bits)?;
         Ok(())
     }
 }
@@ -3676,9 +3687,9 @@ impl ::intercom_cts::Marshal for Bitfield {
         let mut state = ar.encode_struct("Bitfield")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "size", &self.size)?;
-        state.encode_field(1, "ty", &self.ty)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "size", &self.size)?;
+        state.encode_field(4, "ty", &self.ty)?;
         state.end()
     }
 }
@@ -3693,9 +3704,9 @@ impl ::intercom_cts::Unmarshal for Bitfield {
         let mut state = ar.decode_struct("Bitfield")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "size", &mut self.size)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "size", &mut self.size)?;
+        state.decode_field(4, "ty", &mut self.ty)?;
         Ok(())
     }
 }
@@ -3748,9 +3759,9 @@ impl ::intercom_cts::Marshal for BitsetDef {
         let mut state = ar.encode_struct("BitsetDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "parent", &self.parent)?;
-        state.encode_field(1, "fields", &self.fields)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "parent", &self.parent)?;
+        state.encode_field(4, "fields", &self.fields)?;
         state.end()
     }
 }
@@ -3765,9 +3776,9 @@ impl ::intercom_cts::Unmarshal for BitsetDef {
         let mut state = ar.decode_struct("BitsetDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "parent", &mut self.parent)?;
-        state.decode_field(1, "fields", &mut self.fields)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "parent", &mut self.parent)?;
+        state.decode_field(4, "fields", &mut self.fields)?;
         Ok(())
     }
 }
@@ -4119,10 +4130,10 @@ impl ::intercom_cts::Marshal for InterfaceDef {
         let mut state = ar.encode_struct("InterfaceDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "members", &self.members)?;
-        state.encode_field(1, "inherits", &self.inherits)?;
-        state.encode_field(2, "local", &self.local)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "members", &self.members)?;
+        state.encode_field(4, "inherits", &self.inherits)?;
+        state.encode_field(5, "local", &self.local)?;
         state.end()
     }
 }
@@ -4137,10 +4148,10 @@ impl ::intercom_cts::Unmarshal for InterfaceDef {
         let mut state = ar.decode_struct("InterfaceDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "members", &mut self.members)?;
-        state.decode_field(1, "inherits", &mut self.inherits)?;
-        state.decode_field(2, "local", &mut self.local)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "members", &mut self.members)?;
+        state.decode_field(4, "inherits", &mut self.inherits)?;
+        state.decode_field(5, "local", &mut self.local)?;
         Ok(())
     }
 }
@@ -4253,12 +4264,12 @@ impl ::intercom_cts::Marshal for ValuetypeDef {
         let mut state = ar.encode_struct("ValuetypeDef")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "members", &self.members)?;
-        state.encode_field(1, "prototypes", &self.prototypes)?;
-        state.encode_field(2, "definitions", &self.definitions)?;
-        state.encode_field(3, "inherits", &self.inherits)?;
-        state.encode_field(4, "supports", &self.supports)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "members", &self.members)?;
+        state.encode_field(4, "prototypes", &self.prototypes)?;
+        state.encode_field(5, "definitions", &self.definitions)?;
+        state.encode_field(6, "inherits", &self.inherits)?;
+        state.encode_field(7, "supports", &self.supports)?;
         state.end()
     }
 }
@@ -4273,12 +4284,12 @@ impl ::intercom_cts::Unmarshal for ValuetypeDef {
         let mut state = ar.decode_struct("ValuetypeDef")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "members", &mut self.members)?;
-        state.decode_field(1, "prototypes", &mut self.prototypes)?;
-        state.decode_field(2, "definitions", &mut self.definitions)?;
-        state.decode_field(3, "inherits", &mut self.inherits)?;
-        state.decode_field(4, "supports", &mut self.supports)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "members", &mut self.members)?;
+        state.decode_field(4, "prototypes", &mut self.prototypes)?;
+        state.decode_field(5, "definitions", &mut self.definitions)?;
+        state.decode_field(6, "inherits", &mut self.inherits)?;
+        state.decode_field(7, "supports", &mut self.supports)?;
         Ok(())
     }
 }
@@ -4446,8 +4457,8 @@ impl ::intercom_cts::Marshal for Decl {
         let mut state = ar.encode_struct("Decl")?;
         state.encode_field(0, "span", &self.span)?;
         state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(0, "kind", &self.kind)?;
+        state.encode_field(2, "ident", &self.ident)?;
+        state.encode_field(3, "kind", &self.kind)?;
         state.end()
     }
 }
@@ -4462,8 +4473,8 @@ impl ::intercom_cts::Unmarshal for Decl {
         let mut state = ar.decode_struct("Decl")?;
         state.decode_field(0, "span", &mut self.span)?;
         state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(0, "kind", &mut self.kind)?;
+        state.decode_field(2, "ident", &mut self.ident)?;
+        state.decode_field(3, "kind", &mut self.kind)?;
         Ok(())
     }
 }
@@ -4748,19 +4759,19 @@ impl ::intercom_cts::Marshal for Item {
         let mut state = ar.encode_union("Item")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::AnnotationValue(v) => state.encode_variant(0, "annotation_value", v),
-            Self::ModuleValue(v) => state.encode_variant(1, "module_value", v),
-            Self::StructValue(v) => state.encode_variant(2, "struct_value", v),
-            Self::UnionValue(v) => state.encode_variant(3, "union_value", v),
-            Self::EnumValue(v) => state.encode_variant(4, "enum_value", v),
-            Self::ExceptionValue(v) => state.encode_variant(5, "exception_value", v),
-            Self::BitmaskValue(v) => state.encode_variant(6, "bitmask_value", v),
-            Self::BitsetValue(v) => state.encode_variant(7, "bitset_value", v),
-            Self::ConstValue(v) => state.encode_variant(8, "const_value", v),
-            Self::AliasValue(v) => state.encode_variant(9, "alias_value", v),
-            Self::InterfaceValue(v) => state.encode_variant(10, "interface_value", v),
-            Self::ValuetypeValue(v) => state.encode_variant(11, "valuetype_value", v),
-            Self::DeclValue(v) => state.encode_variant(12, "decl_value", v),
+            Self::AnnotationValue(v) => state.encode_variant(1, "annotation_value", v),
+            Self::ModuleValue(v) => state.encode_variant(2, "module_value", v),
+            Self::StructValue(v) => state.encode_variant(3, "struct_value", v),
+            Self::UnionValue(v) => state.encode_variant(4, "union_value", v),
+            Self::EnumValue(v) => state.encode_variant(5, "enum_value", v),
+            Self::ExceptionValue(v) => state.encode_variant(6, "exception_value", v),
+            Self::BitmaskValue(v) => state.encode_variant(7, "bitmask_value", v),
+            Self::BitsetValue(v) => state.encode_variant(8, "bitset_value", v),
+            Self::ConstValue(v) => state.encode_variant(9, "const_value", v),
+            Self::AliasValue(v) => state.encode_variant(10, "alias_value", v),
+            Self::InterfaceValue(v) => state.encode_variant(11, "interface_value", v),
+            Self::ValuetypeValue(v) => state.encode_variant(12, "valuetype_value", v),
+            Self::DeclValue(v) => state.encode_variant(13, "decl_value", v),
         }
     }
 }
@@ -4778,67 +4789,67 @@ impl ::intercom_cts::Unmarshal for Item {
         *self = match disc {
             crate::ast::ItemKind::Annotation => {
                 let mut value = <crate::ast::AnnotationDef>::default();
-                state.decode_variant(0, "annotation_value", &mut value)?;
+                state.decode_variant(1, "annotation_value", &mut value)?;
                 Self::AnnotationValue(value)
             }
             crate::ast::ItemKind::Module => {
                 let mut value = <crate::ast::ModuleDef>::default();
-                state.decode_variant(1, "module_value", &mut value)?;
+                state.decode_variant(2, "module_value", &mut value)?;
                 Self::ModuleValue(value)
             }
             crate::ast::ItemKind::Struct => {
                 let mut value = <crate::ast::StructDef>::default();
-                state.decode_variant(2, "struct_value", &mut value)?;
+                state.decode_variant(3, "struct_value", &mut value)?;
                 Self::StructValue(value)
             }
             crate::ast::ItemKind::Union => {
                 let mut value = <crate::ast::UnionDef>::default();
-                state.decode_variant(3, "union_value", &mut value)?;
+                state.decode_variant(4, "union_value", &mut value)?;
                 Self::UnionValue(value)
             }
             crate::ast::ItemKind::Enum => {
                 let mut value = <crate::ast::EnumDef>::default();
-                state.decode_variant(4, "enum_value", &mut value)?;
+                state.decode_variant(5, "enum_value", &mut value)?;
                 Self::EnumValue(value)
             }
             crate::ast::ItemKind::Exception => {
                 let mut value = <crate::ast::ExceptDef>::default();
-                state.decode_variant(5, "exception_value", &mut value)?;
+                state.decode_variant(6, "exception_value", &mut value)?;
                 Self::ExceptionValue(value)
             }
             crate::ast::ItemKind::Bitmask => {
                 let mut value = <crate::ast::BitmaskDef>::default();
-                state.decode_variant(6, "bitmask_value", &mut value)?;
+                state.decode_variant(7, "bitmask_value", &mut value)?;
                 Self::BitmaskValue(value)
             }
             crate::ast::ItemKind::Bitset => {
                 let mut value = <crate::ast::BitsetDef>::default();
-                state.decode_variant(7, "bitset_value", &mut value)?;
+                state.decode_variant(8, "bitset_value", &mut value)?;
                 Self::BitsetValue(value)
             }
             crate::ast::ItemKind::Const => {
                 let mut value = <crate::ast::ConstDef>::default();
-                state.decode_variant(8, "const_value", &mut value)?;
+                state.decode_variant(9, "const_value", &mut value)?;
                 Self::ConstValue(value)
             }
             crate::ast::ItemKind::Typedef => {
                 let mut value = <crate::ast::AliasDef>::default();
-                state.decode_variant(9, "alias_value", &mut value)?;
+                state.decode_variant(10, "alias_value", &mut value)?;
                 Self::AliasValue(value)
             }
             crate::ast::ItemKind::Interface => {
                 let mut value = <crate::ast::InterfaceDef>::default();
-                state.decode_variant(10, "interface_value", &mut value)?;
+                state.decode_variant(11, "interface_value", &mut value)?;
                 Self::InterfaceValue(value)
             }
             crate::ast::ItemKind::Valuetype => {
                 let mut value = <crate::ast::ValuetypeDef>::default();
-                state.decode_variant(11, "valuetype_value", &mut value)?;
+                state.decode_variant(12, "valuetype_value", &mut value)?;
                 Self::ValuetypeValue(value)
             }
             crate::ast::ItemKind::Decl => {
                 let mut value = <crate::ast::Decl>::default();
-                state.decode_variant(12, "decl_value", &mut value)?;
+                state.decode_variant(13, "decl_value", &mut value)?;
                 Self::DeclValue(value)
             }
         };
@@ -5010,9 +5021,9 @@ impl ::intercom_cts::Marshal for InterfaceMember {
         let mut state = ar.encode_union("InterfaceMember")?;
         state.encode_discriminant(&self.disc())?;
         match self {
-            Self::Attr(v) => state.encode_variant(0, "attr", v),
-            Self::Proto(v) => state.encode_variant(1, "proto", v),
-            Self::Item(v) => state.encode_variant(2, "item", v),
+            Self::Attr(v) => state.encode_variant(1, "attr", v),
+            Self::Proto(v) => state.encode_variant(2, "proto", v),
+            Self::Item(v) => state.encode_variant(3, "item", v),
         }
     }
 }
@@ -5030,17 +5041,17 @@ impl ::intercom_cts::Unmarshal for InterfaceMember {
         *self = match disc {
             crate::ast::InterfaceMemberKind::Attribute => {
                 let mut value = <crate::ast::Attribute>::default();
-                state.decode_variant(0, "attr", &mut value)?;
+                state.decode_variant(1, "attr", &mut value)?;
                 Self::Attr(value)
             }
             crate::ast::InterfaceMemberKind::Prototype => {
                 let mut value = <crate::ast::Prototype>::default();
-                state.decode_variant(1, "proto", &mut value)?;
+                state.decode_variant(2, "proto", &mut value)?;
                 Self::Proto(value)
             }
             crate::ast::InterfaceMemberKind::Item => {
                 let mut value = <crate::ast::Item>::default();
-                state.decode_variant(2, "item", &mut value)?;
+                state.decode_variant(3, "item", &mut value)?;
                 Self::Item(value)
             }
         };

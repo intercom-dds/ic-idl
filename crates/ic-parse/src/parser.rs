@@ -253,6 +253,13 @@ fn const_dcl() -> impl IdlParser<Item> {
 fn complex_const_expr() -> impl IdlParser<Expr> {
     recursive(|state| {
         let basic = const_expr();
+        let null = keyword(Kw::Null).map_with_span(|_, span| {
+            Expr::Literal(Literal {
+                span,
+                value: LiteralValue::Null,
+            })
+        });
+
         let named = just(Kind::Period)
             .or_not()
             .then(ident())
@@ -271,7 +278,7 @@ fn complex_const_expr() -> impl IdlParser<Expr> {
                 })
             });
 
-        choice((named, complex, basic))
+        choice((named, null, complex, basic))
     })
 }
 

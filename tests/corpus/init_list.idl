@@ -49,7 +49,14 @@ const Color MY_COLOR2 = {
 };
 
 // Unnamed
-const Color MY_COLOR = {"foo", 1, 2, 3.0};
+const Color MY_COLOR3 = {"foo", 1, 2, 3.0};
 
 // Empty initializer -- all members should use their respective default values.
-const Color MY_COLOR = {};
+// const Color MY_COLOR4 = {};
+
+struct HasOptional {
+    @optional string value;
+};
+
+const HasOptional HAS_VALUE = { "foo" };
+const HasOptional NO_VALUE = { null };

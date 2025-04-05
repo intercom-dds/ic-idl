@@ -297,6 +297,9 @@ fn kind_number(base: Base, value: u64) -> Kind {
     }
 }
 
+/// # Panics
+///
+/// Panics if the provided iterator yields invalid tokens.
 #[must_use]
 pub fn from_cursor(
     mut iter: TokenIter<'_, State>,
@@ -306,7 +309,7 @@ pub fn from_cursor(
         loop {
             let next = iter.next()?;
             match next.kind {
-                ic_preproc::Kind::Newline => continue,
+                ic_preproc::Kind::Newline => (),
                 ic_preproc::Kind::Ident => {
                     let ident = iter.source_of(next.span).to_string();
                     let ident = if let Some(v) = ident.strip_prefix('_') {

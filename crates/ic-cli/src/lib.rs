@@ -219,7 +219,7 @@ impl CommandLine {
                         let error = "error:".red().bold();
                         eprintln!("{error} {msg}");
                     }
-                };
+                }
                 std::process::exit(1);
             }
         }

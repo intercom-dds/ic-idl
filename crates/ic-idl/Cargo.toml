@@ -27,7 +27,7 @@
 
 [package]
 name = "ic-idl"
-edition = "2021"
+edition = "2024"
 
 publish.workspace = true
 rust-version.workspace = true
@@ -58,6 +58,5 @@ ic-codegen-protobuf = { path = "../ic-codegen-protobuf" }
 ic-codegen-python = { path = "../ic-codegen-python" }
 ic-codegen-rust = { path = "../ic-codegen-rust" }
 ic-codegen-xml = { path = "../ic-codegen-xml" }
-ic-codegen-xsd = { path = "../ic-codegen-xsd" }
 
 intercom-cts.workspace = true

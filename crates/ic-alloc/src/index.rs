@@ -137,7 +137,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.inner.keys.len() {
-            if let Some((key, index)) = self.inner.keys.iter().find(|(_, &v)| v == self.index) {
+            if let Some((key, index)) = self.inner.keys.iter().find(|&(_, v)| *v == self.index) {
                 self.index += 1;
                 return Some((key, &self.inner.data[*index]));
             }

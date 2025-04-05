@@ -56,6 +56,7 @@ where
         .extra_warnings(true)
         .flag_if_supported("-Wpedantic")
         .flag_if_supported("-Wno-unused-function")
+        .std("c++17")
         .files(&files);
 
     for (k, v) in GLOBAL_DEFINES {
@@ -71,9 +72,6 @@ where
     // Enable exceptions for clang-cl and enable C++17 support
     if compiler.get_compiler().is_like_msvc() {
         compiler.flag("/EHsc");
-        compiler.flag("/std:c++17");
-    } else {
-        compiler.flag("-std=c++17");
     }
 
     // Upgrade warnings to errors in CI pipelines
@@ -87,6 +85,7 @@ where
     println!("cargo:rerun-if-env-changed=CI");
     println!("cargo:rerun-if-env-changed=CXX");
     println!("cargo:rerun-if-env-changed=CXXFLAGS");
+    println!("cargo:rustc-link-search=native=/lib/gcc/x86_64-linux-gnu/11/");
 
     for f in files {
         println!("cargo:rerun-if-changed={}", f.as_ref().display());

@@ -151,7 +151,7 @@ impl Interp<'_> {
                 LiteralValue::Bool(v) => Numeric::Bool(*v),
                 LiteralValue::Int(v) => Numeric::from(T::try_from(*v as i64).unwrap()),
                 LiteralValue::Char(v) => Numeric::Char(*v),
-                LiteralValue::String(ref v) => Numeric::String(v.clone()),
+                LiteralValue::String(v) => Numeric::String(v.clone()),
                 LiteralValue::Float(_) => Numeric::Double(0.0),
             },
             // TODO: this should always be a constant, enumerator oo bitflag.

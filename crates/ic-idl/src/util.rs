@@ -99,7 +99,7 @@ where
     let mut errors = vec![];
     let mut files = HashSet::new();
     for path in paths {
-        if std::fs::metadata(path).map_or(false, |v| v.is_dir()) {
+        if std::fs::metadata(path).is_ok_and(|v| v.is_dir()) {
             if let Err(e) = collect(path, &mut files) {
                 errors.push(e);
             }

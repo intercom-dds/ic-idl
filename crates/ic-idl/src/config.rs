@@ -214,7 +214,6 @@ pub struct CodegenOptions {
     /// Generate XML files in <dir>
     #[option(long, arg = "dir")]
     pub xml_out: Option<PathBuf>,
-
 }
 
 #[derive(Command, Debug, Default)]
@@ -247,7 +246,7 @@ impl convert::Convert for Unstable {
                         format!("-Z{arg}").yellow(),
                     )));
                 }
-            };
+            }
         }
         Ok(this)
     }
@@ -271,10 +270,7 @@ impl convert::Convert for Warnings {
                 "pedantic" => warnings.pedantic = enabled,
                 "error" => warnings.error = enabled,
                 "help" => crate::unstable::warning_help(),
-                _ => {
-                    warn!("unknown warning '{}'", format!("-W{arg}").yellow());
-                    continue;
-                }
+                _ => warn!("unknown warning '{}'", format!("-W{arg}").yellow()),
             }
         }
         Ok(warnings)

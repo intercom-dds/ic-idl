@@ -979,7 +979,7 @@ where
                         self.expand_inner(tok, seen);
                     }
                 }
-            };
+            }
             seen.remove(name);
         } else {
             self.state().queue.push_back(token);
@@ -1173,7 +1173,7 @@ pub fn to_string(
 
         if last_id != tok.span.start.file_id {
             let path = iter.inner.vfs.path(tok.span.start.file_id);
-            _ = buffer.write_str(&format!("\n#line 1 {path:?}\n"));
+            _ = buffer.write_str(&format!("\n#line 1 {}\n", path.display()));
             last_id = tok.span.start.file_id;
         }
 
@@ -1229,9 +1229,12 @@ mod tests {
 
         let mut iter = def.iter();
         assert_eq!(iter.next().unwrap().kind, Kind::Ident);
-        assert_eq!(iter.next().unwrap().kind, Kind::Number {
-            base: Base::Decimal
-        });
+        assert_eq!(
+            iter.next().unwrap().kind,
+            Kind::Number {
+                base: Base::Decimal
+            }
+        );
         assert!(iter.next().is_none());
     }
 

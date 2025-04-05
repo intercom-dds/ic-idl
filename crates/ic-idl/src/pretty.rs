@@ -80,7 +80,7 @@ fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write
             let expected = if let Some(e) = error.label {
                 e.yellow()
             } else if let Some(e) = &error.expected {
-                if e.iter().any(|v| *v == Kind::Eoi) {
+                if e.contains(&Kind::Eoi) {
                     "top-level definition".yellow()
                 } else {
                     format_slice(e)

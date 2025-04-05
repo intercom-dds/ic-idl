@@ -39,7 +39,6 @@ members = [
     "crates/ic-codegen-python",
     "crates/ic-codegen-rust",
     "crates/ic-codegen-xml",
-    "crates/ic-codegen-xsd",
     "crates/ic-diagnostic",
     "crates/ic-emit",
     "crates/ic-expr",
@@ -69,7 +68,7 @@ default-members = ["crates/ic-idl"]
 
 [workspace.package]
 version = "0.1.0"
-rust-version = "1.80"
+rust-version = "1.85"
 publish = false
 authors = ["KONGSBERG <DDS-InterCOM@kda.kongsberg.com>"]
 
@@ -105,6 +104,7 @@ undocumented_unsafe_blocks = "warn"
 module_name_repetitions = "allow"
 struct_excessive_bools = "allow"
 ignored_unit_patterns = "allow"
+struct_field_names = "allow"
 
 [profile.release]
 lto = "thin"

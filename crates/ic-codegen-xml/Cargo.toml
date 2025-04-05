@@ -27,7 +27,7 @@
 
 [package]
 name = "ic-codegen-xml"
-edition = "2021"
+edition = "2024"
 
 version.workspace = true
 rust-version.workspace = true

@@ -32,7 +32,7 @@ use syn::{Data, DeriveInput, parse_macro_input};
 fn enum_index(data: &Data) -> proc_macro2::TokenStream {
     let mut variants = proc_macro2::TokenStream::new();
 
-    if let syn::Data::Enum(ref value) = data {
+    if let syn::Data::Enum(value) = &data {
         for (index, variant) in value.variants.iter().enumerate() {
             let ident = &variant.ident;
             let params = match &variant.fields {

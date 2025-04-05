@@ -27,7 +27,7 @@
 
 [package]
 name = "ic-codegen-json"
-edition = "2021"
+edition = "2024"
 
 publish.workspace = true
 rust-version.workspace = true

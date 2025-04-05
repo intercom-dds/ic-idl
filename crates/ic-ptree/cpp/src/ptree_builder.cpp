@@ -391,7 +391,7 @@ clone_numeric(parser_state* state, const numeric& num, std::map<const ptree*, pt
 
 static ptree*
 deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, ptree*>& alloc) {
-    if (!node || (node->flags & OPT_BUILTIN) != 0) {
+    if (!node || (node->flags & OPT_BUILTIN) != 0 || node->kind == N_ANNOTATION_DEF) {
         return const_cast<ptree*>(node);
     }
     auto it = alloc.find(node);

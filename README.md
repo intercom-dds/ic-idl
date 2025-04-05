@@ -78,8 +78,8 @@ cargo doc --document-private-items --no-deps --workspace
 
 ## MSRV
 
-- MSRV for the compiler is 1.80.
-- MSRV for the serialization library is 1.70.
+- MSRV for the compiler is 1.85.
+- MSRV for the serialization library is 1.83.
 
 The MSRV may change between minor version releases and is not considered a
 semver-breaking change.

@@ -77,7 +77,7 @@ impl From<ic_parse::Error> for Error {
 }
 
 /// Recursively iterates a directory and collects and IDL files.
-pub fn collect_files<'a, I>(paths: I) -> std::result::Result<HashSet<PathBuf>, Vec<io::Error>>
+pub fn collect_files<'a, I>(paths: I) -> std::result::Result<Vec<PathBuf>, Vec<io::Error>>
 where
     I: IntoIterator<Item = &'a PathBuf>,
 {
@@ -109,6 +109,8 @@ where
     }
 
     if errors.is_empty() {
+        let mut files: Vec<_> = files.into_iter().collect();
+        files.sort();
         Ok(files)
     } else {
         Err(errors)

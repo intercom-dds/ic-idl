@@ -121,6 +121,22 @@ static void flag_trivial_ord(ptree* node) {
     }
 }
 
+/// Object/any can't be serialized, so we mark the relevant members as
+/// @non_serialized to avoid build errors.
+static void annotate_any(parser_state* state, ptree* node) {
+    for (; node; node = node->next) {
+        if (node->kind == N_MEMBER) {
+            auto base = base_type_of(node->type);
+            if (base == &object_type || base == &any_type) {
+                create_annotation_start(state, "@non_serialized");
+                annotate(state, node, create_annotation_finish(state, nullptr));
+            }
+        } else {
+            annotate_any(state, node->members);
+        }
+    }
+}
+
 /// Removes duplicate modules and squashes them into one. This will also remove
 /// any non-emit modules from the tree.
 static ptree*
@@ -128,11 +144,11 @@ squash_modules(parser_state* state, ptree* node, std::map<std::string, ptree*>& 
     ptree* list = node;
     while (node) {
         ptree* next = node->next;
-        if (node->kind == N_MODULE && is_emit(node, LANG_RUST)) {
+        if (node->kind == N_MODULE) {
             node->members = squash_modules(state, node->members, modules);
 
             auto it = modules.find(lc_scoped_name(node));
-            if (it == modules.end() && node->members) {
+            if (it == modules.end()) {
                 modules.emplace(lc_scoped_name(node), node);
             } else {
                 list = remove_node(list, node);
@@ -202,9 +218,9 @@ static void rescope_dds(ptree* node) {
             }
 
             // Generated DDS types are located in intercom::types
-            if (node->super == nullptr && (node->name == "DDS" || node->name == "intercom")) {
-                node->name = "types";
-            }
+            // if (node->super == nullptr && (node->name == "DDS" || node->name == "intercom")) {
+            //     node->name = "types";
+            // }
         }
     }
 }
@@ -226,26 +242,17 @@ static void replace_native(parser_state* state) {
         }
     };
 
-    create_module_start(state, "core");
-    to_bitmask("DDS::InstanceHandle_t", "InstanceHandle");
-    to_bitmask("DDS::SampleStateKind", "SampleState");
-    to_bitmask("DDS::SampleStateMask", "SampleState");
-    to_bitmask("DDS::InstanceStateKind", "InstanceState");
-    to_bitmask("DDS::InstanceStateMask", "InstanceState");
-    to_bitmask("DDS::ViewStateKind", "ViewState");
-    to_bitmask("DDS::ViewStateMask", "ViewState");
-    create_module_finish(state, nullptr);
-}
+    (void)&to_bitmask;
 
-static void modify_typeid(parser_state* state) {
-    if (auto node = state->lookup_node("DDS::XTypes::TypeIdentifier")) {
-        for (auto mem : node->members) {
-            if (mem->name == "primitive") {
-                mem->kind = N_NULL;
-                break;
-            }
-        }
-    }
+    // create_module_start(create_identifier("core"));
+    // to_bitmask("DDS::InstanceHandle_t", "InstanceHandle");
+    // to_bitmask("DDS::SampleStateKind", "SampleState");
+    // to_bitmask("DDS::SampleStateMask", "SampleState");
+    // to_bitmask("DDS::InstanceStateKind", "InstanceState");
+    // to_bitmask("DDS::InstanceStateMask", "InstanceState");
+    // to_bitmask("DDS::ViewStateKind", "ViewState");
+    // to_bitmask("DDS::ViewStateMask", "ViewState");
+    // create_module_finish(nullptr, tree->pos);
 }
 
 static std::optional<std::string> conventionalized(ptree* node) {
@@ -388,7 +395,7 @@ static void enum_prefix(const ptree* node) {
     }
 
     for (; node; node = node->next) {
-        if (node->kind == N_ENUM) {
+        if (node->kind == N_ENUM || node->kind == N_BITMASK) {
             strip_prefix(node);
         } else if (node->members) {
             enum_prefix(node->members);
@@ -409,6 +416,9 @@ void intercom::rust::transform_rust(parse_result* result) {
     // Flag trivial types and types that can form a total order
     flag_trivial_ord(tree);
 
+    // Annotate all members whose type is any/Object with @non_serialized
+    annotate_any(result->state.get(), tree);
+
     // Move nested types into modules. Keep track of the moved nodes to
     // properly escape their names later on to ensure the correct node gets
     // precedence.
@@ -423,9 +433,6 @@ void intercom::rust::transform_rust(parse_result* result) {
 
     // Replace some DDS types with their native Rust equivalents
     replace_native(result->state.get());
-
-    // Turn `TypeIdentifier::Empty` into N_NULL
-    modify_typeid(result->state.get());
 
     // Give select modules more suitable names
     rescope_dds(tree);

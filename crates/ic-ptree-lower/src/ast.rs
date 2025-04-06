@@ -453,6 +453,10 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
             };
 
             let members = collect_with(state, sys::append_node, &v.fields, |var| {
+                let annotations = lower_applied_annotations(state, &var.annotations);
+                let labels =
+                    collect_with(state, sys::append_node, &var.labels, |v| label(state, v));
+
                 let mem = match &var.field {
                     UnionElement::Member(v) => {
                         let ty = lower_ty(state, &v.ty);
@@ -461,10 +465,6 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
                     }
                     UnionElement::Null(_) => sys::create_null_node(state),
                 };
-
-                let annotations = lower_applied_annotations(state, &var.annotations);
-                let labels =
-                    collect_with(state, sys::append_node, &var.labels, |v| label(state, v));
                 sys::create_union_member(state, mem, labels, annotations)
             });
 

@@ -95,6 +95,9 @@ where
 
 pub fn parse_builtin() -> ic_parse::ParseResult {
     let (builtin, errors) = ic_parse::from_str(BUILTIN_ANNOTATIONS);
-    assert!(errors.is_empty(), "failed to parse built-in annotations: {errors:?}");
+    assert!(
+        errors.is_empty(),
+        "failed to parse built-in annotations: {errors:?}"
+    );
     builtin
 }

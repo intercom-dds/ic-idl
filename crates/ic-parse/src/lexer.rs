@@ -325,6 +325,11 @@ pub fn from_cursor(
                 }
                 ic_preproc::Kind::Number { base } => {
                     let src = iter.source_of(next.span);
+                    let src = match base {
+                        Base::Hexadecimal => &src[2..],
+                        _ => src,
+                    };
+
                     let kind = u64::from_str_radix(src, base as u32)
                         .ok()
                         .map_or(Kind::Invalid, |v| kind_number(base, v));

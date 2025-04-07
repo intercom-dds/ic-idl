@@ -73,7 +73,7 @@ impl ::intercom_cts::Unmarshal for Ident {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Ident")?;
         state.decode_field(0, "name", &mut self.name)?;
@@ -123,7 +123,7 @@ impl ::intercom_cts::Unmarshal for Path {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Path")?;
         state.decode_field(0, "leading_colons", &mut self.leading_colons)?;
@@ -406,7 +406,7 @@ impl ::intercom_cts::Unmarshal for Literal {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Literal")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -622,7 +622,7 @@ impl ::intercom_cts::Unmarshal for Op {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Op")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -791,7 +791,7 @@ impl ::intercom_cts::Unmarshal for InitList {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("InitList")?;
         state.decode_field(0, "values", &mut self.values)?;
@@ -945,7 +945,7 @@ impl ::intercom_cts::Unmarshal for NamedExpr {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("NamedExpr")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -995,7 +995,7 @@ impl ::intercom_cts::Unmarshal for Unary {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Unary")?;
         state.decode_field(0, "op", &mut self.op)?;
@@ -1048,7 +1048,7 @@ impl ::intercom_cts::Unmarshal for Binary {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Binary")?;
         state.decode_field(0, "lhs", &mut self.lhs)?;
@@ -1096,7 +1096,7 @@ impl ::intercom_cts::Unmarshal for AnyType {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("AnyType")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -1148,7 +1148,7 @@ impl ::intercom_cts::Unmarshal for SequenceType {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("SequenceType")?;
         state.decode_field(0, "ty", &mut self.ty)?;
@@ -1202,7 +1202,7 @@ impl ::intercom_cts::Unmarshal for StringType {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("StringType")?;
         state.decode_field(0, "wide", &mut self.wide)?;
@@ -1259,7 +1259,7 @@ impl ::intercom_cts::Unmarshal for MapType {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("MapType")?;
         state.decode_field(0, "key", &mut self.key)?;
@@ -1311,7 +1311,7 @@ impl ::intercom_cts::Unmarshal for Fixed {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Fixed")?;
         state.decode_field(0, "total", &mut self.total)?;
@@ -1361,7 +1361,7 @@ impl ::intercom_cts::Unmarshal for FixedType {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("FixedType")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -1755,7 +1755,7 @@ impl ::intercom_cts::Unmarshal for ArrayDeclarator {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("ArrayDeclarator")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -1895,7 +1895,7 @@ impl ::intercom_cts::Unmarshal for AnnotationArg {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("AnnotationArg")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -1949,7 +1949,7 @@ impl ::intercom_cts::Unmarshal for AnnotationAppl {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("AnnotationAppl")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -2117,7 +2117,7 @@ impl ::intercom_cts::Unmarshal for AnnotationMember {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("AnnotationMember")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -2268,7 +2268,7 @@ impl ::intercom_cts::Unmarshal for AnnotationDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("AnnotationDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -2336,7 +2336,7 @@ impl ::intercom_cts::Unmarshal for ModuleDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("ModuleDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -2403,7 +2403,7 @@ impl ::intercom_cts::Unmarshal for Field {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Field")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -2474,7 +2474,7 @@ impl ::intercom_cts::Unmarshal for StructDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("StructDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -2527,7 +2527,7 @@ impl ::intercom_cts::Unmarshal for Discriminator {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Discriminator")?;
         state.decode_field(0, "annotations", &mut self.annotations)?;
@@ -2891,7 +2891,7 @@ impl ::intercom_cts::Unmarshal for UnionMember {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("UnionMember")?;
         state.decode_field(0, "ty", &mut self.ty)?;
@@ -2938,7 +2938,7 @@ impl ::intercom_cts::Unmarshal for UnionNull {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("UnionNull")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3085,7 +3085,7 @@ impl ::intercom_cts::Unmarshal for UnionField {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("UnionField")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3159,7 +3159,7 @@ impl ::intercom_cts::Unmarshal for UnionDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("UnionDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3230,7 +3230,7 @@ impl ::intercom_cts::Unmarshal for ConstDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("ConstDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3288,7 +3288,7 @@ impl ::intercom_cts::Unmarshal for Enumerator {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Enumerator")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -3355,7 +3355,7 @@ impl ::intercom_cts::Unmarshal for EnumDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("EnumDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3423,7 +3423,7 @@ impl ::intercom_cts::Unmarshal for ExceptDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("ExceptDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3492,7 +3492,7 @@ impl ::intercom_cts::Unmarshal for AliasDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("AliasDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3560,7 +3560,7 @@ impl ::intercom_cts::Unmarshal for Bit {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Bit")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3628,7 +3628,7 @@ impl ::intercom_cts::Unmarshal for BitmaskDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("BitmaskDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3699,7 +3699,7 @@ impl ::intercom_cts::Unmarshal for Bitfield {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Bitfield")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3771,7 +3771,7 @@ impl ::intercom_cts::Unmarshal for BitsetDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("BitsetDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -3837,7 +3837,7 @@ impl ::intercom_cts::Unmarshal for Attribute {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Attribute")?;
         state.decode_field(0, "decl", &mut self.decl)?;
@@ -4004,7 +4004,7 @@ impl ::intercom_cts::Unmarshal for Param {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Param")?;
         state.decode_field(0, "decl", &mut self.decl)?;
@@ -4068,7 +4068,7 @@ impl ::intercom_cts::Unmarshal for Prototype {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Prototype")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -4143,7 +4143,7 @@ impl ::intercom_cts::Unmarshal for InterfaceDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("InterfaceDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -4200,7 +4200,7 @@ impl ::intercom_cts::Unmarshal for ValueMember {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("ValueMember")?;
         state.decode_field(0, "ident", &mut self.ident)?;
@@ -4279,7 +4279,7 @@ impl ::intercom_cts::Unmarshal for ValuetypeDef {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("ValuetypeDef")?;
         state.decode_field(0, "span", &mut self.span)?;
@@ -4468,7 +4468,7 @@ impl ::intercom_cts::Unmarshal for Decl {
     where
         D: ::intercom_cts::decode::Deserializer,
     {
-        use ::intercom_cts::decode::FieldDeserializer as _;
+        use ::intercom_cts::decode::StructDeserializer as _;
 
         let mut state = ar.decode_struct("Decl")?;
         state.decode_field(0, "span", &mut self.span)?;

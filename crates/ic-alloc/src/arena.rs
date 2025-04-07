@@ -32,7 +32,7 @@ use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::{panic, slice};
 
-use intercom_cts::decode::{Deserializer, FieldDeserializer};
+use intercom_cts::decode::{Deserializer, StructDeserializer};
 use intercom_cts::encode::{FieldSerializer, Serializer};
 use intercom_cts::{Marshal, Unmarshal};
 

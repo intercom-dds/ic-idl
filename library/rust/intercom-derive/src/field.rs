@@ -147,7 +147,7 @@ impl ToTokens for Unmarshal<StructMember> {
         let member_field = &self.0.member;
 
         let expanded = quote! {
-            ::intercom_cts::decode::FieldDeserializer::decode_field(
+            ::intercom_cts::decode::StructDeserializer::decode_field(
                 &mut state,
                 #member_id,
                 #member_name,

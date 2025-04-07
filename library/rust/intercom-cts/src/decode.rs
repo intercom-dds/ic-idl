@@ -55,7 +55,7 @@ pub trait Deserializer {
     type Error: Error;
 
     /// Deserializer used to deserialize `struct`s.
-    type Struct: FieldDeserializer<Error = Self::Error>;
+    type Struct: StructDeserializer<Error = Self::Error>;
 
     /// Deserializer used to deserialize complex `enum`s.
     type Union: UnionDeserializer<Error = Self::Error>;
@@ -463,7 +463,7 @@ pub trait Deserializer {
     /// # Example
     /// ```
     /// use intercom_cts::Unmarshal;
-    /// use intercom_cts::decode::{Deserializer, FieldDeserializer};
+    /// use intercom_cts::decode::{Deserializer, StructDeserializer};
     ///
     /// struct Value {
     ///     key: u32,
@@ -613,7 +613,7 @@ pub trait Deserializer {
     fn decode_map(self) -> Result<Self::Map, Self::Error>;
 }
 
-pub trait FieldDeserializer {
+pub trait StructDeserializer {
     type Error: Error;
 
     fn decode_field<T>(&mut self, id: usize, key: &str, value: &mut T) -> Result<(), Self::Error>

@@ -1323,7 +1323,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
     auto members = struct_members(node);
     if (node->kind == N_STRUCT || node->kind == N_EXCEPTION || node->kind == N_VALUETYPE) {
         if (!members.empty()) {
-            out("use ", cts_prefix, "::decode::FieldDeserializer as _;\n\n");
+            out("use ", cts_prefix, "::decode::StructDeserializer as _;\n\n");
             out("let mut state = ");
         }
         out("ar.decode_struct(", quote(node), ")?;\n");

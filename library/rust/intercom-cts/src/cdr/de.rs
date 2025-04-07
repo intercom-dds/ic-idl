@@ -30,8 +30,8 @@ use std::marker::PhantomData;
 use super::Error;
 use super::endian::{Big, Endian, Little};
 use crate::decode::{
-    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, FieldDeserializer,
-    MapDeserializer, SeqDeserializer, UnionDeserializer, Unmarshal,
+    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
+    SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
 };
 
 pub struct CdrReader<'de, E: Endian> {
@@ -234,7 +234,7 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
     }
 }
 
-impl<E: Endian> FieldDeserializer for &mut CdrReader<'_, E> {
+impl<E: Endian> StructDeserializer for &mut CdrReader<'_, E> {
     type Error = <Self as Deserializer>::Error;
 
     #[inline]

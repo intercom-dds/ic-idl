@@ -32,8 +32,8 @@ use super::key::KeyDeserializer;
 use super::parse::parse;
 use super::{Error, Number, Value};
 use crate::decode::{
-    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, FieldDeserializer,
-    MapDeserializer, SeqDeserializer, Type, UnionDeserializer, Unmarshal,
+    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
+    SeqDeserializer, StructDeserializer, Type, UnionDeserializer, Unmarshal,
 };
 use crate::error::Error as _;
 
@@ -196,7 +196,7 @@ impl Deserializer for &mut JsonReader {
     }
 }
 
-impl FieldDeserializer for &mut JsonReader {
+impl StructDeserializer for &mut JsonReader {
     type Error = Error;
 
     fn decode_field<T>(&mut self, _: usize, key: &str, value: &mut T) -> Result<(), Self::Error>
@@ -226,7 +226,7 @@ impl UnionDeserializer for &mut JsonReader {
         T: Unmarshal,
     {
         if !self.value.is_null() {
-            FieldDeserializer::decode_field(self, 0, "$discriminator", value)?;
+            StructDeserializer::decode_field(self, 0, "$discriminator", value)?;
         }
         Ok(())
     }
@@ -235,7 +235,7 @@ impl UnionDeserializer for &mut JsonReader {
     where
         T: Unmarshal,
     {
-        FieldDeserializer::decode_field(&mut self, id, name, value)
+        StructDeserializer::decode_field(&mut self, id, name, value)
     }
 }
 

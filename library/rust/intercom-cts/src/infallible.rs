@@ -29,8 +29,8 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use crate::decode::{
-    ArrayDeserializer, EnumDeserializer, EnumVisitor, FieldDeserializer, MapDeserializer,
-    SeqDeserializer, UnionDeserializer,
+    ArrayDeserializer, EnumDeserializer, EnumVisitor, MapDeserializer, SeqDeserializer,
+    StructDeserializer, UnionDeserializer,
 };
 use crate::encode::{
     ArraySerializer, EnumSerializer, FieldSerializer, MapSerializer, SeqSerializer, UnionSerializer,
@@ -144,7 +144,7 @@ impl<Ok, Err: Error> MapSerializer for Never<Ok, Err> {
     }
 }
 
-impl<Ok, Err: Error> FieldDeserializer for Never<Ok, Err> {
+impl<Ok, Err: Error> StructDeserializer for Never<Ok, Err> {
     type Error = Err;
 
     fn decode_field<T>(&mut self, _: usize, _: &str, _: &mut T) -> Result<(), Self::Error>

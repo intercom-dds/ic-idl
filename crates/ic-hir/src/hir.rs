@@ -44,6 +44,7 @@ pub type TypeId = ic_alloc::arena::Id<Def>;
 /// bounds or other attributes attached to them.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter, ToString)]
 pub enum PrimitiveTy {
+    Void,
     Bool,
     Char,
     WChar,
@@ -63,6 +64,7 @@ pub enum PrimitiveTy {
 impl PrimitiveTy {
     pub fn name(&self) -> &str {
         match self {
+            PrimitiveTy::Void => "void",
             PrimitiveTy::Bool => "boolean",
             PrimitiveTy::Char => "char",
             PrimitiveTy::WChar => "wchar",

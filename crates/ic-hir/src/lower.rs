@@ -56,7 +56,7 @@ use crate::resolve::{self, ResolveError, Resolver, Symbol, SymbolKind};
 ///
 /// Note: non-critical warnings and errors are better implemented as lints.
 pub(crate) struct Lower<'a> {
-    ctx: &'a mut Context,
+    pub ctx: &'a mut Context,
     order: Vec<TypeId>,
     pub resolver: Resolver,
     errors: Vec<Diag>,
@@ -472,6 +472,7 @@ impl<'a> Lower<'a> {
                 // TODO: probably better to let the parser resolve these
                 let path = &v.segments[0];
                 let kind = match path.name.as_str() {
+                    "void" => PrimitiveTy::Void,
                     "boolean" => PrimitiveTy::Bool,
                     "char" => PrimitiveTy::Char,
                     "wchar" => PrimitiveTy::WChar,
@@ -607,7 +608,19 @@ impl<'a> Lower<'a> {
                     is_default,
                 }
             }
-            UnionElement::Null(_) => todo!(),
+            UnionElement::Null(v) => Variant {
+                annotations,
+                ident: Ident {
+                    name: "null".to_string(),
+                    span: v.span,
+                },
+                ty: Ty {
+                    span: v.span,
+                    kind: TyKind::Any,
+                },
+                labels,
+                is_default,
+            },
         }
     }
 

@@ -151,7 +151,13 @@ unsafe fn lower_ty(state: *mut sys::parser_state, ty: &Type) -> *mut sys::ptree 
             let bound = v.bound.as_ref().map_or(NUM_UNDEF, |e| lower_expr(state, e));
             sys::create_map(state, key, elem, bound)
         }
-        Type::Path(v) => lower_path(state, v),
+        Type::Path(v) => {
+            // FIXME(idarcar): this is just a hack to make void work
+            if v.leading_colons.is_none() && v.segments.len() == 1 && v.segments[0].name == "void" {
+                return std::ptr::null_mut();
+            }
+            lower_path(state, v)
+        }
     }
 }
 

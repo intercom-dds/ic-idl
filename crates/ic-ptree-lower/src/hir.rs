@@ -67,6 +67,7 @@ impl<'a> TreeBuilder<'a> {
             TyKind::Any => ptr::addr_of_mut!(sys::any_type),
             TyKind::Fixed => ptr::addr_of_mut!(sys::fixed_type),
             TyKind::Primitive(kind) => match kind {
+                PrimitiveTy::Void => std::ptr::null_mut(),
                 PrimitiveTy::Bool => ptr::addr_of_mut!(sys::boolean_type),
                 PrimitiveTy::Char => ptr::addr_of_mut!(sys::char_type),
                 PrimitiveTy::WChar => ptr::addr_of_mut!(sys::wchar_type),

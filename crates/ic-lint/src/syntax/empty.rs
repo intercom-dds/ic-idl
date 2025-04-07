@@ -51,7 +51,7 @@ impl EmptyTypes<'_> {
         )
         .note(note);
 
-        self.ctx.report(diag);
+        self.ctx.report_error(diag);
     }
 }
 

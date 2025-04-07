@@ -44,7 +44,7 @@ impl<'a> Visitor<'a> for Proto<'_> {
                     Label::new(field.ident.span)
                         .message(format!("this field has the value {}", field.value)),
                 );
-                self.ctx.report(diag);
+                self.ctx.report_error(diag);
             }
         }
     }

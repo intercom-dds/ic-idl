@@ -44,7 +44,7 @@ impl ComplexLit<'_> {
             .label(Label::new(label_span).message(label).color(Color::Cyan))
             .note("only literals of trivial types are allowed in standard IDL");
 
-        self.ctx.report(diag);
+        self.ctx.report_warn(diag);
     }
 }
 
@@ -83,7 +83,7 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
                 "initializer lists are an InterCOM extension",
                 Label::new(expr.span()),
             );
-            self.ctx.report(diag);
+            self.ctx.report_warn(diag);
         }
     }
 }

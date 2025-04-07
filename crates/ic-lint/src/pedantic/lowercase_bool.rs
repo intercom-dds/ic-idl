@@ -61,7 +61,7 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
                 )
                 .help(format!("use `{fixed}` instead"));
 
-                self.ctx.report(diag);
+                self.ctx.report_warn(diag);
             }
         }
     }

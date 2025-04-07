@@ -55,7 +55,7 @@ impl NonVoidOneway<'_> {
                 )
                 .help("change the return type to `void`");
 
-            self.ctx.report(diag);
+            self.ctx.report_error(diag);
         }
     }
 
@@ -73,7 +73,7 @@ impl NonVoidOneway<'_> {
                         .color(Color::Red),
                 );
 
-            self.ctx.report(diag);
+            self.ctx.report_error(diag);
         }
     }
 
@@ -92,7 +92,7 @@ impl NonVoidOneway<'_> {
                             .color(Color::Red),
                     );
 
-                self.ctx.report(diag);
+                self.ctx.report_error(diag);
             }
         }
     }

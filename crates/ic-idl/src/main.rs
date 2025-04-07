@@ -32,6 +32,7 @@ use std::path::Path;
 use config::Options;
 use ic_cli::color::Colorize;
 use ic_cli::{Command, ParseError};
+use ic_diagnostic::Diag;
 use ic_emit::File;
 use ic_preproc::ProcArgs;
 use ic_ptree::ParseResult;
@@ -118,10 +119,16 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
 
     for file in files {
         let ptree = try_parse(options, args.clone(), &file, vfs)?;
-        trees.push(ptree);
+        pretty::emit_warnings(&ptree.warnings, vfs);
+        trees.push(ptree.result);
     }
 
     try_ptree(options, &trees).map_err(|e| vec![e])
+}
+
+struct Parsed {
+    result: ParseResult,
+    warnings: Vec<Diag>,
 }
 
 // To report as much information as possible at once, we keep going even if we
@@ -133,8 +140,9 @@ fn try_parse(
     proc: ProcArgs,
     path: &Path,
     vfs: &mut SourceMap,
-) -> Result<ParseResult, Vec<Error>> {
+) -> Result<Parsed, Vec<Error>> {
     let mut errors = vec![];
+    let mut warnings = vec![];
     let (ast, err) = ic_parse::from_path(path, proc, vfs).map_err(|e| {
         vec![Error::Custom(format!(
             "failed to open `{}`: {e}",
@@ -149,7 +157,8 @@ fn try_parse(
 
     // Lint the AST
     let report = ic_lint::lint_syntax(&ast.tree, vfs);
-    errors.extend(report.diagnostics.into_iter().map(Into::into));
+    errors.extend(report.errors.into_iter().map(Into::into));
+    warnings.extend(report.warnings);
 
     // Lower the AST to a HIR
     let hir = ic_hir::from_ast(ast.tree.clone());
@@ -159,13 +168,14 @@ fn try_parse(
 
     // Lint the HIR
     let report = ic_lint::lint_hir(&hir, vfs);
-    errors.extend(report.diagnostics.into_iter().map(Into::into));
+    errors.extend(report.errors.into_iter().map(Into::into));
+    warnings.extend(report.warnings);
 
     // Lower the HIR to a ptree, but only if construction of the HIR succeeded
     if errors.is_empty() && hir.errors.is_empty() {
         // FIXME: in the future we should construct the ptree from the HIR
-        let ptree = ic_ptree_lower::from_ast(&ast, vfs);
-        Ok(ptree)
+        let result = ic_ptree_lower::from_ast(&ast, vfs);
+        Ok(Parsed { result, warnings })
     } else {
         errors.extend(hir.errors.into_iter().map(Into::into));
         Err(errors)

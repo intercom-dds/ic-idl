@@ -72,7 +72,7 @@ impl<'a> Visitor<'a> for ComplexMapKey<'a> {
                     Label::new(key.span).message("non-primitive map key"),
                 )
                 .note("only integers, strings, and enums may be used as map keys");
-                self.ctx.report(diag);
+                self.ctx.report_warn(diag);
             }
         }
     }

@@ -47,7 +47,7 @@ impl<'a> Visitor<'a> for OmittedIn<'a> {
             )
             .help("prefix the parameter with `in`");
 
-            self.ctx.report(diag);
+            self.ctx.report_warn(diag);
         }
     }
 }

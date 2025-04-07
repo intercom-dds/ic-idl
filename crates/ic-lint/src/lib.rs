@@ -64,7 +64,8 @@ pub enum Category {
 #[derive(Debug)]
 pub struct LintCtx<'a> {
     vfs: &'a SourceMap,
-    diagnostics: RefCell<Vec<Diag>>,
+    warnings: RefCell<Vec<Diag>>,
+    errors: RefCell<Vec<Diag>>,
 }
 
 impl LintCtx<'_> {
@@ -72,8 +73,12 @@ impl LintCtx<'_> {
     ///
     /// Diagnostics will be collected and emitted after all lints have been
     /// ran.
-    pub fn report(&self, diag: Diag) {
-        self.diagnostics.borrow_mut().push(diag);
+    pub fn report_error(&self, diag: Diag) {
+        self.errors.borrow_mut().push(diag);
+    }
+
+    pub fn report_warn(&self, diag: Diag) {
+        self.warnings.borrow_mut().push(diag);
     }
 
     /// Returns a slice of the given span.
@@ -103,7 +108,8 @@ pub trait Lint<'a>: Sized {
 #[must_use]
 #[derive(Debug)]
 pub struct Report {
-    pub diagnostics: Vec<Diag>,
+    pub errors: Vec<Diag>,
+    pub warnings: Vec<Diag>,
 }
 
 /// Traverses the AST and produces diagnostics for all enabled lints.
@@ -114,7 +120,8 @@ pub struct Report {
 pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
     let ctx = LintCtx {
         vfs,
-        diagnostics: RefCell::default(),
+        warnings: RefCell::default(),
+        errors: RefCell::default(),
     };
 
     let lints = &[
@@ -142,7 +149,8 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
     }
 
     Report {
-        diagnostics: ctx.diagnostics.take(),
+        errors: ctx.errors.take(),
+        warnings: ctx.warnings.take(),
     }
 }
 
@@ -150,7 +158,8 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
 pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
     let ctx = LintCtx {
         vfs,
-        diagnostics: RefCell::default(),
+        warnings: RefCell::default(),
+        errors: RefCell::default(),
     };
 
     let lints = &[pedantic::complex_key::ComplexMapKey::check_hir];
@@ -160,6 +169,7 @@ pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
     }
 
     Report {
-        diagnostics: ctx.diagnostics.take(),
+        errors: ctx.errors.take(),
+        warnings: ctx.warnings.take(),
     }
 }

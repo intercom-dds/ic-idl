@@ -30,7 +30,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{Label, error_span};
+use ic_diagnostic::{Diag, Label, error_span};
 use ic_parse::Reason;
 use ic_parse::lexer::Kind;
 use ic_vfs::SourceMap;
@@ -124,4 +124,18 @@ pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
         };
     }
     eprintln!("{buf}");
+}
+
+pub fn emit_warnings(warnings: &[Diag], vfs: &SourceMap) {
+    let mut buf = String::new();
+    for diag in warnings {
+        if !buf.is_empty() {
+            _ = writeln!(&mut buf);
+        }
+        _ = ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag);
+    }
+
+    if !buf.is_empty() {
+        eprintln!("{buf}");
+    }
 }

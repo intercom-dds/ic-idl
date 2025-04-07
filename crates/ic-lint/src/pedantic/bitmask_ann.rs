@@ -42,7 +42,7 @@ impl<'a> Visitor<'a> for BitmaskAnn<'_> {
                     "defining bitmasks in annotations is an InterCOM extension",
                     Label::new(bitmask.ident.span).message("defined here"),
                 );
-                self.ctx.report(diag);
+                self.ctx.report_warn(diag);
             }
         }
     }

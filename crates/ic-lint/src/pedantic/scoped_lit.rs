@@ -91,7 +91,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                     .note(format!("{member} are registered in the parent scope"))
                     .help(format!("remove the type name: `{fixed}`"));
 
-                    self.ctx.report(label);
+                    self.ctx.report_warn(label);
                 }
             }
         } else {

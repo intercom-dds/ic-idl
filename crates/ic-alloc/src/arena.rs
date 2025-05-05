@@ -32,10 +32,6 @@ use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::{panic, slice};
 
-use intercom_cts::decode::{Deserializer, StructDeserializer};
-use intercom_cts::encode::{FieldSerializer, Serializer};
-use intercom_cts::{Marshal, Unmarshal};
-
 static ARENA_COUNT: AtomicU16 = AtomicU16::new(0);
 
 #[must_use]
@@ -102,21 +98,16 @@ impl<T> Clone for Id<T> {
 
 impl<T> Copy for Id<T> {}
 
-impl<T> Marshal for Id<T> {
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.id.marshal(archive)
+impl<T> From<Id<T>> for usize {
+    fn from(value: Id<T>) -> Self {
+        value.id
     }
 }
 
-impl<T> Unmarshal for Id<T> {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
-    where
-        D: Deserializer,
-    {
-        self.id.unmarshal_mut(archive)
+// Bad idea, but necessary at the moment
+impl<T> From<usize> for Id<T> {
+    fn from(value: usize) -> Self {
+        Self::new(value, ArenaId(u16::MAX))
     }
 }
 
@@ -324,26 +315,5 @@ impl<'a, T> IntoIterator for &'a mut Arena<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
-    }
-}
-
-impl<T: Marshal> Marshal for Arena<T> {
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = archive.encode_struct("Arena<T>")?;
-        state.encode_field(0, "elements", &self.elements)?;
-        state.end()
-    }
-}
-
-impl<T: Default + Unmarshal> Unmarshal for Arena<T> {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
-    where
-        D: Deserializer,
-    {
-        let mut state = archive.decode_struct("Arena<T>")?;
-        state.decode_field(0, "elements", &mut self.elements)
     }
 }

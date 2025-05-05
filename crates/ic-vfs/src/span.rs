@@ -27,12 +27,9 @@
 
 use std::ops::Range;
 
-use intercom_cts::{Marshal, Unmarshal};
-
 use crate::FileId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Marshal, Unmarshal)]
 pub struct Location {
     pub offset: u32,
     pub file_id: FileId,
@@ -55,7 +52,6 @@ impl Default for Location {
 }
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Marshal, Unmarshal)]
 pub struct Span {
     pub start: Location,
     pub end: Location,
@@ -107,3 +103,109 @@ impl From<Span> for Range<usize> {
         val.range()
     }
 }
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Location",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
+
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "offset",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "file_id",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Location {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+            let file_id = usize::from(self.file_id);
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.offset)?;
+            state.encode_field(&MEMBER_INFO[1], &file_id)?;
+            state.end()
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for Location {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
+            let mut file_id: usize = 0;
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.offset)?;
+            state.decode_field(&MEMBER_INFO[1], &mut file_id)?;
+            state.end()?;
+            self.file_id = FileId::from(file_id);
+            Ok(())
+        }
+    }
+};
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Span",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
+
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "start",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "end",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Span {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.start)?;
+            state.encode_field(&MEMBER_INFO[1], &self.end)?;
+            state.end()
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for Span {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
+
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.start)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.end)?;
+            state.end()?;
+            Ok(())
+        }
+    }
+};

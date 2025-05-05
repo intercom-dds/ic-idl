@@ -52,6 +52,18 @@ struct ConstDef;
 struct Field;
 
 @nested
+struct PlainLocation {
+    uint32 offset;
+    uint32 file_id;
+};
+
+@nested
+struct PlainSpan {
+    PlainLocation start;
+    PlainLocation end;
+};
+
+@nested
 @ext::suppress(language="rust")
 struct Position {
     /// Byte offset to the position.

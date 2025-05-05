@@ -32,9 +32,9 @@ pub use ic_vfs::Span;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Ident {
-    /// The actual identifier.
+    /// /// The actual identifier.
     pub name: String,
-    /// Span of the symbol.
+    /// /// Span of the symbol.
     pub span: crate::ast::Span,
 }
 
@@ -54,33 +54,57 @@ impl ::std::default::Default for Ident {
     }
 }
 
-impl ::intercom_cts::Marshal for Ident {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Ident",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Ident")?;
-        state.encode_field(0, "name", &self.name)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "name",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Ident {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.name)?;
+            state.encode_field(&MEMBER_INFO[1], &self.span)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Ident {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Ident {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Ident")?;
-        state.decode_field(0, "name", &mut self.name)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.name)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Path {
@@ -104,33 +128,57 @@ impl ::std::default::Default for Path {
     }
 }
 
-impl ::intercom_cts::Marshal for Path {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Path",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Path")?;
-        state.encode_field(0, "leading_colons", &self.leading_colons)?;
-        state.encode_field(1, "segments", &self.segments)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "leading_colons",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "segments",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Path {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_optional(&MEMBER_INFO[0], &self.leading_colons)?;
+            state.encode_field(&MEMBER_INFO[1], &self.segments)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Path {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Path {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Path")?;
-        state.decode_field(0, "leading_colons", &mut self.leading_colons)?;
-        state.decode_field(1, "segments", &mut self.segments)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.leading_colons)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.segments)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
@@ -185,75 +233,117 @@ impl ::std::default::Default for LitKind {
     }
 }
 
-impl ::intercom_cts::Marshal for LitKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::LitKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("LitKind")?;
-        match self {
-            Self::Null => state.encode_variant::<i32>("LIT_NULL", 0),
-            Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 1),
-            Self::Int => state.encode_variant::<i32>("LIT_INT", 2),
-            Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 3),
-            Self::Char => state.encode_variant::<i32>("LIT_CHAR", 4),
-            Self::String => state.encode_variant::<i32>("LIT_STRING", 5),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "LIT_NULL",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_BOOL",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_INT",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_FLOAT",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_CHAR",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_STRING",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for LitKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Null => state.encode_variant::<i32>("LIT_NULL", 0),
+                Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 1),
+                Self::Int => state.encode_variant::<i32>("LIT_INT", 2),
+                Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 3),
+                Self::Char => state.encode_variant::<i32>("LIT_CHAR", 4),
+                Self::String => state.encode_variant::<i32>("LIT_STRING", 5),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for LitKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for LitKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("LitKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for LitKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for LitKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Null,
+                1 => Self::Bool,
+                2 => Self::Int,
+                3 => Self::Float,
+                4 => Self::Char,
+                5 => Self::String,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Null,
-            1 => Self::Bool,
-            2 => Self::Int,
-            3 => Self::Float,
-            4 => Self::Char,
-            5 => Self::String,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "LIT_NULL" => Self::Null,
+                "LIT_BOOL" => Self::Bool,
+                "LIT_INT" => Self::Int,
+                "LIT_FLOAT" => Self::Float,
+                "LIT_CHAR" => Self::Char,
+                "LIT_STRING" => Self::String,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "LIT_NULL" => Self::Null,
-            "LIT_BOOL" => Self::Bool,
-            "LIT_INT" => Self::Int,
-            "LIT_FLOAT" => Self::Float,
-            "LIT_CHAR" => Self::Char,
-            "LIT_STRING" => Self::String,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum LiteralValue {
@@ -303,67 +393,110 @@ impl ::std::default::Default for LiteralValue {
     }
 }
 
-impl ::intercom_cts::Marshal for LiteralValue {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::LiteralValue",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("LiteralValue")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Bool(v) => state.encode_variant(2, "bool", v),
-            Self::Int(v) => state.encode_variant(3, "int", v),
-            Self::Float(v) => state.encode_variant(4, "float", v),
-            Self::Char(v) => state.encode_variant(5, "char", v),
-            Self::String(v) => state.encode_variant(6, "string", v),
-            _ => state.encode_null(),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "null",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bool",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "int",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "float",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "char",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "string",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for LiteralValue {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Bool(v) => state.encode_variant(&MEMBER_INFO[1], v),
+                Self::Int(v) => state.encode_variant(&MEMBER_INFO[2], v),
+                Self::Float(v) => state.encode_variant(&MEMBER_INFO[3], v),
+                Self::Char(v) => state.encode_variant(&MEMBER_INFO[4], v),
+                Self::String(v) => state.encode_variant(&MEMBER_INFO[5], v),
+                _ => state.encode_null(),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for LiteralValue {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for LiteralValue {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("LiteralValue")?;
-        let mut disc = crate::ast::LitKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::LitKind::Null => Self::Null,
-            crate::ast::LitKind::Bool => {
-                let mut value = false;
-                state.decode_variant(2, "bool", &mut value)?;
-                Self::Bool(value)
-            }
-            crate::ast::LitKind::Int => {
-                let mut value = 0;
-                state.decode_variant(3, "int", &mut value)?;
-                Self::Int(value)
-            }
-            crate::ast::LitKind::Float => {
-                let mut value = 0_f64;
-                state.decode_variant(4, "float", &mut value)?;
-                Self::Float(value)
-            }
-            crate::ast::LitKind::Char => {
-                let mut value = '\x00';
-                state.decode_variant(5, "char", &mut value)?;
-                Self::Char(value)
-            }
-            crate::ast::LitKind::String => {
-                let mut value = <String>::default();
-                state.decode_variant(6, "string", &mut value)?;
-                Self::String(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::LitKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::LitKind::Null => Self::Null,
+                crate::ast::LitKind::Bool => {
+                    let mut value = false;
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Bool(value)
+                }
+                crate::ast::LitKind::Int => {
+                    let mut value = 0;
+                    state.decode_variant(&MEMBER_INFO[2], &mut value)?;
+                    Self::Int(value)
+                }
+                crate::ast::LitKind::Float => {
+                    let mut value = 0_f64;
+                    state.decode_variant(&MEMBER_INFO[3], &mut value)?;
+                    Self::Float(value)
+                }
+                crate::ast::LitKind::Char => {
+                    let mut value = '\x00';
+                    state.decode_variant(&MEMBER_INFO[4], &mut value)?;
+                    Self::Char(value)
+                }
+                crate::ast::LitKind::String => {
+                    let mut value = <String>::default();
+                    state.decode_variant(&MEMBER_INFO[5], &mut value)?;
+                    Self::String(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Literal {
@@ -387,58 +520,82 @@ impl ::std::default::Default for Literal {
     }
 }
 
-impl ::intercom_cts::Marshal for Literal {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Literal",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Literal")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "value", &self.value)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Literal {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.value)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Literal {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Literal {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Literal")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "value", &mut self.value)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.value)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum OpKind {
-    /// `+`
+    /// /// `+`
     Add,
-    /// `-`
+    /// /// `-`
     Sub,
-    /// `*`
+    /// /// `*`
     Multiply,
-    /// `/`
+    /// /// `/`
     Divide,
-    /// `%`
+    /// /// `%`
     Modulo,
-    /// `<<`
+    /// /// `<<`
     Lshift,
-    /// `>>`
+    /// /// `>>`
     Rshift,
-    /// `|`
+    /// /// `|`
     Or,
-    /// `^`
+    /// /// `^`
     Xor,
-    /// `&`
+    /// /// `&`
     And,
-    /// `~`
+    /// /// `~`
     Not,
 }
 
@@ -494,96 +651,163 @@ impl ::std::default::Default for OpKind {
     }
 }
 
-impl ::intercom_cts::Marshal for OpKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::OpKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("OpKind")?;
-        match self {
-            Self::Add => state.encode_variant::<i32>("OP_ADD", 0),
-            Self::Sub => state.encode_variant::<i32>("OP_SUB", 1),
-            Self::Multiply => state.encode_variant::<i32>("OP_MULTIPLY", 2),
-            Self::Divide => state.encode_variant::<i32>("OP_DIVIDE", 3),
-            Self::Modulo => state.encode_variant::<i32>("OP_MODULO", 4),
-            Self::Lshift => state.encode_variant::<i32>("OP_LSHIFT", 5),
-            Self::Rshift => state.encode_variant::<i32>("OP_RSHIFT", 6),
-            Self::Or => state.encode_variant::<i32>("OP_OR", 7),
-            Self::Xor => state.encode_variant::<i32>("OP_XOR", 8),
-            Self::And => state.encode_variant::<i32>("OP_AND", 9),
-            Self::Not => state.encode_variant::<i32>("OP_NOT", 10),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "OP_ADD",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_SUB",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_MULTIPLY",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_DIVIDE",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_MODULO",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_LSHIFT",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_RSHIFT",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_OR",
+            member_id: 7,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_XOR",
+            member_id: 8,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_AND",
+            member_id: 9,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "OP_NOT",
+            member_id: 10,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for OpKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Add => state.encode_variant::<i32>("OP_ADD", 0),
+                Self::Sub => state.encode_variant::<i32>("OP_SUB", 1),
+                Self::Multiply => state.encode_variant::<i32>("OP_MULTIPLY", 2),
+                Self::Divide => state.encode_variant::<i32>("OP_DIVIDE", 3),
+                Self::Modulo => state.encode_variant::<i32>("OP_MODULO", 4),
+                Self::Lshift => state.encode_variant::<i32>("OP_LSHIFT", 5),
+                Self::Rshift => state.encode_variant::<i32>("OP_RSHIFT", 6),
+                Self::Or => state.encode_variant::<i32>("OP_OR", 7),
+                Self::Xor => state.encode_variant::<i32>("OP_XOR", 8),
+                Self::And => state.encode_variant::<i32>("OP_AND", 9),
+                Self::Not => state.encode_variant::<i32>("OP_NOT", 10),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for OpKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for OpKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("OpKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for OpKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for OpKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Add,
+                1 => Self::Sub,
+                2 => Self::Multiply,
+                3 => Self::Divide,
+                4 => Self::Modulo,
+                5 => Self::Lshift,
+                6 => Self::Rshift,
+                7 => Self::Or,
+                8 => Self::Xor,
+                9 => Self::And,
+                10 => Self::Not,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Add,
-            1 => Self::Sub,
-            2 => Self::Multiply,
-            3 => Self::Divide,
-            4 => Self::Modulo,
-            5 => Self::Lshift,
-            6 => Self::Rshift,
-            7 => Self::Or,
-            8 => Self::Xor,
-            9 => Self::And,
-            10 => Self::Not,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "OP_ADD" => Self::Add,
+                "OP_SUB" => Self::Sub,
+                "OP_MULTIPLY" => Self::Multiply,
+                "OP_DIVIDE" => Self::Divide,
+                "OP_MODULO" => Self::Modulo,
+                "OP_LSHIFT" => Self::Lshift,
+                "OP_RSHIFT" => Self::Rshift,
+                "OP_OR" => Self::Or,
+                "OP_XOR" => Self::Xor,
+                "OP_AND" => Self::And,
+                "OP_NOT" => Self::Not,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "OP_ADD" => Self::Add,
-            "OP_SUB" => Self::Sub,
-            "OP_MULTIPLY" => Self::Multiply,
-            "OP_DIVIDE" => Self::Divide,
-            "OP_MODULO" => Self::Modulo,
-            "OP_LSHIFT" => Self::Lshift,
-            "OP_RSHIFT" => Self::Rshift,
-            "OP_OR" => Self::Or,
-            "OP_XOR" => Self::Xor,
-            "OP_AND" => Self::And,
-            "OP_NOT" => Self::Not,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Op {
-    /// Span of the token.
+    /// /// Span of the token.
     pub span: crate::ast::Span,
-    /// The operation kind.
+    /// /// The operation kind.
     pub kind: crate::ast::OpKind,
 }
 
@@ -603,46 +827,70 @@ impl ::std::default::Default for Op {
     }
 }
 
-impl ::intercom_cts::Marshal for Op {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Op",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Op")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "kind", &self.kind)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "kind",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Op {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.kind)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Op {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Op {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Op")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "kind", &mut self.kind)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.kind)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum ExprKind {
-    /// A single literal like `1` or `"foo"`
+    /// /// A single literal like `1` or `"foo"`
     Literal,
-    /// A possibly scoped identifier like `foo` or `::foo::bar`
+    /// /// A possibly scoped identifier like `foo` or `::foo::bar`
     Path,
-    /// `-a` or `a`
+    /// /// `-a` or `a`
     Unary,
-    /// `a + b`
+    /// /// `a + b`
     Binary,
-    /// Initializer list for complex types, e.g. `{1, 2, {3}}`
+    /// /// Initializer list for complex types, e.g. `{1, 2, {3}}`
     InitList,
 }
 
@@ -686,72 +934,109 @@ impl ::std::default::Default for ExprKind {
     }
 }
 
-impl ::intercom_cts::Marshal for ExprKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ExprKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("ExprKind")?;
-        match self {
-            Self::Literal => state.encode_variant::<i32>("EXPR_LITERAL", 0),
-            Self::Path => state.encode_variant::<i32>("EXPR_PATH", 1),
-            Self::Unary => state.encode_variant::<i32>("EXPR_UNARY", 2),
-            Self::Binary => state.encode_variant::<i32>("EXPR_BINARY", 3),
-            Self::InitList => state.encode_variant::<i32>("EXPR_INIT_LIST", 4),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "EXPR_LITERAL",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "EXPR_PATH",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "EXPR_UNARY",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "EXPR_BINARY",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "EXPR_INIT_LIST",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ExprKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Literal => state.encode_variant::<i32>("EXPR_LITERAL", 0),
+                Self::Path => state.encode_variant::<i32>("EXPR_PATH", 1),
+                Self::Unary => state.encode_variant::<i32>("EXPR_UNARY", 2),
+                Self::Binary => state.encode_variant::<i32>("EXPR_BINARY", 3),
+                Self::InitList => state.encode_variant::<i32>("EXPR_INIT_LIST", 4),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ExprKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ExprKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("ExprKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for ExprKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for ExprKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Literal,
+                1 => Self::Path,
+                2 => Self::Unary,
+                3 => Self::Binary,
+                4 => Self::InitList,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Literal,
-            1 => Self::Path,
-            2 => Self::Unary,
-            3 => Self::Binary,
-            4 => Self::InitList,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "EXPR_LITERAL" => Self::Literal,
+                "EXPR_PATH" => Self::Path,
+                "EXPR_UNARY" => Self::Unary,
+                "EXPR_BINARY" => Self::Binary,
+                "EXPR_INIT_LIST" => Self::InitList,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "EXPR_LITERAL" => Self::Literal,
-            "EXPR_PATH" => Self::Path,
-            "EXPR_UNARY" => Self::Unary,
-            "EXPR_BINARY" => Self::Binary,
-            "EXPR_INIT_LIST" => Self::InitList,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InitList {
@@ -773,31 +1058,48 @@ impl ::std::default::Default for InitList {
     }
 }
 
-impl ::intercom_cts::Marshal for InitList {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::InitList",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("InitList")?;
-        state.encode_field(0, "values", &self.values)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
+        name: "values",
+        member_id: 0,
+        flags: ::intercom_cts::MemberFlag::nil(),
+    }];
+
+    impl ::intercom_cts::Marshal for InitList {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.values)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for InitList {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for InitList {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("InitList")?;
-        state.decode_field(0, "values", &mut self.values)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.values)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Expr {
@@ -844,65 +1146,103 @@ impl ::std::default::Default for Expr {
     }
 }
 
-impl ::intercom_cts::Marshal for Expr {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Expr",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("Expr")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Literal(v) => state.encode_variant(1, "literal", v),
-            Self::Path(v) => state.encode_variant(2, "path", v),
-            Self::Unary(v) => state.encode_variant(3, "unary", v),
-            Self::Binary(v) => state.encode_variant(4, "binary", v),
-            Self::InitList(v) => state.encode_variant(5, "init_list", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "literal",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "path",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "unary",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "binary",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "init_list",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Expr {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Literal(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Path(v) => state.encode_variant(&MEMBER_INFO[1], v),
+                Self::Unary(v) => state.encode_variant(&MEMBER_INFO[2], v),
+                Self::Binary(v) => state.encode_variant(&MEMBER_INFO[3], v),
+                Self::InitList(v) => state.encode_variant(&MEMBER_INFO[4], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Expr {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Expr {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("Expr")?;
-        let mut disc = crate::ast::ExprKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::ExprKind::Literal => {
-                let mut value = <crate::ast::Literal>::default();
-                state.decode_variant(1, "literal", &mut value)?;
-                Self::Literal(value)
-            }
-            crate::ast::ExprKind::Path => {
-                let mut value = <crate::ast::Path>::default();
-                state.decode_variant(2, "path", &mut value)?;
-                Self::Path(value)
-            }
-            crate::ast::ExprKind::Unary => {
-                let mut value = Box::new(<crate::ast::Unary>::default());
-                state.decode_variant(3, "unary", &mut value)?;
-                Self::Unary(value)
-            }
-            crate::ast::ExprKind::Binary => {
-                let mut value = Box::new(<crate::ast::Binary>::default());
-                state.decode_variant(4, "binary", &mut value)?;
-                Self::Binary(value)
-            }
-            crate::ast::ExprKind::InitList => {
-                let mut value = <crate::ast::InitList>::default();
-                state.decode_variant(5, "init_list", &mut value)?;
-                Self::InitList(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::ExprKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::ExprKind::Literal => {
+                    let mut value = <crate::ast::Literal>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Literal(value)
+                }
+                crate::ast::ExprKind::Path => {
+                    let mut value = <crate::ast::Path>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Path(value)
+                }
+                crate::ast::ExprKind::Unary => {
+                    let mut value = Box::new(<crate::ast::Unary>::default());
+                    state.decode_variant(&MEMBER_INFO[2], &mut value)?;
+                    Self::Unary(value)
+                }
+                crate::ast::ExprKind::Binary => {
+                    let mut value = Box::new(<crate::ast::Binary>::default());
+                    state.decode_variant(&MEMBER_INFO[3], &mut value)?;
+                    Self::Binary(value)
+                }
+                crate::ast::ExprKind::InitList => {
+                    let mut value = <crate::ast::InitList>::default();
+                    state.decode_variant(&MEMBER_INFO[4], &mut value)?;
+                    Self::InitList(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct NamedExpr {
@@ -926,33 +1266,57 @@ impl ::std::default::Default for NamedExpr {
     }
 }
 
-impl ::intercom_cts::Marshal for NamedExpr {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::NamedExpr",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("NamedExpr")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "value", &self.value)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for NamedExpr {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_optional(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.value)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for NamedExpr {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for NamedExpr {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("NamedExpr")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "value", &mut self.value)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.value)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Unary {
@@ -976,33 +1340,57 @@ impl ::std::default::Default for Unary {
     }
 }
 
-impl ::intercom_cts::Marshal for Unary {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Unary",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Unary")?;
-        state.encode_field(0, "op", &self.op)?;
-        state.encode_field(1, "expr", &self.expr)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "op",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "expr",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Unary {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.op)?;
+            state.encode_field(&MEMBER_INFO[1], &self.expr)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Unary {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Unary {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Unary")?;
-        state.decode_field(0, "op", &mut self.op)?;
-        state.decode_field(1, "expr", &mut self.expr)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.op)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.expr)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Binary {
@@ -1028,35 +1416,64 @@ impl ::std::default::Default for Binary {
     }
 }
 
-impl ::intercom_cts::Marshal for Binary {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Binary",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Binary")?;
-        state.encode_field(0, "lhs", &self.lhs)?;
-        state.encode_field(1, "op", &self.op)?;
-        state.encode_field(2, "rhs", &self.rhs)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "lhs",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "op",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "rhs",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Binary {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.lhs)?;
+            state.encode_field(&MEMBER_INFO[1], &self.op)?;
+            state.encode_field(&MEMBER_INFO[2], &self.rhs)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Binary {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Binary {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Binary")?;
-        state.decode_field(0, "lhs", &mut self.lhs)?;
-        state.decode_field(1, "op", &mut self.op)?;
-        state.decode_field(2, "rhs", &mut self.rhs)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.lhs)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.op)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.rhs)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct AnyType {
@@ -1078,31 +1495,48 @@ impl ::std::default::Default for AnyType {
     }
 }
 
-impl ::intercom_cts::Marshal for AnyType {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnyType",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("AnyType")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
+        name: "span",
+        member_id: 0,
+        flags: ::intercom_cts::MemberFlag::nil(),
+    }];
+
+    impl ::intercom_cts::Marshal for AnyType {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnyType {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnyType {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("AnyType")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct SequenceType {
@@ -1128,35 +1562,64 @@ impl ::std::default::Default for SequenceType {
     }
 }
 
-impl ::intercom_cts::Marshal for SequenceType {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::SequenceType",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("SequenceType")?;
-        state.encode_field(0, "ty", &self.ty)?;
-        state.encode_field(1, "bound", &self.bound)?;
-        state.encode_field(2, "span", &self.span)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bound",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for SequenceType {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ty)?;
+            state.encode_optional(&MEMBER_INFO[1], &self.bound)?;
+            state.encode_field(&MEMBER_INFO[2], &self.span)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for SequenceType {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for SequenceType {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("SequenceType")?;
-        state.decode_field(0, "ty", &mut self.ty)?;
-        state.decode_field(1, "bound", &mut self.bound)?;
-        state.decode_field(2, "span", &mut self.span)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.bound)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StringType {
@@ -1182,35 +1645,64 @@ impl ::std::default::Default for StringType {
     }
 }
 
-impl ::intercom_cts::Marshal for StringType {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::StringType",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("StringType")?;
-        state.encode_field(0, "wide", &self.wide)?;
-        state.encode_field(1, "bound", &self.bound)?;
-        state.encode_field(2, "span", &self.span)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "wide",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bound",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for StringType {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.wide)?;
+            state.encode_optional(&MEMBER_INFO[1], &self.bound)?;
+            state.encode_field(&MEMBER_INFO[2], &self.span)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for StringType {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for StringType {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("StringType")?;
-        state.decode_field(0, "wide", &mut self.wide)?;
-        state.decode_field(1, "bound", &mut self.bound)?;
-        state.decode_field(2, "span", &mut self.span)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.wide)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.bound)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct MapType {
@@ -1238,37 +1730,71 @@ impl ::std::default::Default for MapType {
     }
 }
 
-impl ::intercom_cts::Marshal for MapType {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::MapType",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("MapType")?;
-        state.encode_field(0, "key", &self.key)?;
-        state.encode_field(1, "value", &self.value)?;
-        state.encode_field(2, "bound", &self.bound)?;
-        state.encode_field(3, "span", &self.span)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "key",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bound",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for MapType {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.key)?;
+            state.encode_field(&MEMBER_INFO[1], &self.value)?;
+            state.encode_optional(&MEMBER_INFO[2], &self.bound)?;
+            state.encode_field(&MEMBER_INFO[3], &self.span)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for MapType {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for MapType {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("MapType")?;
-        state.decode_field(0, "key", &mut self.key)?;
-        state.decode_field(1, "value", &mut self.value)?;
-        state.decode_field(2, "bound", &mut self.bound)?;
-        state.decode_field(3, "span", &mut self.span)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.key)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.value)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.bound)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Fixed {
@@ -1292,33 +1818,57 @@ impl ::std::default::Default for Fixed {
     }
 }
 
-impl ::intercom_cts::Marshal for Fixed {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Fixed",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Fixed")?;
-        state.encode_field(0, "total", &self.total)?;
-        state.encode_field(1, "fractional", &self.fractional)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "total",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "fractional",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Fixed {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.total)?;
+            state.encode_field(&MEMBER_INFO[1], &self.fractional)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Fixed {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Fixed {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Fixed")?;
-        state.decode_field(0, "total", &mut self.total)?;
-        state.decode_field(1, "fractional", &mut self.fractional)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.total)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.fractional)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct FixedType {
@@ -1342,33 +1892,57 @@ impl ::std::default::Default for FixedType {
     }
 }
 
-impl ::intercom_cts::Marshal for FixedType {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::FixedType",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("FixedType")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "bounds", &self.bounds)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bounds",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for FixedType {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_optional(&MEMBER_INFO[1], &self.bounds)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for FixedType {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for FixedType {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("FixedType")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "bounds", &mut self.bounds)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.bounds)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
@@ -1423,89 +1997,131 @@ impl ::std::default::Default for TypeKind {
     }
 }
 
-impl ::intercom_cts::Marshal for TypeKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::TypeKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("TypeKind")?;
-        match self {
-            Self::Any => state.encode_variant::<i32>("TYPE_ANY", 0),
-            Self::Sequence => state.encode_variant::<i32>("TYPE_SEQUENCE", 1),
-            Self::String => state.encode_variant::<i32>("TYPE_STRING", 2),
-            Self::Map => state.encode_variant::<i32>("TYPE_MAP", 3),
-            Self::Fixed => state.encode_variant::<i32>("TYPE_FIXED", 4),
-            Self::Path => state.encode_variant::<i32>("TYPE_PATH", 5),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "TYPE_ANY",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "TYPE_SEQUENCE",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "TYPE_STRING",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "TYPE_MAP",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "TYPE_FIXED",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "TYPE_PATH",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for TypeKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Any => state.encode_variant::<i32>("TYPE_ANY", 0),
+                Self::Sequence => state.encode_variant::<i32>("TYPE_SEQUENCE", 1),
+                Self::String => state.encode_variant::<i32>("TYPE_STRING", 2),
+                Self::Map => state.encode_variant::<i32>("TYPE_MAP", 3),
+                Self::Fixed => state.encode_variant::<i32>("TYPE_FIXED", 4),
+                Self::Path => state.encode_variant::<i32>("TYPE_PATH", 5),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for TypeKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for TypeKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("TypeKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for TypeKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for TypeKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Any,
+                1 => Self::Sequence,
+                2 => Self::String,
+                3 => Self::Map,
+                4 => Self::Fixed,
+                5 => Self::Path,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Any,
-            1 => Self::Sequence,
-            2 => Self::String,
-            3 => Self::Map,
-            4 => Self::Fixed,
-            5 => Self::Path,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "TYPE_ANY" => Self::Any,
+                "TYPE_SEQUENCE" => Self::Sequence,
+                "TYPE_STRING" => Self::String,
+                "TYPE_MAP" => Self::Map,
+                "TYPE_FIXED" => Self::Fixed,
+                "TYPE_PATH" => Self::Path,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "TYPE_ANY" => Self::Any,
-            "TYPE_SEQUENCE" => Self::Sequence,
-            "TYPE_STRING" => Self::String,
-            "TYPE_MAP" => Self::Map,
-            "TYPE_FIXED" => Self::Fixed,
-            "TYPE_PATH" => Self::Path,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Type {
-    /// The `any` type.
+    /// /// The `any` type.
     Any(crate::ast::AnyType),
-    /// Sequence of another type, e.g. `sequence<string>`.
+    /// /// Sequence of another type, e.g. `sequence<string>`.
     Sequence(crate::ast::SequenceType),
-    /// A possibly bounded string.
+    /// /// A possibly bounded string.
     String(crate::ast::StringType),
-    /// (key, value) pair of types, e.g. `map<string, string>`.
+    /// /// (key, value) pair of types, e.g. `map<string, string>`.
     Map(crate::ast::MapType),
-    /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
+    /// /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
     Fixed(crate::ast::FixedType),
-    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
+    /// /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
     Path(crate::ast::Path),
 }
 
@@ -1547,78 +2163,121 @@ impl ::std::default::Default for Type {
     }
 }
 
-impl ::intercom_cts::Marshal for Type {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Type",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("Type")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Any(v) => state.encode_variant(1, "any", v),
-            Self::Sequence(v) => state.encode_variant(2, "sequence", v),
-            Self::String(v) => state.encode_variant(3, "string", v),
-            Self::Map(v) => state.encode_variant(4, "map", v),
-            Self::Fixed(v) => state.encode_variant(5, "fixed", v),
-            Self::Path(v) => state.encode_variant(6, "path", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "any",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "sequence",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "string",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "map",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "fixed",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "path",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Type {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Any(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Sequence(v) => state.encode_variant(&MEMBER_INFO[1], v),
+                Self::String(v) => state.encode_variant(&MEMBER_INFO[2], v),
+                Self::Map(v) => state.encode_variant(&MEMBER_INFO[3], v),
+                Self::Fixed(v) => state.encode_variant(&MEMBER_INFO[4], v),
+                Self::Path(v) => state.encode_variant(&MEMBER_INFO[5], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Type {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Type {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("Type")?;
-        let mut disc = crate::ast::TypeKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::TypeKind::Any => {
-                let mut value = <crate::ast::AnyType>::default();
-                state.decode_variant(1, "any", &mut value)?;
-                Self::Any(value)
-            }
-            crate::ast::TypeKind::Sequence => {
-                let mut value = <crate::ast::SequenceType>::default();
-                state.decode_variant(2, "sequence", &mut value)?;
-                Self::Sequence(value)
-            }
-            crate::ast::TypeKind::String => {
-                let mut value = <crate::ast::StringType>::default();
-                state.decode_variant(3, "string", &mut value)?;
-                Self::String(value)
-            }
-            crate::ast::TypeKind::Map => {
-                let mut value = <crate::ast::MapType>::default();
-                state.decode_variant(4, "map", &mut value)?;
-                Self::Map(value)
-            }
-            crate::ast::TypeKind::Fixed => {
-                let mut value = <crate::ast::FixedType>::default();
-                state.decode_variant(5, "fixed", &mut value)?;
-                Self::Fixed(value)
-            }
-            crate::ast::TypeKind::Path => {
-                let mut value = <crate::ast::Path>::default();
-                state.decode_variant(6, "path", &mut value)?;
-                Self::Path(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::TypeKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::TypeKind::Any => {
+                    let mut value = <crate::ast::AnyType>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Any(value)
+                }
+                crate::ast::TypeKind::Sequence => {
+                    let mut value = <crate::ast::SequenceType>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Sequence(value)
+                }
+                crate::ast::TypeKind::String => {
+                    let mut value = <crate::ast::StringType>::default();
+                    state.decode_variant(&MEMBER_INFO[2], &mut value)?;
+                    Self::String(value)
+                }
+                crate::ast::TypeKind::Map => {
+                    let mut value = <crate::ast::MapType>::default();
+                    state.decode_variant(&MEMBER_INFO[3], &mut value)?;
+                    Self::Map(value)
+                }
+                crate::ast::TypeKind::Fixed => {
+                    let mut value = <crate::ast::FixedType>::default();
+                    state.decode_variant(&MEMBER_INFO[4], &mut value)?;
+                    Self::Fixed(value)
+                }
+                crate::ast::TypeKind::Path => {
+                    let mut value = <crate::ast::Path>::default();
+                    state.decode_variant(&MEMBER_INFO[5], &mut value)?;
+                    Self::Path(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum DeclaratorKind {
-    /// A single, non-qualified identifier.
+    /// /// A single, non-qualified identifier.
     Simple,
-    /// An array declarator, e.g. `value[3][4][5]`.
+    /// /// An array declarator, e.g. `value[3][4][5]`.
     Array,
 }
 
@@ -1656,63 +2315,85 @@ impl ::std::default::Default for DeclaratorKind {
     }
 }
 
-impl ::intercom_cts::Marshal for DeclaratorKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::DeclaratorKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("DeclaratorKind")?;
-        match self {
-            Self::Simple => state.encode_variant::<i32>("DECLARATOR_SIMPLE", 0),
-            Self::Array => state.encode_variant::<i32>("DECLARATOR_ARRAY", 1),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "DECLARATOR_SIMPLE",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "DECLARATOR_ARRAY",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for DeclaratorKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Simple => state.encode_variant::<i32>("DECLARATOR_SIMPLE", 0),
+                Self::Array => state.encode_variant::<i32>("DECLARATOR_ARRAY", 1),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for DeclaratorKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for DeclaratorKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("DeclaratorKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for DeclaratorKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for DeclaratorKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Simple,
+                1 => Self::Array,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Simple,
-            1 => Self::Array,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "DECLARATOR_SIMPLE" => Self::Simple,
+                "DECLARATOR_ARRAY" => Self::Array,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "DECLARATOR_SIMPLE" => Self::Simple,
-            "DECLARATOR_ARRAY" => Self::Array,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ArrayDeclarator {
@@ -1736,33 +2417,57 @@ impl ::std::default::Default for ArrayDeclarator {
     }
 }
 
-impl ::intercom_cts::Marshal for ArrayDeclarator {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ArrayDeclarator",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("ArrayDeclarator")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "bounds", &self.bounds)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bounds",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ArrayDeclarator {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.bounds)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ArrayDeclarator {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ArrayDeclarator {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("ArrayDeclarator")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "bounds", &mut self.bounds)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.bounds)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Declarator {
@@ -1802,59 +2507,82 @@ impl ::std::default::Default for Declarator {
     }
 }
 
-impl ::intercom_cts::Marshal for Declarator {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Declarator",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("Declarator")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Simple(v) => state.encode_variant(1, "simple", v),
-            Self::Array(v) => state.encode_variant(2, "array", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "simple",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "array",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Declarator {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Simple(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Array(v) => state.encode_variant(&MEMBER_INFO[1], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Declarator {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Declarator {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("Declarator")?;
-        let mut disc = crate::ast::DeclaratorKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::DeclaratorKind::Simple => {
-                let mut value = <crate::ast::Ident>::default();
-                state.decode_variant(1, "simple", &mut value)?;
-                Self::Simple(value)
-            }
-            crate::ast::DeclaratorKind::Array => {
-                let mut value = <crate::ast::ArrayDeclarator>::default();
-                state.decode_variant(2, "array", &mut value)?;
-                Self::Array(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::DeclaratorKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::DeclaratorKind::Simple => {
+                    let mut value = <crate::ast::Ident>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Simple(value)
+                }
+                crate::ast::DeclaratorKind::Array => {
+                    let mut value = <crate::ast::ArrayDeclarator>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Array(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
-/// A parameter inside an applied annotation, e.g. `value=true` in
-/// `@optional(value=true)`.
+/// /// A parameter inside an applied annotation, e.g. `value=true` in
+/// /// `@optional(value=true)`.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationArg {
-    /// Name of the parameter if one was specified.
-    /// May be omitted for annotations with only a single, non-default member,
-    /// but this is not enforced by the parser.
+    /// /// Name of the parameter if one was specified.
+    /// /// May be omitted for annotations with only a single, non-default member,
+    /// /// but this is not enforced by the parser.
     pub ident: Option<crate::ast::Ident>,
-    /// Span of the entire parameter.
+    /// /// Span of the entire parameter.
     pub span: crate::ast::Span,
-    /// The specified value of the parameter.
+    /// /// The specified value of the parameter.
     pub value: crate::ast::Expr,
 }
 
@@ -1875,35 +2603,64 @@ impl ::std::default::Default for AnnotationArg {
     }
 }
 
-impl ::intercom_cts::Marshal for AnnotationArg {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnnotationArg",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("AnnotationArg")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "value", &self.value)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AnnotationArg {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_optional(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.span)?;
+            state.encode_field(&MEMBER_INFO[2], &self.value)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnnotationArg {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnnotationArg {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("AnnotationArg")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "value", &mut self.value)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.value)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationAppl {
@@ -1929,35 +2686,64 @@ impl ::std::default::Default for AnnotationAppl {
     }
 }
 
-impl ::intercom_cts::Marshal for AnnotationAppl {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnnotationAppl",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("AnnotationAppl")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "span", &self.span)?;
-        state.encode_field(2, "args", &self.args)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "args",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AnnotationAppl {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.span)?;
+            state.encode_field(&MEMBER_INFO[2], &self.args)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnnotationAppl {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnnotationAppl {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("AnnotationAppl")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "span", &mut self.span)?;
-        state.decode_field(2, "args", &mut self.args)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.args)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
@@ -2000,76 +2786,97 @@ impl ::std::default::Default for AnnotationFieldKind {
     }
 }
 
-impl ::intercom_cts::Marshal for AnnotationFieldKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnnotationFieldKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("AnnotationFieldKind")?;
-        match self {
-            Self::FieldDefinition => state.encode_variant::<i32>("FIELD_DEFINITION", 0),
-            Self::FieldMember => state.encode_variant::<i32>("FIELD_MEMBER", 1),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "FIELD_DEFINITION",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "FIELD_MEMBER",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AnnotationFieldKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::FieldDefinition => state.encode_variant::<i32>("FIELD_DEFINITION", 0),
+                Self::FieldMember => state.encode_variant::<i32>("FIELD_MEMBER", 1),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnnotationFieldKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnnotationFieldKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("AnnotationFieldKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for AnnotationFieldKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for AnnotationFieldKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::FieldDefinition,
+                1 => Self::FieldMember,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::FieldDefinition,
-            1 => Self::FieldMember,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "FIELD_DEFINITION" => Self::FieldDefinition,
+                "FIELD_MEMBER" => Self::FieldMember,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "FIELD_DEFINITION" => Self::FieldDefinition,
-            "FIELD_MEMBER" => Self::FieldMember,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationMember {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub decl: crate::ast::Declarator,
     pub ty: crate::ast::Type,
@@ -2095,39 +2902,78 @@ impl ::std::default::Default for AnnotationMember {
     }
 }
 
-impl ::intercom_cts::Marshal for AnnotationMember {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnnotationMember",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("AnnotationMember")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "decl", &self.decl)?;
-        state.encode_field(3, "ty", &self.ty)?;
-        state.encode_field(4, "default", &self.default)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "decl",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "default",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AnnotationMember {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.decl)?;
+            state.encode_field(&MEMBER_INFO[3], &self.ty)?;
+            state.encode_optional(&MEMBER_INFO[4], &self.default)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnnotationMember {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnnotationMember {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("AnnotationMember")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "decl", &mut self.decl)?;
-        state.decode_field(3, "ty", &mut self.ty)?;
-        state.decode_field(4, "default", &mut self.default)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.decl)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.default)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum AnnotationField {
@@ -2169,62 +3015,84 @@ impl ::std::default::Default for AnnotationField {
     }
 }
 
-impl ::intercom_cts::Marshal for AnnotationField {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnnotationField",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("AnnotationField")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Item(v) => state.encode_variant(1, "item", v),
-            Self::Member(v) => state.encode_variant(2, "member", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "item",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "member",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AnnotationField {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Item(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Member(v) => state.encode_variant(&MEMBER_INFO[1], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnnotationField {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnnotationField {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("AnnotationField")?;
-        let mut disc = crate::ast::AnnotationFieldKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::AnnotationFieldKind::FieldDefinition => {
-                let mut value = Box::new(<crate::ast::Item>::default());
-                state.decode_variant(1, "item", &mut value)?;
-                Self::Item(value)
-            }
-            crate::ast::AnnotationFieldKind::FieldMember => {
-                let mut value = Box::new(<crate::ast::AnnotationMember>::default());
-                state.decode_variant(2, "member", &mut value)?;
-                Self::Member(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::AnnotationFieldKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::AnnotationFieldKind::FieldDefinition => {
+                    let mut value = Box::new(<crate::ast::Item>::default());
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Item(value)
+                }
+                crate::ast::AnnotationFieldKind::FieldMember => {
+                    let mut value = Box::new(<crate::ast::AnnotationMember>::default());
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Member(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub params: Vec<crate::ast::AnnotationField>,
 }
@@ -2247,52 +3115,85 @@ impl ::std::default::Default for AnnotationDef {
     }
 }
 
-impl ::intercom_cts::Marshal for AnnotationDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AnnotationDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("AnnotationDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "params", &self.params)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "params",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AnnotationDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.params)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AnnotationDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AnnotationDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("AnnotationDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "params", &mut self.params)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.params)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ModuleDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub definitions: Vec<crate::ast::Item>,
 }
@@ -2315,50 +3216,83 @@ impl ::std::default::Default for ModuleDef {
     }
 }
 
-impl ::intercom_cts::Marshal for ModuleDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ModuleDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("ModuleDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "definitions", &self.definitions)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "definitions",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ModuleDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.definitions)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ModuleDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ModuleDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("ModuleDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "definitions", &mut self.definitions)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.definitions)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Field {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub names: Vec<crate::ast::Declarator>,
     pub ty: crate::ast::Type,
@@ -2382,52 +3316,85 @@ impl ::std::default::Default for Field {
     }
 }
 
-impl ::intercom_cts::Marshal for Field {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Field",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Field")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "names", &self.names)?;
-        state.encode_field(3, "ty", &self.ty)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "names",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Field {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.names)?;
+            state.encode_field(&MEMBER_INFO[3], &self.ty)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Field {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Field {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Field")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "names", &mut self.names)?;
-        state.decode_field(3, "ty", &mut self.ty)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.names)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.ty)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StructDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::Field>,
     pub parent: Option<crate::ast::Path>,
@@ -2452,39 +3419,78 @@ impl ::std::default::Default for StructDef {
     }
 }
 
-impl ::intercom_cts::Marshal for StructDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::StructDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("StructDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "members", &self.members)?;
-        state.encode_field(4, "parent", &self.parent)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "members",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "parent",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for StructDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.members)?;
+            state.encode_optional(&MEMBER_INFO[4], &self.parent)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for StructDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for StructDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("StructDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "members", &mut self.members)?;
-        state.decode_field(4, "parent", &mut self.parent)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.members)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.parent)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Discriminator {
@@ -2508,33 +3514,57 @@ impl ::std::default::Default for Discriminator {
     }
 }
 
-impl ::intercom_cts::Marshal for Discriminator {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Discriminator",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Discriminator")?;
-        state.encode_field(0, "annotations", &self.annotations)?;
-        state.encode_field(1, "ty", &self.ty)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Discriminator {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[1], &self.ty)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Discriminator {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Discriminator {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Discriminator")?;
-        state.decode_field(0, "annotations", &mut self.annotations)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.ty)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Empty {}
@@ -2552,27 +3582,42 @@ impl ::std::default::Default for Empty {
     }
 }
 
-impl ::intercom_cts::Marshal for Empty {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Empty",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let state = ar.encode_struct("Empty")?;
-        state.end()
-    }
-}
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[];
 
-impl ::intercom_cts::Unmarshal for Empty {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        ar.decode_struct("Empty")?;
-        Ok(())
+    impl ::intercom_cts::Marshal for Empty {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let state = ar.encode_struct(&TYPE_INFO)?;
+            state.end()
+        }
     }
-}
+
+    impl ::intercom_cts::Unmarshal for Empty {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
+
+            let state = ar.decode_struct(&TYPE_INFO)?;
+            state.end()?;
+            Ok(())
+        }
+    }
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
@@ -2615,63 +3660,85 @@ impl ::std::default::Default for LabelKind {
     }
 }
 
-impl ::intercom_cts::Marshal for LabelKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::LabelKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("LabelKind")?;
-        match self {
-            Self::Case => state.encode_variant::<i32>("LABEL_CASE", 0),
-            Self::Default => state.encode_variant::<i32>("LABEL_DEFAULT", 1),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "LABEL_CASE",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LABEL_DEFAULT",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for LabelKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Case => state.encode_variant::<i32>("LABEL_CASE", 0),
+                Self::Default => state.encode_variant::<i32>("LABEL_DEFAULT", 1),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for LabelKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for LabelKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("LabelKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for LabelKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for LabelKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Case,
+                1 => Self::Default,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Case,
-            1 => Self::Default,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "LABEL_CASE" => Self::Case,
+                "LABEL_DEFAULT" => Self::Default,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "LABEL_CASE" => Self::Case,
-            "LABEL_DEFAULT" => Self::Default,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Label {
@@ -2709,47 +3776,70 @@ impl ::std::default::Default for Label {
     }
 }
 
-impl ::intercom_cts::Marshal for Label {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Label",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("Label")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Case(v) => state.encode_variant(1, "case", v),
-            Self::Default(v) => state.encode_variant(2, "default", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "case",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "default",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Label {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Case(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Default(v) => state.encode_variant(&MEMBER_INFO[1], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Label {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Label {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("Label")?;
-        let mut disc = crate::ast::LabelKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::LabelKind::Case => {
-                let mut value = <crate::ast::Expr>::default();
-                state.decode_variant(1, "case", &mut value)?;
-                Self::Case(value)
-            }
-            crate::ast::LabelKind::Default => {
-                let mut value = <crate::ast::Empty>::default();
-                state.decode_variant(2, "default", &mut value)?;
-                Self::Default(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::LabelKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::LabelKind::Case => {
+                    let mut value = <crate::ast::Expr>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Case(value)
+                }
+                crate::ast::LabelKind::Default => {
+                    let mut value = <crate::ast::Empty>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Default(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
@@ -2792,63 +3882,85 @@ impl ::std::default::Default for UnionElementKind {
     }
 }
 
-impl ::intercom_cts::Marshal for UnionElementKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::UnionElementKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("UnionElementKind")?;
-        match self {
-            Self::ElementMember => state.encode_variant::<i32>("ELEMENT_MEMBER", 0),
-            Self::ElementNull => state.encode_variant::<i32>("ELEMENT_NULL", 1),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ELEMENT_MEMBER",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ELEMENT_NULL",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for UnionElementKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::ElementMember => state.encode_variant::<i32>("ELEMENT_MEMBER", 0),
+                Self::ElementNull => state.encode_variant::<i32>("ELEMENT_NULL", 1),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for UnionElementKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for UnionElementKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("UnionElementKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for UnionElementKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for UnionElementKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::ElementMember,
+                1 => Self::ElementNull,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::ElementMember,
-            1 => Self::ElementNull,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "ELEMENT_MEMBER" => Self::ElementMember,
+                "ELEMENT_NULL" => Self::ElementNull,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "ELEMENT_MEMBER" => Self::ElementMember,
-            "ELEMENT_NULL" => Self::ElementNull,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionMember {
@@ -2872,33 +3984,57 @@ impl ::std::default::Default for UnionMember {
     }
 }
 
-impl ::intercom_cts::Marshal for UnionMember {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::UnionMember",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("UnionMember")?;
-        state.encode_field(0, "ty", &self.ty)?;
-        state.encode_field(1, "decl", &self.decl)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "decl",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for UnionMember {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ty)?;
+            state.encode_field(&MEMBER_INFO[1], &self.decl)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for UnionMember {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for UnionMember {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("UnionMember")?;
-        state.decode_field(0, "ty", &mut self.ty)?;
-        state.decode_field(1, "decl", &mut self.decl)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.decl)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct UnionNull {
@@ -2920,31 +4056,48 @@ impl ::std::default::Default for UnionNull {
     }
 }
 
-impl ::intercom_cts::Marshal for UnionNull {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::UnionNull",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("UnionNull")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
+        name: "span",
+        member_id: 0,
+        flags: ::intercom_cts::MemberFlag::nil(),
+    }];
+
+    impl ::intercom_cts::Marshal for UnionNull {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for UnionNull {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for UnionNull {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("UnionNull")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum UnionElement {
@@ -2986,62 +4139,84 @@ impl ::std::default::Default for UnionElement {
     }
 }
 
-impl ::intercom_cts::Marshal for UnionElement {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::UnionElement",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("UnionElement")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Member(v) => state.encode_variant(1, "member", v),
-            Self::Null(v) => state.encode_variant(2, "null", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "member",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "null",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for UnionElement {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Member(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Null(v) => state.encode_variant(&MEMBER_INFO[1], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for UnionElement {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for UnionElement {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("UnionElement")?;
-        let mut disc = crate::ast::UnionElementKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::UnionElementKind::ElementMember => {
-                let mut value = <crate::ast::UnionMember>::default();
-                state.decode_variant(1, "member", &mut value)?;
-                Self::Member(value)
-            }
-            crate::ast::UnionElementKind::ElementNull => {
-                let mut value = <crate::ast::UnionNull>::default();
-                state.decode_variant(2, "null", &mut value)?;
-                Self::Null(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::UnionElementKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::UnionElementKind::ElementMember => {
+                    let mut value = <crate::ast::UnionMember>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Member(value)
+                }
+                crate::ast::UnionElementKind::ElementNull => {
+                    let mut value = <crate::ast::UnionNull>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Null(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionField {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Case labels that map to this variant.
+    /// /// Case labels that map to this variant.
     pub labels: Vec<crate::ast::Label>,
     pub field: crate::ast::UnionElement,
 }
@@ -3064,57 +4239,90 @@ impl ::std::default::Default for UnionField {
     }
 }
 
-impl ::intercom_cts::Marshal for UnionField {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::UnionField",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("UnionField")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "labels", &self.labels)?;
-        state.encode_field(3, "field", &self.field)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "labels",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "field",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for UnionField {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.labels)?;
+            state.encode_field(&MEMBER_INFO[3], &self.field)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for UnionField {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for UnionField {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("UnionField")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "labels", &mut self.labels)?;
-        state.decode_field(3, "field", &mut self.field)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.labels)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.field)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
-    /// The discriminator component of the union.
+    /// /// The discriminator component of the union.
     pub disc: crate::ast::Discriminator,
-    /// All variants of the union. The case labels that map to each variant can
-    /// be found in `UnionField`.
+    /// /// All variants of the union. The case labels that map to each variant can
+    /// /// be found in `UnionField`.
     pub fields: Vec<crate::ast::UnionField>,
 }
 
@@ -3137,52 +4345,90 @@ impl ::std::default::Default for UnionDef {
     }
 }
 
-impl ::intercom_cts::Marshal for UnionDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::UnionDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("UnionDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "disc", &self.disc)?;
-        state.encode_field(4, "fields", &self.fields)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "disc",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "fields",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for UnionDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.disc)?;
+            state.encode_field(&MEMBER_INFO[4], &self.fields)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for UnionDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for UnionDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("UnionDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "disc", &mut self.disc)?;
-        state.decode_field(4, "fields", &mut self.fields)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.disc)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.fields)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ConstDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub decl: crate::ast::Declarator,
     pub ty: crate::ast::Type,
@@ -3208,46 +4454,85 @@ impl ::std::default::Default for ConstDef {
     }
 }
 
-impl ::intercom_cts::Marshal for ConstDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ConstDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("ConstDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "decl", &self.decl)?;
-        state.encode_field(3, "ty", &self.ty)?;
-        state.encode_field(4, "value", &self.value)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "decl",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ConstDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.decl)?;
+            state.encode_field(&MEMBER_INFO[3], &self.ty)?;
+            state.encode_field(&MEMBER_INFO[4], &self.value)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ConstDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ConstDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("ConstDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "decl", &mut self.decl)?;
-        state.decode_field(3, "ty", &mut self.ty)?;
-        state.decode_field(4, "value", &mut self.value)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.decl)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.value)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Enumerator {
     pub ident: crate::ast::Ident,
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
-    /// The `@value` annotation will *not* populate this field.
+    /// /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
+    /// /// The `@value` annotation will *not* populate this field.
     pub value: Option<crate::ast::Expr>,
 }
 
@@ -3268,50 +4553,78 @@ impl ::std::default::Default for Enumerator {
     }
 }
 
-impl ::intercom_cts::Marshal for Enumerator {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Enumerator",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Enumerator")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "value", &self.value)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Enumerator {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_optional(&MEMBER_INFO[2], &self.value)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Enumerator {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Enumerator {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Enumerator")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "value", &mut self.value)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.value)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct EnumDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub fields: Vec<crate::ast::Enumerator>,
 }
@@ -3334,52 +4647,85 @@ impl ::std::default::Default for EnumDef {
     }
 }
 
-impl ::intercom_cts::Marshal for EnumDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::EnumDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("EnumDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "fields", &self.fields)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "fields",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for EnumDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.fields)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for EnumDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for EnumDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("EnumDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "fields", &mut self.fields)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.fields)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ExceptDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::Field>,
 }
@@ -3402,54 +4748,87 @@ impl ::std::default::Default for ExceptDef {
     }
 }
 
-impl ::intercom_cts::Marshal for ExceptDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ExceptDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("ExceptDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "members", &self.members)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "members",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ExceptDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.members)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ExceptDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ExceptDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("ExceptDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "members", &mut self.members)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.members)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AliasDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// List of all declarators. Always contains at least one declarator.
+    /// /// List of all declarators. Always contains at least one declarator.
     pub decl: Vec<crate::ast::Declarator>,
-    /// The underlying type of the typedef.
+    /// /// The underlying type of the typedef.
     pub ty: crate::ast::Type,
 }
 
@@ -3471,52 +4850,85 @@ impl ::std::default::Default for AliasDef {
     }
 }
 
-impl ::intercom_cts::Marshal for AliasDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::AliasDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("AliasDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "decl", &self.decl)?;
-        state.encode_field(3, "ty", &self.ty)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "decl",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for AliasDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.decl)?;
+            state.encode_field(&MEMBER_INFO[3], &self.ty)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for AliasDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for AliasDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("AliasDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "decl", &mut self.decl)?;
-        state.decode_field(3, "ty", &mut self.ty)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.decl)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.ty)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bit {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub value: Option<crate::ast::Expr>,
 }
@@ -3539,52 +4951,85 @@ impl ::std::default::Default for Bit {
     }
 }
 
-impl ::intercom_cts::Marshal for Bit {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Bit",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Bit")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "value", &self.value)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Bit {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_optional(&MEMBER_INFO[3], &self.value)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Bit {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Bit {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Bit")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "value", &mut self.value)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.value)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitmaskDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub bits: Vec<crate::ast::Bit>,
 }
@@ -3607,52 +5052,85 @@ impl ::std::default::Default for BitmaskDef {
     }
 }
 
-impl ::intercom_cts::Marshal for BitmaskDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::BitmaskDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("BitmaskDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "bits", &self.bits)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bits",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for BitmaskDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.bits)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for BitmaskDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for BitmaskDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("BitmaskDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "bits", &mut self.bits)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.bits)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bitfield {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub size: crate::ast::Expr,
     pub ty: Option<crate::ast::Type>,
@@ -3677,54 +5155,92 @@ impl ::std::default::Default for Bitfield {
     }
 }
 
-impl ::intercom_cts::Marshal for Bitfield {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Bitfield",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Bitfield")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "size", &self.size)?;
-        state.encode_field(4, "ty", &self.ty)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "size",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Bitfield {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.size)?;
+            state.encode_optional(&MEMBER_INFO[4], &self.ty)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Bitfield {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Bitfield {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Bitfield")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "size", &mut self.size)?;
-        state.decode_field(4, "ty", &mut self.ty)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.size)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.ty)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitsetDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub parent: Option<crate::ast::Path>,
     pub fields: Vec<crate::ast::Bitfield>,
@@ -3749,50 +5265,91 @@ impl ::std::default::Default for BitsetDef {
     }
 }
 
-impl ::intercom_cts::Marshal for BitsetDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::BitsetDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("BitsetDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "parent", &self.parent)?;
-        state.encode_field(4, "fields", &self.fields)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "parent",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "fields",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for BitsetDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_optional(&MEMBER_INFO[3], &self.parent)?;
+            state.encode_field(&MEMBER_INFO[4], &self.fields)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for BitsetDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for BitsetDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("BitsetDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "parent", &mut self.parent)?;
-        state.decode_field(4, "fields", &mut self.fields)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.parent)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.fields)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Attribute {
-    /// Name of the attribute.
+    /// /// Name of the attribute.
     pub decl: Vec<crate::ast::Declarator>,
+    /// ///
     pub setraises: Vec<crate::ast::Path>,
+    /// ///
     pub getraises: Vec<crate::ast::Path>,
-    /// The type of the attribute.
+    /// /// The type of the attribute.
     pub ty: crate::ast::Type,
-    /// Indicates whether this attribute was marked as `readonly`, and if
-    /// so, the span of the keyword.
+    /// /// Indicates whether this attribute was marked as `readonly`, and if
+    /// /// so, the span of the keyword.
     pub readonly: Option<crate::ast::Span>,
 }
 
@@ -3815,48 +5372,87 @@ impl ::std::default::Default for Attribute {
     }
 }
 
-impl ::intercom_cts::Marshal for Attribute {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Attribute",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Attribute")?;
-        state.encode_field(0, "decl", &self.decl)?;
-        state.encode_field(1, "setraises", &self.setraises)?;
-        state.encode_field(2, "getraises", &self.getraises)?;
-        state.encode_field(3, "ty", &self.ty)?;
-        state.encode_field(4, "readonly", &self.readonly)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "decl",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "setraises",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "getraises",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "readonly",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Attribute {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.decl)?;
+            state.encode_field(&MEMBER_INFO[1], &self.setraises)?;
+            state.encode_field(&MEMBER_INFO[2], &self.getraises)?;
+            state.encode_field(&MEMBER_INFO[3], &self.ty)?;
+            state.encode_optional(&MEMBER_INFO[4], &self.readonly)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Attribute {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Attribute {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Attribute")?;
-        state.decode_field(0, "decl", &mut self.decl)?;
-        state.decode_field(1, "setraises", &mut self.setraises)?;
-        state.decode_field(2, "getraises", &mut self.getraises)?;
-        state.decode_field(3, "ty", &mut self.ty)?;
-        state.decode_field(4, "readonly", &mut self.readonly)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.decl)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.setraises)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.getraises)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.readonly)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum ParamKind {
-    /// Explicitly marked as `in`
+    /// /// Explicitly marked as `in`
     In,
-    /// Explicitly marked as `out`
+    /// /// Explicitly marked as `out`
     Out,
-    /// Explicitly marked as `inout`
+    /// /// Explicitly marked as `inout`
     Inout,
 }
 
@@ -3896,74 +5492,101 @@ impl ::std::default::Default for ParamKind {
     }
 }
 
-impl ::intercom_cts::Marshal for ParamKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ParamKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("ParamKind")?;
-        match self {
-            Self::In => state.encode_variant::<i32>("PARAM_IN", 0),
-            Self::Out => state.encode_variant::<i32>("PARAM_OUT", 1),
-            Self::Inout => state.encode_variant::<i32>("PARAM_INOUT", 2),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "PARAM_IN",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "PARAM_OUT",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "PARAM_INOUT",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ParamKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::In => state.encode_variant::<i32>("PARAM_IN", 0),
+                Self::Out => state.encode_variant::<i32>("PARAM_OUT", 1),
+                Self::Inout => state.encode_variant::<i32>("PARAM_INOUT", 2),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ParamKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ParamKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("ParamKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for ParamKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for ParamKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::In,
+                1 => Self::Out,
+                2 => Self::Inout,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::In,
-            1 => Self::Out,
-            2 => Self::Inout,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "PARAM_IN" => Self::In,
+                "PARAM_OUT" => Self::Out,
+                "PARAM_INOUT" => Self::Inout,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "PARAM_IN" => Self::In,
-            "PARAM_OUT" => Self::Out,
-            "PARAM_INOUT" => Self::Inout,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Param {
-    /// Name of the parameter.
+    /// /// Name of the parameter.
     pub decl: crate::ast::Declarator,
-    /// Type of the parameter.
+    /// /// Type of the parameter.
     pub ty: crate::ast::Type,
-    /// Specifies whether this is an `in`, `out`, or `inout` parameter.
+    /// /// Specifies whether this is an `in`, `out`, or `inout` parameter.
     pub kind: Option<crate::ast::ParamKind>,
 }
 
@@ -3984,46 +5607,75 @@ impl ::std::default::Default for Param {
     }
 }
 
-impl ::intercom_cts::Marshal for Param {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Param",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Param")?;
-        state.encode_field(0, "decl", &self.decl)?;
-        state.encode_field(1, "ty", &self.ty)?;
-        state.encode_field(2, "kind", &self.kind)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "decl",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "kind",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Param {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.decl)?;
+            state.encode_field(&MEMBER_INFO[1], &self.ty)?;
+            state.encode_optional(&MEMBER_INFO[2], &self.kind)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Param {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Param {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Param")?;
-        state.decode_field(0, "decl", &mut self.decl)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
-        state.decode_field(2, "kind", &mut self.kind)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.decl)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.kind)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Prototype {
-    /// Name of the prototype.
+    /// /// Name of the prototype.
     pub ident: crate::ast::Ident,
-    /// Return type.
+    /// /// Return type.
     pub ret: crate::ast::Type,
     pub params: Vec<crate::ast::Param>,
     pub raises: Vec<crate::ast::Path>,
-    /// Indicates whether this function was prefixed with the `oneway` keyword.
-    /// Does not account for the `@oneway` annotation.
+    /// /// Indicates whether this function was prefixed with the `oneway` keyword.
+    /// /// Does not account for the `@oneway` annotation.
     pub oneway: Option<crate::ast::Span>,
 }
 
@@ -4046,54 +5698,92 @@ impl ::std::default::Default for Prototype {
     }
 }
 
-impl ::intercom_cts::Marshal for Prototype {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Prototype",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Prototype")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "ret", &self.ret)?;
-        state.encode_field(2, "params", &self.params)?;
-        state.encode_field(3, "raises", &self.raises)?;
-        state.encode_field(4, "oneway", &self.oneway)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ret",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "params",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "raises",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "oneway",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Prototype {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.ret)?;
+            state.encode_field(&MEMBER_INFO[2], &self.params)?;
+            state.encode_field(&MEMBER_INFO[3], &self.raises)?;
+            state.encode_optional(&MEMBER_INFO[4], &self.oneway)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Prototype {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Prototype {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Prototype")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "ret", &mut self.ret)?;
-        state.decode_field(2, "params", &mut self.params)?;
-        state.decode_field(3, "raises", &mut self.raises)?;
-        state.decode_field(4, "oneway", &mut self.oneway)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.ret)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.params)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.raises)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.oneway)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InterfaceDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::InterfaceMember>,
     pub inherits: Vec<crate::ast::Path>,
@@ -4120,41 +5810,85 @@ impl ::std::default::Default for InterfaceDef {
     }
 }
 
-impl ::intercom_cts::Marshal for InterfaceDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::InterfaceDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("InterfaceDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "members", &self.members)?;
-        state.encode_field(4, "inherits", &self.inherits)?;
-        state.encode_field(5, "local", &self.local)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "members",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "inherits",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "local",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for InterfaceDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.members)?;
+            state.encode_field(&MEMBER_INFO[4], &self.inherits)?;
+            state.encode_optional(&MEMBER_INFO[5], &self.local)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for InterfaceDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for InterfaceDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("InterfaceDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "members", &mut self.members)?;
-        state.decode_field(4, "inherits", &mut self.inherits)?;
-        state.decode_field(5, "local", &mut self.local)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.members)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.inherits)?;
+            state.decode_field(&MEMBER_INFO[5], &mut self.local)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValueMember {
@@ -4180,50 +5914,78 @@ impl ::std::default::Default for ValueMember {
     }
 }
 
-impl ::intercom_cts::Marshal for ValueMember {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ValueMember",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("ValueMember")?;
-        state.encode_field(0, "ident", &self.ident)?;
-        state.encode_field(1, "ty", &self.ty)?;
-        state.encode_field(2, "public", &self.public)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "public",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ValueMember {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[1], &self.ty)?;
+            state.encode_optional(&MEMBER_INFO[2], &self.public)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ValueMember {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ValueMember {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("ValueMember")?;
-        state.decode_field(0, "ident", &mut self.ident)?;
-        state.decode_field(1, "ty", &mut self.ty)?;
-        state.decode_field(2, "public", &mut self.public)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.public)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValuetypeDef {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::ValueMember>,
     pub prototypes: Vec<crate::ast::Prototype>,
@@ -4254,45 +6016,99 @@ impl ::std::default::Default for ValuetypeDef {
     }
 }
 
-impl ::intercom_cts::Marshal for ValuetypeDef {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ValuetypeDef",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("ValuetypeDef")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "members", &self.members)?;
-        state.encode_field(4, "prototypes", &self.prototypes)?;
-        state.encode_field(5, "definitions", &self.definitions)?;
-        state.encode_field(6, "inherits", &self.inherits)?;
-        state.encode_field(7, "supports", &self.supports)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "members",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "prototypes",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "definitions",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "inherits",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+        ::intercom_cts::MemberInfo {
+            name: "supports",
+            member_id: 7,
+            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ValuetypeDef {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.members)?;
+            state.encode_field(&MEMBER_INFO[4], &self.prototypes)?;
+            state.encode_field(&MEMBER_INFO[5], &self.definitions)?;
+            state.encode_optional(&MEMBER_INFO[6], &self.inherits)?;
+            state.encode_optional(&MEMBER_INFO[7], &self.supports)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ValuetypeDef {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ValuetypeDef {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("ValuetypeDef")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "members", &mut self.members)?;
-        state.decode_field(4, "prototypes", &mut self.prototypes)?;
-        state.decode_field(5, "definitions", &mut self.definitions)?;
-        state.decode_field(6, "inherits", &mut self.inherits)?;
-        state.decode_field(7, "supports", &mut self.supports)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.members)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.prototypes)?;
+            state.decode_field(&MEMBER_INFO[5], &mut self.definitions)?;
+            state.decode_field(&MEMBER_INFO[6], &mut self.inherits)?;
+            state.decode_field(&MEMBER_INFO[7], &mut self.supports)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
@@ -4344,87 +6160,123 @@ impl ::std::default::Default for DeclKind {
     }
 }
 
-impl ::intercom_cts::Marshal for DeclKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::DeclKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("DeclKind")?;
-        match self {
-            Self::Struct => state.encode_variant::<i32>("DECL_STRUCT", 0),
-            Self::Union => state.encode_variant::<i32>("DECL_UNION", 1),
-            Self::Native => state.encode_variant::<i32>("DECL_NATIVE", 2),
-            Self::Interface => state.encode_variant::<i32>("DECL_INTERFACE", 3),
-            Self::Valuetype => state.encode_variant::<i32>("DECL_VALUETYPE", 4),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "DECL_STRUCT",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "DECL_UNION",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "DECL_NATIVE",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "DECL_INTERFACE",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "DECL_VALUETYPE",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for DeclKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Struct => state.encode_variant::<i32>("DECL_STRUCT", 0),
+                Self::Union => state.encode_variant::<i32>("DECL_UNION", 1),
+                Self::Native => state.encode_variant::<i32>("DECL_NATIVE", 2),
+                Self::Interface => state.encode_variant::<i32>("DECL_INTERFACE", 3),
+                Self::Valuetype => state.encode_variant::<i32>("DECL_VALUETYPE", 4),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for DeclKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for DeclKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("DeclKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for DeclKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for DeclKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Struct,
+                1 => Self::Union,
+                2 => Self::Native,
+                3 => Self::Interface,
+                4 => Self::Valuetype,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Struct,
-            1 => Self::Union,
-            2 => Self::Native,
-            3 => Self::Interface,
-            4 => Self::Valuetype,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "DECL_STRUCT" => Self::Struct,
+                "DECL_UNION" => Self::Union,
+                "DECL_NATIVE" => Self::Native,
+                "DECL_INTERFACE" => Self::Interface,
+                "DECL_VALUETYPE" => Self::Valuetype,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "DECL_STRUCT" => Self::Struct,
-            "DECL_UNION" => Self::Union,
-            "DECL_NATIVE" => Self::Native,
-            "DECL_INTERFACE" => Self::Interface,
-            "DECL_VALUETYPE" => Self::Valuetype,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Decl {
-    /// Span of the entire item, from start to end. For example, given the
-    /// following IDL:
-    ///
-    /// ```idl
-    /// module foo { ... };
-    /// ````
-    ///
-    /// The span of the above module will start at 'm' and end at '}'.
+    /// /// Span of the entire item, from start to end. For example, given the
+    /// /// following IDL:
+    /// ///
+    /// /// ```idl
+    /// /// module foo { ... };
+    /// /// ````
+    /// /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// Annotations that were applied to this item.
+    /// /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
+    /// /// Name of the item.
     pub ident: crate::ast::Ident,
     pub kind: crate::ast::DeclKind,
 }
@@ -4447,66 +6299,100 @@ impl ::std::default::Default for Decl {
     }
 }
 
-impl ::intercom_cts::Marshal for Decl {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::FieldSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Decl",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_struct("Decl")?;
-        state.encode_field(0, "span", &self.span)?;
-        state.encode_field(1, "annotations", &self.annotations)?;
-        state.encode_field(2, "ident", &self.ident)?;
-        state.encode_field(3, "kind", &self.kind)?;
-        state.end()
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ident",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "kind",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Decl {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.kind)?;
+            state.end()
+        }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Decl {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::StructDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Decl {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
 
-        let mut state = ar.decode_struct("Decl")?;
-        state.decode_field(0, "span", &mut self.span)?;
-        state.decode_field(1, "annotations", &mut self.annotations)?;
-        state.decode_field(2, "ident", &mut self.ident)?;
-        state.decode_field(3, "kind", &mut self.kind)?;
-        Ok(())
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.kind)?;
+            state.end()?;
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum ItemKind {
-    /// A definition of an annotation
+    /// /// A definition of an annotation
     Annotation,
-    /// Module declaration
+    /// /// Module declaration
     Module,
-    /// Struct definition
+    /// /// Struct definition
     Struct,
-    /// Union definition
+    /// /// Union definition
     Union,
-    /// Enum definition
+    /// /// Enum definition
     Enum,
-    /// Exception definition
+    /// /// Exception definition
     Exception,
-    /// Bitmask definition
+    /// /// Bitmask definition
     Bitmask,
-    /// Bitset definition
+    /// /// Bitset definition
     Bitset,
-    /// Declaration of a `const`
+    /// /// Declaration of a `const`
     Const,
-    /// Typedef definition
+    /// /// Typedef definition
     Typedef,
-    /// Interface definition
+    /// /// Interface definition
     Interface,
-    /// Valuetype definition
+    /// /// Valuetype definition
     Valuetype,
-    /// A forward declaration
+    /// /// A forward declaration
     Decl,
 }
 
@@ -4566,124 +6452,201 @@ impl ::std::default::Default for ItemKind {
     }
 }
 
-impl ::intercom_cts::Marshal for ItemKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ItemKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("ItemKind")?;
-        match self {
-            Self::Annotation => state.encode_variant::<i32>("ITEM_ANNOTATION", 0),
-            Self::Module => state.encode_variant::<i32>("ITEM_MODULE", 1),
-            Self::Struct => state.encode_variant::<i32>("ITEM_STRUCT", 2),
-            Self::Union => state.encode_variant::<i32>("ITEM_UNION", 3),
-            Self::Enum => state.encode_variant::<i32>("ITEM_ENUM", 4),
-            Self::Exception => state.encode_variant::<i32>("ITEM_EXCEPTION", 5),
-            Self::Bitmask => state.encode_variant::<i32>("ITEM_BITMASK", 6),
-            Self::Bitset => state.encode_variant::<i32>("ITEM_BITSET", 7),
-            Self::Const => state.encode_variant::<i32>("ITEM_CONST", 8),
-            Self::Typedef => state.encode_variant::<i32>("ITEM_TYPEDEF", 9),
-            Self::Interface => state.encode_variant::<i32>("ITEM_INTERFACE", 10),
-            Self::Valuetype => state.encode_variant::<i32>("ITEM_VALUETYPE", 11),
-            Self::Decl => state.encode_variant::<i32>("ITEM_DECL", 12),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_ANNOTATION",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_MODULE",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_STRUCT",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_UNION",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_ENUM",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_EXCEPTION",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_BITMASK",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_BITSET",
+            member_id: 7,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_CONST",
+            member_id: 8,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_TYPEDEF",
+            member_id: 9,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_INTERFACE",
+            member_id: 10,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_VALUETYPE",
+            member_id: 11,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ITEM_DECL",
+            member_id: 12,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ItemKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Annotation => state.encode_variant::<i32>("ITEM_ANNOTATION", 0),
+                Self::Module => state.encode_variant::<i32>("ITEM_MODULE", 1),
+                Self::Struct => state.encode_variant::<i32>("ITEM_STRUCT", 2),
+                Self::Union => state.encode_variant::<i32>("ITEM_UNION", 3),
+                Self::Enum => state.encode_variant::<i32>("ITEM_ENUM", 4),
+                Self::Exception => state.encode_variant::<i32>("ITEM_EXCEPTION", 5),
+                Self::Bitmask => state.encode_variant::<i32>("ITEM_BITMASK", 6),
+                Self::Bitset => state.encode_variant::<i32>("ITEM_BITSET", 7),
+                Self::Const => state.encode_variant::<i32>("ITEM_CONST", 8),
+                Self::Typedef => state.encode_variant::<i32>("ITEM_TYPEDEF", 9),
+                Self::Interface => state.encode_variant::<i32>("ITEM_INTERFACE", 10),
+                Self::Valuetype => state.encode_variant::<i32>("ITEM_VALUETYPE", 11),
+                Self::Decl => state.encode_variant::<i32>("ITEM_DECL", 12),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for ItemKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for ItemKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("ItemKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for ItemKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for ItemKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Annotation,
+                1 => Self::Module,
+                2 => Self::Struct,
+                3 => Self::Union,
+                4 => Self::Enum,
+                5 => Self::Exception,
+                6 => Self::Bitmask,
+                7 => Self::Bitset,
+                8 => Self::Const,
+                9 => Self::Typedef,
+                10 => Self::Interface,
+                11 => Self::Valuetype,
+                12 => Self::Decl,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Annotation,
-            1 => Self::Module,
-            2 => Self::Struct,
-            3 => Self::Union,
-            4 => Self::Enum,
-            5 => Self::Exception,
-            6 => Self::Bitmask,
-            7 => Self::Bitset,
-            8 => Self::Const,
-            9 => Self::Typedef,
-            10 => Self::Interface,
-            11 => Self::Valuetype,
-            12 => Self::Decl,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "ITEM_ANNOTATION" => Self::Annotation,
+                "ITEM_MODULE" => Self::Module,
+                "ITEM_STRUCT" => Self::Struct,
+                "ITEM_UNION" => Self::Union,
+                "ITEM_ENUM" => Self::Enum,
+                "ITEM_EXCEPTION" => Self::Exception,
+                "ITEM_BITMASK" => Self::Bitmask,
+                "ITEM_BITSET" => Self::Bitset,
+                "ITEM_CONST" => Self::Const,
+                "ITEM_TYPEDEF" => Self::Typedef,
+                "ITEM_INTERFACE" => Self::Interface,
+                "ITEM_VALUETYPE" => Self::Valuetype,
+                "ITEM_DECL" => Self::Decl,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "ITEM_ANNOTATION" => Self::Annotation,
-            "ITEM_MODULE" => Self::Module,
-            "ITEM_STRUCT" => Self::Struct,
-            "ITEM_UNION" => Self::Union,
-            "ITEM_ENUM" => Self::Enum,
-            "ITEM_EXCEPTION" => Self::Exception,
-            "ITEM_BITMASK" => Self::Bitmask,
-            "ITEM_BITSET" => Self::Bitset,
-            "ITEM_CONST" => Self::Const,
-            "ITEM_TYPEDEF" => Self::Typedef,
-            "ITEM_INTERFACE" => Self::Interface,
-            "ITEM_VALUETYPE" => Self::Valuetype,
-            "ITEM_DECL" => Self::Decl,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Item {
-    /// A definition of an annotation
+    /// /// A definition of an annotation
     AnnotationValue(crate::ast::AnnotationDef),
-    /// Module declaration
+    /// /// Module declaration
     ModuleValue(crate::ast::ModuleDef),
-    /// Struct definition
+    /// /// Struct definition
     StructValue(crate::ast::StructDef),
-    /// Union definition
+    /// /// Union definition
     UnionValue(crate::ast::UnionDef),
-    /// Enum definition
+    /// /// Enum definition
     EnumValue(crate::ast::EnumDef),
-    /// Exception definition
+    /// /// Exception definition
     ExceptionValue(crate::ast::ExceptDef),
-    /// Bitmask definition
+    /// /// Bitmask definition
     BitmaskValue(crate::ast::BitmaskDef),
-    /// Bitset definition
+    /// /// Bitset definition
     BitsetValue(crate::ast::BitsetDef),
-    /// Declaration of a `const`
+    /// /// Declaration of a `const`
     ConstValue(crate::ast::ConstDef),
-    /// Typedef definition
+    /// /// Typedef definition
     AliasValue(crate::ast::AliasDef),
-    /// Interface definition
+    /// /// Interface definition
     InterfaceValue(crate::ast::InterfaceDef),
-    /// Valuetype definition
+    /// /// Valuetype definition
     ValuetypeValue(crate::ast::ValuetypeDef),
-    /// A forward declaration
+    /// /// A forward declaration
     DeclValue(crate::ast::Decl),
 }
 
@@ -4749,122 +6712,200 @@ impl ::std::default::Default for Item {
     }
 }
 
-impl ::intercom_cts::Marshal for Item {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Item",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("Item")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::AnnotationValue(v) => state.encode_variant(1, "annotation_value", v),
-            Self::ModuleValue(v) => state.encode_variant(2, "module_value", v),
-            Self::StructValue(v) => state.encode_variant(3, "struct_value", v),
-            Self::UnionValue(v) => state.encode_variant(4, "union_value", v),
-            Self::EnumValue(v) => state.encode_variant(5, "enum_value", v),
-            Self::ExceptionValue(v) => state.encode_variant(6, "exception_value", v),
-            Self::BitmaskValue(v) => state.encode_variant(7, "bitmask_value", v),
-            Self::BitsetValue(v) => state.encode_variant(8, "bitset_value", v),
-            Self::ConstValue(v) => state.encode_variant(9, "const_value", v),
-            Self::AliasValue(v) => state.encode_variant(10, "alias_value", v),
-            Self::InterfaceValue(v) => state.encode_variant(11, "interface_value", v),
-            Self::ValuetypeValue(v) => state.encode_variant(12, "valuetype_value", v),
-            Self::DeclValue(v) => state.encode_variant(13, "decl_value", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "annotation_value",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "module_value",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "struct_value",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "union_value",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "enum_value",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "exception_value",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bitmask_value",
+            member_id: 7,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "bitset_value",
+            member_id: 8,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "const_value",
+            member_id: 9,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "alias_value",
+            member_id: 10,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "interface_value",
+            member_id: 11,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "valuetype_value",
+            member_id: 12,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "decl_value",
+            member_id: 13,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Item {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::AnnotationValue(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::ModuleValue(v) => state.encode_variant(&MEMBER_INFO[1], v),
+                Self::StructValue(v) => state.encode_variant(&MEMBER_INFO[2], v),
+                Self::UnionValue(v) => state.encode_variant(&MEMBER_INFO[3], v),
+                Self::EnumValue(v) => state.encode_variant(&MEMBER_INFO[4], v),
+                Self::ExceptionValue(v) => state.encode_variant(&MEMBER_INFO[5], v),
+                Self::BitmaskValue(v) => state.encode_variant(&MEMBER_INFO[6], v),
+                Self::BitsetValue(v) => state.encode_variant(&MEMBER_INFO[7], v),
+                Self::ConstValue(v) => state.encode_variant(&MEMBER_INFO[8], v),
+                Self::AliasValue(v) => state.encode_variant(&MEMBER_INFO[9], v),
+                Self::InterfaceValue(v) => state.encode_variant(&MEMBER_INFO[10], v),
+                Self::ValuetypeValue(v) => state.encode_variant(&MEMBER_INFO[11], v),
+                Self::DeclValue(v) => state.encode_variant(&MEMBER_INFO[12], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for Item {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for Item {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("Item")?;
-        let mut disc = crate::ast::ItemKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::ItemKind::Annotation => {
-                let mut value = <crate::ast::AnnotationDef>::default();
-                state.decode_variant(1, "annotation_value", &mut value)?;
-                Self::AnnotationValue(value)
-            }
-            crate::ast::ItemKind::Module => {
-                let mut value = <crate::ast::ModuleDef>::default();
-                state.decode_variant(2, "module_value", &mut value)?;
-                Self::ModuleValue(value)
-            }
-            crate::ast::ItemKind::Struct => {
-                let mut value = <crate::ast::StructDef>::default();
-                state.decode_variant(3, "struct_value", &mut value)?;
-                Self::StructValue(value)
-            }
-            crate::ast::ItemKind::Union => {
-                let mut value = <crate::ast::UnionDef>::default();
-                state.decode_variant(4, "union_value", &mut value)?;
-                Self::UnionValue(value)
-            }
-            crate::ast::ItemKind::Enum => {
-                let mut value = <crate::ast::EnumDef>::default();
-                state.decode_variant(5, "enum_value", &mut value)?;
-                Self::EnumValue(value)
-            }
-            crate::ast::ItemKind::Exception => {
-                let mut value = <crate::ast::ExceptDef>::default();
-                state.decode_variant(6, "exception_value", &mut value)?;
-                Self::ExceptionValue(value)
-            }
-            crate::ast::ItemKind::Bitmask => {
-                let mut value = <crate::ast::BitmaskDef>::default();
-                state.decode_variant(7, "bitmask_value", &mut value)?;
-                Self::BitmaskValue(value)
-            }
-            crate::ast::ItemKind::Bitset => {
-                let mut value = <crate::ast::BitsetDef>::default();
-                state.decode_variant(8, "bitset_value", &mut value)?;
-                Self::BitsetValue(value)
-            }
-            crate::ast::ItemKind::Const => {
-                let mut value = <crate::ast::ConstDef>::default();
-                state.decode_variant(9, "const_value", &mut value)?;
-                Self::ConstValue(value)
-            }
-            crate::ast::ItemKind::Typedef => {
-                let mut value = <crate::ast::AliasDef>::default();
-                state.decode_variant(10, "alias_value", &mut value)?;
-                Self::AliasValue(value)
-            }
-            crate::ast::ItemKind::Interface => {
-                let mut value = <crate::ast::InterfaceDef>::default();
-                state.decode_variant(11, "interface_value", &mut value)?;
-                Self::InterfaceValue(value)
-            }
-            crate::ast::ItemKind::Valuetype => {
-                let mut value = <crate::ast::ValuetypeDef>::default();
-                state.decode_variant(12, "valuetype_value", &mut value)?;
-                Self::ValuetypeValue(value)
-            }
-            crate::ast::ItemKind::Decl => {
-                let mut value = <crate::ast::Decl>::default();
-                state.decode_variant(13, "decl_value", &mut value)?;
-                Self::DeclValue(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::ItemKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::ItemKind::Annotation => {
+                    let mut value = <crate::ast::AnnotationDef>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::AnnotationValue(value)
+                }
+                crate::ast::ItemKind::Module => {
+                    let mut value = <crate::ast::ModuleDef>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::ModuleValue(value)
+                }
+                crate::ast::ItemKind::Struct => {
+                    let mut value = <crate::ast::StructDef>::default();
+                    state.decode_variant(&MEMBER_INFO[2], &mut value)?;
+                    Self::StructValue(value)
+                }
+                crate::ast::ItemKind::Union => {
+                    let mut value = <crate::ast::UnionDef>::default();
+                    state.decode_variant(&MEMBER_INFO[3], &mut value)?;
+                    Self::UnionValue(value)
+                }
+                crate::ast::ItemKind::Enum => {
+                    let mut value = <crate::ast::EnumDef>::default();
+                    state.decode_variant(&MEMBER_INFO[4], &mut value)?;
+                    Self::EnumValue(value)
+                }
+                crate::ast::ItemKind::Exception => {
+                    let mut value = <crate::ast::ExceptDef>::default();
+                    state.decode_variant(&MEMBER_INFO[5], &mut value)?;
+                    Self::ExceptionValue(value)
+                }
+                crate::ast::ItemKind::Bitmask => {
+                    let mut value = <crate::ast::BitmaskDef>::default();
+                    state.decode_variant(&MEMBER_INFO[6], &mut value)?;
+                    Self::BitmaskValue(value)
+                }
+                crate::ast::ItemKind::Bitset => {
+                    let mut value = <crate::ast::BitsetDef>::default();
+                    state.decode_variant(&MEMBER_INFO[7], &mut value)?;
+                    Self::BitsetValue(value)
+                }
+                crate::ast::ItemKind::Const => {
+                    let mut value = <crate::ast::ConstDef>::default();
+                    state.decode_variant(&MEMBER_INFO[8], &mut value)?;
+                    Self::ConstValue(value)
+                }
+                crate::ast::ItemKind::Typedef => {
+                    let mut value = <crate::ast::AliasDef>::default();
+                    state.decode_variant(&MEMBER_INFO[9], &mut value)?;
+                    Self::AliasValue(value)
+                }
+                crate::ast::ItemKind::Interface => {
+                    let mut value = <crate::ast::InterfaceDef>::default();
+                    state.decode_variant(&MEMBER_INFO[10], &mut value)?;
+                    Self::InterfaceValue(value)
+                }
+                crate::ast::ItemKind::Valuetype => {
+                    let mut value = <crate::ast::ValuetypeDef>::default();
+                    state.decode_variant(&MEMBER_INFO[11], &mut value)?;
+                    Self::ValuetypeValue(value)
+                }
+                crate::ast::ItemKind::Decl => {
+                    let mut value = <crate::ast::Decl>::default();
+                    state.decode_variant(&MEMBER_INFO[12], &mut value)?;
+                    Self::DeclValue(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum InterfaceMemberKind {
-    /// An interface attribute.
+    /// /// An interface attribute.
     Attribute,
-    /// Function definition.
+    /// /// Function definition.
     Prototype,
-    /// Type definition nested inside the interface.
+    /// /// Type definition nested inside the interface.
     Item,
 }
 
@@ -4904,74 +6945,101 @@ impl ::std::default::Default for InterfaceMemberKind {
     }
 }
 
-impl ::intercom_cts::Marshal for InterfaceMemberKind {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::EnumSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::InterfaceMemberKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
 
-        let state = ar.encode_enum("InterfaceMemberKind")?;
-        match self {
-            Self::Attribute => state.encode_variant::<i32>("INTERFACE_ATTRIBUTE", 0),
-            Self::Prototype => state.encode_variant::<i32>("INTERFACE_PROTOTYPE", 1),
-            Self::Item => state.encode_variant::<i32>("INTERFACE_ITEM", 2),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "INTERFACE_ATTRIBUTE",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "INTERFACE_PROTOTYPE",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "INTERFACE_ITEM",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for InterfaceMemberKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Attribute => state.encode_variant::<i32>("INTERFACE_ATTRIBUTE", 0),
+                Self::Prototype => state.encode_variant::<i32>("INTERFACE_PROTOTYPE", 1),
+                Self::Item => state.encode_variant::<i32>("INTERFACE_ITEM", 2),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for InterfaceMemberKind {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::EnumDeserializer as _;
+    impl ::intercom_cts::Unmarshal for InterfaceMemberKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
 
-        let state = ar.decode_enum("InterfaceMemberKind")?;
-        *self = state.decode_enumerator(*self)?;
-        Ok(())
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
     }
-}
+    impl ::intercom_cts::decode::EnumVisitor for InterfaceMemberKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
 
-impl ::intercom_cts::decode::EnumVisitor for InterfaceMemberKind {
-    fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
+            let value = match de.decode_i32()? {
+                0 => Self::Attribute,
+                1 => Self::Prototype,
+                2 => Self::Item,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
 
-        let value = match de.decode_i32()? {
-            0 => Self::Attribute,
-            1 => Self::Prototype,
-            2 => Self::Item,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "INTERFACE_ATTRIBUTE" => Self::Attribute,
+                "INTERFACE_PROTOTYPE" => Self::Prototype,
+                "INTERFACE_ITEM" => Self::Item,
+                _ => return Err(D::Error::custom("Invalid enum value")),
+            };
+            Ok(value)
+        }
     }
-
-    fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::error::Error as _;
-
-        let value = match name {
-            "INTERFACE_ATTRIBUTE" => Self::Attribute,
-            "INTERFACE_PROTOTYPE" => Self::Prototype,
-            "INTERFACE_ITEM" => Self::Item,
-            _ => return Err(D::Error::custom("Invalid enum value")),
-        };
-        Ok(value)
-    }
-}
+};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum InterfaceMember {
-    /// An interface attribute.
+    /// /// An interface attribute.
     Attr(crate::ast::Attribute),
-    /// Function definition.
+    /// /// Function definition.
     Proto(crate::ast::Prototype),
-    /// Type definition nested inside the interface.
+    /// /// Type definition nested inside the interface.
     Item(crate::ast::Item),
 }
 
@@ -5011,50 +7079,78 @@ impl ::std::default::Default for InterfaceMember {
     }
 }
 
-impl ::intercom_cts::Marshal for InterfaceMember {
-    fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ::intercom_cts::encode::Serializer,
-    {
-        use ::intercom_cts::encode::UnionSerializer as _;
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::InterfaceMember",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
 
-        let mut state = ar.encode_union("InterfaceMember")?;
-        state.encode_discriminant(&self.disc())?;
-        match self {
-            Self::Attr(v) => state.encode_variant(1, "attr", v),
-            Self::Proto(v) => state.encode_variant(2, "proto", v),
-            Self::Item(v) => state.encode_variant(3, "item", v),
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "attr",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "proto",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "item",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for InterfaceMember {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::Attr(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Proto(v) => state.encode_variant(&MEMBER_INFO[1], v),
+                Self::Item(v) => state.encode_variant(&MEMBER_INFO[2], v),
+            }
         }
     }
-}
 
-impl ::intercom_cts::Unmarshal for InterfaceMember {
-    fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
-    where
-        D: ::intercom_cts::decode::Deserializer,
-    {
-        use ::intercom_cts::decode::UnionDeserializer as _;
+    impl ::intercom_cts::Unmarshal for InterfaceMember {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
 
-        let mut state = ar.decode_union("InterfaceMember")?;
-        let mut disc = crate::ast::InterfaceMemberKind::default();
-        state.decode_discriminant(&mut disc)?;
-        *self = match disc {
-            crate::ast::InterfaceMemberKind::Attribute => {
-                let mut value = <crate::ast::Attribute>::default();
-                state.decode_variant(1, "attr", &mut value)?;
-                Self::Attr(value)
-            }
-            crate::ast::InterfaceMemberKind::Prototype => {
-                let mut value = <crate::ast::Prototype>::default();
-                state.decode_variant(2, "proto", &mut value)?;
-                Self::Proto(value)
-            }
-            crate::ast::InterfaceMemberKind::Item => {
-                let mut value = <crate::ast::Item>::default();
-                state.decode_variant(3, "item", &mut value)?;
-                Self::Item(value)
-            }
-        };
-        Ok(())
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::InterfaceMemberKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::InterfaceMemberKind::Attribute => {
+                    let mut value = <crate::ast::Attribute>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::Attr(value)
+                }
+                crate::ast::InterfaceMemberKind::Prototype => {
+                    let mut value = <crate::ast::Prototype>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Proto(value)
+                }
+                crate::ast::InterfaceMemberKind::Item => {
+                    let mut value = <crate::ast::Item>::default();
+                    state.decode_variant(&MEMBER_INFO[2], &mut value)?;
+                    Self::Item(value)
+                }
+            };
+            Ok(())
+        }
     }
-}
+};

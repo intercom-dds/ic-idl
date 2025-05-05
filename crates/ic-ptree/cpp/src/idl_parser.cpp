@@ -657,6 +657,14 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
     out.state = std::make_shared<parser_state>();
     ptree* new_tree = nullptr;
 
+    // Inject the current built-in annotations into the new state. There may be
+    // multiple definitions of the same type, so we resort to using the
+    // last-registered definitions.
+    for (auto node : g_builtin_annotation_map) {
+        auto name = lc_scoped_name(*node.second);
+        out.state->type_map[name] = *node.second;
+    }
+
     std::map<std::string, const ptree*> seen_includes;
 
     // Filter nodes so that a file is only defined once
@@ -685,17 +693,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
         return node;
     };
 
-    // Modify ptree nodes to point to the new parser state struct and populate
-    // type map
-    std::function<void(ptree*)> update_state_ptr = [&](ptree* tree) {
-        for (auto node : tree) {
-            update_state_ptr(node->members);
-            update_state_ptr(node->generated);
-            update_state_ptr(node->annotations);
-            update_state_ptr(node->included_from);
-        }
-    };
-
     for (auto& to_merge_result : to_merge) {
         if (to_merge_result.tree) {
             // Take ownership of nodes
@@ -720,7 +717,6 @@ parse_result merge_results(std::vector<parse_result>& to_merge) {
             // Update ptree and add it to the merged tree
             auto to_merge_tree = const_cast<ptree*>(to_merge_result.tree);
             to_merge_tree = filter_includes(to_merge_tree);
-            update_state_ptr(to_merge_tree);
             new_tree = append_node(out.state.get(), to_merge_tree, new_tree);
         }
 
@@ -760,9 +756,10 @@ parse_result* ic_ptree_merge(const parse_result** result) {
     }
 
     auto merged = new parse_result(intercom::cidl::merge_results(to_merge));
+    // TODO(idarcar):
     // if (no_header_follow != 0) {
     //     suppress_content_from_includes(result, expanded_files);
     // }
-    // update_ptree_types_after_merge(result);
+    update_ptree_types_after_merge(*merged);
     return merged;
 }

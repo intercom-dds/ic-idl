@@ -444,24 +444,10 @@ deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, p
     }
 
     auto scoped_name = lc_scoped_name(p.get());
-    node_kind types[] = {
-        N_STRUCT,
-        N_UNION,
-        N_ENUM,
-        N_VALUETYPE,
-        N_INTERFACE,
-        N_EXCEPTION,
-        N_BITSET,
-        N_BITMASK,
-        N_ANNOTATION_DEF,
-        N_ALIAS,
-    };
-
     if (p->flags & OPT_DECLARATION) {
         state->type_dcl_map[scoped_name] = p.get();
-    } else if (is_of_type(node, types)) {
-        state->type_map[scoped_name] = p.get();
     }
+    state->type_map[scoped_name] = p.get();
     return p.get();
 }
 

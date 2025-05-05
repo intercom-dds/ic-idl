@@ -37,7 +37,7 @@ use crate::encode::{
 };
 use crate::error::Error as _;
 use crate::json::to_string;
-use crate::{Marshal, MemberInfo, TypeInfo, Unmarshal, DISC_INFO};
+use crate::{DISC_INFO, Marshal, MemberInfo, TypeInfo, Unmarshal};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum Number {

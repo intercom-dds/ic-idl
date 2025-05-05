@@ -35,7 +35,7 @@ use crate::encode::{
     StructSerializer, UnionSerializer,
 };
 use crate::error::Error as _;
-use crate::{MemberInfo, TypeInfo, DISC_INFO};
+use crate::{DISC_INFO, MemberInfo, TypeInfo};
 
 struct JsonWriter<W: Write> {
     w: W,

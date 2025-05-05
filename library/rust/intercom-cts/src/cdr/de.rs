@@ -28,8 +28,8 @@
 use std::marker::PhantomData;
 
 use super::Error;
-use crate::buf::endian::{Big, Endian, Little};
 use crate::buf::Cursor;
+use crate::buf::endian::{Big, Endian, Little};
 use crate::decode::{
     ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
     SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,

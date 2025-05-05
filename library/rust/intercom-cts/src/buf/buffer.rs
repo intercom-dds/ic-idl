@@ -30,8 +30,8 @@
 use std::marker::PhantomData;
 use std::ops::RangeBounds;
 
-use crate::buf::endian::Endian;
 use crate::buf::Cursor;
+use crate::buf::endian::Endian;
 
 #[must_use]
 #[derive(Default)]

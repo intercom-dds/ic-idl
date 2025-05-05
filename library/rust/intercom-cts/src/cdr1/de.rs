@@ -27,15 +27,15 @@
 
 use std::marker::PhantomData;
 
-use crate::buf::endian::{Big, Endian, Little};
 use crate::buf::Cursor;
+use crate::buf::endian::{Big, Endian, Little};
 use crate::cdr::Error;
 use crate::cdr1::{Encoding, MemberFlag};
 use crate::decode::{
     ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
     SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
 };
-use crate::{MemberInfo, TypeFlag, TypeInfo, DISC_INFO};
+use crate::{DISC_INFO, MemberInfo, TypeFlag, TypeInfo};
 
 const PID_EXTENDED: u16 = 0x3F01;
 const PID_LIST_END: u32 = 0x3F02;

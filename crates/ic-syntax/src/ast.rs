@@ -32,9 +32,9 @@ pub use ic_vfs::Span;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Ident {
-    /// /// The actual identifier.
+    /// The actual identifier.
     pub name: String,
-    /// /// Span of the symbol.
+    /// Span of the symbol.
     pub span: crate::ast::Span,
 }
 
@@ -575,27 +575,27 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum OpKind {
-    /// /// `+`
+    /// `+`
     Add,
-    /// /// `-`
+    /// `-`
     Sub,
-    /// /// `*`
+    /// `*`
     Multiply,
-    /// /// `/`
+    /// `/`
     Divide,
-    /// /// `%`
+    /// `%`
     Modulo,
-    /// /// `<<`
+    /// `<<`
     Lshift,
-    /// /// `>>`
+    /// `>>`
     Rshift,
-    /// /// `|`
+    /// `|`
     Or,
-    /// /// `^`
+    /// `^`
     Xor,
-    /// /// `&`
+    /// `&`
     And,
-    /// /// `~`
+    /// `~`
     Not,
 }
 
@@ -805,9 +805,9 @@ const _: () = {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Op {
-    /// /// Span of the token.
+    /// Span of the token.
     pub span: crate::ast::Span,
-    /// /// The operation kind.
+    /// The operation kind.
     pub kind: crate::ast::OpKind,
 }
 
@@ -882,15 +882,15 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum ExprKind {
-    /// /// A single literal like `1` or `"foo"`
+    /// A single literal like `1` or `"foo"`
     Literal,
-    /// /// A possibly scoped identifier like `foo` or `::foo::bar`
+    /// A possibly scoped identifier like `foo` or `::foo::bar`
     Path,
-    /// /// `-a` or `a`
+    /// `-a` or `a`
     Unary,
-    /// /// `a + b`
+    /// `a + b`
     Binary,
-    /// /// Initializer list for complex types, e.g. `{1, 2, {3}}`
+    /// Initializer list for complex types, e.g. `{1, 2, {3}}`
     InitList,
 }
 
@@ -2111,17 +2111,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Type {
-    /// /// The `any` type.
+    /// The `any` type.
     Any(crate::ast::AnyType),
-    /// /// Sequence of another type, e.g. `sequence<string>`.
+    /// Sequence of another type, e.g. `sequence<string>`.
     Sequence(crate::ast::SequenceType),
-    /// /// A possibly bounded string.
+    /// A possibly bounded string.
     String(crate::ast::StringType),
-    /// /// (key, value) pair of types, e.g. `map<string, string>`.
+    /// (key, value) pair of types, e.g. `map<string, string>`.
     Map(crate::ast::MapType),
-    /// /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
+    /// Fixed-point type, e.g. `fixed` or `fixed<4, 2>`.
     Fixed(crate::ast::FixedType),
-    /// /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
+    /// A possibly qualified identifier of a type, e.g. `foo::Bar`.
     Path(crate::ast::Path),
 }
 
@@ -2275,9 +2275,9 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum DeclaratorKind {
-    /// /// A single, non-qualified identifier.
+    /// A single, non-qualified identifier.
     Simple,
-    /// /// An array declarator, e.g. `value[3][4][5]`.
+    /// An array declarator, e.g. `value[3][4][5]`.
     Array,
 }
 
@@ -2572,17 +2572,17 @@ const _: () = {
     }
 };
 
-/// /// A parameter inside an applied annotation, e.g. `value=true` in
-/// /// `@optional(value=true)`.
+/// A parameter inside an applied annotation, e.g. `value=true` in
+/// `@optional(value=true)`.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationArg {
-    /// /// Name of the parameter if one was specified.
-    /// /// May be omitted for annotations with only a single, non-default member,
-    /// /// but this is not enforced by the parser.
+    /// Name of the parameter if one was specified.
+    /// May be omitted for annotations with only a single, non-default member,
+    /// but this is not enforced by the parser.
     pub ident: Option<crate::ast::Ident>,
-    /// /// Span of the entire parameter.
+    /// Span of the entire parameter.
     pub span: crate::ast::Span,
-    /// /// The specified value of the parameter.
+    /// The specified value of the parameter.
     pub value: crate::ast::Expr,
 }
 
@@ -2868,15 +2868,15 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationMember {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub decl: crate::ast::Declarator,
     pub ty: crate::ast::Type,
@@ -3082,17 +3082,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AnnotationDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub params: Vec<crate::ast::AnnotationField>,
 }
@@ -3183,17 +3183,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ModuleDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub definitions: Vec<crate::ast::Item>,
 }
@@ -3284,15 +3284,15 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Field {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub names: Vec<crate::ast::Declarator>,
     pub ty: crate::ast::Type,
@@ -3384,17 +3384,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StructDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::Field>,
     pub parent: Option<crate::ast::Path>,
@@ -4206,17 +4206,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionField {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Case labels that map to this variant.
+    /// Case labels that map to this variant.
     pub labels: Vec<crate::ast::Label>,
     pub field: crate::ast::UnionElement,
 }
@@ -4307,22 +4307,22 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct UnionDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
-    /// /// The discriminator component of the union.
+    /// The discriminator component of the union.
     pub disc: crate::ast::Discriminator,
-    /// /// All variants of the union. The case labels that map to each variant can
-    /// /// be found in `UnionField`.
+    /// All variants of the union. The case labels that map to each variant can
+    /// be found in `UnionField`.
     pub fields: Vec<crate::ast::UnionField>,
 }
 
@@ -4420,15 +4420,15 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ConstDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     pub decl: crate::ast::Declarator,
     pub ty: crate::ast::Type,
@@ -4531,8 +4531,8 @@ const _: () = {
 pub struct Enumerator {
     pub ident: crate::ast::Ident,
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
-    /// /// The `@value` annotation will *not* populate this field.
+    /// An explicit value, e.g. `enum Foo { VALUE = 1 };`
+    /// The `@value` annotation will *not* populate this field.
     pub value: Option<crate::ast::Expr>,
 }
 
@@ -4614,17 +4614,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct EnumDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub fields: Vec<crate::ast::Enumerator>,
 }
@@ -4715,17 +4715,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ExceptDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::Field>,
 }
@@ -4816,19 +4816,19 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct AliasDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// List of all declarators. Always contains at least one declarator.
+    /// List of all declarators. Always contains at least one declarator.
     pub decl: Vec<crate::ast::Declarator>,
-    /// /// The underlying type of the typedef.
+    /// The underlying type of the typedef.
     pub ty: crate::ast::Type,
 }
 
@@ -4918,17 +4918,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bit {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub value: Option<crate::ast::Expr>,
 }
@@ -5019,17 +5019,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitmaskDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub bits: Vec<crate::ast::Bit>,
 }
@@ -5120,17 +5120,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Bitfield {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub size: crate::ast::Expr,
     pub ty: Option<crate::ast::Type>,
@@ -5230,17 +5230,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct BitsetDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub parent: Option<crate::ast::Path>,
     pub fields: Vec<crate::ast::Bitfield>,
@@ -5340,16 +5340,14 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Attribute {
-    /// /// Name of the attribute.
+    /// Name of the attribute.
     pub decl: Vec<crate::ast::Declarator>,
-    /// ///
     pub setraises: Vec<crate::ast::Path>,
-    /// ///
     pub getraises: Vec<crate::ast::Path>,
-    /// /// The type of the attribute.
+    /// The type of the attribute.
     pub ty: crate::ast::Type,
-    /// /// Indicates whether this attribute was marked as `readonly`, and if
-    /// /// so, the span of the keyword.
+    /// Indicates whether this attribute was marked as `readonly`, and if
+    /// so, the span of the keyword.
     pub readonly: Option<crate::ast::Span>,
 }
 
@@ -5448,11 +5446,11 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum ParamKind {
-    /// /// Explicitly marked as `in`
+    /// Explicitly marked as `in`
     In,
-    /// /// Explicitly marked as `out`
+    /// Explicitly marked as `out`
     Out,
-    /// /// Explicitly marked as `inout`
+    /// Explicitly marked as `inout`
     Inout,
 }
 
@@ -5582,11 +5580,11 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Param {
-    /// /// Name of the parameter.
+    /// Name of the parameter.
     pub decl: crate::ast::Declarator,
-    /// /// Type of the parameter.
+    /// Type of the parameter.
     pub ty: crate::ast::Type,
-    /// /// Specifies whether this is an `in`, `out`, or `inout` parameter.
+    /// Specifies whether this is an `in`, `out`, or `inout` parameter.
     pub kind: Option<crate::ast::ParamKind>,
 }
 
@@ -5668,14 +5666,14 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Prototype {
-    /// /// Name of the prototype.
+    /// Name of the prototype.
     pub ident: crate::ast::Ident,
-    /// /// Return type.
+    /// Return type.
     pub ret: crate::ast::Type,
     pub params: Vec<crate::ast::Param>,
     pub raises: Vec<crate::ast::Path>,
-    /// /// Indicates whether this function was prefixed with the `oneway` keyword.
-    /// /// Does not account for the `@oneway` annotation.
+    /// Indicates whether this function was prefixed with the `oneway` keyword.
+    /// Does not account for the `@oneway` annotation.
     pub oneway: Option<crate::ast::Span>,
 }
 
@@ -5773,17 +5771,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InterfaceDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::InterfaceMember>,
     pub inherits: Vec<crate::ast::Path>,
@@ -5975,17 +5973,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValuetypeDef {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub members: Vec<crate::ast::ValueMember>,
     pub prototypes: Vec<crate::ast::Prototype>,
@@ -6266,17 +6264,17 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Decl {
-    /// /// Span of the entire item, from start to end. For example, given the
-    /// /// following IDL:
-    /// ///
-    /// /// ```idl
-    /// /// module foo { ... };
-    /// /// ````
-    /// /// The span of the above module will start at 'm' and end at '}'.
+    /// Span of the entire item, from start to end. For example, given the
+    /// following IDL:
+    ///
+    /// ```idl
+    /// module foo { ... };
+    /// ````
+    /// The span of the above module will start at 'm' and end at '}'.
     pub span: crate::ast::Span,
-    /// /// Annotations that were applied to this item.
+    /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// /// Name of the item.
+    /// Name of the item.
     pub ident: crate::ast::Ident,
     pub kind: crate::ast::DeclKind,
 }
@@ -6368,31 +6366,31 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum ItemKind {
-    /// /// A definition of an annotation
+    /// A definition of an annotation
     Annotation,
-    /// /// Module declaration
+    /// Module declaration
     Module,
-    /// /// Struct definition
+    /// Struct definition
     Struct,
-    /// /// Union definition
+    /// Union definition
     Union,
-    /// /// Enum definition
+    /// Enum definition
     Enum,
-    /// /// Exception definition
+    /// Exception definition
     Exception,
-    /// /// Bitmask definition
+    /// Bitmask definition
     Bitmask,
-    /// /// Bitset definition
+    /// Bitset definition
     Bitset,
-    /// /// Declaration of a `const`
+    /// Declaration of a `const`
     Const,
-    /// /// Typedef definition
+    /// Typedef definition
     Typedef,
-    /// /// Interface definition
+    /// Interface definition
     Interface,
-    /// /// Valuetype definition
+    /// Valuetype definition
     Valuetype,
-    /// /// A forward declaration
+    /// A forward declaration
     Decl,
 }
 
@@ -6622,31 +6620,31 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Item {
-    /// /// A definition of an annotation
+    /// A definition of an annotation
     AnnotationValue(crate::ast::AnnotationDef),
-    /// /// Module declaration
+    /// Module declaration
     ModuleValue(crate::ast::ModuleDef),
-    /// /// Struct definition
+    /// Struct definition
     StructValue(crate::ast::StructDef),
-    /// /// Union definition
+    /// Union definition
     UnionValue(crate::ast::UnionDef),
-    /// /// Enum definition
+    /// Enum definition
     EnumValue(crate::ast::EnumDef),
-    /// /// Exception definition
+    /// Exception definition
     ExceptionValue(crate::ast::ExceptDef),
-    /// /// Bitmask definition
+    /// Bitmask definition
     BitmaskValue(crate::ast::BitmaskDef),
-    /// /// Bitset definition
+    /// Bitset definition
     BitsetValue(crate::ast::BitsetDef),
-    /// /// Declaration of a `const`
+    /// Declaration of a `const`
     ConstValue(crate::ast::ConstDef),
-    /// /// Typedef definition
+    /// Typedef definition
     AliasValue(crate::ast::AliasDef),
-    /// /// Interface definition
+    /// Interface definition
     InterfaceValue(crate::ast::InterfaceDef),
-    /// /// Valuetype definition
+    /// Valuetype definition
     ValuetypeValue(crate::ast::ValuetypeDef),
-    /// /// A forward declaration
+    /// A forward declaration
     DeclValue(crate::ast::Decl),
 }
 
@@ -6901,11 +6899,11 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum InterfaceMemberKind {
-    /// /// An interface attribute.
+    /// An interface attribute.
     Attribute,
-    /// /// Function definition.
+    /// Function definition.
     Prototype,
-    /// /// Type definition nested inside the interface.
+    /// Type definition nested inside the interface.
     Item,
 }
 
@@ -7035,11 +7033,11 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum InterfaceMember {
-    /// /// An interface attribute.
+    /// An interface attribute.
     Attr(crate::ast::Attribute),
-    /// /// Function definition.
+    /// Function definition.
     Proto(crate::ast::Prototype),
-    /// /// Type definition nested inside the interface.
+    /// Type definition nested inside the interface.
     Item(crate::ast::Item),
 }
 

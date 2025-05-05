@@ -28,15 +28,15 @@
 #![allow(dead_code, clippy::cast_possible_truncation)]
 
 use super::TypeFlag;
-use crate::buf::endian::{Big, Endian, Little};
 use crate::buf::Buffer;
+use crate::buf::endian::{Big, Endian, Little};
 use crate::cdr::Error;
 use crate::cdr1::{Encoding, MemberFlag};
 use crate::encode::{
     ArraySerializer, EnumSerializer, MapSerializer, Marshal, MemberInfo, SeqSerializer, Serializer,
     StructSerializer, UnionSerializer,
 };
-use crate::{TypeInfo, DISC_INFO};
+use crate::{DISC_INFO, TypeInfo};
 
 const PID_EXTENDED: u16 = 0x3F01;
 const PID_LIST_END: u16 = 0x3F02;

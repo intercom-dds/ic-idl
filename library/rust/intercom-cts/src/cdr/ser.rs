@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::Error;
-use crate::buf::endian::{Big, Endian, Little};
 use crate::buf::Buffer;
+use crate::buf::endian::{Big, Endian, Little};
 use crate::encode::{
     ArraySerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer, Serializer,
     StructSerializer, UnionSerializer,

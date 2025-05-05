@@ -31,8 +31,8 @@ use std::io::Read;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use super::endian::{Endian, Native};
 use super::Error;
+use super::endian::{Endian, Native};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -291,8 +291,8 @@ impl Read for Cursor<'_> {
 mod tests {
     use std::io::Read;
 
-    use crate::buf::endian::Little;
     use crate::buf::Cursor;
+    use crate::buf::endian::Little;
 
     #[test]
     fn cursor_iter() {

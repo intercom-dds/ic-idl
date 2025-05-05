@@ -41,7 +41,7 @@ pub mod key;
 
 pub use cdr1::{MemberFlag, TypeFlag};
 pub use decode::Unmarshal;
-pub use encode::{Marshal, MemberInfo, TypeInfo, TypeKind, DISC_INFO};
+pub use encode::{DISC_INFO, Marshal, MemberInfo, TypeInfo, TypeKind};
 
 #[cfg(feature = "derive")]
 extern crate intercom_derive;

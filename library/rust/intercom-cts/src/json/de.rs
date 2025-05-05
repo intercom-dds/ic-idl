@@ -36,7 +36,7 @@ use crate::decode::{
     SeqDeserializer, StructDeserializer, Type, UnionDeserializer, Unmarshal,
 };
 use crate::error::Error as _;
-use crate::{MemberInfo, TypeInfo, DISC_INFO};
+use crate::{DISC_INFO, MemberInfo, TypeInfo};
 
 pub struct JsonReader {
     value: Value,

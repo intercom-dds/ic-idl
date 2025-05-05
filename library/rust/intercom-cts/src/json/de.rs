@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -36,6 +36,7 @@ use crate::decode::{
     SeqDeserializer, StructDeserializer, Type, UnionDeserializer, Unmarshal,
 };
 use crate::error::Error as _;
+use crate::{MemberInfo, TypeInfo, DISC_INFO};
 
 pub struct JsonReader {
     value: Value,
@@ -132,9 +133,14 @@ impl Deserializer for &mut JsonReader {
         self.decode_f64().map(|v| v as f32)
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn decode_f64(self) -> Result<f64, Self::Error> {
         match self.value {
-            Value::Number(Number::Float(v)) => Ok(v),
+            Value::Number(num) => Ok(match num {
+                Number::Signed(v) => v as f64,
+                Number::Unsigned(v) => v as f64,
+                Number::Float(v) => v,
+            }),
             _ => Err(Error::custom("expected float")),
         }
     }
@@ -163,11 +169,24 @@ impl Deserializer for &mut JsonReader {
         Ok(value)
     }
 
-    fn decode_struct(self, _name: &str) -> Result<Self::Struct, Self::Error> {
+    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
+    where
+        T: Unmarshal,
+    {
+        let res = if self.value.is_null() {
+            false
+        } else {
+            value.unmarshal_mut(self)?;
+            true
+        };
+        Ok(res)
+    }
+
+    fn decode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         Ok(self)
     }
 
-    fn decode_union(self, _name: &str) -> Result<Self::Union, Self::Error> {
+    fn decode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         Ok(self)
     }
 
@@ -197,9 +216,10 @@ impl Deserializer for &mut JsonReader {
 }
 
 impl StructDeserializer for &mut JsonReader {
+    type Ok = ();
     type Error = Error;
 
-    fn decode_field<T>(&mut self, _: usize, key: &str, value: &mut T) -> Result<(), Self::Error>
+    fn decode_field<T>(&mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
@@ -209,10 +229,14 @@ impl StructDeserializer for &mut JsonReader {
 
         // Replace the value instead of removing the entry to prevent the tree
         // from being balanced.
-        if let Some(val) = obj.get_mut(key).map(mem::take) {
+        if let Some(val) = obj.get_mut(info.name).map(mem::take) {
             let mut reader = JsonReader { value: val };
             value.unmarshal_mut(&mut reader)?;
         }
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
         Ok(())
     }
 }
@@ -226,16 +250,16 @@ impl UnionDeserializer for &mut JsonReader {
         T: Unmarshal,
     {
         if !self.value.is_null() {
-            StructDeserializer::decode_field(self, 0, "$discriminator", value)?;
+            self.decode_field(&DISC_INFO, value)?;
         }
         Ok(())
     }
 
-    fn decode_variant<T>(mut self, id: usize, name: &str, value: &mut T) -> Result<(), Self::Error>
+    fn decode_variant<T>(mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
-        StructDeserializer::decode_field(&mut self, id, name, value)
+        self.decode_field(info, value)
     }
 }
 
@@ -272,6 +296,10 @@ impl<I: Iterator<Item = Value>> SeqDeserializer for Indexed<I> {
             Ok(false)
         }
     }
+
+    fn size_hint(&self) -> Option<usize> {
+        self.0.size_hint().1
+    }
 }
 
 impl<I: Iterator<Item = Value>> ArrayDeserializer for Indexed<I> {
@@ -306,6 +334,10 @@ impl<I: Iterator<Item = (String, Value)>> MapDeserializer for Indexed<I> {
             Ok(false)
         }
     }
+
+    fn size_hint(&self) -> Option<usize> {
+        self.0.size_hint().1
+    }
 }
 
 pub fn from_str<T>(input: &str) -> Result<T, Error>
@@ -332,4 +364,12 @@ where
 {
     let mut reader = JsonReader { value };
     T::unmarshal(&mut reader)
+}
+
+pub fn from_value_mut<T>(value: Value, out: &mut T) -> Result<(), Error>
+where
+    T: Unmarshal,
+{
+    let mut reader = JsonReader { value };
+    out.unmarshal_mut(&mut reader)
 }

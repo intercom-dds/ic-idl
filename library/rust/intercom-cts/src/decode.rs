@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,7 @@ use std::hash::{BuildHasher, Hash};
 use std::mem;
 
 use super::error::Error;
-use crate::{WChar, WString};
+use crate::{MemberInfo, TypeInfo, WChar, WString};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Type {
@@ -458,72 +458,16 @@ pub trait Deserializer {
     where
         T: Unmarshal + Default;
 
+    /// Deserialize an optional value using in-place, stateful unmarshaling.
+    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
+    where
+        T: Unmarshal;
+
     /// Deserialize a struct.
-    ///
-    /// # Example
-    /// ```
-    /// use intercom_cts::Unmarshal;
-    /// use intercom_cts::decode::{Deserializer, StructDeserializer};
-    ///
-    /// struct Value {
-    ///     key: u32,
-    ///     value: String,
-    /// }
-    ///
-    /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
-    ///     where
-    ///         D: Deserializer,
-    ///     {
-    ///         let mut state = archive.decode_struct("Value")?;
-    ///         state.decode_field(0, "key", &mut self.key)?;
-    ///         state.decode_field(1, "value", &mut self.value)?;
-    ///         Ok(())
-    ///     }
-    /// }
-    /// ```
-    fn decode_struct(self, name: &str) -> Result<Self::Struct, Self::Error>;
+    fn decode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error>;
 
     /// Deserialize a complex enum.
-    ///
-    /// # Example
-    /// ```
-    /// use intercom_cts::Unmarshal;
-    /// use intercom_cts::error::Error;
-    /// use intercom_cts::decode::{Deserializer, UnionDeserializer};
-    ///
-    /// enum Value {
-    ///     Int(usize),
-    ///     String(String),
-    /// }
-    ///
-    /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
-    ///     where
-    ///         D: Deserializer,
-    ///     {
-    ///         let mut state = archive.decode_union("Value")?;
-    ///         let mut disc = 0_i32;
-    ///         state.decode_discriminant(&mut disc)?;
-    ///
-    ///         *self = match disc {
-    ///             123 => {
-    ///                 let mut value = 0;
-    ///                 state.decode_variant(1, "Int", &mut value)?;
-    ///                 Self::Int(value)
-    ///             }
-    ///             456 => {
-    ///                 let mut value = String::default();
-    ///                 state.decode_variant(2, "String", &mut value)?;
-    ///                 Self::String(value)
-    ///             },
-    ///             _ => return Err(D::Error::custom("Unknown discriminant")),
-    ///         };
-    ///         Ok(())
-    ///     }
-    /// }
-    /// ```
-    fn decode_union(self, name: &str) -> Result<Self::Union, Self::Error>;
+    fn decode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error>;
 
     fn decode_enum(self, name: &str) -> Result<Self::Enum, Self::Error>;
 
@@ -614,11 +558,14 @@ pub trait Deserializer {
 }
 
 pub trait StructDeserializer {
+    type Ok;
     type Error: Error;
 
-    fn decode_field<T>(&mut self, id: usize, key: &str, value: &mut T) -> Result<(), Self::Error>
+    fn decode_field<T>(&mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal;
+
+    fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
 pub trait UnionDeserializer {
@@ -631,8 +578,7 @@ pub trait UnionDeserializer {
 
     fn decode_variant<T>(
         self,
-        id: usize,
-        name: &str,
+        info: &MemberInfo<'_>,
         value: &mut T,
     ) -> Result<Self::Ok, Self::Error>
     where
@@ -666,9 +612,7 @@ pub trait SeqDeserializer {
     where
         T: Unmarshal;
 
-    fn size_hint(&self) -> Option<usize> {
-        None
-    }
+    fn size_hint(&self) -> Option<usize>;
 }
 
 pub trait ArrayDeserializer {
@@ -687,9 +631,7 @@ pub trait MapDeserializer {
         K: Unmarshal,
         V: Unmarshal;
 
-    fn size_hint(&self) -> Option<usize> {
-        None
-    }
+    fn size_hint(&self) -> Option<usize>;
 }
 
 pub trait Unmarshal {
@@ -937,6 +879,15 @@ where
     T: Unmarshal + Default,
 {
     #[inline]
+    fn unmarshal<D>(archive: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer,
+        Self: Default,
+    {
+        archive.decode_option()
+    }
+
+    #[inline]
     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
     where
         D: Deserializer,
@@ -1084,19 +1035,5 @@ where
             value = T::default();
         }
         Ok(())
-    }
-}
-
-impl<T> Unmarshal for std::ops::Range<T>
-where
-    T: Unmarshal,
-{
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
-    where
-        D: Deserializer,
-    {
-        let mut state = archive.decode_struct("Range<T>")?;
-        state.decode_field(0, "start", &mut self.start)?;
-        state.decode_field(1, "end", &mut self.end)
     }
 }

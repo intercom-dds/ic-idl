@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -29,17 +29,19 @@
 
 mod bitmask;
 mod bound;
+pub mod buf;
 pub mod cdr;
+pub mod cdr1;
 pub mod decode;
 pub mod encode;
 pub mod error;
 pub mod infallible;
 pub mod json;
-pub mod skip;
-pub mod sync;
+pub mod key;
 
+pub use cdr1::{MemberFlag, TypeFlag};
 pub use decode::Unmarshal;
-pub use encode::Marshal;
+pub use encode::{Marshal, MemberInfo, TypeInfo, TypeKind, DISC_INFO};
 
 #[cfg(feature = "derive")]
 extern crate intercom_derive;

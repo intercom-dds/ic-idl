@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,107 +25,119 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Marker types for endianness
+/// Marker for endianness.
+#[derive(Debug)]
 pub enum Big {}
+
+/// Marker for endianness.
+#[derive(Debug)]
 pub enum Little {}
+
+/// Marker for the system's native endianness.
+#[cfg(target_endian = "little")]
+pub type Native = Little;
+
+/// Marker for the system's native endianness.
+#[cfg(target_endian = "big")]
+pub type Native = Big;
 
 macro_rules! read_order {
     ($slice:expr, $type:ty, $order:ident) => {{
         const SIZE: usize = std::mem::size_of::<$type>();
-        if $slice.len() >= SIZE {
-            let mut bytes = [0; SIZE];
-            bytes.copy_from_slice(&$slice[0..SIZE]);
-            Some(<$type>::$order(bytes))
-        } else {
-            None
-        }
+        let mut bytes = [0; SIZE];
+        bytes.copy_from_slice(&$slice[0..SIZE]);
+        <$type>::$order(bytes)
     }};
 }
 
 pub trait Endian: 'static {
     #[inline]
-    fn read_u8(slice: &[u8]) -> Option<u8> {
-        (!slice.is_empty()).then(|| slice[0])
+    #[must_use]
+    fn read_u8(slice: &[u8]) -> u8 {
+        slice[0]
     }
 
-    fn read_u16(slice: &[u8]) -> Option<u16>;
+    #[must_use]
+    fn read_u16(slice: &[u8]) -> u16;
 
-    fn read_u32(slice: &[u8]) -> Option<u32>;
+    #[must_use]
+    fn read_u32(slice: &[u8]) -> u32;
 
-    fn read_u64(slice: &[u8]) -> Option<u64>;
+    #[must_use]
+    fn read_u64(slice: &[u8]) -> u64;
 
     #[inline]
-    fn write_u8(value: u8, buf: &mut Vec<u8>) {
-        buf.push(value);
+    fn write_u8(value: u8, buf: &mut [u8]) {
+        buf[0] = value;
     }
 
-    fn write_u16(value: u16, buf: &mut Vec<u8>);
+    fn write_u16(value: u16, buf: &mut [u8]);
 
-    fn write_u32(value: u32, buf: &mut Vec<u8>);
+    fn write_u32(value: u32, buf: &mut [u8]);
 
-    fn write_u64(value: u64, buf: &mut Vec<u8>);
+    fn write_u64(value: u64, buf: &mut [u8]);
 }
 
 impl Endian for Big {
     #[inline]
-    fn read_u16(slice: &[u8]) -> Option<u16> {
+    fn read_u16(slice: &[u8]) -> u16 {
         read_order!(slice, u16, from_be_bytes)
     }
 
     #[inline]
-    fn read_u32(slice: &[u8]) -> Option<u32> {
+    fn read_u32(slice: &[u8]) -> u32 {
         read_order!(slice, u32, from_be_bytes)
     }
 
     #[inline]
-    fn read_u64(slice: &[u8]) -> Option<u64> {
+    fn read_u64(slice: &[u8]) -> u64 {
         read_order!(slice, u64, from_be_bytes)
     }
 
     #[inline]
-    fn write_u16(value: u16, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&value.to_be_bytes());
+    fn write_u16(value: u16, buf: &mut [u8]) {
+        buf.copy_from_slice(&value.to_be_bytes()[..2]);
     }
 
     #[inline]
-    fn write_u32(value: u32, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&value.to_be_bytes());
+    fn write_u32(value: u32, buf: &mut [u8]) {
+        buf.copy_from_slice(&value.to_be_bytes()[..4]);
     }
 
     #[inline]
-    fn write_u64(value: u64, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&value.to_be_bytes());
+    fn write_u64(value: u64, buf: &mut [u8]) {
+        buf.copy_from_slice(&value.to_be_bytes()[..8]);
     }
 }
 
 impl Endian for Little {
     #[inline]
-    fn read_u16(slice: &[u8]) -> Option<u16> {
+    fn read_u16(slice: &[u8]) -> u16 {
         read_order!(slice, u16, from_le_bytes)
     }
 
     #[inline]
-    fn read_u32(slice: &[u8]) -> Option<u32> {
+    fn read_u32(slice: &[u8]) -> u32 {
         read_order!(slice, u32, from_le_bytes)
     }
 
     #[inline]
-    fn read_u64(slice: &[u8]) -> Option<u64> {
+    fn read_u64(slice: &[u8]) -> u64 {
         read_order!(slice, u64, from_le_bytes)
     }
 
     #[inline]
-    fn write_u16(value: u16, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&value.to_le_bytes());
+    fn write_u16(value: u16, buf: &mut [u8]) {
+        buf[..2].copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
-    fn write_u32(value: u32, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&value.to_le_bytes());
+    fn write_u32(value: u32, buf: &mut [u8]) {
+        buf[..4].copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
-    fn write_u64(value: u64, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&value.to_le_bytes());
+    fn write_u64(value: u64, buf: &mut [u8]) {
+        buf[..8].copy_from_slice(&value.to_le_bytes());
     }
 }

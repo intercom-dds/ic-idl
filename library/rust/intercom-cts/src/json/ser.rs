@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,10 +31,11 @@ use std::ops::{Deref, DerefMut};
 use super::error::Error;
 use super::key::KeySerializer;
 use crate::encode::{
-    ArraySerializer, EnumSerializer, FieldSerializer, MapSerializer, Marshal, SeqSerializer,
-    Serializer, UnionSerializer,
+    ArraySerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer, Serializer,
+    StructSerializer, UnionSerializer,
 };
 use crate::error::Error as _;
+use crate::{MemberInfo, TypeInfo, DISC_INFO};
 
 struct JsonWriter<W: Write> {
     w: W,
@@ -180,11 +181,11 @@ impl<'a, W: Write> Serializer for &'a mut JsonWriter<W> {
         self.encode_string(value)
     }
 
-    fn encode_struct(self, _: &str) -> Result<Self::Struct, Self::Error> {
+    fn encode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         JsonObject::new(self)
     }
 
-    fn encode_union(self, _: &str) -> Result<Self::Union, Self::Error> {
+    fn encode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         JsonObject::new(self)
     }
 
@@ -251,15 +252,30 @@ impl<W: Write> DerefMut for JsonObject<'_, W> {
     }
 }
 
-impl<W: Write> FieldSerializer for JsonObject<'_, W> {
+impl<W: Write> StructSerializer for JsonObject<'_, W> {
     type Ok = ();
     type Error = Error;
 
-    fn encode_field<T>(&mut self, _: usize, key: &str, value: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, info: &MemberInfo<'_>, value: &T) -> Result<(), Self::Error>
     where
         T: Marshal,
     {
-        self.write_pair(key, value)
+        self.write_pair(info.name, value)
+    }
+
+    fn encode_optional<T>(
+        &mut self,
+        info: &MemberInfo<'_>,
+        value: &Option<T>,
+    ) -> Result<(), Self::Error>
+    where
+        T: Marshal,
+    {
+        if let Some(v) = value {
+            self.encode_field(info, v)
+        } else {
+            Ok(())
+        }
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
@@ -276,24 +292,23 @@ impl<W: Write> UnionSerializer for JsonObject<'_, W> {
     where
         D: Marshal,
     {
-        self.write_pair("$discriminator", discriminant)
+        self.write_pair(DISC_INFO.name, discriminant)
     }
 
     fn encode_variant<V>(
         mut self,
-        id: usize,
-        name: &str,
+        info: &MemberInfo<'_>,
         value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal,
     {
-        self.encode_field(id, name, value)?;
-        FieldSerializer::end(self)
+        self.encode_field(info, value)?;
+        StructSerializer::end(self)
     }
 
     fn encode_null(self) -> Result<Self::Ok, Self::Error> {
-        FieldSerializer::end(self)
+        StructSerializer::end(self)
     }
 }
 
@@ -311,7 +326,7 @@ impl<W: Write> MapSerializer for JsonObject<'_, W> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        FieldSerializer::end(self)
+        StructSerializer::end(self)
     }
 }
 
@@ -380,7 +395,7 @@ impl<W: Write> ArraySerializer for JsonArray<'_, W> {
 /// Serialize the given data structore to a sequence of bytes of JSON data.
 pub fn to_bytes<T>(value: &T, pretty: bool) -> Result<Vec<u8>, Error>
 where
-    T: Marshal,
+    T: ?Sized + Marshal,
 {
     let mut buf = Vec::with_capacity(128);
     let mut writer = JsonWriter {
@@ -395,7 +410,7 @@ where
 /// Serialize the given data structore to string of JSON data.
 pub fn to_string<T>(value: &T, pretty: bool) -> Result<String, Error>
 where
-    T: Marshal,
+    T: ?Sized + Marshal,
 {
     let bytes = to_bytes(value, pretty)?;
     String::from_utf8(bytes).map_err(Error::custom)

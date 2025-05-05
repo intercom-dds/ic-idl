@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,50 +25,22 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::cell::Cell;
-use std::ops::Deref;
-use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::sync::OnceLock;
+mod buffer;
+mod cursor;
+pub mod endian;
 
-pub struct Lazy<T, F = fn() -> T> {
-    once: OnceLock<T>,
-    data: Cell<Option<F>>,
+pub use buffer::Buffer;
+pub use cursor::Cursor;
+
+#[derive(Copy, Clone, Debug)]
+pub enum Error {
+    InvalidLen,
 }
 
-impl<T, F> RefUnwindSafe for Lazy<T, F>
-where
-    F: UnwindSafe,
-    OnceLock<T>: RefUnwindSafe + UnwindSafe,
-{
-}
+impl std::error::Error for Error {}
 
-unsafe impl<T: Send + Sync, F: Send> Sync for Lazy<T, F> {}
-
-impl<T, F> Lazy<T, F> {
-    #[inline]
-    pub const fn new(init: F) -> Self {
-        Self {
-            once: OnceLock::new(),
-            data: Cell::new(Some(init)),
-        }
-    }
-}
-
-impl<T, F: FnOnce() -> T> Lazy<T, F> {
-    #[inline]
-    pub fn force(this: &Self) -> &T {
-        this.once.get_or_init(|| match this.data.take() {
-            Some(f) => f(),
-            None => unreachable!(),
-        })
-    }
-}
-
-impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &T {
-        Self::force(self)
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid length")
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@ pub enum Error {
     InvalidUtf8,
     InvalidChar,
     UnsupportedType,
+    UnsupportedEnc,
     InvalidLen,
     Unknown(String),
 }
@@ -46,6 +47,7 @@ impl fmt::Display for Error {
             Self::InvalidUtf8 => write!(f, "Invalid UTF-8 codepoint"),
             Self::InvalidChar => write!(f, "Invalid value for char"),
             Self::UnsupportedType => write!(f, "Unsupported type"),
+            Self::UnsupportedEnc => write!(f, "Unsupported encoding"),
             Self::InvalidLen => write!(f, "Invalid length of container"),
             Self::Unknown(s) => write!(f, "{s}"),
         }

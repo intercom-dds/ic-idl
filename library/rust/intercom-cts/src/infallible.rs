@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -33,10 +33,11 @@ use crate::decode::{
     StructDeserializer, UnionDeserializer,
 };
 use crate::encode::{
-    ArraySerializer, EnumSerializer, FieldSerializer, MapSerializer, SeqSerializer, UnionSerializer,
+    ArraySerializer, EnumSerializer, MapSerializer, SeqSerializer, StructSerializer,
+    UnionSerializer,
 };
 use crate::error::Error;
-use crate::{Marshal, Unmarshal};
+use crate::{Marshal, MemberInfo, Unmarshal};
 
 pub struct Never<Ok, Err> {
     n: Infallible,
@@ -44,11 +45,11 @@ pub struct Never<Ok, Err> {
     _err: PhantomData<fn() -> Err>,
 }
 
-impl<Ok, Err: Error> FieldSerializer for Never<Ok, Err> {
+impl<Ok, Err: Error> StructSerializer for Never<Ok, Err> {
     type Ok = Ok;
     type Error = Err;
 
-    fn encode_field<T>(&mut self, _: usize, _: &str, _: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, _: &MemberInfo<'_>, _: &T) -> Result<(), Self::Error>
     where
         T: Marshal,
     {
@@ -71,7 +72,7 @@ impl<Ok, Err: Error> UnionSerializer for Never<Ok, Err> {
         match self.n {}
     }
 
-    fn encode_variant<V>(self, _: usize, _: &str, _: &V) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<V>(self, _: &MemberInfo<'_>, _: &V) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal,
     {
@@ -145,12 +146,17 @@ impl<Ok, Err: Error> MapSerializer for Never<Ok, Err> {
 }
 
 impl<Ok, Err: Error> StructDeserializer for Never<Ok, Err> {
+    type Ok = Ok;
     type Error = Err;
 
-    fn decode_field<T>(&mut self, _: usize, _: &str, _: &mut T) -> Result<(), Self::Error>
+    fn decode_field<T>(&mut self, _: &MemberInfo<'_>, _: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
+        match self.n {}
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
         match self.n {}
     }
 }
@@ -166,7 +172,7 @@ impl<Ok, Err: Error> UnionDeserializer for Never<Ok, Err> {
         match self.n {}
     }
 
-    fn decode_variant<T>(self, _: usize, _: &str, _: &mut T) -> Result<Self::Ok, Self::Error>
+    fn decode_variant<T>(self, _: &MemberInfo<'_>, _: &mut T) -> Result<Self::Ok, Self::Error>
     where
         T: Unmarshal,
     {
@@ -195,6 +201,10 @@ impl<Ok, Err: Error> MapDeserializer for Never<Ok, Err> {
     {
         match self.n {}
     }
+
+    fn size_hint(&self) -> Option<usize> {
+        match self.n {}
+    }
 }
 
 impl<Ok, Err: Error> SeqDeserializer for Never<Ok, Err> {
@@ -204,6 +214,10 @@ impl<Ok, Err: Error> SeqDeserializer for Never<Ok, Err> {
     where
         T: Unmarshal,
     {
+        match self.n {}
+    }
+
+    fn size_hint(&self) -> Option<usize> {
         match self.n {}
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -32,12 +32,12 @@ use super::error::Error;
 use super::key::KeySerializer;
 use crate::decode::{Deserializer, Type};
 use crate::encode::{
-    ArraySerializer, EnumSerializer, FieldSerializer, MapSerializer, SeqSerializer, Serializer,
+    ArraySerializer, EnumSerializer, MapSerializer, SeqSerializer, Serializer, StructSerializer,
     UnionSerializer,
 };
 use crate::error::Error as _;
 use crate::json::to_string;
-use crate::{Marshal, Unmarshal};
+use crate::{Marshal, MemberInfo, TypeInfo, Unmarshal, DISC_INFO};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum Number {
@@ -207,6 +207,12 @@ where
 {
     fn from(value: Option<T>) -> Self {
         value.map_or_else(|| Self::Null, Into::into)
+    }
+}
+
+impl From<Number> for Value {
+    fn from(value: Number) -> Self {
+        Self::Number(value)
     }
 }
 
@@ -416,12 +422,12 @@ impl Serializer for S {
         self.encode_string(value)
     }
 
-    fn encode_struct(self, _: &str) -> Result<Self::Struct, Self::Error> {
+    fn encode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         Ok(Self(Value::Object(BTreeMap::new())))
     }
 
-    fn encode_union(self, name: &str) -> Result<Self::Union, Self::Error> {
-        self.encode_struct(name)
+    fn encode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
+        self.encode_struct(info)
     }
 
     fn encode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
@@ -441,16 +447,16 @@ impl Serializer for S {
     }
 }
 
-impl FieldSerializer for S {
+impl StructSerializer for S {
     type Ok = Value;
     type Error = Error;
 
-    fn encode_field<T>(&mut self, _: usize, name: &str, value: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, info: &MemberInfo<'_>, value: &T) -> Result<(), Self::Error>
     where
         T: Marshal,
     {
         if let Value::Object(v) = &mut self.0 {
-            v.insert(name.to_string(), to_value(value)?);
+            v.insert(info.name.to_string(), to_value(value)?);
         }
         Ok(())
     }
@@ -468,19 +474,18 @@ impl UnionSerializer for S {
     where
         D: Marshal,
     {
-        FieldSerializer::encode_field(self, 0, "$discriminator", discriminant)
+        self.encode_field(&DISC_INFO, discriminant)
     }
 
     fn encode_variant<V>(
         mut self,
-        id: usize,
-        name: &str,
+        info: &MemberInfo<'_>,
         value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal,
     {
-        self.encode_field(id, name, value)?;
+        self.encode_field(info, value)?;
         Ok(self.0)
     }
 
@@ -507,7 +512,7 @@ impl MapSerializer for S {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        FieldSerializer::end(self)
+        StructSerializer::end(self)
     }
 }
 
@@ -561,7 +566,7 @@ impl ArraySerializer for S {
 /// Serialize the given data structore into a `Value` instance.
 pub fn to_value<T>(value: &T) -> Result<Value, Error>
 where
-    T: Marshal,
+    T: ?Sized + Marshal,
 {
     value.marshal(S(Value::Null))
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,7 @@ use crate::decode::Deserializer;
 use crate::encode::{EnumSerializer, Serializer};
 use crate::error::Error as Err;
 use crate::infallible::Never;
-use crate::{Marshal, Unmarshal};
+use crate::{Marshal, TypeInfo, Unmarshal};
 
 pub struct KeySerializer;
 
@@ -120,11 +120,11 @@ impl Serializer for KeySerializer {
         invalid()
     }
 
-    fn encode_struct(self, _: &str) -> Result<Self::Struct, Self::Error> {
+    fn encode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         invalid()
     }
 
-    fn encode_union(self, _: &str) -> Result<Self::Union, Self::Error> {
+    fn encode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         invalid()
     }
 
@@ -232,11 +232,18 @@ impl<D: Deserializer> Deserializer for KeyDeserializer<D> {
         invalid()
     }
 
-    fn decode_struct(self, _: &str) -> Result<Self::Struct, Self::Error> {
+    fn decode_option_mut<T>(self, _: &mut T) -> Result<bool, Self::Error>
+    where
+        T: Unmarshal,
+    {
         invalid()
     }
 
-    fn decode_union(self, _: &str) -> Result<Self::Union, Self::Error> {
+    fn decode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+        invalid()
+    }
+
+    fn decode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         invalid()
     }
 

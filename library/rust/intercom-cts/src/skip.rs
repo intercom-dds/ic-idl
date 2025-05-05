@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,8 @@ use std::marker::PhantomData;
 
 use crate::Marshal;
 use crate::encode::{
-    ArraySerializer, EnumSerializer, FieldSerializer, MapSerializer, SeqSerializer, UnionSerializer,
+    ArraySerializer, EnumSerializer, MapSerializer, SeqSerializer, StructSerializer,
+    UnionSerializer,
 };
 use crate::error::Error;
 
@@ -54,7 +55,7 @@ impl<Ok, Err> Skip<Ok, Err> {
     }
 }
 
-impl<Ok, Err: Error> FieldSerializer for Skip<Ok, Err> {
+impl<Ok, Err: Error> StructSerializer for Skip<Ok, Err> {
     type Ok = Ok;
     type Error = Err;
 

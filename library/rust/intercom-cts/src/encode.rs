@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::BuildHasher;
 
 use super::error::Error;
-use crate::{WChar, WString};
+use crate::cdr1::MemberFlag;
+use crate::{TypeFlag, WChar, WString};
 
 pub trait Serializer: Sized {
     /// The type returned by the serializer once serialization has finished.
@@ -41,7 +42,7 @@ pub trait Serializer: Sized {
     type Error: Error;
 
     /// Serializer used to serialize `struct`s.
-    type Struct: FieldSerializer<Ok = Self::Ok, Error = Self::Error>;
+    type Struct: StructSerializer<Ok = Self::Ok, Error = Self::Error>;
 
     /// Serializer used to serialize complex `enum`s.
     type Union: UnionSerializer<Ok = Self::Ok, Error = Self::Error>;
@@ -76,11 +77,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_bool(self, value: bool) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'bool's",
-        ))
-    }
+    fn encode_bool(self, value: bool) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a character.
     ///
@@ -100,11 +97,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_char(self, value: char) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'char's",
-        ))
-    }
+    fn encode_char(self, value: char) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a wide character. The passed value is represented as a
     /// typical UTF-8 `char`, but the intended target representation is a
@@ -126,11 +119,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_wchar(self, value: char) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'wchar's",
-        ))
-    }
+    fn encode_wchar(self, value: char) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a signed 8-bit integer.
     ///
@@ -150,11 +139,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_i8(self, value: i8) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'i8's",
-        ))
-    }
+    fn encode_i8(self, value: i8) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize an unsigned 8-bit integer.
     ///
@@ -174,11 +159,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_u8(self, value: u8) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'u8's",
-        ))
-    }
+    fn encode_u8(self, value: u8) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a signed 16-bit integer.
     ///
@@ -198,11 +179,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_i16(self, value: i16) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'i16's",
-        ))
-    }
+    fn encode_i16(self, value: i16) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize an unsigned 16-bit integer.
     ///
@@ -222,11 +199,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_u16(self, value: u16) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'u16's",
-        ))
-    }
+    fn encode_u16(self, value: u16) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a signed 32-bit integer.
     ///
@@ -246,11 +219,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_i32(self, value: i32) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'i32's",
-        ))
-    }
+    fn encode_i32(self, value: i32) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize an unsigned 32-bit integer.
     ///
@@ -270,11 +239,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_u32(self, value: u32) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'u32's",
-        ))
-    }
+    fn encode_u32(self, value: u32) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a signed 64-bit integer.
     ///
@@ -294,11 +259,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_i64(self, value: i64) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'i64's",
-        ))
-    }
+    fn encode_i64(self, value: i64) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize an unsigned 64-bit integer.
     ///
@@ -318,11 +279,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_u64(self, value: u64) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'u64's",
-        ))
-    }
+    fn encode_u64(self, value: u64) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a 32-bit floating point.
     ///
@@ -342,11 +299,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_f32(self, value: f32) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'f32's",
-        ))
-    }
+    fn encode_f32(self, value: f32) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a 64-bit floating point value.
     ///
@@ -366,11 +319,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_f64(self, value: f64) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'f64's",
-        ))
-    }
+    fn encode_f64(self, value: f64) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a `str` value.
     ///
@@ -390,11 +339,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_string(self, value: &str) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'string's",
-        ))
-    }
+    fn encode_string(self, value: &str) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize a wide-character `str` value. Similar to [`encode_wchar`],
     /// the passed string is represented as a typical UTF-8 [`str`], but the
@@ -417,11 +362,7 @@ pub trait Serializer: Sized {
     /// ```
     ///
     /// [`str`]: std::str::str
-    fn encode_wstring(self, value: &str) -> Result<Self::Ok, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not support serializing 'wstring's",
-        ))
-    }
+    fn encode_wstring(self, value: &str) -> Result<Self::Ok, Self::Error>;
 
     /// Serialize an `Option` value.
     ///
@@ -442,79 +383,13 @@ pub trait Serializer: Sized {
     /// ```
     fn encode_option<T>(self, value: &Option<T>) -> Result<Self::Ok, Self::Error>
     where
-        T: Marshal,
-    {
-        Err(Self::Error::custom(
-            "Serializer does not supported serializing `Option`s",
-        ))
-    }
+        T: Marshal;
 
     /// Serialize a struct.
-    ///
-    /// # Example
-    /// ```
-    /// use intercom_cts::Marshal;
-    /// use intercom_cts::encode::{FieldSerializer, Serializer};
-    ///
-    /// struct Value {
-    ///     key: u32,
-    ///     value: String,
-    /// }
-    ///
-    /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    ///     where
-    ///         S: Serializer,
-    ///     {
-    ///         let mut state = archive.encode_struct("Value")?;
-    ///         state.encode_field(0, "key", &self.key)?;
-    ///         state.encode_field(1, "value", &self.value)?;
-    ///         state.end()
-    ///     }
-    /// }
-    /// ```
-    fn encode_struct(self, name: &str) -> Result<Self::Struct, Self::Error> {
-        Err(Self::Error::custom(
-            "Serializer does not supported serializing `struct`s",
-        ))
-    }
+    fn encode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error>;
 
     /// Serialize a complex enum.
-    ///
-    /// # Example
-    /// ```
-    /// use intercom_cts::Marshal;
-    /// use intercom_cts::encode::{Serializer, UnionSerializer};
-    ///
-    /// enum Value {
-    ///     Int(usize),
-    ///     String(String),
-    /// }
-    ///
-    /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    ///     where
-    ///         S: Serializer,
-    ///     {
-    ///         let mut state = archive.encode_union("Value")?;
-    ///         match self {
-    ///             Self::Int(ref v) => {
-    ///                 state.encode_discriminant(&123)?;
-    ///                 state.encode_variant(1, "Int", v)
-    ///             }
-    ///             Self::String(ref v) => {
-    ///                 state.encode_discriminant(&456)?;
-    ///                 state.encode_variant(2, "String", v)
-    ///             }
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    fn encode_union(self, name: &str) -> Result<Self::Union, Self::Error> {
-        Err(Self::Error::custom(
-            "Serializer does not supported serializing complex `enums`s",
-        ))
-    }
+    fn encode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error>;
 
     /// Serialize a plain, C-like enum.
     ///
@@ -543,11 +418,7 @@ pub trait Serializer: Sized {
     ///     }
     /// }
     /// ```
-    fn encode_enum(self, name: &str) -> Result<Self::Enum, Self::Error> {
-        Err(Self::Error::custom(
-            "Serializer does not supported serializing plain `enums`s",
-        ))
-    }
+    fn encode_enum(self, name: &str) -> Result<Self::Enum, Self::Error>;
 
     /// Serialize a sequence,
     ///
@@ -575,11 +446,7 @@ pub trait Serializer: Sized {
     ///         state.end()
     ///     }
     /// }
-    fn encode_sequence(self, len: usize) -> Result<Self::Sequence, Self::Error> {
-        Err(Self::Error::custom(
-            "Serializer does not supported serializing sequences",
-        ))
-    }
+    fn encode_sequence(self, len: usize) -> Result<Self::Sequence, Self::Error>;
 
     /// Serialize a fixed-size array.
     ///
@@ -607,11 +474,7 @@ pub trait Serializer: Sized {
     ///         state.end()
     ///     }
     /// }
-    fn encode_array(self, len: usize) -> Result<Self::Array, Self::Error> {
-        Err(Self::Error::custom(
-            "Serializer does not supported serializing arrays",
-        ))
-    }
+    fn encode_array(self, len: usize) -> Result<Self::Array, Self::Error>;
 
     /// Serialize a map as key-value pairs.
     ///
@@ -640,20 +503,79 @@ pub trait Serializer: Sized {
     ///         state.end()
     ///     }
     /// }
-    fn encode_map(self, len: usize) -> Result<Self::Map, Self::Error> {
-        Err(Self::Error::custom(
-            "Unsupported type: serializer does not supported serializing maps",
-        ))
-    }
+    fn encode_map(self, len: usize) -> Result<Self::Map, Self::Error>;
 }
 
-pub trait FieldSerializer {
+#[derive(Debug)]
+pub struct MemberInfo<'a> {
+    pub name: &'a str,
+    pub member_id: u32,
+    pub flags: MemberFlag,
+}
+
+#[derive(Debug)]
+pub struct TypeInfo<'a> {
+    pub name: &'a str,
+    pub flags: TypeFlag,
+    pub kind: TypeKind,
+    pub key_kind: TypeKind,
+    pub element_kind: TypeKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TypeKind {
+    None,
+    Bool,
+    I8,
+    U8,
+    I16,
+    U16,
+    I32,
+    U32,
+    I64,
+    U64,
+    F32,
+    F64,
+    Char8,
+    Char16,
+    Alias,
+    Struct,
+    Union,
+    Bitmask,
+    Enum,
+    String8,
+    String16,
+    Annotation,
+    Array,
+    Map,
+    Sequence,
+}
+
+#[doc(hidden)]
+pub const DISC_INFO: MemberInfo<'static> = MemberInfo {
+    name: "$discriminator",
+    member_id: 0,
+    flags: MemberFlag::IS_MUST_UNDERSTAND,
+};
+
+pub trait StructSerializer {
     type Ok;
     type Error: Error;
 
-    fn encode_field<T>(&mut self, id: usize, key: &str, value: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, info: &MemberInfo<'_>, value: &T) -> Result<(), Self::Error>
     where
         T: Marshal;
+
+    fn encode_optional<T>(
+        &mut self,
+        info: &MemberInfo<'_>,
+        value: &Option<T>,
+    ) -> Result<(), Self::Error>
+    where
+        T: Marshal,
+    {
+        self.encode_field(info, value)
+    }
 
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
@@ -666,7 +588,7 @@ pub trait UnionSerializer {
     where
         D: Marshal;
 
-    fn encode_variant<V>(self, id: usize, name: &str, value: &V) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<V>(self, info: &MemberInfo<'_>, value: &V) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal;
 
@@ -951,19 +873,6 @@ where
     }
 }
 
-impl<T> Marshal for &mut T
-where
-    T: ?Sized + Marshal,
-{
-    #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        (**self).marshal(archive)
-    }
-}
-
 impl<T> Marshal for Vec<T>
 where
     T: Marshal,
@@ -1079,21 +988,6 @@ where
         for (key, value) in self {
             state.encode_pair(key, value)?;
         }
-        state.end()
-    }
-}
-
-impl<T> Marshal for std::ops::Range<T>
-where
-    T: Marshal,
-{
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = archive.encode_struct("Range<T>")?;
-        state.encode_field(0, "start", &self.start)?;
-        state.encode_field(1, "end", &self.end)?;
         state.end()
     }
 }

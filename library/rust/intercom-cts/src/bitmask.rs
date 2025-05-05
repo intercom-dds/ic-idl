@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -71,7 +71,7 @@ macro_rules! bitmask {
         $(#[$meta:meta])*
         $vis:vis $name:ident: $type:ty {
             $(
-                $(#[$bit_meta:meta])*
+                $(#[$const_meta:meta])*
                 $const_name:ident = $value:expr
             ),* $(,)?
         }
@@ -82,62 +82,58 @@ macro_rules! bitmask {
 
         impl $name {
             $(
-                $(#[$bit_meta])*
+                $(#[$const_meta])*
                 $vis const $const_name: Self = Self($value);
             )*
 
-            /// Constructs a bitmask where all bits are zeroed out.
             #[inline]
+            #[must_use]
             pub const fn nil() -> Self {
                 Self(0)
             }
 
-            /// Constructs a bitmask where all bit are set.
             #[inline]
+            #[must_use]
             pub const fn all() -> Self {
                 Self(0 $(| $value)*)
             }
 
-            /// Returns the underlying bits.
             #[inline]
+            #[must_use]
             pub const fn bits(&self) -> $type {
                 self.0
             }
 
             #[inline]
+            #[must_use]
             pub const fn is_empty(&self) -> bool {
                 self.0 == 0
             }
 
-            /// Checks if all bits are set.
             #[inline]
+            #[must_use]
             pub const fn is_all(&self) -> bool {
                 self.0 == Self::all().0
             }
 
-            /// Checks if all bits of the given bitmask are set.
             #[inline]
+            #[must_use]
             pub const fn all_of(&self, rhs: Self) -> bool {
                 (self.0 & rhs.0) == rhs.0
             }
 
-            /// Checks if the there is an overlap between the two bitmasks.
             #[inline]
+            #[must_use]
             pub const fn contains(&self, rhs: Self) -> bool {
                 (self.0 & rhs.0) != 0
             }
 
-            /// Sets the specified bits in the bitmask.
-            pub fn set(&mut self, rhs: Self) {
-                self.0 |= rhs.0
+            #[inline]
+            #[must_use]
+            pub const fn union(&self, rhs: Self) -> Self {
+                Self(self.0 | rhs.0)
             }
 
-            /// Clears the specified bits in the bitmask.
-            pub fn unset(&mut self, rhs: Self) {
-                self.0 &= !rhs.0;
-            }
-
-            /// Clears the bitmask.
             #[inline]
             pub fn clear(&mut self) {
                 self.0 = 0

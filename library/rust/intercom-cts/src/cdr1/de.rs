@@ -27,25 +27,52 @@
 
 use std::marker::PhantomData;
 
-use super::Error;
 use crate::buf::endian::{Big, Endian, Little};
 use crate::buf::Cursor;
+use crate::cdr::Error;
+use crate::cdr1::{Encoding, MemberFlag};
 use crate::decode::{
     ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
     SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
 };
-use crate::{MemberInfo, TypeInfo};
+use crate::{MemberInfo, TypeFlag, TypeInfo, DISC_INFO};
 
-pub struct CdrReader<'de, E: Endian> {
+const PID_EXTENDED: u16 = 0x3F01;
+const PID_LIST_END: u32 = 0x3F02;
+const PID_PID_MASK: u16 = 0x3FFF;
+const _FLAG_MUST_UNDERSTAND: u16 = 0x4000;
+const _FLAG_IMPL_EXTENSION: u16 = 0x8000;
+const MEMBER_ID_MASK: u32 = 0x0FFF_FFFF;
+
+struct CdrReader<'de, E: Endian> {
     buf: Cursor<'de>,
+    enc: Encoding,
+    align_base: usize,
+    type_offset: usize,
     _endian: PhantomData<E>,
 }
 
 impl<'a, E: Endian> CdrReader<'a, E> {
-    pub const fn new(input: &'a [u8]) -> Self {
+    const fn new(input: &'a [u8]) -> Self {
         Self {
             buf: Cursor::new(input),
+            enc: Encoding::Plain,
+            align_base: 0,
+            type_offset: 0,
             _endian: PhantomData::<E>,
+        }
+    }
+
+    fn align(&mut self, align: usize) {
+        let dt = (align - ((self.buf.pos() - self.align_base) & (align - 1))) & (align - 1);
+
+        // SAFETY: bounds checked
+        unsafe {
+            if dt >= self.buf.unread_bytes() {
+                self.buf.set_pos(self.buf.total_len());
+            } else {
+                self.buf.advance(dt);
+            }
         }
     }
 
@@ -54,7 +81,7 @@ impl<'a, E: Endian> CdrReader<'a, E> {
     where
         F: Fn(&[u8]) -> T,
     {
-        self.buf.align_to::<T>();
+        self.align(size_of::<T>());
         if self.buf.unread_bytes() >= size_of::<T>() {
             let val = f(self.buf.as_ref());
             // SAFETY: bounds checked
@@ -63,8 +90,97 @@ impl<'a, E: Endian> CdrReader<'a, E> {
             }
             Ok(val)
         } else {
-            Err(Error::InvalidLen)
+            Err(Error::Eof)
         }
+    }
+
+    #[inline]
+    fn is_mutable(&self) -> bool {
+        self.encoding() == Encoding::PL
+    }
+
+    #[inline]
+    const fn encoding(&self) -> Encoding {
+        self.enc
+    }
+
+    #[inline]
+    fn set_encoding(&mut self, flags: TypeFlag) {
+        // Update encoding to match the new type
+        let enc = if flags.contains(TypeFlag::IS_FINAL) {
+            Encoding::Plain
+        } else if flags.contains(TypeFlag::IS_MUTABLE) {
+            Encoding::PL
+        } else {
+            Encoding::Delimited
+        };
+
+        self.enc = enc;
+        self.type_offset = self.buf.pos();
+    }
+
+    #[inline]
+    fn decode_subtype<T: Unmarshal>(
+        &mut self,
+        align_base: usize,
+        value: &mut T,
+    ) -> Result<(), Error> {
+        let mut reader = CdrReader {
+            buf: self.buf.clone(),
+            enc: Encoding::Plain,
+            align_base,
+            type_offset: self.buf.pos(),
+            _endian: PhantomData::<E>,
+        };
+        value.unmarshal_mut(&mut reader)?;
+        self.buf = reader.buf;
+        Ok(())
+    }
+
+    fn decode_mutable_header(&mut self) -> Result<(u32, usize), Error> {
+        self.align(4);
+        let pid = self.decode_u16()? & PID_PID_MASK;
+        let res = if pid == PID_EXTENDED {
+            let shift = usize::from(self.decode_u16()?);
+            if shift > 2 * size_of::<u32>() && self.buf.unread_bytes() > shift {
+                // SAFETY: bounds checked
+                unsafe {
+                    self.buf.advance(shift - 2 * size_of::<u32>());
+                }
+            }
+
+            // Long PL
+            let member_id = self.decode_u32()? & MEMBER_ID_MASK;
+            let len = self.decode_u32()? as usize;
+            (member_id, len)
+        } else {
+            let member_id = u32::from(pid);
+            let len = self.decode_u16()?;
+            (member_id, usize::from(len))
+        };
+        Ok(res)
+    }
+
+    #[inline]
+    fn end_type(&mut self) -> Result<(), Error> {
+        if self.is_mutable() {
+            loop {
+                let (sentinel, len) = self.decode_mutable_header()?;
+                if sentinel == PID_LIST_END {
+                    break;
+                }
+
+                if self.buf.unread_bytes() >= len {
+                    // SAFETY: bounds checked
+                    unsafe {
+                        self.buf.advance(len);
+                    }
+                } else {
+                    return Err(Error::Eof);
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -191,36 +307,18 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
     where
         T: Unmarshal + Default,
     {
-        let value = if self.decode_bool()? {
-            Some(T::unmarshal(&mut *self)?)
-        } else {
-            None
-        };
-        Ok(value)
+        Ok(Some(T::unmarshal(&mut *self)?))
     }
 
     #[inline]
-    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        let res = if self.decode_bool()? {
-            value.unmarshal_mut(&mut *self)?;
-            true
-        } else {
-            false
-        };
-        Ok(res)
-    }
-
-    #[inline]
-    fn decode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+    fn decode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+        self.set_encoding(info.flags);
         Ok(self)
     }
 
     #[inline]
-    fn decode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
-        Ok(self)
+    fn decode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
+        self.decode_struct(info)
     }
 
     #[inline]
@@ -243,6 +341,20 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
         self.decode_sequence()
     }
+
+    #[inline]
+    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
+    where
+        T: Unmarshal,
+    {
+        let res = if self.decode_bool()? {
+            value.unmarshal_mut(&mut *self)?;
+            true
+        } else {
+            false
+        };
+        Ok(res)
+    }
 }
 
 impl<E: Endian> StructDeserializer for &mut CdrReader<'_, E> {
@@ -250,17 +362,72 @@ impl<E: Endian> StructDeserializer for &mut CdrReader<'_, E> {
     type Error = <Self as Deserializer>::Error;
 
     #[inline]
-    fn decode_field<T>(&mut self, _: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
+    fn decode_field<T>(&mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
-        value.unmarshal_mut(&mut **self)?;
+        if self.is_mutable() || info.flags.contains(MemberFlag::IS_OPTIONAL) {
+            let start = self.buf.pos();
+
+            // Mutable fields may not appear in order, and although optional
+            // fields are treated as mutable, they must appear in-order for
+            // final and appendable types.
+            if self.is_mutable() {
+                // SAFETY: `type_offset` is the index that was recorded when
+                // the type started, so it is guaranteed to be within bounds.
+                unsafe {
+                    self.buf.set_pos(self.type_offset);
+                }
+            }
+
+            while self.buf.unread_bytes() > 0 {
+                self.align(4);
+                let (member_id, len) = self.decode_mutable_header()?;
+                let end = self.buf.pos() + len;
+
+                if member_id == info.member_id {
+                    if len > 0 {
+                        self.decode_subtype(self.buf.pos(), value)?;
+                    }
+
+                    // Skip to the end of the type. There may be additional
+                    // fields we don't know about and shouldn't waste time
+                    // parsing.
+                    if self.buf.total_len() >= end {
+                        unsafe { self.buf.set_pos(end) };
+                    } else {
+                        return Err(Error::Eof);
+                    }
+                    return Ok(());
+                } else if member_id == PID_LIST_END {
+                    break;
+                }
+
+                // Wrong member, skip to the next
+                if self.buf.total_len() >= end {
+                    unsafe { self.buf.set_pos(end) };
+                } else {
+                    return Err(Error::Eof);
+                }
+            }
+
+            // Member was not found, move cursor back to its original position.
+            //
+            // SAFETY: `start` was the initial position of the cursor, so it is
+            // guaranteed to be within bounds.
+            unsafe {
+                self.buf.set_pos(start);
+            }
+        } else if !self.buf.is_empty() {
+            self.decode_subtype(self.align_base, value)?;
+        }
+
         Ok(())
     }
 
     #[inline]
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(())
+        self.end_type()
     }
 }
 
@@ -273,15 +440,20 @@ impl<E: Endian> UnionDeserializer for &mut CdrReader<'_, E> {
     where
         T: Unmarshal,
     {
-        value.unmarshal_mut(&mut **self)
+        self.decode_field(&DISC_INFO, value)
     }
 
     #[inline]
-    fn decode_variant<T>(self, _: &MemberInfo<'_>, value: &mut T) -> Result<Self::Ok, Self::Error>
+    fn decode_variant<T>(
+        mut self,
+        info: &MemberInfo<'_>,
+        value: &mut T,
+    ) -> Result<Self::Ok, Self::Error>
     where
         T: Unmarshal,
     {
-        value.unmarshal_mut(&mut *self)?;
+        self.decode_field(info, value)?;
+        self.end_type()?;
         Ok(self)
     }
 }

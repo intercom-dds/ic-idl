@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -32,12 +32,12 @@ mod parse;
 mod ser;
 mod value;
 
-pub use de::{from_str, from_string_mut, from_value};
+pub use de::{from_str, from_string_mut, from_value, from_value_mut};
 pub use error::Error;
 pub use ser::{to_bytes, to_string};
 #[doc(inline)]
 pub use value::value;
-pub use value::{Number, Value, to_value};
+pub use value::{to_value, Number, Value};
 
 /// Alias for a `Result` with the error type [`json::Error`].
 ///

@@ -118,6 +118,10 @@ class Twine {
         return *this;
     }
 
+    [[nodiscard]] bool empty() const {
+        return m_curr.empty();
+    }
+
     [[nodiscard]] std::string str() const {
         return m_curr.str();
     }
@@ -568,6 +572,26 @@ static std::vector<const ptree*> struct_members(const ptree* node) {
     return members;
 }
 
+static std::vector<std::pair<uint32_t, const ptree*>> ordered_members(const ptree* node) {
+    std::vector<std::pair<uint32_t, const ptree*>> members;
+
+    int last_id = node->kind == N_UNION ? 0 : -1;
+    std::function<void(const ptree*)> rec = [&](const ptree* obj) {
+        for (auto parent : obj->parents) {
+            rec(base_type_of(parent));
+        }
+        for (auto mem : obj->members) {
+            if (!is_non_serialized(mem)) {
+                last_id = get_member_id(mem, obj, last_id);
+                members.emplace_back(last_id, mem);
+            }
+        }
+    };
+
+    rec(base_type_of(node));
+    return members;
+}
+
 static size_t member_count(const ptree* node) {
     size_t i = 0;
     for (auto parent : node->parents) {
@@ -863,6 +887,9 @@ static void emit_module_def(Twine& out, const ptree* node) {
 }
 
 static void emit_struct_def(Twine& out, const ptree* node) {
+    if (node->name == "PlainSequenceSElemDefn") {
+        std::cout << std::endl;
+    }
     emit_derives(out, node);
     out("pub struct ", node, " {");
 
@@ -1187,9 +1214,9 @@ static void emit_const_def(Twine& out, const ptree* node) {
         }
         out(" = ", value(node, node));
     } else {
-        out(cts_prefix, "::sync::Lazy<", rust_type(node->type, node), "> =");
+        out("::std::sync::LazyLock<", rust_type(node->type, node), "> =");
         out(begin(""), "\n");
-        out(cts_prefix, "::sync::Lazy::new(|| ", value(node, node), ")");
+        out("::std::sync::LazyLock::new(|| ", value(node, node), ")");
         out(end(""));
     }
     out(";\n");
@@ -1222,62 +1249,242 @@ static void emit_builder(Twine& out, const ptree* node) {
     out("}\n\n");
 }
 
-static void emit_marshal(Twine& out, const ptree* node) {
-    if (is_non_serialized(node)) {
-        return;
+static std::string type_flags(const ptree* node) {
+    Twine out;
+
+    auto add_flag = [&](auto flag) {
+        if (!out.empty()) {
+            out(".union(");
+            out(cts_prefix, "::TypeFlag::", flag);
+            out(")");
+        } else {
+            out(cts_prefix, "::TypeFlag::", flag);
+        }
+    };
+
+    int kind = get_extensibility(node);
+    switch (kind) {
+    case FINAL_EXTENSIBILITY:
+        add_flag("IS_FINAL");
+        break;
+    case MUTABLE_EXTENSIBILITY:
+        add_flag("IS_MUTABLE");
+        break;
+    case EXTENSIBLE_EXTENSIBILITY:
+    default:
+        add_flag("IS_APPENDABLE");
+        break;
     }
 
+    if (is_nested(node)) {
+        add_flag("IS_NESTED");
+    }
+
+    if (is_autoid_hash(node)) {
+        add_flag("IS_AUTOID_HASH");
+    }
+
+    bool has_key = std::any_of(begin(node->members), end(node->members), [](auto p) {
+        return is_key_member(p);
+    });
+    if (has_key) {
+        add_flag("IS_KEYED");
+    }
+
+    return out.str();
+}
+
+static std::string member_flags(const ptree* node) {
+    Twine out;
+
+    auto add_flag = [&](auto flag) {
+        if (!out.empty()) {
+            out(".union(");
+            out(cts_prefix, "::MemberFlag::", flag);
+            out(")");
+        } else {
+            out(cts_prefix, "::MemberFlag::", flag);
+        }
+    };
+
+    if (is_key_member(node)) {
+        add_flag("IS_KEY");
+    }
+
+    if (is_optional(node)) {
+        add_flag("IS_OPTIONAL");
+    }
+
+    if (is_shared(node)) {
+        add_flag("IS_EXTERNAL");
+    }
+
+    if (is_must_understand(node)) {
+        add_flag("IS_MUST_UNDERSTAND");
+    }
+
+    if (out.empty()) {
+        add_flag("nil()");
+    }
+    return out.str();
+}
+
+const char* type_kind(const ptree* obj) {
+    if (!obj) {
+        return "None";
+    }
+
+    switch (obj->kind) {
+    case N_PRIMITIVE:
+        if (obj == &boolean_type) {
+            return "Bool";
+        }
+        if (obj == &octet_type) {
+            return "U8";
+        }
+        if (obj == &int8_type) {
+            return "I8";
+        }
+        if (obj == &short_type) {
+            return "I16";
+        }
+        if (obj == &ushort_type) {
+            return "U16";
+        }
+        if (obj == &long_type) {
+            return "I32";
+        }
+        if (obj == &ulong_type) {
+            return "U32";
+        }
+        if (obj == &longlong_type) {
+            return "I64";
+        }
+        if (obj == &ulonglong_type) {
+            return "U64";
+        }
+        if (obj == &float_type) {
+            return "F32";
+        }
+        if (obj == &double_type) {
+            return "F64";
+        }
+        if (obj == &char_type) {
+            return "Char8";
+        }
+        if (obj == &wchar_type) {
+            return "Char16";
+        }
+        return "None";
+    case N_ALIAS:
+        if (obj->type->kind == N_MAP || obj->type->kind == N_ARRAY ||
+            obj->type->kind == N_SEQUENCE || obj->type->kind == N_STRING) {
+            return type_kind(obj->type);
+        }
+        return "Alias";
+    case N_STRUCT:
+    case N_VALUETYPE:
+    case N_EXCEPTION:
+        return "Struct";
+    case N_UNION:
+        return "Union";
+    case N_BITMASK:
+        return "Bitmask";
+    case N_ENUM:
+        return "Enum";
+    case N_STRING:
+        return is_wstring(obj) ? "String16" : "String8";
+    case N_ANNOTATION:
+        return "Annotation";
+    case N_ARRAY:
+        return "Array";
+    case N_MAP:
+        return "Map";
+    case N_SEQUENCE:
+        return "Sequence";
+    default:
+        return "None";
+    }
+}
+
+static void emit_type_info(Twine& out, const ptree* node) {
+    auto qualified_name = idl_scoped_name(original_node(node), nullptr);
+    out("const TYPE_INFO: ", cts_prefix, "::TypeInfo<'static> = ", cts_prefix, "::TypeInfo {\n");
+    out("name: ", quote(qualified_name), ",\n");
+    out("flags: ", type_flags(node), ",\n");
+    out("kind: ", cts_prefix, "::TypeKind::", type_kind(node), ",\n");
+    out("key_kind: ", cts_prefix, "::TypeKind::", type_kind(node->key_type), ",\n");
+    out("element_kind: ", cts_prefix, "::TypeKind::", type_kind(node->element_type), ",\n");
+    out("};\n\n");
+}
+
+static void
+emit_member_info(Twine& out, const std::vector<std::pair<uint32_t, const ptree*>>& members) {
+    out("const MEMBER_INFO: &[", cts_prefix, "::MemberInfo<'static>] = &[\n");
+    for (auto [id, mem] : members) {
+        out(cts_prefix, "::MemberInfo {\n");
+        out("name: ", quote(seri_name(mem)), ",\n");
+        out("member_id: ");
+        emit_literal(out, id, 10);
+        out(",\n");
+        out("flags: ", member_flags(mem), ",\n");
+        out("},\n");
+    }
+    out("];\n\n");
+}
+
+static void emit_marshal(Twine& out, const ptree* node) {
     out("impl ", cts_prefix, "::Marshal for ", node, " {\n");
     out("fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
     out("where\n");
     out("\tS: ", cts_prefix, "::encode::Serializer,\n");
     out("{\n");
 
-    auto members = struct_members(node);
+    auto members = ordered_members(node);
     auto mut = members.empty() ? "" : "mut ";
-    auto name = quote(seri_name(node));
 
     if (node->kind == N_STRUCT || node->kind == N_EXCEPTION || node->kind == N_VALUETYPE) {
-        out("use ", cts_prefix, "::encode::FieldSerializer as _;\n\n");
-        out("let ", mut, "state = ar.encode_struct(", name, ")?;\n");
-        for (auto mem : members) {
-            if (is_non_serialized(mem)) {
-                continue;
-            }
+        out("use ", cts_prefix, "::encode::StructSerializer as _;\n\n");
+        out("let ", mut, "state = ar.encode_struct(&TYPE_INFO)?;\n");
+
+        size_t index = 0;
+        for (auto [_, mem] : members) {
             auto mem_var = str("&self.", mem);
             auto accessor = seri_accesor(mem, mem_var, false);
-            auto id = member_id(mem);
-            out("state.encode_field(", id, ", ", quote(seri_name(mem)), ", ", accessor, ")?;\n");
+
+            if (is_optional(mem)) {
+                out("state.encode_optional(&MEMBER_INFO[", index++, "], ", mem_var, ")?;\n");
+            } else {
+                out("state.encode_field(&MEMBER_INFO[", index++, "], ", accessor, ")?;\n");
+            }
         }
         out("state.end()\n");
     } else if (node->kind == N_UNION) {
         out("use ", cts_prefix, "::encode::UnionSerializer as _;\n\n");
-        out("let mut state = ar.encode_union(", name, ")?;\n");
+        out("let mut state = ar.encode_union(&TYPE_INFO)?;\n");
         out("state.encode_discriminant(&self.disc())?;\n");
 
         bool emit_wildcard = false;
 
         out("match self {\n");
+        size_t index = 0;
         for (auto mem : node->members) {
-            if (is_non_serialized(mem)) {
-                continue;
-            }
             if (mem->kind == N_MEMBER) {
                 for (auto cas : mem->members) {
-                    auto accessor = seri_accesor(mem, "v", false);
-                    auto id = member_id(mem);
-                    out("Self::", union_member_name(mem, cas), "(v) => ");
-                    out("state.encode_variant(",
-                        id,
-                        ", ",
-                        quote(seri_name(mem)),
-                        ", ",
-                        accessor,
-                        "),\n");
+                    out("Self::", union_member_name(mem, cas), "(v)");
+
+                    if (cas->next) {
+                        out("\n\t| ");
+                    } else {
+                        auto accessor = seri_accesor(mem, "v", false);
+                        out(" => state.encode_variant(&MEMBER_INFO[", index, "], ", accessor, "),\n"
+                        );
+                    }
                 }
             } else {
                 emit_wildcard = true;
             }
+            index++;
         }
         if (emit_wildcard) {
             out("_ => state.encode_null(),\n");
@@ -1286,7 +1493,7 @@ static void emit_marshal(Twine& out, const ptree* node) {
     } else if (node->kind == N_ENUM) {
         auto type = rust_type(base_type_of(node)->element_type, nullptr);
         out("use ", cts_prefix, "::encode::EnumSerializer as _;\n\n");
-        out("let state = ar.encode_enum(", quote(seri_name(node)), ")?;\n");
+        out("let state = ar.encode_enum(TYPE_INFO.name)?;\n");
         out("match self {\n");
         for (auto mem : node->members) {
             out("Self::", mem, " => state.encode_variant::<", type, ">(");
@@ -1310,51 +1517,47 @@ static void emit_marshal(Twine& out, const ptree* node) {
 }
 
 static void emit_unmarshal(Twine& out, const ptree* node) {
-    if (is_non_serialized(node)) {
-        return;
-    }
-
     out("impl ", cts_prefix, "::Unmarshal for ", node, " {\n");
     out("fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
     out("where\n");
     out("\tD: ", cts_prefix, "::decode::Deserializer,\n");
     out("{\n");
 
-    auto members = struct_members(node);
+    auto members = ordered_members(node);
     if (node->kind == N_STRUCT || node->kind == N_EXCEPTION || node->kind == N_VALUETYPE) {
+        out("use ", cts_prefix, "::decode::StructDeserializer as _;\n\n");
+        out("let ");
         if (!members.empty()) {
-            out("use ", cts_prefix, "::decode::StructDeserializer as _;\n\n");
-            out("let mut state = ");
+            out("mut ");
         }
-        out("ar.decode_struct(", quote(node), ")?;\n");
-        for (auto mem : members) {
-            if (!is_non_serialized(mem)) {
-                auto name = quote(seri_name(mem));
-                auto accessor = seri_accesor(mem, str("self.", mem), true);
-                auto id = member_id(mem);
-                out("state.decode_field(", id, ", ", name, ", ", accessor, ")?;\n");
-            }
+        out("state = ar.decode_struct(&TYPE_INFO)?;\n");
+        size_t index = 0;
+        for (auto [_, mem] : members) {
+            auto accessor = seri_accesor(mem, str("self.", mem), true);
+            out("state.decode_field(&MEMBER_INFO[", index++, "], ", accessor, ")?;\n");
         }
+        out("state.end()?;\n");
         out("Ok(())\n");
     } else if (node->kind == N_ENUM) {
         out("use ", cts_prefix, "::decode::EnumDeserializer as _;\n\n");
-        out("let state = ar.decode_enum(", quote(seri_name(node)), ")?;\n");
+        out("let state = ar.decode_enum(TYPE_INFO.name)?;\n");
         out("*self = state.decode_enumerator(*self)?;\n");
         out("Ok(())\n");
     } else if (node->kind == N_UNION) {
         auto disc = rust_type(node->discriminator->type, node);
         out("use ", cts_prefix, "::decode::UnionDeserializer as _;\n\n");
-        out("let mut state = ar.decode_union(", quote(seri_name(node)), ")?;\n");
+        out("let mut state = ar.decode_union(&TYPE_INFO)?;\n");
         out("let mut disc = ", disc, "::default();\n");
         out("state.decode_discriminant(&mut disc)?;\n");
         out("*self = match disc {\n");
 
+        size_t index = 0;
+        size_t def_index = 0;
         auto def_mem = get_default_case(node);
-        for (auto mem : node->members) {
-            if (is_non_serialized(mem)) {
-                continue;
-            }
-            if (mem != def_mem) {
+        for (auto [id, mem] : members) {
+            if (mem == def_mem) {
+                def_index = index;
+            } else {
                 for (auto cas : mem->members) {
                     out(value(cas, node), " => ");
                     if (mem->kind == N_MEMBER) {
@@ -1364,14 +1567,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
                         out(";\n");
 
                         auto accessor = seri_accesor(mem, "value", true);
-                        auto id = member_id(mem);
-                        out("state.decode_variant(",
-                            id,
-                            ", ",
-                            quote(seri_name(mem)),
-                            ", ",
-                            accessor,
-                            ")?;\n");
+                        out("state.decode_variant(&MEMBER_INFO[", index, "], ", accessor, ")?;\n");
                         out("Self::", union_member_name(mem, cas), "(value)\n");
                         out("}");
                     } else {
@@ -1380,6 +1576,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
                     out(",\n");
                 }
             }
+            ++index;
         }
         if (def_mem) {
             out("_ => ");
@@ -1389,14 +1586,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
                 emit_default_value(out, def_mem, node);
                 out(";\n");
                 auto accessor = seri_accesor(def_mem, "value", true);
-                auto id = member_id(def_mem);
-                out("state.decode_variant(",
-                    id,
-                    ", ",
-                    quote(seri_name(def_mem)),
-                    ", ",
-                    accessor,
-                    ")?;\n");
+                out("state.decode_variant(&MEMBER_INFO[", def_index, "], ", accessor, ")?;\n");
                 out("Self::", union_member_name(def_mem, def_mem->members), "(value)\n");
                 out("}");
             } else {
@@ -1409,7 +1599,7 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
         out("Ok(())\n");
     }
     out("}\n");
-    out("}\n\n");
+    out("}\n");
 
     if (get_annotation(node, annotation_type_ext_builder)) {
         out("impl ", cts_prefix, "::Unmarshal for ", type_name(node), " {\n");
@@ -1420,14 +1610,11 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
         out("self.0 = ", node, "::unmarshal(ar)?;\n");
         out("Ok(())\n");
         out("}\n");
-        out("}\n\n");
+        out("}\n");
     }
 }
 
 static void emit_visitor(Twine& out, const ptree* node) {
-    if (is_non_serialized(node)) {
-        return;
-    }
     out("impl ", cts_prefix, "::decode::EnumVisitor for ", node, " {\n");
 
     // id => enum variant
@@ -1461,7 +1648,27 @@ static void emit_visitor(Twine& out, const ptree* node) {
     out("Ok(value)\n");
     out("}\n");
 
-    out("}\n\n");
+    out("}\n");
+}
+
+static void emit_marshal_all(Twine& out, const ptree* node) {
+    if (is_non_serialized(node)) {
+        return;
+    }
+
+    auto members = ordered_members(node);
+    out("const _: () = {\n");
+
+    emit_type_info(out, node);
+    emit_member_info(out, members);
+    emit_marshal(out, node);
+    emit_unmarshal(out, node);
+
+    if (node->kind == N_ENUM) {
+        emit_visitor(out, node);
+    }
+
+    out("};\n\n");
 }
 
 static void recurse_node(Twine& out, const ptree* node) {
@@ -1486,8 +1693,7 @@ static void recurse_node(Twine& out, const ptree* node) {
         emit_struct_def(out, node);
         emit_struct_impl(out, node);
         emit_default_impl(out, node);
-        emit_marshal(out, node);
-        emit_unmarshal(out, node);
+        emit_marshal_all(out, node);
         break;
 
     case N_UNION:
@@ -1495,8 +1701,7 @@ static void recurse_node(Twine& out, const ptree* node) {
         emit_union_def(out, node);
         emit_union_impl(out, node);
         emit_default_impl(out, node);
-        emit_marshal(out, node);
-        emit_unmarshal(out, node);
+        emit_marshal_all(out, node);
         break;
 
     case N_ENUM:
@@ -1504,9 +1709,7 @@ static void recurse_node(Twine& out, const ptree* node) {
         emit_enum_def(out, node);
         emit_enum_impl(out, node);
         emit_default_impl(out, node);
-        emit_marshal(out, node);
-        emit_unmarshal(out, node);
-        emit_visitor(out, node);
+        emit_marshal_all(out, node);
         break;
 
     case N_BITMASK:

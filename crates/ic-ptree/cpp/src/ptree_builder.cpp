@@ -444,10 +444,10 @@ deep_clone_node(parser_state* state, const ptree* node, std::map<const ptree*, p
     }
 
     auto scoped_name = lc_scoped_name(p.get());
-    if (p->flags & OPT_DECLARATION) {
-        state->type_dcl_map[scoped_name] = p.get();
+    if ((p->flags & OPT_DECLARATION) == 0) {
+        state->type_map[scoped_name] = p.get();
     }
-    state->type_map[scoped_name] = p.get();
+    state->type_dcl_map[scoped_name] = p.get();
     return p.get();
 }
 

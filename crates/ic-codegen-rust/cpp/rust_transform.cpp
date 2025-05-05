@@ -35,6 +35,7 @@
 #include "cidl/symbols.h"
 #include "icgen/template/casing.h"
 #include "rust_common.h"
+#include "utils/string_utils.h"
 
 using namespace intercom::cidl;
 using namespace intercom::rust;
@@ -144,7 +145,7 @@ squash_modules(parser_state* state, ptree* node, std::map<std::string, ptree*>& 
     ptree* list = node;
     while (node) {
         ptree* next = node->next;
-        if (node->kind == N_MODULE) {
+        if (node->kind == N_MODULE && is_emit(node, LANG_RUST)) {
             node->members = squash_modules(state, node->members, modules);
 
             auto it = modules.find(lc_scoped_name(node));
@@ -205,11 +206,11 @@ static void move_nested(parser_state* state, ptree* node, ptree* scope, std::set
     }
 }
 
-static void rescope_dds(ptree* node) {
+static void rescope_dds(parser_state* state, ptree* node) {
     for (; node; node = node->next) {
         if (node->kind == N_MODULE) {
             // Depth-first traversal to properly capture the qualified name
-            rescope_dds(node->members);
+            rescope_dds(state, node->members);
 
             // Capitalization of "X" and "T" leads to "x_types" in snake case,
             // which is a bit unfortunate.
@@ -221,6 +222,22 @@ static void rescope_dds(ptree* node) {
             // if (node->super == nullptr && (node->name == "DDS" || node->name == "intercom")) {
             //     node->name = "types";
             // }
+        } else {
+            auto qualified = idl_scoped_name(node, nullptr);
+            if (string_utils::starts_with(qualified, "intercom::wire")) {
+                {
+                    auto pos = node->name.find("UDPv4");
+                    if (pos != std::string::npos) {
+                        node->name.replace(pos, 5, "UDP_V4");
+                    }
+                }
+                {
+                    auto pos = node->name.find("UDPv6");
+                    if (pos != std::string::npos) {
+                        node->name.replace(pos, 5, "UDP_V6");
+                    }
+                }
+            }
         }
     }
 }
@@ -237,14 +254,15 @@ static void replace_native(parser_state* state) {
             annotate(state, handle, create_annotation_finish(state, nullptr));
 
             auto next = node->next;
+            auto orig = duplicate_node(state, node);
             *node = *handle;
+            node->original = orig;
             node->next = next;
         }
     };
-
     (void)&to_bitmask;
 
-    // create_module_start(create_identifier("core"));
+    // create_module_start(state, "core");
     // to_bitmask("DDS::InstanceHandle_t", "InstanceHandle");
     // to_bitmask("DDS::SampleStateKind", "SampleState");
     // to_bitmask("DDS::SampleStateMask", "SampleState");
@@ -252,7 +270,14 @@ static void replace_native(parser_state* state) {
     // to_bitmask("DDS::InstanceStateMask", "InstanceState");
     // to_bitmask("DDS::ViewStateKind", "ViewState");
     // to_bitmask("DDS::ViewStateMask", "ViewState");
-    // create_module_finish(nullptr, tree->pos);
+    // create_module_finish(state, nullptr);
+
+    if (auto node = state->lookup_node("intercom::wire::LOCATOR_KIND_UDPv4")) {
+        node->name.replace(node->name.length() - 5, 5, "UDP_V4");
+    }
+    if (auto node = state->lookup_node("intercom::wire::LOCATOR_KIND_UDPv6")) {
+        node->name.replace(node->name.length() - 5, 5, "UDP_V6");
+    }
 }
 
 static std::optional<std::string> conventionalized(ptree* node) {
@@ -395,7 +420,7 @@ static void enum_prefix(const ptree* node) {
     }
 
     for (; node; node = node->next) {
-        if (node->kind == N_ENUM || node->kind == N_BITMASK) {
+        if ((node->kind == N_ENUM || node->kind == N_BITMASK) && node->members) {
             strip_prefix(node);
         } else if (node->members) {
             enum_prefix(node->members);
@@ -412,33 +437,34 @@ static void dump_names(const ptree* node) {
 
 void intercom::rust::transform_rust(parse_result* result) {
     auto tree = const_cast<ptree*>(result->tree);
+    auto state = result->state.get();
 
     // Flag trivial types and types that can form a total order
     flag_trivial_ord(tree);
 
     // Annotate all members whose type is any/Object with @non_serialized
-    annotate_any(result->state.get(), tree);
+    annotate_any(state, tree);
 
     // Move nested types into modules. Keep track of the moved nodes to
     // properly escape their names later on to ensure the correct node gets
     // precedence.
     std::set<ptree*> moved;
     for (auto node = tree; node; node = node->next) {
-        move_nested(result->state.get(), node, tree, moved);
+        move_nested(state, node, tree, moved);
     }
 
     // Squash duplicate modules into one
     std::map<std::string, ptree*> modules;
-    result->tree = tree = squash_modules(result->state.get(), tree, modules);
-
-    // Replace some DDS types with their native Rust equivalents
-    replace_native(result->state.get());
-
-    // Give select modules more suitable names
-    rescope_dds(tree);
+    result->tree = tree = squash_modules(state, tree, modules);
 
     // Strip prefixes from enumerators
     enum_prefix(tree);
+
+    // Replace some DDS types with their native Rust equivalents
+    replace_native(state);
+
+    // Give select modules more suitable names
+    rescope_dds(state, tree);
 
     // Rename nodes so they conform with Rust's naming convention
     rename_tree(tree, moved);

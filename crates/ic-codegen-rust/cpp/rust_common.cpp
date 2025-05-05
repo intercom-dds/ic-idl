@@ -65,7 +65,7 @@ std::string conv_name(const ptree* node, intercom::icgen::Case casing) {
     std::string name = node->name;
 
     // Strip 'QosPolicy' and '_XXX_QOS' suffixes from the QoS types
-    if (CommandLineOption::intercom_build()) {
+    if (string_utils::starts_with(idl_scoped_name(node, nullptr), "dds")) {
         qos_name(node, name);
     }
 

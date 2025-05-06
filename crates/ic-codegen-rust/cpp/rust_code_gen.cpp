@@ -1084,6 +1084,7 @@ static void emit_bitmask_def(Twine& out, const ptree* node) {
 
 static void emit_bitmask_impl(Twine& out, const ptree* node) {
     out("impl ", node, " {\n");
+    out("#[must_use]\n");
     out("pub fn new() -> Self {\n");
     emit_default_value(out, node, node);
     out("\n");
@@ -1228,6 +1229,7 @@ static void emit_builder(Twine& out, const ptree* node) {
     out("pub struct ", builder_name(node), "(pub ", node, ");\n\n");
 
     out("impl ", builder_name(node), " {\n");
+    out("#[must_use]\n");
     out("pub fn new() -> Self {\n");
     out("Self::default()\n");
     out("}\n\n");
@@ -1242,6 +1244,7 @@ static void emit_builder(Twine& out, const ptree* node) {
         out("}\n\n");
 
         auto ref = is_trivial(mem) ? "" : "&";
+        out("#[must_use]\n");
         out("pub fn get_", mem, "(&self) -> ", ref, member_type(mem, node), " {\n");
         out(ref, "self.0.", mem, "\n");
         out("}\n\n");

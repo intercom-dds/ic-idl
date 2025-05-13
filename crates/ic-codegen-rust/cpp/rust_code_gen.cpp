@@ -887,9 +887,6 @@ static void emit_module_def(Twine& out, const ptree* node) {
 }
 
 static void emit_struct_def(Twine& out, const ptree* node) {
-    if (node->name == "PlainSequenceSElemDefn") {
-        std::cout << std::endl;
-    }
     emit_derives(out, node);
     out("pub struct ", node, " {");
 

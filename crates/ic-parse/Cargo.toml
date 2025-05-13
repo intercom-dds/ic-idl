@@ -46,4 +46,4 @@ ic-preproc = { path = "../ic-preproc" }
 chumsky.workspace = true
 
 [dev-dependencies]
-insta = "1.39.0"
+insta = "1.43.1"

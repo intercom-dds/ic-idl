@@ -223,9 +223,9 @@ static std::string str(Args&&... args) {
     return out.str();
 }
 
-template <typename T>
-static std::string quote(const T& value) {
-    return str('"', value, '"');
+template <typename... Args>
+static std::string quote(Args&&... value) {
+    return str('"', value..., '"');
 }
 
 template <typename C>
@@ -1628,7 +1628,10 @@ static void emit_visitor(Twine& out, const ptree* node) {
     for (auto mem : node->members) {
         out(value(mem, node), " => Self::", mem, ",\n");
     }
-    out("_ => return Err(D::Error::custom(", quote("Invalid enum value"), ")),\n");
+
+    auto qualified_err =
+        quote("invalid enum value for type ", idl_scoped_name(node->original, nullptr));
+    out("_ => return Err(D::Error::custom(", qualified_err, ")),\n");
     out("};\n");
     out("Ok(value)\n");
     out("}\n\n");
@@ -1643,7 +1646,7 @@ static void emit_visitor(Twine& out, const ptree* node) {
     for (auto mem : node->members) {
         out(quote(seri_name(mem)), " => Self::", mem, ",\n");
     }
-    out("_ => return Err(D::Error::custom(", quote("Invalid enum value"), ")),\n");
+    out("_ => return Err(D::Error::custom(", qualified_err, ")),\n");
     out("};\n");
     out("Ok(value)\n");
     out("}\n");

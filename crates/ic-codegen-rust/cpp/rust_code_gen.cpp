@@ -1663,7 +1663,10 @@ static void emit_marshal_all(Twine& out, const ptree* node) {
     out("const _: () = {\n");
 
     emit_type_info(out, node);
-    emit_member_info(out, members);
+
+    if (base_type_of(node)->kind != N_ENUM && !members.empty()) {
+        emit_member_info(out, members);
+    }
     emit_marshal(out, node);
     emit_unmarshal(out, node);
 

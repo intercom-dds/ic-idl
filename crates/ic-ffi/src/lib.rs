@@ -115,6 +115,7 @@ fn try_main(config: Config, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Error>
         let file = PathBuf::from(file);
         let ptree = try_parse(args.clone(), &file, vfs)?;
         trees.push(ptree);
+        println!("cargo:rerun-if-changed={}", file.display());
     }
 
     let merged = ic_ptree::merge_trees(&trees);

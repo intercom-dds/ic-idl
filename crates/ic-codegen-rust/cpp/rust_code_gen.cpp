@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
@@ -1420,6 +1421,14 @@ static void emit_type_info(Twine& out, const ptree* node) {
 
 static void
 emit_member_info(Twine& out, const std::vector<std::pair<uint32_t, const ptree*>>& members) {
+    // Skip generation of MemberInfo for types without members
+    auto it = std::find_if(members.begin(), members.end(), [](auto mem) {
+        return mem.second->kind == N_MEMBER;
+    });
+    if (it == members.end()) {
+        return;
+    }
+
     out("const MEMBER_INFO: &[", cts_prefix, "::MemberInfo<'static>] = &[\n");
     for (auto [id, mem] : members) {
         out(cts_prefix, "::MemberInfo {\n");

@@ -188,18 +188,18 @@ impl Formatter<'_> {
                 .first()
                 .map_or(0, |v| v.span.start.offset as usize),
         );
-        
+
         // Find the range of lines that contain labels
         let mut min_line = first_line_number;
         let mut max_line = first_line_number;
-        
+
         for label in &diag.labels {
             let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
             min_line = min_line.min(start_line);
             max_line = max_line.max(end_line);
         }
-        
+
         let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
@@ -228,7 +228,7 @@ impl Formatter<'_> {
             // Embed the line content
             let range = line_span(self.source, line_start as u32);
             writeln!(f, " {}", self.source[range].trim_end())?;
-            
+
             // Draw labels for this line
             self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
         }
@@ -237,8 +237,14 @@ impl Formatter<'_> {
         writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
     }
 
-
-    fn emit_labels_for_line(&self, f: &mut dyn fmt::Write, indent: &str, labels: &[Label], line_num: usize) -> fmt::Result {
+    #[allow(clippy::too_many_lines)]
+    fn emit_labels_for_line(
+        &self,
+        f: &mut dyn fmt::Write,
+        indent: &str,
+        labels: &[Label],
+        line_num: usize,
+    ) -> fmt::Result {
         // Find labels that affect this line
         let mut labels_on_line: Vec<&Label> = Vec::new();
         for label in labels {
@@ -248,29 +254,29 @@ impl Formatter<'_> {
                 labels_on_line.push(label);
             }
         }
-        
+
         if labels_on_line.is_empty() {
             return Ok(());
         }
-        
+
         // Sort labels by their start position
         labels_on_line.sort_unstable_by_key(|v| v.span.start.offset);
-        
+
         // Get line boundaries
         let line_start_offset = self.get_line_start_offset(line_num) as u32;
         let line_range = line_span(self.source, line_start_offset);
-        
+
         // Draw the highlight line
         write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
-        
+
         // For overlapping spans, we need to handle them specially
         // Build a map of which labels cover each column
         let line_text = &self.source[line_range.clone()];
         let line_len = line_text.trim_end().len();
-        
+
         // Track which labels cover each column position (can be multiple)
         let mut col_labels: Vec<Vec<&Label>> = vec![Vec::new(); line_len];
-        
+
         // Process all labels and track which ones cover each position
         for label in &labels_on_line {
             let label_start_on_line = if label.span.start.offset >= line_start_offset {
@@ -278,19 +284,24 @@ impl Formatter<'_> {
             } else {
                 0
             };
-            
-            let label_end_on_line = if line_number(self.source, label.span.end.offset as usize) > line_num {
-                line_len
-            } else {
-                (label.span.end.offset - line_start_offset) as usize
-            };
-            
+
+            let label_end_on_line =
+                if line_number(self.source, label.span.end.offset as usize) > line_num {
+                    line_len
+                } else {
+                    (label.span.end.offset - line_start_offset) as usize
+                };
+
             // Mark columns covered by this label
-            for col in label_start_on_line..label_end_on_line.min(line_len) {
-                col_labels[col].push(label);
+            for labels_at_col in col_labels
+                .iter_mut()
+                .take(label_end_on_line.min(line_len))
+                .skip(label_start_on_line)
+            {
+                labels_at_col.push(label);
             }
         }
-        
+
         // Sort labels at each position by size (smaller first) for priority
         for labels_at_col in &mut col_labels {
             labels_at_col.sort_by_key(|label| {
@@ -308,24 +319,28 @@ impl Formatter<'_> {
                 end - start
             });
         }
-        
+
         // Find the rightmost position that has a highlight
         let mut max_highlight_pos = None;
-        for i in 0..line_len {
-            if !col_labels[i].is_empty() {
+        for (i, labels_at_col) in col_labels.iter().enumerate() {
+            if !labels_at_col.is_empty() {
                 max_highlight_pos = Some(i);
             }
         }
-        
+
         // Now draw the highlights up to the last highlighted position
         if let Some(max_pos) = max_highlight_pos {
             let mut i = 0;
-            
+
             while i <= max_pos {
-                if !col_labels[i].is_empty() {
+                if col_labels[i].is_empty() {
+                    // No label here, just space
+                    write!(f, " ")?;
+                    i += 1;
+                } else {
                     // Get the highest priority label (first in sorted list)
                     let primary_label = col_labels[i][0];
-                    
+
                     // Find the end of this continuous highlight with same primary label
                     let mut end = i + 1;
                     while end < line_len && !col_labels[end].is_empty() {
@@ -335,36 +350,39 @@ impl Formatter<'_> {
                             break;
                         }
                     }
-                    
+
                     // Always use the same highlight character, color will differentiate
-                    
+
                     // Draw the highlight
                     let highlight_len = end - i;
                     write!(
                         f,
                         "{}",
-                        self.chars.highlight.repeat(highlight_len).bold().fg(primary_label.color),
+                        self.chars
+                            .highlight
+                            .repeat(highlight_len)
+                            .bold()
+                            .fg(primary_label.color),
                     )?;
                     i = end;
-                } else {
-                    // No label here, just space
-                    write!(f, " ")?;
-                    i += 1;
                 }
             }
         }
-        
+
         // After highlights, we should be at highlights_end_pos
         // Don't write extra spaces to line_len, just continue from where we are
-        
+
         // Get labels that start on this line for message display
         let mut labels_starting_here: Vec<&Label> = labels_on_line
             .iter()
             .filter(|l| line_number(self.source, l.span.start.offset as usize) == line_num)
             .copied()
             .collect();
-        
-        if !labels_starting_here.is_empty() {
+
+        if labels_starting_here.is_empty() {
+            // No labels start on this line, just the highlights
+            writeln!(f)?;
+        } else {
             // For message display order, we want to show labels from right to left
             // based on where their highlights end on this line
             labels_starting_here.sort_by(|a, b| {
@@ -376,14 +394,14 @@ impl Formatter<'_> {
                 } else {
                     (a.span.end.offset - line_start_offset) as usize
                 };
-                
+
                 let b_end_col = if line_number(self.source, b.span.end.offset as usize) > line_num {
                     let line_text = &self.source[line_range.clone()];
                     line_text.trim_end().len()
                 } else {
                     (b.span.end.offset - line_start_offset) as usize
                 };
-                
+
                 // Sort by end column on this line (rightmost first)
                 match b_end_col.cmp(&a_end_col) {
                     std::cmp::Ordering::Equal => {
@@ -395,40 +413,42 @@ impl Formatter<'_> {
                     other => other,
                 }
             });
-            
+
             // Keep a copy sorted left to right by start position for vertical line calculation
             let mut labels_left_to_right = labels_starting_here.clone();
             labels_left_to_right.sort_by_key(|v| v.span.start.offset);
-            
+
             // Display first message inline after the highlights
             if let Some(first) = labels_starting_here.first() {
                 // Add a space and the message on the same line
                 writeln!(f, " {}", first.msg.bold().fg(first.color))?;
-                
+
                 // Display remaining messages with vertical connectors
                 for (i, label) in labels_starting_here.iter().skip(1).enumerate() {
                     write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
-                    
+
                     // Calculate column position of this label
                     let label_col = (label.span.start.offset - line_start_offset) as usize;
-                    
+
                     let mut current_col = 0;
-                    
+
                     // Draw vertical lines for labels that haven't been shown yet
                     // We need to draw lines for all labels to the left of the current one
                     // that haven't been displayed yet
                     for &other_label in &labels_left_to_right {
-                        let other_col = (other_label.span.start.offset - line_start_offset) as usize;
-                        
+                        let other_col =
+                            (other_label.span.start.offset - line_start_offset) as usize;
+
                         // Skip if this is at or after the current label position
                         if other_col >= label_col {
                             continue;
                         }
-                        
+
                         // Check if we've already shown this label
-                        let already_shown = labels_starting_here[0..=i].iter()
+                        let already_shown = labels_starting_here[0..=i]
+                            .iter()
                             .any(|&shown| std::ptr::eq(shown, other_label));
-                        
+
                         if !already_shown {
                             // Add padding to reach this column
                             if other_col > current_col {
@@ -438,12 +458,12 @@ impl Formatter<'_> {
                             }
                         }
                     }
-                    
+
                     // Draw padding to reach the arrow position
                     if label_col >= current_col {
                         write!(f, "{}", " ".repeat(label_col - current_col))?;
                     }
-                    
+
                     // Draw arrow and message
                     writeln!(
                         f,
@@ -453,14 +473,10 @@ impl Formatter<'_> {
                     )?;
                 }
             }
-        } else {
-            // No labels start on this line, just the highlights
-            writeln!(f)?;
         }
-        
+
         Ok(())
     }
-
 }
 
 impl fmt::Display for Diag {

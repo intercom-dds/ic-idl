@@ -26,7 +26,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::match_wildcard_for_single_variants)]
+#![allow(clippy::match_wildcard_for_single_variants, unused)]
 
 pub use ic_vfs::Span;
 

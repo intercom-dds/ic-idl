@@ -109,7 +109,7 @@ where
         self.keys.is_empty()
     }
 
-    pub fn iter(&self) -> IndexIter<K, V> {
+    pub fn iter(&self) -> IndexIter<'_, K, V> {
         IndexIter {
             inner: self,
             index: 0,

@@ -3,14 +3,14 @@ source: crates/ic-diagnostic/tests/multiline_test.rs
 expression: buf
 ---
 error: method spans multiple lines
-   ┌ test.idl:2:9
+   ┌ test.idl:3:10
    │
- 2 │     void myMethod(
-   ·         ^^^^^^^^^^ this method definition spans multiple lines
- 3 │         int param1,
+ 3 │     void myMethod(
+   ·          ^^^^^^^^^ this method definition spans multiple lines
+ 4 │         int param1,
    · ^^^^^^^^^^^^^^^^^^^
- 4 │         string param2
+ 5 │         string param2
    · ^^^^^^^^^^^^^^^^^^^^^
- 5 │     );
+ 6 │     );
    · 
    └──

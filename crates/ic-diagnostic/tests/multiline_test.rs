@@ -39,11 +39,17 @@ fn make_span(start: u32, end: u32) -> Span {
 #[test]
 fn test_multiline_span() {
     // Test with a multi-line span
-    let source = "interface MyInterface {\n    void myMethod(\n        int param1,\n        string param2\n    );\n}";
+    let source = r#"\
+interface MyInterface {
+    void myMethod(
+        int param1,
+        string param2
+    );
+}"#;
 
     // Create a diagnostic that spans multiple lines (from "myMethod" to the closing paren)
     let diag = Diag::error("method spans multiple lines").label(
-        Label::new(make_span(32, 85)) // This should span from "myMethod" to ")"
+        Label::new(make_span(35, 87)) // This should span from "myMethod" to ")"
             .message("this method definition spans multiple lines")
             .color(Color::Red),
     );
@@ -55,12 +61,12 @@ fn test_multiline_span() {
     // Test with multiple labels on different lines
     let diag2 = Diag::error("multiple parameters on different lines")
         .label(
-            Label::new(make_span(47, 57)) // "int param1"
+            Label::new(make_span(53, 63)) // "int param1"
                 .message("first parameter")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(67, 80)) // "string param2"
+            Label::new(make_span(73, 86)) // "string param2"
                 .message("second parameter")
                 .color(Color::Blue),
         );

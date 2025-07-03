@@ -3,18 +3,16 @@ source: crates/ic-diagnostic/tests/multiline_test.rs
 expression: buf3
 ---
 error: large multi-line block
-   ┌ test.idl:1:22
+   ┌ test.idl:2:22
    │
- 1 │ interface MyInterface {
-   ·  entire method block
- 2 │     void myMethod(
+ 2 │ interface MyInterface {
+   ·                      ^^ entire method block
+ 3 │     void myMethod(
    · ^^^^^^^^^^^^^^^^^^
- 3 │         int param1,
+ 4 │         int param1,
    · ^^^^^^^^^^^^^^^^^^^
- 4 │         string param2
+ 5 │         string param2
    · ^^^^^^^^^^^^^^^^^^^^^
- 5 │     );
-   · ^^^^^^
- 6 │ }
-   · 
+ 6 │     );
+   · ^^^^^
    └──

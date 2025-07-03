@@ -1,0 +1,13 @@
+---
+source: crates/ic-diagnostic/tests/edge_cases_test.rs
+expression: buf
+---
+error: too many parameters
+   ┌ test.idl:1:9
+   │
+ 1 │ calculate(a, b, c, d, e, f, g);
+   ·           ^  ^  ^  ^ fourth
+   ·           │  │  └─ third
+   ·           │  └─ second
+   ·           └─ first
+   └──

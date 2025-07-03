@@ -37,5 +37,8 @@ version.workspace = true
 ic-cli = { path = "../ic-cli" }
 ic-vfs = { path = "../ic-vfs" }
 
+[dev-dependencies]
+insta = "1.34"
+
 [lints]
 workspace = true

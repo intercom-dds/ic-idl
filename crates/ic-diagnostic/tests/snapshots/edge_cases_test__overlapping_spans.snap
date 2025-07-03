@@ -1,0 +1,15 @@
+---
+source: crates/ic-diagnostic/tests/edge_cases_test.rs
+expression: buf
+---
+error: overlapping spans
+   ┌ test.idl:2:1
+   │
+ 2 │     int field1;
+   · ^^^^^^^^^^^^^^^ second overlap
+   · └─ first overlap
+ 3 │     int field2;
+   · ^^^^^^^^^^^^^^^
+ 4 │     int field3;
+   · ^^^^^^^^
+   └──

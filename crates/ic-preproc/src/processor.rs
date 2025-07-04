@@ -44,14 +44,8 @@ use crate::expression::{
 };
 use crate::macros::Macro;
 use crate::state::{Directive, Error, State};
+use crate::directives::{IfState, DirectiveHandler};
 use crate::{ProcArgs, Span, time};
-
-#[derive(Debug)]
-enum IfKind {
-    If { result: bool },
-    Elif { result: bool },
-    Else,
-}
 
 /// Context for function macro expansion
 struct MacroExpansionContext<'a> {
@@ -60,68 +54,6 @@ struct MacroExpansionContext<'a> {
     def: &'a [Token],
     variadic: bool,
     actual_args: &'a [Vec<Token>],
-}
-
-/// A small state machine for keeping track of the current state of `if`
-/// statements and their expressions.
-#[derive(Debug)]
-struct IfState {
-    state: IfKind,
-    evaluated: bool,
-    defined: Span,
-}
-
-impl IfState {
-    fn new_if(result: bool, defined: Span) -> Self {
-        Self {
-            state: IfKind::If { result },
-            evaluated: false,
-            defined,
-        }
-    }
-
-    fn eval_elif(&mut self, result: bool) -> Result<(), Error> {
-        let was_true = match self.state {
-            IfKind::If { result } | IfKind::Elif { result } => result,
-            IfKind::Else => {
-                self.evaluated = true;
-                Err(Error::Expr {
-                    message: "#elif after #else",
-                })?
-            }
-        };
-
-        self.state = IfKind::Elif { result };
-        self.evaluated = self.evaluated || was_true;
-        Ok(())
-    }
-
-    fn eval_else(&mut self) -> Result<(), Error> {
-        let was_true = match self.state {
-            IfKind::If { result } | IfKind::Elif { result } => result,
-            IfKind::Else => {
-                self.evaluated = true;
-                Err(Error::Expr {
-                    message: "#else after #else",
-                })?
-            }
-        };
-
-        self.state = IfKind::Else;
-        self.evaluated = self.evaluated || was_true;
-        Ok(())
-    }
-
-    fn is_active(&self) -> bool {
-        if self.evaluated {
-            false
-        } else {
-            match self.state {
-                IfKind::Else => true,
-                IfKind::If { result } | IfKind::Elif { result } => result,
-            }
-        }
-    }
 }
 
 /// Operator precedence is defined as follows, from highest to lowest:
@@ -361,178 +293,6 @@ where
         None
     }
 
-    fn dir_include(&mut self, span: Span) {
-        let cursor = self.cursor();
-        let (kind, path) = match cursor.peek() {
-            Some(Kind::Lt) => {
-                _ = cursor.next();
-                let span = cursor.until_peek(Kind::Gt);
-                self.expect(Kind::Gt, "unterminated include");
-                (Include::System, span)
-            }
-            Some(Kind::String { .. }) => {
-                let tok = cursor.next().unwrap();
-                (Include::Local, tok.span)
-            }
-            _ => {
-                self.expect(
-                    Kind::String { terminated: true },
-                    "expected \"file\" or <file>",
-                );
-                return;
-            }
-        };
-        self.warn_trailing(span, Directive::Include);
-
-        if self.is_active() {
-            // Bail if we've hit the recursion depth
-            if self.stack.len() >= self.recursion_depth {
-                self.state().errors.push(Error::Syntax {
-                    message: "#include nested too deeply",
-                    span,
-                });
-                return;
-            }
-
-            let include = self.source_of(path).to_string();
-            let include = include.trim_start_matches('"').trim_end_matches('"');
-
-            if let Some(v) = self.search_includes(include, kind) {
-                match self.vfs.open(v, kind) {
-                    Ok((id, source)) => {
-                        // Skip files that we've already parsed if they used
-                        // the `once` pragma.
-                        if !self.state().parsed_files.contains(&id) {
-                            let cursor = File::from_src(source, id);
-                            self.stack.push(cursor);
-                        }
-                    }
-                    Err(_) => self.state().errors.push(Error::Syntax {
-                        message: "failed to open file",
-                        span,
-                    }),
-                }
-            } else {
-                self.state().errors.push(Error::Syntax {
-                    message: "file not found",
-                    span,
-                });
-            }
-        }
-    }
-
-    fn dir_define(&mut self) -> Option<()> {
-        let (name, name_span) = self.macro_name()?;
-
-        // Check if there's an opening parenthesis immediately after the macro name
-        // (no whitespace) to determine if it's a function-like macro
-        let mut lparen_tok = None;
-        let is_macro = if let Some(tok) = self.cursor().take_if(Kind::LParen) {
-            // For function-like macros, the '(' must immediately follow the macro name
-            // Check if the spans are adjacent
-            let is_adjacent = name_span.end.offset == tok.span.start.offset
-                && name_span.end.file_id == tok.span.start.file_id;
-            if is_adjacent {
-                true
-            } else {
-                // Not a function-like macro, put the token back
-                lparen_tok = Some(tok);
-                false
-            }
-        } else {
-            false
-        };
-
-        let definition = if is_macro {
-            let mut args = vec![];
-            let mut variadic = false;
-
-            // Empty function macros are allowed
-            while let Some(c) = self.cursor().peek() {
-                if c == Kind::RParen {
-                    break;
-                }
-
-                // Check for variadic ...
-                if c == Kind::Period {
-                    // Check if we have three periods
-                    let cursor = self.cursor();
-                    cursor.next(); // consume first .
-                    if cursor.peek() == Some(Kind::Period) {
-                        cursor.next(); // consume second .
-                        if cursor.peek() == Some(Kind::Period) {
-                            cursor.next(); // consume third .
-                            variadic = true;
-                            // Variadic must be last parameter
-                            self.expect(Kind::RParen, "variadic parameter must be last")?;
-                            break;
-                        }
-                    }
-                    // If not three periods, error
-                    self.state().errors.push(Error::Syntax {
-                        message: "expected identifier or '...'",
-                        span: name_span,
-                    });
-                    return None;
-                }
-
-                // TODO: can also be a keyword
-                let arg = self.expect(Kind::Ident, "invalid token in macro parameter list")?;
-                args.push(arg);
-
-                if self.cursor().take_if(Kind::Comma).is_none() {
-                    self.expect(Kind::RParen, "expected comma or end of parameter list")?;
-                    break;
-                }
-            }
-
-            let def = self.cursor().until_newline();
-            Macro::Function {
-                span: name_span,
-                args,
-                def,
-                variadic,
-            }
-        } else {
-            // If we consumed an lparen that wasn't part of a function macro,
-            // we need to include it in the definition
-            let mut def = Vec::new();
-            if let Some(tok) = lparen_tok {
-                def.push(tok);
-            }
-            def.extend(self.cursor().until_newline());
-            Macro::Object {
-                span: name_span,
-                def,
-            }
-        };
-
-        if self.is_active()
-            && self
-                .state()
-                .defines
-                .insert(name.to_string(), definition)
-                .is_some()
-        {
-            self.state().warnings.push(Error::Syntax {
-                message: "macro redefined",
-                span: name_span,
-            });
-        }
-        Some(())
-    }
-
-    fn dir_undef(&mut self) {
-        let Some((name, span)) = self.macro_name() else {
-            return;
-        };
-        self.warn_trailing(span, Directive::Undef);
-
-        if self.is_active() {
-            self.state().defines.remove(name);
-        }
-    }
-
     fn expr_and_eval(&mut self) -> bool {
         match self.expr().and_then(|v| is_true(&v, self)) {
             Ok(v) => v,
@@ -541,131 +301,6 @@ where
                 false
             }
         }
-    }
-
-    fn dir_if(&mut self, span: Span) {
-        let result = self.expr_and_eval();
-        let state = IfState::new_if(result, span);
-        self.if_state().push(state);
-    }
-
-    fn dir_ifdef(&mut self, span: Span) {
-        let result = if let Some((name, name_span)) = self.macro_name() {
-            self.warn_trailing(name_span, Directive::Ifdef);
-            self.is_defined(name)
-        } else {
-            false
-        };
-
-        let state = IfState::new_if(result, span);
-        self.if_state().push(state);
-    }
-
-    fn dir_ifndef(&mut self, span: Span) {
-        let result = if let Some((name, name_span)) = self.macro_name() {
-            self.warn_trailing(name_span, Directive::Ifndef);
-            !self.is_defined(name)
-        } else {
-            false
-        };
-
-        let state = IfState::new_if(result, span);
-        self.if_state().push(state);
-    }
-
-    fn dir_else(&mut self, span: Span) {
-        match self.if_state().last_mut() {
-            Some(v) => {
-                if let Err(e) = v.eval_else() {
-                    self.state().errors.push(e);
-                }
-            }
-            None => self.state().errors.push(Error::Syntax {
-                message: "#else without #if",
-                span,
-            }),
-        }
-    }
-
-    fn dir_elif(&mut self, span: Span) {
-        let result = self.expr_and_eval();
-
-        match self.if_state().last_mut() {
-            Some(v) => {
-                if let Err(e) = v.eval_elif(result) {
-                    self.state().errors.push(e);
-                }
-            }
-            None => self.state().errors.push(Error::Syntax {
-                message: "#elif without #if",
-                span,
-            }),
-        }
-    }
-
-    fn dir_endif(&mut self, span: Span) {
-        if self.if_state().pop().is_none() {
-            self.state().errors.push(Error::Syntax {
-                message: "#endif without #if",
-                span,
-            });
-        }
-    }
-
-    fn dir_warning(&mut self, span: Span) {
-        let tokens = self.cursor().until_newline();
-        if self.is_active() {
-            self.state().warnings.push(Error::Note { span, tokens });
-        }
-    }
-
-    fn dir_error(&mut self, span: Span) {
-        let tokens = self.cursor().until_newline();
-        if self.is_active() {
-            self.state().errors.push(Error::Note { span, tokens });
-        }
-    }
-
-    // There are no strict requirements for what a pragma must be. It can be an
-    // integer, a control character, an UTF-8 character, etc. so we just accept
-    // whatever.
-    fn dir_pragma(&mut self) {
-        let tokens = self.cursor().until_newline();
-
-        // Empty pragmas are allowed, so this is not guaranteed
-        if let Some(pragma) = tokens.first() {
-            let name = self.source_of(pragma.span);
-            if name == "once" && self.enable_pragma_once {
-                // Handle #pragma once
-                let file_id = pragma.span.start.file_id;
-                self.mark_included(file_id);
-            }
-            // Ignore other pragmas
-        }
-    }
-
-    // Parse the directive but disregard its contents.
-    fn dir_line(&mut self, span: Span) -> Option<()> {
-        // Only decimal numbers allowed here
-        let _line = self.expect(
-            Kind::Number {
-                base: Base::Decimal,
-            },
-            "expected decimal line number",
-        )?;
-
-        // Optional filename
-        if let Some(tok) = self.cursor().peek() {
-            if matches!(tok, Kind::String { terminated: true }) {
-                self.cursor().next();
-            }
-        }
-
-        self.warn_trailing(span, Directive::Line);
-
-        // For now, just parse and ignore #line directives
-        // Actual line number manipulation would require more infrastructure
-        Some(())
     }
 
     fn expect(&mut self, kind: Kind, message: &'static str) -> Option<Token> {
@@ -685,19 +320,19 @@ where
 
     fn directive(&mut self, span: Span) {
         match self.source_of(span) {
-            "if" => self.dir_if(span),
-            "ifdef" => self.dir_ifdef(span),
-            "ifndef" => self.dir_ifndef(span),
-            "elif" => self.dir_elif(span),
-            "else" => self.dir_else(span),
-            "endif" => self.dir_endif(span),
-            "pragma" => self.dir_pragma(),
-            "define" => _ = self.dir_define(),
-            "undef" => self.dir_undef(),
-            "include" => self.dir_include(span),
-            "warning" => self.dir_warning(span),
-            "error" => self.dir_error(span),
-            "line" => _ = self.dir_line(span),
+            "if" => DirectiveHandler::dir_if(self, span),
+            "ifdef" => DirectiveHandler::dir_ifdef(self, span),
+            "ifndef" => DirectiveHandler::dir_ifndef(self, span),
+            "elif" => DirectiveHandler::dir_elif(self, span),
+            "else" => DirectiveHandler::dir_else(self, span),
+            "endif" => DirectiveHandler::dir_endif(self, span),
+            "pragma" => DirectiveHandler::dir_pragma(self, span),
+            "define" => { DirectiveHandler::dir_define(self); }
+            "undef" => DirectiveHandler::dir_undef(self),
+            "include" => DirectiveHandler::dir_include(self, span),
+            "warning" => DirectiveHandler::dir_warning(self, span),
+            "error" => DirectiveHandler::dir_error(self, span),
+            "line" => DirectiveHandler::dir_line(self, span),
             _ => {
                 self.state().errors.push(Error::Syntax {
                     message: "invalid preprocessing directive",
@@ -1514,6 +1149,303 @@ where
             // Cursor is empty, pop the stack
             self.stack.pop();
         }
+    }
+}
+
+impl<'a, S> DirectiveHandler for Parser<'a, S>
+where
+    S: BorrowMut<State>,
+{
+    fn dir_include(&mut self, span: Span) {
+        let cursor = self.cursor();
+        let (kind, path) = match cursor.peek() {
+            Some(Kind::Lt) => {
+                _ = cursor.next();
+                let span = cursor.until_peek(Kind::Gt);
+                self.expect(Kind::Gt, "unterminated include");
+                (Include::System, span)
+            }
+            Some(Kind::String { .. }) => {
+                let tok = cursor.next().unwrap();
+                (Include::Local, tok.span)
+            }
+            _ => {
+                self.expect(
+                    Kind::String { terminated: true },
+                    "expected \"file\" or <file>",
+                );
+                return;
+            }
+        };
+        self.warn_trailing(span, Directive::Include);
+
+        if self.is_active() {
+            // Bail if we've hit the recursion depth
+            if self.stack.len() >= self.recursion_depth {
+                self.state().errors.push(Error::Syntax {
+                    message: "#include nested too deeply",
+                    span,
+                });
+                return;
+            }
+
+            let include = self.source_of(path).to_string();
+            let include = include.trim_start_matches('"').trim_end_matches('"');
+
+            if let Some(v) = self.search_includes(include, kind) {
+                match self.vfs.open(v, kind) {
+                    Ok((id, source)) => {
+                        // Skip files that we've already parsed if they used
+                        // the `once` pragma.
+                        if !self.state().parsed_files.contains(&id) {
+                            let cursor = File::from_src(source, id);
+                            self.stack.push(cursor);
+                        }
+                    }
+                    Err(_) => self.state().errors.push(Error::Syntax {
+                        message: "failed to open file",
+                        span,
+                    }),
+                }
+            } else {
+                self.state().errors.push(Error::Syntax {
+                    message: "file not found",
+                    span,
+                });
+            }
+        }
+    }
+
+    fn dir_define(&mut self) -> Option<()> {
+        let (name, name_span) = self.macro_name()?;
+
+        // Check if there's an opening parenthesis immediately after the macro name
+        // (no whitespace) to determine if it's a function-like macro
+        let mut lparen_tok = None;
+        let is_macro = if let Some(tok) = self.cursor().take_if(Kind::LParen) {
+            // For function-like macros, the '(' must immediately follow the macro name
+            // Check if the spans are adjacent
+            let is_adjacent = name_span.end.offset == tok.span.start.offset
+                && name_span.end.file_id == tok.span.start.file_id;
+            if is_adjacent {
+                true
+            } else {
+                // Not a function-like macro, put the token back
+                lparen_tok = Some(tok);
+                false
+            }
+        } else {
+            false
+        };
+
+        let definition = if is_macro {
+            let mut args = vec![];
+            let mut variadic = false;
+
+            // Empty function macros are allowed
+            while let Some(c) = self.cursor().peek() {
+                if c == Kind::RParen {
+                    break;
+                }
+
+                // Check for variadic ...
+                if c == Kind::Period {
+                    // Check if we have three periods
+                    let cursor = self.cursor();
+                    cursor.next(); // consume first .
+                    if cursor.peek() == Some(Kind::Period) {
+                        cursor.next(); // consume second .
+                        if cursor.peek() == Some(Kind::Period) {
+                            cursor.next(); // consume third .
+                            variadic = true;
+                            // Variadic must be last parameter
+                            self.expect(Kind::RParen, "variadic parameter must be last")?;
+                            break;
+                        }
+                    }
+                    // If not three periods, error
+                    self.state().errors.push(Error::Syntax {
+                        message: "expected identifier or '...'",
+                        span: name_span,
+                    });
+                    return None;
+                }
+
+                // TODO: can also be a keyword
+                let arg = self.expect(Kind::Ident, "invalid token in macro parameter list")?;
+                args.push(arg);
+
+                if self.cursor().take_if(Kind::Comma).is_none() {
+                    self.expect(Kind::RParen, "expected comma or end of parameter list")?;
+                    break;
+                }
+            }
+
+            let def = self.cursor().until_newline();
+            Macro::Function {
+                span: name_span,
+                args,
+                def,
+                variadic,
+            }
+        } else {
+            // If we consumed an lparen that wasn't part of a function macro,
+            // we need to include it in the definition
+            let mut def = Vec::new();
+            if let Some(tok) = lparen_tok {
+                def.push(tok);
+            }
+            def.extend(self.cursor().until_newline());
+            Macro::Object {
+                span: name_span,
+                def,
+            }
+        };
+
+        if self.is_active()
+            && self
+                .state()
+                .defines
+                .insert(name.to_string(), definition)
+                .is_some()
+        {
+            self.state().warnings.push(Error::Syntax {
+                message: "macro redefined",
+                span: name_span,
+            });
+        }
+        Some(())
+    }
+
+    fn dir_undef(&mut self) {
+        let Some((name, span)) = self.macro_name() else {
+            return;
+        };
+        self.warn_trailing(span, Directive::Undef);
+
+        if self.is_active() {
+            self.state().defines.remove(name);
+        }
+    }
+
+    fn dir_if(&mut self, span: Span) {
+        let result = self.expr_and_eval();
+        let state = IfState::new_if(result, span);
+        self.if_state().push(state);
+    }
+
+    fn dir_ifdef(&mut self, span: Span) {
+        let result = if let Some((name, name_span)) = self.macro_name() {
+            self.warn_trailing(name_span, Directive::Ifdef);
+            self.is_defined(name)
+        } else {
+            false
+        };
+
+        let state = IfState::new_if(result, span);
+        self.if_state().push(state);
+    }
+
+    fn dir_ifndef(&mut self, span: Span) {
+        let result = if let Some((name, name_span)) = self.macro_name() {
+            self.warn_trailing(name_span, Directive::Ifndef);
+            !self.is_defined(name)
+        } else {
+            false
+        };
+
+        let state = IfState::new_if(result, span);
+        self.if_state().push(state);
+    }
+
+    fn dir_elif(&mut self, span: Span) {
+        let result = self.expr_and_eval();
+
+        match self.if_state().last_mut() {
+            Some(v) => {
+                if let Err(e) = v.eval_elif(result) {
+                    self.state().errors.push(e);
+                }
+            }
+            None => self.state().errors.push(Error::Syntax {
+                message: "#elif without #if",
+                span,
+            }),
+        }
+    }
+
+    fn dir_else(&mut self, span: Span) {
+        match self.if_state().last_mut() {
+            Some(v) => {
+                if let Err(e) = v.eval_else() {
+                    self.state().errors.push(e);
+                }
+            }
+            None => self.state().errors.push(Error::Syntax {
+                message: "#else without #if",
+                span,
+            }),
+        }
+    }
+
+    fn dir_endif(&mut self, span: Span) {
+        if self.if_state().pop().is_none() {
+            self.state().errors.push(Error::Syntax {
+                message: "#endif without #if",
+                span,
+            });
+        }
+    }
+
+    fn dir_pragma(&mut self, _span: Span) {
+        let tokens = self.cursor().until_newline();
+
+        // Empty pragmas are allowed, so this is not guaranteed
+        if let Some(pragma) = tokens.first() {
+            let name = self.source_of(pragma.span);
+            if name == "once" && self.enable_pragma_once {
+                // Handle #pragma once
+                let file_id = pragma.span.start.file_id;
+                self.mark_included(file_id);
+            }
+            // Ignore other pragmas
+        }
+    }
+
+    fn dir_error(&mut self, span: Span) {
+        let tokens = self.cursor().until_newline();
+        if self.is_active() {
+            self.state().errors.push(Error::Note { span, tokens });
+        }
+    }
+
+    fn dir_warning(&mut self, span: Span) {
+        let tokens = self.cursor().until_newline();
+        if self.is_active() {
+            self.state().warnings.push(Error::Note { span, tokens });
+        }
+    }
+
+    fn dir_line(&mut self, span: Span) {
+        // Only decimal numbers allowed here
+        let _line = self.expect(
+            Kind::Number {
+                base: Base::Decimal,
+            },
+            "expected decimal line number",
+        );
+
+        // Optional filename
+        if let Some(tok) = self.cursor().peek() {
+            if matches!(tok, Kind::String { terminated: true }) {
+                self.cursor().next();
+            }
+        }
+
+        self.warn_trailing(span, Directive::Line);
+
+        // For now, just parse and ignore #line directives
+        // Actual line number manipulation would require more infrastructure
     }
 }
 

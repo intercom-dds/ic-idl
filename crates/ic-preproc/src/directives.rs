@@ -32,9 +32,9 @@ use crate::state::Error;
 /// statements and their expressions.
 #[derive(Debug)]
 pub struct IfState {
-    pub state: IfKind,
-    pub evaluated: bool,
-    pub defined: Span,
+    pub(crate) state: IfKind,
+    pub(crate) evaluated: bool,
+    pub(crate) defined: Span,
 }
 
 #[derive(Debug)]
@@ -58,9 +58,9 @@ impl IfState {
             IfKind::If { result } | IfKind::Elif { result } => result,
             IfKind::Else => {
                 self.evaluated = true;
-                Err(Error::Expr {
+                return Err(Error::Expr {
                     message: "#elif after #else",
-                })?
+                });
             }
         };
 
@@ -74,9 +74,9 @@ impl IfState {
             IfKind::If { result } | IfKind::Elif { result } => result,
             IfKind::Else => {
                 self.evaluated = true;
-                Err(Error::Expr {
+                return Err(Error::Expr {
                     message: "#else after #else",
-                })?
+                });
             }
         };
 
@@ -88,10 +88,13 @@ impl IfState {
     /// Check if this `if` state is "active", that is if the current
     /// processor should be emitting tokens.
     pub fn is_active(&self) -> bool {
-        match self.state {
-            IfKind::If { result } => result,
-            IfKind::Elif { result } => !self.evaluated && result,
-            IfKind::Else => !self.evaluated,
+        if self.evaluated {
+            false
+        } else {
+            match self.state {
+                IfKind::Else => true,
+                IfKind::If { result } | IfKind::Elif { result } => result,
+            }
         }
     }
 }

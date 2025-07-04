@@ -53,6 +53,15 @@ enum IfKind {
     Else,
 }
 
+/// Context for function macro expansion
+struct MacroExpansionContext<'a> {
+    token: Token,
+    args: &'a [Token],
+    def: &'a [Token],
+    variadic: bool,
+    actual_args: &'a [Vec<Token>],
+}
+
 /// A small state machine for keeping track of the current state of `if`
 /// statements and their expressions.
 #[derive(Debug)]
@@ -1022,32 +1031,35 @@ where
             }
         }
 
-        // The rest of the function macro expansion logic will go here...
-        // For now, just a placeholder
-        self.expand_function_macro_impl(token, args, def, variadic, &actual_args, seen, name);
+        // Expand the function macro
+        let ctx = MacroExpansionContext {
+            token,
+            args,
+            def,
+            variadic,
+            actual_args: &actual_args,
+        };
+        self.expand_function_macro_impl(&ctx, seen, name);
     }
 
+    #[allow(clippy::too_many_lines)]
     fn expand_function_macro_impl(
         &mut self,
-        token: Token,
-        args: &[Token],
-        def: &[Token],
-        variadic: bool,
-        actual_args: &[Vec<Token>],
+        ctx: &MacroExpansionContext<'_>,
         seen: &mut BTreeSet<&'a str>,
         _name: &'a str,
     ) {
         // Build argument mapping for substitution
         let mut arg_map = HashMap::new();
-        for (param, actual) in args.iter().zip(actual_args.iter()) {
+        for (param, actual) in ctx.args.iter().zip(ctx.actual_args.iter()) {
             let param_name = self.source_of(param.span);
             arg_map.insert(param_name, vec![actual.clone()]);
         }
 
         // Handle variadic arguments
-        if variadic {
+        if ctx.variadic {
             // Collect all remaining arguments for __VA_ARGS__
-            let va_args: Vec<Token> = actual_args[args.len()..]
+            let va_args: Vec<Token> = ctx.actual_args[ctx.args.len()..]
                 .iter()
                 .enumerate()
                 .flat_map(|(i, arg)| {
@@ -1056,7 +1068,7 @@ where
                         // Add comma between arguments
                         tokens.push(Token {
                             kind: Kind::Comma,
-                            span: token.span, // Use macro span as approximation
+                            span: ctx.token.span, // Use macro span as approximation
                         });
                     }
                     tokens.extend(arg.clone());
@@ -1068,7 +1080,7 @@ where
 
         // Expand the macro definition with argument substitution
         let mut i = 0;
-        let tokens = def.to_vec();
+        let tokens = ctx.def.to_vec();
         let mut result_tokens = Vec::new();
 
         while i < tokens.len() {
@@ -1128,7 +1140,7 @@ where
                 let name = self.source_of(tok.span);
 
                 // Check for __VA_OPT__
-                if name == "__VA_OPT__" && variadic {
+                if name == "__VA_OPT__" && ctx.variadic {
                     // Look for opening parenthesis
                     if i + 1 < tokens.len() && tokens[i + 1].kind == Kind::LParen {
                         i += 2; // Skip __VA_OPT__ and (
@@ -1154,7 +1166,7 @@ where
                         }
 
                         // Only include the content if there are variadic arguments
-                        let has_varargs = actual_args.len() > args.len();
+                        let has_varargs = ctx.actual_args.len() > ctx.args.len();
                         if has_varargs {
                             result_tokens.extend(opt_tokens);
                         }

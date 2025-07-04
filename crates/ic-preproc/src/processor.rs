@@ -878,10 +878,11 @@ where
                         },
                     };
 
-                    // Determine the kind of the pasted token
-                    // For simplicity, assume it's an identifier
+                    // Determine the kind of the pasted token by lexing it
+                    let token_kind = self.determine_token_kind(&pasted);
+                    
                     final_tokens.push(Token {
-                        kind: Kind::Ident,
+                        kind: token_kind,
                         span,
                     });
 
@@ -1140,6 +1141,78 @@ where
         }
 
         args
+    }
+
+    /// Determine the token kind for a pasted string by lexing it
+    fn determine_token_kind(&self, text: &str) -> Kind {
+        // First, check for operators and special tokens
+        match text {
+            // Multi-character operators
+            "==" => return Kind::EqEq,
+            "!=" => return Kind::NotEq,
+            "<=" => return Kind::LtEq,
+            ">=" => return Kind::GtEq,
+            "<<" => return Kind::LShift,
+            ">>" => return Kind::RShift,
+            "&&" => return Kind::And,
+            "||" => return Kind::Or,
+            "::" => return Kind::DColon,
+            "++" | "--" => return Kind::Ident, // These are not single tokens in IDL
+            
+            // Single character operators
+            "+" => return Kind::Plus,
+            "-" => return Kind::Minus,
+            "*" => return Kind::Star,
+            "/" => return Kind::Slash,
+            "%" => return Kind::Modulo,
+            "=" => return Kind::Eq,
+            "<" => return Kind::Lt,
+            ">" => return Kind::Gt,
+            "!" => return Kind::Not,
+            "&" => return Kind::BitAnd,
+            "|" => return Kind::BitOr,
+            "^" => return Kind::BitXor,
+            "~" => return Kind::BitNot,
+            "?" => return Kind::Question,
+            ":" => return Kind::Colon,
+            ";" => return Kind::Semi,
+            "," => return Kind::Comma,
+            "." => return Kind::Period,
+            "#" => return Kind::Hash,
+            "@" => return Kind::At,
+            "{" => return Kind::LBrace,
+            "}" => return Kind::RBrace,
+            "(" => return Kind::LParen,
+            ")" => return Kind::RParen,
+            "[" => return Kind::LBracket,
+            "]" => return Kind::RBracket,
+            "\\" => return Kind::Backslash,
+            _ => {}
+        }
+        
+        // Check if it's a keyword
+        if let Some(kw) = ic_lexer::token::Kw::from_str(text) {
+            return Kind::Keyword(kw);
+        }
+        
+        // Check if it's a number
+        if let Some(first_char) = text.chars().next() {
+            if first_char.is_ascii_digit() {
+                // Simple number detection - could be decimal, octal, or hex
+                if text.starts_with("0x") || text.starts_with("0X") {
+                    return Kind::Number { base: Base::Hexadecimal };
+                } else if text.starts_with('0') && text.len() > 1 && text.chars().all(|c| c.is_ascii_digit()) {
+                    return Kind::Number { base: Base::Octal };
+                } else if text.chars().all(|c| c.is_ascii_digit()) {
+                    return Kind::Number { base: Base::Decimal };
+                }
+                // If it contains non-digit characters after starting with a digit,
+                // it's an invalid identifier (but we'll treat it as one)
+            }
+        }
+        
+        // Default to identifier
+        Kind::Ident
     }
 
     fn next_raw_token(&mut self) -> Option<Token> {

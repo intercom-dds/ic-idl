@@ -37,7 +37,7 @@ use ic_vfs::SourceMap;
 fn parentheses_in_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if (2 + 3) * 4 == 20
                 #define PARENTHESES_WORK
             #endif
@@ -45,7 +45,7 @@ fn parentheses_in_expressions() {
             #if ((1 + 2) * 3) / 2 == 4
                 #define NESTED_PARENS
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -61,7 +61,7 @@ fn parentheses_in_expressions() {
 fn modulo_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 10 % 3 == 1
                 #define MODULO_WORKS
             #endif
@@ -69,7 +69,7 @@ fn modulo_operator() {
             #if 20 % 4 == 0
                 #define MODULO_ZERO
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -82,11 +82,11 @@ fn modulo_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement unary minus
+#[ignore = "TODO: Implement unary minus"]
 fn unary_minus_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if -5 + 10 == 5
                 #define UNARY_MINUS_WORKS
             #endif
@@ -94,7 +94,7 @@ fn unary_minus_operator() {
             #if -(-10) == 10
                 #define DOUBLE_NEGATIVE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -107,11 +107,11 @@ fn unary_minus_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement bitwise NOT operator
+#[ignore = "TODO: Implement bitwise NOT operator"]
 fn bitwise_not_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if ~0 == -1
                 #define BITWISE_NOT_WORKS
             #endif
@@ -119,7 +119,7 @@ fn bitwise_not_operator() {
             #if (~0xFF & 0xFFFF) == 0xFF00
                 #define BITWISE_NOT_MASK
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -135,7 +135,7 @@ fn bitwise_not_operator() {
 fn logical_not_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if !0
                 #define NOT_ZERO_IS_TRUE
             #endif
@@ -147,7 +147,7 @@ fn logical_not_operator() {
             #if !(5 > 10)
                 #define NOT_FALSE_IS_TRUE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -164,7 +164,7 @@ fn logical_not_operator() {
 fn ternary_conditional_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if (1 ? 42 : 0) == 42
                 #define TERNARY_TRUE_BRANCH
             #endif
@@ -180,7 +180,7 @@ fn ternary_conditional_operator() {
             #if (1 ? (2 ? 3 : 4) : 5) == 3
                 #define NESTED_TERNARY
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -198,7 +198,7 @@ fn ternary_conditional_operator() {
 fn defined_operator_basic() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define EXISTING_MACRO
             
             #if defined(EXISTING_MACRO)
@@ -212,7 +212,7 @@ fn defined_operator_basic() {
             #if !defined(NONEXISTENT_MACRO)
                 #define NOT_DEFINED_WORKS
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -226,11 +226,11 @@ fn defined_operator_basic() {
 }
 
 #[test]
-#[ignore] // TODO: Handle macro expansion after defined() in complex expressions
+#[ignore = "TODO: Handle macro expansion after defined() in complex expressions"]
 fn defined_operator_complex() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define A 1
             #define B 2
             
@@ -249,7 +249,7 @@ fn defined_operator_complex() {
             #if defined(A) && A > 0
                 #define DEFINED_AND_VALUE_CHECK
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -266,11 +266,11 @@ fn defined_operator_complex() {
 // ==================== Macro Features ====================
 
 #[test]
-#[ignore] // TODO: Implement function-like macros
+#[ignore = "TODO: Implement function-like macros"]
 fn function_like_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define MAX(a, b) ((a) > (b) ? (a) : (b))
             #define MIN(a, b) ((a) < (b) ? (a) : (b))
             #define SQUARE(x) ((x) * (x))
@@ -278,7 +278,7 @@ fn function_like_macros() {
             MAX(10, 20)
             MIN(5, 3)
             SQUARE(4)
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -293,7 +293,7 @@ fn function_like_macros() {
 }
 
 #[test]
-#[ignore] // TODO: Implement variadic macros
+#[ignore = "TODO: Implement variadic macros"]
 fn variadic_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -319,7 +319,7 @@ fn variadic_macros() {
 }
 
 #[test]
-#[ignore] // TODO: Implement stringification operator
+#[ignore = "TODO: Implement stringification operator"]
 fn stringification_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -344,11 +344,11 @@ fn stringification_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement token pasting operator
+#[ignore = "TODO: Implement token pasting operator"]
 fn token_pasting_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define PASTE(a, b) a##b
             #define MAKE_VAR(prefix, name) prefix##_##name
             #define CONCAT3(a, b, c) a##b##c
@@ -356,7 +356,7 @@ fn token_pasting_operator() {
             PASTE(foo, bar)
             MAKE_VAR(get, value)
             CONCAT3(x, y, z)
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -368,7 +368,7 @@ fn token_pasting_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement __VA_OPT__
+#[ignore = "TODO: Implement __VA_OPT__"]
 fn va_opt_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -391,7 +391,7 @@ fn va_opt_macro() {
 // ==================== Directive Features ====================
 
 #[test]
-#[ignore] // TODO: Implement #line directive
+#[ignore = "TODO: Implement #line directive"]
 fn line_directive_basic() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -415,7 +415,7 @@ fn line_directive_basic() {
 }
 
 #[test]
-#[ignore] // TODO: Implement __LINE__ and __FILE__
+#[ignore = "TODO: Implement __LINE__ and __FILE__"]
 fn predefined_line_file_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -439,11 +439,11 @@ fn predefined_line_file_macros() {
 }
 
 #[test]
-#[ignore] // TODO: Implement __DATE__ and __TIME__
+#[ignore = "TODO: Implement __DATE__ and __TIME__"]
 fn predefined_date_time_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             const char* build_date = __DATE__;
             const char* build_time = __TIME__;
             
@@ -454,7 +454,7 @@ fn predefined_date_time_macros() {
             #ifdef __TIME__
                 #define HAS_TIME_MACRO
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -467,7 +467,7 @@ fn predefined_date_time_macros() {
 }
 
 #[test]
-#[ignore] // TODO: Implement _Pragma operator
+#[ignore = "TODO: Implement _Pragma operator"]
 fn pragma_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -490,11 +490,11 @@ fn pragma_operator() {
 // ==================== Advanced Expression Features ====================
 
 #[test]
-#[ignore] // TODO: Implement operator precedence correctly
+#[ignore = "TODO: Implement operator precedence correctly"]
 fn operator_precedence() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 2 + 3 * 4 == 14
                 #define MULTIPLY_BEFORE_ADD
             #endif
@@ -510,7 +510,7 @@ fn operator_precedence() {
             #if 5 > 3 == 1
                 #define COMPARISON_RETURNS_ONE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -527,11 +527,11 @@ fn operator_precedence() {
 // ==================== Error Handling ====================
 
 #[test]
-#[ignore] // TODO: Better error messages for malformed expressions
+#[ignore = "TODO: Better error messages for malformed expressions"]
 fn expression_error_messages() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 1 + + 2
                 #define DOUBLE_PLUS
             #endif
@@ -543,7 +543,7 @@ fn expression_error_messages() {
             #if 1 2 3
                 #define MISSING_OPERATORS
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -555,11 +555,11 @@ fn expression_error_messages() {
 }
 
 #[test]
-#[ignore] // TODO: Handle macro expansion in expressions better
+#[ignore = "TODO: Handle macro expansion in expressions better"]
 fn macro_expansion_in_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define A 1
             #define B A + 1
             #define C B * 2
@@ -580,7 +580,7 @@ fn macro_expansion_in_expressions() {
             #if COMPLEX == 12
                 #define COMPLEX_EXPANSION_WORKS
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();

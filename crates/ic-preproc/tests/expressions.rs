@@ -35,7 +35,7 @@ use ic_vfs::SourceMap;
 fn simple_arithmetic() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 1 + 1 == 2
                 #define SIMPLE_ADD
             #endif
@@ -51,7 +51,7 @@ fn simple_arithmetic() {
             #if 6 / 2 == 3
                 #define SIMPLE_DIV
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -66,11 +66,11 @@ fn simple_arithmetic() {
 }
 
 #[test]
-#[ignore] // TODO: Implement bitwise NOT (~) operator
+#[ignore = "TODO: Implement bitwise NOT (~) operator"]
 fn bitwise_operations() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if (0x0F & 0x06) == 0x06
                 #define AND_WORKS
             #endif
@@ -94,7 +94,7 @@ fn bitwise_operations() {
             #if (32 >> 2) == 8
                 #define SHIFT_RIGHT
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -114,7 +114,7 @@ fn bitwise_operations() {
 fn comparison_operators() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 5 < 10
                 #define LESS_THAN
             #endif
@@ -138,7 +138,7 @@ fn comparison_operators() {
             #if 5 != 10
                 #define NOT_EQUAL
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -155,11 +155,11 @@ fn comparison_operators() {
 }
 
 #[test]
-#[ignore] // TODO: Implement ternary operator (?:)
+#[ignore = "TODO: Implement ternary operator (?:)"]
 fn ternary_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if (1 ? 42 : 0) == 42
                 #define TERNARY_TRUE
             #endif
@@ -171,7 +171,7 @@ fn ternary_operator() {
             #if (5 > 3 ? 10 : 20) == 10
                 #define TERNARY_CONDITION
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -188,7 +188,7 @@ fn ternary_operator() {
 fn simple_macro_in_expression() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define VALUE 10
             #define MULTIPLIER 3
             
@@ -199,7 +199,7 @@ fn simple_macro_in_expression() {
             #if VALUE == 10
                 #define MACRO_COMPARISON
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -212,11 +212,11 @@ fn simple_macro_in_expression() {
 }
 
 #[test]
-#[ignore] // TODO: Implement full expression evaluation
+#[ignore = "TODO: Implement full expression evaluation"]
 fn complex_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define A 5
             #define B 3
             
@@ -231,7 +231,7 @@ fn complex_expressions() {
             #if A > 0 ? (B < 10 ? 1 : 0) : 0
                 #define NESTED_TERNARY
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -245,11 +245,11 @@ fn complex_expressions() {
 }
 
 #[test]
-#[ignore] // TODO: Handle undefined macros as 0 in expressions
+#[ignore = "TODO: Handle undefined macros as 0 in expressions"]
 fn undefined_in_expression() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if UNDEFINED_MACRO
                 #define SHOULD_BE_FALSE
             #endif
@@ -257,7 +257,7 @@ fn undefined_in_expression() {
             #if !UNDEFINED_MACRO
                 #define SHOULD_BE_TRUE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -274,11 +274,11 @@ fn undefined_in_expression() {
 fn division_by_zero() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 10 / 0
                 #define DIV_BY_ZERO
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();

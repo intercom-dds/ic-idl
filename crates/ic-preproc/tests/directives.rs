@@ -90,7 +90,7 @@ fn conditional_error() {
 }
 
 #[test]
-#[ignore] // TODO: Implement #line directive
+#[ignore = "TODO: Implement #line directive"]
 fn line_directive() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -115,9 +115,9 @@ fn line_directive() {
 fn include_angle_brackets() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #include <tests/pragma_once.idl>
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -168,12 +168,12 @@ fn malformed_include() {
 fn whitespace_handling() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #  define   SPACES   123
             #	ifdef	SPACES
             #		define	TABS_WORK
             #	endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -189,12 +189,12 @@ fn whitespace_handling() {
 fn comment_in_directive() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define FOO /* comment */ 42
             #ifdef FOO // line comment
                 #define BAR
             #endif /* block comment */
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -210,14 +210,14 @@ fn comment_in_directive() {
 fn multiline_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define LONG_MACRO \
                 do { \
                     something(); \
                     something_else(); \
                 } while(0)
             LONG_MACRO
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();

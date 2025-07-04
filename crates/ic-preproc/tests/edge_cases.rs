@@ -93,11 +93,11 @@ fn only_whitespace() {
 fn hash_without_directive() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #
             # 
             #123
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -108,18 +108,18 @@ fn hash_without_directive() {
 }
 
 #[test]
-#[ignore] // TODO: Implement stringification operator (#)
+#[ignore = "TODO: Implement stringification operator (#)"]
 fn stringification() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define STRINGIFY(x) #x
             #define XSTRINGIFY(x) STRINGIFY(x)
             #define VERSION 123
             
             STRINGIFY(hello world)
             XSTRINGIFY(VERSION)
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -133,17 +133,17 @@ fn stringification() {
 }
 
 #[test]
-#[ignore] // TODO: Implement token pasting operator (##)
+#[ignore = "TODO: Implement token pasting operator (##)"]
 fn token_pasting() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define PASTE(a, b) a##b
             #define MAKE_VAR(name) int var_##name
             
             PASTE(foo, bar)
             MAKE_VAR(test)
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -157,7 +157,7 @@ fn token_pasting() {
 fn predefined_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #ifdef __FILE__
                 #define HAS_FILE
             #endif
@@ -165,7 +165,7 @@ fn predefined_macros() {
             #ifdef __LINE__
                 #define HAS_LINE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -180,10 +180,10 @@ fn predefined_macros() {
 fn macro_recursion() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define RECURSIVE RECURSIVE
             RECURSIVE
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -198,11 +198,11 @@ fn macro_recursion() {
 fn command_line_defines() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #ifdef CMD_DEFINE
                 #define FOUND_CMD_DEFINE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default().define("CMD_DEFINE", None);

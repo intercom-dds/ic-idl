@@ -32,7 +32,7 @@ use ic_vfs::SourceMap;
 fn if_expression_evaluation() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 1 + 1 == 2
             #define MATH_WORKS
             #endif
@@ -44,15 +44,13 @@ fn if_expression_evaluation() {
             #if 3 * 4 / 2 == 6
             #define COMPLEX_MATH
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-    }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("MATH_WORKS"));
     assert!(state.is_defined("COMPARISON_WORKS"));
@@ -63,7 +61,7 @@ fn if_expression_evaluation() {
 fn nested_conditionals() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define OUTER 1
             #define INNER 1
             
@@ -77,15 +75,13 @@ fn nested_conditionals() {
             #else
                 #define OUTER_FALSE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-    }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("OUTER_TRUE"));
     assert!(state.is_defined("BOTH_TRUE"));
@@ -97,7 +93,7 @@ fn nested_conditionals() {
 fn elif_chain() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define VERSION 3
             
             #if VERSION == 1
@@ -109,15 +105,13 @@ fn elif_chain() {
             #else
                 #define VUNKNOWN
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-    }
     assert!(state.errors().is_empty());
     assert!(!state.is_defined("V1"));
     assert!(!state.is_defined("V2"));
@@ -129,7 +123,7 @@ fn elif_chain() {
 fn ifdef_ifndef() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define DEFINED_MACRO
             
             #ifdef DEFINED_MACRO
@@ -147,15 +141,13 @@ fn ifdef_ifndef() {
             #ifndef DEFINED_MACRO
                 #define ALSO_SHOULD_NOT_BE_DEFINED
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-    }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("IFDEF_WORKS"));
     assert!(state.is_defined("IFNDEF_WORKS"));
@@ -164,11 +156,11 @@ fn ifdef_ifndef() {
 }
 
 #[test]
-#[ignore] // TODO: Implement logical NOT operator in expressions
+#[ignore = "TODO: Implement logical NOT operator in expressions"]
 fn logical_operators() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define A 1
             #define B 0
             
@@ -187,15 +179,13 @@ fn logical_operators() {
             #if A && !B
                 #define COMPLEX_TRUE
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-    }
     assert!(state.errors().is_empty());
     assert!(!state.is_defined("AND_FALSE"));
     assert!(state.is_defined("OR_TRUE"));
@@ -204,11 +194,11 @@ fn logical_operators() {
 }
 
 #[test]
-#[ignore] // TODO: Implement defined() operator
+#[ignore = "TODO: Implement defined() operator"]
 fn defined_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define EXISTING
             
             #if defined(EXISTING)
@@ -222,15 +212,13 @@ fn defined_operator() {
             #if defined(EXISTING) && !defined(NONEXISTING)
                 #define COMPLEX_DEFINED
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-    }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("DEFINED_CHECK_WORKS"));
     assert!(state.is_defined("NOT_DEFINED_WORKS"));
@@ -241,11 +229,11 @@ fn defined_operator() {
 fn missing_endif() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 1
             #define SOMETHING
             // Missing #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -260,12 +248,12 @@ fn missing_endif() {
 fn extra_endif() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #if 1
             #define SOMETHING
             #endif
             #endif  // Extra endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -280,11 +268,11 @@ fn extra_endif() {
 fn elif_without_if() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #elif 1
             #define SOMETHING
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();

@@ -42,27 +42,27 @@ fn simple_object_macro() {
 
     let args = ProcArgs::default();
     let mut state = State::new();
-    let _output: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+    let output: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
 
     assert!(state.errors().is_empty());
     assert!(state.is_defined("VERSION"));
     assert!(state.is_defined("NAME"));
 
     // Check that we got some output tokens
-    assert!(!_output.is_empty());
+    assert!(!output.is_empty());
 }
 
 #[test]
-#[ignore] // TODO: Implement function-like macros
+#[ignore = "TODO: Implement function-like macros"]
 fn function_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define MAX(a, b) ((a) > (b) ? (a) : (b))
             #define MIN(a, b) ((a) < (b) ? (a) : (b))
             MAX(10, 20)
             MIN(x, y)
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -78,10 +78,10 @@ fn function_macro() {
 fn macro_redefinition() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define FOO 1
             #define FOO 2
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -96,7 +96,7 @@ fn macro_redefinition() {
 fn undef_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define TEMP 42
             #ifdef TEMP
             #define TEMP_DEFINED
@@ -105,7 +105,7 @@ fn undef_macro() {
             #ifdef TEMP
             #define TEMP_STILL_DEFINED
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -122,12 +122,12 @@ fn undef_macro() {
 fn nested_macro_expansion() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define INNER 5
             #define OUTER INNER + INNER
             #define RESULT OUTER * 2
             RESULT
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();
@@ -138,7 +138,7 @@ fn nested_macro_expansion() {
 }
 
 #[test]
-#[ignore] // TODO: Implement function-like macros in conditionals
+#[ignore = "TODO: Implement function-like macros in conditionals"]
 fn macro_in_conditional() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -166,12 +166,12 @@ fn macro_in_conditional() {
 fn empty_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
-        r#"
+        r"
             #define EMPTY
             #ifdef EMPTY
             #define EMPTY_IS_DEFINED
             #endif
-        "#,
+        ",
     );
 
     let args = ProcArgs::default();

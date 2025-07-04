@@ -39,13 +39,13 @@ fn make_span(start: u32, end: u32) -> Span {
 #[test]
 fn test_multiline_span() {
     // Test with a multi-line span
-    let source = r#"\
+    let source = r"\
 interface MyInterface {
     void myMethod(
         int param1,
         string param2
     );
-}"#;
+}";
 
     // Create a diagnostic that spans multiple lines (from "myMethod" to the closing paren)
     let diag = Diag::error("method spans multiple lines").label(

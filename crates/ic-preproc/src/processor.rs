@@ -850,7 +850,7 @@ where
                     let left_text = self.source_of(left.span);
                     let right_text = self.source_of(right.span);
                     let mut pasted = String::with_capacity(left_text.len() + right_text.len());
-                    let _ = write!(&mut pasted, "{}{}", left_text, right_text);
+                    let _ = write!(&mut pasted, "{left_text}{right_text}");
 
                     // Create a new token with the pasted content
                     let file_id = self.vfs.embed(&pasted);
@@ -1160,7 +1160,7 @@ where
     }
 }
 
-impl<'a, S> DirectiveHandler for Parser<'a, S>
+impl<S> DirectiveHandler for Parser<'_, S>
 where
     S: BorrowMut<State>,
 {

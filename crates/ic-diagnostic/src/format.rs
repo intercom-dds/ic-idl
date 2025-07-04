@@ -115,6 +115,43 @@ fn line_span(input: &str, offset: u32) -> Range<usize> {
     Range { start, end }
 }
 
+/// Returns the start column of a label on the given line.
+fn label_start_on_line(label: &Label, line_start_offset: u32) -> usize {
+    if label.span.start.offset >= line_start_offset {
+        (label.span.start.offset - line_start_offset) as usize
+    } else {
+        0
+    }
+}
+
+/// Finds the end position of a continuous highlight for the same label.
+fn find_highlight_end(col_labels: &[Vec<&Label>], start: usize, primary_label: &Label) -> usize {
+    let mut end = start + 1;
+    while end < col_labels.len() && !col_labels[end].is_empty() {
+        if std::ptr::eq(col_labels[end][0], primary_label) {
+            end += 1;
+        } else {
+            break;
+        }
+    }
+    end
+}
+
+/// Returns the end column of a label on the given line.
+fn label_end_on_line(
+    source: &str,
+    label: &Label,
+    line_start_offset: u32,
+    line_num: usize,
+    line_len: usize,
+) -> usize {
+    if line_number(source, label.span.end.offset as usize) > line_num {
+        line_len
+    } else {
+        (label.span.end.offset - line_start_offset) as usize
+    }
+}
+
 struct Formatter<'a> {
     filename: Option<&'a str>,
     source: &'a str,
@@ -122,7 +159,7 @@ struct Formatter<'a> {
 }
 
 impl Formatter<'_> {
-    fn get_line_start_offset(&self, line_num: usize) -> usize {
+    fn line_start_offset(&self, line_num: usize) -> usize {
         let mut line_start = 0;
         let mut current_line = 1;
         for (idx, b) in self.source.bytes().enumerate() {
@@ -202,7 +239,7 @@ impl Formatter<'_> {
                 self.chars.vertical.blue().bold(),
             )?;
 
-            let line_start = self.get_line_start_offset(line_num);
+            let line_start = self.line_start_offset(line_num);
 
             let range = line_span(self.source, line_start as u32);
             writeln!(f, " {}", self.source[range].trim_end())?;
@@ -220,12 +257,12 @@ impl Formatter<'_> {
         labels: &[Label],
         line_num: usize,
     ) -> fmt::Result {
-        let labels_on_line = self.get_labels_on_line(labels, line_num);
+        let labels_on_line = self.labels_on_line(labels, line_num);
         if labels_on_line.is_empty() {
             return Ok(());
         }
 
-        let line_start_offset = self.get_line_start_offset(line_num) as u32;
+        let line_start_offset = self.line_start_offset(line_num) as u32;
         let line_range = line_span(self.source, line_start_offset);
         let line_len = self.source[line_range.clone()].trim_end().len();
 
@@ -235,7 +272,7 @@ impl Formatter<'_> {
             self.build_column_label_map(&labels_on_line, line_start_offset, line_num, line_len);
         self.draw_highlights(f, &col_labels)?;
 
-        let labels_starting_here = self.get_labels_starting_on_line(&labels_on_line, line_num);
+        let labels_starting_here = self.labels_starting_on_line(&labels_on_line, line_num);
         if labels_starting_here.is_empty() {
             writeln!(f)?;
         } else {
@@ -251,7 +288,7 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn get_labels_on_line<'a>(&self, labels: &'a [Label], line_num: usize) -> Vec<&'a Label> {
+    fn labels_on_line<'a>(&self, labels: &'a [Label], line_num: usize) -> Vec<&'a Label> {
         labels
             .iter()
             .filter(|label| {
@@ -272,9 +309,9 @@ impl Formatter<'_> {
         let mut col_labels: Vec<Vec<&'a Label>> = vec![Vec::new(); line_len];
 
         for label in labels_on_line {
-            let label_start = Self::get_label_start_on_line(label, line_start_offset);
+            let label_start = label_start_on_line(label, line_start_offset);
             let label_end =
-                self.get_label_end_on_line(label, line_start_offset, line_num, line_len);
+                label_end_on_line(self.source, label, line_start_offset, line_num, line_len);
 
             for labels_at_col in col_labels
                 .iter_mut()
@@ -289,28 +326,6 @@ impl Formatter<'_> {
         col_labels
     }
 
-    fn get_label_start_on_line(label: &Label, line_start_offset: u32) -> usize {
-        if label.span.start.offset >= line_start_offset {
-            (label.span.start.offset - line_start_offset) as usize
-        } else {
-            0
-        }
-    }
-
-    fn get_label_end_on_line(
-        &self,
-        label: &Label,
-        line_start_offset: u32,
-        line_num: usize,
-        line_len: usize,
-    ) -> usize {
-        if line_number(self.source, label.span.end.offset as usize) > line_num {
-            line_len
-        } else {
-            (label.span.end.offset - line_start_offset) as usize
-        }
-    }
-
     fn sort_labels_by_size(
         &self,
         col_labels: &mut [Vec<&Label>],
@@ -320,8 +335,9 @@ impl Formatter<'_> {
     ) {
         for labels_at_col in col_labels {
             labels_at_col.sort_by_key(|label| {
-                let start = Self::get_label_start_on_line(label, line_start_offset);
-                let end = self.get_label_end_on_line(label, line_start_offset, line_num, line_len);
+                let start = label_start_on_line(label, line_start_offset);
+                let end =
+                    label_end_on_line(self.source, label, line_start_offset, line_num, line_len);
                 end - start
             });
         }
@@ -338,7 +354,7 @@ impl Formatter<'_> {
                     i += 1;
                 } else {
                     let primary_label = col_labels[i][0];
-                    let end = Self::find_highlight_end(col_labels, i, primary_label);
+                    let end = find_highlight_end(col_labels, i, primary_label);
                     let highlight_len = end - i;
 
                     write!(
@@ -357,23 +373,7 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn find_highlight_end(
-        col_labels: &[Vec<&Label>],
-        start: usize,
-        primary_label: &Label,
-    ) -> usize {
-        let mut end = start + 1;
-        while end < col_labels.len() && !col_labels[end].is_empty() {
-            if std::ptr::eq(col_labels[end][0], primary_label) {
-                end += 1;
-            } else {
-                break;
-            }
-        }
-        end
-    }
-
-    fn get_labels_starting_on_line<'a>(
+    fn labels_starting_on_line<'a>(
         &self,
         labels_on_line: &[&'a Label],
         line_num: usize,
@@ -432,8 +432,8 @@ impl Formatter<'_> {
     ) -> Vec<&'a Label> {
         let mut sorted = labels.to_vec();
         sorted.sort_by(|a, b| {
-            let a_end_col = self.get_label_end_col(a, line_start_offset, line_range);
-            let b_end_col = self.get_label_end_col(b, line_start_offset, line_range);
+            let a_end_col = self.label_end_col(a, line_start_offset, line_range);
+            let b_end_col = self.label_end_col(b, line_start_offset, line_range);
 
             match b_end_col.cmp(&a_end_col) {
                 std::cmp::Ordering::Equal => {
@@ -447,19 +447,21 @@ impl Formatter<'_> {
         sorted
     }
 
-    fn get_label_end_col(
+    fn label_end_col(
         &self,
         label: &Label,
         line_start_offset: u32,
         line_range: &Range<usize>,
     ) -> usize {
         let current_line = line_number(self.source, line_start_offset as usize);
-
-        if line_number(self.source, label.span.end.offset as usize) > current_line {
-            self.source[line_range.clone()].trim_end().len()
-        } else {
-            (label.span.end.offset - line_start_offset) as usize
-        }
+        let line_len = self.source[line_range.clone()].trim_end().len();
+        label_end_on_line(
+            self.source,
+            label,
+            line_start_offset,
+            current_line,
+            line_len,
+        )
     }
 
     fn sort_labels_left_to_right<'a>(labels: &[&'a Label]) -> Vec<&'a Label> {

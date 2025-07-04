@@ -39,11 +39,12 @@ use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
 
-use crate::{ProcArgs, Span, time};
-use crate::state::{State, Error, Directive};
+use crate::expression::{
+    Expr, ExpressionContext, expr_op, infix_precedence, is_true, prefix_precedence,
+};
 use crate::macros::Macro;
-use crate::expression::{is_true, infix_precedence, prefix_precedence, expr_op, Expr, ExpressionContext};
-
+use crate::state::{Directive, Error, State};
+use crate::{ProcArgs, Span, time};
 
 #[derive(Debug)]
 enum IfKind {
@@ -113,8 +114,6 @@ impl IfState {
         }
     }
 }
-
-
 
 /// Operator precedence is defined as follows, from highest to lowest:
 ///     1. unary `+`, unary `-`, logical `NOT`, bitwise `NOT`
@@ -257,7 +256,6 @@ where
         Some((self.source_of(span), span))
     }
 
-
     fn state(&mut self) -> &mut State {
         self.state.borrow_mut()
     }
@@ -296,7 +294,6 @@ where
             _ => self.state.borrow().is_defined(name),
         }
     }
-
 
     fn mark_included(&mut self, file_id: FileId) {
         self.state().mark_parsed(file_id);
@@ -891,7 +888,6 @@ where
         Ok(lhs)
     }
 
-
     fn expand_predefined_macro(&mut self, name: &str, token: Token) -> bool {
         match name {
             "__LINE__" => {
@@ -976,7 +972,15 @@ where
         }
     }
 
-    fn expand_function_macro(&mut self, token: Token, args: &[Token], def: &[Token], variadic: bool, seen: &mut BTreeSet<&'a str>, name: &'a str) {
+    fn expand_function_macro(
+        &mut self,
+        token: Token,
+        args: &[Token],
+        def: &[Token],
+        variadic: bool,
+        seen: &mut BTreeSet<&'a str>,
+        name: &'a str,
+    ) {
         // Function-like macros only expand if followed by '('
         // Check if next token is '('
         let next_is_lparen = if let Some(file) = self.stack.last_mut() {
@@ -1023,7 +1027,16 @@ where
         self.expand_function_macro_impl(token, args, def, variadic, &actual_args, seen, name);
     }
 
-    fn expand_function_macro_impl(&mut self, token: Token, args: &[Token], def: &[Token], variadic: bool, actual_args: &[Vec<Token>], seen: &mut BTreeSet<&'a str>, _name: &'a str) {
+    fn expand_function_macro_impl(
+        &mut self,
+        token: Token,
+        args: &[Token],
+        def: &[Token],
+        variadic: bool,
+        actual_args: &[Vec<Token>],
+        seen: &mut BTreeSet<&'a str>,
+        _name: &'a str,
+    ) {
         // Build argument mapping for substitution
         let mut arg_map = HashMap::new();
         for (param, actual) in args.iter().zip(actual_args.iter()) {
@@ -1248,7 +1261,12 @@ where
             }
 
             match &v {
-                Macro::Function { args, def, variadic, .. } => {
+                Macro::Function {
+                    args,
+                    def,
+                    variadic,
+                    ..
+                } => {
                     self.expand_function_macro(token, args, def, *variadic, seen, name);
                 }
                 Macro::Object { def, .. } => {

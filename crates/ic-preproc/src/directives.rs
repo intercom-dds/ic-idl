@@ -25,8 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::state::Error;
 use crate::Span;
+use crate::state::Error;
 
 /// A small state machine for keeping track of the current state of `if`
 /// statements and their expressions.
@@ -100,40 +100,40 @@ impl IfState {
 pub trait DirectiveHandler {
     /// Handle #include directive
     fn dir_include(&mut self, span: Span);
-    
+
     /// Handle #define directive
     fn dir_define(&mut self) -> Option<()>;
-    
+
     /// Handle #undef directive
     fn dir_undef(&mut self);
-    
+
     /// Handle #if directive
     fn dir_if(&mut self, span: Span);
-    
+
     /// Handle #ifdef directive
     fn dir_ifdef(&mut self, span: Span);
-    
+
     /// Handle #ifndef directive
     fn dir_ifndef(&mut self, span: Span);
-    
+
     /// Handle #elif directive
     fn dir_elif(&mut self, span: Span);
-    
+
     /// Handle #else directive
     fn dir_else(&mut self, span: Span);
-    
+
     /// Handle #endif directive
     fn dir_endif(&mut self, span: Span);
-    
+
     /// Handle #pragma directive
     fn dir_pragma(&mut self, span: Span);
-    
+
     /// Handle #error directive
     fn dir_error(&mut self, span: Span);
-    
+
     /// Handle #warning directive
     fn dir_warning(&mut self, span: Span);
-    
+
     /// Handle #line directive
     fn dir_line(&mut self, span: Span);
 }

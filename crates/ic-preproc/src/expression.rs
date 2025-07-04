@@ -28,8 +28,8 @@
 use ic_expr::Op;
 use ic_lexer::token::{Base, Kind, Token};
 
-use crate::state::Error;
 use crate::Span;
+use crate::state::Error;
 
 pub type Expr = ic_expr::Expr<Token>;
 

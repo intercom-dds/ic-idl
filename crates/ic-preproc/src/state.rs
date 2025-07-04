@@ -113,7 +113,6 @@ impl State {
     }
 }
 
-
 /// Directive types
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Directive {
@@ -154,4 +153,3 @@ pub enum Error {
         message: &'static str,
     },
 }
-

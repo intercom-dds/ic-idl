@@ -40,10 +40,7 @@ pub enum Macro {
         variadic: bool,
     },
     /// Object-like macro (simple replacement)
-    Object {
-        span: Span,
-        def: Vec<Token>,
-    },
+    Object { span: Span, def: Vec<Token> },
 }
 
 impl Macro {

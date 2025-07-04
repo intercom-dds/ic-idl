@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_truncation)]
+
 use std::borrow::BorrowMut;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt::Write as _;
@@ -1118,6 +1120,7 @@ where
         self.eval_expr(expr).map(|v| v != 0)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn expand_inner(&mut self, token: Token, seen: &mut BTreeSet<&'a str>) {
         // Only identifiers can be macros
         if !matches!(token.kind, Kind::Ident | Kind::Keyword(_)) {
@@ -1148,20 +1151,12 @@ where
                 self.state().queue.push_back(file_token);
                 return;
             }
-            "__DATE__" => {
-                let date_token = Token {
+            "__DATE__" | "__TIME__" => {
+                let predefined_token = Token {
                     kind: Kind::String { terminated: true },
                     span: token.span,
                 };
-                self.state().queue.push_back(date_token);
-                return;
-            }
-            "__TIME__" => {
-                let time_token = Token {
-                    kind: Kind::String { terminated: true },
-                    span: token.span,
-                };
-                self.state().queue.push_back(time_token);
+                self.state().queue.push_back(predefined_token);
                 return;
             }
             _ => {}
@@ -1270,8 +1265,8 @@ where
                             // Check for token pasting operator (##)
                             if next_tok.kind == Kind::Hash {
                                 // This is ##, handle token pasting later
-                                result_tokens.push(tok.clone());
-                                result_tokens.push(next_tok.clone());
+                                result_tokens.push(*tok);
+                                result_tokens.push(*next_tok);
                                 i += 2;
                                 continue;
                             }
@@ -1319,11 +1314,11 @@ where
                                 }
                             } else {
                                 // Not a parameter, keep as is
-                                result_tokens.push(tok.clone());
+                                result_tokens.push(*tok);
                             }
                         } else {
                             // Not an identifier, keep as is
-                            result_tokens.push(tok.clone());
+                            result_tokens.push(*tok);
                         }
                         
                         i += 1;
@@ -1365,7 +1360,7 @@ where
                             }
                         }
                         
-                        final_tokens.push(result_tokens[i].clone());
+                        final_tokens.push(result_tokens[i]);
                         i += 1;
                     }
                     
@@ -1542,10 +1537,9 @@ where
                                     args.push(current_arg);
                                 }
                                 break;
-                            } else {
-                                paren_depth -= 1;
-                                current_arg.push(tok);
                             }
+                            paren_depth -= 1;
+                            current_arg.push(tok);
                         }
                         Kind::Comma if paren_depth == 0 => {
                             // Argument separator

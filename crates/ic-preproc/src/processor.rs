@@ -39,12 +39,12 @@ use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
 
+use crate::directives::{DirectiveHandler, IfState};
 use crate::expression::{
     Expr, ExpressionContext, expr_op, infix_precedence, is_true, prefix_precedence,
 };
 use crate::macros::Macro;
 use crate::state::{Directive, Error, State};
-use crate::directives::{IfState, DirectiveHandler};
 use crate::{ProcArgs, Span, time};
 
 /// Context for function macro expansion
@@ -181,20 +181,18 @@ where
     }
 
     fn macro_name(&mut self) -> Option<(&'a str, Span)> {
-        // TODO: can also be a keyword
-        let tok = self.expect(Kind::Ident, "macro name must be an identifier")?;
-        let Token {
-            kind: Kind::Ident | Kind::Keyword(_),
-            span,
-        } = tok
-        else {
-            self.state().errors.push(Error::Syntax {
-                message: "macro name must be an identifier",
-                span: tok.span,
-            });
-            return None;
-        };
-        Some((self.source_of(span), span))
+        let tok = self.cursor().next()?;
+        match tok.kind {
+            Kind::Ident | Kind::Keyword(_) => Some((self.source_of(tok.span), tok.span)),
+            _ => {
+                self.state().errors.push(Error::Syntax {
+                    message: "macro name must be an identifier",
+                    span: tok.span,
+                });
+                self.cursor().until_newline();
+                None
+            }
+        }
     }
 
     fn state(&mut self) -> &mut State {
@@ -262,9 +260,9 @@ where
     }
 
     /// Searches through all include directories for a matching file.
-    //
-    // TODO: should we move this logic to the VFS? It can cache the results so
-    // we don't have to repeatedly search through directories.
+    ///
+    /// Future optimization: This logic could be moved to the VFS to cache
+    /// search results and avoid repeated directory traversals.
     fn search_includes<P: AsRef<Path>>(&mut self, path: P, kind: Include) -> Option<PathBuf> {
         let path = path.as_ref();
         if path.is_absolute() {
@@ -327,7 +325,9 @@ where
             "else" => DirectiveHandler::dir_else(self, span),
             "endif" => DirectiveHandler::dir_endif(self, span),
             "pragma" => DirectiveHandler::dir_pragma(self, span),
-            "define" => { DirectiveHandler::dir_define(self); }
+            "define" => {
+                DirectiveHandler::dir_define(self);
+            }
             "undef" => DirectiveHandler::dir_undef(self),
             "include" => DirectiveHandler::dir_include(self, span),
             "warning" => DirectiveHandler::dir_warning(self, span),
@@ -752,7 +752,8 @@ where
                                 if j > 0 {
                                     stringified.push(' ');
                                 }
-                                let _ = write!(&mut stringified, "{}", self.source_of(arg_tok.span));
+                                let _ =
+                                    write!(&mut stringified, "{}", self.source_of(arg_tok.span));
                             }
                         }
                         stringified.push('"');
@@ -1080,6 +1081,7 @@ where
         let mut args = vec![];
         let mut current_arg = vec![];
         let mut paren_depth = 0;
+        let mut last_token_span = None;
 
         loop {
             let tok = if let Some(file) = self.stack.last_mut() {
@@ -1089,6 +1091,7 @@ where
             };
 
             if let Some(tok) = tok {
+                last_token_span = Some(tok.span);
                 match tok.kind {
                     Kind::LParen => {
                         paren_depth += 1;
@@ -1117,7 +1120,7 @@ where
             } else {
                 self.state().errors.push(Error::Syntax {
                     message: "unexpected end of file in macro arguments",
-                    span: Span::default(), // TODO: track last token span
+                    span: last_token_span.unwrap_or_default(),
                 });
                 break;
             }
@@ -1224,8 +1227,10 @@ where
         }
     }
 
-    fn dir_define(&mut self) -> Option<()> {
-        let (name, name_span) = self.macro_name()?;
+    fn dir_define(&mut self) {
+        let Some((name, name_span)) = self.macro_name() else {
+            return;
+        };
 
         // Check if there's an opening parenthesis immediately after the macro name
         // (no whitespace) to determine if it's a function-like macro
@@ -1267,7 +1272,7 @@ where
                             cursor.next(); // consume third .
                             variadic = true;
                             // Variadic must be last parameter
-                            self.expect(Kind::RParen, "variadic parameter must be last")?;
+                            self.expect(Kind::RParen, "variadic parameter must be last");
                             break;
                         }
                     }
@@ -1276,15 +1281,26 @@ where
                         message: "expected identifier or '...'",
                         span: name_span,
                     });
-                    return None;
+                    return;
                 }
 
-                // TODO: can also be a keyword
-                let arg = self.expect(Kind::Ident, "invalid token in macro parameter list")?;
-                args.push(arg);
+                let Some(arg) = self.cursor().next() else {
+                    return;
+                };
+                match arg.kind {
+                    Kind::Ident | Kind::Keyword(_) => args.push(arg),
+                    _ => {
+                        self.state().errors.push(Error::Syntax {
+                            message: "invalid token in macro parameter list",
+                            span: arg.span,
+                        });
+                        self.cursor().until_newline();
+                        return;
+                    }
+                }
 
                 if self.cursor().take_if(Kind::Comma).is_none() {
-                    self.expect(Kind::RParen, "expected comma or end of parameter list")?;
+                    self.expect(Kind::RParen, "expected comma or end of parameter list");
                     break;
                 }
             }
@@ -1322,7 +1338,6 @@ where
                 span: name_span,
             });
         }
-        Some(())
     }
 
     fn dir_undef(&mut self) {
@@ -1513,7 +1528,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.inner.next_active() {
-            // TODO: handle this elsewhere. probably in cursor?
+            // Track previous non-newline token for error reporting
             if next.kind != Kind::Newline {
                 self.prev = Some(next.span);
             }

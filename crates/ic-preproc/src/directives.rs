@@ -107,7 +107,7 @@ pub trait DirectiveHandler {
     fn dir_include(&mut self, span: Span);
 
     /// Handle #define directive
-    fn dir_define(&mut self) -> Option<()>;
+    fn dir_define(&mut self);
 
     /// Handle #undef directive
     fn dir_undef(&mut self);

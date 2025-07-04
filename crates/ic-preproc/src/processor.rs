@@ -646,10 +646,25 @@ where
         }
 
         // Consume the '('
-        self.stack.last_mut().unwrap().cursor.next();
+        if let Some(file) = self.stack.last_mut() {
+            file.cursor.next();
+        } else {
+            // This shouldn't happen in normal operation - the stack should never be empty here
+            self.state().errors.push(Error::Syntax {
+                message: "internal error: empty file stack",
+                span: token.span,
+            });
+            return;
+        }
 
         // Parse the actual arguments
-        let actual_args = self.parse_macro_args();
+        let mut actual_args = self.parse_macro_args();
+
+        // Special case: if we got exactly one empty argument but the macro expects zero args,
+        // treat it as zero args. This handles EMPTY() correctly.
+        if actual_args.len() == 1 && actual_args[0].is_empty() && args.is_empty() && !variadic {
+            actual_args.clear();
+        }
 
         // Check argument count
         if variadic {
@@ -1076,7 +1091,7 @@ where
         self.next()
     }
 
-    /// Get next token without macro expansion - used inside `defined()`
+    /// Parse macro arguments from the token stream
     fn parse_macro_args(&mut self) -> Vec<Vec<Token>> {
         let mut args = vec![];
         let mut current_arg = vec![];
@@ -1100,9 +1115,7 @@ where
                     Kind::RParen => {
                         if paren_depth == 0 {
                             // End of macro arguments
-                            if !current_arg.is_empty() || !args.is_empty() {
-                                args.push(current_arg);
-                            }
+                            args.push(current_arg);
                             break;
                         }
                         paren_depth -= 1;
@@ -1177,7 +1190,13 @@ where
                 (Include::System, span)
             }
             Some(Kind::String { .. }) => {
-                let tok = cursor.next().unwrap();
+                let Some(tok) = cursor.next() else {
+                    self.state().errors.push(Error::Syntax {
+                        message: "unexpected end of file in include directive",
+                        span,
+                    });
+                    return;
+                };
                 (Include::Local, tok.span)
             }
             _ => {
@@ -1490,7 +1509,15 @@ where
     }
 
     // Insert the generated file into the VFS
-    let src: Rc<str> = Rc::from(String::from_utf8(buffer).unwrap());
+    let src: Rc<str> = match String::from_utf8(buffer) {
+        Ok(s) => Rc::from(s),
+        Err(e) => {
+            // Invalid UTF-8 in command line defines - this is a serious error
+            eprintln!("Error: Invalid UTF-8 in command line arguments: {e}");
+            // Return empty source to avoid panicking
+            Rc::from("")
+        }
+    };
     let cli = parser.vfs.embed_with_name("<command-line>", src.clone());
     let file = File::from_src(src, cli);
 

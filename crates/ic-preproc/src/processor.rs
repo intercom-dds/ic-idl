@@ -30,7 +30,6 @@
 use std::borrow::BorrowMut;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Write as _;
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -1599,7 +1598,7 @@ where
     // Generate a virtual file with the specified command-line arguments. We
     // need to be able to reference these (and their location) in the future,
     // so creating a new virtual file is easier.
-    let mut buffer = vec![];
+    let mut buffer = String::new();
     for (k, v) in defines {
         _ = write!(&mut buffer, "#define {k}");
         if let Some(v) = v {
@@ -1609,16 +1608,7 @@ where
     }
 
     // Insert the generated file into the VFS
-    let src: Rc<str> = match String::from_utf8(buffer) {
-        Ok(s) => Rc::from(s),
-        Err(e) => {
-            // Invalid UTF-8 in command line defines - this is a serious error
-            // We can't add to state.errors here since we don't have access to it,
-            // so we'll return empty source and let the parser handle any issues
-            let _ = e; // Avoid unused variable warning
-            Rc::from("")
-        }
-    };
+    let src: Rc<str> = Rc::from(buffer);
     let cli = parser.vfs.embed_with_name("<command-line>", src.clone());
     let file = File::from_src(src, cli);
 

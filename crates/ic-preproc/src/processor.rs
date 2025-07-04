@@ -895,32 +895,81 @@ where
     fn expand_predefined_macro(&mut self, name: &str, token: Token) -> bool {
         match name {
             "__LINE__" => {
-                let line_token = Token {
+                // Calculate line number by counting newlines in the source
+                let source = self.vfs.source_str(token.span.start.file_id);
+                let offset = token.span.start.offset as usize;
+                let line_number = source[..offset.min(source.len())]
+                    .chars()
+                    .filter(|&c| c == '\n')
+                    .count()
+                    + 1;
+                let line_str = line_number.to_string();
+                let file_id = self.vfs.embed(&line_str);
+                let span = Span {
+                    start: Location { offset: 0, file_id },
+                    end: Location {
+                        offset: line_str.len() as u32,
+                        file_id,
+                    },
+                };
+                self.state().queue.push_back(Token {
                     kind: Kind::Number {
                         base: Base::Decimal,
                     },
-                    span: token.span, // Use the same span as the original __LINE__
-                };
-                // We need to create a synthetic token with the line number
-                // For now, just push the original token back since we can't easily create new spans
-                self.state().queue.push_back(line_token);
+                    span,
+                });
                 true
             }
             "__FILE__" => {
-                let file_token = Token {
-                    kind: Kind::String { terminated: true },
-                    span: token.span, // Use the same span as the original __FILE__
+                // Get the file name from the vfs
+                let filename = self.vfs.included_as(token.span.start.file_id);
+                let filename_str = format!("\"{}\"", filename.display());
+                let file_id = self.vfs.embed(&filename_str);
+                let span = Span {
+                    start: Location { offset: 0, file_id },
+                    end: Location {
+                        offset: filename_str.len() as u32,
+                        file_id,
+                    },
                 };
-                // Push the file path as a string token
-                self.state().queue.push_back(file_token);
+                self.state().queue.push_back(Token {
+                    kind: Kind::String { terminated: true },
+                    span,
+                });
                 true
             }
-            "__DATE__" | "__TIME__" => {
-                let predefined_token = Token {
-                    kind: Kind::String { terminated: true },
-                    span: token.span,
+            "__DATE__" => {
+                // Return current date in "Mmm dd yyyy" format
+                let date_str = "\"Jan 01 2025\""; // For deterministic tests
+                let file_id = self.vfs.embed(date_str);
+                let span = Span {
+                    start: Location { offset: 0, file_id },
+                    end: Location {
+                        offset: date_str.len() as u32,
+                        file_id,
+                    },
                 };
-                self.state().queue.push_back(predefined_token);
+                self.state().queue.push_back(Token {
+                    kind: Kind::String { terminated: true },
+                    span,
+                });
+                true
+            }
+            "__TIME__" => {
+                // Return current time in "hh:mm:ss" format
+                let time_str = "\"00:00:00\""; // For deterministic tests
+                let file_id = self.vfs.embed(time_str);
+                let span = Span {
+                    start: Location { offset: 0, file_id },
+                    end: Location {
+                        offset: time_str.len() as u32,
+                        file_id,
+                    },
+                };
+                self.state().queue.push_back(Token {
+                    kind: Kind::String { terminated: true },
+                    span,
+                });
                 true
             }
             _ => false,
@@ -1220,143 +1269,75 @@ where
     /// can fully expand the entire macro definition here. This is
     /// important as we need to detect and break potential cycles.
     #[allow(clippy::too_many_lines)]
+    fn handle_pragma_operator(&mut self, tok: Token) -> bool {
+        // Look for opening parenthesis
+        if let Some(lparen) = self.cursor().peek() {
+            if lparen == Kind::LParen {
+                self.cursor().next(); // consume (
+
+                // Get the string literal argument
+                if let Some(string_tok) = self.cursor().next() {
+                    if matches!(string_tok.kind, Kind::String { terminated: true }) {
+                        // Get closing parenthesis
+                        if let Some(rparen) = self.cursor().next() {
+                            if rparen.kind == Kind::RParen {
+                                // Extract the pragma content from the string literal
+                                let string_content = self.source_of(string_tok.span);
+                                // Remove quotes
+                                if string_content.len() >= 2 {
+                                    let pragma_content =
+                                        &string_content[1..string_content.len() - 1];
+
+                                    // Parse the pragma content as tokens
+                                    let pragma_id = self.vfs.embed(pragma_content);
+                                    let pragma_src = self.vfs.source(pragma_id);
+                                    let mut pragma_cursor = Cursor::new(pragma_src, pragma_id);
+                                    let mut pragma_tokens = Vec::new();
+                                    while let Some(tok) = pragma_cursor.next() {
+                                        if tok.kind != Kind::Newline {
+                                            pragma_tokens.push(tok);
+                                        }
+                                    }
+
+                                    // Handle the pragma
+                                    if let Some(first_tok) = pragma_tokens.first() {
+                                        let pragma_name = self.source_of(first_tok.span);
+                                        if pragma_name == "once" && self.enable_pragma_once {
+                                            // Handle #pragma once via _Pragma
+                                            let file_id = tok.span.start.file_id;
+                                            self.mark_included(file_id);
+                                        }
+                                        // Ignore other pragmas
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                }
+                // If we get here, the _Pragma syntax was invalid
+                self.state().errors.push(Error::Syntax {
+                    message: "invalid _Pragma syntax",
+                    span: tok.span,
+                });
+                return true;
+            }
+        }
+        // No opening paren after _Pragma
+        self.state().queue.push_back(tok);
+        false
+    }
+
     fn expand_macro(&mut self, tok: Token) -> bool {
         let name = self.source_of(tok.span);
 
         // Handle _Pragma operator
         if name == "_Pragma" {
-            // Look for opening parenthesis
-            if let Some(lparen) = self.cursor().peek() {
-                if lparen == Kind::LParen {
-                    self.cursor().next(); // consume (
-
-                    // Get the string literal argument
-                    if let Some(string_tok) = self.cursor().next() {
-                        if matches!(string_tok.kind, Kind::String { terminated: true }) {
-                            // Get closing parenthesis
-                            if let Some(rparen) = self.cursor().next() {
-                                if rparen.kind == Kind::RParen {
-                                    // Extract the pragma content from the string literal
-                                    let string_content = self.source_of(string_tok.span);
-                                    // Remove quotes
-                                    if string_content.len() >= 2 {
-                                        let pragma_content =
-                                            &string_content[1..string_content.len() - 1];
-
-                                        // Parse the pragma content as tokens
-                                        let pragma_id = self.vfs.embed(pragma_content);
-                                        let pragma_src = self.vfs.source(pragma_id);
-                                        let mut pragma_cursor = Cursor::new(pragma_src, pragma_id);
-                                        let mut pragma_tokens = Vec::new();
-                                        while let Some(tok) = pragma_cursor.next() {
-                                            if tok.kind != Kind::Newline {
-                                                pragma_tokens.push(tok);
-                                            }
-                                        }
-
-                                        // Handle the pragma
-                                        if let Some(first_tok) = pragma_tokens.first() {
-                                            let pragma_name = self.source_of(first_tok.span);
-                                            if pragma_name == "once" && self.enable_pragma_once {
-                                                // Handle #pragma once via _Pragma
-                                                let file_id = tok.span.start.file_id;
-                                                self.mark_included(file_id);
-                                            }
-                                            // Ignore other pragmas
-                                        }
-                                    }
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                    // If we get here, the _Pragma syntax was invalid
-                    self.state().errors.push(Error::Syntax {
-                        message: "invalid _Pragma syntax",
-                        span: tok.span,
-                    });
-                    return true;
-                }
-            }
-            // No opening paren after _Pragma
-            self.state().queue.push_back(tok);
-            return false;
+            return self.handle_pragma_operator(tok);
         }
 
         // Handle predefined macros
-        if name == "__LINE__" {
-            // Calculate line number by counting newlines in the source
-            let source = self.vfs.source_str(tok.span.start.file_id);
-            let offset = tok.span.start.offset as usize;
-            let line_number = source[..offset.min(source.len())]
-                .chars()
-                .filter(|&c| c == '\n')
-                .count()
-                + 1;
-            let line_str = line_number.to_string();
-            let file_id = self.vfs.embed(&line_str);
-            let span = Span {
-                start: Location { offset: 0, file_id },
-                end: Location {
-                    offset: line_str.len() as u32,
-                    file_id,
-                },
-            };
-            self.state().queue.push_back(Token {
-                kind: Kind::Number {
-                    base: Base::Decimal,
-                },
-                span,
-            });
-            return true;
-        } else if name == "__FILE__" {
-            // Get the file name from the vfs
-            let filename = self.vfs.included_as(tok.span.start.file_id);
-            let filename_str = format!("\"{}\"", filename.display());
-            let file_id = self.vfs.embed(&filename_str);
-            let span = Span {
-                start: Location { offset: 0, file_id },
-                end: Location {
-                    offset: filename_str.len() as u32,
-                    file_id,
-                },
-            };
-            self.state().queue.push_back(Token {
-                kind: Kind::String { terminated: true },
-                span,
-            });
-            return true;
-        } else if name == "__DATE__" {
-            // Return current date in "Mmm dd yyyy" format
-            let date_str = "\"Jan 01 2025\""; // For deterministic tests
-            let file_id = self.vfs.embed(date_str);
-            let span = Span {
-                start: Location { offset: 0, file_id },
-                end: Location {
-                    offset: date_str.len() as u32,
-                    file_id,
-                },
-            };
-            self.state().queue.push_back(Token {
-                kind: Kind::String { terminated: true },
-                span,
-            });
-            return true;
-        } else if name == "__TIME__" {
-            // Return current time in "hh:mm:ss" format
-            let time_str = "\"00:00:00\""; // For deterministic tests
-            let file_id = self.vfs.embed(time_str);
-            let span = Span {
-                start: Location { offset: 0, file_id },
-                end: Location {
-                    offset: time_str.len() as u32,
-                    file_id,
-                },
-            };
-            self.state().queue.push_back(Token {
-                kind: Kind::String { terminated: true },
-                span,
-            });
+        if self.expand_predefined_macro(name, tok) {
             return true;
         }
 

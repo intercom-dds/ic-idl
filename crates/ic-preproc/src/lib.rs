@@ -36,6 +36,7 @@ use ic_vfs::{FileId, Include, SourceMap};
 pub use state::{Error, State};
 pub use processor::TokenIter;
 
+mod directives;
 mod expression;
 mod macros;
 mod processor;

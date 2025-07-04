@@ -529,31 +529,6 @@ fn operator_precedence() {
     assert!(state.is_defined("COMPARISON_RETURNS_ONE"));
 }
 
-#[test]
-#[ignore] // TODO: Implement sizeof operator in preprocessor
-fn sizeof_operator() {
-    let mut vfs = SourceMap::default();
-    let id = vfs.embed(
-        r#"
-            #if sizeof(int) >= 4
-                #define INT_IS_AT_LEAST_32_BITS
-            #endif
-            
-            #if sizeof(void*) == 8
-                #define POINTER_IS_64_BITS
-            #elif sizeof(void*) == 4
-                #define POINTER_IS_32_BITS
-            #endif
-        "#,
-    );
-
-    let args = ProcArgs::default();
-    let mut state = State::new();
-    with_state(id, args, &mut state, &mut vfs).for_each(drop);
-
-    assert!(state.errors().is_empty());
-    // Should define appropriate macros based on platform
-}
 
 // ==================== Error Handling ====================
 

@@ -2073,4 +2073,93 @@ mod tests {
         );
         assert_eq!(output, "baz \n\nbar");
     }
+
+    #[test]
+    fn keyword_macro_names() {
+        let mut vfs = SourceMap::default();
+        let state = pp(&mut vfs, "#define int 42");
+        assert!(state.is_defined("int"));
+        assert!(state.errors().is_empty());
+        
+        // Test expansion
+        let output = expand(
+            r"
+                #define while 1
+                #define if(x) x
+                while
+                if(5)
+            ",
+        );
+        assert_eq!(output, "1 \n5");
+    }
+
+    #[test]
+    fn keyword_macro_parameters() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r"
+                #define TEST(int, while) int + while
+            ",
+        );
+        assert!(state.errors().is_empty());
+        
+        // Test expansion with keyword parameters
+        let output = expand(
+            r"
+                #define ADD(int, float) int + float
+                ADD(10, 20)
+            ",
+        );
+        assert_eq!(output, "10 + 20");
+    }
+
+    #[test]
+    fn macro_arg_error_span() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r"
+                #define FOO(a, b) a + b
+                FOO(1, 2
+            ",
+        );
+        
+        // Should have an error about unexpected end of file
+        assert!(!state.errors().is_empty());
+        // Find the error about unexpected end of file
+        let found_error = state.errors().iter().any(|err| {
+            if let Error::Syntax { message, span } = err {
+                if *message == "unexpected end of file in macro arguments" {
+                    // The span should not be default (0,0) but should point to last token
+                    assert_ne!(*span, Span::default());
+                    return true;
+                }
+            }
+            false
+        });
+        assert!(found_error, "Expected error about unexpected end of file in macro arguments");
+    }
+
+    #[test]
+    fn variadic_macro_with_keyword_params() {
+        let output = expand(
+            r#"
+                #define LOG(int, ...) printf(int, __VA_ARGS__)
+                LOG("value: %d", 42)
+            "#,
+        );
+        assert_eq!(output, r#"printf ( "value: %d" , 42 )"#);
+    }
+
+    #[test]
+    fn undef_keyword() {
+        let mut vfs = SourceMap::default();
+        let mut state = pp(&mut vfs, "#define int 123");
+        assert!(state.is_defined("int"));
+        
+        with_state(&mut state, &mut vfs, "#undef int");
+        assert!(!state.is_defined("int"));
+        assert!(state.errors().is_empty());
+    }
 }

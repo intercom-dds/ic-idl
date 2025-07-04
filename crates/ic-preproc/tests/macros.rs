@@ -180,3 +180,48 @@ fn empty_macro() {
     assert!(state.is_defined("EMPTY"));
     assert!(state.is_defined("EMPTY_IS_DEFINED"));
 }
+
+#[test]
+fn keyword_as_macro_name() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r"
+            #define int 42
+            #define while(x) do { x } while(0)
+            #define struct union
+            int
+            while(foo());
+            struct
+        ",
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new();
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
+
+    assert!(state.errors().is_empty());
+    assert!(state.is_defined("int"));
+    assert!(state.is_defined("while"));
+    assert!(state.is_defined("struct"));
+}
+
+#[test]
+fn keyword_as_macro_parameter() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r"
+            #define SWAP(int, float) { auto tmp = int; int = float; float = tmp; }
+            #define SELECT(if, then, else) (if ? then : else)
+            SWAP(a, b)
+            SELECT(x > 0, positive, negative)
+        ",
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new();
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
+
+    assert!(state.errors().is_empty());
+    assert!(state.is_defined("SWAP"));
+    assert!(state.is_defined("SELECT"));
+}

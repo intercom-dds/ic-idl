@@ -47,7 +47,7 @@ fn simple_object_macro() {
     assert!(state.errors().is_empty());
     assert!(state.is_defined("VERSION"));
     assert!(state.is_defined("NAME"));
-    
+
     // Check that we got some output tokens
     assert!(!_output.is_empty());
 }

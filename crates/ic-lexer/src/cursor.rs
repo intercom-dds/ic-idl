@@ -426,7 +426,7 @@ impl Cursor {
                     '|' => self.peek_or('|', Kind::Or, Kind::BitOr),
                     '=' => self.peek_or('=', Kind::EqEq, Kind::Eq),
                     ':' => self.peek_or(':', Kind::DColon, Kind::Colon),
-                    '!' => self.peek_or('=', Kind::NotEq, Kind::Unknown),
+                    '!' => self.peek_or('=', Kind::NotEq, Kind::Not),
                     '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
                     '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
                     '"' => self.string_lit(),

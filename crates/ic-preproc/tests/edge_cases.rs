@@ -205,9 +205,8 @@ fn command_line_defines() {
         "#,
     );
 
-    let args = ProcArgs::default()
-        .define("CMD_DEFINE", None);
-    
+    let args = ProcArgs::default().define("CMD_DEFINE", None);
+
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 

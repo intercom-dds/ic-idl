@@ -34,7 +34,6 @@ use ic_vfs::SourceMap;
 // ==================== Expression Evaluation ====================
 
 #[test]
-#[ignore] // TODO: Implement parentheses in expressions
 fn parentheses_in_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -59,7 +58,6 @@ fn parentheses_in_expressions() {
 }
 
 #[test]
-#[ignore] // TODO: Implement modulo operator
 fn modulo_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -134,7 +132,6 @@ fn bitwise_not_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement logical NOT operator
 fn logical_not_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -164,7 +161,6 @@ fn logical_not_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement ternary operator
 fn ternary_conditional_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -199,7 +195,6 @@ fn ternary_conditional_operator() {
 }
 
 #[test]
-#[ignore] // TODO: Implement defined() operator
 fn defined_operator_basic() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -231,7 +226,7 @@ fn defined_operator_basic() {
 }
 
 #[test]
-#[ignore] // TODO: Implement defined() in complex expressions
+#[ignore] // TODO: Handle macro expansion after defined() in complex expressions
 fn defined_operator_complex() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -528,7 +523,6 @@ fn operator_precedence() {
     assert!(state.is_defined("SHIFT_AFTER_ADD"));
     assert!(state.is_defined("COMPARISON_RETURNS_ONE"));
 }
-
 
 // ==================== Error Handling ====================
 

@@ -35,7 +35,7 @@ use std::rc::Rc;
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
-use ic_vfs::{FileId, Include, SourceMap};
+use ic_vfs::{FileId, Include, Location, SourceMap};
 
 use crate::{ProcArgs, Span, time};
 
@@ -826,9 +826,26 @@ where
     }
 
     fn unary_expr(&mut self) -> Result<Expr, Error> {
-        let lhs = self.next().ok_or(Error::Expr {
-            message: "unexpected end of expression",
-        })?;
+        // First peek to see if we have 'defined'
+
+        // Get raw token to check for 'defined'
+        let lhs = if let Some(tok) = self.stack.last_mut().and_then(|f| f.cursor.next()) {
+            if matches!(tok.kind, Kind::Ident | Kind::Keyword(_))
+                && self.source_of(tok.span) == "defined"
+            {
+                // This is 'defined' - handle it specially
+                return self.parse_defined_operator();
+            }
+            // Not 'defined' - put it back and use normal expansion
+            self.state().queue.push_back(tok);
+            self.next_expr_token().ok_or(Error::Expr {
+                message: "unexpected end of expression",
+            })?
+        } else {
+            self.next_expr_token().ok_or(Error::Expr {
+                message: "unexpected end of expression",
+            })?
+        };
 
         let expr = match lhs.kind {
             Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } => Expr::Lit(lhs),
@@ -842,8 +859,23 @@ where
             }
             Kind::LParen => {
                 let expr = self.binary_expr(0)?;
-                self.expect(Kind::RParen, "unterminated expression group");
-                expr
+                // In expressions, we need to check for closing paren without consuming the line
+                match self.next() {
+                    Some(tok) if tok.kind == Kind::RParen => expr,
+                    Some(tok) => {
+                        // Push back the token we just consumed
+                        self.state().queue.push_front(tok);
+                        return Err(Error::Syntax {
+                            message: "expected ')' in expression",
+                            span: tok.span,
+                        });
+                    }
+                    None => {
+                        return Err(Error::Expr {
+                            message: "unexpected end of expression, expected ')'",
+                        });
+                    }
+                }
             }
             _ => {
                 return Err(Error::Syntax {
@@ -855,12 +887,93 @@ where
         Ok(expr)
     }
 
-    // Note that this function uses `Parser::next` instead of `Cursor::next` as
-    // we need to expand and inline macros during parsing.
+    fn parse_defined_operator(&mut self) -> Result<Expr, Error> {
+        // defined can be used as:
+        // - defined(MACRO)
+        // - defined MACRO
+        let next = self.next_raw_token().ok_or(Error::Expr {
+            message: "unexpected end after 'defined'",
+        })?;
+
+        let macro_name = match next.kind {
+            Kind::LParen => {
+                // defined(MACRO) form
+                let name_tok = self.next_raw_token().ok_or(Error::Expr {
+                    message: "expected macro name after 'defined('",
+                })?;
+
+                // Verify it's an identifier
+                if !matches!(name_tok.kind, Kind::Ident | Kind::Keyword(_)) {
+                    return Err(Error::Syntax {
+                        message: "expected identifier in defined()",
+                        span: name_tok.span,
+                    });
+                }
+
+                let name = self.source_of(name_tok.span).to_string();
+
+                // Expect closing paren
+                match self.next_raw_token() {
+                    Some(tok) if tok.kind == Kind::RParen => {}
+                    Some(tok) => {
+                        self.state().queue.push_front(tok);
+                        return Err(Error::Syntax {
+                            message: "expected ')' after macro name in defined()",
+                            span: tok.span,
+                        });
+                    }
+                    None => {
+                        return Err(Error::Expr {
+                            message: "unexpected end in defined(), expected ')'",
+                        });
+                    }
+                }
+
+                name
+            }
+            Kind::Ident | Kind::Keyword(_) => {
+                // defined MACRO form
+                self.source_of(next.span).to_string()
+            }
+            _ => {
+                self.state().queue.push_front(next);
+                return Err(Error::Syntax {
+                    message: "expected macro name or '(' after 'defined'",
+                    span: next.span,
+                });
+            }
+        };
+
+        // Return a literal that evaluates to 1 or 0
+        // We need to create a synthetic token that will be evaluated correctly
+        let value = if self.is_defined(&macro_name) {
+            "1"
+        } else {
+            "0"
+        };
+
+        // Create a synthetic file with just the value
+        let file_id = self.vfs.embed(value);
+        let span = Span {
+            start: Location { offset: 0, file_id },
+            end: Location { offset: 1, file_id },
+        };
+
+        // Create a literal expression with the value
+        Ok(Expr::Lit(Token {
+            kind: Kind::Number {
+                base: Base::Decimal,
+            },
+            span,
+        }))
+    }
+
+    // Note that this function uses `Parser::next_expr_token` instead of `Cursor::next` as
+    // we need to expand and inline macros during parsing, except for 'defined'.
     fn binary_expr(&mut self, min_prec: u8) -> Result<Expr, Error> {
         let mut lhs = self.unary_expr()?;
 
-        while let Some(op) = self.next() {
+        while let Some(op) = self.next_expr_token() {
             // We require a lookahead of 1 here, but doing so involves expanding
             // and consuming the next token in the sequence. So if this is not
             // an operator, or an operator of lower precedence, we push it back
@@ -875,13 +988,29 @@ where
 
             lhs = if op.kind == Kind::Question {
                 let then = self.expr()?;
-                self.expect(Kind::Colon, "expected colon in ternary operator");
-                let els = self.binary_expr(prec + 1)?;
-                Expr::Ternary(Box::new(Ternary {
-                    cond: lhs,
-                    then,
-                    els,
-                }))
+                // Check for colon without consuming the line on error
+                match self.next_expr_token() {
+                    Some(tok) if tok.kind == Kind::Colon => {
+                        let els = self.binary_expr(prec + 1)?;
+                        Expr::Ternary(Box::new(Ternary {
+                            cond: lhs,
+                            then,
+                            els,
+                        }))
+                    }
+                    Some(tok) => {
+                        self.state().queue.push_front(tok);
+                        return Err(Error::Syntax {
+                            message: "expected ':' in ternary operator",
+                            span: tok.span,
+                        });
+                    }
+                    None => {
+                        return Err(Error::Expr {
+                            message: "unexpected end of expression, expected ':'",
+                        });
+                    }
+                }
             } else {
                 let op = expr_op(op)?;
                 let rhs = self.binary_expr(prec + 1)?;
@@ -1046,6 +1175,46 @@ where
             if self.is_active() || next.kind == Kind::Newline {
                 break Some(next);
             }
+        }
+    }
+
+    /// Special version of `next()` for expression parsing
+    fn next_expr_token(&mut self) -> Option<Token> {
+        // Use regular next() - we'll handle defined() specially in the expression parser
+        self.next()
+    }
+
+    /// Get next token without macro expansion - used inside `defined()`
+    fn next_raw_token(&mut self) -> Option<Token> {
+        'outer: loop {
+            // Check if we're currently in the middle of a macro expansion, and
+            // if so, yield those tokens first.
+            if let Some(tok) = self.state().queue.pop_front() {
+                return Some(tok);
+            }
+
+            // Advance the cursor and continue parsing directives
+            if let Some(tok) = self.stack.last_mut()?.cursor.next() {
+                if tok.kind == Kind::Hash {
+                    self.keyword();
+                    continue 'outer;
+                }
+
+                // Don't expand macros - return raw token
+                return Some(tok);
+            }
+
+            // Make sure all conditional directives were terminated
+            let top = self.stack.last_mut()?;
+            while let Some(cond) = top.current.pop() {
+                self.state.borrow_mut().errors.push(Error::Syntax {
+                    message: "unterminated conditional directive",
+                    span: cond.defined,
+                });
+            }
+
+            // Cursor is empty, pop the stack
+            self.stack.pop();
         }
     }
 }

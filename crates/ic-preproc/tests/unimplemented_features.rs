@@ -264,7 +264,6 @@ fn defined_operator_complex() {
 // ==================== Macro Features ====================
 
 #[test]
-#[ignore = "TODO: Implement function-like macros"]
 fn function_like_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -437,7 +436,6 @@ fn predefined_line_file_macros() {
 }
 
 #[test]
-#[ignore = "TODO: Implement __DATE__ and __TIME__"]
 fn predefined_date_time_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

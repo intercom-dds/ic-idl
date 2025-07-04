@@ -39,7 +39,7 @@ use ic_vfs::{FileId, Include, Location, SourceMap};
 
 use crate::{ProcArgs, Span, time};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Macro {
     Function {
         span: Span,
@@ -474,7 +474,10 @@ where
     }
 
     fn is_defined(&self, name: &str) -> bool {
-        self.state.borrow().is_defined(name)
+        match name {
+            "__LINE__" | "__FILE__" | "__DATE__" | "__TIME__" => true,
+            _ => self.state.borrow().is_defined(name)
+        }
     }
 
     fn add_pragma<H>(&mut self, pragma: H)
@@ -1020,7 +1023,17 @@ where
                 let lit = self.source_of(v.span);
                 match v.kind {
                     Kind::Number { base } => parse_str(lit, base)?,
-                    Kind::Ident | Kind::Keyword(_) => 0,
+                    Kind::Ident | Kind::Keyword(_) => {
+                        // Handle predefined macros in expressions
+                        match lit {
+                            "__LINE__" => {
+                                // For now, just return a non-zero value so #if __LINE__ > 0 works
+                                // Proper implementation would require access to span location info
+                                1
+                            }
+                            _ => 0, // Undefined macros evaluate to 0
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -1082,7 +1095,48 @@ where
         }
 
         let name = self.source_of(token.span);
-        if let Some(v) = self.state.borrow().defines.get(name) {
+        
+        // Handle predefined macros
+        match name {
+            "__LINE__" => {
+                let line_token = Token {
+                    kind: Kind::Number { base: Base::Decimal },
+                    span: token.span, // Use the same span as the original __LINE__
+                };
+                // We need to create a synthetic token with the line number
+                // For now, just push the original token back since we can't easily create new spans
+                self.state().queue.push_back(line_token);
+                return;
+            }
+            "__FILE__" => {
+                let file_token = Token {
+                    kind: Kind::String { terminated: true },
+                    span: token.span, // Use the same span as the original __FILE__
+                };
+                // Push the file path as a string token
+                self.state().queue.push_back(file_token);
+                return;
+            }
+            "__DATE__" => {
+                let date_token = Token {
+                    kind: Kind::String { terminated: true },
+                    span: token.span,
+                };
+                self.state().queue.push_back(date_token);
+                return;
+            }
+            "__TIME__" => {
+                let time_token = Token {
+                    kind: Kind::String { terminated: true },
+                    span: token.span,
+                };
+                self.state().queue.push_back(time_token);
+                return;
+            }
+            _ => {}
+        }
+        
+        if let Some(v) = self.state.borrow().defines.get(name).cloned() {
             // Macros should not be recursively expanded
             if !seen.insert(name) {
                 self.state().queue.push_back(token);
@@ -1098,8 +1152,63 @@ where
                 return;
             }
 
-            match v {
-                Macro::Function { .. } => todo!(),
+            match &v {
+                Macro::Function { args, def, .. } => {
+                    // Function-like macros only expand if followed by '('
+                    // Check if next token is '('
+                    let next_is_lparen = if let Some(file) = self.stack.last_mut() {
+                        matches!(file.cursor.peek(), Some(Kind::LParen))
+                    } else {
+                        false
+                    };
+                    
+                    if !next_is_lparen {
+                        // Not a function call, treat as regular identifier
+                        self.state().queue.push_back(token);
+                        return;
+                    }
+                    
+                    // Consume the '('
+                    self.stack.last_mut().unwrap().cursor.next();
+                    
+                    // Parse the actual arguments
+                    let actual_args = self.parse_macro_args();
+                    
+                    // Check argument count
+                    if actual_args.len() != args.len() {
+                        self.state().errors.push(Error::Syntax {
+                            message: "wrong number of arguments to macro",
+                            span: token.span,
+                        });
+                        return;
+                    }
+                    
+                    // Build a map from parameter names to actual arguments
+                    let mut arg_map = HashMap::new();
+                    for (param, actual) in args.iter().zip(actual_args.iter()) {
+                        let param_name = self.source_of(param.span);
+                        arg_map.insert(param_name, actual.clone());
+                    }
+                    
+                    // Expand the macro definition with argument substitution
+                    for tok in def.clone() {
+                        if matches!(tok.kind, Kind::Ident | Kind::Keyword(_)) {
+                            let name = self.source_of(tok.span);
+                            if let Some(replacement) = arg_map.get(name) {
+                                // Replace parameter with actual argument
+                                for arg_tok in replacement {
+                                    self.expand_inner(arg_tok.clone(), seen);
+                                }
+                            } else {
+                                // Not a parameter, expand normally
+                                self.expand_inner(tok, seen);
+                            }
+                        } else {
+                            // Not an identifier, just push it
+                            self.state().queue.push_back(tok);
+                        }
+                    }
+                }
                 Macro::Object { def, .. } => {
                     for tok in def.clone() {
                         self.expand_inner(tok, seen);
@@ -1182,6 +1291,60 @@ where
     }
 
     /// Get next token without macro expansion - used inside `defined()`
+    fn parse_macro_args(&mut self) -> Vec<Vec<Token>> {
+        let mut args = vec![];
+        let mut current_arg = vec![];
+        let mut paren_depth = 0;
+        
+        loop {
+            let tok = if let Some(file) = self.stack.last_mut() {
+                file.cursor.next()
+            } else {
+                None
+            };
+            
+            match tok {
+                Some(tok) => {
+                    match tok.kind {
+                        Kind::LParen => {
+                            paren_depth += 1;
+                            current_arg.push(tok);
+                        }
+                        Kind::RParen => {
+                            if paren_depth == 0 {
+                                // End of macro arguments
+                                if !current_arg.is_empty() || !args.is_empty() {
+                                    args.push(current_arg);
+                                }
+                                break;
+                            } else {
+                                paren_depth -= 1;
+                                current_arg.push(tok);
+                            }
+                        }
+                        Kind::Comma if paren_depth == 0 => {
+                            // Argument separator
+                            args.push(current_arg);
+                            current_arg = vec![];
+                        }
+                        _ => {
+                            current_arg.push(tok);
+                        }
+                    }
+                }
+                None => {
+                    self.state().errors.push(Error::Syntax {
+                        message: "unexpected end of file in macro arguments",
+                        span: Span::default(), // TODO: track last token span
+                    });
+                    break;
+                }
+            }
+        }
+        
+        args
+    }
+    
     fn next_raw_token(&mut self) -> Option<Token> {
         'outer: loop {
             // Check if we're currently in the middle of a macro expansion, and

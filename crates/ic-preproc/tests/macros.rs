@@ -53,7 +53,6 @@ fn simple_object_macro() {
 }
 
 #[test]
-#[ignore = "TODO: Implement function-like macros"]
 fn function_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -138,7 +137,6 @@ fn nested_macro_expansion() {
 }
 
 #[test]
-#[ignore = "TODO: Implement function-like macros in conditionals"]
 fn macro_in_conditional() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

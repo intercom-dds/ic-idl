@@ -242,7 +242,6 @@ fn complex_expressions() {
 }
 
 #[test]
-#[ignore = "TODO: Handle undefined macros as 0 in expressions"]
 fn undefined_in_expression() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

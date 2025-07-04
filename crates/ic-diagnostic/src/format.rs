@@ -25,13 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(dead_code, clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_truncation)]
 
 use std::fmt;
 use std::ops::Range;
 
 use ic_cli::color::Colorize;
-use ic_vfs::{SourceMap, Span};
+use ic_vfs::SourceMap;
 
 use crate::{Color, Diag, Label};
 
@@ -46,6 +46,7 @@ struct Charset {
 }
 
 impl Charset {
+    #[allow(dead_code)]
     fn ascii() -> Self {
         Self {
             up_right: "==>",
@@ -114,19 +115,6 @@ fn line_span(input: &str, offset: u32) -> Range<usize> {
     Range { start, end }
 }
 
-/// If the given span contains a newline, it will truncate the span to the
-/// first line.
-fn line_or_span(input: &str, span: &Span) -> Range<usize> {
-    let end = input[span.start.offset as usize..span.end.offset as usize]
-        .find('\n')
-        .map_or(span.end.offset as usize, |v| span.start.offset as usize + v);
-
-    Range {
-        start: span.start.offset as usize,
-        end,
-    }
-}
-
 struct Formatter<'a> {
     filename: Option<&'a str>,
     source: &'a str,
@@ -150,7 +138,6 @@ impl Formatter<'_> {
     }
 
     fn report(self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
-        // Header
         let title = format!("{}:", diag.title.text);
         writeln!(
             f,
@@ -159,12 +146,10 @@ impl Formatter<'_> {
             diag.msg.bold(),
         )?;
 
-        // The core of the diagnostic
         if !diag.labels.is_empty() {
             self.emit_frame(f, diag)?;
         }
 
-        // Emit warnings/hints/notes if specified
         if let Some(v) = &diag.warn {
             writeln!(f, " {} {v}", "warn:".yellow().bold())?;
         }
@@ -181,7 +166,6 @@ impl Formatter<'_> {
     }
 
     fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
-        // Determine the necessary indentation based on length of the linenu
         let (first_line_number, col) = line_col(
             self.source,
             diag.labels
@@ -189,7 +173,6 @@ impl Formatter<'_> {
                 .map_or(0, |v| v.span.start.offset as usize),
         );
 
-        // Find the range of lines that contain labels
         let mut min_line = first_line_number;
         let mut max_line = first_line_number;
 
@@ -203,7 +186,6 @@ impl Formatter<'_> {
         let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
-        // Start the diagnostic frame by emitting the file name
         writeln!(
             f,
             "{indent}{} {}:{first_line_number}:{col}",
@@ -212,9 +194,7 @@ impl Formatter<'_> {
         )?;
         writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
 
-        // Emit all lines that contain labels
         for line_num in min_line..=max_line {
-            // Fill in the line number
             write!(
                 f,
                 " {} {}",
@@ -222,22 +202,17 @@ impl Formatter<'_> {
                 self.chars.vertical.blue().bold(),
             )?;
 
-            // Find the byte offset of the start of this line
             let line_start = self.get_line_start_offset(line_num);
 
-            // Embed the line content
             let range = line_span(self.source, line_start as u32);
             writeln!(f, " {}", self.source[range].trim_end())?;
 
-            // Draw labels for this line
             self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
         }
 
-        // Finish the frame
         writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
     }
 
-    #[allow(clippy::too_many_lines)]
     fn emit_labels_for_line(
         &self,
         f: &mut dyn fmt::Write,
@@ -245,116 +220,127 @@ impl Formatter<'_> {
         labels: &[Label],
         line_num: usize,
     ) -> fmt::Result {
-        // Find labels that affect this line
-        let mut labels_on_line: Vec<&Label> = Vec::new();
-        for label in labels {
-            let start_line = line_number(self.source, label.span.start.offset as usize);
-            let end_line = line_number(self.source, label.span.end.offset as usize);
-            if start_line <= line_num && line_num <= end_line {
-                labels_on_line.push(label);
-            }
-        }
-
+        let labels_on_line = self.get_labels_on_line(labels, line_num);
         if labels_on_line.is_empty() {
             return Ok(());
         }
 
-        // Sort labels by their start position
-        labels_on_line.sort_unstable_by_key(|v| v.span.start.offset);
-
-        // Get line boundaries
         let line_start_offset = self.get_line_start_offset(line_num) as u32;
         let line_range = line_span(self.source, line_start_offset);
+        let line_len = self.source[line_range.clone()].trim_end().len();
 
-        // Draw the highlight line
         write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
 
-        // For overlapping spans, we need to handle them specially
-        // Build a map of which labels cover each column
-        let line_text = &self.source[line_range.clone()];
-        let line_len = line_text.trim_end().len();
+        let col_labels =
+            self.build_column_label_map(&labels_on_line, line_start_offset, line_num, line_len);
+        self.draw_highlights(f, &col_labels)?;
 
-        // Track which labels cover each column position (can be multiple)
-        let mut col_labels: Vec<Vec<&Label>> = vec![Vec::new(); line_len];
+        let labels_starting_here = self.get_labels_starting_on_line(&labels_on_line, line_num);
+        if labels_starting_here.is_empty() {
+            writeln!(f)?;
+        } else {
+            self.draw_label_messages(
+                f,
+                indent,
+                &labels_starting_here,
+                line_start_offset,
+                &line_range,
+            )?;
+        }
 
-        // Process all labels and track which ones cover each position
-        for label in &labels_on_line {
-            let label_start_on_line = if label.span.start.offset >= line_start_offset {
-                (label.span.start.offset - line_start_offset) as usize
-            } else {
-                0
-            };
+        Ok(())
+    }
 
-            let label_end_on_line =
-                if line_number(self.source, label.span.end.offset as usize) > line_num {
-                    line_len
-                } else {
-                    (label.span.end.offset - line_start_offset) as usize
-                };
+    fn get_labels_on_line<'a>(&self, labels: &'a [Label], line_num: usize) -> Vec<&'a Label> {
+        labels
+            .iter()
+            .filter(|label| {
+                let start_line = line_number(self.source, label.span.start.offset as usize);
+                let end_line = line_number(self.source, label.span.end.offset as usize);
+                start_line <= line_num && line_num <= end_line
+            })
+            .collect()
+    }
 
-            // Mark columns covered by this label
+    fn build_column_label_map<'a>(
+        &self,
+        labels_on_line: &[&'a Label],
+        line_start_offset: u32,
+        line_num: usize,
+        line_len: usize,
+    ) -> Vec<Vec<&'a Label>> {
+        let mut col_labels: Vec<Vec<&'a Label>> = vec![Vec::new(); line_len];
+
+        for label in labels_on_line {
+            let label_start = Self::get_label_start_on_line(label, line_start_offset);
+            let label_end =
+                self.get_label_end_on_line(label, line_start_offset, line_num, line_len);
+
             for labels_at_col in col_labels
                 .iter_mut()
-                .take(label_end_on_line.min(line_len))
-                .skip(label_start_on_line)
+                .take(label_end.min(line_len))
+                .skip(label_start)
             {
                 labels_at_col.push(label);
             }
         }
 
-        // Sort labels at each position by size (smaller first) for priority
-        for labels_at_col in &mut col_labels {
+        self.sort_labels_by_size(&mut col_labels, line_start_offset, line_num, line_len);
+        col_labels
+    }
+
+    fn get_label_start_on_line(label: &Label, line_start_offset: u32) -> usize {
+        if label.span.start.offset >= line_start_offset {
+            (label.span.start.offset - line_start_offset) as usize
+        } else {
+            0
+        }
+    }
+
+    fn get_label_end_on_line(
+        &self,
+        label: &Label,
+        line_start_offset: u32,
+        line_num: usize,
+        line_len: usize,
+    ) -> usize {
+        if line_number(self.source, label.span.end.offset as usize) > line_num {
+            line_len
+        } else {
+            (label.span.end.offset - line_start_offset) as usize
+        }
+    }
+
+    fn sort_labels_by_size(
+        &self,
+        col_labels: &mut [Vec<&Label>],
+        line_start_offset: u32,
+        line_num: usize,
+        line_len: usize,
+    ) {
+        for labels_at_col in col_labels {
             labels_at_col.sort_by_key(|label| {
-                let start = if label.span.start.offset >= line_start_offset {
-                    (label.span.start.offset - line_start_offset) as usize
-                } else {
-                    0
-                };
-                let end = if line_number(self.source, label.span.end.offset as usize) > line_num {
-                    line_len
-                } else {
-                    (label.span.end.offset - line_start_offset) as usize
-                };
-                // Sort by span size (smaller first) for display priority
+                let start = Self::get_label_start_on_line(label, line_start_offset);
+                let end = self.get_label_end_on_line(label, line_start_offset, line_num, line_len);
                 end - start
             });
         }
+    }
 
-        // Find the rightmost position that has a highlight
-        let mut max_highlight_pos = None;
-        for (i, labels_at_col) in col_labels.iter().enumerate() {
-            if !labels_at_col.is_empty() {
-                max_highlight_pos = Some(i);
-            }
-        }
+    fn draw_highlights(&self, f: &mut dyn fmt::Write, col_labels: &[Vec<&Label>]) -> fmt::Result {
+        let max_highlight_pos = col_labels.iter().rposition(|labels| !labels.is_empty());
 
-        // Now draw the highlights up to the last highlighted position
         if let Some(max_pos) = max_highlight_pos {
             let mut i = 0;
-
             while i <= max_pos {
                 if col_labels[i].is_empty() {
-                    // No label here, just space
                     write!(f, " ")?;
                     i += 1;
                 } else {
-                    // Get the highest priority label (first in sorted list)
                     let primary_label = col_labels[i][0];
-
-                    // Find the end of this continuous highlight with same primary label
-                    let mut end = i + 1;
-                    while end < line_len && !col_labels[end].is_empty() {
-                        if std::ptr::eq(col_labels[end][0], primary_label) {
-                            end += 1;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    // Always use the same highlight character, color will differentiate
-
-                    // Draw the highlight
+                    let end = Self::find_highlight_end(col_labels, i, primary_label);
                     let highlight_len = end - i;
+
                     write!(
                         f,
                         "{}",
@@ -368,111 +354,151 @@ impl Formatter<'_> {
                 }
             }
         }
+        Ok(())
+    }
 
-        // After highlights, we should be at highlights_end_pos
-        // Don't write extra spaces to line_len, just continue from where we are
+    fn find_highlight_end(
+        col_labels: &[Vec<&Label>],
+        start: usize,
+        primary_label: &Label,
+    ) -> usize {
+        let mut end = start + 1;
+        while end < col_labels.len() && !col_labels[end].is_empty() {
+            if std::ptr::eq(col_labels[end][0], primary_label) {
+                end += 1;
+            } else {
+                break;
+            }
+        }
+        end
+    }
 
-        // Get labels that start on this line for message display
-        let mut labels_starting_here: Vec<&Label> = labels_on_line
+    fn get_labels_starting_on_line<'a>(
+        &self,
+        labels_on_line: &[&'a Label],
+        line_num: usize,
+    ) -> Vec<&'a Label> {
+        labels_on_line
             .iter()
             .filter(|l| line_number(self.source, l.span.start.offset as usize) == line_num)
             .copied()
-            .collect();
+            .collect()
+    }
 
-        if labels_starting_here.is_empty() {
-            // No labels start on this line, just the highlights
-            writeln!(f)?;
-        } else {
-            // For message display order, we want to show labels from right to left
-            // based on where their highlights end on this line
-            labels_starting_here.sort_by(|a, b| {
-                // Calculate where each label's highlight ends on this line
-                let a_end_col = if line_number(self.source, a.span.end.offset as usize) > line_num {
-                    // Continues to next line, use end of current line
-                    let line_text = &self.source[line_range.clone()];
-                    line_text.trim_end().len()
-                } else {
-                    (a.span.end.offset - line_start_offset) as usize
-                };
+    fn draw_label_messages(
+        &self,
+        f: &mut dyn fmt::Write,
+        indent: &str,
+        labels_starting_here: &[&Label],
+        line_start_offset: u32,
+        line_range: &Range<usize>,
+    ) -> fmt::Result {
+        let sorted_labels =
+            self.sort_labels_for_display(labels_starting_here, line_start_offset, line_range);
+        let labels_left_to_right = Self::sort_labels_left_to_right(&sorted_labels);
 
-                let b_end_col = if line_number(self.source, b.span.end.offset as usize) > line_num {
-                    let line_text = &self.source[line_range.clone()];
-                    line_text.trim_end().len()
-                } else {
-                    (b.span.end.offset - line_start_offset) as usize
-                };
+        if let Some(first) = sorted_labels.first() {
+            writeln!(f, " {}", first.msg.bold().fg(first.color))?;
 
-                // Sort by end column on this line (rightmost first)
-                match b_end_col.cmp(&a_end_col) {
-                    std::cmp::Ordering::Equal => {
-                        // If they end at the same place, smaller span first
-                        let a_start_col = (a.span.start.offset - line_start_offset) as usize;
-                        let b_start_col = (b.span.start.offset - line_start_offset) as usize;
-                        b_start_col.cmp(&a_start_col)
-                    }
-                    other => other,
-                }
-            });
+            for (i, label) in sorted_labels.iter().skip(1).enumerate() {
+                write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
 
-            // Keep a copy sorted left to right by start position for vertical line calculation
-            let mut labels_left_to_right = labels_starting_here.clone();
-            labels_left_to_right.sort_by_key(|v| v.span.start.offset);
+                let label_col = (label.span.start.offset - line_start_offset) as usize;
+                self.draw_vertical_connectors(
+                    f,
+                    &labels_left_to_right,
+                    &sorted_labels,
+                    i,
+                    label_col,
+                    line_start_offset,
+                )?;
 
-            // Display first message inline after the highlights
-            if let Some(first) = labels_starting_here.first() {
-                // Add a space and the message on the same line
-                writeln!(f, " {}", first.msg.bold().fg(first.color))?;
-
-                // Display remaining messages with vertical connectors
-                for (i, label) in labels_starting_here.iter().skip(1).enumerate() {
-                    write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
-
-                    // Calculate column position of this label
-                    let label_col = (label.span.start.offset - line_start_offset) as usize;
-
-                    let mut current_col = 0;
-
-                    // Draw vertical lines for labels that haven't been shown yet
-                    // We need to draw lines for all labels to the left of the current one
-                    // that haven't been displayed yet
-                    for &other_label in &labels_left_to_right {
-                        let other_col =
-                            (other_label.span.start.offset - line_start_offset) as usize;
-
-                        // Skip if this is at or after the current label position
-                        if other_col >= label_col {
-                            continue;
-                        }
-
-                        // Check if we've already shown this label
-                        let already_shown = labels_starting_here[0..=i]
-                            .iter()
-                            .any(|&shown| std::ptr::eq(shown, other_label));
-
-                        if !already_shown {
-                            // Add padding to reach this column
-                            if other_col > current_col {
-                                write!(f, "{}", " ".repeat(other_col - current_col))?;
-                                write!(f, "{}", self.chars.vertical.fg(other_label.color))?;
-                                current_col = other_col + 1;
-                            }
-                        }
-                    }
-
-                    // Draw padding to reach the arrow position
-                    if label_col >= current_col {
-                        write!(f, "{}", " ".repeat(label_col - current_col))?;
-                    }
-
-                    // Draw arrow and message
-                    writeln!(
-                        f,
-                        "{} {}",
-                        self.chars.highlight_arrow.fg(label.color),
-                        label.msg.bold().fg(label.color)
-                    )?;
-                }
+                writeln!(
+                    f,
+                    "{} {}",
+                    self.chars.highlight_arrow.fg(label.color),
+                    label.msg.bold().fg(label.color)
+                )?;
             }
+        }
+        Ok(())
+    }
+
+    fn sort_labels_for_display<'a>(
+        &self,
+        labels: &[&'a Label],
+        line_start_offset: u32,
+        line_range: &Range<usize>,
+    ) -> Vec<&'a Label> {
+        let mut sorted = labels.to_vec();
+        sorted.sort_by(|a, b| {
+            let a_end_col = self.get_label_end_col(a, line_start_offset, line_range);
+            let b_end_col = self.get_label_end_col(b, line_start_offset, line_range);
+
+            match b_end_col.cmp(&a_end_col) {
+                std::cmp::Ordering::Equal => {
+                    let a_start_col = (a.span.start.offset - line_start_offset) as usize;
+                    let b_start_col = (b.span.start.offset - line_start_offset) as usize;
+                    b_start_col.cmp(&a_start_col)
+                }
+                other => other,
+            }
+        });
+        sorted
+    }
+
+    fn get_label_end_col(
+        &self,
+        label: &Label,
+        line_start_offset: u32,
+        line_range: &Range<usize>,
+    ) -> usize {
+        let current_line = line_number(self.source, line_start_offset as usize);
+
+        if line_number(self.source, label.span.end.offset as usize) > current_line {
+            self.source[line_range.clone()].trim_end().len()
+        } else {
+            (label.span.end.offset - line_start_offset) as usize
+        }
+    }
+
+    fn sort_labels_left_to_right<'a>(labels: &[&'a Label]) -> Vec<&'a Label> {
+        let mut sorted = labels.to_vec();
+        sorted.sort_by_key(|v| v.span.start.offset);
+        sorted
+    }
+
+    fn draw_vertical_connectors(
+        &self,
+        f: &mut dyn fmt::Write,
+        labels_left_to_right: &[&Label],
+        labels_shown: &[&Label],
+        shown_index: usize,
+        label_col: usize,
+        line_start_offset: u32,
+    ) -> fmt::Result {
+        let mut current_col = 0;
+
+        for &other_label in labels_left_to_right {
+            let other_col = (other_label.span.start.offset - line_start_offset) as usize;
+
+            if other_col >= label_col {
+                continue;
+            }
+
+            let already_shown = labels_shown[0..=shown_index]
+                .iter()
+                .any(|&shown| std::ptr::eq(shown, other_label));
+
+            if !already_shown && other_col > current_col {
+                write!(f, "{}", " ".repeat(other_col - current_col))?;
+                write!(f, "{}", self.chars.vertical.fg(other_label.color))?;
+                current_col = other_col + 1;
+            }
+        }
+
+        if label_col >= current_col {
+            write!(f, "{}", " ".repeat(label_col - current_col))?;
         }
 
         Ok(())
@@ -491,7 +517,6 @@ impl fmt::Display for Diag {
 }
 
 pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
-    // TODO; we assume all labels come form the same file -- this is not necessarily accurate.
     if let Some(label) = diag.labels.first() {
         let info = vfs.file_info(label.span.start.file_id);
         let name = info.included_as.to_string_lossy().to_string();

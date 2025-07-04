@@ -1,0 +1,11 @@
+// Test file for include guard pattern
+#ifndef INCLUDE_GUARD_IDL
+#define INCLUDE_GUARD_IDL
+
+#define GUARD_CONTENT "This should only appear once"
+
+struct GuardedStruct {
+    int value;
+};
+
+#endif // INCLUDE_GUARD_IDL

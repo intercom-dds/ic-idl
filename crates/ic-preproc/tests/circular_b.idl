@@ -1,0 +1,9 @@
+// Test file for circular inclusion detection
+#ifndef CIRCULAR_B_IDL
+#define CIRCULAR_B_IDL
+
+#include "circular_a.idl"
+
+#define FROM_B "Defined in B"
+
+#endif

@@ -97,7 +97,7 @@ struct Parser<'a, S> {
     enable_pragma_once: bool,
     
     /// Cache for include file resolution to avoid repeated directory traversals
-    /// Maps (relative_path, is_local) -> resolved_path
+    /// Maps `(relative_path, is_local)` -> `resolved_path`
     include_cache: HashMap<(PathBuf, bool), Option<PathBuf>>,
 }
 
@@ -727,13 +727,15 @@ where
         let mut arg_map = HashMap::new();
         for (param, actual) in ctx.args.iter().zip(ctx.actual_args.iter()) {
             let param_name = self.source_of(param.span);
-            arg_map.insert(param_name, vec![actual.clone()]);
+            // Store reference to the actual argument tokens to avoid cloning
+            arg_map.insert(param_name, vec![actual]);
         }
 
         // Handle variadic arguments
+        let va_args;
         if ctx.variadic {
             // Collect all remaining arguments for __VA_ARGS__
-            let va_args: Vec<Token> = ctx.actual_args[ctx.args.len()..]
+            va_args = ctx.actual_args[ctx.args.len()..]
                 .iter()
                 .enumerate()
                 .flat_map(|(i, arg)| {
@@ -745,16 +747,16 @@ where
                             span: ctx.token.span, // Use macro span as approximation
                         });
                     }
-                    tokens.extend(arg.clone());
+                    tokens.extend_from_slice(arg);
                     tokens
                 })
-                .collect();
-            arg_map.insert("__VA_ARGS__", vec![va_args]);
+                .collect::<Vec<_>>();
+            arg_map.insert("__VA_ARGS__", vec![&va_args]);
         }
 
         // Expand the macro definition with argument substitution
         let mut i = 0;
-        let tokens = ctx.def.to_vec();
+        let tokens = ctx.def;
         let mut result_tokens = Vec::new();
 
         while i < tokens.len() {
@@ -853,7 +855,7 @@ where
                 if let Some(replacement) = arg_map.get(name) {
                     // Replace parameter with actual argument
                     for tokens in replacement {
-                        result_tokens.extend(tokens.clone());
+                        result_tokens.extend_from_slice(tokens);
                     }
                 } else {
                     // Not a parameter, keep as is
@@ -897,7 +899,7 @@ where
                     };
 
                     // Determine the kind of the pasted token by lexing it
-                    let token_kind = self.determine_token_kind(&pasted);
+                    let token_kind = Self::determine_token_kind(&pasted);
                     
                     final_tokens.push(Token {
                         kind: token_kind,
@@ -960,7 +962,7 @@ where
                     self.expand_function_macro(token, args, def, *variadic, seen, name);
                 }
                 Macro::Object { def, .. } => {
-                    for tok in def.clone() {
+                    for &tok in def {
                         self.expand_inner(tok, seen);
                     }
                 }
@@ -1162,7 +1164,7 @@ where
     }
 
     /// Determine the token kind for a pasted string by lexing it
-    fn determine_token_kind(&self, text: &str) -> Kind {
+    fn determine_token_kind(text: &str) -> Kind {
         // First, check for operators and special tokens
         match text {
             // Multi-character operators

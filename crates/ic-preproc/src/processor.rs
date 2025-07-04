@@ -426,7 +426,7 @@ where
                     });
                 }
 
-                let name = self.source_of(name_tok.span).to_string();
+                let name_span = name_tok.span;
 
                 // Expect closing paren
                 match self.next_raw_token() {
@@ -446,11 +446,11 @@ where
                     }
                 }
 
-                name
+                self.source_of(name_span)
             }
             Kind::Ident | Kind::Keyword(_) => {
                 // defined MACRO form
-                self.source_of(next.span).to_string()
+                self.source_of(next.span)
             }
             _ => {
                 self.state().queue.push_front(next);
@@ -463,7 +463,7 @@ where
 
         // Return a literal that evaluates to 1 or 0
         // We need to create a synthetic token that will be evaluated correctly
-        let value = if self.is_defined(&macro_name) {
+        let value = if self.is_defined(macro_name) {
             "1"
         } else {
             "0"
@@ -745,13 +745,14 @@ where
                     let param_name = self.source_of(next_tok.span);
                     if let Some(replacement) = arg_map.get(param_name) {
                         // Stringify the argument
-                        let mut stringified = String::from("\"");
+                        let mut stringified = String::new();
+                        stringified.push('"');
                         for tokens in replacement {
                             for (j, arg_tok) in tokens.iter().enumerate() {
                                 if j > 0 {
                                     stringified.push(' ');
                                 }
-                                stringified.push_str(self.source_of(arg_tok.span));
+                                let _ = write!(&mut stringified, "{}", self.source_of(arg_tok.span));
                             }
                         }
                         stringified.push('"');
@@ -846,9 +847,10 @@ where
                     let right = &result_tokens[i + 3];
 
                     // Concatenate the tokens
-                    let mut pasted = String::new();
-                    pasted.push_str(self.source_of(left.span));
-                    pasted.push_str(self.source_of(right.span));
+                    let left_text = self.source_of(left.span);
+                    let right_text = self.source_of(right.span);
+                    let mut pasted = String::with_capacity(left_text.len() + right_text.len());
+                    let _ = write!(&mut pasted, "{}{}", left_text, right_text);
 
                     // Create a new token with the pasted content
                     let file_id = self.vfs.embed(&pasted);
@@ -1195,8 +1197,8 @@ where
                 return;
             }
 
-            let include = self.source_of(path).to_string();
-            let include = include.trim_start_matches('"').trim_end_matches('"');
+            let include_str = self.source_of(path);
+            let include = include_str.trim_start_matches('"').trim_end_matches('"');
 
             if let Some(v) = self.search_includes(include, kind) {
                 match self.vfs.open(v, kind) {

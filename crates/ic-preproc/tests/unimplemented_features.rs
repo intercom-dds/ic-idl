@@ -290,7 +290,6 @@ fn function_like_macros() {
 }
 
 #[test]
-#[ignore = "TODO: Implement variadic macros"]
 fn variadic_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -316,7 +315,6 @@ fn variadic_macros() {
 }
 
 #[test]
-#[ignore = "TODO: Implement stringification operator"]
 fn stringification_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -341,7 +339,6 @@ fn stringification_operator() {
 }
 
 #[test]
-#[ignore = "TODO: Implement token pasting operator"]
 fn token_pasting_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -388,7 +385,6 @@ fn va_opt_macro() {
 // ==================== Directive Features ====================
 
 #[test]
-#[ignore = "TODO: Implement #line directive"]
 fn line_directive_basic() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -412,7 +408,6 @@ fn line_directive_basic() {
 }
 
 #[test]
-#[ignore = "TODO: Implement __LINE__ and __FILE__"]
 fn predefined_line_file_macros() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -522,7 +517,6 @@ fn operator_precedence() {
 // ==================== Error Handling ====================
 
 #[test]
-#[ignore = "TODO: Better error messages for malformed expressions"]
 fn expression_error_messages() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

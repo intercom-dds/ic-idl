@@ -247,7 +247,7 @@ const fn infix_precedence(kind: Kind) -> Option<u8> {
         Kind::BitAnd => 6,
         Kind::EqEq | Kind::NotEq => 7,
         Kind::Lt | Kind::Gt | Kind::LtEq | Kind::GtEq => 8,
-        // Kind::LShift | Kind::RShift => 9,
+        Kind::LShift | Kind::RShift => 9,
         Kind::Plus | Kind::Minus => 10,
         Kind::Star | Kind::Slash | Kind::Modulo => 11,
         _ => return None,
@@ -325,6 +325,8 @@ fn expr_op(tok: Token) -> Result<Op, Error> {
         Kind::Star => Op::Mul,
         Kind::Slash => Op::Div,
         Kind::Modulo => Op::Mod,
+        Kind::LShift => Op::LShift,
+        Kind::RShift => Op::RShift,
         _ => Err(Error::Syntax {
             message: "invalid binary operator",
             span: tok.span,
@@ -505,7 +507,7 @@ where
     /// are currently parsing is active, i.e. whether we should yield tokens
     /// for the current region or if they should be skipped.
     fn is_active(&mut self) -> bool {
-        self.if_state().last().is_none_or(IfState::is_active)
+        self.if_state().iter().all(IfState::is_active)
     }
 
     /// Searches through all include directories for a matching file.
@@ -826,26 +828,18 @@ where
     }
 
     fn unary_expr(&mut self) -> Result<Expr, Error> {
-        // First peek to see if we have 'defined'
-
-        // Get raw token to check for 'defined'
-        let lhs = if let Some(tok) = self.stack.last_mut().and_then(|f| f.cursor.next()) {
-            if matches!(tok.kind, Kind::Ident | Kind::Keyword(_))
-                && self.source_of(tok.span) == "defined"
-            {
-                // This is 'defined' - handle it specially
-                return self.parse_defined_operator();
-            }
-            // Not 'defined' - put it back and use normal expansion
-            self.state().queue.push_back(tok);
-            self.next_expr_token().ok_or(Error::Expr {
-                message: "unexpected end of expression",
-            })?
-        } else {
-            self.next_expr_token().ok_or(Error::Expr {
-                message: "unexpected end of expression",
-            })?
-        };
+        // Get the next token with macro expansion
+        let lhs = self.next_expr_token().ok_or(Error::Expr {
+            message: "unexpected end of expression",
+        })?;
+        
+        // Check if it's 'defined' - if so, we need special handling
+        if matches!(lhs.kind, Kind::Ident | Kind::Keyword(_))
+            && self.source_of(lhs.span) == "defined"
+        {
+            return self.parse_defined_operator();
+        }
+        
 
         let expr = match lhs.kind {
             Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } => Expr::Lit(lhs),
@@ -1036,6 +1030,7 @@ where
                     Op::Add => expr,
                     Op::Sub => -expr,
                     Op::Not => i128::from(expr == 0),
+                    Op::BitNot => !expr,
                     v => unreachable!("invalid unary operator: {v:?}"),
                 }
             }
@@ -1059,6 +1054,8 @@ where
                     Op::Mul => lhs.wrapping_mul(rhs),
                     Op::Div => checked_wdiv(lhs, rhs)?,
                     Op::Mod => checked_wmod(lhs, rhs)?,
+                    Op::LShift => lhs.wrapping_shl(rhs.try_into().unwrap_or(128)),
+                    Op::RShift => lhs.wrapping_shr(rhs.try_into().unwrap_or(128)),
                     v => unreachable!("invalid binary operator: {v:?}"),
                 }
             }

@@ -66,7 +66,6 @@ fn simple_arithmetic() {
 }
 
 #[test]
-#[ignore = "TODO: Implement bitwise NOT (~) operator"]
 fn bitwise_operations() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -155,7 +154,6 @@ fn comparison_operators() {
 }
 
 #[test]
-#[ignore = "TODO: Implement ternary operator (?:)"]
 fn ternary_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -212,7 +210,6 @@ fn simple_macro_in_expression() {
 }
 
 #[test]
-#[ignore = "TODO: Implement full expression evaluation"]
 fn complex_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

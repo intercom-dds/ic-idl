@@ -40,6 +40,8 @@ pub enum Op {
     BitAnd,
     BitOr,
     BitXor,
+    LShift,
+    RShift,
     Add,
     Sub,
     Mul,

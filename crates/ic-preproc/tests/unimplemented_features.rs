@@ -82,7 +82,6 @@ fn modulo_operator() {
 }
 
 #[test]
-#[ignore = "TODO: Implement unary minus"]
 fn unary_minus_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -107,7 +106,6 @@ fn unary_minus_operator() {
 }
 
 #[test]
-#[ignore = "TODO: Implement bitwise NOT operator"]
 fn bitwise_not_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -490,7 +488,6 @@ fn pragma_operator() {
 // ==================== Advanced Expression Features ====================
 
 #[test]
-#[ignore = "TODO: Implement operator precedence correctly"]
 fn operator_precedence() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

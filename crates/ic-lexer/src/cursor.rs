@@ -427,8 +427,28 @@ impl Cursor {
                     '=' => self.peek_or('=', Kind::EqEq, Kind::Eq),
                     ':' => self.peek_or(':', Kind::DColon, Kind::Colon),
                     '!' => self.peek_or('=', Kind::NotEq, Kind::Not),
-                    '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
-                    '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
+                    '>' => match self.chars.peek() {
+                        '=' => {
+                            self.chars.next();
+                            Kind::GtEq
+                        }
+                        '>' => {
+                            self.chars.next();
+                            Kind::RShift
+                        }
+                        _ => Kind::Gt,
+                    },
+                    '<' => match self.chars.peek() {
+                        '=' => {
+                            self.chars.next();
+                            Kind::LtEq
+                        }
+                        '<' => {
+                            self.chars.next();
+                            Kind::LShift
+                        }
+                        _ => Kind::Lt,
+                    },
                     '"' => self.string_lit(),
                     '\'' => self.char_lit(),
                     '@' => self.annotation(),

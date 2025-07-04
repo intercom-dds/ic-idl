@@ -210,6 +210,12 @@ pub enum Kind {
     /// `||`
     Or,
 
+    /// `<<`
+    LShift,
+
+    /// `>>`
+    RShift,
+
     /// `+`
     Plus,
 

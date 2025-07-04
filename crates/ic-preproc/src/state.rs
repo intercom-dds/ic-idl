@@ -51,6 +51,7 @@ pub struct State {
 
 impl State {
     /// Create a new preprocessor state
+    #[must_use]
     pub fn new() -> Self {
         Self {
             defines: HashMap::new(),
@@ -62,11 +63,13 @@ impl State {
     }
 
     /// Check if a macro is defined
+    #[must_use]
     pub fn is_defined(&self, name: &str) -> bool {
         self.defines.contains_key(name)
     }
 
     /// Get a macro definition
+    #[must_use]
     pub fn get_macro(&self, name: &str) -> Option<&Macro> {
         self.defines.get(name)
     }
@@ -82,11 +85,13 @@ impl State {
     }
 
     /// Get the list of errors
+    #[must_use]
     pub fn errors(&self) -> &[Error] {
         &self.errors
     }
 
     /// Get the list of warnings
+    #[must_use]
     pub fn warnings(&self) -> &[Error] {
         &self.warnings
     }
@@ -102,6 +107,7 @@ impl State {
     }
 
     /// Check if a file has been parsed
+    #[must_use]
     pub fn is_parsed(&self, file_id: FileId) -> bool {
         self.parsed_files.contains(&file_id)
     }

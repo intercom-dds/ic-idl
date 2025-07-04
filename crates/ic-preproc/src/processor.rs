@@ -129,7 +129,7 @@ impl IfState {
 ///     10. logical `AND`
 ///     11. logical `OR`
 ///     12. ternary conditional
-
+///
 /// State we keep for each file we process. `File`s are not guaranteed to be
 /// unique; multiple includes of the same file create multiple `File` instances
 /// as each has to be parsed separately.
@@ -157,7 +157,7 @@ struct Parser<'a, S> {
     enable_pragma_once: bool,
 }
 
-impl<'a, S> ExpressionContext for Parser<'a, S>
+impl<S> ExpressionContext for Parser<'_, S>
 where
     S: BorrowMut<State>,
 {
@@ -1020,10 +1020,10 @@ where
 
         // The rest of the function macro expansion logic will go here...
         // For now, just a placeholder
-        self.expand_function_macro_impl(token, args, def, variadic, actual_args, seen, name);
+        self.expand_function_macro_impl(token, args, def, variadic, &actual_args, seen, name);
     }
 
-    fn expand_function_macro_impl(&mut self, token: Token, args: &[Token], def: &[Token], variadic: bool, actual_args: Vec<Vec<Token>>, seen: &mut BTreeSet<&'a str>, _name: &'a str) {
+    fn expand_function_macro_impl(&mut self, token: Token, args: &[Token], def: &[Token], variadic: bool, actual_args: &[Vec<Token>], seen: &mut BTreeSet<&'a str>, _name: &'a str) {
         // Build argument mapping for substitution
         let mut arg_map = HashMap::new();
         for (param, actual) in args.iter().zip(actual_args.iter()) {

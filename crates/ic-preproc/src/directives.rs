@@ -25,11 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_lexer::token::{Kind, Token};
-use ic_vfs::Include;
-
-use crate::state::{Directive, Error};
-use crate::macros::Macro;
+use crate::state::Error;
 use crate::Span;
 
 /// A small state machine for keeping track of the current state of `if`

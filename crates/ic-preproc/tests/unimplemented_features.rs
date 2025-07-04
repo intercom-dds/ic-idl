@@ -541,7 +541,6 @@ fn expression_error_messages() {
 }
 
 #[test]
-#[ignore = "TODO: Handle recursive macro expansion in expressions"]
 fn macro_expansion_in_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -558,12 +557,12 @@ fn macro_expansion_in_expressions() {
                 #define B_IS_TWO
             #endif
             
-            #if C == 4
-                #define C_IS_FOUR
+            #if C == 3
+                #define C_IS_THREE
             #endif
             
             #define COMPLEX ((A + B) * C)
-            #if COMPLEX == 12
+            #if COMPLEX == 5
                 #define COMPLEX_EXPANSION_WORKS
             #endif
         ",
@@ -576,6 +575,46 @@ fn macro_expansion_in_expressions() {
     assert!(state.errors().is_empty());
     assert!(state.is_defined("A_IS_ONE"));
     assert!(state.is_defined("B_IS_TWO"));
-    assert!(state.is_defined("C_IS_FOUR"));
+    assert!(state.is_defined("C_IS_THREE"));
     assert!(state.is_defined("COMPLEX_EXPANSION_WORKS"));
+}
+
+#[test]
+fn test_recursive_macro_expansion_tokens() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r"
+            #define A 1
+            #define B A + 1
+            #define C B * 2
+            
+            A
+            B
+            C
+        ",
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new();
+    let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+
+    // Skip the first two newlines and collect non-newline tokens
+    let mut expanded = Vec::new();
+    let mut newline_count = 0;
+
+    for tok in &tokens {
+        if matches!(tok.kind, ic_lexer::token::Kind::Newline) {
+            newline_count += 1;
+        } else if newline_count >= 2 && !matches!(tok.kind, ic_lexer::token::Kind::Eoi) {
+            let src = vfs.source_str(tok.span.start.file_id);
+            let text = &src[tok.span.start.offset as usize..tok.span.end.offset as usize];
+            expanded.push(text.to_string());
+        }
+    }
+
+    // A expands to 1
+    // B expands to 1 + 1
+    // C expands to 1 + 1 * 2
+    let expected = vec!["1", "1", "+", "1", "1", "+", "1", "*", "2"];
+    assert_eq!(expanded, expected);
 }

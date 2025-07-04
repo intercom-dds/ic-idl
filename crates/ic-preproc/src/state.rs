@@ -38,12 +38,16 @@ use crate::macros::Macro;
 pub struct State {
     /// Defined macros
     pub defines: HashMap<String, Macro>,
+
     /// List of errors encountered during preprocessing
     pub errors: Vec<Error>,
+
     /// List of warnings encountered during preprocessing
     pub warnings: Vec<Error>,
+
     /// Queue of tokens to be emitted
     pub queue: VecDeque<Token>,
+
     /// Set of files we've already parsed.
     /// Used to enable `#pragma once`-like functionality.
     pub parsed_files: HashSet<FileId>,

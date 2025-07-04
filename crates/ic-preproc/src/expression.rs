@@ -159,14 +159,14 @@ fn checked_mod(lhs: i128, rhs: i128) -> Result<i128, Error> {
 fn parse_character(lit: &str, span: Option<Span>) -> Result<i128, Error> {
     // Remove surrounding quotes
     let content = lit.trim_start_matches('\'').trim_end_matches('\'');
-    
+
     if content.is_empty() {
         return Err(Error::Expr {
             message: "empty character literal",
             span,
         });
     }
-    
+
     // Handle escape sequences
     let ch = if content.starts_with('\\') && content.len() > 1 {
         match content.chars().nth(1) {
@@ -197,7 +197,7 @@ fn parse_character(lit: &str, span: Option<Span>) -> Result<i128, Error> {
             span,
         });
     };
-    
+
     Ok(ch as i128)
 }
 

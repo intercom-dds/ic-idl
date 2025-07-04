@@ -57,11 +57,6 @@ fn empty_macro_arguments() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     // Empty arguments should be handled gracefully
-    if !state.errors().is_empty() {
-        for err in state.errors() {
-            eprintln!("Error: {:?}", err);
-        }
-    }
     assert!(state.errors().is_empty());
 }
 
@@ -212,11 +207,6 @@ fn stringification_edge_cases() {
     let mut state = State::new();
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
-    if !state.errors().is_empty() {
-        for err in state.errors() {
-            eprintln!("Stringification Error: {:?}", err);
-        }
-    }
     assert!(state.errors().is_empty());
 }
 

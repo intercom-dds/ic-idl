@@ -39,6 +39,7 @@ pub enum Macro {
         def: Vec<Token>,
         variadic: bool,
     },
+
     /// Object-like macro (simple replacement)
     Object { span: Span, def: Vec<Token> },
 }

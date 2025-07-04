@@ -95,6 +95,10 @@ struct Parser<'a, S> {
 
     /// Whether to process #pragma once
     enable_pragma_once: bool,
+    
+    /// Cache for include file resolution to avoid repeated directory traversals
+    /// Maps (relative_path, is_local) -> resolved_path
+    include_cache: HashMap<(PathBuf, bool), Option<PathBuf>>,
 }
 
 impl<S> ExpressionContext for Parser<'_, S>
@@ -120,6 +124,7 @@ where
             includes: args.include_dirs,
             recursion_depth: args.recursion_depth,
             vfs,
+            include_cache: HashMap::new(),
         };
 
         // Inject definitions from `ProcArgs`. This pushes a new virtual file
@@ -260,14 +265,21 @@ where
     }
 
     /// Searches through all include directories for a matching file.
-    ///
-    /// Future optimization: This logic could be moved to the VFS to cache
-    /// search results and avoid repeated directory traversals.
+    /// Results are cached to avoid repeated directory traversals.
     fn search_includes<P: AsRef<Path>>(&mut self, path: P, kind: Include) -> Option<PathBuf> {
         let path = path.as_ref();
         if path.is_absolute() {
             return Some(path.to_owned());
         }
+
+        // Check cache first
+        let cache_key = (path.to_path_buf(), kind == Include::Local);
+        if let Some(cached_result) = self.include_cache.get(&cache_key) {
+            return cached_result.clone();
+        }
+
+        // Perform the search
+        let mut result = None;
 
         // Include relative to the current file
         if kind == Include::Local {
@@ -276,19 +288,25 @@ where
             if let Some(parent) = local.parent() {
                 let file = parent.join(path);
                 if file.exists() {
-                    return Some(file);
+                    result = Some(file);
                 }
             }
         }
 
-        // Fall back to searching all include directories
-        for p in &self.includes {
-            let file = p.join(path);
-            if file.exists() {
-                return Some(file);
+        // Fall back to searching all include directories if not found
+        if result.is_none() {
+            for p in &self.includes {
+                let file = p.join(path);
+                if file.exists() {
+                    result = Some(file);
+                    break;
+                }
             }
         }
-        None
+
+        // Cache the result
+        self.include_cache.insert(cache_key, result.clone());
+        result
     }
 
     fn expr_and_eval(&mut self) -> bool {

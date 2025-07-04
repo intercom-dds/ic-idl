@@ -52,7 +52,6 @@ fn if_expression_evaluation() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     if !state.errors().is_empty() {
-        eprintln!("Errors: {:?}", state.errors());
     }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("MATH_WORKS"));
@@ -86,7 +85,6 @@ fn nested_conditionals() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     if !state.errors().is_empty() {
-        eprintln!("Errors: {:?}", state.errors());
     }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("OUTER_TRUE"));
@@ -119,7 +117,6 @@ fn elif_chain() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     if !state.errors().is_empty() {
-        eprintln!("Errors: {:?}", state.errors());
     }
     assert!(state.errors().is_empty());
     assert!(!state.is_defined("V1"));
@@ -158,7 +155,6 @@ fn ifdef_ifndef() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     if !state.errors().is_empty() {
-        eprintln!("Errors: {:?}", state.errors());
     }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("IFDEF_WORKS"));
@@ -199,7 +195,6 @@ fn logical_operators() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     if !state.errors().is_empty() {
-        eprintln!("Errors: {:?}", state.errors());
     }
     assert!(state.errors().is_empty());
     assert!(!state.is_defined("AND_FALSE"));
@@ -235,7 +230,6 @@ fn defined_operator() {
     with_state(id, args, &mut state, &mut vfs).for_each(drop);
 
     if !state.errors().is_empty() {
-        eprintln!("Errors: {:?}", state.errors());
     }
     assert!(state.errors().is_empty());
     assert!(state.is_defined("DEFINED_CHECK_WORKS"));

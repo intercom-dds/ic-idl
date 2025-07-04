@@ -95,7 +95,7 @@ struct Parser<'a, S> {
 
     /// Whether to process #pragma once
     enable_pragma_once: bool,
-    
+
     /// Cache for include file resolution to avoid repeated directory traversals
     /// Maps `(relative_path, is_local)` -> `resolved_path`
     include_cache: HashMap<(PathBuf, bool), Option<PathBuf>>,
@@ -900,7 +900,7 @@ where
 
                     // Determine the kind of the pasted token by lexing it
                     let token_kind = Self::determine_token_kind(&pasted);
-                    
+
                     final_tokens.push(Token {
                         kind: token_kind,
                         span,
@@ -1178,7 +1178,7 @@ where
             "||" => return Kind::Or,
             "::" => return Kind::DColon,
             "++" | "--" => return Kind::Ident, // These are not single tokens in IDL
-            
+
             // Single character operators
             "+" => return Kind::Plus,
             "-" => return Kind::Minus,
@@ -1209,28 +1209,35 @@ where
             "\\" => return Kind::Backslash,
             _ => {}
         }
-        
+
         // Check if it's a keyword
         if let Some(kw) = ic_lexer::token::Kw::from_str(text) {
             return Kind::Keyword(kw);
         }
-        
+
         // Check if it's a number
         if let Some(first_char) = text.chars().next() {
             if first_char.is_ascii_digit() {
                 // Simple number detection - could be decimal, octal, or hex
                 if text.starts_with("0x") || text.starts_with("0X") {
-                    return Kind::Number { base: Base::Hexadecimal };
-                } else if text.starts_with('0') && text.len() > 1 && text.chars().all(|c| c.is_ascii_digit()) {
+                    return Kind::Number {
+                        base: Base::Hexadecimal,
+                    };
+                } else if text.starts_with('0')
+                    && text.len() > 1
+                    && text.chars().all(|c| c.is_ascii_digit())
+                {
                     return Kind::Number { base: Base::Octal };
                 } else if text.chars().all(|c| c.is_ascii_digit()) {
-                    return Kind::Number { base: Base::Decimal };
+                    return Kind::Number {
+                        base: Base::Decimal,
+                    };
                 }
                 // If it contains non-digit characters after starting with a digit,
                 // it's an invalid identifier (but we'll treat it as one)
             }
         }
-        
+
         // Default to identifier
         Kind::Ident
     }
@@ -1606,8 +1613,9 @@ where
         Ok(s) => Rc::from(s),
         Err(e) => {
             // Invalid UTF-8 in command line defines - this is a serious error
-            eprintln!("Error: Invalid UTF-8 in command line arguments: {e}");
-            // Return empty source to avoid panicking
+            // We can't add to state.errors here since we don't have access to it,
+            // so we'll return empty source and let the parser handle any issues
+            let _ = e; // Avoid unused variable warning
             Rc::from("")
         }
     };

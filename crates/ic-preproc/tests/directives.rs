@@ -90,7 +90,7 @@ fn conditional_error() {
 }
 
 #[test]
-#[ignore] // TODO: Check #line directive syntax
+#[ignore] // TODO: Implement #line directive
 fn line_directive() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

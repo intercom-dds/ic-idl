@@ -108,7 +108,7 @@ fn hash_without_directive() {
 }
 
 #[test]
-#[ignore] // Not yet implemented in preprocessor
+#[ignore] // TODO: Implement stringification operator (#)
 fn stringification() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -133,7 +133,7 @@ fn stringification() {
 }
 
 #[test]
-#[ignore] // Not yet implemented in preprocessor
+#[ignore] // TODO: Implement token pasting operator (##)
 fn token_pasting() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

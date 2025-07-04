@@ -168,7 +168,7 @@ fn ifdef_ifndef() {
 }
 
 #[test]
-#[ignore] // TODO: Check if ! operator is supported
+#[ignore] // TODO: Implement logical NOT operator in expressions
 fn logical_operators() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -209,7 +209,7 @@ fn logical_operators() {
 }
 
 #[test]
-#[ignore] // TODO: Check if defined() is supported
+#[ignore] // TODO: Implement defined() operator
 fn defined_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(

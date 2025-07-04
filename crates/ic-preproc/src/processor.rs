@@ -479,7 +479,7 @@ where
     fn is_defined(&self, name: &str) -> bool {
         match name {
             "__LINE__" | "__FILE__" | "__DATE__" | "__TIME__" => true,
-            _ => self.state.borrow().is_defined(name)
+            _ => self.state.borrow().is_defined(name),
         }
     }
 
@@ -609,8 +609,26 @@ where
     }
 
     fn dir_define(&mut self) -> Option<()> {
-        let (name, span) = self.macro_name()?;
-        let is_macro = self.cursor().take_if(Kind::LParen).is_some();
+        let (name, name_span) = self.macro_name()?;
+
+        // Check if there's an opening parenthesis immediately after the macro name
+        // (no whitespace) to determine if it's a function-like macro
+        let mut lparen_tok = None;
+        let is_macro = if let Some(tok) = self.cursor().take_if(Kind::LParen) {
+            // For function-like macros, the '(' must immediately follow the macro name
+            // Check if the spans are adjacent
+            let is_adjacent = name_span.end.offset == tok.span.start.offset
+                && name_span.end.file_id == tok.span.start.file_id;
+            if is_adjacent {
+                true
+            } else {
+                // Not a function-like macro, put the token back
+                lparen_tok = Some(tok);
+                false
+            }
+        } else {
+            false
+        };
 
         let definition = if is_macro {
             let mut args = vec![];
@@ -622,7 +640,7 @@ where
                     break;
                 }
 
-                // Check for variadic ... 
+                // Check for variadic ...
                 if c == Kind::Period {
                     // Check if we have three periods
                     let cursor = self.cursor();
@@ -640,7 +658,7 @@ where
                     // If not three periods, error
                     self.state().errors.push(Error::Syntax {
                         message: "expected identifier or '...'",
-                        span,
+                        span: name_span,
                     });
                     return None;
                 }
@@ -656,10 +674,24 @@ where
             }
 
             let def = self.cursor().until_newline();
-            Macro::Function { span, args, def, variadic }
+            Macro::Function {
+                span: name_span,
+                args,
+                def,
+                variadic,
+            }
         } else {
-            let def = self.cursor().until_newline();
-            Macro::Object { span, def }
+            // If we consumed an lparen that wasn't part of a function macro,
+            // we need to include it in the definition
+            let mut def = Vec::new();
+            if let Some(tok) = lparen_tok {
+                def.push(tok);
+            }
+            def.extend(self.cursor().until_newline());
+            Macro::Object {
+                span: name_span,
+                def,
+            }
         };
 
         if self.is_active()
@@ -671,7 +703,7 @@ where
         {
             self.state().warnings.push(Error::Syntax {
                 message: "macro redefined",
-                span,
+                span: name_span,
             });
         }
         Some(())
@@ -812,9 +844,9 @@ where
                 self.cursor().next();
             }
         }
-        
+
         self.warn_trailing(span, Directive::Line);
-        
+
         // For now, just parse and ignore #line directives
         // Actual line number manipulation would require more infrastructure
         Some(())
@@ -868,14 +900,13 @@ where
         let lhs = self.next_expr_token().ok_or(Error::Expr {
             message: "unexpected end of expression",
         })?;
-        
+
         // Check if it's 'defined' - if so, we need special handling
         if matches!(lhs.kind, Kind::Ident | Kind::Keyword(_))
             && self.source_of(lhs.span) == "defined"
         {
             return self.parse_defined_operator();
         }
-        
 
         let expr = match lhs.kind {
             Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } => Expr::Lit(lhs),
@@ -1129,12 +1160,14 @@ where
         }
 
         let name = self.source_of(token.span);
-        
+
         // Handle predefined macros
         match name {
             "__LINE__" => {
                 let line_token = Token {
-                    kind: Kind::Number { base: Base::Decimal },
+                    kind: Kind::Number {
+                        base: Base::Decimal,
+                    },
                     span: token.span, // Use the same span as the original __LINE__
                 };
                 // We need to create a synthetic token with the line number
@@ -1161,7 +1194,7 @@ where
             }
             _ => {}
         }
-        
+
         if let Some(v) = self.state.borrow().defines.get(name).cloned() {
             // Macros should not be recursively expanded
             if !seen.insert(name) {
@@ -1179,7 +1212,12 @@ where
             }
 
             match &v {
-                Macro::Function { args, def, variadic, .. } => {
+                Macro::Function {
+                    args,
+                    def,
+                    variadic,
+                    ..
+                } => {
                     // Function-like macros only expand if followed by '('
                     // Check if next token is '('
                     let next_is_lparen = if let Some(file) = self.stack.last_mut() {
@@ -1187,19 +1225,19 @@ where
                     } else {
                         false
                     };
-                    
+
                     if !next_is_lparen {
                         // Not a function call, treat as regular identifier
                         self.state().queue.push_back(token);
                         return;
                     }
-                    
+
                     // Consume the '('
                     self.stack.last_mut().unwrap().cursor.next();
-                    
+
                     // Parse the actual arguments
                     let actual_args = self.parse_macro_args();
-                    
+
                     // Check argument count
                     if *variadic {
                         // For variadic macros, we need at least as many args as fixed params
@@ -1220,14 +1258,14 @@ where
                             return;
                         }
                     }
-                    
+
                     // Build a map from parameter names to actual arguments
                     let mut arg_map = HashMap::new();
                     for (param, actual) in args.iter().zip(actual_args.iter()) {
                         let param_name = self.source_of(param.span);
                         arg_map.insert(param_name, vec![actual.clone()]);
                     }
-                    
+
                     // Handle variadic arguments
                     if *variadic {
                         // Collect all remaining arguments for __VA_ARGS__
@@ -1249,19 +1287,19 @@ where
                             .collect();
                         arg_map.insert("__VA_ARGS__", vec![va_args]);
                     }
-                    
+
                     // Expand the macro definition with argument substitution
                     let mut i = 0;
                     let tokens = def.clone();
                     let mut result_tokens = Vec::new();
-                    
+
                     while i < tokens.len() {
                         let tok = &tokens[i];
-                        
+
                         // Check for stringification operator (#)
                         if tok.kind == Kind::Hash && i + 1 < tokens.len() {
                             let next_tok = &tokens[i + 1];
-                            
+
                             // Check for token pasting operator (##)
                             if next_tok.kind == Kind::Hash {
                                 // This is ##, handle token pasting later
@@ -1270,7 +1308,7 @@ where
                                 i += 2;
                                 continue;
                             }
-                            
+
                             // This is stringification
                             if matches!(next_tok.kind, Kind::Ident | Kind::Keyword(_)) {
                                 let param_name = self.source_of(next_tok.span);
@@ -1286,27 +1324,66 @@ where
                                         }
                                     }
                                     stringified.push('"');
-                                    
+
                                     // Create a string token
                                     let file_id = self.vfs.embed(&stringified);
                                     let span = Span {
                                         start: Location { offset: 0, file_id },
-                                        end: Location { offset: stringified.len() as u32, file_id },
+                                        end: Location {
+                                            offset: stringified.len() as u32,
+                                            file_id,
+                                        },
                                     };
                                     result_tokens.push(Token {
                                         kind: Kind::String { terminated: true },
                                         span,
                                     });
-                                    
+
                                     i += 2; // Skip both # and parameter
                                     continue;
                                 }
                             }
                         }
-                        
+
                         // Handle parameter substitution
                         if matches!(tok.kind, Kind::Ident | Kind::Keyword(_)) {
                             let name = self.source_of(tok.span);
+
+                            // Check for __VA_OPT__
+                            if name == "__VA_OPT__" && *variadic {
+                                // Look for opening parenthesis
+                                if i + 1 < tokens.len() && tokens[i + 1].kind == Kind::LParen {
+                                    i += 2; // Skip __VA_OPT__ and (
+
+                                    // Find matching closing parenthesis
+                                    let mut paren_depth = 1;
+                                    let mut opt_tokens = Vec::new();
+                                    while i < tokens.len() && paren_depth > 0 {
+                                        match tokens[i].kind {
+                                            Kind::LParen => paren_depth += 1,
+                                            Kind::RParen => {
+                                                paren_depth -= 1;
+                                                if paren_depth == 0 {
+                                                    break;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                        if paren_depth > 0 {
+                                            opt_tokens.push(tokens[i]);
+                                        }
+                                        i += 1;
+                                    }
+
+                                    // Only include the content if there are variadic arguments
+                                    let has_varargs = actual_args.len() > args.len();
+                                    if has_varargs {
+                                        result_tokens.extend(opt_tokens);
+                                    }
+                                    continue;
+                                }
+                            }
+
                             if let Some(replacement) = arg_map.get(name) {
                                 // Replace parameter with actual argument
                                 for tokens in replacement {
@@ -1320,50 +1397,54 @@ where
                             // Not an identifier, keep as is
                             result_tokens.push(*tok);
                         }
-                        
+
                         i += 1;
                     }
-                    
+
                     // Now handle token pasting (##)
                     let mut final_tokens = Vec::new();
                     let mut i = 0;
                     while i < result_tokens.len() {
-                        if i + 2 < result_tokens.len() 
-                            && result_tokens[i + 1].kind == Kind::Hash 
-                            && result_tokens[i + 2].kind == Kind::Hash {
+                        if i + 2 < result_tokens.len()
+                            && result_tokens[i + 1].kind == Kind::Hash
+                            && result_tokens[i + 2].kind == Kind::Hash
+                        {
                             // Found ##, paste tokens
                             if i + 3 < result_tokens.len() {
                                 let left = &result_tokens[i];
                                 let right = &result_tokens[i + 3];
-                                
+
                                 // Concatenate the tokens
                                 let mut pasted = String::new();
                                 pasted.push_str(self.source_of(left.span));
                                 pasted.push_str(self.source_of(right.span));
-                                
+
                                 // Create a new token with the pasted content
                                 let file_id = self.vfs.embed(&pasted);
                                 let span = Span {
                                     start: Location { offset: 0, file_id },
-                                    end: Location { offset: pasted.len() as u32, file_id },
+                                    end: Location {
+                                        offset: pasted.len() as u32,
+                                        file_id,
+                                    },
                                 };
-                                
+
                                 // Determine the kind of the pasted token
                                 // For simplicity, assume it's an identifier
                                 final_tokens.push(Token {
                                     kind: Kind::Ident,
                                     span,
                                 });
-                                
+
                                 i += 4; // Skip left, ##, and right
                                 continue;
                             }
                         }
-                        
+
                         final_tokens.push(result_tokens[i]);
                         i += 1;
                     }
-                    
+
                     // Push all final tokens
                     for tok in final_tokens {
                         self.expand_inner(tok, seen);
@@ -1387,23 +1468,92 @@ where
     /// A macro expansion is not allowed to have side effects, so we
     /// can fully expand the entire macro definition here. This is
     /// important as we need to detect and break potential cycles.
+    #[allow(clippy::too_many_lines)]
     fn expand_macro(&mut self, tok: Token) -> bool {
         let name = self.source_of(tok.span);
-        
+
+        // Handle _Pragma operator
+        if name == "_Pragma" {
+            // Look for opening parenthesis
+            if let Some(lparen) = self.cursor().peek() {
+                if lparen == Kind::LParen {
+                    self.cursor().next(); // consume (
+
+                    // Get the string literal argument
+                    if let Some(string_tok) = self.cursor().next() {
+                        if matches!(string_tok.kind, Kind::String { terminated: true }) {
+                            // Get closing parenthesis
+                            if let Some(rparen) = self.cursor().next() {
+                                if rparen.kind == Kind::RParen {
+                                    // Extract the pragma content from the string literal
+                                    let string_content = self.source_of(string_tok.span);
+                                    // Remove quotes
+                                    if string_content.len() >= 2 {
+                                        let pragma_content =
+                                            &string_content[1..string_content.len() - 1];
+
+                                        // Parse the pragma content as tokens
+                                        let pragma_id = self.vfs.embed(pragma_content);
+                                        let pragma_src = self.vfs.source(pragma_id);
+                                        let mut pragma_cursor = Cursor::new(pragma_src, pragma_id);
+                                        let mut pragma_tokens = Vec::new();
+                                        while let Some(tok) = pragma_cursor.next() {
+                                            if tok.kind != Kind::Newline {
+                                                pragma_tokens.push(tok);
+                                            }
+                                        }
+
+                                        // Handle the pragma
+                                        if let Some(first_tok) = pragma_tokens.first() {
+                                            let pragma_name = self.source_of(first_tok.span);
+                                            if let Some(handler) =
+                                                self.pragmas.get(pragma_name).cloned()
+                                            {
+                                                handler.handle(self, pragma_tokens);
+                                            }
+                                        }
+                                    }
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    // If we get here, the _Pragma syntax was invalid
+                    self.state().errors.push(Error::Syntax {
+                        message: "invalid _Pragma syntax",
+                        span: tok.span,
+                    });
+                    return true;
+                }
+            }
+            // No opening paren after _Pragma
+            self.state().queue.push_back(tok);
+            return false;
+        }
+
         // Handle predefined macros
         if name == "__LINE__" {
             // Calculate line number by counting newlines in the source
             let source = self.vfs.source_str(tok.span.start.file_id);
             let offset = tok.span.start.offset as usize;
-            let line_number = source[..offset.min(source.len())].chars().filter(|&c| c == '\n').count() + 1;
+            let line_number = source[..offset.min(source.len())]
+                .chars()
+                .filter(|&c| c == '\n')
+                .count()
+                + 1;
             let line_str = line_number.to_string();
             let file_id = self.vfs.embed(&line_str);
             let span = Span {
                 start: Location { offset: 0, file_id },
-                end: Location { offset: line_str.len() as u32, file_id },
+                end: Location {
+                    offset: line_str.len() as u32,
+                    file_id,
+                },
             };
             self.state().queue.push_back(Token {
-                kind: Kind::Number { base: Base::Decimal },
+                kind: Kind::Number {
+                    base: Base::Decimal,
+                },
                 span,
             });
             return true;
@@ -1414,7 +1564,10 @@ where
             let file_id = self.vfs.embed(&filename_str);
             let span = Span {
                 start: Location { offset: 0, file_id },
-                end: Location { offset: filename_str.len() as u32, file_id },
+                end: Location {
+                    offset: filename_str.len() as u32,
+                    file_id,
+                },
             };
             self.state().queue.push_back(Token {
                 kind: Kind::String { terminated: true },
@@ -1427,7 +1580,10 @@ where
             let file_id = self.vfs.embed(date_str);
             let span = Span {
                 start: Location { offset: 0, file_id },
-                end: Location { offset: date_str.len() as u32, file_id },
+                end: Location {
+                    offset: date_str.len() as u32,
+                    file_id,
+                },
             };
             self.state().queue.push_back(Token {
                 kind: Kind::String { terminated: true },
@@ -1440,7 +1596,10 @@ where
             let file_id = self.vfs.embed(time_str);
             let span = Span {
                 start: Location { offset: 0, file_id },
-                end: Location { offset: time_str.len() as u32, file_id },
+                end: Location {
+                    offset: time_str.len() as u32,
+                    file_id,
+                },
             };
             self.state().queue.push_back(Token {
                 kind: Kind::String { terminated: true },
@@ -1448,7 +1607,7 @@ where
             });
             return true;
         }
-        
+
         if self.is_defined(name) {
             let mut seen = BTreeSet::new();
             self.expand_inner(tok, &mut seen);
@@ -1515,55 +1674,52 @@ where
         let mut args = vec![];
         let mut current_arg = vec![];
         let mut paren_depth = 0;
-        
+
         loop {
             let tok = if let Some(file) = self.stack.last_mut() {
                 file.cursor.next()
             } else {
                 None
             };
-            
-            match tok {
-                Some(tok) => {
-                    match tok.kind {
-                        Kind::LParen => {
-                            paren_depth += 1;
-                            current_arg.push(tok);
-                        }
-                        Kind::RParen => {
-                            if paren_depth == 0 {
-                                // End of macro arguments
-                                if !current_arg.is_empty() || !args.is_empty() {
-                                    args.push(current_arg);
-                                }
-                                break;
+
+            if let Some(tok) = tok {
+                match tok.kind {
+                    Kind::LParen => {
+                        paren_depth += 1;
+                        current_arg.push(tok);
+                    }
+                    Kind::RParen => {
+                        if paren_depth == 0 {
+                            // End of macro arguments
+                            if !current_arg.is_empty() || !args.is_empty() {
+                                args.push(current_arg);
                             }
-                            paren_depth -= 1;
-                            current_arg.push(tok);
+                            break;
                         }
-                        Kind::Comma if paren_depth == 0 => {
-                            // Argument separator
-                            args.push(current_arg);
-                            current_arg = vec![];
-                        }
-                        _ => {
-                            current_arg.push(tok);
-                        }
+                        paren_depth -= 1;
+                        current_arg.push(tok);
+                    }
+                    Kind::Comma if paren_depth == 0 => {
+                        // Argument separator
+                        args.push(current_arg);
+                        current_arg = vec![];
+                    }
+                    _ => {
+                        current_arg.push(tok);
                     }
                 }
-                None => {
-                    self.state().errors.push(Error::Syntax {
-                        message: "unexpected end of file in macro arguments",
-                        span: Span::default(), // TODO: track last token span
-                    });
-                    break;
-                }
+            } else {
+                self.state().errors.push(Error::Syntax {
+                    message: "unexpected end of file in macro arguments",
+                    span: Span::default(), // TODO: track last token span
+                });
+                break;
             }
         }
-        
+
         args
     }
-    
+
     fn next_raw_token(&mut self) -> Option<Token> {
         'outer: loop {
             // Check if we're currently in the middle of a macro expansion, and

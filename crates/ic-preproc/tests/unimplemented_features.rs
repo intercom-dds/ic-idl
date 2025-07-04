@@ -224,7 +224,6 @@ fn defined_operator_basic() {
 }
 
 #[test]
-#[ignore = "TODO: Handle macro expansion after defined() in complex expressions"]
 fn defined_operator_complex() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -362,7 +361,6 @@ fn token_pasting_operator() {
 }
 
 #[test]
-#[ignore = "TODO: Implement __VA_OPT__"]
 fn va_opt_macro() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -458,7 +456,6 @@ fn predefined_date_time_macros() {
 }
 
 #[test]
-#[ignore = "TODO: Implement _Pragma operator"]
 fn pragma_operator() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -544,7 +541,7 @@ fn expression_error_messages() {
 }
 
 #[test]
-#[ignore = "TODO: Handle macro expansion in expressions better"]
+#[ignore = "TODO: Handle recursive macro expansion in expressions"]
 fn macro_expansion_in_expressions() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -565,7 +562,7 @@ fn macro_expansion_in_expressions() {
                 #define C_IS_FOUR
             #endif
             
-            #define COMPLEX (A + B) * C
+            #define COMPLEX ((A + B) * C)
             #if COMPLEX == 12
                 #define COMPLEX_EXPANSION_WORKS
             #endif

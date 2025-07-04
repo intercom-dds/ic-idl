@@ -361,7 +361,7 @@ where
         }
 
         let expr = match lhs.kind {
-            Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } => Expr::Lit(lhs),
+            Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } | Kind::Char => Expr::Lit(lhs),
             Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => {
                 let prefix = prefix_precedence(lhs.kind);
                 let expr = self.binary_expr(prefix)?;

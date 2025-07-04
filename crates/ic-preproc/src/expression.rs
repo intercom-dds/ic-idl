@@ -46,6 +46,7 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
             let lit = ctx.source_of(v.span);
             match v.kind {
                 Kind::Number { base } => parse_integer(lit, base, Some(v.span)),
+                Kind::Char => parse_character(lit, Some(v.span)),
                 Kind::Ident | Kind::Keyword(_) => {
                     // Handle predefined macros in expressions
                     match lit {
@@ -152,6 +153,52 @@ fn checked_mod(lhs: i128, rhs: i128) -> Result<i128, Error> {
     } else {
         Ok(lhs.wrapping_rem(rhs))
     }
+}
+
+/// Parse a character literal to its integer value
+fn parse_character(lit: &str, span: Option<Span>) -> Result<i128, Error> {
+    // Remove surrounding quotes
+    let content = lit.trim_start_matches('\'').trim_end_matches('\'');
+    
+    if content.is_empty() {
+        return Err(Error::Expr {
+            message: "empty character literal",
+            span,
+        });
+    }
+    
+    // Handle escape sequences
+    let ch = if content.starts_with('\\') && content.len() > 1 {
+        match content.chars().nth(1) {
+            Some('n') => '\n',
+            Some('t') => '\t',
+            Some('r') => '\r',
+            Some('0') => '\0',
+            Some('\\') => '\\',
+            Some('\'') => '\'',
+            Some('"') => '"',
+            Some(c) => {
+                // For now, just use the character as-is
+                // A full implementation would handle octal/hex escapes
+                c
+            }
+            None => {
+                return Err(Error::Expr {
+                    message: "invalid escape sequence in character literal",
+                    span,
+                });
+            }
+        }
+    } else if content.len() == 1 {
+        content.chars().next().unwrap()
+    } else {
+        return Err(Error::Expr {
+            message: "character literal contains multiple characters",
+            span,
+        });
+    };
+    
+    Ok(ch as i128)
 }
 
 /// Get the precedence of a binary operator

@@ -58,6 +58,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let variants = enum_string(&input.data);
 
     let expanded = quote! {
+        #[allow(clippy::to_string_trait_impl)]
         impl #impl_generics ::std::string::ToString for #name #ty_generics
         #where_clause
         {

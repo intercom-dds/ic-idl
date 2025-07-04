@@ -108,7 +108,6 @@ fn hash_without_directive() {
 }
 
 #[test]
-#[ignore = "TODO: Implement stringification operator (#)"]
 fn stringification() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -133,7 +132,6 @@ fn stringification() {
 }
 
 #[test]
-#[ignore = "TODO: Implement token pasting operator (##)"]
 fn token_pasting() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
@@ -212,4 +210,33 @@ fn command_line_defines() {
 
     assert!(state.errors().is_empty());
     assert!(state.is_defined("FOUND_CMD_DEFINE"));
+}
+
+#[test]
+fn macro_arg_unterminated_error() {
+    let mut vfs = SourceMap::default();
+    let id = vfs.embed(
+        r"
+            #define FOO(a, b) a + b
+            FOO(1, 2
+            // Missing closing parenthesis
+        ",
+    );
+
+    let args = ProcArgs::default();
+    let mut state = State::new();
+    with_state(id, args, &mut state, &mut vfs).for_each(drop);
+
+    // Should have an error about unexpected end of file
+    assert!(!state.errors().is_empty());
+
+    // Verify we have the expected error with proper span tracking
+    let has_expected_error = state.errors().iter().any(|err| {
+        matches!(err, ic_preproc::Error::Syntax { message, span } 
+            if message.contains("unexpected end") && *span != ic_vfs::Span::default())
+    });
+    assert!(
+        has_expected_error,
+        "Expected error about unexpected end of file with non-default span"
+    );
 }

@@ -25,8 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests documenting features that need to be implemented in ic-preproc.
-//! All tests in this file should be marked with #[ignore] until implemented.
+//! Tests for advanced preprocessor features including expression evaluation,
+//! macro expansion, and complex directive handling.
 
 use ic_preproc::{ProcArgs, State, with_state};
 use ic_vfs::SourceMap;

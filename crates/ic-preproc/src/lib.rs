@@ -33,10 +33,13 @@ use std::string::FromUtf8Error;
 pub use ic_lexer::token::{Kind, Token};
 pub use ic_vfs::Span;
 use ic_vfs::{FileId, Include, SourceMap};
-use processor::Error;
-pub use processor::{State, TokenIter};
+pub use state::{Error, State};
+pub use processor::TokenIter;
 
+mod expression;
+mod macros;
 mod processor;
+mod state;
 mod time;
 
 const RECURSION_DEPTH: usize = 200;

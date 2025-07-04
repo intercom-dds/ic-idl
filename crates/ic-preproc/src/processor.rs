@@ -28,74 +28,22 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use std::borrow::BorrowMut;
-use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use ic_expr::{Binary, Op, Ternary, Unary};
+use ic_expr::{Binary, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
 
 use crate::{ProcArgs, Span, time};
+use crate::state::{State, Error, Directive};
+use crate::macros::Macro;
+use crate::expression::{is_true, infix_precedence, prefix_precedence, expr_op, Expr, ExpressionContext};
 
-#[derive(Debug, Clone)]
-pub enum Macro {
-    Function {
-        span: Span,
-        args: Vec<Token>,
-        def: Vec<Token>,
-        variadic: bool,
-    },
-    Object {
-        span: Span,
-        def: Vec<Token>,
-    },
-}
-
-type Expr = ic_expr::Expr<Token>;
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Directive {
-    If,
-    Ifdef,
-    Ifndef,
-    Elif,
-    Else,
-    Endif,
-    Include,
-    Define,
-    Undef,
-    Line,
-    Warning,
-    Error,
-    Pragma,
-}
-
-#[derive(Clone, Debug)]
-pub enum Error {
-    Note {
-        span: Span,
-        tokens: Vec<Token>,
-    },
-    Extraneous {
-        directive: Directive,
-        span: Span,
-        tokens: Vec<Token>,
-    },
-    Syntax {
-        message: &'static str,
-        span: Span,
-    },
-
-    // TODO: this should be Error::Syntax, but we don't currently record
-    // spans of expression
-    Expr {
-        message: &'static str,
-    },
-}
 
 #[derive(Debug)]
 enum IfKind {
@@ -166,65 +114,7 @@ impl IfState {
     }
 }
 
-#[must_use]
-#[derive(Default, Debug)]
-pub struct State {
-    defines: HashMap<String, Macro>,
-    errors: Vec<Error>,
-    warnings: Vec<Error>,
-    queue: VecDeque<Token>,
 
-    /// Set of files we've already parsed.
-    /// Used to enable `#pragma once`-like functionality.
-    parsed_files: HashSet<FileId>,
-}
-
-impl State {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub fn is_defined(&self, macr: &str) -> bool {
-        self.defines.contains_key(macr)
-    }
-
-    #[must_use]
-    pub fn get_macro(&self, macr: &str) -> Option<&Macro> {
-        self.defines.get(macr)
-    }
-
-    #[must_use]
-    pub fn warnings(&self) -> &[Error] {
-        &self.warnings
-    }
-
-    #[must_use]
-    pub fn errors(&self) -> &[Error] {
-        &self.errors
-    }
-}
-
-trait PragmaHandler<S: BorrowMut<State>> {
-    /// Name of the pragma, e.g. `once` for `#pragma once`.
-    fn name(&self) -> &str;
-
-    /// Handle a `pragma` directive.
-    fn handle(&self, parser: &mut Parser<'_, S>, tokens: Vec<Token>);
-}
-
-struct PragmaOnce;
-
-impl<S: BorrowMut<State>> PragmaHandler<S> for PragmaOnce {
-    fn name(&self) -> &'static str {
-        "once"
-    }
-
-    fn handle(&self, parser: &mut Parser<'_, S>, _: Vec<Token>) {
-        let id = parser.cursor().file_id();
-        parser.mark_included(id);
-    }
-}
 
 /// Operator precedence is defined as follows, from highest to lowest:
 ///     1. unary `+`, unary `-`, logical `NOT`, bitwise `NOT`
@@ -239,104 +129,6 @@ impl<S: BorrowMut<State>> PragmaHandler<S> for PragmaOnce {
 ///     10. logical `AND`
 ///     11. logical `OR`
 ///     12. ternary conditional
-#[inline]
-const fn infix_precedence(kind: Kind) -> Option<u8> {
-    let prec = match kind {
-        Kind::Question => 1,
-        Kind::Or => 2,
-        Kind::And => 3,
-        Kind::BitOr => 4,
-        Kind::BitXor => 5,
-        Kind::BitAnd => 6,
-        Kind::EqEq | Kind::NotEq => 7,
-        Kind::Lt | Kind::Gt | Kind::LtEq | Kind::GtEq => 8,
-        Kind::LShift | Kind::RShift => 9,
-        Kind::Plus | Kind::Minus => 10,
-        Kind::Star | Kind::Slash | Kind::Modulo => 11,
-        _ => return None,
-    };
-    Some(prec)
-}
-
-// There are only a few prefix operators and they all have the same precedence.
-#[inline]
-fn prefix_precedence(kind: Kind) -> u8 {
-    match kind {
-        Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => 20,
-        _ => unreachable!("invalid unary operator {kind:?}"),
-    }
-}
-
-#[inline]
-fn checked_wdiv(lhs: i128, rhs: i128) -> Result<i128, Error> {
-    if rhs == 0 {
-        Err(Error::Expr {
-            message: "attempted to divide by zero",
-        })
-    } else {
-        Ok(lhs.wrapping_div(rhs))
-    }
-}
-
-#[inline]
-fn checked_wmod(lhs: i128, rhs: i128) -> Result<i128, Error> {
-    if rhs == 0 {
-        Err(Error::Expr {
-            message: "attempted to modulo by zero",
-        })
-    } else {
-        Ok(lhs.wrapping_rem(rhs))
-    }
-}
-
-#[inline]
-fn parse_str(str: &str, base: Base) -> Result<i128, Error> {
-    let str = match base {
-        Base::Octal => {
-            if str.len() > 1 {
-                str.trim_start_matches('0')
-            } else {
-                str
-            }
-        }
-        Base::Decimal => str,
-        Base::Hexadecimal => str.trim_start_matches("0x"),
-    };
-
-    i128::from_str_radix(str, base as u32).map_err(|_| Error::Expr {
-        message: "invalid literal",
-    })
-}
-
-fn expr_op(tok: Token) -> Result<Op, Error> {
-    let op = match tok.kind {
-        Kind::Not => Op::Not,
-        Kind::Or => Op::Or,
-        Kind::And => Op::And,
-        Kind::EqEq => Op::EqEq,
-        Kind::NotEq => Op::NotEq,
-        Kind::BitOr => Op::BitOr,
-        Kind::BitAnd => Op::BitAnd,
-        Kind::BitXor => Op::BitXor,
-        Kind::BitNot => Op::BitNot,
-        Kind::Lt => Op::Lt,
-        Kind::LtEq => Op::LtEq,
-        Kind::Gt => Op::Gt,
-        Kind::GtEq => Op::GtEq,
-        Kind::Plus => Op::Add,
-        Kind::Minus => Op::Sub,
-        Kind::Star => Op::Mul,
-        Kind::Slash => Op::Div,
-        Kind::Modulo => Op::Mod,
-        Kind::LShift => Op::LShift,
-        Kind::RShift => Op::RShift,
-        _ => Err(Error::Syntax {
-            message: "invalid binary operator",
-            span: tok.span,
-        })?,
-    };
-    Ok(op)
-}
 
 /// State we keep for each file we process. `File`s are not guaranteed to be
 /// unique; multiple includes of the same file create multiple `File` instances
@@ -361,8 +153,19 @@ struct Parser<'a, S> {
     includes: HashSet<PathBuf>,
     recursion_depth: usize,
 
-    /// Registered pragmas.
-    pragmas: HashMap<String, Rc<dyn PragmaHandler<S>>>,
+    /// Whether to process #pragma once
+    enable_pragma_once: bool,
+}
+
+impl<'a, S> ExpressionContext for Parser<'a, S>
+where
+    S: BorrowMut<State>,
+{
+    fn source_of(&self, span: Span) -> &str {
+        // For the trait, we need to return a reference with the same lifetime as self
+        // This is safe because the actual strings are stored in vfs which lives as long as Parser
+        self.source_of_internal(span)
+    }
 }
 
 impl<'a, S> Parser<'a, S>
@@ -373,7 +176,7 @@ where
         let mut this = Self {
             state,
             stack: vec![file],
-            pragmas: HashMap::default(),
+            enable_pragma_once: true,
             includes: args.include_dirs,
             recursion_depth: args.recursion_depth,
             vfs,
@@ -383,8 +186,6 @@ where
         // to the top of the stack.
         cli_defines(args.defines, &mut this);
 
-        // Register pragma handlers
-        this.add_pragma(PragmaOnce);
         this
     }
 
@@ -456,6 +257,11 @@ where
         Some((self.source_of(span), span))
     }
 
+
+    fn state(&mut self) -> &mut State {
+        self.state.borrow_mut()
+    }
+
     fn source_of(&self, span: Span) -> &'a str {
         let Some(file) = self.stack.last() else {
             unreachable!("cursor stack is empty");
@@ -472,8 +278,16 @@ where
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 
-    fn state(&mut self) -> &mut State {
-        self.state.borrow_mut()
+    fn source_of_internal(&self, span: Span) -> &str {
+        let Some(file) = self.stack.last() else {
+            unreachable!("cursor stack is empty");
+        };
+
+        if file.cursor.file_id() == span.start.file_id {
+            file.cursor.source_of(span)
+        } else {
+            &self.vfs.source_str(span.start.file_id)[span.range()]
+        }
     }
 
     fn is_defined(&self, name: &str) -> bool {
@@ -483,16 +297,9 @@ where
         }
     }
 
-    fn add_pragma<H>(&mut self, pragma: H)
-    where
-        H: PragmaHandler<S> + 'static,
-    {
-        self.pragmas
-            .insert(pragma.name().to_string(), Rc::new(pragma));
-    }
 
     fn mark_included(&mut self, file_id: FileId) {
-        self.state().parsed_files.insert(file_id);
+        self.state().mark_parsed(file_id);
     }
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
@@ -581,7 +388,7 @@ where
                 return;
             }
 
-            let include = self.source_of(path);
+            let include = self.source_of(path).to_string();
             let include = include.trim_start_matches('"').trim_end_matches('"');
 
             if let Some(v) = self.search_includes(include, kind) {
@@ -721,7 +528,7 @@ where
     }
 
     fn expr_and_eval(&mut self) -> bool {
-        match self.expr().and_then(|v| self.is_true(&v)) {
+        match self.expr().and_then(|v| is_true(&v, self)) {
             Ok(v) => v,
             Err(e) => {
                 self.state().errors.push(e);
@@ -822,9 +629,12 @@ where
         // Empty pragmas are allowed, so this is not guaranteed
         if let Some(pragma) = tokens.first() {
             let name = self.source_of(pragma.span);
-            if let Some(v) = self.pragmas.get(name).cloned() {
-                v.handle(self, tokens);
+            if name == "once" && self.enable_pragma_once {
+                // Handle #pragma once
+                let file_id = pragma.span.start.file_id;
+                self.mark_included(file_id);
             }
+            // Ignore other pragmas
         }
     }
 
@@ -1081,74 +891,280 @@ where
         Ok(lhs)
     }
 
-    fn eval_expr(&self, expr: &Expr) -> Result<i128, Error> {
-        let val = match expr {
-            Expr::Lit(v) => {
-                let lit = self.source_of(v.span);
-                match v.kind {
-                    Kind::Number { base } => parse_str(lit, base)?,
-                    Kind::Ident | Kind::Keyword(_) => {
-                        // Handle predefined macros in expressions
-                        match lit {
-                            "__LINE__" => {
-                                // For now, just return a non-zero value so #if __LINE__ > 0 works
-                                // Proper implementation would require access to span location info
-                                1
-                            }
-                            _ => 0, // Undefined macros evaluate to 0
-                        }
-                    }
-                    _ => unreachable!(),
-                }
+
+    fn expand_predefined_macro(&mut self, name: &str, token: Token) -> bool {
+        match name {
+            "__LINE__" => {
+                let line_token = Token {
+                    kind: Kind::Number {
+                        base: Base::Decimal,
+                    },
+                    span: token.span, // Use the same span as the original __LINE__
+                };
+                // We need to create a synthetic token with the line number
+                // For now, just push the original token back since we can't easily create new spans
+                self.state().queue.push_back(line_token);
+                true
             }
-            Expr::Unary(v) => {
-                let expr = self.eval_expr(&v.expr)?;
-                match v.op {
-                    Op::Add => expr,
-                    Op::Sub => -expr,
-                    Op::Not => i128::from(expr == 0),
-                    Op::BitNot => !expr,
-                    v => unreachable!("invalid unary operator: {v:?}"),
-                }
+            "__FILE__" => {
+                let file_token = Token {
+                    kind: Kind::String { terminated: true },
+                    span: token.span, // Use the same span as the original __FILE__
+                };
+                // Push the file path as a string token
+                self.state().queue.push_back(file_token);
+                true
             }
-            Expr::Binary(v) => {
-                let lhs = self.eval_expr(&v.lhs)?;
-                let rhs = self.eval_expr(&v.rhs)?;
-                match v.op {
-                    Op::And => i128::from(lhs != 0 && rhs != 0),
-                    Op::Or => i128::from(lhs != 0 || rhs != 0),
-                    Op::EqEq => i128::from(lhs == rhs),
-                    Op::NotEq => i128::from(lhs != rhs),
-                    Op::Gt => i128::from(lhs > rhs),
-                    Op::GtEq => i128::from(lhs >= rhs),
-                    Op::Lt => i128::from(lhs < rhs),
-                    Op::LtEq => i128::from(lhs <= rhs),
-                    Op::BitAnd => lhs & rhs,
-                    Op::BitOr => lhs | rhs,
-                    Op::BitXor => lhs ^ rhs,
-                    Op::Add => lhs.wrapping_add(rhs),
-                    Op::Sub => lhs.wrapping_sub(rhs),
-                    Op::Mul => lhs.wrapping_mul(rhs),
-                    Op::Div => checked_wdiv(lhs, rhs)?,
-                    Op::Mod => checked_wmod(lhs, rhs)?,
-                    Op::LShift => lhs.wrapping_shl(rhs.try_into().unwrap_or(128)),
-                    Op::RShift => lhs.wrapping_shr(rhs.try_into().unwrap_or(128)),
-                    v => unreachable!("invalid binary operator: {v:?}"),
-                }
+            "__DATE__" | "__TIME__" => {
+                let predefined_token = Token {
+                    kind: Kind::String { terminated: true },
+                    span: token.span,
+                };
+                self.state().queue.push_back(predefined_token);
+                true
             }
-            Expr::Ternary(v) => {
-                if self.is_true(&v.cond)? {
-                    self.eval_expr(&v.then)?
-                } else {
-                    self.eval_expr(&v.els)?
-                }
-            }
-        };
-        Ok(val)
+            _ => false,
+        }
     }
 
-    fn is_true(&self, expr: &Expr) -> Result<bool, Error> {
-        self.eval_expr(expr).map(|v| v != 0)
+    fn expand_function_macro(&mut self, token: Token, args: &[Token], def: &[Token], variadic: bool, seen: &mut BTreeSet<&'a str>, name: &'a str) {
+        // Function-like macros only expand if followed by '('
+        // Check if next token is '('
+        let next_is_lparen = if let Some(file) = self.stack.last_mut() {
+            matches!(file.cursor.peek(), Some(Kind::LParen))
+        } else {
+            false
+        };
+
+        if !next_is_lparen {
+            // Not a function call, treat as regular identifier
+            self.state().queue.push_back(token);
+            return;
+        }
+
+        // Consume the '('
+        self.stack.last_mut().unwrap().cursor.next();
+
+        // Parse the actual arguments
+        let actual_args = self.parse_macro_args();
+
+        // Check argument count
+        if variadic {
+            // For variadic macros, we need at least as many args as fixed params
+            if actual_args.len() < args.len() {
+                self.state().errors.push(Error::Syntax {
+                    message: "too few arguments to variadic macro",
+                    span: token.span,
+                });
+                return;
+            }
+        } else {
+            // For non-variadic macros, exact match required
+            if actual_args.len() != args.len() {
+                self.state().errors.push(Error::Syntax {
+                    message: "wrong number of arguments to macro",
+                    span: token.span,
+                });
+                return;
+            }
+        }
+
+        // The rest of the function macro expansion logic will go here...
+        // For now, just a placeholder
+        self.expand_function_macro_impl(token, args, def, variadic, actual_args, seen, name);
+    }
+
+    fn expand_function_macro_impl(&mut self, token: Token, args: &[Token], def: &[Token], variadic: bool, actual_args: Vec<Vec<Token>>, seen: &mut BTreeSet<&'a str>, _name: &'a str) {
+        // Build argument mapping for substitution
+        let mut arg_map = HashMap::new();
+        for (param, actual) in args.iter().zip(actual_args.iter()) {
+            let param_name = self.source_of(param.span);
+            arg_map.insert(param_name, vec![actual.clone()]);
+        }
+
+        // Handle variadic arguments
+        if variadic {
+            // Collect all remaining arguments for __VA_ARGS__
+            let va_args: Vec<Token> = actual_args[args.len()..]
+                .iter()
+                .enumerate()
+                .flat_map(|(i, arg)| {
+                    let mut tokens = vec![];
+                    if i > 0 {
+                        // Add comma between arguments
+                        tokens.push(Token {
+                            kind: Kind::Comma,
+                            span: token.span, // Use macro span as approximation
+                        });
+                    }
+                    tokens.extend(arg.clone());
+                    tokens
+                })
+                .collect();
+            arg_map.insert("__VA_ARGS__", vec![va_args]);
+        }
+
+        // Expand the macro definition with argument substitution
+        let mut i = 0;
+        let tokens = def.to_vec();
+        let mut result_tokens = Vec::new();
+
+        while i < tokens.len() {
+            let tok = &tokens[i];
+
+            // Check for stringification operator (#)
+            if tok.kind == Kind::Hash && i + 1 < tokens.len() {
+                let next_tok = &tokens[i + 1];
+
+                // Check for token pasting operator (##)
+                if next_tok.kind == Kind::Hash {
+                    // This is ##, handle token pasting later
+                    result_tokens.push(*tok);
+                    result_tokens.push(*next_tok);
+                    i += 2;
+                    continue;
+                }
+
+                // This is stringification
+                if matches!(next_tok.kind, Kind::Ident | Kind::Keyword(_)) {
+                    let param_name = self.source_of(next_tok.span);
+                    if let Some(replacement) = arg_map.get(param_name) {
+                        // Stringify the argument
+                        let mut stringified = String::from("\"");
+                        for tokens in replacement {
+                            for (j, arg_tok) in tokens.iter().enumerate() {
+                                if j > 0 {
+                                    stringified.push(' ');
+                                }
+                                stringified.push_str(self.source_of(arg_tok.span));
+                            }
+                        }
+                        stringified.push('"');
+
+                        // Create a string token
+                        let file_id = self.vfs.embed(&stringified);
+                        let span = Span {
+                            start: Location { offset: 0, file_id },
+                            end: Location {
+                                offset: stringified.len() as u32,
+                                file_id,
+                            },
+                        };
+                        result_tokens.push(Token {
+                            kind: Kind::String { terminated: true },
+                            span,
+                        });
+
+                        i += 2; // Skip both # and parameter
+                        continue;
+                    }
+                }
+            }
+
+            // Handle parameter substitution
+            if matches!(tok.kind, Kind::Ident | Kind::Keyword(_)) {
+                let name = self.source_of(tok.span);
+
+                // Check for __VA_OPT__
+                if name == "__VA_OPT__" && variadic {
+                    // Look for opening parenthesis
+                    if i + 1 < tokens.len() && tokens[i + 1].kind == Kind::LParen {
+                        i += 2; // Skip __VA_OPT__ and (
+
+                        // Find matching closing parenthesis
+                        let mut paren_depth = 1;
+                        let mut opt_tokens = Vec::new();
+                        while i < tokens.len() && paren_depth > 0 {
+                            match tokens[i].kind {
+                                Kind::LParen => paren_depth += 1,
+                                Kind::RParen => {
+                                    paren_depth -= 1;
+                                    if paren_depth == 0 {
+                                        break;
+                                    }
+                                }
+                                _ => {}
+                            }
+                            if paren_depth > 0 {
+                                opt_tokens.push(tokens[i]);
+                            }
+                            i += 1;
+                        }
+
+                        // Only include the content if there are variadic arguments
+                        let has_varargs = actual_args.len() > args.len();
+                        if has_varargs {
+                            result_tokens.extend(opt_tokens);
+                        }
+                        continue;
+                    }
+                }
+
+                if let Some(replacement) = arg_map.get(name) {
+                    // Replace parameter with actual argument
+                    for tokens in replacement {
+                        result_tokens.extend(tokens.clone());
+                    }
+                } else {
+                    // Not a parameter, keep as is
+                    result_tokens.push(*tok);
+                }
+            } else {
+                // Not an identifier, keep as is
+                result_tokens.push(*tok);
+            }
+
+            i += 1;
+        }
+
+        // Now handle token pasting (##)
+        let mut final_tokens = Vec::new();
+        let mut i = 0;
+        while i < result_tokens.len() {
+            if i + 2 < result_tokens.len()
+                && result_tokens[i + 1].kind == Kind::Hash
+                && result_tokens[i + 2].kind == Kind::Hash
+            {
+                // Found ##, paste tokens
+                if i + 3 < result_tokens.len() {
+                    let left = &result_tokens[i];
+                    let right = &result_tokens[i + 3];
+
+                    // Concatenate the tokens
+                    let mut pasted = String::new();
+                    pasted.push_str(self.source_of(left.span));
+                    pasted.push_str(self.source_of(right.span));
+
+                    // Create a new token with the pasted content
+                    let file_id = self.vfs.embed(&pasted);
+                    let span = Span {
+                        start: Location { offset: 0, file_id },
+                        end: Location {
+                            offset: pasted.len() as u32,
+                            file_id,
+                        },
+                    };
+
+                    // Determine the kind of the pasted token
+                    // For simplicity, assume it's an identifier
+                    final_tokens.push(Token {
+                        kind: Kind::Ident,
+                        span,
+                    });
+
+                    i += 4; // Skip left, ##, and right
+                    continue;
+                }
+            }
+
+            final_tokens.push(result_tokens[i]);
+            i += 1;
+        }
+
+        // Push all final tokens
+        for tok in final_tokens {
+            self.expand_inner(tok, seen);
+        }
     }
 
     #[allow(clippy::too_many_lines)]
@@ -1162,37 +1178,8 @@ where
         let name = self.source_of(token.span);
 
         // Handle predefined macros
-        match name {
-            "__LINE__" => {
-                let line_token = Token {
-                    kind: Kind::Number {
-                        base: Base::Decimal,
-                    },
-                    span: token.span, // Use the same span as the original __LINE__
-                };
-                // We need to create a synthetic token with the line number
-                // For now, just push the original token back since we can't easily create new spans
-                self.state().queue.push_back(line_token);
-                return;
-            }
-            "__FILE__" => {
-                let file_token = Token {
-                    kind: Kind::String { terminated: true },
-                    span: token.span, // Use the same span as the original __FILE__
-                };
-                // Push the file path as a string token
-                self.state().queue.push_back(file_token);
-                return;
-            }
-            "__DATE__" | "__TIME__" => {
-                let predefined_token = Token {
-                    kind: Kind::String { terminated: true },
-                    span: token.span,
-                };
-                self.state().queue.push_back(predefined_token);
-                return;
-            }
-            _ => {}
+        if self.expand_predefined_macro(name, token) {
+            return;
         }
 
         if let Some(v) = self.state.borrow().defines.get(name).cloned() {
@@ -1212,243 +1199,8 @@ where
             }
 
             match &v {
-                Macro::Function {
-                    args,
-                    def,
-                    variadic,
-                    ..
-                } => {
-                    // Function-like macros only expand if followed by '('
-                    // Check if next token is '('
-                    let next_is_lparen = if let Some(file) = self.stack.last_mut() {
-                        matches!(file.cursor.peek(), Some(Kind::LParen))
-                    } else {
-                        false
-                    };
-
-                    if !next_is_lparen {
-                        // Not a function call, treat as regular identifier
-                        self.state().queue.push_back(token);
-                        return;
-                    }
-
-                    // Consume the '('
-                    self.stack.last_mut().unwrap().cursor.next();
-
-                    // Parse the actual arguments
-                    let actual_args = self.parse_macro_args();
-
-                    // Check argument count
-                    if *variadic {
-                        // For variadic macros, we need at least as many args as fixed params
-                        if actual_args.len() < args.len() {
-                            self.state().errors.push(Error::Syntax {
-                                message: "too few arguments to variadic macro",
-                                span: token.span,
-                            });
-                            return;
-                        }
-                    } else {
-                        // For non-variadic macros, exact match required
-                        if actual_args.len() != args.len() {
-                            self.state().errors.push(Error::Syntax {
-                                message: "wrong number of arguments to macro",
-                                span: token.span,
-                            });
-                            return;
-                        }
-                    }
-
-                    // Build a map from parameter names to actual arguments
-                    let mut arg_map = HashMap::new();
-                    for (param, actual) in args.iter().zip(actual_args.iter()) {
-                        let param_name = self.source_of(param.span);
-                        arg_map.insert(param_name, vec![actual.clone()]);
-                    }
-
-                    // Handle variadic arguments
-                    if *variadic {
-                        // Collect all remaining arguments for __VA_ARGS__
-                        let va_args: Vec<Token> = actual_args[args.len()..]
-                            .iter()
-                            .enumerate()
-                            .flat_map(|(i, arg)| {
-                                let mut tokens = vec![];
-                                if i > 0 {
-                                    // Add comma between arguments
-                                    tokens.push(Token {
-                                        kind: Kind::Comma,
-                                        span: token.span, // Use macro span as approximation
-                                    });
-                                }
-                                tokens.extend(arg.clone());
-                                tokens
-                            })
-                            .collect();
-                        arg_map.insert("__VA_ARGS__", vec![va_args]);
-                    }
-
-                    // Expand the macro definition with argument substitution
-                    let mut i = 0;
-                    let tokens = def.clone();
-                    let mut result_tokens = Vec::new();
-
-                    while i < tokens.len() {
-                        let tok = &tokens[i];
-
-                        // Check for stringification operator (#)
-                        if tok.kind == Kind::Hash && i + 1 < tokens.len() {
-                            let next_tok = &tokens[i + 1];
-
-                            // Check for token pasting operator (##)
-                            if next_tok.kind == Kind::Hash {
-                                // This is ##, handle token pasting later
-                                result_tokens.push(*tok);
-                                result_tokens.push(*next_tok);
-                                i += 2;
-                                continue;
-                            }
-
-                            // This is stringification
-                            if matches!(next_tok.kind, Kind::Ident | Kind::Keyword(_)) {
-                                let param_name = self.source_of(next_tok.span);
-                                if let Some(replacement) = arg_map.get(param_name) {
-                                    // Stringify the argument
-                                    let mut stringified = String::from("\"");
-                                    for tokens in replacement {
-                                        for (j, arg_tok) in tokens.iter().enumerate() {
-                                            if j > 0 {
-                                                stringified.push(' ');
-                                            }
-                                            stringified.push_str(self.source_of(arg_tok.span));
-                                        }
-                                    }
-                                    stringified.push('"');
-
-                                    // Create a string token
-                                    let file_id = self.vfs.embed(&stringified);
-                                    let span = Span {
-                                        start: Location { offset: 0, file_id },
-                                        end: Location {
-                                            offset: stringified.len() as u32,
-                                            file_id,
-                                        },
-                                    };
-                                    result_tokens.push(Token {
-                                        kind: Kind::String { terminated: true },
-                                        span,
-                                    });
-
-                                    i += 2; // Skip both # and parameter
-                                    continue;
-                                }
-                            }
-                        }
-
-                        // Handle parameter substitution
-                        if matches!(tok.kind, Kind::Ident | Kind::Keyword(_)) {
-                            let name = self.source_of(tok.span);
-
-                            // Check for __VA_OPT__
-                            if name == "__VA_OPT__" && *variadic {
-                                // Look for opening parenthesis
-                                if i + 1 < tokens.len() && tokens[i + 1].kind == Kind::LParen {
-                                    i += 2; // Skip __VA_OPT__ and (
-
-                                    // Find matching closing parenthesis
-                                    let mut paren_depth = 1;
-                                    let mut opt_tokens = Vec::new();
-                                    while i < tokens.len() && paren_depth > 0 {
-                                        match tokens[i].kind {
-                                            Kind::LParen => paren_depth += 1,
-                                            Kind::RParen => {
-                                                paren_depth -= 1;
-                                                if paren_depth == 0 {
-                                                    break;
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                        if paren_depth > 0 {
-                                            opt_tokens.push(tokens[i]);
-                                        }
-                                        i += 1;
-                                    }
-
-                                    // Only include the content if there are variadic arguments
-                                    let has_varargs = actual_args.len() > args.len();
-                                    if has_varargs {
-                                        result_tokens.extend(opt_tokens);
-                                    }
-                                    continue;
-                                }
-                            }
-
-                            if let Some(replacement) = arg_map.get(name) {
-                                // Replace parameter with actual argument
-                                for tokens in replacement {
-                                    result_tokens.extend(tokens.clone());
-                                }
-                            } else {
-                                // Not a parameter, keep as is
-                                result_tokens.push(*tok);
-                            }
-                        } else {
-                            // Not an identifier, keep as is
-                            result_tokens.push(*tok);
-                        }
-
-                        i += 1;
-                    }
-
-                    // Now handle token pasting (##)
-                    let mut final_tokens = Vec::new();
-                    let mut i = 0;
-                    while i < result_tokens.len() {
-                        if i + 2 < result_tokens.len()
-                            && result_tokens[i + 1].kind == Kind::Hash
-                            && result_tokens[i + 2].kind == Kind::Hash
-                        {
-                            // Found ##, paste tokens
-                            if i + 3 < result_tokens.len() {
-                                let left = &result_tokens[i];
-                                let right = &result_tokens[i + 3];
-
-                                // Concatenate the tokens
-                                let mut pasted = String::new();
-                                pasted.push_str(self.source_of(left.span));
-                                pasted.push_str(self.source_of(right.span));
-
-                                // Create a new token with the pasted content
-                                let file_id = self.vfs.embed(&pasted);
-                                let span = Span {
-                                    start: Location { offset: 0, file_id },
-                                    end: Location {
-                                        offset: pasted.len() as u32,
-                                        file_id,
-                                    },
-                                };
-
-                                // Determine the kind of the pasted token
-                                // For simplicity, assume it's an identifier
-                                final_tokens.push(Token {
-                                    kind: Kind::Ident,
-                                    span,
-                                });
-
-                                i += 4; // Skip left, ##, and right
-                                continue;
-                            }
-                        }
-
-                        final_tokens.push(result_tokens[i]);
-                        i += 1;
-                    }
-
-                    // Push all final tokens
-                    for tok in final_tokens {
-                        self.expand_inner(tok, seen);
-                    }
+                Macro::Function { args, def, variadic, .. } => {
+                    self.expand_function_macro(token, args, def, *variadic, seen, name);
                 }
                 Macro::Object { def, .. } => {
                     for tok in def.clone() {
@@ -1462,7 +1214,6 @@ where
         }
     }
 
-    /// Expands and enqueues the definition of `tok` if it is a macro.
     /// Returns `true` if the macro was expanded.
     ///
     /// A macro expansion is not allowed to have side effects, so we
@@ -1506,11 +1257,12 @@ where
                                         // Handle the pragma
                                         if let Some(first_tok) = pragma_tokens.first() {
                                             let pragma_name = self.source_of(first_tok.span);
-                                            if let Some(handler) =
-                                                self.pragmas.get(pragma_name).cloned()
-                                            {
-                                                handler.handle(self, pragma_tokens);
+                                            if pragma_name == "once" && self.enable_pragma_once {
+                                                // Handle #pragma once via _Pragma
+                                                let file_id = tok.span.start.file_id;
+                                                self.mark_included(file_id);
                                             }
+                                            // Ignore other pragmas
                                         }
                                     }
                                     return true;

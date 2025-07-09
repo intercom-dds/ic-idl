@@ -29,9 +29,46 @@ use std::rc::Rc;
 
 use ic_vfs::{FileId, Location, Span};
 
+use crate::fast_lookup::{get_single_char_token, is_special_char, is_ascii_whitespace};
 use crate::iter::{EOF, OwnedChars};
 use crate::token::{Base, Kind, Kw, Token};
 
+/// ASCII digit lookup table for faster checking
+const ASCII_DIGIT: [bool; 128] = {
+    let mut table = [false; 128];
+    let mut i = b'0' as usize;
+    while i <= b'9' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    table
+};
+
+/// ASCII hex digit lookup table for faster checking
+const ASCII_HEX_DIGIT: [bool; 128] = {
+    let mut table = [false; 128];
+    let mut i = b'0' as usize;
+    while i <= b'9' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    let mut i = b'A' as usize;
+    while i <= b'F' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    let mut i = b'a' as usize;
+    while i <= b'f' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    table
+};
+
+/// A lexical cursor that tokenizes IDL source code.
+///
+/// The cursor maintains the current position in the source and provides
+/// methods to extract tokens and navigate through the input.
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct Cursor {
@@ -40,18 +77,23 @@ pub struct Cursor {
 }
 
 impl Cursor {
+    /// Creates a new cursor for the given source code.
     pub fn new(source: Rc<str>, file_id: FileId) -> Self {
         let chars = OwnedChars::from(source);
         Cursor { chars, file_id }
     }
 
+    #[inline(always)]
     fn span_since(&self, start: u32) -> Span {
+        let end = self.chars.index();
         Span {
             start: Location::new(start, self.file_id),
-            end: Location::new(self.chars.index(), self.file_id),
+            end: Location::new(end, self.file_id),
         }
     }
 
+    #[inline]
+    #[allow(dead_code)]
     fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) -> Span {
         let start = self.chars.index();
         loop {
@@ -64,28 +106,93 @@ impl Cursor {
         self.span_since(start)
     }
 
+    // Specialized eat_while for common cases - avoids function call overhead
+    #[inline(always)]
+    fn eat_while_ascii_digit(&mut self) {
+        loop {
+            let c = self.chars.peek();
+            if c == EOF || (c as u32) >= 128 || !ASCII_DIGIT[c as usize] {
+                break;
+            }
+            self.chars.next();
+        }
+    }
+
+    #[inline(always)]
+    fn eat_while_ascii_hexdigit(&mut self) {
+        loop {
+            let c = self.chars.peek();
+            if c == EOF || (c as u32) >= 128 || !ASCII_HEX_DIGIT[c as usize] {
+                break;
+            }
+            self.chars.next();
+        }
+    }
+
+    #[inline]
+    fn eat_while_ident(&mut self) {
+        loop {
+            let c = self.chars.peek();
+            if c == EOF || !is_ident(c) {
+                break;
+            }
+            self.chars.next();
+        }
+    }
+
+    #[inline]
     fn ident(&mut self, start: u32) -> Kind {
-        self.eat_while(is_ident);
+        self.eat_while_ident();
         let span = self.span_since(start);
         let src = &self.chars.as_str()[span.range()];
         Kw::from_str(src).map_or(Kind::Ident, Kind::Keyword)
     }
 
+    #[inline]
     fn number(&mut self, leading: char) -> Kind {
-        self.eat_while(|v| v.is_ascii_digit());
+        // Handle hex numbers (must start with 0)
+        if leading == '0' {
+            match self.chars.peek() {
+                'x' | 'X' => {
+                    _ = self.chars.next(); // consume 'x' or 'X'
+                    self.eat_while_ascii_hexdigit();
+                    return Kind::Number {
+                        base: Base::Hexadecimal,
+                    };
+                }
+                _ => {
+                    // Could be octal or just '0'
+                }
+            }
+        }
 
+        // Consume all digits
+        self.eat_while_ascii_digit();
+
+        // Check for float indicators
         match self.chars.peek() {
-            '.' | 'e' | 'E' => {
-                _ = self.chars.next();
-                self.eat_while(|v| v.is_ascii_digit());
+            '.' => {
+                _ = self.chars.next(); // consume '.'
+                self.eat_while_ascii_digit();
+                // Check for exponent
+                if matches!(self.chars.peek(), 'e' | 'E') {
+                    _ = self.chars.next(); // consume 'e' or 'E'
+                    // Handle optional sign
+                    if matches!(self.chars.peek(), '+' | '-') {
+                        _ = self.chars.next();
+                    }
+                    self.eat_while_ascii_digit();
+                }
                 Kind::Float
             }
-            'x' | 'X' => {
-                _ = self.chars.next();
-                self.eat_while(|v| v.is_ascii_hexdigit());
-                Kind::Number {
-                    base: Base::Hexadecimal,
+            'e' | 'E' => {
+                _ = self.chars.next(); // consume 'e' or 'E'
+                // Handle optional sign
+                if matches!(self.chars.peek(), '+' | '-') {
+                    _ = self.chars.next();
                 }
+                self.eat_while_ascii_digit();
+                Kind::Float
             }
             _ => Kind::Number {
                 base: if leading == '0' {
@@ -97,27 +204,31 @@ impl Cursor {
         }
     }
 
+    #[inline]
     fn string_lit(&mut self) -> Kind {
-        let mut terminated = false;
-        while let Some(c) = self.chars.next() {
+        // Fast path for strings without escapes (common case)
+        let mut escape_seen = false;
+        loop {
+            let c = match self.chars.next() {
+                Some(c) => c,
+                None => return Kind::String { terminated: false },
+            };
+            
+            if escape_seen {
+                escape_seen = false;
+                continue;
+            }
+            
             match c {
-                '\\' => {
-                    // TODO: should be escape newlines in string literals?
-                    if self.chars.peek() == '"' {
-                        _ = self.chars.next();
-                    }
-                }
-                '\n' => break,
-                '"' => {
-                    terminated = true;
-                    break;
-                }
-                _ => (),
+                '"' => return Kind::String { terminated: true },
+                '\n' => return Kind::String { terminated: false },
+                '\\' => escape_seen = true,
+                _ => continue,
             }
         }
-        Kind::String { terminated }
     }
 
+    #[inline]
     fn char_lit(&mut self) -> Kind {
         if let Some(v) = self.chars.next() {
             if v == '\'' {
@@ -136,6 +247,7 @@ impl Cursor {
 
     // `@annotation` is special because it's a keyword that consists of
     // non-alphanumeric characters.
+    #[inline]
     fn annotation(&mut self) -> Kind {
         if let Some(v) = self.clone().next() {
             if v.kind == Kind::Ident && self.source_of(v.span) == "annotation" {
@@ -150,6 +262,7 @@ impl Cursor {
     // comments (`///`) are not.
     //
     // Returns true if this was a documentation-style comment.
+    #[inline]
     fn comment(&mut self) -> bool {
         // Consume the leading '/'
         _ = self.chars.next();
@@ -160,25 +273,25 @@ impl Cursor {
     }
 
     // Returns true if this was a documentation-style comment.
+    #[inline]
     fn block_comment(&mut self) -> bool {
         // Consume the leading '/'
         _ = self.chars.next();
 
         let is_doc = matches!(self.chars.peek(), '*' | '!');
+        let mut prev_was_star = false;
         loop {
             match self.chars.next() {
-                Some('*') => {
-                    if self.chars.next() == Some('/') {
-                        break;
-                    }
-                }
-                None => panic!("unterminated"),
-                _ => (),
+                Some('/') if prev_was_star => break,
+                Some('*') => prev_was_star = true,
+                Some(_) => prev_was_star = false,
+                None => break, // Unterminated block comment
             }
         }
         is_doc
     }
 
+    #[inline(always)]
     fn peek_or(&mut self, c: char, a: Kind, b: Kind) -> Kind {
         if self.chars.peek() == c {
             _ = self.chars.next();
@@ -189,6 +302,9 @@ impl Cursor {
     }
 
     /// Advances the iterator until it finds a token with the specified `kind`.
+    ///
+    /// Returns all tokens consumed before finding the target kind and the span
+    /// covering all consumed tokens.
     pub fn until(&mut self, kind: Kind) -> (Vec<Token>, Span) {
         let mut tokens = vec![];
         let start = self.chars.index();
@@ -247,63 +363,79 @@ impl Cursor {
     pub fn next(&mut self) -> Option<Token> {
         loop {
             let start = self.chars.index();
-            let kind = match self.chars.next()? {
-                '#' => Kind::Hash,
-                ',' => Kind::Comma,
-                '.' => Kind::Period,
-                ';' => Kind::Semi,
-                '{' => Kind::LBrace,
-                '}' => Kind::RBrace,
-                '[' => Kind::LBracket,
-                ']' => Kind::RBracket,
-                '(' => Kind::LParen,
-                ')' => Kind::RParen,
-                '+' => Kind::Plus,
-                '-' => Kind::Minus,
-                '*' => Kind::Star,
-                '%' => Kind::Modulo,
-                '?' => Kind::Question,
-                '\n' => Kind::Newline,
-                '\\' => Kind::Backslash,
-                '~' => Kind::BitNot,
-                '^' => Kind::BitXor,
-                '&' => self.peek_or('&', Kind::And, Kind::BitAnd),
-                '|' => self.peek_or('|', Kind::Or, Kind::BitOr),
-                '=' => self.peek_or('=', Kind::EqEq, Kind::Eq),
-                ':' => self.peek_or(':', Kind::DColon, Kind::Colon),
-                '!' => self.peek_or('=', Kind::NotEq, Kind::Unknown),
-                '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
-                '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
-                '"' => self.string_lit(),
-                '\'' => self.char_lit(),
-                '@' => self.annotation(),
-
-                '/' => match self.chars.peek() {
-                    '/' => {
-                        if self.comment() {
-                            Kind::Comment
-                        } else {
-                            continue;
+            let c = self.chars.next()?;
+            
+            // Fast path for common single-character tokens
+            if let Some(kind) = get_single_char_token(c) {
+                return Some(Token { 
+                    kind, 
+                    span: self.span_since(start) 
+                });
+            }
+            
+            // Handle whitespace early to avoid further checks
+            if is_ascii_whitespace(c) || (c as u32 >= 128 && c.is_whitespace()) {
+                continue;
+            }
+            
+            // Check for digits early (common case)
+            if (c as u32) < 128 && ASCII_DIGIT[c as usize] {
+                let kind = self.number(c);
+                return Some(Token { 
+                    kind, 
+                    span: self.span_since(start) 
+                });
+            }
+            
+            // Check for identifiers (common case)
+            if is_ident(c) {
+                let kind = self.ident(start);
+                return Some(Token { 
+                    kind, 
+                    span: self.span_since(start) 
+                });
+            }
+            
+            // Handle special characters that need lookahead
+            let kind = if is_special_char(c) {
+                match c {
+                    '&' => self.peek_or('&', Kind::And, Kind::BitAnd),
+                    '|' => self.peek_or('|', Kind::Or, Kind::BitOr),
+                    '=' => self.peek_or('=', Kind::EqEq, Kind::Eq),
+                    ':' => self.peek_or(':', Kind::DColon, Kind::Colon),
+                    '!' => self.peek_or('=', Kind::NotEq, Kind::Unknown),
+                    '>' => self.peek_or('=', Kind::GtEq, Kind::Gt),
+                    '<' => self.peek_or('=', Kind::LtEq, Kind::Lt),
+                    '"' => self.string_lit(),
+                    '\'' => self.char_lit(),
+                    '@' => self.annotation(),
+                    '/' => match self.chars.peek() {
+                        '/' => {
+                            if self.comment() {
+                                Kind::Comment
+                            } else {
+                                continue;
+                            }
                         }
-                    }
-                    '*' => {
-                        if self.block_comment() {
-                            Kind::Comment
-                        } else {
-                            continue;
+                        '*' => {
+                            if self.block_comment() {
+                                Kind::Comment
+                            } else {
+                                continue;
+                            }
                         }
-                    }
-                    _ => Kind::Slash,
-                },
-
-                c if c.is_ascii_digit() => self.number(c),
-                c if is_ident(c) => self.ident(start),
-                c if c.is_whitespace() => continue,
-                _ => Kind::Unknown,
+                        _ => Kind::Slash,
+                    },
+                    _ => Kind::Unknown,
+                }
+            } else {
+                Kind::Unknown
             };
 
-            let span = self.span_since(start);
-            break Some(Token { kind, span });
+            return Some(Token { 
+                kind, 
+                span: self.span_since(start) 
+            });
         }
     }
 
@@ -317,7 +449,7 @@ impl Cursor {
         }
     }
 
-    /// Returns the source of th given span.
+    /// Returns the source of the given span.
     ///
     /// # Panics
     ///
@@ -348,8 +480,49 @@ impl Cursor {
     }
 }
 
+/// ASCII identifier character lookup table
+const ASCII_IDENT: [bool; 128] = {
+    let mut table = [false; 128];
+    // Digits
+    let mut i = b'0' as usize;
+    while i <= b'9' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    // Uppercase letters
+    let mut i = b'A' as usize;
+    while i <= b'Z' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    // Lowercase letters
+    let mut i = b'a' as usize;
+    while i <= b'z' as usize {
+        table[i] = true;
+        i += 1;
+    }
+    // Underscore
+    table[b'_' as usize] = true;
+    table
+};
+
+/// Returns true if the character can appear in an identifier.
+#[inline(always)]
 fn is_ident(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
+    // Fast path for ASCII (most common)
+    let code = c as u32;
+    if code < 128 {
+        ASCII_IDENT[code as usize]
+    } else {
+        // Slower path for Unicode
+        c.is_alphanumeric()
+    }
+}
+
+/// Returns true if the character can start an identifier.
+#[allow(dead_code)]
+fn is_ident_start(c: char) -> bool {
+    c.is_alphabetic() || c == '_'
 }
 
 #[cfg(test)]

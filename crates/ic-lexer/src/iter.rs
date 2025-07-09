@@ -113,10 +113,13 @@ impl OwnedChars {
         self.line
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn peek(&mut self) -> char {
-        self.chars.peek().copied().unwrap_or(EOF)
+        match self.chars.peek() {
+            Some(&c) => c,
+            None => EOF,
+        }
     }
 }
 
@@ -138,19 +141,19 @@ impl From<Rc<str>> for OwnedChars {
 impl Iterator for OwnedChars {
     type Item = char;
 
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         let c = self.chars.next()?;
-        self.index += c.len_utf8() as u32;
-        if c == '\n' {
-            self.line += 1;
+        // Most characters are ASCII (1 byte), optimize for that case
+        if c.is_ascii() {
+            self.index += 1;
+            if c == '\n' {
+                self.line += 1;
+            }
+        } else {
+            self.index += c.len_utf8() as u32;
         }
-
-        debug_assert!(
-            u32::try_from(c.len_utf8()).is_ok(),
-            "byte index exceeds u32::MAX",
-        );
         Some(c)
     }
 

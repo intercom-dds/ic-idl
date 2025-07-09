@@ -539,3 +539,9 @@ void intercom::cidl::code_gen_xml(const parse_result* result, ic_list_t* list) {
         }
     }
 }
+
+extern "C" {
+void ic_codegen_xml(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_xml(result, list);
+}
+}

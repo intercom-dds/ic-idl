@@ -2202,3 +2202,9 @@ void intercom::cidl::code_gen_python(const parse_result* result, ic_list_t* list
         }
     }
 }
+
+extern "C" {
+void ic_codegen_python(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_python(result, list);
+}
+}

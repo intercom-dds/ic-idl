@@ -28,12 +28,19 @@
 use ic_emit::File;
 use ic_ptree::ParseResult;
 
+unsafe extern "C" {
+    fn ic_codegen_python(
+        result: *const ic_ptree::sys::parse_result,
+        list: *mut ic_ptree::sys::ic_list_t,
+    );
+}
+
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
 pub fn codegen_python(result: &ParseResult) -> Vec<File> {
     let mut generated = vec![];
     unsafe {
-        ic_ptree::sys::ic_codegen_python(
+        ic_codegen_python(
             result.as_raw(),
             std::ptr::addr_of_mut!(generated).cast::<_>(),
         );

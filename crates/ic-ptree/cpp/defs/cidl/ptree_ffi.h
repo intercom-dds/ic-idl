@@ -52,51 +52,6 @@ struct parser_state* ic_parser_create();
 
 struct parse_result* ic_parser_result(struct parser_state* state, struct ptree* tree);
 
-void ic_ptree_dump(const struct parse_result* result);
-
-void ic_codegen_proto(const struct parse_result* result, struct ic_list_t* list);
-
-void ic_codegen_json(const struct parse_result* result, struct ic_list_t* list);
-
-void ic_codegen_xml(const struct parse_result* result, struct ic_list_t* list);
-
-struct python_options_t {
-    uint8_t use_pep8;
-    const char* global_postfix;
-};
-
-void ic_codegen_python(const struct parse_result* result, struct ic_list_t* list);
-
-struct rust_options_t {
-    uint8_t no_rename;
-    uint8_t must_use;
-};
-
-void ic_codegen_rust(const struct parse_result* result, struct ic_list_t* list);
-
-struct idl_options_t {
-    uint8_t doxygen;
-    uint8_t expand;
-};
-
-void ic_codegen_idl(const struct parse_result* result, struct ic_list_t* list);
-
-struct cpp_options_t {
-    const char* header_postfix;
-    const char* header_ext;
-    const char* dll_export;
-    uint8_t scoped_enums;
-    uint8_t access_functions;
-    uint8_t no_stream_op;
-    uint8_t use_fmt;
-};
-
-void ic_codegen_cpp(
-    const struct parse_result* result,
-    struct cpp_options_t options,
-    struct ic_list_t* list
-);
-
 #ifdef __cplusplus
 }
 #endif

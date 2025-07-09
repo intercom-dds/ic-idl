@@ -675,3 +675,13 @@ void intercom::cidl::generate_json_type(std::ostream& stream, const ptree* tree)
     print_json(writer, tree);
     writer.end_object();
 }
+
+extern "C" {
+void ic_codegen_json(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_json(result, list);
+}
+
+void ic_codegen_json_schema(const parse_result* result, const char*) {
+    intercom::cidl::code_gen_json_schema(result);
+}
+}

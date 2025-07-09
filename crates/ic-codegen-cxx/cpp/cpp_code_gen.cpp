@@ -3246,3 +3246,40 @@ void intercom::cidl::code_gen_dds_cplpl(
     config = options;
     code_gen_dds_cplpl(result, list);
 }
+
+extern "C" {
+
+struct cpp_options_t {
+    const char* header_postfix;
+    const char* header_ext;
+    const char* dll_export;
+    uint8_t scoped_enums;
+    uint8_t access_functions;
+    uint8_t no_stream_op;
+    uint8_t use_fmt;
+};
+
+void ic_codegen_cpp(
+    const parse_result* result,
+    struct cpp_options_t options,
+    struct ic_list_t* list
+) {
+    intercom::cidl::Config config;
+    if (options.header_ext) {
+        config.header_subfolder = options.header_ext;
+    }
+    if (options.header_postfix) {
+        config.cpp_header_postfix = options.header_postfix;
+    }
+    if (options.dll_export) {
+        config.dll_exp_sym = options.dll_export;
+    }
+    config.cpp_scoped_enums = options.scoped_enums;
+    config.cpp_access_functions = options.access_functions;
+    config.cpp_no_stream_op = options.no_stream_op;
+    config.use_fmtlib = options.use_fmt;
+
+    intercom::cidl::code_gen_dds_cplpl(result, config, list);
+}
+
+}

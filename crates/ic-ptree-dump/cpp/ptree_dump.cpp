@@ -319,3 +319,9 @@ void intercom::cidl::ptree_dump(const parse_result* result) {
     }
     std::cout << out.str() << std::flush;
 }
+
+extern "C" {
+void ic_ptree_dump(const parse_result* result) {
+    intercom::cidl::ptree_dump(result);
+}
+}

@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,37 +25,66 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_emit::File;
-use ic_ptree::ParseResult;
+#pragma once
 
-unsafe extern "C" {
-    fn ic_codegen_cpp(
-        result: *const ic_ptree::sys::parse_result,
-        options: ic_ptree::sys::cpp_options_t,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct parse_result;
+struct ic_list_t;
+
+// Code generator FFI declarations
+
+void ic_ptree_dump(const struct parse_result* result);
+
+void ic_codegen_proto(const struct parse_result* result, struct ic_list_t* list);
+
+void ic_codegen_json(const struct parse_result* result, struct ic_list_t* list);
+
+void ic_codegen_json_schema(const struct parse_result* result, const char*);
+
+void ic_codegen_xml(const struct parse_result* result, struct ic_list_t* list);
+
+struct python_options_t {
+    uint8_t use_pep8;
+    const char* global_postfix;
+};
+
+void ic_codegen_python(const struct parse_result* result, struct ic_list_t* list);
+
+struct rust_options_t {
+    uint8_t no_rename;
+    uint8_t must_use;
+};
+
+void ic_codegen_rust(const struct parse_result* result, struct ic_list_t* list);
+
+struct idl_options_t {
+    uint8_t doxygen;
+    uint8_t expand;
+};
+
+void ic_codegen_idl(const struct parse_result* result, struct ic_list_t* list);
+
+struct cpp_options_t {
+    const char* header_postfix;
+    const char* header_ext;
+    const char* dll_export;
+    uint8_t scoped_enums;
+    uint8_t access_functions;
+    uint8_t no_stream_op;
+    uint8_t use_fmt;
+};
+
+void ic_codegen_cpp(
+    const struct parse_result* result,
+    struct cpp_options_t options,
+    struct ic_list_t* list
+);
+
+#ifdef __cplusplus
 }
-
-#[must_use]
-#[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_cpp(result: &ParseResult) -> Vec<File> {
-    let options = ic_ptree::sys::cpp_options_t {
-        header_postfix: std::ptr::null(),
-        header_ext: std::ptr::null(),
-        dll_export: std::ptr::null(),
-        scoped_enums: 0,
-        access_functions: 0,
-        no_stream_op: 0,
-        use_fmt: 0,
-    };
-
-    let mut generated = vec![];
-    unsafe {
-        ic_codegen_cpp(
-            result.as_raw(),
-            options,
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
-        );
-    }
-    generated
-}
+#endif

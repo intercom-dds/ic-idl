@@ -871,3 +871,9 @@ void intercom::cidl::code_gen_idl(const parse_result* result, ic_list_t* list) {
         code_gen_idl_write(out, include->name, include->name, includes, list);
     }
 }
+
+extern "C" {
+void ic_codegen_idl(const parse_result* result, ic_list_t* list) {
+    intercom::cidl::code_gen_idl(result, list);
+}
+}

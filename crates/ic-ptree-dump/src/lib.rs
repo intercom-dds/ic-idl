@@ -27,8 +27,12 @@
 
 use ic_ptree::ParseResult;
 
+unsafe extern "C" {
+    fn ic_ptree_dump(result: *const ic_ptree::sys::parse_result);
+}
+
 /// Dumps the ptree to `stdout` in a tree-like format.
 pub fn ptree_dump(result: &ParseResult) {
     // SAFETY: Constructing a `ParseResult` will assert the correctness of the `ptree`.
-    unsafe { ic_ptree::sys::ic_ptree_dump(result.as_raw()) }
+    unsafe { ic_ptree_dump(result.as_raw()) }
 }

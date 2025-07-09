@@ -30,12 +30,19 @@ extern crate ic_ptree;
 use ic_emit::File;
 use ic_ptree::ParseResult;
 
+unsafe extern "C" {
+    fn ic_codegen_rust(
+        result: *const ic_ptree::sys::parse_result,
+        list: *mut ic_ptree::sys::ic_list_t,
+    );
+}
+
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
 pub fn codegen_rust(result: &ParseResult) -> Vec<File> {
     let mut generated = vec![];
     unsafe {
-        ic_ptree::sys::ic_codegen_rust(
+        ic_codegen_rust(
             result.as_raw(),
             std::ptr::addr_of_mut!(generated).cast::<_>(),
         );

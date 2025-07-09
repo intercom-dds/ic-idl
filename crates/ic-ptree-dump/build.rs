@@ -28,5 +28,5 @@
 const FILES: &[&str] = &["cpp/ptree_dump.cpp"];
 
 fn main() {
-    ic_cc::build("pretty", FILES);
+    ic_cc::build("ptree_dump", FILES);
 }

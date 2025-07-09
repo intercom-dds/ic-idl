@@ -935,18 +935,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn ic_parser_result(state: *mut parser_state, tree: *mut ptree) -> *mut parse_result;
 }
-unsafe extern "C" {
-    pub fn ic_ptree_dump(result: *const parse_result);
-}
-unsafe extern "C" {
-    pub fn ic_codegen_proto(result: *const parse_result, list: *mut ic_list_t);
-}
-unsafe extern "C" {
-    pub fn ic_codegen_json(result: *const parse_result, list: *mut ic_list_t);
-}
-unsafe extern "C" {
-    pub fn ic_codegen_xml(result: *const parse_result, list: *mut ic_list_t);
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct python_options_t {
@@ -962,9 +950,6 @@ const _: () = {
     ["Offset of field: python_options_t::global_postfix"]
         [::std::mem::offset_of!(python_options_t, global_postfix) - 8usize];
 };
-unsafe extern "C" {
-    pub fn ic_codegen_python(result: *const parse_result, list: *mut ic_list_t);
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct rust_options_t {
@@ -980,9 +965,6 @@ const _: () = {
     ["Offset of field: rust_options_t::must_use"]
         [::std::mem::offset_of!(rust_options_t, must_use) - 1usize];
 };
-unsafe extern "C" {
-    pub fn ic_codegen_rust(result: *const parse_result, list: *mut ic_list_t);
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct idl_options_t {
@@ -998,9 +980,6 @@ const _: () = {
     ["Offset of field: idl_options_t::expand"]
         [::std::mem::offset_of!(idl_options_t, expand) - 1usize];
 };
-unsafe extern "C" {
-    pub fn ic_codegen_idl(result: *const parse_result, list: *mut ic_list_t);
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct cpp_options_t {
@@ -1031,10 +1010,3 @@ const _: () = {
     ["Offset of field: cpp_options_t::use_fmt"]
         [::std::mem::offset_of!(cpp_options_t, use_fmt) - 27usize];
 };
-unsafe extern "C" {
-    pub fn ic_codegen_cpp(
-        result: *const parse_result,
-        options: cpp_options_t,
-        list: *mut ic_list_t,
-    );
-}

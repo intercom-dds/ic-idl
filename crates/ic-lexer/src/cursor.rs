@@ -278,7 +278,31 @@ impl Cursor {
         // Consume the leading '/'
         _ = self.chars.next();
 
-        let is_doc = matches!(self.chars.peek(), '*' | '!');
+        // Check if this might be a doc comment
+        let first_char = self.chars.peek();
+        let mut is_doc = false;
+        
+        if first_char == '!' {
+            // /*! style doc comment
+            is_doc = true;
+        } else if first_char == '*' {
+            // Could be /** style doc comment
+            // We need to check if there's actual content after /**
+            let mut chars_clone = self.chars.clone();
+            chars_clone.next(); // Skip the first *
+            
+            // Skip any additional stars
+            while chars_clone.peek() == '*' {
+                chars_clone.next();
+            }
+            
+            // Now check what comes after the stars
+            let next_char = chars_clone.peek();
+            // It's a doc comment only if there's something other than / after the stars
+            // This makes /** text */ a doc comment but /**/, /***/, etc. regular comments
+            is_doc = next_char != '/' && next_char != EOF;
+        }
+        
         let mut prev_was_star = false;
         loop {
             match self.chars.next() {

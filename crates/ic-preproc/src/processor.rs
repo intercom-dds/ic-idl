@@ -163,27 +163,6 @@ where
         }
     }
 
-    #[allow(unused)]
-    fn update_builtins(&mut self) {
-        let file = self.cursor().file_id();
-        let _path = self.vfs.path(file).to_string_lossy().to_string();
-        let _line = self.cursor().line().to_string();
-        let _time = time::utc_time();
-        let _date = time::date();
-
-        // let pairs = [
-        //     ("__TIME__".to_string(), time),
-        //     ("__DATE__".to_string(), date),
-        //     ("__FILE__".to_string(), file),
-        //     ("__LINE__".to_string(), line),
-        // ];
-        // self.state.defines.extend(
-        //     pairs
-        //         .into_iter()
-        //         .map(|(key, val)| (key, Macro::Builtin(val))),
-        // );
-    }
-
     fn macro_name(&mut self) -> Option<(&'a str, Span)> {
         let tok = self.cursor().next()?;
         match tok.kind {
@@ -215,7 +194,7 @@ where
         };
 
         // SAFETY: The strings are guaranteed to be owned by `SourceMap`, whose
-        // lifetimes is bound by 'a.
+        // lifetimes are bound by 'a.
         unsafe { std::mem::transmute::<&str, &'a str>(src) }
     }
 
@@ -558,20 +537,12 @@ where
     fn expand_predefined_macro(&mut self, name: &str, token: Token) -> bool {
         match name {
             "__LINE__" => {
-                // Calculate line number by counting newlines in the source
-                let source = self.vfs.source_str(token.span.start.file_id);
-                let offset = token.span.start.offset as usize;
-                let line_number = source[..offset.min(source.len())]
-                    .chars()
-                    .filter(|&c| c == '\n')
-                    .count()
-                    + 1;
-                let line_str = line_number.to_string();
-                let file_id = self.vfs.embed(&line_str);
+                let line = self.cursor().line().to_string();
+                let file_id = self.vfs.embed(&line);
                 let span = Span {
                     start: Location { offset: 0, file_id },
                     end: Location {
-                        offset: line_str.len() as u32,
+                        offset: line.len() as u32,
                         file_id,
                     },
                 };
@@ -602,9 +573,8 @@ where
                 true
             }
             "__DATE__" => {
-                // Return current date in "Mmm dd yyyy" format
-                let date_str = "\"Jan 01 2025\""; // For deterministic tests
-                let file_id = self.vfs.embed(date_str);
+                let date_str = time::date();
+                let file_id = self.vfs.embed(&date_str);
                 let span = Span {
                     start: Location { offset: 0, file_id },
                     end: Location {
@@ -619,9 +589,8 @@ where
                 true
             }
             "__TIME__" => {
-                // Return current time in "hh:mm:ss" format
-                let time_str = "\"00:00:00\""; // For deterministic tests
-                let file_id = self.vfs.embed(time_str);
+                let time_str = time::utc_time();
+                let file_id = self.vfs.embed(&time_str);
                 let span = Span {
                     start: Location { offset: 0, file_id },
                     end: Location {
@@ -920,7 +889,6 @@ where
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn expand_inner(&mut self, token: Token, seen: &mut BTreeSet<&'a str>) {
         // Only identifiers can be macros
         if !matches!(token.kind, Kind::Ident | Kind::Keyword(_)) {

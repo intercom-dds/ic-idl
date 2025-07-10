@@ -202,6 +202,20 @@ fn parse_character(lit: &str, span: Option<Span>) -> Result<i128, Error> {
 }
 
 /// Get the precedence of a binary operator
+///
+/// Operator precedence is defined as follows, from highest to lowest:
+///   1. unary `+`, unary `-`, logical `NOT`, bitwise `NOT`
+///   2. multiplication, division, modulo
+///   3. addition, subtraction
+///   4. `<<`, `>>`
+///   5. `<`, `<=`, `>`, `>=`
+///   6. `==`, `!=`
+///   7. bitwise `AND`
+///   8. bitwise `XOR`
+///   9. bitwise `OR`
+///   10. logical `AND`
+///   11. logical `OR`
+///   12. ternary conditional
 pub fn infix_precedence(kind: Kind) -> Option<u8> {
     match kind {
         Kind::Question => Some(1),

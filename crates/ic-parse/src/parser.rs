@@ -946,10 +946,11 @@ fn op_dcl() -> impl IdlParser<Prototype> {
         .then(params)
         .then(raises_expr().or_not())
         .annotated()
-        .then_ignore(just(Kind::Semi));
+        .then_ignore(just(Kind::Semi))
+        .with_trailing_comment();
 
     proto.map(
-        |(_annotations, (((ret, ident), params), raises))| Prototype {
+        |((_annotations, (((ret, ident), params), raises)), _trailing)| Prototype {
             ident,
             params,
             raises: raises.unwrap_or_default(),
@@ -1324,7 +1325,10 @@ fn annotation_header() -> impl IdlParser<Ident> {
 fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
     // Slight deviation: we accept all kinds of definitions here and instead
     // check it later during linting to provide better error messages.
-    let defs = choice((const_dcl(), type_dcl()));
+    let defs = choice((const_dcl(), type_dcl()))
+        .annotated()
+        .map(|(ann, item)| item.annotate(ann));
+
     choice((
         annotation_member().map(|v| AnnotationField::Member(Box::new(v))),
         defs.map(|v| AnnotationField::Item(Box::new(v))),
@@ -1336,15 +1340,20 @@ fn annotation_body() -> impl IdlParser<Vec<AnnotationField>> {
 fn annotation_member() -> impl IdlParser<AnnotationMember> {
     let param = annotation_member_type().then(simple_declarator());
     let default = keyword(Kw::Default).ignore_then(const_expr());
-    let def = param.then(default.or_not()).then_ignore(just(Kind::Semi));
+    let def = param
+        .then(default.or_not())
+        .then_ignore(just(Kind::Semi))
+        .annotated();
 
-    def.map_with_span(|((ty, decl), default), span| AnnotationMember {
-        ty,
-        span,
-        decl,
-        default,
-        annotations: vec![],
-    })
+    def.map_with_span(
+        |(annotations, ((ty, decl), default)), span| AnnotationMember {
+            ty,
+            span,
+            decl,
+            default,
+            annotations,
+        },
+    )
 }
 
 // Rule 223

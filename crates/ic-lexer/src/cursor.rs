@@ -403,11 +403,7 @@ impl Cursor {
             // Fast path for common single-character tokens
             if let Some(kind) = get_single_char_token(c) {
                 // Reset line state on newline
-                if kind == Kind::Newline {
-                    self.has_content_on_line = false;
-                } else {
-                    self.has_content_on_line = true;
-                }
+                self.has_content_on_line = kind != Kind::Newline;
                 return Some(Token {
                     kind,
                     span: self.span_since(start),

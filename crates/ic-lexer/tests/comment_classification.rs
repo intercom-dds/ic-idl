@@ -69,7 +69,7 @@ fn test_regular_vs_doc_comments() {
             "Doc comment '{}' should produce 1 token",
             comment
         );
-        assert_eq!(tokens[0].kind, Kind::Comment);
+        assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
     }
 }
 

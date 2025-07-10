@@ -85,7 +85,7 @@ fn test_unclosed_constructs() {
 
     let tokens = scan("/** doc comment");
     assert_eq!(tokens.len(), 1); // Doc comment, preserved
-    assert_eq!(tokens[0].kind, Kind::Comment);
+    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
 }
 
 #[test]

@@ -140,7 +140,7 @@ fn test_unterminated_block_comment() {
 
     let tokens = kinds("/** unterminated doc comment");
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0], Kind::Comment);
+    assert_eq!(tokens[0], Kind::Comment { trailing: false });
 }
 
 #[test]
@@ -183,8 +183,8 @@ fn test_consecutive_operators() {
     assert_eq!(kinds("++"), vec![Kind::Plus, Kind::Plus]);
     assert_eq!(kinds("--"), vec![Kind::Minus, Kind::Minus]);
     assert_eq!(kinds("**"), vec![Kind::Star, Kind::Star]);
-    assert_eq!(kinds("///"), vec![Kind::Comment]); // Doc comment
-    assert_eq!(kinds("////"), vec![Kind::Comment]); // Still doc comment
+    assert_eq!(kinds("///"), vec![Kind::Comment { trailing: false }]); // Doc comment
+    assert_eq!(kinds("////"), vec![Kind::Comment { trailing: false }]); // Still doc comment
 }
 
 #[test]

@@ -25,10 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 
 use ic_lexer::token::Token;
 use ic_vfs::FileId;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::Span;
 use crate::macros::Macro;
@@ -37,7 +38,7 @@ use crate::macros::Macro;
 #[derive(Debug, Default)]
 pub struct State {
     /// Defined macros
-    pub defines: HashMap<String, Macro>,
+    pub defines: FxHashMap<String, Macro>,
 
     /// List of errors encountered during preprocessing
     pub errors: Vec<Error>,
@@ -50,7 +51,7 @@ pub struct State {
 
     /// Set of files we've already parsed.
     /// Used to enable `#pragma once`-like functionality.
-    pub parsed_files: HashSet<FileId>,
+    pub parsed_files: FxHashSet<FileId>,
 }
 
 impl State {
@@ -58,11 +59,11 @@ impl State {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            defines: HashMap::new(),
+            defines: FxHashMap::default(),
             errors: Vec::new(),
             warnings: Vec::new(),
             queue: VecDeque::new(),
-            parsed_files: HashSet::new(),
+            parsed_files: FxHashSet::default(),
         }
     }
 

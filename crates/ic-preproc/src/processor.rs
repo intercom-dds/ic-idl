@@ -28,7 +28,7 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use std::borrow::BorrowMut;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -37,6 +37,7 @@ use ic_expr::{Binary, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::directives::{DirectiveHandler, IfState};
 use crate::expression::{
@@ -75,7 +76,7 @@ struct Parser<'a, S> {
     stack: Vec<File>,
     state: S,
     vfs: &'a mut SourceMap,
-    includes: HashSet<PathBuf>,
+    includes: FxHashSet<PathBuf>,
     recursion_depth: usize,
 
     /// Whether to process #pragma once
@@ -83,7 +84,7 @@ struct Parser<'a, S> {
 
     /// Cache for include file resolution to avoid repeated directory traversals
     /// Maps `(relative_path, is_local)` -> `resolved_path`
-    include_cache: HashMap<(PathBuf, bool), Option<PathBuf>>,
+    include_cache: FxHashMap<(PathBuf, bool), Option<PathBuf>>,
 }
 
 impl<S> ExpressionContext for Parser<'_, S>
@@ -106,10 +107,10 @@ where
             state,
             stack: vec![file],
             enable_pragma_once: true,
-            includes: args.include_dirs,
+            includes: args.include_dirs.into_iter().collect(),
             recursion_depth: args.recursion_depth,
             vfs,
-            include_cache: HashMap::new(),
+            include_cache: FxHashMap::default(),
         };
 
         // Inject definitions from `ProcArgs`. This pushes a new virtual file
@@ -299,29 +300,69 @@ where
     }
 
     fn directive(&mut self, span: Span) {
-        match self.source_of(span) {
-            "if" => DirectiveHandler::dir_if(self, span),
-            "ifdef" => DirectiveHandler::dir_ifdef(self, span),
-            "ifndef" => DirectiveHandler::dir_ifndef(self, span),
-            "elif" => DirectiveHandler::dir_elif(self, span),
-            "else" => DirectiveHandler::dir_else(self, span),
-            "endif" => DirectiveHandler::dir_endif(self, span),
-            "pragma" => DirectiveHandler::dir_pragma(self, span),
-            "define" => {
-                DirectiveHandler::dir_define(self);
+        let directive_str = self.source_of(span);
+        let bytes = directive_str.as_bytes();
+
+        // Quick first character check for better performance
+        match bytes.first() {
+            Some(b'i') => match directive_str {
+                "if" => DirectiveHandler::dir_if(self, span),
+                "ifdef" => DirectiveHandler::dir_ifdef(self, span),
+                "ifndef" => DirectiveHandler::dir_ifndef(self, span),
+                "include" => DirectiveHandler::dir_include(self, span),
+                _ => self.invalid_directive(span),
+            },
+            Some(b'e') => match directive_str {
+                "elif" => DirectiveHandler::dir_elif(self, span),
+                "else" => DirectiveHandler::dir_else(self, span),
+                "endif" => DirectiveHandler::dir_endif(self, span),
+                "error" => DirectiveHandler::dir_error(self, span),
+                _ => self.invalid_directive(span),
+            },
+            Some(b'd') => {
+                if directive_str == "define" {
+                    DirectiveHandler::dir_define(self);
+                } else {
+                    self.invalid_directive(span);
+                }
             }
-            "undef" => DirectiveHandler::dir_undef(self),
-            "include" => DirectiveHandler::dir_include(self, span),
-            "warning" => DirectiveHandler::dir_warning(self, span),
-            "error" => DirectiveHandler::dir_error(self, span),
-            "line" => DirectiveHandler::dir_line(self, span),
-            _ => {
-                self.state().errors.push(Error::Syntax {
-                    message: "invalid preprocessing directive",
-                    span,
-                });
+            Some(b'u') => {
+                if directive_str == "undef" {
+                    DirectiveHandler::dir_undef(self);
+                } else {
+                    self.invalid_directive(span);
+                }
             }
+            Some(b'p') => {
+                if directive_str == "pragma" {
+                    DirectiveHandler::dir_pragma(self, span);
+                } else {
+                    self.invalid_directive(span);
+                }
+            }
+            Some(b'w') => {
+                if directive_str == "warning" {
+                    DirectiveHandler::dir_warning(self, span);
+                } else {
+                    self.invalid_directive(span);
+                }
+            }
+            Some(b'l') => {
+                if directive_str == "line" {
+                    DirectiveHandler::dir_line(self, span);
+                } else {
+                    self.invalid_directive(span);
+                }
+            }
+            _ => self.invalid_directive(span),
         }
+    }
+
+    fn invalid_directive(&mut self, span: Span) {
+        self.state().errors.push(Error::Syntax {
+            message: "invalid preprocessing directive",
+            span,
+        });
     }
 
     fn expr(&mut self) -> Result<Expr, Error> {
@@ -521,6 +562,11 @@ where
     }
 
     fn expand_predefined_macro(&mut self, name: &str, token: Token) -> bool {
+        // Quick check: predefined macros start with '__'
+        if !name.starts_with("__") {
+            return false;
+        }
+
         match name {
             "__LINE__" => {
                 let line = self.cursor().line().to_string();
@@ -677,7 +723,7 @@ where
         _name: &'a str,
     ) {
         // Build argument mapping for substitution
-        let mut arg_map = HashMap::new();
+        let mut arg_map = FxHashMap::default();
         for (param, actual) in ctx.args.iter().zip(ctx.actual_args.iter()) {
             let param_name = self.source_of(param.span);
             arg_map.insert(param_name, vec![actual]);
@@ -1232,14 +1278,21 @@ where
 
     /// Stringify a list of token slices
     fn stringify_tokens(&self, token_lists: &[&Vec<Token>]) -> String {
-        let mut stringified = String::new();
+        // Pre-calculate capacity to avoid reallocations
+        let estimated_capacity = token_lists
+            .iter()
+            .map(|tokens| tokens.len() * 10) // Estimate ~10 chars per token
+            .sum::<usize>()
+            + 2; // +2 for quotes
+
+        let mut stringified = String::with_capacity(estimated_capacity);
         stringified.push('"');
         for tokens in token_lists {
             for (j, arg_tok) in tokens.iter().enumerate() {
                 if j > 0 {
                     stringified.push(' ');
                 }
-                let _ = write!(&mut stringified, "{}", self.source_of(arg_tok.span));
+                stringified.push_str(self.source_of(arg_tok.span));
             }
         }
         stringified.push('"');

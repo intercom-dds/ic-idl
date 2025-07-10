@@ -292,6 +292,7 @@ dependencies = [
  "ic-expr",
  "ic-lexer",
  "ic-vfs",
+ "rustc-hash",
 ]
 
 [[package]]

@@ -304,8 +304,8 @@ fn test_special_tokens() {
     assert_eq!(kinds("#"), vec![Kind::Hash]);
     assert_eq!(kinds("?"), vec![Kind::Question]);
     assert_eq!(kinds("\\"), vec![Kind::Backslash]);
-    assert_eq!(kinds("!"), vec![Kind::Unknown]); // ! alone is unknown
-    assert_eq!(kinds("!="), vec![Kind::NotEq]); // != is recognized
+    assert_eq!(kinds("!"), vec![Kind::Not]);
+    assert_eq!(kinds("!="), vec![Kind::NotEq]);
 }
 
 #[test]

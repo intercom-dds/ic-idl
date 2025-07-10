@@ -136,9 +136,8 @@ fn test_lexer_continues_after_errors() {
 
 #[test]
 fn test_edge_case_operators() {
-    // Single ! is unknown (only != is valid)
-    assert_eq!(kinds("!"), vec![Kind::Unknown]);
-    assert_eq!(kinds("! ="), vec![Kind::Unknown, Kind::Eq]);
+    assert_eq!(kinds("!"), vec![Kind::Not]);
+    assert_eq!(kinds("! ="), vec![Kind::Not, Kind::Eq]);
     assert_eq!(kinds("!="), vec![Kind::NotEq]);
 }
 

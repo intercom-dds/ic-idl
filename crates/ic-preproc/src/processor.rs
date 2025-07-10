@@ -833,59 +833,56 @@ where
     /// can fully expand the entire macro definition here. This is
     /// important as we need to detect and break potential cycles.
     fn handle_pragma_operator(&mut self, tok: Token) -> bool {
-        // Look for opening parenthesis
-        if let Some(lparen) = self.cursor().peek() {
-            if lparen == Kind::LParen {
-                self.cursor().next(); // consume (
+        if let Some(lparen) = self.cursor().peek()
+            && lparen == Kind::LParen
+        {
+            // consume the opening parenthesis
+            self.cursor().next();
 
-                // Get the string literal argument
-                if let Some(string_tok) = self.cursor().next() {
-                    if matches!(string_tok.kind, Kind::String { terminated: true }) {
-                        // Get closing parenthesis
-                        if let Some(rparen) = self.cursor().next() {
-                            if rparen.kind == Kind::RParen {
-                                // Extract the pragma content from the string literal
-                                let string_content = self.source_of(string_tok.span);
-                                // Remove quotes
-                                if string_content.len() >= 2 {
-                                    let pragma_content =
-                                        &string_content[1..string_content.len() - 1];
+            // Get the string literal argument
+            if let Some(string_tok) = self.cursor().next()
+                && matches!(string_tok.kind, Kind::String { terminated: true })
+                && let Some(rparen) = self.cursor().next()
+                && rparen.kind == Kind::RParen
+            {
+                // Extract the pragma content from the string literal
+                let string_content = self.source_of(string_tok.span);
+                // Remove quotes
+                if string_content.len() >= 2 {
+                    let pragma_content = &string_content[1..string_content.len() - 1];
 
-                                    // Parse the pragma content as tokens
-                                    let pragma_id = self.vfs.embed(pragma_content);
-                                    let pragma_src = self.vfs.source(pragma_id);
-                                    let mut pragma_cursor = Cursor::new(pragma_src, pragma_id);
-                                    let mut pragma_tokens = Vec::new();
-                                    while let Some(tok) = pragma_cursor.next() {
-                                        if tok.kind != Kind::Newline {
-                                            pragma_tokens.push(tok);
-                                        }
-                                    }
+                    // Parse the pragma content as tokens
+                    let pragma_id = self.vfs.embed(pragma_content);
+                    let pragma_src = self.vfs.source(pragma_id);
+                    let mut pragma_cursor = Cursor::new(pragma_src, pragma_id);
+                    let mut pragma_tokens = Vec::new();
+                    while let Some(tok) = pragma_cursor.next() {
+                        if tok.kind != Kind::Newline {
+                            pragma_tokens.push(tok);
+                        }
+                    }
 
-                                    // Handle the pragma
-                                    if let Some(first_tok) = pragma_tokens.first() {
-                                        let pragma_name = self.source_of(first_tok.span);
-                                        if pragma_name == "once" && self.enable_pragma_once {
-                                            // Handle #pragma once via _Pragma
-                                            let file_id = tok.span.start.file_id;
-                                            self.mark_included(file_id);
-                                        }
-                                        // Ignore other pragmas
-                                    }
-                                }
-                                return true;
-                            }
+                    // Handle the pragma
+                    if let Some(first_tok) = pragma_tokens.first() {
+                        let pragma_name = self.source_of(first_tok.span);
+                        if pragma_name == "once" && self.enable_pragma_once {
+                            // Handle #pragma once via _Pragma
+                            let file_id = tok.span.start.file_id;
+                            self.mark_included(file_id);
                         }
                     }
                 }
-                // If we get here, the _Pragma syntax was invalid
-                self.state().errors.push(Error::Syntax {
-                    message: "invalid _Pragma syntax",
-                    span: tok.span,
-                });
                 return true;
             }
+
+            // If we get here, the _Pragma syntax was invalid
+            self.state().errors.push(Error::Syntax {
+                message: "invalid _Pragma syntax",
+                span: tok.span,
+            });
+            return true;
         }
+
         // No opening paren after _Pragma
         self.state().queue.push_back(tok);
         false

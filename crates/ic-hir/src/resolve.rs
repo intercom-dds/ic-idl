@@ -311,7 +311,9 @@ impl Resolver {
         let scope = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
         let symbol = match kind {
             SymbolKind::Module => Symbol::Module(scope),
-            SymbolKind::Interface | SymbolKind::Valuetype => Symbol::Lexical { def, scope, kind },
+            SymbolKind::Interface | SymbolKind::Valuetype | SymbolKind::Annotation => {
+                Symbol::Lexical { def, scope, kind }
+            }
             _ => unreachable!(),
         };
 

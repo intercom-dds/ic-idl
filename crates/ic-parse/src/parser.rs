@@ -46,7 +46,23 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Sized {
     fn annotated(self) -> impl IdlParser<(Vec<AnnotationAppl>, T)> {
         let ann = annotation_appl();
         let doxy = doxy_comment();
-        choice((ann, doxy)).repeated().then(self)
+        choice((ann, doxy))
+            .repeated()
+            .then(self)
+            .then(trailing_comment().or_not())
+            .map(|((mut pre, val), post)| {
+                if let Some(post) = post {
+                    pre.push(post);
+                }
+                (pre, val)
+            })
+    }
+
+    fn braced(self) -> impl IdlParser<T> {
+        just(Kind::LBrace)
+            .with_trailing_comment()
+            .ignore_then(self)
+            .then_ignore(just(Kind::RBrace))
     }
 
     fn with_trailing_comment(self) -> impl IdlParser<(T, Option<AnnotationAppl>)> {
@@ -205,10 +221,7 @@ fn definition() -> impl IdlParser<Item> {
 
 // Rule 3
 fn module_dcl(state: Recursive<'_, Kind, Item, Error>) -> impl IdlParser<Item> + '_ {
-    let items = state
-        .repeated()
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
+    let items = state.repeated().braced();
     let module_def = keyword(Kw::Module)
         .ignore_then(ident())
         .then(items)
@@ -621,12 +634,8 @@ fn struct_dcl() -> impl IdlParser<Item> {
 
 // Rule 46
 fn struct_def() -> impl IdlParser<Item> {
-    let fields = member()
-        .repeated()
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
+    let fields = member().repeated().braced();
     let parent = just(Kind::Colon).ignore_then(scoped_name());
-
     let struct_def = keyword(Kw::Struct)
         .ignore_then(ident())
         .then(parent.or_not())
@@ -642,21 +651,14 @@ fn struct_def() -> impl IdlParser<Item> {
 fn member() -> impl IdlParser<Field> {
     let field = type_spec()
         .then(declarators())
-        .annotated()
         .then_ignore(just(Kind::Semi))
-        .with_trailing_comment();
+        .annotated();
 
-    field.map_with_span(|((annotations, (ty, names)), trailing), span| {
-        let mut all_annotations = annotations;
-        if let Some(trailing_ann) = trailing {
-            all_annotations.push(trailing_ann);
-        }
-        Field {
-            span,
-            annotations: all_annotations,
-            names,
-            ty,
-        }
+    field.map_with_span(|(annotations, (ty, names)), span| Field {
+        span,
+        annotations,
+        names,
+        ty,
     })
 }
 
@@ -682,7 +684,7 @@ fn union_def() -> impl IdlParser<Item> {
         .map(|(annotations, ty)| Discriminator { annotations, ty });
 
     // Case labels + members
-    let body = switch_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+    let body = switch_body().braced();
 
     let def = keyword(Kw::Union)
         .ignore_then(ident())
@@ -766,10 +768,7 @@ fn union_forward_dcl() -> impl IdlParser<Item> {
 
 // Rule 57
 fn enum_dcl() -> impl IdlParser<Item> {
-    let enumerators = enumerator()
-        .separated_by(just(Kind::Comma))
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
+    let enumerators = enumerator().separated_by(just(Kind::Comma)).braced();
     let def = keyword(Kw::Enum)
         .ignore_then(ident())
         .then(enumerators)
@@ -861,10 +860,7 @@ fn any_type() -> impl IdlParser<Type> {
 
 // Rule 72
 fn except_dcl() -> impl IdlParser<Item> {
-    let body = member()
-        .repeated()
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
+    let body = member().repeated().braced();
     keyword(Kw::Exception)
         .ignore_then(ident())
         .then(body)
@@ -879,12 +875,13 @@ fn interface_dcl() -> impl IdlParser<Item> {
 
 // Rule 74
 fn interface_def() -> impl IdlParser<Item> {
-    let body = interface_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-    let def = interface_header().then(body).then_ignore(just(Kind::Semi));
-
-    def.map_with_span(|(((local, name), inherits), protos), span| {
-        Item::interface(name, local, inherits, protos, span)
-    })
+    let body = interface_body().braced();
+    interface_header()
+        .then(body)
+        .then_ignore(just(Kind::Semi))
+        .map_with_span(|(((local, name), inherits), protos), span| {
+            Item::interface(name, local, inherits, protos, span)
+        })
 }
 
 // Rule 75
@@ -1117,12 +1114,8 @@ fn value_dcl() -> impl IdlParser<Item> {
 
 // Rule 100
 fn value_def() -> impl IdlParser<Item> {
-    let body = value_element()
-        .repeated()
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
-    let def = value_header().then(body).then_ignore(just(Kind::Semi));
-
+    let fields = value_element().repeated().braced();
+    let def = value_header().then(fields).then_ignore(just(Kind::Semi));
     def.map_with_span(|((ident, (inherits, supports)), _), span| {
         Item::valuetype(ident, vec![], vec![], vec![], inherits, supports, span)
     })
@@ -1243,11 +1236,7 @@ fn map_type_spec(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type
 // Rule 200
 fn bitset_dcl() -> impl IdlParser<Item> {
     let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
-
-    let body = bitfield()
-        .repeated()
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
+    let body = bitfield().repeated().braced();
     let def = keyword(Kw::Bitset)
         .ignore_then(ident())
         .then(inherit)
@@ -1292,10 +1281,7 @@ fn destination_type() -> impl IdlParser<Type> {
 
 // Rule 204
 fn bitmask_dcl() -> impl IdlParser<Item> {
-    let body = bit_value()
-        .separated_by(just(Kind::Comma))
-        .delimited_by(just(Kind::LBrace), just(Kind::RBrace));
-
+    let body = bit_value().separated_by(just(Kind::Comma)).braced();
     let def = keyword(Kw::Bitmask)
         .ignore_then(ident())
         .then(body)
@@ -1320,7 +1306,7 @@ fn bit_value() -> impl IdlParser<Bit> {
 
 // Rule 219
 fn annotation_dcl() -> impl IdlParser<Item> {
-    let params = annotation_body().delimited_by(just(Kind::LBrace), just(Kind::RBrace));
+    let params = annotation_body().braced();
     let def = annotation_header()
         .then(params)
         .then_ignore(just(Kind::Semi));

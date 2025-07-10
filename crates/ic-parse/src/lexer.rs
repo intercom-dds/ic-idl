@@ -135,7 +135,8 @@ pub enum Kind {
     Char(Option<char>),
 
     // Preserve documentation comments
-    Comment(String),
+    // The bool indicates if this is a trailing comment (on same line as code)
+    Comment(String, bool),
 
     Eoi,
 
@@ -172,7 +173,7 @@ impl fmt::Display for Kind {
             Kind::Modulo => write!(f, "`%`"),
             Kind::Char(v) => write!(f, "'{}'", v.unwrap_or_default()),
             Kind::Octal(_) | Kind::Decimal(_) | Kind::Hex(_) => write!(f, "number"),
-            Kind::Comment(_) => write!(f, "comment"),
+            Kind::Comment(_, _) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
             Kind::Ident(_) => write!(f, "identifier"),
             Kind::At => write!(f, "annotation"),
@@ -230,7 +231,7 @@ impl From<ic_preproc::Token> for Token {
         let kind = match value.kind {
             ic_preproc::Kind::Keyword(v) => Kind::Keyword(v),
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
-            ic_preproc::Kind::Comment => Kind::Comment(String::new()),
+            ic_preproc::Kind::Comment { trailing } => Kind::Comment(String::new(), trailing),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),
             ic_preproc::Kind::Char => Kind::Char(None),
             ic_preproc::Kind::At => Kind::At,
@@ -347,13 +348,13 @@ pub fn from_cursor(
                         span: next.span,
                     });
                 }
-                ic_preproc::Kind::Comment => {
+                ic_preproc::Kind::Comment { trailing } => {
                     if ignore_comments {
                         continue;
                     }
                     let comment = iter.source_of(next.span).to_string();
                     break Some(Token {
-                        kind: Kind::Comment(comment),
+                        kind: Kind::Comment(comment, trailing),
                         span: next.span,
                     });
                 }

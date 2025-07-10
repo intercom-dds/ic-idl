@@ -140,7 +140,7 @@ fn bound() -> impl IdlParser<Option<Expr>> {
 }
 
 fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
-    let comment = select! { Kind::Comment(v) => v };
+    let comment = select! { Kind::Comment(v, _trailing) => v };
     comment.map_with_span(|value, span| AnnotationAppl {
         ident: primitive_path("doc", span),
         span,

@@ -85,11 +85,7 @@ semver-breaking change.
 
 ## Known bugs
 
-- Variadic macros are not supported.
-- \_Pragma is not supported.
 - IDL keywords cannot be used in preprocessor directives.
-- Diagnostics may emit labels that are incorrectly placed, especially for
-  multi-label diagnostics.
 - All diagnostics are treated as errors, even if they are warnings.
 - `valuetype`s are parsed but not resolved or emitted.
 - Preprocessor errors are not displayed.

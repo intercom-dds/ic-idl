@@ -115,7 +115,8 @@ pub enum Kind {
     Ident,
 
     /// A documentation-style comment
-    Comment,
+    /// If `trailing` is true, this comment appears on the same line as code
+    Comment { trailing: bool },
 
     /// Octal, decimal or hexadecimal number
     Number { base: Base },

@@ -74,13 +74,19 @@ const ASCII_HEX_DIGIT: [bool; 128] = {
 pub struct Cursor {
     chars: OwnedChars,
     file_id: FileId,
+    /// Tracks if non-whitespace tokens have been emitted on the current line
+    has_content_on_line: bool,
 }
 
 impl Cursor {
     /// Creates a new cursor for the given source code.
     pub fn new(source: Rc<str>, file_id: FileId) -> Self {
         let chars = OwnedChars::from(source);
-        Cursor { chars, file_id }
+        Cursor {
+            chars,
+            file_id,
+            has_content_on_line: false,
+        }
     }
 
     #[inline]
@@ -260,20 +266,26 @@ impl Cursor {
     // Code comments (`//`) are stripped from the output, but documentation
     // comments (`///`) are not.
     //
-    // Returns true if this was a documentation-style comment.
+    // Returns (is_doc, is_trailing) tuple
     #[inline]
-    fn comment(&mut self) -> bool {
+    fn comment(&mut self) -> (bool, bool) {
+        // Check if this is a trailing comment (on same line as code)
+        let is_trailing = self.has_content_on_line;
+
         // Consume the leading '/'
         _ = self.chars.next();
 
         let is_doc = matches!(self.chars.peek(), '/' | '!');
         _ = self.until_peek(Kind::Newline);
-        is_doc
+        (is_doc, is_trailing)
     }
 
-    // Returns true if this was a documentation-style comment.
+    // Returns (is_doc, is_trailing) tuple
     #[inline]
-    fn block_comment(&mut self) -> bool {
+    fn block_comment(&mut self) -> (bool, bool) {
+        // Check if this is a trailing comment (on same line as code)
+        let is_trailing = self.has_content_on_line;
+
         // Consume the leading '/'
         _ = self.chars.next();
 
@@ -311,7 +323,7 @@ impl Cursor {
                 None => break, // Unterminated block comment
             }
         }
-        is_doc
+        (is_doc, is_trailing)
     }
 
     #[inline]
@@ -390,6 +402,12 @@ impl Cursor {
 
             // Fast path for common single-character tokens
             if let Some(kind) = get_single_char_token(c) {
+                // Reset line state on newline
+                if kind == Kind::Newline {
+                    self.has_content_on_line = false;
+                } else {
+                    self.has_content_on_line = true;
+                }
                 return Some(Token {
                     kind,
                     span: self.span_since(start),
@@ -398,11 +416,13 @@ impl Cursor {
 
             // Handle whitespace early to avoid further checks
             if is_ascii_whitespace(c) || (c as u32 >= 128 && c.is_whitespace()) {
+                // Note: newlines are handled in single-char tokens above
                 continue;
             }
 
             // Check for digits early (common case)
             if (c as u32) < 128 && ASCII_DIGIT[c as usize] {
+                self.has_content_on_line = true;
                 let kind = self.number(c);
                 return Some(Token {
                     kind,
@@ -412,6 +432,7 @@ impl Cursor {
 
             // Check for identifiers (common case)
             if is_ident(c) {
+                self.has_content_on_line = true;
                 let kind = self.ident(start);
                 return Some(Token {
                     kind,
@@ -454,26 +475,40 @@ impl Cursor {
                     '@' => self.annotation(),
                     '/' => match self.chars.peek() {
                         '/' => {
-                            if self.comment() {
-                                Kind::Comment
+                            let (is_doc, is_trailing) = self.comment();
+                            if is_doc {
+                                Kind::Comment {
+                                    trailing: is_trailing,
+                                }
                             } else {
                                 continue;
                             }
                         }
                         '*' => {
-                            if self.block_comment() {
-                                Kind::Comment
+                            let (is_doc, is_trailing) = self.block_comment();
+                            if is_doc {
+                                Kind::Comment {
+                                    trailing: is_trailing,
+                                }
                             } else {
                                 continue;
                             }
                         }
-                        _ => Kind::Slash,
+                        _ => {
+                            self.has_content_on_line = true;
+                            Kind::Slash
+                        }
                     },
                     _ => Kind::Unknown,
                 }
             } else {
                 Kind::Unknown
             };
+
+            // Mark that we've seen content on this line (unless it's a comment)
+            if !matches!(kind, Kind::Comment { .. }) {
+                self.has_content_on_line = true;
+            }
 
             return Some(Token {
                 kind,

@@ -113,7 +113,7 @@ impl OwnedChars {
         self.line
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn peek(&mut self) -> char {
         match self.chars.peek() {
@@ -141,7 +141,7 @@ impl From<Rc<str>> for OwnedChars {
 impl Iterator for OwnedChars {
     type Item = char;
 
-    #[inline(always)]
+    #[inline]
     #[allow(clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         let c = self.chars.next()?;

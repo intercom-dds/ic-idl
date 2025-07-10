@@ -29,7 +29,7 @@ use std::rc::Rc;
 
 use ic_vfs::{FileId, Location, Span};
 
-use crate::fast_lookup::{get_single_char_token, is_special_char, is_ascii_whitespace};
+use crate::fast_lookup::{get_single_char_token, is_ascii_whitespace, is_special_char};
 use crate::iter::{EOF, OwnedChars};
 use crate::token::{Base, Kind, Kw, Token};
 
@@ -83,7 +83,7 @@ impl Cursor {
         Cursor { chars, file_id }
     }
 
-    #[inline(always)]
+    #[inline]
     fn span_since(&self, start: u32) -> Span {
         let end = self.chars.index();
         Span {
@@ -107,7 +107,7 @@ impl Cursor {
     }
 
     // Specialized eat_while for common cases - avoids function call overhead
-    #[inline(always)]
+    #[inline]
     fn eat_while_ascii_digit(&mut self) {
         loop {
             let c = self.chars.peek();
@@ -118,7 +118,7 @@ impl Cursor {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn eat_while_ascii_hexdigit(&mut self) {
         loop {
             let c = self.chars.peek();
@@ -209,21 +209,20 @@ impl Cursor {
         // Fast path for strings without escapes (common case)
         let mut escape_seen = false;
         loop {
-            let c = match self.chars.next() {
-                Some(c) => c,
-                None => return Kind::String { terminated: false },
+            let Some(c) = self.chars.next() else {
+                return Kind::String { terminated: false };
             };
-            
+
             if escape_seen {
                 escape_seen = false;
                 continue;
             }
-            
+
             match c {
                 '"' => return Kind::String { terminated: true },
                 '\n' => return Kind::String { terminated: false },
                 '\\' => escape_seen = true,
-                _ => continue,
+                _ => {}
             }
         }
     }
@@ -281,7 +280,7 @@ impl Cursor {
         // Check if this might be a doc comment
         let first_char = self.chars.peek();
         let mut is_doc = false;
-        
+
         if first_char == '!' {
             // /*! style doc comment
             is_doc = true;
@@ -290,19 +289,19 @@ impl Cursor {
             // We need to check if there's actual content after /**
             let mut chars_clone = self.chars.clone();
             chars_clone.next(); // Skip the first *
-            
+
             // Skip any additional stars
             while chars_clone.peek() == '*' {
                 chars_clone.next();
             }
-            
+
             // Now check what comes after the stars
             let next_char = chars_clone.peek();
             // It's a doc comment only if there's something other than / after the stars
             // This makes /** text */ a doc comment but /**/, /***/, etc. regular comments
             is_doc = next_char != '/' && next_char != EOF;
         }
-        
+
         let mut prev_was_star = false;
         loop {
             match self.chars.next() {
@@ -315,7 +314,7 @@ impl Cursor {
         is_doc
     }
 
-    #[inline(always)]
+    #[inline]
     fn peek_or(&mut self, c: char, a: Kind, b: Kind) -> Kind {
         if self.chars.peek() == c {
             _ = self.chars.next();
@@ -388,38 +387,38 @@ impl Cursor {
         loop {
             let start = self.chars.index();
             let c = self.chars.next()?;
-            
+
             // Fast path for common single-character tokens
             if let Some(kind) = get_single_char_token(c) {
-                return Some(Token { 
-                    kind, 
-                    span: self.span_since(start) 
+                return Some(Token {
+                    kind,
+                    span: self.span_since(start),
                 });
             }
-            
+
             // Handle whitespace early to avoid further checks
             if is_ascii_whitespace(c) || (c as u32 >= 128 && c.is_whitespace()) {
                 continue;
             }
-            
+
             // Check for digits early (common case)
             if (c as u32) < 128 && ASCII_DIGIT[c as usize] {
                 let kind = self.number(c);
-                return Some(Token { 
-                    kind, 
-                    span: self.span_since(start) 
+                return Some(Token {
+                    kind,
+                    span: self.span_since(start),
                 });
             }
-            
+
             // Check for identifiers (common case)
             if is_ident(c) {
                 let kind = self.ident(start);
-                return Some(Token { 
-                    kind, 
-                    span: self.span_since(start) 
+                return Some(Token {
+                    kind,
+                    span: self.span_since(start),
                 });
             }
-            
+
             // Handle special characters that need lookahead
             let kind = if is_special_char(c) {
                 match c {
@@ -456,9 +455,9 @@ impl Cursor {
                 Kind::Unknown
             };
 
-            return Some(Token { 
-                kind, 
-                span: self.span_since(start) 
+            return Some(Token {
+                kind,
+                span: self.span_since(start),
             });
         }
     }
@@ -531,7 +530,7 @@ const ASCII_IDENT: [bool; 128] = {
 };
 
 /// Returns true if the character can appear in an identifier.
-#[inline(always)]
+#[inline]
 fn is_ident(c: char) -> bool {
     // Fast path for ASCII (most common)
     let code = c as u32;

@@ -98,26 +98,57 @@ fn test_all_keywords() {
 
 #[test]
 fn test_operators() {
-    assert_eq!(kinds("+ - * / %"), vec![
-        Kind::Plus, Kind::Minus, Kind::Star, Kind::Slash, Kind::Modulo
-    ]);
-    assert_eq!(kinds("< > <= >= == !="), vec![
-        Kind::Lt, Kind::Gt, Kind::LtEq, Kind::GtEq, Kind::EqEq, Kind::NotEq
-    ]);
-    assert_eq!(kinds("& | ^ ~"), vec![
-        Kind::BitAnd, Kind::BitOr, Kind::BitXor, Kind::BitNot
-    ]);
+    assert_eq!(
+        kinds("+ - * / %"),
+        vec![
+            Kind::Plus,
+            Kind::Minus,
+            Kind::Star,
+            Kind::Slash,
+            Kind::Modulo
+        ]
+    );
+    assert_eq!(
+        kinds("< > <= >= == !="),
+        vec![
+            Kind::Lt,
+            Kind::Gt,
+            Kind::LtEq,
+            Kind::GtEq,
+            Kind::EqEq,
+            Kind::NotEq
+        ]
+    );
+    assert_eq!(
+        kinds("& | ^ ~"),
+        vec![Kind::BitAnd, Kind::BitOr, Kind::BitXor, Kind::BitNot]
+    );
     assert_eq!(kinds("&& ||"), vec![Kind::And, Kind::Or]);
 }
 
 #[test]
 fn test_delimiters() {
-    assert_eq!(kinds("()[]{}"), vec![
-        Kind::LParen, Kind::RParen, Kind::LBracket, Kind::RBracket, Kind::LBrace, Kind::RBrace
-    ]);
-    assert_eq!(kinds(", . ; : ::"), vec![
-        Kind::Comma, Kind::Period, Kind::Semi, Kind::Colon, Kind::DColon
-    ]);
+    assert_eq!(
+        kinds("()[]{}"),
+        vec![
+            Kind::LParen,
+            Kind::RParen,
+            Kind::LBracket,
+            Kind::RBracket,
+            Kind::LBrace,
+            Kind::RBrace
+        ]
+    );
+    assert_eq!(
+        kinds(", . ; : ::"),
+        vec![
+            Kind::Comma,
+            Kind::Period,
+            Kind::Semi,
+            Kind::Colon,
+            Kind::DColon
+        ]
+    );
 }
 
 #[test]
@@ -134,17 +165,32 @@ fn test_float_literals() {
 fn test_edge_case_numbers() {
     // Edge case: leading zeros in octal
     assert_eq!(kinds("0000"), vec![Kind::Number { base: Base::Octal }]);
-    
+
     // Edge case: hex without digits after 0x
-    assert_eq!(kinds("0x"), vec![Kind::Number { base: Base::Hexadecimal }]);
-    assert_eq!(kinds("0X"), vec![Kind::Number { base: Base::Hexadecimal }]);
-    
+    assert_eq!(
+        kinds("0x"),
+        vec![Kind::Number {
+            base: Base::Hexadecimal
+        }]
+    );
+    assert_eq!(
+        kinds("0X"),
+        vec![Kind::Number {
+            base: Base::Hexadecimal
+        }]
+    );
+
     // Edge case: uppercase hex
-    assert_eq!(kinds("0XABCDEF"), vec![Kind::Number { base: Base::Hexadecimal }]);
-    
+    assert_eq!(
+        kinds("0XABCDEF"),
+        vec![Kind::Number {
+            base: Base::Hexadecimal
+        }]
+    );
+
     // Edge case: float with just dot
     assert_eq!(kinds("1."), vec![Kind::Float]);
-    
+
     // Edge case: float with e but no exponent
     assert_eq!(kinds("1e"), vec![Kind::Float]);
     assert_eq!(kinds("1E"), vec![Kind::Float]);
@@ -152,18 +198,27 @@ fn test_edge_case_numbers() {
 
 #[test]
 fn test_unterminated_strings() {
-    assert_eq!(kinds(r#""unterminated"#), vec![Kind::String { terminated: false }]);
-    assert_eq!(kinds("\"string with\nnewline"), vec![Kind::String { terminated: false }, Kind::Ident]);
+    assert_eq!(
+        kinds(r#""unterminated"#),
+        vec![Kind::String { terminated: false }]
+    );
+    assert_eq!(
+        kinds("\"string with\nnewline"),
+        vec![Kind::String { terminated: false }, Kind::Ident]
+    );
 }
 
 #[test]
 fn test_escaped_characters() {
     // Escaped quote in string
-    assert_eq!(kinds(r#""foo\"bar""#), vec![Kind::String { terminated: true }]);
-    
+    assert_eq!(
+        kinds(r#""foo\"bar""#),
+        vec![Kind::String { terminated: true }]
+    );
+
     // Escaped quote in char
     assert_eq!(kinds(r"'\''"), vec![Kind::Char]);
-    
+
     // Multiple escapes
     assert_eq!(kinds(r#""\\\\""#), vec![Kind::String { terminated: true }]);
 }
@@ -175,14 +230,14 @@ fn test_comments() {
     assert_eq!(tokens.len(), 2);
     assert_eq!(tokens[0].kind, Kind::Newline);
     assert_eq!(tokens[1].kind, Kind::Ident);
-    
+
     // Doc comments are preserved
     let tokens = scan("/// doc comment\nfoo");
     assert_eq!(tokens.len(), 3);
     assert_eq!(tokens[0].kind, Kind::Comment);
     assert_eq!(tokens[1].kind, Kind::Newline);
     assert_eq!(tokens[2].kind, Kind::Ident);
-    
+
     // Alternative doc comment style
     let tokens = scan("//! module doc\nfoo");
     assert_eq!(tokens.len(), 3);
@@ -195,13 +250,13 @@ fn test_block_comments() {
     let tokens = scan("/* comment */ foo");
     assert_eq!(tokens.len(), 1);
     assert_eq!(tokens[0].kind, Kind::Ident);
-    
+
     // Doc block comments are preserved
     let tokens = scan("/** doc comment */ foo");
     assert_eq!(tokens.len(), 2);
     assert_eq!(tokens[0].kind, Kind::Comment);
     assert_eq!(tokens[1].kind, Kind::Ident);
-    
+
     // Alternative doc block comment style
     let tokens = scan("/*! doc comment */ foo");
     assert_eq!(tokens.len(), 2);
@@ -214,22 +269,22 @@ fn test_cursor_methods() {
     let id = vfs.embed("foo bar baz; qux");
     let src = vfs.source(id);
     let mut cursor = Cursor::new(src.clone(), id);
-    
+
     // Test peek
     assert_eq!(cursor.peek(), Some(Kind::Ident));
-    
+
     // Test take_if
     assert!(cursor.take_if(Kind::Ident).is_some());
     assert!(cursor.take_if(Kind::Ident).is_some());
     assert!(cursor.take_if(Kind::Ident).is_some());
     assert!(cursor.take_if(Kind::Ident).is_none()); // Should be Semi
     assert!(cursor.take_if(Kind::Semi).is_some());
-    
+
     // Test until
     let mut cursor2 = Cursor::new(src.clone(), id);
     let (tokens, _) = cursor2.until(Kind::Semi);
     assert_eq!(tokens.len(), 3); // foo bar baz
-    
+
     // Test until_newline with escaped newline
     let id2 = vfs.embed("foo \\\nbar\nbaz");
     let src2 = vfs.source(id2);
@@ -256,17 +311,22 @@ fn test_special_tokens() {
 #[test]
 fn test_mixed_content() {
     let tokens = kinds("struct Foo { long x = 42; }");
-    assert_eq!(tokens, vec![
-        Kind::Keyword(Kw::Struct),
-        Kind::Ident,
-        Kind::LBrace,
-        Kind::Keyword(Kw::Long),
-        Kind::Ident,
-        Kind::Eq,
-        Kind::Number { base: Base::Decimal },
-        Kind::Semi,
-        Kind::RBrace,
-    ]);
+    assert_eq!(
+        tokens,
+        vec![
+            Kind::Keyword(Kw::Struct),
+            Kind::Ident,
+            Kind::LBrace,
+            Kind::Keyword(Kw::Long),
+            Kind::Ident,
+            Kind::Eq,
+            Kind::Number {
+                base: Base::Decimal
+            },
+            Kind::Semi,
+            Kind::RBrace,
+        ]
+    );
 }
 
 #[test]
@@ -275,7 +335,7 @@ fn test_line_tracking() {
     let id = vfs.embed("foo\nbar\nbaz");
     let src = vfs.source(id);
     let mut cursor = Cursor::new(src, id);
-    
+
     assert_eq!(cursor.line(), 1);
     cursor.next(); // foo
     assert_eq!(cursor.line(), 1);
@@ -294,7 +354,7 @@ fn test_source_of() {
     let src = vfs.source(id);
     let cursor = Cursor::new(src, id);
     let mut cursor2 = cursor.clone();
-    
+
     let token = cursor2.next().unwrap();
     assert_eq!(cursor.source_of(token.span), "hello");
 }

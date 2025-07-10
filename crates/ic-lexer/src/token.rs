@@ -28,10 +28,9 @@
 use std::fmt;
 use std::sync::OnceLock;
 
-use rustc_hash::FxHashMap;
-
 use ic_expr::Op;
 use ic_vfs::Span;
+use rustc_hash::{FxBuildHasher, FxHashMap};
 
 /// Represents a lexical token with its kind and source location.
 #[derive(Copy, Clone, Debug)]
@@ -250,7 +249,7 @@ static KEYWORD_MAP: OnceLock<FxHashMap<&'static str, Kw>> = OnceLock::new();
 /// Returns the keyword map, initializing it on first use.
 fn keyword_map() -> &'static FxHashMap<&'static str, Kw> {
     KEYWORD_MAP.get_or_init(|| {
-        let mut map = FxHashMap::with_capacity_and_hasher(45, Default::default());
+        let mut map = FxHashMap::with_capacity_and_hasher(45, FxBuildHasher);
         map.insert("any", Kw::Any);
         map.insert("@annotation", Kw::Annotation);
         map.insert("module", Kw::Module);
@@ -373,18 +372,18 @@ mod tests {
     #[test]
     fn test_keyword_map_completeness() {
         let map = keyword_map();
-        
+
         // Test all keywords are present
         assert_eq!(map.get("any"), Some(&Kw::Any));
         assert_eq!(map.get("module"), Some(&Kw::Module));
         assert_eq!(map.get("struct"), Some(&Kw::Struct));
-        
+
         // Test case sensitivity
         assert_eq!(map.get("TRUE"), Some(&Kw::True));
         assert_eq!(map.get("true"), Some(&Kw::True));
         assert_eq!(map.get("FALSE"), Some(&Kw::False));
         assert_eq!(map.get("false"), Some(&Kw::False));
-        
+
         // Test non-keywords
         assert_eq!(map.get("foo"), None);
         assert_eq!(map.get(""), None);

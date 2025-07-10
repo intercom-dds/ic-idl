@@ -61,24 +61,73 @@ fn test_float_with_signs() {
 #[test]
 fn test_hex_only_after_zero() {
     // Only 0x should be hex
-    assert_eq!(kinds("0x123"), vec![Kind::Number { base: Base::Hexadecimal }]);
-    assert_eq!(kinds("0X123"), vec![Kind::Number { base: Base::Hexadecimal }]);
-    
+    assert_eq!(
+        kinds("0x123"),
+        vec![Kind::Number {
+            base: Base::Hexadecimal
+        }]
+    );
+    assert_eq!(
+        kinds("0X123"),
+        vec![Kind::Number {
+            base: Base::Hexadecimal
+        }]
+    );
+
     // 1x, 2x, etc. should not be hex
-    assert_eq!(kinds("1x123"), vec![Kind::Number { base: Base::Decimal }, Kind::Ident]);
-    assert_eq!(kinds("2X456"), vec![Kind::Number { base: Base::Decimal }, Kind::Ident]);
-    assert_eq!(kinds("9xABC"), vec![Kind::Number { base: Base::Decimal }, Kind::Ident]);
+    assert_eq!(
+        kinds("1x123"),
+        vec![
+            Kind::Number {
+                base: Base::Decimal
+            },
+            Kind::Ident
+        ]
+    );
+    assert_eq!(
+        kinds("2X456"),
+        vec![
+            Kind::Number {
+                base: Base::Decimal
+            },
+            Kind::Ident
+        ]
+    );
+    assert_eq!(
+        kinds("9xABC"),
+        vec![
+            Kind::Number {
+                base: Base::Decimal
+            },
+            Kind::Ident
+        ]
+    );
 }
 
 #[test]
 fn test_string_escape_sequences() {
     // Test various escape sequences
-    assert_eq!(kinds(r#""foo\nbar""#), vec![Kind::String { terminated: true }]);
-    assert_eq!(kinds(r#""foo\tbar""#), vec![Kind::String { terminated: true }]);
-    assert_eq!(kinds(r#""foo\\bar""#), vec![Kind::String { terminated: true }]);
-    assert_eq!(kinds(r#""foo\'bar""#), vec![Kind::String { terminated: true }]);
-    assert_eq!(kinds(r#""foo\rbar""#), vec![Kind::String { terminated: true }]);
-    
+    assert_eq!(
+        kinds(r#""foo\nbar""#),
+        vec![Kind::String { terminated: true }]
+    );
+    assert_eq!(
+        kinds(r#""foo\tbar""#),
+        vec![Kind::String { terminated: true }]
+    );
+    assert_eq!(
+        kinds(r#""foo\\bar""#),
+        vec![Kind::String { terminated: true }]
+    );
+    assert_eq!(
+        kinds(r#""foo\'bar""#),
+        vec![Kind::String { terminated: true }]
+    );
+    assert_eq!(
+        kinds(r#""foo\rbar""#),
+        vec![Kind::String { terminated: true }]
+    );
+
     // Test escaped backslash at end
     assert_eq!(kinds(r#""foo\\""#), vec![Kind::String { terminated: true }]);
 }
@@ -88,7 +137,7 @@ fn test_unterminated_block_comment() {
     // Should not panic on unterminated block comment
     let tokens = kinds("/* unterminated block comment");
     assert_eq!(tokens.len(), 0); // Comment is consumed but not emitted
-    
+
     let tokens = kinds("/** unterminated doc comment");
     assert_eq!(tokens.len(), 1);
     assert_eq!(tokens[0], Kind::Comment);
@@ -97,10 +146,16 @@ fn test_unterminated_block_comment() {
 #[test]
 fn test_nested_escapes() {
     // Multiple consecutive escapes
-    assert_eq!(kinds(r#""\\\\\\\\""#), vec![Kind::String { terminated: true }]);
-    
+    assert_eq!(
+        kinds(r#""\\\\\\\\""#),
+        vec![Kind::String { terminated: true }]
+    );
+
     // Escape at end of string
-    assert_eq!(kinds(r#""test\""#), vec![Kind::String { terminated: false }]); // Escapes the closing quote
+    assert_eq!(
+        kinds(r#""test\""#),
+        vec![Kind::String { terminated: false }]
+    ); // Escapes the closing quote
 }
 
 #[test]
@@ -110,9 +165,17 @@ fn test_edge_case_identifiers() {
     assert_eq!(kinds("_foo"), vec![Kind::Ident]);
     assert_eq!(kinds("_123"), vec![Kind::Ident]);
     assert_eq!(kinds("__"), vec![Kind::Ident]);
-    
+
     // Not identifiers
-    assert_eq!(kinds("123foo"), vec![Kind::Number { base: Base::Decimal }, Kind::Ident]);
+    assert_eq!(
+        kinds("123foo"),
+        vec![
+            Kind::Number {
+                base: Base::Decimal
+            },
+            Kind::Ident
+        ]
+    );
 }
 
 #[test]
@@ -128,10 +191,16 @@ fn test_consecutive_operators() {
 fn test_whitespace_handling() {
     // Various whitespace should be consumed
     assert_eq!(kinds("  \t  \r  foo  \t  "), vec![Kind::Ident]);
-    
+
     // Newlines are tokens
-    assert_eq!(kinds("foo\nbar"), vec![Kind::Ident, Kind::Newline, Kind::Ident]);
-    assert_eq!(kinds("foo\r\nbar"), vec![Kind::Ident, Kind::Newline, Kind::Ident]);
+    assert_eq!(
+        kinds("foo\nbar"),
+        vec![Kind::Ident, Kind::Newline, Kind::Ident]
+    );
+    assert_eq!(
+        kinds("foo\r\nbar"),
+        vec![Kind::Ident, Kind::Newline, Kind::Ident]
+    );
 }
 
 #[test]
@@ -140,7 +209,7 @@ fn test_octal_edge_cases() {
     assert_eq!(kinds("0"), vec![Kind::Number { base: Base::Octal }]);
     assert_eq!(kinds("0777"), vec![Kind::Number { base: Base::Octal }]);
     assert_eq!(kinds("0123"), vec![Kind::Number { base: Base::Octal }]);
-    
+
     // Invalid octal digits should still be parsed as octal
     // (error handling would be done at a higher level)
     assert_eq!(kinds("0999"), vec![Kind::Number { base: Base::Octal }]);
@@ -162,14 +231,23 @@ fn test_multiline_strings() {
     assert_eq!(tokens[2], Kind::String { terminated: false }); // orphaned closing quote
 }
 
-#[test] 
+#[test]
 fn test_special_float_cases() {
     // Just a dot after number
     assert_eq!(kinds("123."), vec![Kind::Float]);
-    
+
     // Multiple dots
-    assert_eq!(kinds("1.2.3"), vec![Kind::Float, Kind::Period, Kind::Number { base: Base::Decimal }]);
-    
+    assert_eq!(
+        kinds("1.2.3"),
+        vec![
+            Kind::Float,
+            Kind::Period,
+            Kind::Number {
+                base: Base::Decimal
+            }
+        ]
+    );
+
     // No digits after e
     assert_eq!(kinds("1e"), vec![Kind::Float]);
     assert_eq!(kinds("1e+"), vec![Kind::Float]);

@@ -85,7 +85,7 @@ pub const SPECIAL_CHARS: [bool; 128] = {
     table
 };
 
-#[inline(always)]
+#[inline]
 pub fn get_single_char_token(c: char) -> Option<Kind> {
     if (c as u32) < 128 {
         SINGLE_CHAR_TOKENS[c as usize]
@@ -94,12 +94,12 @@ pub fn get_single_char_token(c: char) -> Option<Kind> {
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn is_special_char(c: char) -> bool {
     (c as u32) < 128 && SPECIAL_CHARS[c as usize]
 }
 
-#[inline(always)]
+#[inline]
 pub fn is_ascii_whitespace(c: char) -> bool {
     (c as u32) < 128 && ASCII_WHITESPACE[c as usize]
 }

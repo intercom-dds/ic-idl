@@ -50,24 +50,39 @@ fn kinds(input: &str) -> Vec<Kind> {
 fn test_invalid_utf8_recovery() {
     // Various invalid/unusual characters should produce Unknown tokens
     // but lexing should continue
-    assert_eq!(kinds("a § b"), vec![Kind::Ident, Kind::Unknown, Kind::Ident]);
-    assert_eq!(kinds("x • y"), vec![Kind::Ident, Kind::Unknown, Kind::Ident]);
-    assert_eq!(kinds("foo ¿ bar"), vec![Kind::Ident, Kind::Unknown, Kind::Ident]);
+    assert_eq!(
+        kinds("a § b"),
+        vec![Kind::Ident, Kind::Unknown, Kind::Ident]
+    );
+    assert_eq!(
+        kinds("x • y"),
+        vec![Kind::Ident, Kind::Unknown, Kind::Ident]
+    );
+    assert_eq!(
+        kinds("foo ¿ bar"),
+        vec![Kind::Ident, Kind::Unknown, Kind::Ident]
+    );
 }
 
 #[test]
 fn test_unclosed_constructs() {
     // Unclosed string
-    assert_eq!(kinds(r#""hello world"#), vec![Kind::String { terminated: false }]);
-    
+    assert_eq!(
+        kinds(r#""hello world"#),
+        vec![Kind::String { terminated: false }]
+    );
+
     // Unclosed char with multiple characters
     assert_eq!(kinds("'abc"), vec![Kind::Unknown, Kind::Ident]); // ' is unknown, abc is ident
-    assert_eq!(kinds("'ab'"), vec![Kind::Unknown, Kind::Ident, Kind::Unknown]); // 'a is unknown, b is ident, ' is unknown
-    
+    assert_eq!(
+        kinds("'ab'"),
+        vec![Kind::Unknown, Kind::Ident, Kind::Unknown]
+    ); // 'a is unknown, b is ident, ' is unknown
+
     // Unclosed block comment
     let tokens = scan("/* comment");
     assert_eq!(tokens.len(), 0); // Regular comment, consumed
-    
+
     let tokens = scan("/** doc comment");
     assert_eq!(tokens.len(), 1); // Doc comment, preserved
     assert_eq!(tokens[0].kind, Kind::Comment);
@@ -76,18 +91,29 @@ fn test_unclosed_constructs() {
 #[test]
 fn test_consecutive_invalid_tokens() {
     // Multiple invalid characters in a row
-    assert_eq!(kinds("§§§"), vec![Kind::Unknown, Kind::Unknown, Kind::Unknown]);
-    
+    assert_eq!(
+        kinds("§§§"),
+        vec![Kind::Unknown, Kind::Unknown, Kind::Unknown]
+    );
+
     // Mixed valid and invalid
-    assert_eq!(kinds("a§b§c"), vec![
-        Kind::Ident, Kind::Unknown, Kind::Ident, Kind::Unknown, Kind::Ident
-    ]);
+    assert_eq!(
+        kinds("a§b§c"),
+        vec![
+            Kind::Ident,
+            Kind::Unknown,
+            Kind::Ident,
+            Kind::Unknown,
+            Kind::Ident
+        ]
+    );
 }
 
 #[test]
 fn test_lexer_continues_after_errors() {
     // Lexer should continue working after encountering errors
-    let tokens = kinds(r#"
+    let tokens = kinds(
+        r#"
         struct Foo {
             § invalid
             long x;
@@ -96,8 +122,9 @@ fn test_lexer_continues_after_errors() {
             'z  // invalid char
             double z;
         }
-    "#);
-    
+    "#,
+    );
+
     // Check that we still get valid tokens after errors
     assert!(tokens.contains(&Kind::Keyword(ic_lexer::token::Kw::Struct)));
     assert!(tokens.contains(&Kind::Keyword(ic_lexer::token::Kw::Long)));
@@ -121,10 +148,10 @@ fn test_span_accuracy_after_errors() {
     let id = vfs.embed("foo § bar");
     let src = vfs.source(id);
     let cursor = Cursor::new(src.clone(), id);
-    
+
     let tokens = scan("foo § bar");
     assert_eq!(tokens.len(), 3);
-    
+
     // Check that spans are correct
     assert_eq!(cursor.source_of(tokens[0].span), "foo");
     assert_eq!(cursor.source_of(tokens[1].span), "§");

@@ -25,7 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_parse::from_file;
 use ic_preproc::{ProcArgs, preprocess};
+use ic_syntax::Item;
 use ic_vfs::SourceMap;
 
 #[test]
@@ -87,4 +89,82 @@ int c;"#;
     assert_eq!(comments[0], false); // Leading comment
     assert_eq!(comments[1], true); // Trailing comment
     assert_eq!(comments[2], false); // Leading comment (with indentation)
+}
+
+#[test]
+fn test_struct_field_trailing_comments() {
+    let mut vfs = SourceMap::default();
+
+    let content = r#"
+struct Example {
+    long field1; /// This is a trailing comment for field1
+    string field2; /// This is a trailing comment for field2
+};"#;
+
+    let file = vfs.embed(content);
+
+    // Parse using from_file
+    let args = ProcArgs::default();
+    let (parse_result, errors) = from_file(file, args, &mut vfs);
+    assert!(errors.is_empty(), "Parse errors: {:?}", errors);
+    assert_eq!(parse_result.tree.len(), 1);
+
+    // Check that the struct has the expected fields with annotations
+    if let Item::StructValue(s) = &parse_result.tree[0] {
+        assert_eq!(s.members.len(), 2);
+
+        // Check field1 has a trailing comment annotation
+        let field1 = &s.members[0];
+        assert_eq!(field1.annotations.len(), 1);
+        assert_eq!(field1.annotations[0].ident.segments[0].name, "doc");
+
+        // Check field2 has a trailing comment annotation
+        let field2 = &s.members[1];
+        assert_eq!(field2.annotations.len(), 1);
+        assert_eq!(field2.annotations[0].ident.segments[0].name, "doc");
+    } else {
+        panic!("Expected a struct item");
+    }
+}
+
+#[test]
+fn test_leading_vs_trailing_struct_comments() {
+    let mut vfs = SourceMap::default();
+
+    let content = r#"
+struct MixedComments {
+    /// Leading comment for field1
+    long field1;
+    long field2; /// Trailing comment for field2
+    /// Leading comment for field3
+    /// Another line of leading comment
+    string field3;
+};"#;
+
+    let file = vfs.embed(content);
+
+    // Parse using from_file
+    let args = ProcArgs::default();
+    let (parse_result, errors) = from_file(file, args, &mut vfs);
+    assert!(errors.is_empty(), "Parse errors: {:?}", errors);
+    assert_eq!(parse_result.tree.len(), 1);
+
+    // Check that the struct has the expected fields with annotations
+    if let Item::StructValue(s) = &parse_result.tree[0] {
+        assert_eq!(s.members.len(), 3);
+
+        // field1 should have 1 leading comment
+        let field1 = &s.members[0];
+        assert_eq!(field1.annotations.len(), 1);
+
+        // field2 should have 1 trailing comment
+        let field2 = &s.members[1];
+        assert_eq!(field2.annotations.len(), 1);
+
+        // field3 should have 2 leading comments
+        let field3 = &s.members[2];
+        assert_eq!(field3.annotations.len(), 2);
+    } else {
+        panic!("Expected a struct item");
+    }
 }

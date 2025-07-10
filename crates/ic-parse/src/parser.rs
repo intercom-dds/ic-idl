@@ -48,6 +48,10 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Sized {
         let doxy = doxy_comment();
         choice((ann, doxy)).repeated().then(self)
     }
+
+    fn with_trailing_comment(self) -> impl IdlParser<(T, Option<AnnotationAppl>)> {
+        self.then(trailing_comment().or_not())
+    }
 }
 
 // Blanket impl because we really just want an alias
@@ -140,7 +144,23 @@ fn bound() -> impl IdlParser<Option<Expr>> {
 }
 
 fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
-    let comment = select! { Kind::Comment(v, _trailing) => v };
+    let comment = select! { Kind::Comment(v, false) => v };
+    comment.map_with_span(|value, span| AnnotationAppl {
+        ident: primitive_path("doc", span),
+        span,
+        args: vec![AnnotationArg {
+            ident: None,
+            span,
+            value: Expr::Literal(Literal {
+                span,
+                value: LiteralValue::String(value),
+            }),
+        }],
+    })
+}
+
+fn trailing_comment() -> impl IdlParser<AnnotationAppl> {
+    let comment = select! { Kind::Comment(v, true) => v };
     comment.map_with_span(|value, span| AnnotationAppl {
         ident: primitive_path("doc", span),
         span,
@@ -623,13 +643,20 @@ fn member() -> impl IdlParser<Field> {
     let field = type_spec()
         .then(declarators())
         .annotated()
-        .then_ignore(just(Kind::Semi));
+        .then_ignore(just(Kind::Semi))
+        .with_trailing_comment();
 
-    field.map_with_span(|(annotations, (ty, names)), span| Field {
-        span,
-        annotations,
-        names,
-        ty,
+    field.map_with_span(|((annotations, (ty, names)), trailing), span| {
+        let mut all_annotations = annotations;
+        if let Some(trailing_ann) = trailing {
+            all_annotations.push(trailing_ann);
+        }
+        Field {
+            span,
+            annotations: all_annotations,
+            names,
+            ty,
+        }
     })
 }
 

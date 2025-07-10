@@ -147,9 +147,8 @@ pub enum Error {
         message: &'static str,
         span: Span,
     },
-    // TODO: this should be Error::Syntax, but we don't currently record
-    // spans of expression
     Expr {
         message: &'static str,
+        span: Option<Span>,
     },
 }

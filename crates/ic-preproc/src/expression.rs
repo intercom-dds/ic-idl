@@ -45,7 +45,7 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
         Expr::Lit(v) => {
             let lit = ctx.source_of(v.span);
             match v.kind {
-                Kind::Number { base } => parse_integer(lit, base),
+                Kind::Number { base } => parse_integer(lit, base, Some(v.span)),
                 Kind::Ident | Kind::Keyword(_) => {
                     // Handle predefined macros in expressions
                     match lit {
@@ -111,7 +111,7 @@ pub fn is_true(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<bool, Error> 
 }
 
 /// Parse an integer literal
-fn parse_integer(str: &str, base: Base) -> Result<i128, Error> {
+fn parse_integer(str: &str, base: Base, span: Option<Span>) -> Result<i128, Error> {
     let str = match base {
         Base::Octal => {
             if str.len() > 1 {
@@ -126,6 +126,7 @@ fn parse_integer(str: &str, base: Base) -> Result<i128, Error> {
 
     i128::from_str_radix(str, base as u32).map_err(|_| Error::Expr {
         message: "invalid literal",
+        span,
     })
 }
 
@@ -134,6 +135,7 @@ fn checked_div(lhs: i128, rhs: i128) -> Result<i128, Error> {
     if rhs == 0 {
         Err(Error::Expr {
             message: "division by zero",
+            span: None,
         })
     } else {
         Ok(lhs.wrapping_div(rhs))
@@ -145,6 +147,7 @@ fn checked_mod(lhs: i128, rhs: i128) -> Result<i128, Error> {
     if rhs == 0 {
         Err(Error::Expr {
             message: "modulo by zero",
+            span: None,
         })
     } else {
         Ok(lhs.wrapping_rem(rhs))

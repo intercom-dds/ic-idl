@@ -350,6 +350,7 @@ where
         // Get the next token with macro expansion
         let lhs = self.next_expr_token().ok_or(Error::Expr {
             message: "unexpected end of expression",
+            span: None,
         })?;
 
         // Check if it's 'defined' - if so, we need special handling
@@ -385,6 +386,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ')'",
+                            span: None,
                         });
                     }
                 }
@@ -405,6 +407,7 @@ where
         // - defined MACRO
         let next = self.next_raw_token().ok_or(Error::Expr {
             message: "unexpected end after 'defined'",
+            span: None,
         })?;
 
         let macro_name = match next.kind {
@@ -412,6 +415,7 @@ where
                 // defined(MACRO) form
                 let name_tok = self.next_raw_token().ok_or(Error::Expr {
                     message: "expected macro name after 'defined('",
+                    span: None,
                 })?;
 
                 // Verify it's an identifier
@@ -437,6 +441,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end in defined(), expected ')'",
+                            span: None,
                         });
                     }
                 }
@@ -520,6 +525,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ':'",
+                            span: None,
                         });
                     }
                 }

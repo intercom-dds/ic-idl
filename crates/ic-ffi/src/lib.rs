@@ -139,14 +139,13 @@ fn try_main(config: Config, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Error>
 // to syntax errors in the input: the parser will attempt to recover so we can
 // continue parsing and construct a partial AST.
 fn try_parse(proc: ProcArgs, path: &Path, vfs: &mut SourceMap) -> Result<ParseResult, Vec<Error>> {
-    let mut errors = vec![];
-    let (ast, err) = ic_parse::from_path(path, proc, vfs).map_err(|e| {
+    let ast = ic_parse::from_path(path, proc, vfs).map_err(|e| {
         vec![Error::Custom(format!(
             "failed to open `{}`: {e}",
             path.display().yellow()
         ))]
     })?;
-    errors.extend(err.into_iter().map(Into::into));
+    let mut errors: Vec<Error> = ast.errors.iter().cloned().map(Into::into).collect();
 
     // Lower the HIR to a ptree, but only if construction of the HIR succeeded
     if errors.is_empty() {

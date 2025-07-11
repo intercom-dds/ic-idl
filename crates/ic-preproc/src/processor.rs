@@ -27,7 +27,7 @@
 
 #![allow(clippy::cast_possible_truncation)]
 
-use std::borrow::BorrowMut;
+use std::borrow::{Borrow, BorrowMut};
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -1676,6 +1676,14 @@ where
     #[must_use]
     pub fn source_of(&self, span: Span) -> &str {
         self.inner.source_of(span)
+    }
+
+    /// Get access to the preprocessor state, including errors and warnings
+    pub fn state(&self) -> &State
+    where
+        S: Borrow<State>,
+    {
+        self.inner.state.borrow()
     }
 
     #[must_use]

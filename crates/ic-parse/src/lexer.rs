@@ -32,7 +32,7 @@ use std::fmt;
 use chumsky::Stream;
 use ic_lexer::token::{Base, Kw};
 use ic_macros::DiscHash;
-use ic_preproc::{State, TokenIter};
+use ic_preproc::TokenIter;
 use ic_syntax::Span;
 
 /// All tokens recognized by the lexer.
@@ -302,10 +302,13 @@ fn kind_number(base: Base, value: u64) -> Kind {
 ///
 /// Panics if the provided iterator yields invalid tokens.
 #[must_use]
-pub fn from_cursor(
-    mut iter: TokenIter<'_, State>,
+pub fn from_cursor<'a, S>(
+    mut iter: TokenIter<'a, S>,
     ignore_comments: bool,
-) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
+) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + 'a>
+where
+    S: std::borrow::BorrowMut<ic_preproc::State> + 'a,
+{
     let iter = std::iter::from_fn(move || {
         loop {
             let next = iter.next()?;

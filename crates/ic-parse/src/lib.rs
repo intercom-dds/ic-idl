@@ -92,6 +92,8 @@ mod parser;
 #[derive(Debug)]
 pub struct ParseResult {
     pub tree: Vec<Item>,
+    pub errors: Vec<Error>,
+    pub warnings: Vec<Error>,
 }
 
 #[derive(Clone, Debug)]
@@ -118,6 +120,16 @@ impl From<SimpleReason<Kind, Span>> for Reason {
             SimpleReason::Unexpected => Self::Unexpected,
             SimpleReason::Unclosed { span, delimiter } => Self::Unclosed { span, delimiter },
             SimpleReason::Custom(v) => Self::Custom(v),
+        }
+    }
+}
+
+impl std::fmt::Display for Reason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unexpected => write!(f, "unexpected input"),
+            Self::Unclosed { delimiter, .. } => write!(f, "unclosed delimiter {delimiter:?}"),
+            Self::Custom(msg) => write!(f, "{msg}"),
         }
     }
 }
@@ -161,7 +173,7 @@ impl std::fmt::Display for Error {
 ///
 /// # Panics
 #[must_use]
-pub fn from_str(input: &str) -> (ParseResult, Vec<Error>) {
+pub fn from_str(input: &str) -> ParseResult {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(input);
     let args = ProcArgs::default();
@@ -173,11 +185,7 @@ pub fn from_str(input: &str) -> (ParseResult, Vec<Error>) {
 /// # Errors
 ///
 /// # Panics
-pub fn from_path(
-    path: &Path,
-    args: ProcArgs,
-    vfs: &mut SourceMap,
-) -> std::io::Result<(ParseResult, Vec<Error>)> {
+pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::Result<ParseResult> {
     let (file_id, _) = vfs.open(path, Include::Static)?;
     Ok(from_file(file_id, args, vfs))
 }
@@ -188,19 +196,89 @@ pub fn from_path(
 ///
 /// # Panics
 #[must_use]
-pub fn from_file(
-    file_id: FileId,
-    args: ProcArgs,
-    vfs: &mut SourceMap,
-) -> (ParseResult, Vec<Error>) {
+pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
     let skip = args.get_skip_comments();
-    let iter = ic_preproc::preprocess(file_id, args, vfs);
+    let mut state = ic_preproc::State::new();
+    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
     let tokens = lexer::from_cursor(iter, skip);
     let (tree, errors) = parser::specification().parse_recovery(tokens);
     let tree = tree.unwrap_or_default();
-    let errors = errors.into_iter().map(Error::from).collect();
 
-    (ParseResult { tree }, errors)
+    // Collect parser errors
+    let mut all_errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
+    let mut warnings = Vec::new();
+
+    // Process preprocessor errors
+    for preproc_error in state.errors() {
+        match preproc_error {
+            ic_preproc::Error::Note { span, .. } => {
+                all_errors.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom("error directive".to_string()),
+                    label: Some("preprocessor error"),
+                    span: *span,
+                });
+            }
+            ic_preproc::Error::Syntax { message, span } => {
+                all_errors.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom((*message).to_string()),
+                    label: Some("preprocessor error"),
+                    span: *span,
+                });
+            }
+            ic_preproc::Error::Expr { message, span } => {
+                all_errors.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom((*message).to_string()),
+                    label: Some("preprocessor error"),
+                    span: span.unwrap_or_default(),
+                });
+            }
+            ic_preproc::Error::Extraneous { .. } => {
+                // Extraneous tokens should be warnings, handled below
+            }
+        }
+    }
+
+    // Process preprocessor warnings
+    for preproc_warning in state.warnings() {
+        match preproc_warning {
+            ic_preproc::Error::Note { span, .. } => {
+                // Error::Note in warnings list comes from #warning directive
+                warnings.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom("warning directive".to_string()),
+                    label: Some("preprocessor warning"),
+                    span: *span,
+                });
+            }
+            ic_preproc::Error::Extraneous {
+                directive, span, ..
+            } => {
+                warnings.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom(format!("extra tokens after #{directive:?} directive")),
+                    label: Some("preprocessor warning"),
+                    span: *span,
+                });
+            }
+            _ => {
+                // Other error types shouldn't appear in warnings
+            }
+        }
+    }
+
+    ParseResult {
+        tree,
+        errors: all_errors,
+        warnings,
+    }
 }
 
 /// Constructs an AST from the given token iterator.
@@ -210,15 +288,17 @@ pub fn from_file(
 /// If the given input contains IDL that is not syntactically valid, a
 /// non-exhausitve list of parse errors will be returned that contains the
 /// cause of each error and its span.
-pub fn from_iter<I>(iter: I) -> Result<ParseResult, Vec<Error>>
+pub fn from_iter<I>(iter: I) -> ParseResult
 where
     I: IntoIterator<Item = Token>,
 {
     let tokens = iter.into_iter();
     let stream = Stream::from_iter(Span::default(), tokens.map(move |tok| (tok.kind, tok.span)));
-    let tree = parser::specification()
-        .parse(stream)
-        .map_err(|v| v.into_iter().map(Error::from).collect::<Vec<_>>())?;
+    let (tree, errors) = parser::specification().parse_recovery(stream);
 
-    Ok(ParseResult { tree })
+    ParseResult {
+        tree: tree.unwrap_or_default(),
+        errors: errors.into_iter().map(Error::from).collect(),
+        warnings: Vec::new(),
+    }
 }

@@ -143,13 +143,15 @@ fn try_parse(
 ) -> Result<Parsed, Vec<Error>> {
     let mut errors = vec![];
     let mut warnings = vec![];
-    let (ast, err) = ic_parse::from_path(path, proc, vfs).map_err(|e| {
+    let ast = ic_parse::from_path(path, proc, vfs).map_err(|e| {
         vec![Error::Custom(format!(
             "failed to open `{}`: {e}",
             path.display().yellow()
         ))]
     })?;
-    errors.extend(err.into_iter().map(Into::into));
+    errors.extend(ast.errors.iter().cloned().map(Into::into));
+    // TODO: Convert parse warnings to Diag type
+    // warnings.extend(ast.warnings.iter().cloned().map(Into::into));
 
     if options.unstable.ast_dump {
         println!("{:#?}", ast.tree);

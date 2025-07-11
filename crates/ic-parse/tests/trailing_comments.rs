@@ -105,8 +105,12 @@ struct Example {
 
     // Parse using from_file
     let args = ProcArgs::default();
-    let (parse_result, errors) = from_file(file, args, &mut vfs);
-    assert!(errors.is_empty(), "Parse errors: {:?}", errors);
+    let parse_result = from_file(file, args, &mut vfs);
+    assert!(
+        parse_result.errors.is_empty(),
+        "Parse errors: {:?}",
+        parse_result.errors
+    );
     assert_eq!(parse_result.tree.len(), 1);
 
     // Check that the struct has the expected fields with annotations
@@ -145,8 +149,12 @@ struct MixedComments {
 
     // Parse using from_file
     let args = ProcArgs::default();
-    let (parse_result, errors) = from_file(file, args, &mut vfs);
-    assert!(errors.is_empty(), "Parse errors: {:?}", errors);
+    let parse_result = from_file(file, args, &mut vfs);
+    assert!(
+        parse_result.errors.is_empty(),
+        "Parse errors: {:?}",
+        parse_result.errors
+    );
     assert_eq!(parse_result.tree.len(), 1);
 
     // Check that the struct has the expected fields with annotations

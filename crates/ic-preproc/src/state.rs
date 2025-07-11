@@ -136,6 +136,27 @@ pub enum Directive {
     Pragma,
 }
 
+impl std::fmt::Display for Directive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Directive::If => "if",
+            Directive::Ifdef => "ifdef",
+            Directive::Ifndef => "ifndef",
+            Directive::Elif => "elif",
+            Directive::Else => "else",
+            Directive::Endif => "endif",
+            Directive::Include => "include",
+            Directive::Define => "define",
+            Directive::Undef => "undef",
+            Directive::Line => "line",
+            Directive::Warning => "warning",
+            Directive::Error => "error",
+            Directive::Pragma => "pragma",
+        };
+        write!(f, "{str}")
+    }
+}
+
 /// Error types for preprocessing
 #[derive(Clone, Debug)]
 pub enum Error {

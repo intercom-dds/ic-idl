@@ -49,7 +49,7 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Sized {
         choice((ann, doxy))
             .repeated()
             .then(self)
-            .then(trailing_comment().or_not())
+            .then(trailing_doxy_comment().or_not())
             .map(|((mut pre, val), post)| {
                 if let Some(post) = post {
                     pre.push(post);
@@ -60,13 +60,13 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Sized {
 
     fn braced(self) -> impl IdlParser<T> {
         just(Kind::LBrace)
-            .with_trailing_comment()
+            .trailing_comment()
             .ignore_then(self)
             .then_ignore(just(Kind::RBrace))
     }
 
-    fn with_trailing_comment(self) -> impl IdlParser<(T, Option<AnnotationAppl>)> {
-        self.then(trailing_comment().or_not())
+    fn trailing_comment(self) -> impl IdlParser<(T, Option<AnnotationAppl>)> {
+        self.then(trailing_doxy_comment().or_not())
     }
 }
 
@@ -175,7 +175,7 @@ fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
     })
 }
 
-fn trailing_comment() -> impl IdlParser<AnnotationAppl> {
+fn trailing_doxy_comment() -> impl IdlParser<AnnotationAppl> {
     let comment = select! { Kind::Comment(v, true) => v };
     comment.map_with_span(|value, span| AnnotationAppl {
         ident: primitive_path("doc", span),
@@ -947,7 +947,7 @@ fn op_dcl() -> impl IdlParser<Prototype> {
         .then(raises_expr().or_not())
         .annotated()
         .then_ignore(just(Kind::Semi))
-        .with_trailing_comment();
+        .trailing_comment();
 
     proto.map(
         |((_annotations, (((ret, ident), params), raises)), _trailing)| Prototype {

@@ -1450,7 +1450,7 @@ where
             if self.stack.len() >= self.recursion_depth {
                 self.state().errors.push(Error::Syntax {
                     message: "#include nested too deeply",
-                    span,
+                    span: path,
                 });
                 return;
             }
@@ -1470,13 +1470,13 @@ where
                     }
                     Err(_) => self.state().errors.push(Error::Syntax {
                         message: "failed to open file",
-                        span,
+                        span: path,
                     }),
                 }
             } else {
                 self.state().errors.push(Error::Syntax {
                     message: "file not found",
-                    span,
+                    span: path,
                 });
             }
         }

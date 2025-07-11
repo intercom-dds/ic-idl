@@ -60,7 +60,7 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
         Err(e) => {
             // Convert ic-expr errors to our Error type with proper spans
             let span = find_error_span(expr, &e)
-                .unwrap_or_else(|| panic!("Expression should have at least one token with a span"));
+                .expect("Expression should have at least one token with a span");
 
             let message = match e {
                 ic_expr::Error::DivisionByZero => "division by zero",

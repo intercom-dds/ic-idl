@@ -35,11 +35,8 @@ use crate::{EvalConfig, EvalContext, OverflowBehavior, Result, SimpleInt};
 /// Number base for parsing integer literals
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Base {
-    /// Base 8 (octal) numbers, e.g., 0777
     Octal = 8,
-    /// Base 10 (decimal) numbers, e.g., 123
     Decimal = 10,
-    /// Base 16 (hexadecimal) numbers, e.g., 0xFF
     Hexadecimal = 16,
 }
 
@@ -48,8 +45,10 @@ pub enum Base {
 pub enum CLiteral {
     /// Integer literal
     Int(i128),
+
     /// Character literal
     Char(char),
+
     /// Identifier (may be a macro or special identifier like __LINE__)
     Ident(String),
 }
@@ -173,8 +172,8 @@ impl EvalContext<CLiteral> for CContext<'_> {
         }
     }
 
-    fn config(&self) -> &EvalConfig {
-        &self.config
+    fn config(&self) -> EvalConfig {
+        self.config
     }
 }
 

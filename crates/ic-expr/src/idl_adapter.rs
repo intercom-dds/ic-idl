@@ -307,15 +307,14 @@ fn usual_arithmetic_conversions(lhs: &Numeric, rhs: &Numeric) -> Numeric {
 }
 
 /// Perform a binary arithmetic operation with proper type conversions
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn binop_arithmetic<F>(
     lhs: &Numeric,
     rhs: &Numeric,
-    config: &EvalConfig,
+    config: EvalConfig,
     mut op: F,
 ) -> Result<Numeric>
 where
-    F: FnMut(Numeric, Numeric, &EvalConfig) -> Result<Numeric>,
+    F: FnMut(Numeric, Numeric, EvalConfig) -> Result<Numeric>,
 {
     // Determine the common type
     let common_type = usual_arithmetic_conversions(lhs, rhs);
@@ -361,7 +360,7 @@ impl NumericValue for Numeric {
         }
     }
 
-    fn negate(&self, config: &EvalConfig) -> Result<Self> {
+    fn negate(&self, config: EvalConfig) -> Result<Self> {
         match self {
             Self::Bool(v) => Ok(Self::Int32(-i32::from(*v))),
             Self::Octet(v) => Ok(Self::Int32(-i32::from(*v))),
@@ -413,11 +412,11 @@ impl NumericValue for Numeric {
             Self::UInt32(v) => Self::UInt32(!v),
             Self::Int64(v) => Self::Int64(!v),
             Self::UInt64(v) => Self::UInt64(!v),
-            _ => promoted, // Shouldn't happen after promotion
+            _ => promoted,
         }
     }
 
-    fn add(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn add(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         binop_arithmetic(self, rhs, config, |lhs, rhs, cfg| match (lhs, rhs) {
             (Self::Int32(a), Self::Int32(b)) => match cfg.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_add(b))),
@@ -457,7 +456,7 @@ impl NumericValue for Numeric {
         })
     }
 
-    fn sub(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn sub(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         binop_arithmetic(self, rhs, config, |lhs, rhs, cfg| match (lhs, rhs) {
             (Self::Int32(a), Self::Int32(b)) => match cfg.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_sub(b))),
@@ -497,7 +496,7 @@ impl NumericValue for Numeric {
         })
     }
 
-    fn mul(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn mul(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         binop_arithmetic(self, rhs, config, |lhs, rhs, cfg| match (lhs, rhs) {
             (Self::Int32(a), Self::Int32(b)) => match cfg.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_mul(b))),
@@ -537,8 +536,8 @@ impl NumericValue for Numeric {
         })
     }
 
-    fn div(&self, rhs: &Self, _config: &EvalConfig) -> Result<Self> {
-        binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+    fn div(&self, rhs: &Self, _config: EvalConfig) -> Result<Self> {
+        binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => {
                     if b == 0 {
@@ -581,8 +580,8 @@ impl NumericValue for Numeric {
         })
     }
 
-    fn modulo(&self, rhs: &Self, _config: &EvalConfig) -> Result<Self> {
-        binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+    fn modulo(&self, rhs: &Self, _config: EvalConfig) -> Result<Self> {
+        binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => {
                     if b == 0 {
@@ -617,7 +616,7 @@ impl NumericValue for Numeric {
     }
 
     fn bit_and(&self, rhs: &Self) -> Self {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Int32(a & b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::UInt32(a & b)),
@@ -632,7 +631,7 @@ impl NumericValue for Numeric {
     }
 
     fn bit_or(&self, rhs: &Self) -> Self {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Int32(a | b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::UInt32(a | b)),
@@ -647,7 +646,7 @@ impl NumericValue for Numeric {
     }
 
     fn bit_xor(&self, rhs: &Self) -> Self {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Int32(a ^ b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::UInt32(a ^ b)),
@@ -661,7 +660,7 @@ impl NumericValue for Numeric {
         result.unwrap_or(Self::Int32(0))
     }
 
-    fn shl(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn shl(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         // Left operand is promoted, right operand is used as-is
         let lhs = self.promote();
         let shift = rhs.to_u64() as u32;
@@ -681,7 +680,7 @@ impl NumericValue for Numeric {
         }
     }
 
-    fn shr(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn shr(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         // Left operand is promoted, right operand is used as-is
         let lhs = self.promote();
         let shift = rhs.to_u64() as u32;
@@ -702,7 +701,7 @@ impl NumericValue for Numeric {
     }
 
     fn lt(&self, rhs: &Self) -> bool {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Bool(a < b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::Bool(a < b)),
@@ -713,6 +712,7 @@ impl NumericValue for Numeric {
                 _ => unreachable!("Mismatched types after conversion"),
             }
         });
+
         match result {
             Ok(Self::Bool(b)) => b,
             _ => false,
@@ -720,7 +720,7 @@ impl NumericValue for Numeric {
     }
 
     fn le(&self, rhs: &Self) -> bool {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Bool(a <= b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::Bool(a <= b)),
@@ -738,7 +738,7 @@ impl NumericValue for Numeric {
     }
 
     fn gt(&self, rhs: &Self) -> bool {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Bool(a > b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::Bool(a > b)),
@@ -749,6 +749,7 @@ impl NumericValue for Numeric {
                 _ => unreachable!("Mismatched types after conversion"),
             }
         });
+
         match result {
             Ok(Self::Bool(b)) => b,
             _ => false,
@@ -756,7 +757,7 @@ impl NumericValue for Numeric {
     }
 
     fn ge(&self, rhs: &Self) -> bool {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Bool(a >= b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::Bool(a >= b)),
@@ -767,6 +768,7 @@ impl NumericValue for Numeric {
                 _ => unreachable!("Mismatched types after conversion"),
             }
         });
+
         match result {
             Ok(Self::Bool(b)) => b,
             _ => false,
@@ -774,7 +776,7 @@ impl NumericValue for Numeric {
     }
 
     fn eq(&self, rhs: &Self) -> bool {
-        let result = binop_arithmetic(self, rhs, &EvalConfig::default(), |lhs, rhs, _| {
+        let result = binop_arithmetic(self, rhs, EvalConfig::default(), |lhs, rhs, _| {
             match (lhs, rhs) {
                 (Self::Int32(a), Self::Int32(b)) => Ok(Self::Bool(a == b)),
                 (Self::UInt32(a), Self::UInt32(b)) => Ok(Self::Bool(a == b)),
@@ -785,6 +787,7 @@ impl NumericValue for Numeric {
                 _ => unreachable!("Mismatched types after conversion"),
             }
         });
+
         match result {
             Ok(Self::Bool(b)) => b,
             _ => false,
@@ -801,10 +804,13 @@ impl NumericValue for Numeric {
 pub enum IdlLiteral {
     /// Numeric literal with type
     Numeric(Numeric),
+
     /// String literal
     String(String),
+
     /// Null value
     Null,
+
     /// Path to a constant definition
     Path(Vec<String>),
 }
@@ -816,6 +822,7 @@ type PathResolver<'a> = Box<dyn FnMut(&[String]) -> Option<Numeric> + 'a>;
 pub struct IdlContext<'a> {
     /// Configuration for evaluation
     config: EvalConfig,
+
     /// Callback to resolve paths to values
     resolve_path: PathResolver<'a>,
 }
@@ -865,105 +872,11 @@ impl EvalContext<IdlLiteral> for IdlContext<'_> {
         }
     }
 
-    fn config(&self) -> &EvalConfig {
-        &self.config
+    fn config(&self) -> EvalConfig {
+        self.config
     }
 }
 
-#[cfg(test)]
-#[allow(clippy::float_cmp)]
-mod tests {
-    use super::*;
-    use crate::{Binary, Expr, Op, eval};
-
-    #[test]
-    fn test_integer_promotion() {
-        // Test that small types are promoted to Int32
-        let expr = Expr::Binary(Box::new(Binary {
-            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int8(10))),
-            op: Op::Add,
-            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int16(20))),
-        }));
-
-        let mut ctx = IdlContext::new(|_| None);
-        let result = eval(&expr, &mut ctx).unwrap();
-        assert!(matches!(result, Numeric::Int32(30)));
-    }
-
-    #[test]
-    fn test_unsigned_signed_conversion() {
-        // UInt32 + Int32 -> UInt32
-        let expr = Expr::Binary(Box::new(Binary {
-            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt32(100))),
-            op: Op::Add,
-            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(50))),
-        }));
-
-        let mut ctx = IdlContext::new(|_| None);
-        let result = eval(&expr, &mut ctx).unwrap();
-        assert!(matches!(result, Numeric::UInt32(150)));
-    }
-
-    #[test]
-    fn test_unsigned_overflow_wrap() {
-        // Test unsigned overflow with wrapping
-        let expr = Expr::Binary(Box::new(Binary {
-            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt32(u32::MAX))),
-            op: Op::Add,
-            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt32(1))),
-        }));
-
-        let mut ctx = IdlContext::new(|_| None);
-        let result = eval(&expr, &mut ctx).unwrap();
-        assert!(matches!(result, Numeric::UInt32(0)));
-    }
-
-    #[test]
-    fn test_floating_point_promotion() {
-        // Int + Float -> Float
-        let expr = Expr::Binary(Box::new(Binary {
-            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(10))),
-            op: Op::Add,
-            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(2.5))),
-        }));
-
-        let mut ctx = IdlContext::new(|_| None);
-        let result = eval(&expr, &mut ctx).unwrap();
-        match result {
-            Numeric::Float(v) => assert_eq!(v, 12.5),
-            _ => panic!("Expected Float result"),
-        }
-    }
-
-    #[test]
-    fn test_shift_operations() {
-        // Shifts don't do usual arithmetic conversions on the right operand
-        let expr = Expr::Binary(Box::new(Binary {
-            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(8))),
-            op: Op::LShift,
-            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int8(2))),
-        }));
-
-        let mut ctx = IdlContext::new(|_| None);
-        let result = eval(&expr, &mut ctx).unwrap();
-        assert!(matches!(result, Numeric::Int32(32)));
-    }
-
-    #[test]
-    fn test_comparison_returns_bool() {
-        let expr = Expr::Binary(Box::new(Binary {
-            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(10))),
-            op: Op::Gt,
-            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(5))),
-        }));
-
-        let mut ctx = IdlContext::new(|_| None);
-        let result = eval(&expr, &mut ctx).unwrap();
-        assert!(matches!(result, Numeric::Bool(true)));
-    }
-}
-
-// Casting/truncation support
 impl Numeric {
     /// Cast this numeric value to the specified target type
     /// This may truncate or change the value depending on the types involved
@@ -1235,9 +1148,95 @@ impl Numeric {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
-mod cast_tests {
+mod tests {
     use super::*;
+    use crate::{Binary, Expr, Op, eval};
+
+    #[test]
+    fn test_integer_promotion() {
+        // Test that small types are promoted to Int32
+        let expr = Expr::Binary(Box::new(Binary {
+            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int8(10))),
+            op: Op::Add,
+            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int16(20))),
+        }));
+
+        let mut ctx = IdlContext::new(|_| None);
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert!(matches!(result, Numeric::Int32(30)));
+    }
+
+    #[test]
+    fn test_unsigned_signed_conversion() {
+        // UInt32 + Int32 -> UInt32
+        let expr = Expr::Binary(Box::new(Binary {
+            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt32(100))),
+            op: Op::Add,
+            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(50))),
+        }));
+
+        let mut ctx = IdlContext::new(|_| None);
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert!(matches!(result, Numeric::UInt32(150)));
+    }
+
+    #[test]
+    fn test_unsigned_overflow_wrap() {
+        // Test unsigned overflow with wrapping
+        let expr = Expr::Binary(Box::new(Binary {
+            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt32(u32::MAX))),
+            op: Op::Add,
+            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt32(1))),
+        }));
+
+        let mut ctx = IdlContext::new(|_| None);
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert!(matches!(result, Numeric::UInt32(0)));
+    }
+
+    #[test]
+    fn test_floating_point_promotion() {
+        // Int + Float -> Float
+        let expr = Expr::Binary(Box::new(Binary {
+            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(10))),
+            op: Op::Add,
+            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(2.5))),
+        }));
+
+        let mut ctx = IdlContext::new(|_| None);
+        let result = eval(&expr, &mut ctx).unwrap();
+        match result {
+            Numeric::Float(v) => assert!((v - 12.5).abs() < f32::EPSILON),
+            _ => panic!("Expected Float result"),
+        }
+    }
+
+    #[test]
+    fn test_shift_operations() {
+        // Shifts don't do usual arithmetic conversions on the right operand
+        let expr = Expr::Binary(Box::new(Binary {
+            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(8))),
+            op: Op::LShift,
+            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int8(2))),
+        }));
+
+        let mut ctx = IdlContext::new(|_| None);
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert!(matches!(result, Numeric::Int32(32)));
+    }
+
+    #[test]
+    fn test_comparison_returns_bool() {
+        let expr = Expr::Binary(Box::new(Binary {
+            lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(10))),
+            op: Op::Gt,
+            rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(5))),
+        }));
+
+        let mut ctx = IdlContext::new(|_| None);
+        let result = eval(&expr, &mut ctx).unwrap();
+        assert!(matches!(result, Numeric::Bool(true)));
+    }
 
     #[test]
     fn test_int_to_smaller_int() {

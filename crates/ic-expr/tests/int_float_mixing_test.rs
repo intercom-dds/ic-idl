@@ -1,17 +1,12 @@
 // Copyright 2024 KONGSBERG
 
-#![allow(
-    clippy::float_cmp,
-    clippy::approx_constant,
-    clippy::cast_precision_loss
-)]
+#![allow(clippy::approx_constant, clippy::cast_precision_loss)]
 
 use ic_expr::idl_adapter::{IdlContext, IdlLiteral, Numeric};
 use ic_expr::{Binary, Expr, Op, Ternary, Unary, eval};
 
 #[test]
 fn test_int_to_float_promotion() {
-    // Test all integer types promoting to float
     let test_cases = vec![
         (Numeric::Bool(true), 1.0),
         (Numeric::Int8(42), 42.0),
@@ -34,7 +29,6 @@ fn test_int_to_float_promotion() {
     let mut ctx = IdlContext::new(|_| None);
 
     for (int_val, expected) in test_cases {
-        // Integer + Float -> Float
         let expr = Expr::Binary(Box::new(Binary {
             lhs: Expr::Lit(IdlLiteral::Numeric(int_val)),
             op: Op::Add,
@@ -43,7 +37,10 @@ fn test_int_to_float_promotion() {
 
         let result = eval(&expr, &mut ctx).unwrap();
         match result {
-            Numeric::Float(f) => assert_eq!(f, expected, "Failed for {int_val:?}"),
+            Numeric::Float(f) => assert!(
+                (f - expected).abs() < f32::EPSILON,
+                "Failed for {int_val:?}, got {f}, expected {expected}"
+            ),
             _ => panic!("Expected Float, got {result:?}"),
         }
     }
@@ -51,7 +48,6 @@ fn test_int_to_float_promotion() {
 
 #[test]
 fn test_int_to_double_promotion() {
-    // Int64 + Double -> Double
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int64(1_000_000))),
         op: Op::Mul,
@@ -65,7 +61,6 @@ fn test_int_to_double_promotion() {
         _ => panic!("Expected Double, got {result:?}"),
     }
 
-    // UInt64 + Double -> Double
     let expr2 = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::UInt64(u64::MAX))),
         op: Op::Add,
@@ -81,7 +76,6 @@ fn test_int_to_double_promotion() {
 
 #[test]
 fn test_float_double_mixing() {
-    // Float + Double -> Double
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(1.5))),
         op: Op::Add,
@@ -91,14 +85,13 @@ fn test_float_double_mixing() {
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
     match result {
-        Numeric::Double(d) => assert_eq!(d, 4.0),
+        Numeric::Double(d) => assert!((d - 4.0).abs() < f64::EPSILON),
         _ => panic!("Expected Double, got {result:?}"),
     }
 }
 
 #[test]
 fn test_mixed_arithmetic_with_floats() {
-    // (Int8 + Float) * Double
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Binary(Box::new(Binary {
             lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int8(10))),
@@ -112,14 +105,13 @@ fn test_mixed_arithmetic_with_floats() {
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
     match result {
-        Numeric::Double(d) => assert_eq!(d, 21.0), // (10 + 0.5) * 2.0 = 21.0
+        Numeric::Double(d) => assert!((d - 21.0).abs() < f64::EPSILON),
         _ => panic!("Expected Double, got {result:?}"),
     }
 }
 
 #[test]
 fn test_float_division() {
-    // Int32 / Float -> Float
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(10))),
         op: Op::Div,
@@ -133,7 +125,6 @@ fn test_float_division() {
         _ => panic!("Expected Float, got {result:?}"),
     }
 
-    // Float / Int32 -> Float
     let expr2 = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(10.0))),
         op: Op::Div,
@@ -149,7 +140,6 @@ fn test_float_division() {
 
 #[test]
 fn test_float_comparison() {
-    // Float > Int32 -> Bool
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(3.14))),
         op: Op::Gt,
@@ -160,7 +150,6 @@ fn test_float_comparison() {
     let result = eval(&expr, &mut ctx).unwrap();
     assert!(matches!(result, Numeric::Bool(true)));
 
-    // Int32 <= Double -> Bool
     let expr2 = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(5))),
         op: Op::LtEq,
@@ -173,7 +162,6 @@ fn test_float_comparison() {
 
 #[test]
 fn test_float_unary_ops() {
-    // -Float
     let expr = Expr::Unary(Box::new(Unary {
         op: Op::Sub,
         expr: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(3.14))),
@@ -182,11 +170,10 @@ fn test_float_unary_ops() {
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
     match result {
-        Numeric::Float(f) => assert_eq!(f, -3.14),
+        Numeric::Float(f) => assert!((f - (-3.14)).abs() < f32::EPSILON),
         _ => panic!("Expected Float, got {result:?}"),
     }
 
-    // -Double
     let expr2 = Expr::Unary(Box::new(Unary {
         op: Op::Sub,
         expr: Expr::Lit(IdlLiteral::Numeric(Numeric::Double(2.71828))),
@@ -194,14 +181,13 @@ fn test_float_unary_ops() {
 
     let result2 = eval(&expr2, &mut ctx).unwrap();
     match result2 {
-        Numeric::Double(d) => assert_eq!(d, -2.71828),
+        Numeric::Double(d) => assert!((d - (-2.71828)).abs() < f64::EPSILON),
         _ => panic!("Expected Double, got {result2:?}"),
     }
 }
 
 #[test]
 fn test_float_logical_ops() {
-    // Float(0.0) && Int32(1) -> false
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(0.0))),
         op: Op::And,
@@ -212,7 +198,6 @@ fn test_float_logical_ops() {
     let result = eval(&expr, &mut ctx).unwrap();
     assert!(matches!(result, Numeric::Bool(false)));
 
-    // Double(1.0) || Int32(0) -> true
     let expr2 = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Double(1.0))),
         op: Op::Or,
@@ -225,9 +210,6 @@ fn test_float_logical_ops() {
 
 #[test]
 fn test_complex_float_expressions() {
-    // ((Int32 + Float) * (Double - Int64)) / Float
-    // ((10 + 2.5) * (5.0 - 2)) / 1.5
-    // (12.5 * 3.0) / 1.5 = 37.5 / 1.5 = 25.0
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Binary(Box::new(Binary {
             lhs: Expr::Binary(Box::new(Binary {
@@ -256,7 +238,6 @@ fn test_complex_float_expressions() {
 
 #[test]
 fn test_float_bitwise_ops_return_zero() {
-    // Float & Int32 returns 0 (error is swallowed)
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(3.14))),
         op: Op::BitAnd,
@@ -265,10 +246,8 @@ fn test_float_bitwise_ops_return_zero() {
 
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
-    // Bitwise ops with float return Int32(0) as a fallback
     assert!(matches!(result, Numeric::Int32(0)));
 
-    // Double | Int64 also returns 0
     let expr2 = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Double(2.71))),
         op: Op::BitOr,
@@ -282,7 +261,6 @@ fn test_float_bitwise_ops_return_zero() {
 #[test]
 #[should_panic(expected = "modulo not supported for floating-point")]
 fn test_float_modulo_error() {
-    // Float % Int32 should error
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(10.0))),
         op: Op::Mod,
@@ -296,7 +274,6 @@ fn test_float_modulo_error() {
 #[test]
 #[should_panic(expected = "shift operations not supported for this type")]
 fn test_float_shift_error() {
-    // Float << Int32 should error
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(10.0))),
         op: Op::LShift,
@@ -309,7 +286,6 @@ fn test_float_shift_error() {
 
 #[test]
 fn test_ternary_with_float() {
-    // Bool ? Float : Int32 -> selected branch type
     let expr = Expr::Ternary(Box::new(Ternary {
         cond: Expr::Lit(IdlLiteral::Numeric(Numeric::Bool(true))),
         then: Expr::Lit(IdlLiteral::Numeric(Numeric::Float(3.14))),
@@ -319,11 +295,10 @@ fn test_ternary_with_float() {
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
     match result {
-        Numeric::Float(f) => assert_eq!(f, 3.14),
+        Numeric::Float(f) => assert!((f - 3.14).abs() < f32::EPSILON),
         _ => panic!("Expected Float, got {result:?}"),
     }
 
-    // Bool ? Int32 : Double -> selected branch type
     let expr2 = Expr::Ternary(Box::new(Ternary {
         cond: Expr::Lit(IdlLiteral::Numeric(Numeric::Bool(false))),
         then: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(42))),
@@ -332,15 +307,14 @@ fn test_ternary_with_float() {
 
     let result2 = eval(&expr2, &mut ctx).unwrap();
     match result2 {
-        Numeric::Double(d) => assert_eq!(d, 2.71828),
+        Numeric::Double(d) => assert!((d - 2.71828).abs() < f64::EPSILON),
         _ => panic!("Expected Double, got {result2:?}"),
     }
 }
 
 #[test]
 fn test_float_precision_edge_cases() {
-    // Large integer that may lose precision when converted to float
-    let large_int = 16_777_217i32; // 2^24 + 1, first integer that can't be represented exactly in float32
+    let large_int = 16_777_217i32;
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(large_int))),
         op: Op::Add,
@@ -351,7 +325,6 @@ fn test_float_precision_edge_cases() {
     let result = eval(&expr, &mut ctx).unwrap();
     match result {
         Numeric::Float(f) => {
-            // The float representation might not be exact
             assert!((f - large_int as f32).abs() <= 1.0);
         }
         _ => panic!("Expected Float, got {result:?}"),
@@ -360,8 +333,6 @@ fn test_float_precision_edge_cases() {
 
 #[test]
 fn test_promotion_hierarchy() {
-    // Test the full promotion hierarchy: Bool -> Int8 -> ... -> Float -> Double
-    // Bool + Int8 + Float + Double should result in Double
     let expr = Expr::Binary(Box::new(Binary {
         lhs: Expr::Binary(Box::new(Binary {
             lhs: Expr::Binary(Box::new(Binary {
@@ -379,7 +350,7 @@ fn test_promotion_hierarchy() {
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
     match result {
-        Numeric::Double(d) => assert_eq!(d, 2.75), // 1 + 1 + 0.5 + 0.25 = 2.75
+        Numeric::Double(d) => assert!((d - 2.75).abs() < f64::EPSILON),
         _ => panic!("Expected Double, got {result:?}"),
     }
 }

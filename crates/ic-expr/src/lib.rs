@@ -126,7 +126,7 @@ pub trait NumericValue: Sized + fmt::Debug + Clone {
     ///
     /// # Errors
     /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn negate(&self, config: &EvalConfig) -> Result<Self>;
+    fn negate(&self, config: EvalConfig) -> Result<Self>;
 
     /// Bitwise NOT
     #[must_use]
@@ -136,31 +136,31 @@ pub trait NumericValue: Sized + fmt::Debug + Clone {
     ///
     /// # Errors
     /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn add(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn add(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Subtraction
     ///
     /// # Errors
     /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn sub(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn sub(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Multiplication
     ///
     /// # Errors
     /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn mul(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn mul(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Division
     ///
     /// # Errors
     /// Returns an error if division by zero occurs
-    fn div(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn div(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Modulo
     ///
     /// # Errors
     /// Returns an error if modulo by zero occurs
-    fn modulo(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn modulo(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Bitwise AND
     #[must_use]
@@ -178,13 +178,13 @@ pub trait NumericValue: Sized + fmt::Debug + Clone {
     ///
     /// # Errors
     /// Returns an error if the shift amount exceeds the configured maximum
-    fn shl(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn shl(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Right shift
     ///
     /// # Errors
     /// Returns an error if the shift amount exceeds the configured maximum
-    fn shr(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
+    fn shr(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
 
     /// Less than
     fn lt(&self, rhs: &Self) -> bool;
@@ -195,7 +195,7 @@ pub trait NumericValue: Sized + fmt::Debug + Clone {
     /// Greater than
     fn gt(&self, rhs: &Self) -> bool;
 
-    /// Greater than or equal  
+    /// Greater than or equal
     fn ge(&self, rhs: &Self) -> bool;
 
     /// Equal
@@ -217,7 +217,7 @@ pub trait EvalContext<T> {
     fn eval_literal(&mut self, lit: &T) -> Result<Self::Value>;
 
     /// Get the evaluation configuration
-    fn config(&self) -> &EvalConfig;
+    fn config(&self) -> EvalConfig;
 }
 
 /// Evaluate an expression with the given context
@@ -321,7 +321,7 @@ impl NumericValue for SimpleInt {
         self.0 != 0
     }
 
-    fn negate(&self, config: &EvalConfig) -> Result<Self> {
+    fn negate(&self, config: EvalConfig) -> Result<Self> {
         match config.overflow {
             OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_neg())),
             OverflowBehavior::Error => self
@@ -337,7 +337,7 @@ impl NumericValue for SimpleInt {
         Self(!self.0)
     }
 
-    fn add(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn add(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         match config.overflow {
             OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_add(rhs.0))),
             OverflowBehavior::Error => self
@@ -349,7 +349,7 @@ impl NumericValue for SimpleInt {
         }
     }
 
-    fn sub(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn sub(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         match config.overflow {
             OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_sub(rhs.0))),
             OverflowBehavior::Error => self
@@ -361,7 +361,7 @@ impl NumericValue for SimpleInt {
         }
     }
 
-    fn mul(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn mul(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         match config.overflow {
             OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_mul(rhs.0))),
             OverflowBehavior::Error => self
@@ -373,14 +373,14 @@ impl NumericValue for SimpleInt {
         }
     }
 
-    fn div(&self, rhs: &Self, _config: &EvalConfig) -> Result<Self> {
+    fn div(&self, rhs: &Self, _config: EvalConfig) -> Result<Self> {
         if rhs.0 == 0 {
             return Err(Error::DivisionByZero);
         }
         Ok(Self(self.0.wrapping_div(rhs.0)))
     }
 
-    fn modulo(&self, rhs: &Self, _config: &EvalConfig) -> Result<Self> {
+    fn modulo(&self, rhs: &Self, _config: EvalConfig) -> Result<Self> {
         if rhs.0 == 0 {
             return Err(Error::ModuloByZero);
         }
@@ -399,7 +399,7 @@ impl NumericValue for SimpleInt {
         Self(self.0 ^ rhs.0)
     }
 
-    fn shl(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn shl(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         if rhs.0 < 0 || rhs.0 > i128::from(config.max_shift) {
             return Err(Error::InvalidShift(rhs.0));
         }
@@ -408,7 +408,7 @@ impl NumericValue for SimpleInt {
         Ok(Self(self.0.wrapping_shl(rhs.0 as u32)))
     }
 
-    fn shr(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
+    fn shr(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         if rhs.0 < 0 || rhs.0 > i128::from(config.max_shift) {
             return Err(Error::InvalidShift(rhs.0));
         }

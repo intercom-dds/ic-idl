@@ -33,6 +33,16 @@ use crate::state::Error;
 
 pub type Expr = ic_expr::Expr<Token>;
 
+/// Extract span from an expression (if possible)
+fn expr_span(expr: &Expr) -> Option<Span> {
+    match expr {
+        ic_expr::Expr::Lit(tok) => Some(tok.span),
+        ic_expr::Expr::Unary(u) => expr_span(&u.expr),
+        ic_expr::Expr::Binary(b) => expr_span(&b.lhs).or_else(|| expr_span(&b.rhs)),
+        ic_expr::Expr::Ternary(t) => expr_span(&t.cond),
+    }
+}
+
 /// Expression evaluation context
 pub trait ExpressionContext {
     /// Get the source text for a span
@@ -74,6 +84,8 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
         Expr::Binary(v) => {
             let lhs = evaluate_expression(&v.lhs, ctx)?;
             let rhs = evaluate_expression(&v.rhs, ctx)?;
+            // Try to get a span from either operand for error reporting
+            let span = expr_span(&v.lhs).or_else(|| expr_span(&v.rhs));
             match v.op {
                 Op::And => Ok(i128::from(lhs != 0 && rhs != 0)),
                 Op::Or => Ok(i128::from(lhs != 0 || rhs != 0)),
@@ -89,8 +101,8 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
                 Op::Add => Ok(lhs.wrapping_add(rhs)),
                 Op::Sub => Ok(lhs.wrapping_sub(rhs)),
                 Op::Mul => Ok(lhs.wrapping_mul(rhs)),
-                Op::Div => checked_div(lhs, rhs),
-                Op::Mod => checked_mod(lhs, rhs),
+                Op::Div => checked_div(lhs, rhs, span),
+                Op::Mod => checked_mod(lhs, rhs, span),
                 Op::LShift => Ok(lhs.wrapping_shl(rhs.try_into().unwrap_or(128))),
                 Op::RShift => Ok(lhs.wrapping_shr(rhs.try_into().unwrap_or(128))),
                 v => unreachable!("invalid binary operator: {v:?}"),
@@ -132,11 +144,11 @@ fn parse_integer(str: &str, base: Base, span: Option<Span>) -> Result<i128, Erro
 }
 
 /// Checked division with proper error handling
-fn checked_div(lhs: i128, rhs: i128) -> Result<i128, Error> {
+fn checked_div(lhs: i128, rhs: i128, span: Option<Span>) -> Result<i128, Error> {
     if rhs == 0 {
         Err(Error::Expr {
             message: "division by zero",
-            span: None,
+            span,
         })
     } else {
         Ok(lhs.wrapping_div(rhs))
@@ -144,11 +156,11 @@ fn checked_div(lhs: i128, rhs: i128) -> Result<i128, Error> {
 }
 
 /// Checked modulo with proper error handling
-fn checked_mod(lhs: i128, rhs: i128) -> Result<i128, Error> {
+fn checked_mod(lhs: i128, rhs: i128, span: Option<Span>) -> Result<i128, Error> {
     if rhs == 0 {
         Err(Error::Expr {
             message: "modulo by zero",
-            span: None,
+            span,
         })
     } else {
         Ok(lhs.wrapping_rem(rhs))

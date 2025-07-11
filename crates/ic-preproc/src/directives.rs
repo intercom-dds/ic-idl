@@ -53,14 +53,14 @@ impl IfState {
         }
     }
 
-    pub fn eval_elif(&mut self, result: bool) -> Result<(), Error> {
+    pub fn eval_elif(&mut self, result: bool, span: Span) -> Result<(), Error> {
         let was_true = match self.state {
             IfKind::If { result } | IfKind::Elif { result } => result,
             IfKind::Else => {
                 self.evaluated = true;
                 return Err(Error::Expr {
                     message: "#elif after #else",
-                    span: None,
+                    span: Some(span),
                 });
             }
         };
@@ -70,14 +70,14 @@ impl IfState {
         Ok(())
     }
 
-    pub fn eval_else(&mut self) -> Result<(), Error> {
+    pub fn eval_else(&mut self, span: Span) -> Result<(), Error> {
         let was_true = match self.state {
             IfKind::If { result } | IfKind::Elif { result } => result,
             IfKind::Else => {
                 self.evaluated = true;
                 return Err(Error::Expr {
                     message: "#else after #else",
-                    span: None,
+                    span: Some(span),
                 });
             }
         };

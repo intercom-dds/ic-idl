@@ -370,10 +370,13 @@ where
     }
 
     fn unary_expr(&mut self) -> Result<Expr, Error> {
+        // Track the last span for error reporting
+        let last_span = self.state().queue.front().map(|t| t.span);
+        
         // Get the next token with macro expansion
         let lhs = self.next().ok_or(Error::Expr {
             message: "unexpected end of expression",
-            span: None,
+            span: last_span,
         })?;
 
         // Check if it's 'defined' - if so, we need special handling
@@ -409,7 +412,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ')'",
-                            span: None,
+                            span: Some(lhs.span),
                         });
                     }
                 }
@@ -428,17 +431,19 @@ where
         // defined can be used as:
         // - defined(MACRO)
         // - defined MACRO
+        let defined_span = self.state().queue.front().map(|t| t.span);
         let next = self.next_raw_token().ok_or(Error::Expr {
             message: "unexpected end after 'defined'",
-            span: None,
+            span: defined_span,
         })?;
 
         let macro_name = match next.kind {
             Kind::LParen => {
                 // defined(MACRO) form
+                let lparen_span = next.span;
                 let name_tok = self.next_raw_token().ok_or(Error::Expr {
                     message: "expected macro name after 'defined('",
-                    span: None,
+                    span: Some(lparen_span),
                 })?;
 
                 // Verify it's an identifier
@@ -464,7 +469,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end in defined(), expected ')'",
-                            span: None,
+                            span: Some(name_span),
                         });
                     }
                 }
@@ -548,7 +553,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ':'",
-                            span: None,
+                            span: Some(op.span),
                         });
                     }
                 }
@@ -1550,7 +1555,7 @@ where
 
         match self.if_state().last_mut() {
             Some(v) => {
-                if let Err(e) = v.eval_elif(result) {
+                if let Err(e) = v.eval_elif(result, span) {
                     self.state().errors.push(e);
                 }
             }
@@ -1564,7 +1569,7 @@ where
     fn dir_else(&mut self, span: Span) {
         match self.if_state().last_mut() {
             Some(v) => {
-                if let Err(e) = v.eval_else() {
+                if let Err(e) = v.eval_else(span) {
                     self.state().errors.push(e);
                 }
             }

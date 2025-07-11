@@ -40,8 +40,7 @@ pub struct AnnMembers<'a> {
 impl<'a> Visitor<'a> for AnnMembers<'_> {
     fn visit_annotation_field(&mut self, def: &'a AnnotationField) {
         if let AnnotationField::Item(item) = def {
-            let span = util::item_span(item);
-
+            let span = util::item_ident_span(item);
             match item.as_ref() {
                 Item::ConstValue(_)
                 | Item::AliasValue(_)

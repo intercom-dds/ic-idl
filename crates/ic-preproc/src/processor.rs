@@ -274,8 +274,8 @@ where
         result
     }
 
-    fn expr_and_eval(&mut self) -> bool {
-        match self.expr().and_then(|v| is_true(&v, self)) {
+    fn expr_and_eval(&mut self, context_span: Span) -> bool {
+        match self.expr(context_span).and_then(|v| is_true(&v, self)) {
             Ok(v) => v,
             Err(e) => {
                 self.state().errors.push(e);
@@ -365,39 +365,36 @@ where
         });
     }
 
-    fn expr(&mut self) -> Result<Expr, Error> {
-        self.binary_expr(0)
+    fn expr(&mut self, context_span: Span) -> Result<Expr, Error> {
+        self.binary_expr(0, context_span)
     }
 
-    fn unary_expr(&mut self) -> Result<Expr, Error> {
-        // Track the last span for error reporting
-        let last_span = self.state().queue.front().map(|t| t.span);
-        
+    fn unary_expr(&mut self, context_span: Span) -> Result<Expr, Error> {
         // Get the next token with macro expansion
         let lhs = self.next().ok_or(Error::Expr {
             message: "unexpected end of expression",
-            span: last_span,
+            span: Some(context_span),
         })?;
 
         // Check if it's 'defined' - if so, we need special handling
         if matches!(lhs.kind, Kind::Ident | Kind::Keyword(_))
             && self.source_of(lhs.span) == "defined"
         {
-            return self.parse_defined_operator();
+            return self.parse_defined_operator(lhs.span);
         }
 
         let expr = match lhs.kind {
             Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } | Kind::Char => Expr::Lit(lhs),
             Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => {
                 let prefix = prefix_precedence(lhs.kind);
-                let expr = self.binary_expr(prefix)?;
+                let expr = self.binary_expr(prefix, context_span)?;
                 Expr::Unary(Box::new(Unary {
                     op: expr_op(lhs)?,
                     expr,
                 }))
             }
             Kind::LParen => {
-                let expr = self.binary_expr(0)?;
+                let expr = self.binary_expr(0, context_span)?;
                 // In expressions, we need to check for closing paren without consuming the line
                 match self.next() {
                     Some(tok) if tok.kind == Kind::RParen => expr,
@@ -427,14 +424,13 @@ where
         Ok(expr)
     }
 
-    fn parse_defined_operator(&mut self) -> Result<Expr, Error> {
+    fn parse_defined_operator(&mut self, defined_span: Span) -> Result<Expr, Error> {
         // defined can be used as:
         // - defined(MACRO)
         // - defined MACRO
-        let defined_span = self.state().queue.front().map(|t| t.span);
         let next = self.next_raw_token().ok_or(Error::Expr {
             message: "unexpected end after 'defined'",
-            span: defined_span,
+            span: Some(defined_span),
         })?;
 
         let macro_name = match next.kind {
@@ -515,8 +511,8 @@ where
 
     // Note that this function uses `Parser::next` instead of `Cursor::next` as
     // we need to expand and inline macros during parsing, except for 'defined'.
-    fn binary_expr(&mut self, min_prec: u8) -> Result<Expr, Error> {
-        let mut lhs = self.unary_expr()?;
+    fn binary_expr(&mut self, min_prec: u8, context_span: Span) -> Result<Expr, Error> {
+        let mut lhs = self.unary_expr(context_span)?;
 
         while let Some(op) = self.next() {
             // We require a lookahead of 1 here, but doing so involves expanding
@@ -532,11 +528,11 @@ where
             };
 
             lhs = if op.kind == Kind::Question {
-                let then = self.expr()?;
+                let then = self.expr(context_span)?;
                 // Check for colon without consuming the line on error
                 match self.next() {
                     Some(tok) if tok.kind == Kind::Colon => {
-                        let els = self.binary_expr(prec + 1)?;
+                        let els = self.binary_expr(prec + 1, context_span)?;
                         Expr::Ternary(Box::new(Ternary {
                             cond: lhs,
                             then,
@@ -559,7 +555,7 @@ where
                 }
             } else {
                 let op = expr_op(op)?;
-                let rhs = self.binary_expr(prec + 1)?;
+                let rhs = self.binary_expr(prec + 1, context_span)?;
                 Expr::Binary(Box::new(Binary { lhs, op, rhs }))
             }
         }
@@ -1521,7 +1517,7 @@ where
     }
 
     fn dir_if(&mut self, span: Span) {
-        let result = self.expr_and_eval();
+        let result = self.expr_and_eval(span);
         let state = IfState::new_if(result, span);
         self.if_state().push(state);
     }
@@ -1551,7 +1547,7 @@ where
     }
 
     fn dir_elif(&mut self, span: Span) {
-        let result = self.expr_and_eval();
+        let result = self.expr_and_eval(span);
 
         match self.if_state().last_mut() {
             Some(v) => {

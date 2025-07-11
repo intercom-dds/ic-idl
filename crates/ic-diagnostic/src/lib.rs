@@ -38,6 +38,7 @@ use format::Line;
 use ic_vfs::{SourceMap, Span};
 
 /// Different ways a diagnostic can be formatted.
+#[must_use]
 pub enum Style {
     /// Single-line diagnostics that only include the location of the lint and
     /// its message. Suitable for logging.
@@ -51,6 +52,7 @@ pub enum Style {
 pub type Color = ic_cli::color::Color;
 
 /// Represents the severity level of a diagnostic.
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
     Error,

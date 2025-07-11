@@ -56,14 +56,12 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
             let slice = self.ctx.slice(num.span);
             if slice.chars().any(char::is_lowercase) {
                 let fixed = slice.to_uppercase().green();
-                if let Some(diag) = self.ctx
-                    .diag_span(
-                        Self::name(),
-                        Self::category(),
-                        "lowercase boolean literals are an InterCOM extension",
-                        Label::new(num.span).message("lowercase boolean literal"),
-                    )
-                {
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "lowercase boolean literals are an InterCOM extension",
+                    Label::new(num.span).message("lowercase boolean literal"),
+                ) {
                     let diag = diag.help(format!("use `{fixed}` instead"));
                     self.ctx.report(Self::name(), Self::category(), diag);
                 }

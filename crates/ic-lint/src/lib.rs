@@ -29,13 +29,12 @@
 
 use std::cell::RefCell;
 
+// Re-export Level for external use
+pub use ic_diagnostic::Level;
 use ic_diagnostic::{Diag, Label, level_span};
 use ic_hir::ResolvedGraph;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
-
-// Re-export Level for external use
-pub use ic_diagnostic::Level;
 
 mod annotation;
 mod pedantic;
@@ -48,7 +47,7 @@ mod iter;
 use std::collections::HashMap;
 
 /// Helper macro to simplify lint implementation.
-/// 
+///
 /// Example:
 /// ```
 /// lint_impl! {
@@ -97,6 +96,7 @@ pub enum Category {
 }
 
 /// Configuration for lint levels.
+#[must_use]
 #[derive(Debug, Default)]
 pub struct LintConfig {
     /// Maps categories to their configured level.
@@ -110,12 +110,24 @@ impl LintConfig {
     pub fn new() -> Self {
         let mut config = Self::default();
         // Default levels for each category
-        config.category_levels.insert(Category::Syntax, Level::Error);
-        config.category_levels.insert(Category::Semantic, Level::Error);
-        config.category_levels.insert(Category::Annotation, Level::Warning);
-        config.category_levels.insert(Category::Pedantic, Level::Warning);
-        config.category_levels.insert(Category::Unsupported, Level::Warning);
-        config.category_levels.insert(Category::Deprecated, Level::Warning);
+        config
+            .category_levels
+            .insert(Category::Syntax, Level::Error);
+        config
+            .category_levels
+            .insert(Category::Semantic, Level::Error);
+        config
+            .category_levels
+            .insert(Category::Annotation, Level::Warning);
+        config
+            .category_levels
+            .insert(Category::Pedantic, Level::Warning);
+        config
+            .category_levels
+            .insert(Category::Unsupported, Level::Warning);
+        config
+            .category_levels
+            .insert(Category::Deprecated, Level::Warning);
         config
     }
 
@@ -222,11 +234,11 @@ pub struct Report {
 }
 
 /// Returns all known lint names for validation.
+#[must_use]
 pub fn all_lint_names() -> Vec<&'static str> {
     vec![
         // Annotation lints
         "annotated_decl",
-        
         // Pedantic lints
         "array_param",
         "assign_expr",
@@ -238,17 +250,14 @@ pub fn all_lint_names() -> Vec<&'static str> {
         "omitted_in",
         "scoped_lit",
         "complex_key",
-        
         // Semantic lints
         "keywords",
         "oneway",
-        
         // Syntax lints
         "ann_members",
         "ascii",
         "empty",
         "sanity",
-        
         // Unsupported lints
         "items",
         "proto",
@@ -256,6 +265,7 @@ pub fn all_lint_names() -> Vec<&'static str> {
 }
 
 /// Normalize a lint name by replacing dashes with underscores.
+#[must_use]
 pub fn normalize_lint_name(name: &str) -> String {
     name.replace('-', "_")
 }
@@ -314,7 +324,11 @@ pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
 }
 
 /// Set of lints that operates on the HIR with a custom configuration.
-pub fn lint_hir_with_config(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap, config: &LintConfig) -> Report {
+pub fn lint_hir_with_config(
+    hir: &ic_hir::ResolvedGraph,
+    vfs: &SourceMap,
+    config: &LintConfig,
+) -> Report {
     let ctx = LintCtx {
         vfs,
         warnings: RefCell::default(),

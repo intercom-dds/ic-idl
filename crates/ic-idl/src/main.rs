@@ -116,7 +116,7 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
     let mut trees = vec![];
     let mut all_errors = vec![];
     let mut all_warnings = vec![];
-    
+
     let files = collect_files(&options.files)
         .map_err(|e| e.into_iter().map(Error::Io).collect::<Vec<_>>())?;
 
@@ -128,12 +128,12 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
             trees.push(result);
         }
     }
-    
+
     // Emit all warnings regardless of errors
     if !all_warnings.is_empty() {
         pretty::emit_warnings(&all_warnings, vfs);
     }
-    
+
     // If there were any errors, emit them and return
     if !all_errors.is_empty() {
         pretty::emit_errors(&all_errors, vfs);
@@ -153,15 +153,10 @@ struct Parsed {
 // meet an error and instead summarize everything at the end. This also applies
 // to syntax errors in the input: the parser will attempt to recover so we can
 // continue parsing and construct a partial AST.
-fn try_parse(
-    options: &Options,
-    proc: ProcArgs,
-    path: &Path,
-    vfs: &mut SourceMap,
-) -> Parsed {
+fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap) -> Parsed {
     let mut errors = vec![];
     let mut warnings = vec![];
-    
+
     // Try to parse the file
     let ast = match ic_parse::from_path(path, proc, vfs) {
         Ok(ast) => ast,
@@ -178,7 +173,7 @@ fn try_parse(
             };
         }
     };
-    
+
     // Collect parse errors and warnings
     errors.extend(ast.errors.iter().cloned().map(Into::into));
     warnings.extend(ast.warnings.iter().map(pretty::parse_error_to_warning));
@@ -202,7 +197,7 @@ fn try_parse(
         if options.unstable.hir_dump {
             ic_hir_tree::emit_tree(&hir);
         }
-        
+
         // Only lint HIR if no errors so far
         if errors.is_empty() {
             // Lint the HIR
@@ -210,7 +205,7 @@ fn try_parse(
             errors.extend(report.errors.into_iter().map(Into::into));
             warnings.extend(report.warnings);
         }
-        
+
         errors.extend(hir.errors.into_iter().map(Into::into));
     }
 
@@ -220,8 +215,12 @@ fn try_parse(
     } else {
         None
     };
-    
-    Parsed { result, errors, warnings }
+
+    Parsed {
+        result,
+        errors,
+        warnings,
+    }
 }
 
 fn try_ptree(options: &Options, parsed: &[ParseResult]) -> Result<Vec<File>, Error> {

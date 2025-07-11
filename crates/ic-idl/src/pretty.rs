@@ -68,9 +68,10 @@ fn parse_error_to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
             Label::new(*span).message("unclosed delimiter here"),
         ),
 
-        Reason::Custom(message) => {
-            diag_fn(message.clone(), Label::new(error.span).message("unexpected token"))
-        }
+        Reason::Custom(message) => diag_fn(
+            message.clone(),
+            Label::new(error.span).message("unexpected token"),
+        ),
 
         Reason::Unexpected => {
             let cause = if let Some(e) = &error.found {

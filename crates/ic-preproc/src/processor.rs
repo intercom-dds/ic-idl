@@ -210,9 +210,14 @@ where
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
     /// `#undef foo bar`, where "bar" is an extraneous token.
-    fn warn_trailing(&mut self, span: Span, directive: Directive) {
+    fn warn_trailing(&mut self, directive: Directive) {
         let tokens = self.cursor().until_newline();
-        if !tokens.is_empty() {
+        if let (Some(first), Some(last)) = (tokens.first(), tokens.last()) {
+            let span = Span {
+                start: first.span.start,
+                end: last.span.end,
+            };
+
             self.state().warnings.push(Error::Extraneous {
                 directive,
                 span,
@@ -349,7 +354,7 @@ where
             }
             Some(b'l') => {
                 if directive_str == "line" {
-                    DirectiveHandler::dir_line(self, span);
+                    DirectiveHandler::dir_line(self);
                 } else {
                     self.invalid_directive(span);
                 }
@@ -1444,7 +1449,7 @@ where
                 return;
             }
         };
-        self.warn_trailing(span, Directive::Include);
+        self.warn_trailing(Directive::Include);
 
         if self.is_active() {
             // Bail if we've hit the recursion depth
@@ -1506,10 +1511,10 @@ where
     }
 
     fn dir_undef(&mut self) {
-        let Some((name, span)) = self.macro_name() else {
+        let Some((name, _span)) = self.macro_name() else {
             return;
         };
-        self.warn_trailing(span, Directive::Undef);
+        self.warn_trailing(Directive::Undef);
 
         if self.is_active() {
             self.state().defines.remove(name);
@@ -1523,8 +1528,8 @@ where
     }
 
     fn dir_ifdef(&mut self, span: Span) {
-        let result = if let Some((name, name_span)) = self.macro_name() {
-            self.warn_trailing(name_span, Directive::Ifdef);
+        let result = if let Some((name, _span)) = self.macro_name() {
+            self.warn_trailing(Directive::Ifdef);
             self.is_defined(name)
         } else {
             false
@@ -1535,8 +1540,8 @@ where
     }
 
     fn dir_ifndef(&mut self, span: Span) {
-        let result = if let Some((name, name_span)) = self.macro_name() {
-            self.warn_trailing(name_span, Directive::Ifndef);
+        let result = if let Some((name, _span)) = self.macro_name() {
+            self.warn_trailing(Directive::Ifndef);
             !self.is_defined(name)
         } else {
             false
@@ -1614,7 +1619,7 @@ where
         }
     }
 
-    fn dir_line(&mut self, span: Span) {
+    fn dir_line(&mut self) {
         // Only decimal numbers allowed here
         let _line = self.expect(
             Kind::Number {
@@ -1630,7 +1635,7 @@ where
             }
         }
 
-        self.warn_trailing(span, Directive::Line);
+        self.warn_trailing(Directive::Line);
 
         // For now, just parse and ignore #line directives
         // Actual line number manipulation would require more infrastructure

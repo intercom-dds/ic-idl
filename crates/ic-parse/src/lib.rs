@@ -252,7 +252,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                 warnings.push(Error {
                     found: None,
                     expected: None,
-                    reason: Reason::Custom(format!("extra tokens after #{directive:?} directive")),
+                    reason: Reason::Custom(format!("extra tokens after #{directive} directive")),
                     label: Some("preprocessor warning"),
                     span: *span,
                 });

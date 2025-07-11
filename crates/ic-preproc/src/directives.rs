@@ -140,5 +140,5 @@ pub trait DirectiveHandler {
     fn dir_warning(&mut self, span: Span);
 
     /// Handle #line directive
-    fn dir_line(&mut self, span: Span);
+    fn dir_line(&mut self);
 }

@@ -55,8 +55,8 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
         Expr::Lit(v) => {
             let lit = ctx.source_of(v.span);
             match v.kind {
-                Kind::Number { base } => parse_integer(lit, base, Some(v.span)),
-                Kind::Char => parse_character(lit, Some(v.span)),
+                Kind::Number { base } => parse_integer(lit, base, v.span),
+                Kind::Char => parse_character(lit, v.span),
                 Kind::Ident | Kind::Keyword(_) => {
                     // Handle predefined macros in expressions
                     match lit {
@@ -84,8 +84,11 @@ pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i
         Expr::Binary(v) => {
             let lhs = evaluate_expression(&v.lhs, ctx)?;
             let rhs = evaluate_expression(&v.rhs, ctx)?;
-            // Try to get a span from either operand for error reporting
-            let span = expr_span(&v.lhs).or_else(|| expr_span(&v.rhs));
+            // Get a span from either operand for error reporting
+            // This should always succeed for valid expressions
+            let span = expr_span(&v.lhs)
+                .or_else(|| expr_span(&v.rhs))
+                .expect("Binary expression should have at least one literal with a span");
             match v.op {
                 Op::And => Ok(i128::from(lhs != 0 && rhs != 0)),
                 Op::Or => Ok(i128::from(lhs != 0 || rhs != 0)),
@@ -124,7 +127,7 @@ pub fn is_true(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<bool, Error> 
 }
 
 /// Parse an integer literal
-fn parse_integer(str: &str, base: Base, span: Option<Span>) -> Result<i128, Error> {
+fn parse_integer(str: &str, base: Base, span: Span) -> Result<i128, Error> {
     let str = match base {
         Base::Octal => {
             if str.len() > 1 {
@@ -144,7 +147,7 @@ fn parse_integer(str: &str, base: Base, span: Option<Span>) -> Result<i128, Erro
 }
 
 /// Checked division with proper error handling
-fn checked_div(lhs: i128, rhs: i128, span: Option<Span>) -> Result<i128, Error> {
+fn checked_div(lhs: i128, rhs: i128, span: Span) -> Result<i128, Error> {
     if rhs == 0 {
         Err(Error::Expr {
             message: "division by zero",
@@ -156,7 +159,7 @@ fn checked_div(lhs: i128, rhs: i128, span: Option<Span>) -> Result<i128, Error> 
 }
 
 /// Checked modulo with proper error handling
-fn checked_mod(lhs: i128, rhs: i128, span: Option<Span>) -> Result<i128, Error> {
+fn checked_mod(lhs: i128, rhs: i128, span: Span) -> Result<i128, Error> {
     if rhs == 0 {
         Err(Error::Expr {
             message: "modulo by zero",
@@ -168,7 +171,7 @@ fn checked_mod(lhs: i128, rhs: i128, span: Option<Span>) -> Result<i128, Error> 
 }
 
 /// Parse a character literal to its integer value
-fn parse_character(lit: &str, span: Option<Span>) -> Result<i128, Error> {
+fn parse_character(lit: &str, span: Span) -> Result<i128, Error> {
     // Remove surrounding quotes
     let content = lit.trim_start_matches('\'').trim_end_matches('\'');
 

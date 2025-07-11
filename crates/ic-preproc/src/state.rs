@@ -175,6 +175,6 @@ pub enum Error {
     },
     Expr {
         message: &'static str,
-        span: Option<Span>,
+        span: Span,
     },
 }

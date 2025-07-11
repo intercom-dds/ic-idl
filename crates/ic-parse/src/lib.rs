@@ -235,7 +235,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                     expected: None,
                     reason: Reason::Custom((*message).to_string()),
                     label: Some("preprocessor error"),
-                    span: span.unwrap_or_default(),
+                    span: *span,
                 });
             }
             ic_preproc::Error::Extraneous { .. } => {}

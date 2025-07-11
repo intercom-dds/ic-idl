@@ -60,7 +60,7 @@ impl IfState {
                 self.evaluated = true;
                 return Err(Error::Expr {
                     message: "#elif after #else",
-                    span: Some(span),
+                    span,
                 });
             }
         };
@@ -77,7 +77,7 @@ impl IfState {
                 self.evaluated = true;
                 return Err(Error::Expr {
                     message: "#else after #else",
-                    span: Some(span),
+                    span,
                 });
             }
         };

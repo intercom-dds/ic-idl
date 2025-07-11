@@ -373,7 +373,7 @@ where
         // Get the next token with macro expansion
         let lhs = self.next().ok_or(Error::Expr {
             message: "unexpected end of expression",
-            span: Some(context_span),
+            span: context_span,
         })?;
 
         // Check if it's 'defined' - if so, we need special handling
@@ -409,7 +409,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ')'",
-                            span: Some(lhs.span),
+                            span: lhs.span,
                         });
                     }
                 }
@@ -430,7 +430,7 @@ where
         // - defined MACRO
         let next = self.next_raw_token().ok_or(Error::Expr {
             message: "unexpected end after 'defined'",
-            span: Some(defined_span),
+            span: defined_span,
         })?;
 
         let macro_name = match next.kind {
@@ -439,7 +439,7 @@ where
                 let lparen_span = next.span;
                 let name_tok = self.next_raw_token().ok_or(Error::Expr {
                     message: "expected macro name after 'defined('",
-                    span: Some(lparen_span),
+                    span: lparen_span,
                 })?;
 
                 // Verify it's an identifier
@@ -465,7 +465,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end in defined(), expected ')'",
-                            span: Some(name_span),
+                            span: name_span,
                         });
                     }
                 }
@@ -549,7 +549,7 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ':'",
-                            span: Some(op.span),
+                            span: op.span,
                         });
                     }
                 }

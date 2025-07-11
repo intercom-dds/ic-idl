@@ -25,7 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_expr::Op;
+use ic_expr::c_adapter::{CContext, CLiteral};
+use ic_expr::{Op, SimpleInt, eval};
 use ic_lexer::token::{Base, Kind, Token};
 
 use crate::Span;
@@ -43,80 +44,143 @@ fn expr_span(expr: &Expr) -> Option<Span> {
     }
 }
 
+/// Find the span of a division or modulo operation in an expression
+fn find_div_mod_span(expr: &Expr) -> Option<Span> {
+    match expr {
+        ic_expr::Expr::Binary(b) => {
+            match b.op {
+                Op::Div | Op::Mod => {
+                    // For division/modulo, prefer the right operand's span (divisor)
+                    expr_span(&b.rhs).or_else(|| expr_span(&b.lhs))
+                }
+                _ => {
+                    // Check recursively in both operands
+                    find_div_mod_span(&b.lhs).or_else(|| find_div_mod_span(&b.rhs))
+                }
+            }
+        }
+        ic_expr::Expr::Unary(u) => find_div_mod_span(&u.expr),
+        ic_expr::Expr::Ternary(t) => find_div_mod_span(&t.cond)
+            .or_else(|| find_div_mod_span(&t.then))
+            .or_else(|| find_div_mod_span(&t.els)),
+        ic_expr::Expr::Lit(_) => None,
+    }
+}
+
 /// Expression evaluation context
 pub trait ExpressionContext {
     /// Get the source text for a span
     fn source_of(&self, span: Span) -> &str;
 }
 
+/// Convert a Token to CLiteral for ic-expr evaluation
+fn token_to_cliteral(token: &Token, ctx: &dyn ExpressionContext) -> Result<CLiteral, Error> {
+    let lit = ctx.source_of(token.span);
+    match token.kind {
+        Kind::Number { base } => {
+            let value = parse_integer(lit, base, token.span)?;
+            Ok(CLiteral::Int(value))
+        }
+        Kind::Char => {
+            let value = parse_character(lit, token.span)?;
+            Ok(CLiteral::Char(char::from_u32(value as u32).unwrap_or('\0')))
+        }
+        Kind::Ident | Kind::Keyword(_) => Ok(CLiteral::Ident(lit.to_string())),
+        _ => unreachable!("Invalid token kind for literal: {:?}", token.kind),
+    }
+}
+
+/// Convert our Expr<Token> to Expr<CLiteral> for evaluation
+fn convert_expr(
+    expr: &Expr,
+    ctx: &dyn ExpressionContext,
+) -> Result<ic_expr::Expr<CLiteral>, Error> {
+    match expr {
+        ic_expr::Expr::Lit(token) => {
+            let literal = token_to_cliteral(token, ctx)?;
+            Ok(ic_expr::Expr::Lit(literal))
+        }
+        ic_expr::Expr::Unary(unary) => {
+            let converted = convert_expr(&unary.expr, ctx)?;
+            Ok(ic_expr::Expr::Unary(Box::new(ic_expr::Unary {
+                op: unary.op,
+                expr: converted,
+            })))
+        }
+        ic_expr::Expr::Binary(binary) => {
+            let lhs = convert_expr(&binary.lhs, ctx)?;
+            let rhs = convert_expr(&binary.rhs, ctx)?;
+            Ok(ic_expr::Expr::Binary(Box::new(ic_expr::Binary {
+                lhs,
+                op: binary.op,
+                rhs,
+            })))
+        }
+        ic_expr::Expr::Ternary(ternary) => {
+            let cond = convert_expr(&ternary.cond, ctx)?;
+            let then = convert_expr(&ternary.then, ctx)?;
+            let els = convert_expr(&ternary.els, ctx)?;
+            Ok(ic_expr::Expr::Ternary(Box::new(ic_expr::Ternary {
+                cond,
+                then,
+                els,
+            })))
+        }
+    }
+}
+
 /// Evaluate a preprocessor expression to an integer value
 pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i128, Error> {
-    match expr {
-        Expr::Lit(v) => {
-            let lit = ctx.source_of(v.span);
-            match v.kind {
-                Kind::Number { base } => parse_integer(lit, base, v.span),
-                Kind::Char => parse_character(lit, v.span),
-                Kind::Ident | Kind::Keyword(_) => {
-                    // Handle predefined macros in expressions
-                    match lit {
-                        "__LINE__" => {
-                            // For now, just return a non-zero value so #if __LINE__ > 0 works
-                            // Proper implementation would require access to span location info
-                            Ok(1)
-                        }
-                        _ => Ok(0), // Undefined macros evaluate to 0
-                    }
-                }
-                _ => unreachable!(),
-            }
+    // Convert to CLiteral expression
+    let converted_expr = convert_expr(expr, ctx)?;
+
+    // Create evaluation context with macro resolver
+    let mut eval_ctx = CContext::new(|name| {
+        // Handle special identifiers
+        match name {
+            "__LINE__" => Some(1), // For now, just return 1
+            _ => Some(0),          // Undefined macros evaluate to 0
         }
-        Expr::Unary(v) => {
-            let expr = evaluate_expression(&v.expr, ctx)?;
-            match v.op {
-                Op::Add => Ok(expr),
-                Op::Sub => Ok(-expr),
-                Op::Not => Ok(i128::from(expr == 0)),
-                Op::BitNot => Ok(!expr),
-                v => unreachable!("invalid unary operator: {v:?}"),
-            }
+    });
+
+    // Evaluate using ic-expr
+    match eval(&converted_expr, &mut eval_ctx) {
+        Ok(SimpleInt(value)) => Ok(value),
+        Err(ic_expr::Error::DivisionByZero) => {
+            // Try to find the specific division operation span
+            let span = find_div_mod_span(expr)
+                .or_else(|| expr_span(expr))
+                .unwrap_or_else(|| panic!("Expression should have at least one token with a span"));
+            Err(Error::Expr {
+                message: "division by zero",
+                span,
+            })
         }
-        Expr::Binary(v) => {
-            let lhs = evaluate_expression(&v.lhs, ctx)?;
-            let rhs = evaluate_expression(&v.rhs, ctx)?;
-            // Get a span from either operand for error reporting
-            // This should always succeed for valid expressions
-            let span = expr_span(&v.lhs)
-                .or_else(|| expr_span(&v.rhs))
-                .expect("Binary expression should have at least one literal with a span");
-            match v.op {
-                Op::And => Ok(i128::from(lhs != 0 && rhs != 0)),
-                Op::Or => Ok(i128::from(lhs != 0 || rhs != 0)),
-                Op::EqEq => Ok(i128::from(lhs == rhs)),
-                Op::NotEq => Ok(i128::from(lhs != rhs)),
-                Op::Gt => Ok(i128::from(lhs > rhs)),
-                Op::GtEq => Ok(i128::from(lhs >= rhs)),
-                Op::Lt => Ok(i128::from(lhs < rhs)),
-                Op::LtEq => Ok(i128::from(lhs <= rhs)),
-                Op::BitAnd => Ok(lhs & rhs),
-                Op::BitOr => Ok(lhs | rhs),
-                Op::BitXor => Ok(lhs ^ rhs),
-                Op::Add => Ok(lhs.wrapping_add(rhs)),
-                Op::Sub => Ok(lhs.wrapping_sub(rhs)),
-                Op::Mul => Ok(lhs.wrapping_mul(rhs)),
-                Op::Div => checked_div(lhs, rhs, span),
-                Op::Mod => checked_mod(lhs, rhs, span),
-                Op::LShift => Ok(lhs.wrapping_shl(rhs.try_into().unwrap_or(128))),
-                Op::RShift => Ok(lhs.wrapping_shr(rhs.try_into().unwrap_or(128))),
-                v => unreachable!("invalid binary operator: {v:?}"),
-            }
+        Err(ic_expr::Error::ModuloByZero) => {
+            // Try to find the specific modulo operation span
+            let span = find_div_mod_span(expr)
+                .or_else(|| expr_span(expr))
+                .unwrap_or_else(|| panic!("Expression should have at least one token with a span"));
+            Err(Error::Expr {
+                message: "modulo by zero",
+                span,
+            })
         }
-        Expr::Ternary(v) => {
-            if is_true(&v.cond, ctx)? {
-                evaluate_expression(&v.then, ctx)
-            } else {
-                evaluate_expression(&v.els, ctx)
-            }
+        Err(ic_expr::Error::InvalidShift(_amount)) => {
+            let span = expr_span(expr)
+                .unwrap_or_else(|| panic!("Expression should have at least one token with a span"));
+            Err(Error::Expr {
+                message: "invalid shift amount",
+                span,
+            })
+        }
+        Err(_e) => {
+            let span = expr_span(expr)
+                .unwrap_or_else(|| panic!("Expression should have at least one token with a span"));
+            Err(Error::Expr {
+                message: "expression evaluation error",
+                span,
+            })
         }
     }
 }
@@ -144,30 +208,6 @@ fn parse_integer(str: &str, base: Base, span: Span) -> Result<i128, Error> {
         message: "invalid literal",
         span,
     })
-}
-
-/// Checked division with proper error handling
-fn checked_div(lhs: i128, rhs: i128, span: Span) -> Result<i128, Error> {
-    if rhs == 0 {
-        Err(Error::Expr {
-            message: "division by zero",
-            span,
-        })
-    } else {
-        Ok(lhs.wrapping_div(rhs))
-    }
-}
-
-/// Checked modulo with proper error handling
-fn checked_mod(lhs: i128, rhs: i128, span: Span) -> Result<i128, Error> {
-    if rhs == 0 {
-        Err(Error::Expr {
-            message: "modulo by zero",
-            span,
-        })
-    } else {
-        Ok(lhs.wrapping_rem(rhs))
-    }
 }
 
 /// Parse a character literal to its integer value

@@ -75,7 +75,7 @@ impl Numeric {
     fn binop_arith<F>(
         &self,
         rhs: &Self,
-        op_name: &'static str,
+        _op_name: &'static str,
         config: &EvalConfig,
         mut op: F,
     ) -> Result<Self>
@@ -205,11 +205,22 @@ impl NumericValue for Numeric {
     }
 
     fn add(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
-        self.binop_arith(rhs, "addition", config, |a, b, cfg| match cfg.overflow {
-            OverflowBehavior::Wrap => Ok(a.wrapping_add(b)),
-            OverflowBehavior::Error => a.checked_add(b).ok_or(Error::Overflow("addition")),
-            OverflowBehavior::Saturate => Ok(a.saturating_add(b)),
-        })
+        match (self, rhs) {
+            // For integer types, check overflow based on config
+            (Self::Int8(a), Self::Int8(b)) => match config.overflow {
+                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_add(*b))),
+                OverflowBehavior::Error => a
+                    .checked_add(*b)
+                    .map(Self::Int8)
+                    .ok_or(Error::Overflow("addition")),
+                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_add(*b))),
+            },
+            _ => self.binop_arith(rhs, "addition", config, |a, b, cfg| match cfg.overflow {
+                OverflowBehavior::Wrap => Ok(a.wrapping_add(b)),
+                OverflowBehavior::Error => a.checked_add(b).ok_or(Error::Overflow("addition")),
+                OverflowBehavior::Saturate => Ok(a.saturating_add(b)),
+            }),
+        }
     }
 
     fn sub(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {

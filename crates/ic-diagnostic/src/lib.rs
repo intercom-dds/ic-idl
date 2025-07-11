@@ -50,6 +50,15 @@ pub enum Style {
 
 pub type Color = ic_cli::color::Color;
 
+/// Represents the severity level of a diagnostic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Level {
+    Error,
+    Warning,
+    /// Disabled - the diagnostic should not be emitted at all
+    Disabled,
+}
+
 /// A single diagnostic intended to display lints about a particular item.
 ///
 /// Each diagnostic should only address a single issue. If there are multiple
@@ -82,6 +91,16 @@ impl Diag {
             color: Color::Yellow,
         };
         Self::with_title(title, message.into())
+    }
+
+    /// Creates a diagnostic with the specified severity level.
+    /// Returns None if the level is Disabled.
+    pub fn with_level<S: Into<String>>(level: Level, message: S) -> Option<Self> {
+        match level {
+            Level::Error => Some(Self::error(message)),
+            Level::Warning => Some(Self::warning(message)),
+            Level::Disabled => None,
+        }
     }
 
     /// The main diagnostic message that should give a fairly short, concise
@@ -171,6 +190,17 @@ pub fn error_span<S: Into<String>>(msg: S, label: Label) -> Diag {
 /// Creates a warning diagnostic that highlights the given span.
 pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
     Diag::warning(msg).label(label.color(Color::Yellow))
+}
+
+/// Creates a diagnostic with the specified level that highlights the given span.
+/// Returns None if the level is Disabled.
+pub fn level_span<S: Into<String>>(level: Level, msg: S, label: Label) -> Option<Diag> {
+    let color = match level {
+        Level::Error => Color::Red,
+        Level::Warning => Color::Yellow,
+        Level::Disabled => return None,
+    };
+    Diag::with_level(level, msg).map(|d| d.label(label.color(color)))
 }
 
 /// # Errors

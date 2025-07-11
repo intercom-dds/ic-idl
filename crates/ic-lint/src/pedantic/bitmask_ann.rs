@@ -49,6 +49,10 @@ impl<'a> Visitor<'a> for BitmaskAnn<'_> {
 }
 
 impl<'a> Lint<'a> for BitmaskAnn<'_> {
+    fn name() -> &'static str {
+        "bitmask_ann"
+    }
+
     fn category() -> Category {
         Category::Pedantic
     }

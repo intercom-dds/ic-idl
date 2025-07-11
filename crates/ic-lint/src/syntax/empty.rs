@@ -94,6 +94,10 @@ impl<'a> Visitor<'a> for EmptyTypes<'a> {
 }
 
 impl<'a> Lint<'a> for EmptyTypes<'a> {
+    fn name() -> &'static str {
+        "empty"
+    }
+
     fn category() -> crate::Category {
         Category::Syntax
     }

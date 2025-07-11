@@ -67,6 +67,10 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
 }
 
 impl<'a> Lint<'a> for AsciiIdent<'a> {
+    fn name() -> &'static str {
+        "ascii"
+    }
+
     fn category() -> crate::Category {
         Category::Syntax
     }

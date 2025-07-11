@@ -156,8 +156,12 @@ fn try_parse(
         println!("{:#?}", ast.tree);
     }
 
+    // Create lint configuration from CLI flags
+    let (specific_lints, error_lints) = config::take_parsed_warnings();
+    let lint_config = options.warn.to_lint_config(&specific_lints, &error_lints);
+
     // Lint the AST
-    let report = ic_lint::lint_syntax(&ast.tree, vfs);
+    let report = ic_lint::lint_syntax_with_config(&ast.tree, vfs, &lint_config);
     errors.extend(report.errors.into_iter().map(Into::into));
     warnings.extend(report.warnings);
 
@@ -168,7 +172,7 @@ fn try_parse(
     }
 
     // Lint the HIR
-    let report = ic_lint::lint_hir(&hir, vfs);
+    let report = ic_lint::lint_hir_with_config(&hir, vfs, &lint_config);
     errors.extend(report.errors.into_iter().map(Into::into));
     warnings.extend(report.warnings);
 

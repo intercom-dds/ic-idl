@@ -29,10 +29,13 @@
 
 use std::cell::RefCell;
 
-use ic_diagnostic::Diag;
+use ic_diagnostic::{Diag, Label, level_span};
 use ic_hir::ResolvedGraph;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
+
+// Re-export Level for external use
+pub use ic_diagnostic::Level;
 
 mod annotation;
 mod pedantic;
@@ -42,8 +45,37 @@ mod unsupported;
 
 mod iter;
 
+use std::collections::HashMap;
+
+/// Helper macro to simplify lint implementation.
+/// 
+/// Example:
+/// ```
+/// lint_impl! {
+///     name: "lowercase_bool",
+///     category: Category::Pedantic,
+///     message: "lowercase boolean literals are an InterCOM extension",
+/// }
+/// ```
+#[macro_export]
+macro_rules! lint_impl {
+    (
+        name: $name:expr,
+        category: $cat:expr,
+        $(,)?
+    ) => {
+        fn name() -> &'static str {
+            $name
+        }
+
+        fn category() -> $crate::Category {
+            $cat
+        }
+    };
+}
+
 /// The supported lint categories.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Category {
     /// Annotation-related lints
     Annotation,
@@ -59,6 +91,56 @@ pub enum Category {
 
     // Syntax errors or other semantic issues that should always be hard errors
     Syntax,
+
+    // Semantic validation that should always be hard errors
+    Semantic,
+}
+
+/// Configuration for lint levels.
+#[derive(Debug, Default)]
+pub struct LintConfig {
+    /// Maps categories to their configured level.
+    pub category_levels: HashMap<Category, Level>,
+    /// Maps specific lint names to their configured level.
+    pub lint_levels: HashMap<&'static str, Level>,
+}
+
+impl LintConfig {
+    /// Create a new default lint configuration.
+    pub fn new() -> Self {
+        let mut config = Self::default();
+        // Default levels for each category
+        config.category_levels.insert(Category::Syntax, Level::Error);
+        config.category_levels.insert(Category::Semantic, Level::Error);
+        config.category_levels.insert(Category::Annotation, Level::Warning);
+        config.category_levels.insert(Category::Pedantic, Level::Warning);
+        config.category_levels.insert(Category::Unsupported, Level::Warning);
+        config.category_levels.insert(Category::Deprecated, Level::Warning);
+        config
+    }
+
+    /// Set the level for an entire category.
+    pub fn set_category_level(&mut self, category: Category, level: Level) {
+        self.category_levels.insert(category, level);
+    }
+
+    /// Set the level for a specific lint.
+    pub fn set_lint_level(&mut self, lint_name: &str, level: Level) {
+        // We need to find the static string that matches this lint name
+        if let Some(&static_name) = all_lint_names().iter().find(|&&n| n == lint_name) {
+            self.lint_levels.insert(static_name, level);
+        }
+    }
+
+    /// Get the configured level for a lint.
+    pub fn get_level(&self, lint_name: &'static str, category: Category) -> Level {
+        // Specific lint level overrides category level
+        self.lint_levels
+            .get(lint_name)
+            .or_else(|| self.category_levels.get(&category))
+            .copied()
+            .unwrap_or(Level::Warning)
+    }
 }
 
 #[derive(Debug)]
@@ -66,6 +148,7 @@ pub struct LintCtx<'a> {
     vfs: &'a SourceMap,
     warnings: RefCell<Vec<Diag>>,
     errors: RefCell<Vec<Diag>>,
+    config: &'a LintConfig,
 }
 
 impl LintCtx<'_> {
@@ -81,6 +164,29 @@ impl LintCtx<'_> {
         self.warnings.borrow_mut().push(diag);
     }
 
+    /// Report a diagnostic with the appropriate level based on lint configuration.
+    pub fn report(&self, lint_name: &'static str, category: Category, diag: Diag) {
+        let level = self.config.get_level(lint_name, category);
+        match level {
+            Level::Error => self.report_error(diag),
+            Level::Warning => self.report_warn(diag),
+            Level::Disabled => {} // Don't emit disabled diagnostics
+        }
+    }
+
+    /// Create a diagnostic with the appropriate level for this lint.
+    /// Returns None if the lint is disabled.
+    pub fn diag_span<S: Into<String>>(
+        &self,
+        lint_name: &'static str,
+        category: Category,
+        msg: S,
+        label: Label,
+    ) -> Option<Diag> {
+        let level = self.config.get_level(lint_name, category);
+        level_span(level, msg, label)
+    }
+
     /// Returns a slice of the given span.
     // TODO: spans can go across files, this has to be accounted for
     pub fn slice(&self, span: Span) -> &str {
@@ -89,6 +195,9 @@ impl LintCtx<'_> {
 }
 
 pub trait Lint<'a>: Sized {
+    /// The unique name of this lint.
+    fn name() -> &'static str;
+
     /// Category of the lint.
     fn category() -> Category;
 
@@ -112,16 +221,61 @@ pub struct Report {
     pub warnings: Vec<Diag>,
 }
 
+/// Returns all known lint names for validation.
+pub fn all_lint_names() -> Vec<&'static str> {
+    vec![
+        // Annotation lints
+        "annotated_decl",
+        
+        // Pedantic lints
+        "array_param",
+        "assign_expr",
+        "bitmask_ann",
+        "complex_lit",
+        "empty_mod",
+        "lowercase_bool",
+        "null",
+        "omitted_in",
+        "scoped_lit",
+        "complex_key",
+        
+        // Semantic lints
+        "keywords",
+        "oneway",
+        
+        // Syntax lints
+        "ann_members",
+        "ascii",
+        "empty",
+        "sanity",
+        
+        // Unsupported lints
+        "items",
+        "proto",
+    ]
+}
+
+/// Normalize a lint name by replacing dashes with underscores.
+pub fn normalize_lint_name(name: &str) -> String {
+    name.replace('-', "_")
+}
+
 /// Traverses the AST and produces diagnostics for all enabled lints.
 ///
 /// Lints that operate on the AST are mostly syntactic. Other lints that
 /// require more in-depth semantic analysis is typically done on the HIR with
 /// [`lint_hir`].
 pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
+    lint_syntax_with_config(tree, vfs, &LintConfig::new())
+}
+
+/// Traverses the AST with a custom lint configuration.
+pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConfig) -> Report {
     let ctx = LintCtx {
         vfs,
         warnings: RefCell::default(),
         errors: RefCell::default(),
+        config,
     };
 
     let lints = &[
@@ -156,10 +310,16 @@ pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
 
 /// Set of lints that operates on the HIR.
 pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
+    lint_hir_with_config(hir, vfs, &LintConfig::new())
+}
+
+/// Set of lints that operates on the HIR with a custom configuration.
+pub fn lint_hir_with_config(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap, config: &LintConfig) -> Report {
     let ctx = LintCtx {
         vfs,
         warnings: RefCell::default(),
         errors: RefCell::default(),
+        config,
     };
 
     let lints = &[pedantic::complex_key::ComplexMapKey::check_hir];

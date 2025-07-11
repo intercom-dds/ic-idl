@@ -71,6 +71,10 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
 }
 
 impl<'a> Lint<'a> for KwIdent<'a> {
+    fn name() -> &'static str {
+        "keywords"
+    }
+
     fn category() -> Category {
         Category::Syntax
     }

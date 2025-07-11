@@ -63,6 +63,10 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
 }
 
 impl<'a> Lint<'a> for AssignExpr<'a> {
+    fn name() -> &'static str {
+        "assign_expr"
+    }
+
     fn category() -> Category {
         Category::Pedantic
     }

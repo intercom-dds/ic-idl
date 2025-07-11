@@ -51,6 +51,10 @@ impl<'a> Visitor<'a> for Proto<'_> {
 }
 
 impl<'a> Lint<'a> for Proto<'_> {
+    fn name() -> &'static str {
+        "proto"
+    }
+
     fn category() -> Category {
         Category::Unsupported
     }

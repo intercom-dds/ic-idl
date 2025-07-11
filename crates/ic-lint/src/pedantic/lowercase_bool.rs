@@ -26,11 +26,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::{Label, Level, level_span};
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Literal, LiteralValue};
 
-use crate::{Category, Lint, LintCtx};
+use crate::{Category, Lint, LintCtx, lint_impl};
 
 /// Lint that checks for uses of lowercase `true` or `false`, neither of which
 /// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
@@ -39,8 +39,9 @@ pub struct LowercaseBool<'a> {
 }
 
 impl<'a> Lint<'a> for LowercaseBool<'a> {
-    fn category() -> Category {
-        Category::Pedantic
+    lint_impl! {
+        name: "lowercase_bool",
+        category: Category::Pedantic,
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
@@ -55,13 +56,17 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
             let slice = self.ctx.slice(num.span);
             if slice.chars().any(char::is_lowercase) {
                 let fixed = slice.to_uppercase().green();
-                let diag = warn_span(
-                    "lowercase boolean literals are an InterCOM extension",
-                    Label::new(num.span).message("lowercase boolean literal"),
-                )
-                .help(format!("use `{fixed}` instead"));
-
-                self.ctx.report_warn(diag);
+                if let Some(diag) = self.ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        "lowercase boolean literals are an InterCOM extension",
+                        Label::new(num.span).message("lowercase boolean literal"),
+                    )
+                {
+                    let diag = diag.help(format!("use `{fixed}` instead"));
+                    self.ctx.report(Self::name(), Self::category(), diag);
+                }
             }
         }
     }

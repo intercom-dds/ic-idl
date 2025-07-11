@@ -41,6 +41,10 @@ pub struct ComplexMapKey<'a> {
 }
 
 impl<'a> Lint<'a> for ComplexMapKey<'a> {
+    fn name() -> &'static str {
+        "complex_key"
+    }
+
     fn category() -> Category {
         Category::Pedantic
     }

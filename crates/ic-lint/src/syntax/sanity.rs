@@ -40,6 +40,10 @@ use crate::{Category, Lint, LintCtx};
 pub struct Sanity;
 
 impl<'a> Lint<'a> for Sanity {
+    fn name() -> &'static str {
+        "sanity"
+    }
+
     fn category() -> Category {
         Category::Syntax
     }

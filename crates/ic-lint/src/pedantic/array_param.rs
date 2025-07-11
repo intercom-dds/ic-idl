@@ -49,6 +49,10 @@ impl<'a> Visitor<'a> for ArrayParam<'a> {
 }
 
 impl<'a> Lint<'a> for ArrayParam<'_> {
+    fn name() -> &'static str {
+        "array_param"
+    }
+
     fn category() -> Category {
         Category::Pedantic
     }

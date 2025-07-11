@@ -49,6 +49,10 @@ impl<'a> Visitor<'a> for NullVariant<'a> {
 }
 
 impl<'a> Lint<'a> for NullVariant<'a> {
+    fn name() -> &'static str {
+        "null"
+    }
+
     fn category() -> Category {
         Category::Pedantic
     }

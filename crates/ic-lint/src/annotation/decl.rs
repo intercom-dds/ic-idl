@@ -58,6 +58,10 @@ impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
 }
 
 impl<'a> Lint<'a> for AnnotatedDecl<'_> {
+    fn name() -> &'static str {
+        "annotated_decl"
+    }
+
     fn category() -> Category {
         Category::Pedantic
     }

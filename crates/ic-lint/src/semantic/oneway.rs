@@ -109,6 +109,10 @@ impl<'a> Visitor<'a> for NonVoidOneway<'a> {
 }
 
 impl<'a> Lint<'a> for NonVoidOneway<'a> {
+    fn name() -> &'static str {
+        "oneway"
+    }
+
     fn category() -> Category {
         Category::Syntax
     }

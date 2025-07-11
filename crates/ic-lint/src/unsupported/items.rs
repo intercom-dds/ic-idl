@@ -64,6 +64,10 @@ impl<'a> Visitor<'a> for Unsupported<'a> {
 }
 
 impl<'a> Lint<'a> for Unsupported<'a> {
+    fn name() -> &'static str {
+        "items"
+    }
+
     fn category() -> Category {
         Category::Unsupported
     }

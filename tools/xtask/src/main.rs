@@ -52,7 +52,7 @@ fn main() {
     match cmd {
         Commands::Setup(_) => setup::install(),
         Commands::Bootstrap(_) => bootstrap::build(),
-        Commands::Ipr(_) => ipr::check(),
+        Commands::Ipr(v) => ipr::check(v),
         Commands::Release(v) => release::build(v),
         Commands::Deny(_) => deny::check(),
     }

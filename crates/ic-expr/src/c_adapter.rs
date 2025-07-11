@@ -101,11 +101,7 @@ pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
             Some('\\') => '\\',
             Some('\'') => '\'',
             Some('"') => '"',
-            Some(c) => {
-                // For now, just use the character as-is
-                // A full implementation would handle octal/hex escapes
-                c
-            }
+            Some(c) => c,
             None => {
                 return Err("invalid escape sequence in character literal");
             }

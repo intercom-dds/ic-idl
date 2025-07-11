@@ -205,23 +205,23 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     let tree = tree.unwrap_or_default();
 
     // Collect parser errors
-    let mut all_errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
+    let mut errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
     let mut warnings = Vec::new();
 
     // Process preprocessor errors
     for preproc_error in state.errors() {
         match preproc_error {
             ic_preproc::Error::Note { span, .. } => {
-                all_errors.push(Error {
+                errors.push(Error {
                     found: None,
                     expected: None,
-                    reason: Reason::Custom("error directive".to_string()),
+                    reason: Reason::Custom("#error directive".to_string()),
                     label: Some("preprocessor error"),
                     span: *span,
                 });
             }
             ic_preproc::Error::Syntax { message, span } => {
-                all_errors.push(Error {
+                errors.push(Error {
                     found: None,
                     expected: None,
                     reason: Reason::Custom((*message).to_string()),
@@ -230,7 +230,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                 });
             }
             ic_preproc::Error::Expr { message, span } => {
-                all_errors.push(Error {
+                errors.push(Error {
                     found: None,
                     expected: None,
                     reason: Reason::Custom((*message).to_string()),
@@ -238,9 +238,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                     span: span.unwrap_or_default(),
                 });
             }
-            ic_preproc::Error::Extraneous { .. } => {
-                // Extraneous tokens should be warnings, handled below
-            }
+            ic_preproc::Error::Extraneous { .. } => {}
         }
     }
 
@@ -248,11 +246,10 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     for preproc_warning in state.warnings() {
         match preproc_warning {
             ic_preproc::Error::Note { span, .. } => {
-                // Error::Note in warnings list comes from #warning directive
                 warnings.push(Error {
                     found: None,
                     expected: None,
-                    reason: Reason::Custom("warning directive".to_string()),
+                    reason: Reason::Custom("#warning directive".to_string()),
                     label: Some("preprocessor warning"),
                     span: *span,
                 });
@@ -276,7 +273,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
 
     ParseResult {
         tree,
-        errors: all_errors,
+        errors,
         warnings,
     }
 }

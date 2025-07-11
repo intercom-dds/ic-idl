@@ -208,17 +208,33 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     let mut errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
     let mut warnings = Vec::new();
 
+    // Helper function to build directive errors
+    let build_directive_error =
+        |directive: &str, span: Span, tokens: &[ic_preproc::Token]| -> Error {
+            let message = if tokens.is_empty() {
+                format!("#{directive} directive")
+            } else {
+                let token_text = tokens
+                    .iter()
+                    .map(|t| &vfs.source_str(t.span.start.file_id)[t.span.range()])
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                format!("#{directive} directive: {token_text}")
+            };
+            Error {
+                found: None,
+                expected: None,
+                reason: Reason::Custom(message),
+                label: None,
+                span,
+            }
+        };
+
     // Process preprocessor errors
     for preproc_error in state.errors() {
         match preproc_error {
-            ic_preproc::Error::Note { span, .. } => {
-                errors.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom("#error directive".to_string()),
-                    label: Some("preprocessor error"),
-                    span: *span,
-                });
+            ic_preproc::Error::Note { span, tokens } => {
+                errors.push(build_directive_error("error", *span, tokens));
             }
             ic_preproc::Error::Syntax { message, span }
             | ic_preproc::Error::Expr { message, span } => {
@@ -237,14 +253,8 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     // Process preprocessor warnings
     for preproc_warning in state.warnings() {
         match preproc_warning {
-            ic_preproc::Error::Note { span, .. } => {
-                warnings.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom("#warning directive".to_string()),
-                    label: Some("preprocessor warning"),
-                    span: *span,
-                });
+            ic_preproc::Error::Note { span, tokens } => {
+                warnings.push(build_directive_error("warning", *span, tokens));
             }
             ic_preproc::Error::Extraneous {
                 directive, span, ..

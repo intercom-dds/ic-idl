@@ -28,7 +28,7 @@
 use ic_cli::color::Color;
 use ic_diagnostic::{Label, warn_span};
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Declarator, util};
+use ic_syntax::{Declarator, Ident, Path, util};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -39,7 +39,7 @@ pub struct AnnotatedDecl<'a> {
 impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
     fn visit_forward_decl(&mut self, decl: &'a ic_syntax::Decl) {
         // only issue one diagnostic per decl
-        if let Some(ann) = decl.annotations.first() {
+        if let Some(ann) = decl.annotations.iter().find(|v| !is_doc(&v.ident)) {
             let span = util::path_span(&ann.ident);
             let diag = warn_span(
                 "annotations on forward declarations are ignored",
@@ -66,4 +66,8 @@ impl<'a> Lint<'a> for AnnotatedDecl<'_> {
         let mut lint = AnnotatedDecl { ctx };
         walk_tree(&mut lint, tree);
     }
+}
+
+fn is_doc(path: &Path) -> bool {
+    path.segments.last().is_some_and(|v| v.name == "doc")
 }

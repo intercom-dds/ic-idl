@@ -206,6 +206,39 @@ pub fn item_span(item: &Item) -> Span {
 }
 
 #[must_use]
+pub fn item_ident_span(item: &Item) -> Span {
+    match item {
+        Item::AnnotationValue(v) => v.ident.span,
+        Item::ModuleValue(v) => v.ident.span,
+        Item::StructValue(v) => v.ident.span,
+        Item::UnionValue(v) => v.ident.span,
+        Item::EnumValue(v) => v.ident.span,
+        Item::ExceptionValue(v) => v.ident.span,
+        Item::BitmaskValue(v) => v.ident.span,
+        Item::BitsetValue(v) => v.ident.span,
+        Item::ConstValue(v) => decl_span(&v.decl),
+        Item::InterfaceValue(v) => v.ident.span,
+        Item::ValuetypeValue(v) => v.ident.span,
+        Item::DeclValue(v) => v.ident.span,
+        Item::AliasValue(v) => {
+            if let (Some(first), Some(last)) =
+                (v.decl.first().map(decl_span), v.decl.last().map(decl_span))
+            {
+                Span {
+                    start: first.start,
+                    end: last.end,
+                }
+            } else {
+                // Fall back to using the type span. This should never happen
+                // for well-constructed ASTs, but we need to return something
+                // and this avoids panicking.
+                ty_span(&v.ty)
+            }
+        }
+    }
+}
+
+#[must_use]
 pub fn decl_span(decl: &Declarator) -> Span {
     match decl {
         Declarator::Simple(v) => v.span,

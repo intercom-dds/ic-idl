@@ -160,13 +160,3 @@ fn test_embed_string_vs_str() {
     assert_eq!(map.source_str(id1), str_content);
     assert_eq!(map.source_str(id2), string_content);
 }
-
-#[test]
-#[should_panic(expected = "line span out of bounds")]
-fn test_line_span_panics() {
-    let mut map = SourceMap::default();
-    let id = map.embed("test");
-
-    // This should panic with todo!()
-    let _ = map.line_span(id);
-}

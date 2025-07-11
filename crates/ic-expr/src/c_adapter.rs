@@ -32,6 +32,17 @@
 
 use crate::{EvalConfig, EvalContext, OverflowBehavior, Result, SimpleInt};
 
+/// Number base for parsing integer literals
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Base {
+    /// Base 8 (octal) numbers, e.g., 0777
+    Octal = 8,
+    /// Base 10 (decimal) numbers, e.g., 123
+    Decimal = 10,
+    /// Base 16 (hexadecimal) numbers, e.g., 0xFF
+    Hexadecimal = 16,
+}
+
 /// Literal values that can appear in C preprocessor expressions
 #[derive(Debug, Clone)]
 pub enum CLiteral {
@@ -41,6 +52,60 @@ pub enum CLiteral {
     Char(char),
     /// Identifier (may be a macro or special identifier like __LINE__)
     Ident(String),
+}
+
+/// Parse an integer literal from C source
+pub fn parse_integer(str: &str, base: Base) -> std::result::Result<i128, &'static str> {
+    let str = match base {
+        Base::Octal => {
+            if str.len() > 1 {
+                str.trim_start_matches('0')
+            } else {
+                str
+            }
+        }
+        Base::Decimal => str,
+        Base::Hexadecimal => str.trim_start_matches("0x"),
+    };
+
+    i128::from_str_radix(str, base as u32).map_err(|_| "invalid literal")
+}
+
+/// Parse a character literal to its integer value
+pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
+    // Remove surrounding quotes
+    let content = lit.trim_start_matches('\'').trim_end_matches('\'');
+
+    if content.is_empty() {
+        return Err("empty character literal");
+    }
+
+    // Handle escape sequences
+    let ch = if content.starts_with('\\') && content.len() > 1 {
+        match content.chars().nth(1) {
+            Some('n') => '\n',
+            Some('t') => '\t',
+            Some('r') => '\r',
+            Some('0') => '\0',
+            Some('\\') => '\\',
+            Some('\'') => '\'',
+            Some('"') => '"',
+            Some(c) => {
+                // For now, just use the character as-is
+                // A full implementation would handle octal/hex escapes
+                c
+            }
+            None => {
+                return Err("invalid escape sequence in character literal");
+            }
+        }
+    } else if content.len() == 1 {
+        content.chars().next().unwrap()
+    } else {
+        return Err("character literal contains multiple characters");
+    };
+
+    Ok(ch)
 }
 
 /// Context for evaluating C preprocessor expressions

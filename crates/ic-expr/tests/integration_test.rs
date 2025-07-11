@@ -73,7 +73,7 @@ fn test_boolean_operations() {
 #[test]
 fn test_ternary_expression() {
     // Test: X > 0 ? X * 2 : -X
-    let make_expr = |x_val: i128| {
+    let make_expr = |_x_val: i128| {
         Expr::Ternary(Box::new(Ternary {
             cond: Expr::Binary(Box::new(Binary {
                 lhs: Expr::Lit(CLiteral::Ident("X".to_string())),
@@ -141,7 +141,18 @@ fn test_overflow_behavior() {
 
     let mut ctx = IdlContext::new(|_| None);
     let result = eval(&expr, &mut ctx).unwrap();
-    assert!(matches!(result, Numeric::Int8(-128))); // Wrapped around
+    assert!(matches!(result, Numeric::Int32(128))); // Promoted to Int32, no overflow
+
+    // Test actual Int32 overflow
+    let expr2 = Expr::Binary(Box::new(Binary {
+        lhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(i32::MAX))),
+        op: Op::Add,
+        rhs: Expr::Lit(IdlLiteral::Numeric(Numeric::Int32(1))),
+    }));
+
+    let mut ctx2 = IdlContext::new(|_| None);
+    let result2 = eval(&expr2, &mut ctx2).unwrap();
+    assert!(matches!(result2, Numeric::Int32(i32::MIN))); // Wrapped around
 
     // Test overflow with error behavior
     let config = EvalConfig {
@@ -149,7 +160,7 @@ fn test_overflow_behavior() {
         max_shift: 63,
     };
     let mut ctx = IdlContext::with_config(config, |_| None);
-    let result = eval(&expr, &mut ctx);
+    let result = eval(&expr2, &mut ctx);
     assert!(result.is_err()); // Should error on overflow
 }
 

@@ -55,6 +55,10 @@ pub enum CLiteral {
 }
 
 /// Parse an integer literal from C source
+///
+/// # Errors
+///
+/// Returns an error if the string is not a valid integer in the given base
 pub fn parse_integer(str: &str, base: Base) -> std::result::Result<i128, &'static str> {
     let str = match base {
         Base::Octal => {
@@ -72,6 +76,14 @@ pub fn parse_integer(str: &str, base: Base) -> std::result::Result<i128, &'stati
 }
 
 /// Parse a character literal to its integer value
+///
+/// # Errors
+///
+/// Returns an error if the string is not a valid character literal
+///
+/// # Panics
+///
+/// Panics if the content is empty after stripping quotes and processing escapes
 pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
     // Remove surrounding quotes
     let content = lit.trim_start_matches('\'').trim_end_matches('\'');
@@ -108,12 +120,15 @@ pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
     Ok(ch)
 }
 
+/// Function type for identifier resolution
+type IdentResolver<'a> = Box<dyn FnMut(&str) -> Option<i128> + 'a>;
+
 /// Context for evaluating C preprocessor expressions
 pub struct CContext<'a> {
     /// Configuration for evaluation
     config: EvalConfig,
     /// Callback to resolve identifiers
-    resolve_ident: Box<dyn FnMut(&str) -> Option<i128> + 'a>,
+    resolve_ident: IdentResolver<'a>,
 }
 
 impl<'a> CContext<'a> {
@@ -143,7 +158,7 @@ impl<'a> CContext<'a> {
     }
 }
 
-impl<'a> EvalContext<CLiteral> for CContext<'a> {
+impl EvalContext<CLiteral> for CContext<'_> {
     type Value = SimpleInt;
 
     fn eval_literal(&mut self, lit: &CLiteral) -> Result<Self::Value> {

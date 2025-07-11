@@ -118,7 +118,7 @@ fn convert_expr(
     }
 }
 
-/// Convert a Token to CLiteral for ic-expr evaluation
+/// Convert a Token to `CLiteral` for ic-expr evaluation
 fn token_to_cliteral(token: &Token, ctx: &dyn ExpressionContext) -> Result<CLiteral, Error> {
     let lit = ctx.source_of(token.span);
     match token.kind {

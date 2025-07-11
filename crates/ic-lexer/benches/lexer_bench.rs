@@ -34,7 +34,7 @@ use ic_lexer::cursor::Cursor;
 use ic_vfs::SourceMap;
 use test::Bencher;
 
-const SAMPLE_IDL: &str = r#"
+const SAMPLE_IDL: &str = r"
 module Example {
     // This is a comment
     struct Point {
@@ -61,7 +61,7 @@ module Example {
     typedef sequence<Point> PointList;
     typedef map<string, Point> PointMap;
 }
-"#;
+";
 
 #[bench]
 fn bench_tokenize_sample(b: &mut Bencher) {

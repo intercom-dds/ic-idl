@@ -54,10 +54,10 @@ impl fmt::Display for Error {
         match self {
             Self::DivisionByZero => write!(f, "division by zero"),
             Self::ModuloByZero => write!(f, "modulo by zero"),
-            Self::Overflow(op) => write!(f, "arithmetic overflow in {}", op),
-            Self::InvalidShift(amount) => write!(f, "invalid shift amount: {}", amount),
-            Self::InvalidUnaryOp(op) => write!(f, "invalid unary operator: {:?}", op),
-            Self::Custom(msg) => write!(f, "{}", msg),
+            Self::Overflow(op) => write!(f, "arithmetic overflow in {op}"),
+            Self::InvalidShift(amount) => write!(f, "invalid shift amount: {amount}"),
+            Self::InvalidUnaryOp(op) => write!(f, "invalid unary operator: {op:?}"),
+            Self::Custom(msg) => write!(f, "{msg}"),
         }
     }
 }

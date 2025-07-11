@@ -123,39 +123,67 @@ pub trait NumericValue: Sized + fmt::Debug + Clone {
     fn to_bool(&self) -> bool;
 
     /// Unary negation
+    ///
+    /// # Errors
+    /// Returns an error if overflow occurs and overflow behavior is set to error
     fn negate(&self, config: &EvalConfig) -> Result<Self>;
 
     /// Bitwise NOT
+    #[must_use]
     fn bit_not(&self) -> Self;
 
     /// Addition
+    ///
+    /// # Errors
+    /// Returns an error if overflow occurs and overflow behavior is set to error
     fn add(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
-    /// Subtraction  
+    /// Subtraction
+    ///
+    /// # Errors
+    /// Returns an error if overflow occurs and overflow behavior is set to error
     fn sub(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
     /// Multiplication
+    ///
+    /// # Errors
+    /// Returns an error if overflow occurs and overflow behavior is set to error
     fn mul(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
     /// Division
+    ///
+    /// # Errors
+    /// Returns an error if division by zero occurs
     fn div(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
     /// Modulo
+    ///
+    /// # Errors
+    /// Returns an error if modulo by zero occurs
     fn modulo(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
     /// Bitwise AND
+    #[must_use]
     fn bit_and(&self, rhs: &Self) -> Self;
 
     /// Bitwise OR
+    #[must_use]
     fn bit_or(&self, rhs: &Self) -> Self;
 
     /// Bitwise XOR
+    #[must_use]
     fn bit_xor(&self, rhs: &Self) -> Self;
 
     /// Left shift
+    ///
+    /// # Errors
+    /// Returns an error if the shift amount exceeds the configured maximum
     fn shl(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
     /// Right shift
+    ///
+    /// # Errors
+    /// Returns an error if the shift amount exceeds the configured maximum
     fn shr(&self, rhs: &Self, config: &EvalConfig) -> Result<Self>;
 
     /// Less than
@@ -183,6 +211,9 @@ pub trait EvalContext<T> {
     type Value: NumericValue;
 
     /// Evaluate a literal to a value
+    ///
+    /// # Errors
+    /// Returns an error if the literal cannot be evaluated
     fn eval_literal(&mut self, lit: &T) -> Result<Self::Value>;
 
     /// Get the evaluation configuration
@@ -190,6 +221,9 @@ pub trait EvalContext<T> {
 }
 
 /// Evaluate an expression with the given context
+///
+/// # Errors
+/// Returns an error if the expression cannot be evaluated
 pub fn eval<T, C>(expr: &Expr<T>, ctx: &mut C) -> Result<C::Value>
 where
     C: EvalContext<T>,
@@ -280,7 +314,7 @@ pub struct SimpleInt(pub i128);
 
 impl NumericValue for SimpleInt {
     fn from_bool(b: bool) -> Self {
-        Self(if b { 1 } else { 0 })
+        Self(i128::from(b))
     }
 
     fn to_bool(&self) -> bool {
@@ -366,16 +400,20 @@ impl NumericValue for SimpleInt {
     }
 
     fn shl(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
-        if rhs.0 < 0 || rhs.0 > config.max_shift as i128 {
+        if rhs.0 < 0 || rhs.0 > i128::from(config.max_shift) {
             return Err(Error::InvalidShift(rhs.0));
         }
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
         Ok(Self(self.0.wrapping_shl(rhs.0 as u32)))
     }
 
     fn shr(&self, rhs: &Self, config: &EvalConfig) -> Result<Self> {
-        if rhs.0 < 0 || rhs.0 > config.max_shift as i128 {
+        if rhs.0 < 0 || rhs.0 > i128::from(config.max_shift) {
             return Err(Error::InvalidShift(rhs.0));
         }
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
         Ok(Self(self.0.wrapping_shr(rhs.0 as u32)))
     }
 

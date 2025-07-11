@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![feature(test)]
+#![allow(clippy::format_push_string)]
 
 extern crate test;
 
@@ -56,7 +57,7 @@ fn create_macro_heavy_input() -> String {
             i + 1
         ));
         input.push_str(&format!("int min{} = MIN({}, {});\n", i, i * 2, i * 3));
-        input.push_str(&format!("const char* str{} = STRINGIFY(value_{});\n", i, i));
+        input.push_str(&format!("const char* str{i} = STRINGIFY(value_{i});\n"));
         input.push_str(&format!("int CONCAT(var_, {}) = {};\n", i, i * 10));
     }
 
@@ -73,11 +74,11 @@ fn create_conditional_heavy_input() -> String {
 
     for i in 0..50 {
         input.push_str(&format!("#if FEATURE_A && VERSION > {}\n", i % 10));
-        input.push_str(&format!("    int feature_a_{} = {};\n", i, i));
+        input.push_str(&format!("    int feature_a_{i} = {i};\n"));
         input.push_str("#elif FEATURE_B\n");
-        input.push_str(&format!("    int feature_b_{} = {};\n", i, i * 2));
+        input.push_str(&format!("    int feature_b_{i} = {};\n", i * 2));
         input.push_str("#else\n");
-        input.push_str(&format!("    int default_{} = {};\n", i, i * 3));
+        input.push_str(&format!("    int default_{i} = {};\n", i * 3));
         input.push_str("#endif\n");
     }
 
@@ -98,7 +99,7 @@ fn create_token_manipulation_input() -> String {
     input.push_str("    const char* name ## _str = #name;\n");
 
     for i in 0..100 {
-        input.push_str(&format!("MAKE_FUNC(test_{})\n", i));
+        input.push_str(&format!("MAKE_FUNC(test_{i})\n"));
         input.push_str(&format!("DECLARE_VAR(int, var_{}, {})\n", i, i * 100));
     }
 
@@ -177,7 +178,7 @@ fn bench_nested_macro_expansion(b: &mut Bencher) {
 
     // Use the nested macros
     for i in 0..200 {
-        input.push_str(&format!("int result{} = A({});\n", i, i));
+        input.push_str(&format!("int result{i} = A({i});\n"));
     }
 
     b.iter(|| {
@@ -198,9 +199,9 @@ fn bench_include_processing(b: &mut Bencher) {
     let mut input = String::new();
 
     for i in 0..50 {
-        input.push_str(&format!("#define HEADER_{}_H\n", i));
-        input.push_str(&format!("#ifndef HEADER_{}_H\n", i));
-        input.push_str(&format!("struct Data{} {{ int value; }};\n", i));
+        input.push_str(&format!("#define HEADER_{i}_H\n"));
+        input.push_str(&format!("#ifndef HEADER_{i}_H\n"));
+        input.push_str(&format!("struct Data{i} {{ int value; }};\n"));
         input.push_str("#endif\n");
     }
 

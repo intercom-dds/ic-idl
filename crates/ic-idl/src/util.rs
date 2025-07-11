@@ -44,7 +44,7 @@ macro_rules! error {
 macro_rules! warn {
     ($($arg:tt)*) => {{
         use ic_cli::color::Colorize as _;
-        eprintln!("{} {}", "warning:".yellow().bold(), format!($($arg)*));
+        eprintln!("{} {}", "warning:".purple().bold(), format!($($arg)*));
     }}
 }
 

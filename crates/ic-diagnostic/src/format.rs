@@ -188,7 +188,7 @@ impl Formatter<'_> {
         }
 
         if let Some(v) = &diag.warn {
-            writeln!(f, " {} {v}", "warn:".yellow().bold())?;
+            writeln!(f, " {} {v}", "warn:".purple().bold())?;
         }
         if let Some(v) = &diag.help {
             writeln!(f, " {} {v}", "help:".cyan().bold())?;

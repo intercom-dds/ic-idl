@@ -88,7 +88,7 @@ impl Diag {
     pub fn warning<S: Into<String>>(message: S) -> Self {
         let title = Line {
             text: "warning",
-            color: Color::Yellow,
+            color: Color::Purple,
         };
         Self::with_title(title, message.into())
     }
@@ -189,7 +189,7 @@ pub fn error_span<S: Into<String>>(msg: S, label: Label) -> Diag {
 
 /// Creates a warning diagnostic that highlights the given span.
 pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
-    Diag::warning(msg).label(label.color(Color::Yellow))
+    Diag::warning(msg).label(label.color(Color::Purple))
 }
 
 /// Creates a diagnostic with the specified level that highlights the given span.
@@ -197,7 +197,7 @@ pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
 pub fn level_span<S: Into<String>>(level: Level, msg: S, label: Label) -> Option<Diag> {
     let color = match level {
         Level::Error => Color::Red,
-        Level::Warning => Color::Yellow,
+        Level::Warning => Color::Purple,
         Level::Disabled => return None,
     };
     Diag::with_level(level, msg).map(|d| d.label(label.color(color)))

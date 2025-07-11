@@ -82,7 +82,7 @@ fn main() {
     let generated = match try_main(&options, &mut vfs) {
         Ok(v) => v,
         Err(e) => {
-            pretty::emit_errors(&e, &vfs);
+            // Errors and warnings were already emitted in try_main
             error!(
                 "aborting due to {} previous error{}",
                 e.len(),
@@ -114,20 +114,38 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
         .skip_comments(options.ignore_comments);
 
     let mut trees = vec![];
+    let mut all_errors = vec![];
+    let mut all_warnings = vec![];
+    
     let files = collect_files(&options.files)
         .map_err(|e| e.into_iter().map(Error::Io).collect::<Vec<_>>())?;
 
     for file in files {
-        let ptree = try_parse(options, args.clone(), &file, vfs)?;
-        pretty::emit_warnings(&ptree.warnings, vfs);
-        trees.push(ptree.result);
+        let parsed = try_parse(options, args.clone(), &file, vfs);
+        all_errors.extend(parsed.errors);
+        all_warnings.extend(parsed.warnings);
+        if let Some(result) = parsed.result {
+            trees.push(result);
+        }
+    }
+    
+    // Emit all warnings regardless of errors
+    if !all_warnings.is_empty() {
+        pretty::emit_warnings(&all_warnings, vfs);
+    }
+    
+    // If there were any errors, emit them and return
+    if !all_errors.is_empty() {
+        pretty::emit_errors(&all_errors, vfs);
+        return Err(all_errors);
     }
 
     try_ptree(options, &trees).map_err(|e| vec![e])
 }
 
 struct Parsed {
-    result: ParseResult,
+    result: Option<ParseResult>,
+    errors: Vec<Error>,
     warnings: Vec<Diag>,
 }
 
@@ -140,15 +158,28 @@ fn try_parse(
     proc: ProcArgs,
     path: &Path,
     vfs: &mut SourceMap,
-) -> Result<Parsed, Vec<Error>> {
+) -> Parsed {
     let mut errors = vec![];
     let mut warnings = vec![];
-    let ast = ic_parse::from_path(path, proc, vfs).map_err(|e| {
-        vec![Error::Custom(format!(
-            "failed to open `{}`: {e}",
-            path.display().yellow()
-        ))]
-    })?;
+    
+    // Try to parse the file
+    let ast = match ic_parse::from_path(path, proc, vfs) {
+        Ok(ast) => ast,
+        Err(e) => {
+            // File couldn't be opened - return early with just this error
+            errors.push(Error::Custom(format!(
+                "failed to open `{}`: {e}",
+                path.display().purple(),
+            )));
+            return Parsed {
+                result: None,
+                errors,
+                warnings,
+            };
+        }
+    };
+    
+    // Collect parse errors and warnings
     errors.extend(ast.errors.iter().cloned().map(Into::into));
     warnings.extend(ast.warnings.iter().map(pretty::parse_error_to_warning));
 
@@ -156,35 +187,41 @@ fn try_parse(
         println!("{:#?}", ast.tree);
     }
 
-    // Create lint configuration from CLI flags
-    let (specific_lints, error_lints) = config::take_parsed_warnings();
-    let lint_config = options.warn.to_lint_config(&specific_lints, &error_lints);
+    // Only run linting if there are no parse errors
+    if errors.is_empty() {
+        // Create lint configuration from CLI flags
+        let lint_config = options.warn.to_lint_config();
 
-    // Lint the AST
-    let report = ic_lint::lint_syntax_with_config(&ast.tree, vfs, &lint_config);
-    errors.extend(report.errors.into_iter().map(Into::into));
-    warnings.extend(report.warnings);
+        // Lint the AST
+        let report = ic_lint::lint_syntax_with_config(&ast.tree, vfs, &lint_config);
+        errors.extend(report.errors.into_iter().map(Into::into));
+        warnings.extend(report.warnings);
 
-    // Lower the AST to a HIR
-    let hir = ic_hir::from_ast(ast.tree.clone());
-    if options.unstable.hir_dump {
-        ic_hir_tree::emit_tree(&hir);
-    }
-
-    // Lint the HIR
-    let report = ic_lint::lint_hir_with_config(&hir, vfs, &lint_config);
-    errors.extend(report.errors.into_iter().map(Into::into));
-    warnings.extend(report.warnings);
-
-    // Lower the HIR to a ptree, but only if construction of the HIR succeeded
-    if errors.is_empty() && hir.errors.is_empty() {
-        // FIXME: in the future we should construct the ptree from the HIR
-        let result = ic_ptree_lower::from_ast(&ast, vfs);
-        Ok(Parsed { result, warnings })
-    } else {
+        // Lower the AST to a HIR
+        let hir = ic_hir::from_ast(ast.tree.clone());
+        if options.unstable.hir_dump {
+            ic_hir_tree::emit_tree(&hir);
+        }
+        
+        // Only lint HIR if no errors so far
+        if errors.is_empty() {
+            // Lint the HIR
+            let report = ic_lint::lint_hir_with_config(&hir, vfs, &lint_config);
+            errors.extend(report.errors.into_iter().map(Into::into));
+            warnings.extend(report.warnings);
+        }
+        
         errors.extend(hir.errors.into_iter().map(Into::into));
-        Err(errors)
     }
+
+    // Only lower to ptree if no errors
+    let result = if errors.is_empty() {
+        Some(ic_ptree_lower::from_ast(&ast, vfs))
+    } else {
+        None
+    };
+    
+    Parsed { result, errors, warnings }
 }
 
 fn try_ptree(options: &Options, parsed: &[ParseResult]) -> Result<Vec<File>, Error> {

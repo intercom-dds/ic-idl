@@ -150,8 +150,7 @@ fn try_parse(
         ))]
     })?;
     errors.extend(ast.errors.iter().cloned().map(Into::into));
-    // TODO: Convert parse warnings to Diag type
-    // warnings.extend(ast.warnings.iter().cloned().map(Into::into));
+    warnings.extend(ast.warnings.iter().map(pretty::parse_error_to_warning));
 
     if options.unstable.ast_dump {
         println!("{:#?}", ast.tree);

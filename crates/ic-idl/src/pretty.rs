@@ -30,7 +30,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{Diag, Label, error_span};
+use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_parse::Reason;
 use ic_parse::lexer::Kind;
 use ic_vfs::SourceMap;
@@ -59,15 +59,17 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
     }
 }
 
-fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write) -> fmt::Result {
-    let diag = match &error.reason {
-        Reason::Unclosed { span, delimiter } => error_span(
+fn parse_error_to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
+    let diag_fn = if is_warning { warn_span } else { error_span };
+
+    match &error.reason {
+        Reason::Unclosed { span, delimiter } => diag_fn(
             format!("unclosed delimiter {delimiter}"),
             Label::new(*span).message("unclosed delimiter here"),
         ),
 
         Reason::Custom(message) => {
-            error_span(message, Label::new(error.span).message("unexpected token"))
+            diag_fn(message.clone(), Label::new(error.span).message("unexpected token"))
         }
 
         Reason::Unexpected => {
@@ -94,13 +96,16 @@ fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write
                 .as_ref()
                 .map_or_else(|| "end of input".to_string(), ToString::to_string);
 
-            error_span(
+            diag_fn(
                 format!("{cause}, expected {expected}"),
                 Label::new(error.span).message(format!("unexpected {found}")),
             )
         }
-    };
+    }
+}
 
+fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write) -> fmt::Result {
+    let diag = parse_error_to_diag(error, false);
     let file = vfs.file_info(error.span.start.file_id);
     let relative = rel_path(&file.path).to_string_lossy().to_string();
     ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag)
@@ -138,4 +143,8 @@ pub fn emit_warnings(warnings: &[Diag], vfs: &SourceMap) {
     if !buf.is_empty() {
         eprintln!("{buf}");
     }
+}
+
+pub fn parse_error_to_warning(error: &ic_parse::Error) -> Diag {
+    parse_error_to_diag(error, true)
 }

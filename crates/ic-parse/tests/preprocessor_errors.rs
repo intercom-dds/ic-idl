@@ -34,10 +34,10 @@ interface Test {
 
 #[test]
 fn test_nested_include_depth_error() {
-    let _source = r#"
-// This would cause infinite recursion if we had real files
-#include "file1.idl"
-"#;
+    // This would cause infinite recursion if we had real files
+    // let source = r"
+    // #include "file1.idl"
+    // ";
 
     // For this test to work properly, we'd need to set up actual files
     // Let's test with #error directive instead which is simpler
@@ -67,13 +67,13 @@ interface Test {
 
 #[test]
 fn test_invalid_preprocessor_syntax() {
-    let source = r#"
+    let source = r"
 #define MACRO(x, y   // Missing closing parenthesis
 
 interface Test {
     void test();
 };
-"#;
+";
 
     let result = from_str(source);
 
@@ -92,26 +92,27 @@ interface Test {
 }
 
 #[test]
+#[allow(clippy::no_effect_underscore_binding)]
 fn test_undefined_macro_in_expression() {
-    let _source = r#"
+    let _source = r"
 #if UNDEFINED_MACRO
 interface Test {
     void test();
 };
 #endif
-"#;
+";
 
-    let _result = from_str(_source);
+    // let result = from_str(source);
 
     // This might not produce an error if undefined macros evaluate to 0
     // Let's test with a more explicit error case
-    let source_with_syntax_error = r#"
+    let source_with_syntax_error = r"
 #if 1 +   // Incomplete expression
 interface Test {
     void test();
 };
 #endif
-"#;
+";
 
     let result = from_str(source_with_syntax_error);
 
@@ -189,7 +190,7 @@ interface Test {
 #[test]
 fn test_extraneous_tokens_warning() {
     // Test extraneous tokens after directive that warns about them
-    let source_with_extra = r#"
+    let source_with_extra = r"
 #undef MACRO extra tokens here
 #ifdef SOMETHING extra tokens
 #ifndef OTHER more extra tokens
@@ -199,7 +200,7 @@ interface Test {
 };
 #endif
 #endif
-"#;
+";
 
     let result = from_str(source_with_extra);
 
@@ -214,8 +215,7 @@ interface Test {
     let warning_count = result.warnings.len();
     assert!(
         warning_count >= 3,
-        "Expected at least 3 warnings, got {}",
-        warning_count
+        "Expected at least 3 warnings, got {warning_count}"
     );
 
     // Check for extraneous token warnings

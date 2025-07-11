@@ -6,36 +6,25 @@ fn test_expression_error_uses_directive_span_as_context() {
     let mut vfs = SourceMap::default();
 
     // Test that when expression parsing fails, we use the directive span as context
-    let source = r#"
+    let source = r"
 #if
 int should_not_be_processed;
 #endif
-"#;
+";
 
     let file_id = vfs.embed(source);
     let args = ProcArgs::default();
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have an error
     let errors = state.errors();
     assert!(!errors.is_empty(), "Expected error for empty expression");
 
-    // Debug print errors
-    for error in errors {
-        match error {
-            ic_preproc::Error::Expr { message, span } => {
-                println!("Expr error: {} (span: {:?})", message, span);
-            }
-            ic_preproc::Error::Syntax { message, span } => {
-                println!("Syntax error: {} at {:?}", message, span);
-            }
-            _ => {}
-        }
-    }
+    // All errors are captured
 
     // When there's no expression after #if, we get a syntax error "expected value in expression"
     let syntax_error = errors.iter().find(|e| {
@@ -48,8 +37,7 @@ int should_not_be_processed;
         let error_text = &vfs.source_str(span.start.file_id)[span.range()];
         assert_eq!(
             error_text, "\n",
-            "Error span should point to the newline after 'if', got '{:?}'",
-            error_text
+            "Error span should point to the newline after 'if', got '{error_text:?}'"
         );
     }
 }
@@ -59,21 +47,21 @@ fn test_elif_expression_error_uses_elif_span() {
     let mut vfs = SourceMap::default();
 
     // Test that elif expression errors use the elif span
-    let source = r#"
+    let source = r"
 #if 0
 int a;
 #elif
 int b;
 #endif
-"#;
+";
 
     let file_id = vfs.embed(source);
     let args = ProcArgs::default();
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have an error
     let errors = state.errors();
@@ -82,18 +70,7 @@ int b;
         "Expected error for empty elif expression"
     );
 
-    // Debug print errors
-    for error in errors {
-        match error {
-            ic_preproc::Error::Expr { message, span } => {
-                println!("Expr error: {} (span: {:?})", message, span);
-            }
-            ic_preproc::Error::Syntax { message, span } => {
-                println!("Syntax error: {} at {:?}", message, span);
-            }
-            _ => {}
-        }
-    }
+    // All errors are captured
 
     // Similar to #if, we should get a syntax error for missing expression
     let syntax_error = errors.iter().find(|e| {
@@ -105,8 +82,7 @@ int b;
         let error_text = &vfs.source_str(span.start.file_id)[span.range()];
         assert_eq!(
             error_text, "\n",
-            "Error span should point to the newline after 'elif', got '{:?}'",
-            error_text
+            "Error span should point to the newline after 'elif', got '{error_text:?}'"
         );
     }
 }
@@ -116,19 +92,19 @@ fn test_nested_expression_error_still_has_context() {
     let mut vfs = SourceMap::default();
 
     // Test that even nested expression errors have context
-    let source = r#"
+    let source = r"
 #if (1 + (2 * 
 int should_not_be_processed;
 #endif
-"#;
+";
 
     let file_id = vfs.embed(source);
     let args = ProcArgs::default();
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have errors
     let errors = state.errors();
@@ -138,12 +114,7 @@ int should_not_be_processed;
     );
 
     // All expression errors should have spans now
-    let all_expr_errors_have_spans = errors.iter().all(|e| {
-        match e {
-            ic_preproc::Error::Expr { .. } => true, // Expr errors now always have spans
-            _ => true,
-        }
-    });
+    let all_expr_errors_have_spans = errors.iter().all(|_| true);
     assert!(
         all_expr_errors_have_spans,
         "All expression errors should have spans"
@@ -155,17 +126,17 @@ fn test_unexpected_end_in_defined_operator() {
     let mut vfs = SourceMap::default();
 
     // Test that when we have unexpected end in defined operator, we use proper span
-    let source = r#"
+    let source = r"
 #if defined
-"#;
+";
 
     let file_id = vfs.embed(source);
     let args = ProcArgs::default();
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have an error
     let errors = state.errors();
@@ -183,8 +154,7 @@ fn test_unexpected_end_in_defined_operator() {
         let error_text = &vfs.source_str(span.start.file_id)[span.range()];
         assert_eq!(
             error_text, "defined",
-            "Error span should point to 'defined', got '{}'",
-            error_text
+            "Error span should point to 'defined', got '{error_text}'"
         );
     }
 }

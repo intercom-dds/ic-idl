@@ -41,7 +41,7 @@ fn test_empty_content() {
 fn test_unicode_content() {
     let mut map = SourceMap::default();
 
-    let unicode_samples = vec![
+    let unicode_samples = [
         "Hello, 世界!",
         "Γεια σου κόσμε",
         "مرحبا بالعالم",
@@ -162,7 +162,7 @@ fn test_embed_string_vs_str() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "line span out of bounds")]
 fn test_line_span_panics() {
     let mut map = SourceMap::default();
     let id = map.embed("test");

@@ -63,11 +63,11 @@ fn test_trailing_comments_in_tokens() {
 fn test_leading_vs_trailing_comments() {
     let mut vfs = SourceMap::default();
 
-    let content = r#"/// Leading comment
+    let content = r"/// Leading comment
 int a;
 int b; /// Trailing comment
     /// Another leading comment
-int c;"#;
+int c;";
 
     let file = vfs.embed(content);
 
@@ -86,20 +86,20 @@ int c;"#;
         .collect();
 
     assert_eq!(comments.len(), 3);
-    assert_eq!(comments[0], false); // Leading comment
-    assert_eq!(comments[1], true); // Trailing comment
-    assert_eq!(comments[2], false); // Leading comment (with indentation)
+    assert!(!comments[0]); // Leading comment
+    assert!(comments[1]); // Trailing comment
+    assert!(!comments[2]); // Leading comment (with indentation)
 }
 
 #[test]
 fn test_struct_field_trailing_comments() {
     let mut vfs = SourceMap::default();
 
-    let content = r#"
+    let content = r"
 struct Example {
     long field1; /// This is a trailing comment for field1
     string field2; /// This is a trailing comment for field2
-};"#;
+};";
 
     let file = vfs.embed(content);
 
@@ -135,7 +135,7 @@ struct Example {
 fn test_leading_vs_trailing_struct_comments() {
     let mut vfs = SourceMap::default();
 
-    let content = r#"
+    let content = r"
 struct MixedComments {
     /// Leading comment for field1
     long field1;
@@ -143,7 +143,7 @@ struct MixedComments {
     /// Leading comment for field3
     /// Another line of leading comment
     string field3;
-};"#;
+};";
 
     let file = vfs.embed(content);
 

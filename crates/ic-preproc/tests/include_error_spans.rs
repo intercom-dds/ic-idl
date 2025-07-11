@@ -14,10 +14,10 @@ int main();
     let file_id = vfs.embed(source);
     let args = ProcArgs::default();
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have an error
     let errors = state.errors();
@@ -39,8 +39,7 @@ int main();
         let error_text = &vfs.source_str(span.start.file_id)[span.range()];
         assert!(
             error_text.contains("missing_file.idl"),
-            "Error span should highlight the file path '{}', not the directive",
-            error_text
+            "Error span should highlight the file path '{error_text}', not the directive"
         );
         assert!(
             !error_text.contains("#include"),
@@ -54,18 +53,18 @@ fn test_include_error_span_system_includes() {
     let mut vfs = SourceMap::default();
 
     // Test case 2: System include with angle brackets
-    let source = r#"
+    let source = r"
 #include <system/missing.h>
 int main();
-"#;
+";
 
     let file_id = vfs.embed(source);
     let args = ProcArgs::default();
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have an error
     let errors = state.errors();
@@ -87,8 +86,7 @@ int main();
         let error_text = &vfs.source_str(span.start.file_id)[span.range()];
         assert!(
             error_text.contains("system/missing.h"),
-            "Error span should highlight the file path '{}', not the directive",
-            error_text
+            "Error span should highlight the file path '{error_text}', not the directive"
         );
         assert!(
             !error_text.contains("#include"),
@@ -109,10 +107,10 @@ fn test_nested_include_error_span() {
     let file_id = vfs.embed(source);
     let args = ProcArgs::default().recursion_depth(0); // Set depth to 0 to trigger the error immediately
     let mut state = ic_preproc::State::new();
-    let _iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
+    let iter = ic_preproc::with_state(file_id, args, &mut state, &mut vfs);
 
     // Consume all tokens to process directives
-    for _ in _iter {}
+    for _ in iter {}
 
     // Check that we have an error
     let errors = state.errors();
@@ -124,8 +122,7 @@ fn test_nested_include_error_span() {
         let error_text = &vfs.source_str(span.start.file_id)[span.range()];
         assert!(
             error_text.contains("deeply/nested/file.idl"),
-            "Error span should highlight the file path '{}', not the directive",
-            error_text
+            "Error span should highlight the file path '{error_text}', not the directive"
         );
     }
 }

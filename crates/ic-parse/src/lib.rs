@@ -220,16 +220,8 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                     span: *span,
                 });
             }
-            ic_preproc::Error::Syntax { message, span } => {
-                errors.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom((*message).to_string()),
-                    label: Some("preprocessor error"),
-                    span: *span,
-                });
-            }
-            ic_preproc::Error::Expr { message, span } => {
+            ic_preproc::Error::Syntax { message, span }
+            | ic_preproc::Error::Expr { message, span } => {
                 errors.push(Error {
                     found: None,
                     expected: None,

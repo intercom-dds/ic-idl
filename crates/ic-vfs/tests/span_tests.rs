@@ -162,7 +162,8 @@ fn test_span_chumsky_trait() {
     let span = Span::new((), start..end);
     assert_eq!(span.start(), start);
     assert_eq!(span.end(), end);
-    assert_eq!(span.context(), ());
+    // Verify context method works (returns unit type)
+    span.context();
 }
 
 #[test]

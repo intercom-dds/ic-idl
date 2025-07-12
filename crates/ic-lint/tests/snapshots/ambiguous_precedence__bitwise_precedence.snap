@@ -1,0 +1,58 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence.rs
+assertion_line: 93
+expression: check_ambiguous_precedence(idl)
+---
+warning: operator `|` has lower precedence than `&`
+   ┌ test.idl:3:22
+   │
+ 3 │ const long test1 = 1 | 2 & 3;      // & binds tighter than |
+   ·                      ^ ^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `^`
+   ┌ test.idl:4:22
+   │
+ 4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
+   ·                      ^ ^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `&`
+   ┌ test.idl:5:22
+   │
+ 5 │ const long test3 = 1 ^ 2 & 3;      // & binds tighter than ^
+   ·                      ^ ^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `^`
+   ┌ test.idl:6:22
+   │
+ 6 │ const long test4 = 1 | 2 ^ 3 & 4;  // Multiple levels
+   ·                      ^ ^^^^^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `&`
+   ┌ test.idl:6:26
+   │
+ 6 │ const long test4 = 1 | 2 ^ 3 & 4;  // Multiple levels
+   ·                          ^ ^^^^^ than this expression
+   ·                          └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `&`
+   ┌ test.idl:9:22
+   │
+ 9 │ const long test5 = 1 | (2 & 3);
+   ·                      ^  ^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations

@@ -42,3 +42,8 @@ ic-hir = { path = "../ic-hir" }
 ic-syntax = { path = "../ic-syntax" }
 ic-diagnostic = { path = "../ic-diagnostic" }
 ic-vfs = { path = "../ic-vfs" }
+
+[dev-dependencies]
+insta = "1.40"
+ic-parse = { path = "../ic-parse" }
+ic-preproc = { path = "../ic-preproc" }

@@ -1,0 +1,22 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence.rs
+assertion_line: 217
+expression: check_ambiguous_precedence(idl)
+---
+warning: operator `|` has lower precedence than `&`
+   ┌ test.idl:9:22
+   │
+ 9 │ const long test5 = 1 | (2 & (3 ^ 4));  // Deeply nested
+   ·                      ^  ^^^^^^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `&` has lower precedence than `+`
+    ┌ test.idl:14:25
+    │
+ 14 │ const long test6 = MASK & FLAGS + 1;   // Should warn
+    ·                         ^ ^^^^^^^^^ than this expression
+    ·                         └─ this operator has lower precedence
+    └──
+ help: add parentheses to clarify the intended order of operations

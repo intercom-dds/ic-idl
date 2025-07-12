@@ -258,8 +258,11 @@ dependencies = [
  "ic-cli",
  "ic-diagnostic",
  "ic-hir",
+ "ic-parse",
+ "ic-preproc",
  "ic-syntax",
  "ic-vfs",
+ "insta",
 ]
 
 [[package]]

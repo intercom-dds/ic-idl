@@ -27,6 +27,7 @@
 
 //! Collection of lints that are guarded behind the `-Wpedantic` flag.
 
+pub mod ambiguous_precedence;
 pub mod array_param;
 pub mod assign_expr;
 pub mod bitmask_ann;

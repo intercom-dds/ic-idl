@@ -1,0 +1,6 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence.rs
+assertion_line: 194
+expression: check_ambiguous_precedence(idl)
+---
+

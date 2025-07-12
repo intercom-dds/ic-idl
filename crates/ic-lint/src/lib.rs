@@ -240,6 +240,7 @@ pub fn all_lint_names() -> Vec<&'static str> {
         // Annotation lints
         "annotated_decl",
         // Pedantic lints
+        "ambiguous_precedence",
         "array_param",
         "assign_expr",
         "bitmask_ann",
@@ -290,6 +291,7 @@ pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConf
 
     let lints = &[
         annotation::decl::AnnotatedDecl::check,
+        pedantic::ambiguous_precedence::AmbiguousPrecedence::check,
         pedantic::array_param::ArrayParam::check,
         pedantic::assign_expr::AssignExpr::check,
         pedantic::bitmask_ann::BitmaskAnn::check,

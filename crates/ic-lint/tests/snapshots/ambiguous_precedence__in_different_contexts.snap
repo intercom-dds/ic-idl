@@ -1,0 +1,40 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence.rs
+assertion_line: 172
+expression: check_ambiguous_precedence(idl)
+---
+warning: operator `|` has lower precedence than `&`
+    ┌ test.idl:21:27
+    │
+ 21 │     const long nested = 1 | 2 & 3;  // Should warn in nested context
+    ·                           ^ ^^^^^ than this expression
+    ·                           └─ this operator has lower precedence
+    └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `^`
+    ┌ test.idl:37:24
+    │
+ 37 │ const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
+    ·                        ^ ^^^^^^^^^^^^^ than this expression
+    ·                        └─ this operator has lower precedence
+    └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `&`
+    ┌ test.idl:37:32
+    │
+ 37 │ const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
+    ·                          ^^^^^ ^ this operator has lower precedence
+    ·                          └─ than this expression
+    └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `+`
+    ┌ test.idl:37:32
+    │
+ 37 │ const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
+    ·                                ^ ^^^^^ than this expression
+    ·                                └─ this operator has lower precedence
+    └──
+ help: add parentheses to clarify the intended order of operations

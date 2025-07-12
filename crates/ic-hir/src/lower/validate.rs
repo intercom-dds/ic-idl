@@ -460,6 +460,112 @@ impl<'a> Validator<'a> {
         for &id in order {
             self.validate_type(id);
         }
+
+        // Third pass: validate forward declarations match definitions
+        self.validate_forward_declarations(order);
+    }
+
+    /// Validates that forward declarations match their definitions.
+    fn validate_forward_declarations(&mut self, order: &[DefId]) {
+        // Group definitions by name
+        let mut definitions_by_name: HashMap<String, Vec<DefId>> = HashMap::new();
+
+        for &id in order {
+            let def = self.get_def(id);
+            definitions_by_name
+                .entry(def.ident.name.clone())
+                .or_default()
+                .push(id);
+        }
+
+        // Check each group of definitions with the same name
+        for (name, ids) in definitions_by_name {
+            if ids.len() < 2 {
+                continue; // No duplicates to check
+            }
+
+            // Find the actual definition (non-Decl) if any
+            let mut actual_def: Option<(DefId, &str)> = None;
+            let mut forward_decls: Vec<DefId> = Vec::new();
+
+            for &id in &ids {
+                let def = self.get_def(id);
+                match &def.kind {
+                    DefKind::Decl(decl_type) => {
+                        forward_decls.push(id);
+                    }
+                    DefKind::Struct(_) => {
+                        if actual_def.is_some() {
+                            self.errors.push(error_span(
+                                format!("multiple definitions of struct `{}`", name),
+                                Label::new(def.span).message("redefined here"),
+                            ));
+                        }
+                        actual_def = Some((id, "struct"));
+                    }
+                    DefKind::Union(_) => {
+                        if actual_def.is_some() {
+                            self.errors.push(error_span(
+                                format!("multiple definitions of union `{}`", name),
+                                Label::new(def.span).message("redefined here"),
+                            ));
+                        }
+                        actual_def = Some((id, "union"));
+                    }
+                    DefKind::Interface(_) => {
+                        if actual_def.is_some() {
+                            self.errors.push(error_span(
+                                format!("multiple definitions of interface `{}`", name),
+                                Label::new(def.span).message("redefined here"),
+                            ));
+                        }
+                        actual_def = Some((id, "interface"));
+                    }
+                    DefKind::Valuetype(_) => {
+                        if actual_def.is_some() {
+                            self.errors.push(error_span(
+                                format!("multiple definitions of valuetype `{}`", name),
+                                Label::new(def.span).message("redefined here"),
+                            ));
+                        }
+                        actual_def = Some((id, "valuetype"));
+                    }
+                    _ => {} // Other types don't have forward declarations
+                }
+            }
+
+            // Check that all forward declarations match the actual definition
+            if let Some((def_id, def_type)) = actual_def {
+                for &decl_id in &forward_decls {
+                    let decl_def = self.get_def(decl_id);
+                    if let DefKind::Decl(decl_type) = &decl_def.kind {
+                        let decl_type_str = match decl_type {
+                            Decl::Struct => "struct",
+                            Decl::Union => "union",
+                            Decl::Native => "native",
+                            Decl::Interface => "interface",
+                            Decl::Valuetype => "valuetype",
+                        };
+
+                        if decl_type_str != def_type {
+                            let actual_def = self.get_def(def_id);
+                            self.errors.push(error_span(
+                                format!(
+                                    "forward declaration of `{}` as {} conflicts with {} definition",
+                                    name, decl_type_str, def_type
+                                ),
+                                Label::new(decl_def.span).message("forward declared here"),
+                            ).label(
+                                Label::new(actual_def.span).message(&format!("defined as {} here", def_type))
+                            ));
+                        }
+                    }
+                }
+            } else if !forward_decls.is_empty() {
+                // We have forward declarations but no definition
+                // This is handled by validate_complete already
+            }
+        }
     }
 }
 

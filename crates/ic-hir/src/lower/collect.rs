@@ -113,11 +113,16 @@ impl<'a> NameCollector<'a> {
         let parent = self.scope_stack.current_parent();
         let qualified_name = self.scope_stack.qualified_name(&ident.name);
 
-        // Constants are complete immediately, other types need resolution
+        // Constants are complete immediately, forward declarations stay incomplete,
+        // other types need resolution
         let flags = match &kind {
             DefKind::Const(_) => DefFlags::default(),
+            DefKind::Decl(_) => DefFlags::IS_INCOMPLETE, // Forward declarations are always incomplete
             _ => DefFlags::IS_INCOMPLETE,
         };
+
+        // Check if this is a forward declaration before moving kind
+        let new_is_decl = matches!(&kind, DefKind::Decl(_));
 
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
@@ -129,17 +134,36 @@ impl<'a> NameCollector<'a> {
             flags,
         });
 
-        // Check for duplicate names
+        // Check for duplicate names - but allow forward declarations
         if let Some(&existing_id) = self.name_map.get(&qualified_name) {
             let existing = self.ctx.definitions.get(existing_id);
-            self.errors.push(
-                error_span(
-                    format!("duplicate definition of `{}`", ident.name),
-                    Label::new(span).message("redefined here"),
-                )
-                .label(Label::new(existing.span).message("first defined here")),
-            );
-        } else {
+
+            // Check if either the existing or new definition is a forward declaration
+            let existing_is_decl = matches!(&existing.kind, DefKind::Decl(_));
+
+            // Allow multiple forward declarations or a forward declaration + definition
+            if !existing_is_decl || !new_is_decl {
+                // We have at least one actual definition
+                // If both are definitions (not forward declarations), it's an error
+                if !existing_is_decl && !new_is_decl {
+                    self.errors.push(
+                        error_span(
+                            format!("duplicate definition of `{}`", ident.name),
+                            Label::new(span).message("redefined here"),
+                        )
+                        .label(Label::new(existing.span).message("first defined here")),
+                    );
+                }
+                // If the existing is a definition and new is a forward declaration,
+                // or existing is a forward declaration and new is a definition,
+                // we'll allow it and let the validation phase check type compatibility
+            }
+            // For multiple forward declarations, always allowed
+        }
+
+        // Always insert into name_map - for forward declarations, we want the last one
+        // For definitions, we want the actual definition, not the forward declaration
+        if !new_is_decl || !self.name_map.contains_key(&qualified_name) {
             self.name_map.insert(qualified_name, id);
         }
 

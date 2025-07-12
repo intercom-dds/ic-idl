@@ -38,7 +38,8 @@
 
 use ic_diagnostic::{Diag, Label, error_span};
 
-use crate::{Context, hir::*};
+use crate::Context;
+use crate::hir::*;
 
 /// Type checks the HIR.
 pub struct TypeChecker<'a> {
@@ -53,7 +54,7 @@ impl<'a> TypeChecker<'a> {
             errors: Vec::new(),
         }
     }
-    
+
     /// Checks if a numeric value is compatible with a type.
     fn check_numeric_type(&mut self, value: &Numeric, ty: &Ty, value_desc: &str) -> bool {
         match (&value, &ty.kind) {
@@ -64,8 +65,8 @@ impl<'a> TypeChecker<'a> {
                     Label::new(ty.span).message("expected a valid value for this type"),
                 ));
                 false
-            },
-            
+            }
+
             // String values
             (Numeric::String(_), TyKind::String { .. }) => true,
             (Numeric::String(_), _) => {
@@ -74,8 +75,8 @@ impl<'a> TypeChecker<'a> {
                     Label::new(ty.span).message("expected string type"),
                 ));
                 false
-            },
-            
+            }
+
             // Boolean values
             (Numeric::Bool(_), TyKind::Primitive(PrimitiveTy::Bool)) => true,
             (Numeric::Bool(_), _) => {
@@ -84,32 +85,51 @@ impl<'a> TypeChecker<'a> {
                     Label::new(ty.span).message("expected boolean type"),
                 ));
                 false
-            },
-            
+            }
+
             // Character values
             (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char)) => true,
             (Numeric::Char(c), TyKind::Primitive(PrimitiveTy::WChar)) => {
                 // Check if char fits in wchar
                 true
-            },
+            }
             (Numeric::Char(_), _) => {
                 self.errors.push(error_span(
-                    format!("{} has character value but type is not char/wchar", value_desc),
+                    format!(
+                        "{} has character value but type is not char/wchar",
+                        value_desc
+                    ),
                     Label::new(ty.span).message("expected character type"),
                 ));
                 false
-            },
-            
+            }
+
             // Integer values - check range
-            (Numeric::Int8(v), TyKind::Primitive(prim)) => self.check_int_fits(*v as i64, prim, value_desc, ty.span),
-            (Numeric::Octet(v), TyKind::Primitive(prim)) => self.check_int_fits(*v as i64, prim, value_desc, ty.span),
-            (Numeric::Int16(v), TyKind::Primitive(prim)) => self.check_int_fits(*v as i64, prim, value_desc, ty.span),
-            (Numeric::UInt16(v), TyKind::Primitive(prim)) => self.check_int_fits(*v as i64, prim, value_desc, ty.span),
-            (Numeric::Int32(v), TyKind::Primitive(prim)) => self.check_int_fits(*v as i64, prim, value_desc, ty.span),
-            (Numeric::UInt32(v), TyKind::Primitive(prim)) => self.check_int_fits(*v as i64, prim, value_desc, ty.span),
-            (Numeric::Int64(v), TyKind::Primitive(prim)) => self.check_int_fits(*v, prim, value_desc, ty.span),
-            (Numeric::UInt64(v), TyKind::Primitive(prim)) => self.check_uint_fits(*v, prim, value_desc, ty.span),
-            
+            (Numeric::Int8(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+            }
+            (Numeric::Octet(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+            }
+            (Numeric::Int16(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+            }
+            (Numeric::UInt16(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+            }
+            (Numeric::Int32(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+            }
+            (Numeric::UInt32(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+            }
+            (Numeric::Int64(v), TyKind::Primitive(prim)) => {
+                self.check_int_fits(*v, prim, value_desc, ty.span)
+            }
+            (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
+                self.check_uint_fits(*v, prim, value_desc, ty.span)
+            }
+
             // Float values
             (Numeric::Float(_), TyKind::Primitive(PrimitiveTy::Float32)) => true,
             (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Float64)) => true, // float promotes to double
@@ -117,12 +137,15 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Double(_), TyKind::Primitive(PrimitiveTy::Float128)) => true, // double promotes to long double
             (Numeric::Float(_) | Numeric::Double(_), _) => {
                 self.errors.push(error_span(
-                    format!("{} has floating-point value but type is not float/double", value_desc),
+                    format!(
+                        "{} has floating-point value but type is not float/double",
+                        value_desc
+                    ),
                     Label::new(ty.span).message("expected floating-point type"),
                 ));
                 false
-            },
-            
+            }
+
             // Constant references
             (Numeric::Const(id), expected_ty) => {
                 let const_def = self.ctx.definitions.get(*id);
@@ -136,15 +159,21 @@ impl<'a> TypeChecker<'a> {
                     ));
                     false
                 }
-            },
-            
+            }
+
             // Array/sequence/map/struct/union values
-            (Numeric::Array { .. } | Numeric::Sequence { .. } | Numeric::Map { .. } 
-             | Numeric::Struct { .. } | Numeric::Union { .. }, _) => {
+            (
+                Numeric::Array { .. }
+                | Numeric::Sequence { .. }
+                | Numeric::Map { .. }
+                | Numeric::Struct { .. }
+                | Numeric::Union { .. },
+                _,
+            ) => {
                 // TODO: Implement complex type checking
                 true
-            },
-            
+            }
+
             // Type mismatch
             _ => {
                 self.errors.push(error_span(
@@ -152,12 +181,18 @@ impl<'a> TypeChecker<'a> {
                     Label::new(ty.span).message("type mismatch"),
                 ));
                 false
-            },
+            }
         }
     }
-    
+
     /// Checks if an integer value fits in a primitive type.
-    fn check_int_fits(&mut self, value: i64, prim: &PrimitiveTy, value_desc: &str, span: ic_syntax::Span) -> bool {
+    fn check_int_fits(
+        &mut self,
+        value: i64,
+        prim: &PrimitiveTy,
+        value_desc: &str,
+        span: ic_syntax::Span,
+    ) -> bool {
         let fits = match prim {
             PrimitiveTy::Bool => value == 0 || value == 1,
             PrimitiveTy::Char => value >= 0 && value <= 127,
@@ -173,19 +208,30 @@ impl<'a> TypeChecker<'a> {
             PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => true, // Can convert to float
             _ => false,
         };
-        
+
         if !fits {
             self.errors.push(error_span(
-                format!("{} value {} does not fit in type {}", value_desc, value, prim.name()),
+                format!(
+                    "{} value {} does not fit in type {}",
+                    value_desc,
+                    value,
+                    prim.name()
+                ),
                 Label::new(span).message("value out of range"),
             ));
         }
-        
+
         fits
     }
-    
+
     /// Checks if an unsigned integer value fits in a primitive type.
-    fn check_uint_fits(&mut self, value: u64, prim: &PrimitiveTy, value_desc: &str, span: ic_syntax::Span) -> bool {
+    fn check_uint_fits(
+        &mut self,
+        value: u64,
+        prim: &PrimitiveTy,
+        value_desc: &str,
+        span: ic_syntax::Span,
+    ) -> bool {
         let fits = match prim {
             PrimitiveTy::UInt64 => true,
             PrimitiveTy::Int64 => value <= i64::MAX as u64,
@@ -197,51 +243,63 @@ impl<'a> TypeChecker<'a> {
                 false
             }
         };
-        
+
         if !fits {
             self.errors.push(error_span(
-                format!("{} value {} does not fit in type {}", value_desc, value, prim.name()),
+                format!(
+                    "{} value {} does not fit in type {}",
+                    value_desc,
+                    value,
+                    prim.name()
+                ),
                 Label::new(span).message("value out of range"),
             ));
         }
-        
+
         fits
     }
-    
+
     /// Checks if two types are compatible (for constant references).
     fn check_type_compatible(&mut self, from_ty: &Ty, to_ty: &Ty, value_desc: &str) -> bool {
         match (&from_ty.kind, &to_ty.kind) {
             // Same primitive types
             (TyKind::Primitive(p1), TyKind::Primitive(p2)) if p1 == p2 => true,
-            
+
             // Numeric promotions (e.g., int32 to int64)
             (TyKind::Primitive(from), TyKind::Primitive(to)) => {
                 // TODO: Implement proper numeric promotion rules
                 false
-            },
-            
+            }
+
             // Same ADT
             (TyKind::Adt(id1), TyKind::Adt(id2)) if id1 == id2 => true,
-            
+
             // Same string types
             (TyKind::String { wide: w1, .. }, TyKind::String { wide: w2, .. }) if w1 == w2 => true,
-            
+
             // Arrays with same element type
             (TyKind::Array { ty: ty1, .. }, TyKind::Array { ty: ty2, .. }) => {
                 self.check_type_compatible(ty1, ty2, value_desc)
-            },
-            
+            }
+
             // Sequences with same element type
             (TyKind::Sequence { ty: ty1, .. }, TyKind::Sequence { ty: ty2, .. }) => {
                 self.check_type_compatible(ty1, ty2, value_desc)
-            },
-            
+            }
+
             // Maps with same key and element types
-            (TyKind::Map { key: k1, elem: e1, .. }, TyKind::Map { key: k2, elem: e2, .. }) => {
-                self.check_type_compatible(k1, k2, value_desc) &&
-                self.check_type_compatible(e1, e2, value_desc)
-            },
-            
+            (
+                TyKind::Map {
+                    key: k1, elem: e1, ..
+                },
+                TyKind::Map {
+                    key: k2, elem: e2, ..
+                },
+            ) => {
+                self.check_type_compatible(k1, k2, value_desc)
+                    && self.check_type_compatible(e1, e2, value_desc)
+            }
+
             _ => {
                 self.errors.push(error_span(
                     format!("{} type mismatch", value_desc),
@@ -251,21 +309,21 @@ impl<'a> TypeChecker<'a> {
             }
         }
     }
-    
+
     /// Type checks a constant definition.
     fn check_const(&mut self, id: DefId) {
         let def = self.ctx.definitions.get(id);
-        
+
         if let DefKind::Const(const_ty) = &def.kind {
             let value_desc = format!("constant `{}`", def.ident.name);
             self.check_numeric_type(&const_ty.value, &const_ty.ty, &value_desc);
         }
     }
-    
+
     /// Type checks enum field values.
     fn check_enum(&mut self, id: DefId) {
         let def = self.ctx.definitions.get(id);
-        
+
         if let DefKind::Enum(enum_ty) = &def.kind {
             // Determine the underlying type
             let underlying_prim = match &enum_ty.ty.kind {
@@ -275,18 +333,23 @@ impl<'a> TypeChecker<'a> {
                     return;
                 }
             };
-            
+
             for field in &enum_ty.fields {
                 let value_desc = format!("enum field `{}::{}`", def.ident.name, field.ident.name);
-                self.check_int_fits(field.value as i64, underlying_prim, &value_desc, field.ident.span);
+                self.check_int_fits(
+                    field.value as i64,
+                    underlying_prim,
+                    &value_desc,
+                    field.ident.span,
+                );
             }
         }
     }
-    
+
     /// Type checks bitmask flag values.
     fn check_bitmask(&mut self, id: DefId) {
         let def = self.ctx.definitions.get(id);
-        
+
         if let DefKind::Bitmask(bitmask_ty) = &def.kind {
             // Determine the underlying type
             let underlying_prim = match &bitmask_ty.ty.kind {
@@ -296,40 +359,47 @@ impl<'a> TypeChecker<'a> {
                     return;
                 }
             };
-            
+
             for flag in &bitmask_ty.flags {
                 let value_desc = format!("bitmask flag `{}::{}`", def.ident.name, flag.ident.name);
-                self.check_int_fits(flag.value as i64, underlying_prim, &value_desc, flag.ident.span);
+                self.check_int_fits(
+                    flag.value as i64,
+                    underlying_prim,
+                    &value_desc,
+                    flag.ident.span,
+                );
             }
         }
     }
-    
+
     /// Type checks union case labels.
     fn check_union(&mut self, id: DefId) {
         let def = self.ctx.definitions.get(id);
-        
+
         if let DefKind::Union(union_ty) = &def.kind {
             for variant in &union_ty.variants {
                 for label in &variant.labels {
-                    let value_desc = format!("union case label for variant `{}::{}`", 
-                                           def.ident.name, variant.ident.name);
+                    let value_desc = format!(
+                        "union case label for variant `{}::{}`",
+                        def.ident.name, variant.ident.name
+                    );
                     self.check_numeric_type(label, &union_ty.disc, &value_desc);
                 }
             }
         }
     }
-    
+
     /// Type checks all definitions.
     fn check_all(&mut self, order: &[DefId]) {
         for &id in order {
             let def = self.ctx.definitions.get(id);
-            
+
             match &def.kind {
                 DefKind::Const(_) => self.check_const(id),
                 DefKind::Enum(_) => self.check_enum(id),
                 DefKind::Bitmask(_) => self.check_bitmask(id),
                 DefKind::Union(_) => self.check_union(id),
-                _ => {},
+                _ => {}
             }
         }
     }

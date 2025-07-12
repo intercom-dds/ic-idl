@@ -187,8 +187,22 @@ impl<'a> TypeResolver<'a> {
         members
     }
 
+    /// Marks any forward declarations of the given type as resolved.
+    fn mark_forward_declarations_resolved(&mut self, name: &str) {
+        // Find all definitions with this name
+        for (_, def) in self.ctx.definitions.iter_mut() {
+            if def.ident.name == name && matches!(def.kind, DefKind::Decl(_)) {
+                // This is a forward declaration - mark it as complete since we found the definition
+                def.flags.unset(DefFlags::IS_INCOMPLETE);
+            }
+        }
+    }
+
     /// Resolves a struct definition.
     fn resolve_struct(&mut self, id: DefId, def: &ic_syntax::StructDef) {
+        // Mark any forward declarations as resolved
+        self.mark_forward_declarations_resolved(&def.ident.name);
+
         let parent = def.parent.as_ref().and_then(|p| self.resolve_path(p));
         let members = self.resolve_struct_members(def);
 
@@ -204,6 +218,8 @@ impl<'a> TypeResolver<'a> {
 
     /// Resolves union variants.
     fn resolve_union(&mut self, id: DefId, def: &ic_syntax::UnionDef) {
+        // Mark any forward declarations as resolved
+        self.mark_forward_declarations_resolved(&def.ident.name);
         let disc = self.resolve_type(&def.disc.ty);
         let mut variants = Vec::new();
 
@@ -292,6 +308,8 @@ impl<'a> TypeResolver<'a> {
 
     /// Resolves an interface definition.
     fn resolve_interface(&mut self, id: DefId, def: &ic_syntax::InterfaceDef) {
+        // Mark any forward declarations as resolved
+        self.mark_forward_declarations_resolved(&def.ident.name);
         let parents = def
             .inherits
             .iter()
@@ -369,6 +387,10 @@ impl<'a> TypeResolver<'a> {
                     name: v.ident.name.clone(),
                     kind: "annotation",
                 },
+                Item::ValuetypeValue(v) => ItemKey {
+                    name: v.ident.name.clone(),
+                    kind: "valuetype",
+                },
                 _ => continue,
             };
 
@@ -441,21 +463,47 @@ impl<'a> TypeResolver<'a> {
                         self.resolve_const(id, v);
                     }
                 }
+                Item::ValuetypeValue(v) => {
+                    if let Some(&id) = self.item_map.get(&ItemKey {
+                        name: v.ident.name.clone(),
+                        kind: "valuetype",
+                    }) {
+                        self.resolve_valuetype(id, v);
+                    }
+                }
                 // TODO: Handle other item types
                 _ => {}
             }
         }
     }
-    
+
     /// Resolves a constant definition.
     fn resolve_const(&mut self, id: DefId, ast: &ic_syntax::ConstDef) {
         // Resolve the type
         let ty = self.resolve_type(&ast.ty);
-        
+
         // Update the constant's type
         let def = self.ctx.definitions.get_mut(id);
         if let DefKind::Const(const_ty) = &mut def.kind {
             const_ty.ty = ty;
+        }
+    }
+
+    /// Resolves a valuetype definition.
+    fn resolve_valuetype(&mut self, id: DefId, def: &ic_syntax::ValuetypeDef) {
+        // Mark any forward declarations as resolved
+        self.mark_forward_declarations_resolved(&def.ident.name);
+
+        // TODO: Properly handle valuetype members (they're different from struct members)
+        // For now, just mark as complete
+
+        // Update the definition
+        let hir_def = self.ctx.definitions.get_mut(id);
+        hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+
+        if let DefKind::Valuetype(vt) = &mut hir_def.kind {
+            // TODO: Resolve parent, extends, prototypes, members, definitions
+            vt.members = Vec::new();
         }
     }
 }

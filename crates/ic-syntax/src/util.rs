@@ -28,7 +28,7 @@
 use ic_vfs::Location;
 
 use crate::ast::Item;
-use crate::{Declarator, Expr, Path, Span, Type};
+use crate::{Declarator, Expr, OpKind, Path, Span, Type};
 
 #[must_use]
 pub fn path_name(path: &Path) -> String {
@@ -263,5 +263,23 @@ pub fn item_variant_name(item: &Item) -> &'static str {
         Item::InterfaceValue(_) => "interface",
         Item::ValuetypeValue(_) => "valuetype",
         Item::DeclValue(_) => "forward declaration",
+    }
+}
+
+/// Get a human-readable name for an operator
+#[must_use]
+pub fn op_name(op: OpKind) -> &'static str {
+    match op {
+        OpKind::Add => "+",
+        OpKind::Sub => "-",
+        OpKind::Multiply => "*",
+        OpKind::Divide => "/",
+        OpKind::Modulo => "%",
+        OpKind::And => "&",
+        OpKind::Or => "|",
+        OpKind::Xor => "^",
+        OpKind::Lshift => "<<",
+        OpKind::Rshift => ">>",
+        OpKind::Not => "~",
     }
 }

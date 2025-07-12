@@ -26,4 +26,5 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /// Types that are nested cannot, by definition, be used as topic types.
+#[allow(dead_code)]
 pub struct TopicNested;

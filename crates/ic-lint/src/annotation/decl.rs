@@ -28,7 +28,7 @@
 use ic_cli::color::Color;
 use ic_diagnostic::{Label, warn_span};
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Declarator, Ident, Path, util};
+use ic_syntax::{Path, util};
 
 use crate::{Category, Lint, LintCtx};
 

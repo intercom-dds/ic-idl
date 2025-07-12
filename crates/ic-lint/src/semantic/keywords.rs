@@ -26,10 +26,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{Color, Diag, Label, error_span};
+use ic_diagnostic::{Label, error_span};
 use ic_hir::keywords::IDL_KEYWORDS;
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Item, ParamKind, Prototype, util};
+use ic_syntax::Item;
 
 use crate::{Category, Lint, LintCtx};
 

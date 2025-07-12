@@ -25,18 +25,19 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Diag, Label, error_span};
+use ic_diagnostic::{Label, error_span};
 use ic_hir::hir;
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
 
+#[allow(dead_code)]
 pub struct Proto<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
 impl<'a> Visitor<'a> for Proto<'_> {
-    fn visit_enum(&mut self, def: &'a hir::Def, ty: &'a hir::EnumTy) {
+    fn visit_enum(&mut self, _def: &'a hir::Def, ty: &'a hir::EnumTy) {
         if let Some(field) = ty.fields.first() {
             if field.value != 0 {
                 let diag = error_span(

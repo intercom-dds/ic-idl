@@ -42,7 +42,7 @@ pub struct EmptyTypes<'a> {
 }
 
 impl EmptyTypes<'_> {
-    fn diagnose<T: ItemTraits>(&mut self, span: Span, def: &T, member: &str) {
+    fn diagnose<T: ItemTraits>(&mut self, span: Span, _def: &T, member: &str) {
         let ty = T::item_name();
         let note = format!("all {ty}s must have at least one {member}");
         let diag = error_span(

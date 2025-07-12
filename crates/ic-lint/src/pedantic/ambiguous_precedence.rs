@@ -46,7 +46,7 @@ impl AmbiguousPrecedence<'_> {
         &self,
         parent_op: &ic_syntax::Op,
         child_op: &ic_syntax::Op,
-        parent_expr: &Binary,
+        _parent_expr: &Binary,
         child_expr: &Binary,
     ) {
         let parent_name = util::op_name(parent_op.kind);

@@ -100,7 +100,7 @@ impl NonVoidOneway<'_> {
 
 impl<'a> Visitor<'a> for NonVoidOneway<'a> {
     fn visit_prototype(&mut self, def: &'a ic_syntax::Prototype) {
-        if let Some(oneway) = def.oneway {
+        if let Some(_oneway) = def.oneway {
             self.chk_return_ty(def);
             self.chk_exception(def);
             self.chk_out_params(def);

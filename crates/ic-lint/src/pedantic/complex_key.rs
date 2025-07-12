@@ -29,7 +29,6 @@ use ic_diagnostic::{Label, warn_span};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefKind, Ty, TyKind};
 use ic_hir::visit::Visitor;
-use ic_vfs::Span;
 
 use crate::{Category, Lint, LintCtx};
 

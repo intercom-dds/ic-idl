@@ -26,13 +26,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
-use std::fmt::{Display, Write as _};
-use std::iter::{Enumerate, Map};
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::{Label, warn_span};
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
-use ic_syntax::{BitmaskDef, Declarator, EnumDef, Expr, Item, LiteralValue, Path};
+use ic_syntax::{BitmaskDef, EnumDef, Expr, Item, Path};
 
 use crate::iter::IterExt;
 use crate::{Category, Lint, LintCtx};

@@ -31,7 +31,7 @@ use std::iter::Enumerate;
 pub trait IterExt: Iterator + Sized {
     /// Joins all elements of an interator into a string with the specified
     /// separator.
-    fn join(mut self, sep: &str) -> String
+    fn join(self, _sep: &str) -> String
     where
         Self::Item: Display,
     {

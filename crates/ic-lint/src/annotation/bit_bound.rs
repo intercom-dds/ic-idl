@@ -25,8 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::visit::Visitor;
 
 /// Checks that value of the `@bit_bound` annotation is within range of the
 /// underlying type
+#[allow(dead_code)]
 pub struct BitBound;

@@ -25,14 +25,89 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(dead_code, unused)]
+//! # ic-lint
+//!
+//! A linting framework for IDL files that checks for syntax errors, semantic
+//! issues, and style violations.
+//!
+//! ## Overview
+//!
+//! The lint system is organized into categories:
+//!
+//! - **Syntax**: Hard errors for malformed IDL constructs
+//! - **Semantic**: Errors for semantically invalid constructs
+//! - **Pedantic**: Warnings for non-standard language extensions
+//! - **Unsupported**: Warnings for unsupported language features
+//! - **Annotation**: Warnings for annotation usage issues
+//! - **Deprecated**: Warnings for deprecated language features
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use ic_lint::{lint_syntax, lint_hir};
+//! use ic_vfs::SourceMap;
+//! use ic_syntax::Item;
+//!
+//! // Assume we have a parsed AST
+//! let vfs = SourceMap::default();
+//! let ast: Vec<Item> = vec![];
+//!
+//! // Run AST-based lints
+//! let report = lint_syntax(&ast, &vfs);
+//! assert!(report.errors.is_empty());
+//! assert!(report.warnings.is_empty());
+//! ```
+//!
+//! ## Configuration
+//!
+//! Lints can be configured using [`LintConfig`]:
+//!
+//! ```no_run
+//! use ic_lint::{LintConfig, Category, Level, lint_syntax_with_config};
+//! # use ic_vfs::SourceMap;
+//! # use ic_syntax::Item;
+//! # let vfs = SourceMap::default();
+//! # let ast: Vec<Item> = vec![];
+//!
+//! let mut config = LintConfig::new();
+//! config.set_category_level(Category::Pedantic, Level::Error);
+//! config.set_lint_level("null", Level::Warning);
+//!
+//! let report = lint_syntax_with_config(&ast, &vfs, &config);
+//! ```
+//!
+//! ## Writing New Lints
+//!
+//! To create a new lint:
+//!
+//! 1. Create a new module in the appropriate category directory
+//! 2. Define a struct that implements the [`Lint`] trait
+//! 3. Implement `Visitor` for AST lints or `ic_hir::visit::Visitor` for HIR lints
+//! 4. Register the lint in `lint_syntax()` or `lint_hir()`
+//! 5. Add the lint name to `all_lint_names()`
+//!
+//! Example:
+//!
+//! ```ignore
+//! use ic_syntax::visit::{Visitor, walk_tree};
+//! use crate::{Lint, LintCtx, Category, lint_impl};
+//!
+//! pub struct MyLint<'a> {
+//!     ctx: &'a LintCtx<'a>,
+//! }
+//!
+//! impl<'a> Visitor<'a> for MyLint<'a> {
+//!     // Implement visitor methods
+//! }
+//!
+//! lint_impl!(MyLint, "my_lint", Category::Pedantic);
+//! ```
 
 use std::cell::RefCell;
 
 // Re-export Level for external use
 pub use ic_diagnostic::Level;
 use ic_diagnostic::{Diag, Label, level_span};
-use ic_hir::ResolvedGraph;
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
 
@@ -200,8 +275,14 @@ impl LintCtx<'_> {
     }
 
     /// Returns a slice of the given span.
-    // TODO: spans can go across files, this has to be accounted for
+    ///
+    /// # Panics
+    ///
+    /// Panics if the span crosses file boundaries (i.e., start and end are in
+    /// different files). This is enforced by `span.range()` which contains a
+    /// debug assertion.
     pub fn slice(&self, span: Span) -> &str {
+        // span.range() will panic in debug builds if start.file_id != end.file_id
         &self.vfs.source_str(span.start.file_id)[span.range()]
     }
 }
@@ -217,13 +298,13 @@ pub trait Lint<'a>: Sized {
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {}
+    fn check(_ctx: &'a LintCtx<'_>, _ast: &[Item]) {}
 
     /// Runs the lint on the given HIR.
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
-    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {}
+    fn check_hir(_ctx: &'a LintCtx<'_>, _hir: &ic_hir::ResolvedGraph) {}
 }
 
 #[must_use]
@@ -338,7 +419,10 @@ pub fn lint_hir_with_config(
         config,
     };
 
-    let lints = &[pedantic::complex_key::ComplexMapKey::check_hir];
+    let lints = &[
+        pedantic::complex_key::ComplexMapKey::check_hir,
+        unsupported::proto::Proto::check_hir,
+    ];
 
     for check in lints {
         check(&ctx, hir);

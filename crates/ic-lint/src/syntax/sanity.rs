@@ -48,7 +48,7 @@ impl<'a> Lint<'a> for Sanity {
         Category::Syntax
     }
 
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+    fn check(_ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self;
         walk_tree(&mut lint, ast);
     }

@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::color::Colorize;
-use ic_diagnostic::{Label, Level, level_span};
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Literal, LiteralValue};
 
@@ -52,7 +52,7 @@ impl<'a> Lint<'a> for LowercaseBool<'a> {
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
     fn visit_literal(&mut self, num: &'a Literal) {
-        if let LiteralValue::Bool(lit) = num.value {
+        if let LiteralValue::Bool(_lit) = num.value {
             let slice = self.ctx.slice(num.span);
             if slice.chars().any(char::is_lowercase) {
                 let fixed = slice.to_uppercase().green();

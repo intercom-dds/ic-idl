@@ -25,7 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 /// For annotations that have multiple non-default parameters, require that all
 /// arguments in the applied annotation are named. Single-parameter annotations
 /// are unambiguous, thus not checked by this lint.

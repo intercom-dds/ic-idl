@@ -113,6 +113,12 @@ impl<'a> NameCollector<'a> {
         let parent = self.scope_stack.current_parent();
         let qualified_name = self.scope_stack.qualified_name(&ident.name);
 
+        // Constants are complete immediately, other types need resolution
+        let flags = match &kind {
+            DefKind::Const(_) => DefFlags::default(),
+            _ => DefFlags::IS_INCOMPLETE,
+        };
+
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
@@ -120,7 +126,7 @@ impl<'a> NameCollector<'a> {
             annotations: Vec::new(), // Will be filled in resolution phase
             span,
             kind,
-            flags: DefFlags::IS_INCOMPLETE, // Mark as incomplete until resolved
+            flags,
         });
 
         // Check for duplicate names

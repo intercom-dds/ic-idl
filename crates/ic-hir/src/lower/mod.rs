@@ -36,7 +36,8 @@
 //! 1. **Collection**: Discovers all definitions and creates placeholder HIR nodes
 //! 2. **Resolution**: Resolves type references and builds the type graph
 //! 3. **Evaluation**: Evaluates constant expressions and enum values
-//! 4. **Validation**: Performs semantic validation and consistency checks
+//! 4. **Type Checking**: Validates that values match their declared types
+//! 5. **Validation**: Performs semantic validation and consistency checks
 //!
 //! ## Design Principles
 //!
@@ -54,11 +55,13 @@ use crate::hir::TypeId;
 mod collect;
 mod evaluate;
 mod resolve;
+mod typecheck;
 mod validate;
 
 pub use self::collect::NameCollector;
 pub use self::evaluate::ExpressionEvaluator;
 pub use self::resolve::TypeResolver;
+pub use self::typecheck::TypeChecker;
 pub use self::validate::Validator;
 
 /// Result of the lowering process.
@@ -93,7 +96,11 @@ where
     let mut phase_errors = evaluate::evaluate_expressions(&mut context, &name_map, &ast_items);
     errors.append(&mut phase_errors);
 
-    // Phase 4: Validate the HIR
+    // Phase 4: Type check values against their declared types
+    let mut phase_errors = typecheck::typecheck_hir(&context, &order);
+    errors.append(&mut phase_errors);
+
+    // Phase 5: Validate the HIR
     let mut phase_errors = validate::validate_hir(&context, &order);
     errors.append(&mut phase_errors);
 

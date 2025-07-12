@@ -432,9 +432,30 @@ impl<'a> TypeResolver<'a> {
                         }
                     }
                 }
+                Item::ConstValue(v) => {
+                    let name = match &v.decl {
+                        ic_syntax::Declarator::Simple(n) => n.name.clone(),
+                        ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
+                    };
+                    if let Some(&id) = self.name_map.get(&name) {
+                        self.resolve_const(id, v);
+                    }
+                }
                 // TODO: Handle other item types
                 _ => {}
             }
+        }
+    }
+    
+    /// Resolves a constant definition.
+    fn resolve_const(&mut self, id: DefId, ast: &ic_syntax::ConstDef) {
+        // Resolve the type
+        let ty = self.resolve_type(&ast.ty);
+        
+        // Update the constant's type
+        let def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Const(const_ty) = &mut def.kind {
+            const_ty.ty = ty;
         }
     }
 }

@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/array_param.rs
+expression: test_lint(source)
+---
+

@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/bitmask_ann.rs
+expression: test_lint(source)
+---
+

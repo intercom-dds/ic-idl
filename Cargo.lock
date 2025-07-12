@@ -260,6 +260,7 @@ dependencies = [
  "ic-hir",
  "ic-parse",
  "ic-preproc",
+ "ic-ptree-lower",
  "ic-syntax",
  "ic-vfs",
  "insta",

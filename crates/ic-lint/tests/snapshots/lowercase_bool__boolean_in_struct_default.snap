@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/lowercase_bool.rs
+expression: test_lint(source)
+---
+

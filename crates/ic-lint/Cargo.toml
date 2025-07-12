@@ -47,3 +47,4 @@ ic-vfs = { path = "../ic-vfs" }
 insta = "1.40"
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
+ic-ptree-lower = { path = "../ic-ptree-lower" }

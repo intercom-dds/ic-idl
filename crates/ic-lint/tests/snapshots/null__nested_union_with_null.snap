@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/null.rs
+expression: test_lint(source)
+---
+warning: `null` variants are an InterCOM extension
+   ┌ test.idl:4:25
+   │
+ 4 │             case FALSE: null;
+   ·                         ^^^^^ `null` is not standard
+   └──
+ note: all case labels must map to a value
+
+warning: `null` variants are an InterCOM extension
+   ┌ test.idl:9:21
+   │
+ 9 │             case 2: null;
+   ·                     ^^^^^ `null` is not standard
+   └──
+ note: all case labels must map to a value

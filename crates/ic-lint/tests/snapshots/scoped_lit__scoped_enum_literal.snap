@@ -1,0 +1,21 @@
+---
+source: crates/ic-lint/tests/scoped_lit.rs
+expression: test_lint(source)
+---
+warning: scoped enums are an InterCOM extension
+   ┌ test.idl:8:37
+   │
+ 8 │         const Color DEFAULT_COLOR = Color::RED;
+   ·                                     ^^^^^ used here
+   └──
+ help: remove the type name: `RED`
+ note: enumerators are registered in the parent scope
+
+warning: scoped enums are an InterCOM extension
+   ┌ test.idl:9:33
+   │
+ 9 │         const Color SECONDARY = Color::GREEN;
+   ·                                 ^^^^^ used here
+   └──
+ help: remove the type name: `GREEN`
+ note: enumerators are registered in the parent scope

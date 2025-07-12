@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/lowercase_bool.rs
+expression: test_lint(source)
+---
+warning: lowercase boolean literals are an InterCOM extension
+   ┌ test.idl:2:40
+   │
+ 2 │         const boolean LOWERCASE_TRUE = true;
+   ·                                        ^^^^ lowercase boolean literal
+   └──
+ help: use `TRUE` instead
+
+warning: lowercase boolean literals are an InterCOM extension
+   ┌ test.idl:3:41
+   │
+ 3 │         const boolean LOWERCASE_FALSE = false;
+   ·                                         ^^^^^ lowercase boolean literal
+   └──
+ help: use `FALSE` instead

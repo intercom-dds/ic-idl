@@ -1,0 +1,23 @@
+---
+source: crates/ic-lint/tests/empty_mod.rs
+expression: test_lint(source)
+---
+warning: empty module declarations are not standard
+   ┌ test.idl:3:13
+   │
+ 3 │             module InnerEmpty {
+   ·             ^^^^^^^^^^^^^^^^^^^ 
+ 4 │             };
+   · ^^^^^^^^^^^^^^
+   └──
+ help: either remove the declaration or add an item to it
+
+warning: empty module declarations are not standard
+    ┌ test.idl:11:9
+    │
+ 11 │         module AnotherEmpty {
+    ·         ^^^^^^^^^^^^^^^^^^^^^ 
+ 12 │         };
+    · ^^^^^^^^^^
+    └──
+ help: either remove the declaration or add an item to it

@@ -1,0 +1,21 @@
+---
+source: crates/ic-lint/tests/complex_lit.rs
+expression: test_lint(source)
+---
+warning: complex literals are an InterCOM extension
+   ┌ test.idl:2:34
+   │
+ 2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };
+   ·                    ^^^^^^        ^^^^^^^^^^^^^^ complex constants are an InterCOM extension
+   ·                    └─ const defined here
+   └──
+ note: only literals of trivial types are allowed in standard IDL
+
+warning: complex literals are an InterCOM extension
+   ┌ test.idl:3:40
+   │
+ 3 │         const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
+   ·                      ^^^^^^            ^^^^^^^^^^^^^^^^^^^^ complex constants are an InterCOM extension
+   ·                      └─ const defined here
+   └──
+ note: only literals of trivial types are allowed in standard IDL

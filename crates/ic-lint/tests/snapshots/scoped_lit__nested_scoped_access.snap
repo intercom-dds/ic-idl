@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/scoped_lit.rs
+expression: test_lint(source)
+---
+warning: scoped enums are an InterCOM extension
+   ┌ test.idl:9:43
+   │
+ 9 │         const Types::Result GOOD = Types::Result::SUCCESS;
+   ·                                           ^^^^^^ used here
+   └──
+ help: remove the type name: `Types::SUCCESS`
+ note: enumerators are registered in the parent scope

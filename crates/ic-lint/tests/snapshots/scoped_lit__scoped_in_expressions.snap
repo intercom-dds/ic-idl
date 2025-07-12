@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/scoped_lit.rs
+expression: test_lint(source)
+---
+

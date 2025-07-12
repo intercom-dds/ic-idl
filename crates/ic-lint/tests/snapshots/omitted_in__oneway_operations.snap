@@ -1,0 +1,27 @@
+---
+source: crates/ic-lint/tests/omitted_in.rs
+expression: test_lint(source)
+---
+warning: parameters must be declared with `in`, `out`, or `inout`
+   ┌ test.idl:3:32
+   │
+ 3 │             oneway void notify(string event);
+   ·                                ^^^^^^ expected parameter specifier before this type
+   └──
+ help: prefix the parameter with `in`
+
+warning: parameters must be declared with `in`, `out`, or `inout`
+   ┌ test.idl:4:29
+   │
+ 4 │             oneway void log(long level, string message);
+   ·                             ^^^^ expected parameter specifier before this type
+   └──
+ help: prefix the parameter with `in`
+
+warning: parameters must be declared with `in`, `out`, or `inout`
+   ┌ test.idl:4:41
+   │
+ 4 │             oneway void log(long level, string message);
+   ·                                         ^^^^^^ expected parameter specifier before this type
+   └──
+ help: prefix the parameter with `in`

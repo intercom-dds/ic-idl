@@ -47,12 +47,3 @@ warning: operator `^` has lower precedence than `&`
    ·                          └─ this operator has lower precedence
    └──
  help: add parentheses to clarify the intended order of operations
-
-warning: operator `|` has lower precedence than `&`
-   ┌ test.idl:9:22
-   │
- 9 │ const long test5 = 1 | (2 & 3);
-   ·                      ^  ^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
-   └──
- help: add parentheses to clarify the intended order of operations

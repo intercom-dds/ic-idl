@@ -259,4 +259,51 @@ mod tests {
             false
         ));
     }
+
+    #[test]
+    fn test_bitwise_precedence_warnings() {
+        // Should warn: different bitwise operators
+        assert!(AmbiguousPrecedence::should_warn_precedence(
+            OpKind::Or,
+            OpKind::And,
+            true
+        ));
+        assert!(AmbiguousPrecedence::should_warn_precedence(
+            OpKind::Or,
+            OpKind::Xor,
+            false
+        ));
+        assert!(AmbiguousPrecedence::should_warn_precedence(
+            OpKind::Xor,
+            OpKind::And,
+            true
+        ));
+
+        // Should NOT warn: same bitwise operator
+        assert!(!AmbiguousPrecedence::should_warn_precedence(
+            OpKind::And,
+            OpKind::And,
+            true
+        ));
+        assert!(!AmbiguousPrecedence::should_warn_precedence(
+            OpKind::Or,
+            OpKind::Or,
+            false
+        ));
+    }
+
+    #[test]
+    fn test_op_name() {
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Add), "+");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Sub), "-");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Multiply), "*");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Divide), "/");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Modulo), "%");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::And), "&");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Or), "|");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Xor), "^");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Lshift), "<<");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Rshift), ">>");
+        assert_eq!(AmbiguousPrecedence::op_name(OpKind::Not), "~");
+    }
 }

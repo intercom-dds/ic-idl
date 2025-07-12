@@ -1,0 +1,48 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
+expression: check_ambiguous_precedence(idl)
+---
+warning: operator `|` has lower precedence than `^`
+   ┌ test.idl:3:22
+   │
+ 3 │ const long test2 = 1 | 2 & 3 ^ 4 + 5;
+   ·                      ^ ^^^^^^^^^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `&`
+   ┌ test.idl:3:30
+   │
+ 3 │ const long test2 = 1 | 2 & 3 ^ 4 + 5;
+   ·                        ^^^^^ ^ this operator has lower precedence
+   ·                        └─ than this expression
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `+`
+   ┌ test.idl:3:30
+   │
+ 3 │ const long test2 = 1 | 2 & 3 ^ 4 + 5;
+   ·                              ^ ^^^^^ than this expression
+   ·                              └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `^`
+   ┌ test.idl:8:22
+   │
+ 8 │ const long test6 = 1 | (2 & 3) ^ 4 + 5;
+   ·                      ^ ^^^^^^^^^^^^^^^ than this expression
+   ·                      └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `+`
+   ┌ test.idl:8:32
+   │
+ 8 │ const long test6 = 1 | (2 & 3) ^ 4 + 5;
+   ·                                ^ ^^^^^ than this expression
+   ·                                └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations

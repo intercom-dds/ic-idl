@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence_edge_cases.rs
+expression: check_ambiguous_precedence(idl)
+---
+

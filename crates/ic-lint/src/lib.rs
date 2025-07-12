@@ -49,7 +49,7 @@ use std::collections::HashMap;
 /// Helper macro to simplify lint implementation.
 ///
 /// Example:
-/// ```
+/// ```ignore
 /// lint_impl! {
 ///     name: "lowercase_bool",
 ///     category: Category::Pedantic,

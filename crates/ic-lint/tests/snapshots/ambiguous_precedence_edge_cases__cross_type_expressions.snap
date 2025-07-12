@@ -1,0 +1,48 @@
+---
+source: crates/ic-lint/tests/ambiguous_precedence_edge_cases.rs
+expression: check_ambiguous_precedence(idl)
+---
+warning: operator `&` has lower precedence than `+`
+   ┌ test.idl:2:23
+   │
+ 2 │ const long test1 = ~a & b + c;
+   ·                       ^ ^^^^^ than this expression
+   ·                       └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `*`
+   ┌ test.idl:3:23
+   │
+ 3 │ const long test2 = -a | b * c;
+   ·                       ^ ^^^^^ than this expression
+   ·                       └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `^` has lower precedence than `-`
+   ┌ test.idl:4:23
+   │
+ 4 │ const long test3 = +a ^ b - c;
+   ·                       ^ ^^^^^ than this expression
+   ·                       └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `&`
+   ┌ test.idl:8:28
+   │
+ 8 │ const long test6 = ~a & ~b | ~c;
+   ·                    ^^^^^^^ ^ this operator has lower precedence
+   ·                    └─ than this expression
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning: operator `|` has lower precedence than `&`
+    ┌ test.idl:12:23
+    │
+ 12 │ const long test9 = ~a | ~b & ~c;
+    ·                       ^ ^^^^^^^ than this expression
+    ·                       └─ this operator has lower precedence
+    └──
+ help: add parentheses to clarify the intended order of operations

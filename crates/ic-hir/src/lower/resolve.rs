@@ -471,6 +471,22 @@ impl<'a> TypeResolver<'a> {
                         self.resolve_valuetype(id, v);
                     }
                 }
+                Item::EnumValue(v) => {
+                    if let Some(&id) = self.item_map.get(&ItemKey {
+                        name: v.ident.name.clone(),
+                        kind: "enum",
+                    }) {
+                        self.resolve_enum(id, v);
+                    }
+                }
+                Item::BitmaskValue(v) => {
+                    if let Some(&id) = self.item_map.get(&ItemKey {
+                        name: v.ident.name.clone(),
+                        kind: "bitmask",
+                    }) {
+                        self.resolve_bitmask(id, v);
+                    }
+                }
                 // TODO: Handle other item types
                 _ => {}
             }
@@ -504,6 +520,36 @@ impl<'a> TypeResolver<'a> {
         if let DefKind::Valuetype(vt) = &mut hir_def.kind {
             // TODO: Resolve parent, extends, prototypes, members, definitions
             vt.members = Vec::new();
+        }
+    }
+
+    /// Resolves an enum definition.
+    fn resolve_enum(&mut self, id: DefId, def: &ic_syntax::EnumDef) {
+        // TODO: Handle underlying type from annotations
+        // For now, default to int32
+        let underlying_ty = Ty {
+            kind: TyKind::Primitive(PrimitiveTy::Int32),
+            span: def.span,
+        };
+
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
+            enum_ty.ty = underlying_ty;
+        }
+    }
+
+    /// Resolves a bitmask definition.
+    fn resolve_bitmask(&mut self, id: DefId, def: &ic_syntax::BitmaskDef) {
+        // TODO: Handle underlying type from annotations
+        // For now, default to uint32
+        let underlying_ty = Ty {
+            kind: TyKind::Primitive(PrimitiveTy::UInt32),
+            span: def.span,
+        };
+
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
+            bitmask_ty.ty = underlying_ty;
         }
     }
 }

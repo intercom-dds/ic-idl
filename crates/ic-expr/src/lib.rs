@@ -60,6 +60,7 @@ pub enum Op {
 #[derive(Debug)]
 pub enum Expr<T> {
     Lit(T),
+    Var(String),
     Unary(Box<Unary<T>>),
     Binary(Box<Binary<T>>),
     Ternary(Box<Ternary<T>>),
@@ -215,6 +216,14 @@ pub trait EvalContext<T> {
     /// # Errors
     /// Returns an error if the literal cannot be evaluated
     fn eval_literal(&mut self, lit: &T) -> Result<Self::Value>;
+    
+    /// Look up a variable by name
+    ///
+    /// # Errors
+    /// Returns an error if the variable is not found or cannot be evaluated
+    fn lookup_var(&mut self, name: &str) -> Result<Self::Value> {
+        Err(Error::Custom(format!("undefined variable: {}", name)))
+    }
 
     /// Get the evaluation configuration
     fn config(&self) -> EvalConfig;
@@ -230,6 +239,8 @@ where
 {
     match expr {
         Expr::Lit(lit) => ctx.eval_literal(lit),
+        
+        Expr::Var(name) => ctx.lookup_var(name),
 
         Expr::Unary(unary) => {
             let val = eval(&unary.expr, ctx)?;

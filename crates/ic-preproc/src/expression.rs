@@ -115,6 +115,13 @@ fn convert_expr(
                 els,
             })))
         }
+        ic_expr::Expr::Var(_name) => {
+            // The preprocessor doesn't support variables, so this is an error
+            Err(Error::Syntax {
+                message: "undefined identifier in preprocessor expression",
+                span: Span::default(), // We don't have span info here
+            })
+        }
     }
 }
 
@@ -165,6 +172,7 @@ fn expr_span(expr: &Expr) -> Option<Span> {
         ic_expr::Expr::Unary(u) => expr_span(&u.expr),
         ic_expr::Expr::Binary(b) => expr_span(&b.lhs).or_else(|| expr_span(&b.rhs)),
         ic_expr::Expr::Ternary(t) => expr_span(&t.cond),
+        ic_expr::Expr::Var(_) => None, // Variables don't have spans in the preprocessor
     }
 }
 
@@ -186,6 +194,7 @@ fn find_div_mod_span(expr: &Expr) -> Option<Span> {
             .or_else(|| find_div_mod_span(&t.then))
             .or_else(|| find_div_mod_span(&t.els)),
         ic_expr::Expr::Lit(_) => None,
+        ic_expr::Expr::Var(_) => None,
     }
 }
 

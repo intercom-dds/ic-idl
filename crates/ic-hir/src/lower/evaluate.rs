@@ -83,9 +83,82 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
         }
     }
 
+    fn lookup_var(&mut self, name: &str) -> ic_expr::Result<Self::Value> {
+        use ic_expr::idl_adapter::Numeric;
+        
+        // Try to parse as a qualified name (e.g., "MyEnum::VALUE")
+        let parts: Vec<&str> = name.split("::").collect();
+        
+        if parts.len() == 2 {
+            // This might be an enum constant reference
+            let enum_name = parts[0];
+            let field_name = parts[1];
+            
+            // Look through all definitions to find the enum
+            for (_, def) in self.ctx.definitions.iter() {
+                if def.ident.name == enum_name {
+                    if let DefKind::Enum(enum_ty) = &def.kind {
+                        // Find the field
+                        for field in &enum_ty.fields {
+                            if field.ident.name == field_name {
+                                // Return the enum field value
+                                return Ok(Numeric::Int32(field.value as i32));
+                            }
+                        }
+                        // Debug: Print all field names
+                        let field_names: Vec<&str> = enum_ty.fields.iter()
+                            .map(|f| f.ident.name.as_str())
+                            .collect();
+                        return Err(ic_expr::Error::Custom(
+                            format!("enum field `{}::{}` not found. Available fields: {:?}", 
+                                enum_name, field_name, field_names)
+                        ));
+                    }
+                }
+            }
+        }
+        
+        // Try to find a constant with this name
+        for (_, def) in self.ctx.definitions.iter() {
+            if def.ident.name == name {
+                if let DefKind::Const(const_ty) = &def.kind {
+                    // Convert HIR Numeric to ic_expr Numeric
+                    match &const_ty.value {
+                        crate::hir::Numeric::Bool(b) => return Ok(Numeric::Bool(*b)),
+                        crate::hir::Numeric::Char(c) => return Ok(Numeric::Char(*c)),
+                        crate::hir::Numeric::Int8(i) => return Ok(Numeric::Int8(*i)),
+                        crate::hir::Numeric::Octet(i) => return Ok(Numeric::Octet(*i)),
+                        crate::hir::Numeric::Int16(i) => return Ok(Numeric::Int16(*i)),
+                        crate::hir::Numeric::UInt16(i) => return Ok(Numeric::UInt16(*i)),
+                        crate::hir::Numeric::Int32(i) => return Ok(Numeric::Int32(*i)),
+                        crate::hir::Numeric::UInt32(i) => return Ok(Numeric::UInt32(*i)),
+                        crate::hir::Numeric::Int64(i) => return Ok(Numeric::Int64(*i)),
+                        crate::hir::Numeric::UInt64(i) => return Ok(Numeric::UInt64(*i)),
+                        crate::hir::Numeric::Float(f) => return Ok(Numeric::Float(*f)),
+                        crate::hir::Numeric::Double(f) => return Ok(Numeric::Double(*f)),
+                        _ => return Err(ic_expr::Error::Custom(
+                            format!("constant `{}` has non-numeric value", name)
+                        )),
+                    }
+                }
+            }
+        }
+        
+        Err(ic_expr::Error::Custom(format!("undefined variable: {}", name)))
+    }
+
     fn config(&self) -> ic_expr::EvalConfig {
         self.config
     }
+}
+
+/// Converts a path to its string representation.
+fn path_to_string(path: &ic_syntax::Path) -> String {
+    path.segments
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect::<Vec<_>>()
+        .join("::")
 }
 
 /// Converts an ic-syntax expression to an ic-expr expression.
@@ -96,9 +169,9 @@ fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, Str
             value: lit.value.clone(),
         })),
 
-        Expr::Path(_) => {
-            // TODO: Support constant references
-            Err("constant references not yet supported".to_string())
+        Expr::Path(path) => {
+            // Convert path to variable name
+            Ok(ic_expr::Expr::Var(path_to_string(path)))
         }
 
         Expr::Unary(unary) => {
@@ -329,8 +402,8 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates enum values.
     fn evaluate_enum(&mut self, id: DefId, def: &ic_syntax::EnumDef) {
-        // First, evaluate all values
-        let mut values = Vec::new();
+        // First, create the enum fields and evaluate their values
+        let mut fields = Vec::new();
         let mut last_value = -1isize;
 
         for field in &def.fields {
@@ -341,25 +414,26 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             last_value = value;
-            values.push(value);
+            
+            fields.push(EnumLit {
+                ident: field.ident.clone(),
+                value,
+                annotations: Vec::new(), // TODO: Convert annotations
+            });
         }
 
         // Then update the HIR
         let hir_def = self.ctx.definitions.get_mut(id);
 
         if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
-            for (idx, value) in values.into_iter().enumerate() {
-                if let Some(enum_lit) = enum_ty.fields.get_mut(idx) {
-                    enum_lit.value = value;
-                }
-            }
+            enum_ty.fields = fields;
         }
     }
 
     /// Evaluates bitmask values.
     fn evaluate_bitmask(&mut self, id: DefId, def: &ic_syntax::BitmaskDef) {
-        // First, evaluate all values
-        let mut values = Vec::new();
+        // First, create the bitmask flags and evaluate their values
+        let mut flags = Vec::new();
         let mut last_value = 0usize;
 
         for bit in &def.bits {
@@ -370,18 +444,19 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             last_value = value;
-            values.push(value);
+            
+            flags.push(BitFlag {
+                ident: bit.ident.clone(),
+                value,
+                annotations: Vec::new(), // TODO: Convert annotations
+            });
         }
 
         // Then update the HIR
         let hir_def = self.ctx.definitions.get_mut(id);
 
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
-            for (idx, value) in values.into_iter().enumerate() {
-                if let Some(flag) = bitmask_ty.flags.get_mut(idx) {
-                    flag.value = value;
-                }
-            }
+            bitmask_ty.flags = flags;
         }
     }
 

@@ -86,6 +86,21 @@ impl<'a> TypeChecker<'a> {
                 ));
                 false
             }
+            
+            // Enum values - check that the numeric value is compatible with the enum's underlying type
+            (value, TyKind::Adt(type_id)) => {
+                let def = self.ctx.definitions.get(*type_id);
+                if let DefKind::Enum(enum_ty) = &def.kind {
+                    // Check against the enum's underlying type
+                    return self.check_numeric_type(value, &enum_ty.ty, value_desc);
+                }
+                // Not an enum, report type mismatch
+                self.errors.push(error_span(
+                    format!("{} value type does not match declared type", value_desc),
+                    Label::new(ty.span).message("type mismatch"),
+                ));
+                false
+            }
 
             // Character values
             (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char)) => true,

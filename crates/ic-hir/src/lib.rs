@@ -71,15 +71,15 @@ pub fn from_ast<I>(ast: I) -> ResolvedGraph
 where
     I: IntoIterator<Item = ic_syntax::Item>,
 {
-    let mut context = Context::new();
-    let (order, mut errors) = lower::from_ast(&mut context, ast);
-
+    let result = lower::lower(ast);
+    
     // Check for non-type name collisions, like struct members, etc.
-    hygiene::check(&context, &order, &mut errors);
+    let mut errors = result.errors;
+    hygiene::check(&result.context, &result.order, &mut errors);
 
     ResolvedGraph {
-        context,
-        order,
+        context: result.context,
+        order: result.order,
         errors,
     }
 }

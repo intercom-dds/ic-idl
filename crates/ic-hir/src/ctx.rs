@@ -71,6 +71,11 @@ impl Context {
     pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
     }
+    
+    /// Try to get a definition without panicking.
+    pub fn try_get(&self, id: DefId) -> Option<&Def> {
+        self.definitions.try_get(id)
+    }
 
     /// Similar to `type_of`, but will resolve the underlying type.
     ///

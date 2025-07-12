@@ -125,6 +125,9 @@ pub struct Def {
     /// Name of the definition.
     pub ident: Ident,
 
+    /// Parent definition, if any. None for top-level definitions.
+    pub parent: Option<DefId>,
+
     /// Annotations attached to the definition.
     pub annotations: Vec<Ann>,
 
@@ -255,9 +258,6 @@ pub enum Numeric {
     /// To retrieve the fully resolved value, use [`Context::resolve_expr`].
     Const(DefId),
 
-    /// Initializer list of numerics.
-    InitList(Vec<Numeric>),
-
     /// Fixed-size array elements, e.g. `{1, 2, 3}`.
     Array { ty: TypeId, values: Box<[Numeric]> },
 
@@ -268,6 +268,20 @@ pub enum Numeric {
     Map {
         ty: TypeId,
         values: Box<[(Numeric, Numeric)]>,
+    },
+
+    /// Struct initialization with named fields.
+    Struct {
+        ty: TypeId,
+        fields: Box<[(Ident, Numeric)]>,
+    },
+
+    /// Union initialization with discriminant and value.
+    Union {
+        ty: TypeId,
+        discriminant: Box<Numeric>,
+        field: Ident,
+        value: Box<Numeric>,
     },
 }
 

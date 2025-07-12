@@ -123,6 +123,7 @@ impl Interp<'_> {
             // ic_syntax::Expr::Path(v) => Numeric::Const(self.ctx.resolve_path(v)),
             Expr::Unary(v) => self.eval_unary(v),
             Expr::Binary(v) => self.eval_binary(v),
+            Expr::Group(v) => self.to_value(&v.expr),
             _ => panic!("called to_value on a non-primitive numeric"),
         }
     }
@@ -136,6 +137,7 @@ impl Interp<'_> {
             Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
             Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
             Expr::InitList(_) => todo!(),
+            Expr::Group(v) => self.eval_expr(&v.expr),
         }
     }
 
@@ -166,6 +168,7 @@ impl Interp<'_> {
                     .map(|v| self.eval_expr_ty(&v.value))
                     .collect(),
             ),
+            Expr::Group(v) => self.eval_expr_ty::<T>(&v.expr),
         }
     }
 
@@ -182,6 +185,7 @@ impl Interp<'_> {
             Expr::Binary(v) => Numeric::from(T::try_from(self.eval_binary(v))?),
             Expr::Path(v) => todo!(),
             Expr::InitList(_) => todo!(),
+            Expr::Group(v) => self.truncate::<T>(&v.expr)?,
         };
         Ok(num)
     }

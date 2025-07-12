@@ -209,6 +209,10 @@ unsafe fn lower_expr(state: *mut sys::parser_state, num: &Expr) -> *const sys::n
             }
             sys::create_value_node(state, NUM_UNDEF, list)
         }
+        Expr::Group(v) => {
+            // Groups are just for precedence/parentheses - pass through the inner expression
+            lower_expr(state, &v.expr)
+        }
     }
 }
 

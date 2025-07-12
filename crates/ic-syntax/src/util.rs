@@ -121,6 +121,7 @@ pub fn expr_span(expr: &Expr) -> Span {
                 .end;
             Span { start, end }
         }
+        Expr::Group(v) => v.span,
     }
 }
 

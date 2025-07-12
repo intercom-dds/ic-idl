@@ -41,6 +41,8 @@ struct Unary;
 
 struct Binary;
 
+struct Group;
+
 struct NamedExpr;
 
 struct EnumDef;
@@ -187,12 +189,23 @@ enum ExprKind {
     EXPR_BINARY,
 
     /// Initializer list for complex types, e.g. `{1, 2, {3}}`
-    EXPR_INIT_LIST
+    EXPR_INIT_LIST,
+
+    /// A parenthesized expression like `(a + b)`
+    EXPR_GROUP
 };
 
 @nested
 struct InitList {
     sequence<NamedExpr> values;
+};
+
+@nested
+struct Group {
+    /// The parenthesized expression
+    Expr expr;
+    /// Span of the entire group including parentheses
+    Span span;
 };
 
 @nested
@@ -207,6 +220,8 @@ case EXPR_BINARY:
     @external Binary binary;
 case EXPR_INIT_LIST:
     InitList init_list;
+case EXPR_GROUP:
+    @external Group group;
 };
 
 @nested

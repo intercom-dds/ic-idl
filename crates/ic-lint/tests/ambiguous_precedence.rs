@@ -55,14 +55,14 @@ fn check_ambiguous_precedence(idl_code: &str) -> String {
         .into_iter()
         .filter(|diag| {
             // Check if the diagnostic message contains "precedence"
-            format!("{}", diag).contains("precedence")
+            format!("{diag}").contains("precedence")
         })
         .collect();
 
     // Emit each diagnostic
     for (i, diag) in precedence_warnings.iter().enumerate() {
         if i > 0 {
-            output.push_str("\n");
+            output.push('\n');
         }
         ic_diagnostic::emit_with_source(&mut output, "test.idl", idl_code, diag)
             .expect("Failed to format diagnostic");
@@ -73,7 +73,7 @@ fn check_ambiguous_precedence(idl_code: &str) -> String {
 
 #[test]
 fn test_bitwise_precedence() {
-    let idl = r#"
+    let idl = r"
 // Different bitwise operators with confusing precedence
 const long test1 = 1 | 2 & 3;      // & binds tighter than |
 const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |  
@@ -88,14 +88,14 @@ const long test6 = (1 | 2) & 3;
 const long test7 = 1 | 2 | 3;      
 const long test8 = 1 & 2 & 3;      
 const long test9 = 1 ^ 2 ^ 3;      
-"#;
+";
 
     assert_snapshot!(check_ambiguous_precedence(idl));
 }
 
 #[test]
 fn test_arithmetic_bitwise_mix() {
-    let idl = r#"
+    let idl = r"
 // Mixing arithmetic and bitwise operators
 const long test1 = 1 & 2 + 3;      // + binds tighter than &
 const long test2 = 1 | 2 * 3;      // * binds tighter than |
@@ -106,14 +106,14 @@ const long test5 = 1 * 2 | 3;      // * binds tighter than |
 // Complex expressions
 const long test6 = 1 | 2 + 3 * 4;  // Both + and * bind tighter than |
 const long test7 = 1 & 2 * 3 + 4;  // Both * and + bind tighter than &
-"#;
+";
 
     assert_snapshot!(check_ambiguous_precedence(idl));
 }
 
 #[test]
 fn test_no_warnings() {
-    let idl = r#"
+    let idl = r"
 // Expected arithmetic precedence - no warnings
 const long test1 = 1 + 2 * 3;      // Well-known: * before +
 const long test2 = 1 - 2 / 3;      // Well-known: / before -
@@ -124,14 +124,14 @@ const long test5 = 1 * 2 % 3;      // Same precedence
 // Complex arithmetic expressions - no warnings
 const long test6 = 1 + 2 * 3 - 4 / 5;
 const long test7 = (1 + 2) * (3 - 4) / 5;
-"#;
+";
 
     assert_snapshot!(check_ambiguous_precedence(idl));
 }
 
 #[test]
 fn test_in_different_contexts() {
-    let idl = r#"
+    let idl = r"
 // In struct field initializers
 struct Config {
     long flags;
@@ -168,14 +168,14 @@ union Value switch (long) {
 
 // Multiple issues on same line
 const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
-"#;
+";
 
     assert_snapshot!(check_ambiguous_precedence(idl));
 }
 
 #[test]
 fn test_real_world_examples() {
-    let idl = r#"
+    let idl = r"
 // Common bit flag patterns that might trigger warnings
 const long READ_PERMISSION  = 1 << 0;
 const long WRITE_PERMISSION = 1 << 1;
@@ -190,14 +190,14 @@ const long MASKED_VALUE = 0xF0F0 & 0x1234 + 1;  // Arithmetic happens first!
 // Flag checking patterns
 const long HAS_RW = READ_PERMISSION | WRITE_PERMISSION;
 const long TEST_FLAGS = HAS_RW & READ_PERMISSION | EXEC_PERMISSION;
-"#;
+";
 
     assert_snapshot!(check_ambiguous_precedence(idl));
 }
 
 #[test]
 fn test_edge_cases() {
-    let idl = r#"
+    let idl = r"
 // Unary operators don't trigger the warning
 const long test1 = ~1 & 2;
 const long test2 = -1 + 2;
@@ -213,7 +213,7 @@ const long FLAGS = 0x0F;
 const long test6 = MASK & FLAGS + 1;   // Should warn
 
 // Empty file should not crash
-"#;
+";
 
     assert_snapshot!(check_ambiguous_precedence(idl));
 }

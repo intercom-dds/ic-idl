@@ -30,6 +30,154 @@
 
 pub use ic_vfs::Span;
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct PlainLocation {
+    pub offset: u32,
+    pub file_id: u32,
+}
+
+impl PlainLocation {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            offset: 0,
+            file_id: 0,
+        }
+    }
+}
+
+impl ::std::default::Default for PlainLocation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::PlainLocation",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
+
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "offset",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "file_id",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for PlainLocation {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.offset)?;
+            state.encode_field(&MEMBER_INFO[1], &self.file_id)?;
+            state.end()
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for PlainLocation {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
+
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.offset)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.file_id)?;
+            state.end()?;
+            Ok(())
+        }
+    }
+};
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct PlainSpan {
+    pub start: crate::ast::PlainLocation,
+    pub end: crate::ast::PlainLocation,
+}
+
+impl PlainSpan {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            start: <crate::ast::PlainLocation>::default(),
+            end: <crate::ast::PlainLocation>::default(),
+        }
+    }
+}
+
+impl ::std::default::Default for PlainSpan {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::PlainSpan",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
+
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "start",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "end",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for PlainSpan {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.start)?;
+            state.encode_field(&MEMBER_INFO[1], &self.end)?;
+            state.end()
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for PlainSpan {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
+
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.start)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.end)?;
+            state.end()?;
+            Ok(())
+        }
+    }
+};
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Ident {
     /// The actual identifier.
@@ -242,39 +390,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "LIT_NULL",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "LIT_BOOL",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "LIT_INT",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "LIT_FLOAT",
-            member_id: 3,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "LIT_CHAR",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "LIT_STRING",
-            member_id: 5,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for LitKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -320,7 +435,7 @@ const _: () = {
                 3 => Self::Float,
                 4 => Self::Char,
                 5 => Self::String,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::LitKind")),
             };
             Ok(value)
         }
@@ -338,7 +453,7 @@ const _: () = {
                 "LIT_FLOAT" => Self::Float,
                 "LIT_CHAR" => Self::Char,
                 "LIT_STRING" => Self::String,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::LitKind")),
             };
             Ok(value)
         }
@@ -471,27 +586,27 @@ const _: () = {
                     let mut value = false;
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Bool(value)
-                }
+                },
                 crate::ast::LitKind::Int => {
                     let mut value = 0;
                     state.decode_variant(&MEMBER_INFO[2], &mut value)?;
                     Self::Int(value)
-                }
+                },
                 crate::ast::LitKind::Float => {
                     let mut value = 0_f64;
                     state.decode_variant(&MEMBER_INFO[3], &mut value)?;
                     Self::Float(value)
-                }
+                },
                 crate::ast::LitKind::Char => {
                     let mut value = '\x00';
                     state.decode_variant(&MEMBER_INFO[4], &mut value)?;
                     Self::Char(value)
-                }
+                },
                 crate::ast::LitKind::String => {
                     let mut value = <String>::default();
                     state.decode_variant(&MEMBER_INFO[5], &mut value)?;
                     Self::String(value)
-                }
+                },
             };
             Ok(())
         }
@@ -660,64 +775,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "OP_ADD",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_SUB",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_MULTIPLY",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_DIVIDE",
-            member_id: 3,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_MODULO",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_LSHIFT",
-            member_id: 5,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_RSHIFT",
-            member_id: 6,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_OR",
-            member_id: 7,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_XOR",
-            member_id: 8,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_AND",
-            member_id: 9,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "OP_NOT",
-            member_id: 10,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for OpKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -773,7 +830,7 @@ const _: () = {
                 8 => Self::Xor,
                 9 => Self::And,
                 10 => Self::Not,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::OpKind")),
             };
             Ok(value)
         }
@@ -796,7 +853,7 @@ const _: () = {
                 "OP_XOR" => Self::Xor,
                 "OP_AND" => Self::And,
                 "OP_NOT" => Self::Not,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::OpKind")),
             };
             Ok(value)
         }
@@ -892,6 +949,8 @@ pub enum ExprKind {
     Binary,
     /// Initializer list for complex types, e.g. `{1, 2, {3}}`
     InitList,
+    /// A parenthesized expression like `(a + b)`
+    Group,
 }
 
 impl ExprKind {
@@ -911,6 +970,7 @@ impl ::std::str::FromStr for ExprKind {
             "EXPR_UNARY" => Ok(Self::Unary),
             "EXPR_BINARY" => Ok(Self::Binary),
             "EXPR_INIT_LIST" => Ok(Self::InitList),
+            "EXPR_GROUP" => Ok(Self::Group),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -924,6 +984,7 @@ impl ::std::fmt::Display for ExprKind {
             Self::Unary => f.write_str("EXPR_UNARY"),
             Self::Binary => f.write_str("EXPR_BINARY"),
             Self::InitList => f.write_str("EXPR_INIT_LIST"),
+            Self::Group => f.write_str("EXPR_GROUP"),
         }
     }
 }
@@ -943,34 +1004,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "EXPR_LITERAL",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "EXPR_PATH",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "EXPR_UNARY",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "EXPR_BINARY",
-            member_id: 3,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "EXPR_INIT_LIST",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for ExprKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -985,6 +1018,7 @@ const _: () = {
                 Self::Unary => state.encode_variant::<i32>("EXPR_UNARY", 2),
                 Self::Binary => state.encode_variant::<i32>("EXPR_BINARY", 3),
                 Self::InitList => state.encode_variant::<i32>("EXPR_INIT_LIST", 4),
+                Self::Group => state.encode_variant::<i32>("EXPR_GROUP", 5),
             }
         }
     }
@@ -1014,7 +1048,8 @@ const _: () = {
                 2 => Self::Unary,
                 3 => Self::Binary,
                 4 => Self::InitList,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                5 => Self::Group,
+                _ => return Err(D::Error::custom("invalid enum value for type ast::ExprKind")),
             };
             Ok(value)
         }
@@ -1031,7 +1066,8 @@ const _: () = {
                 "EXPR_UNARY" => Self::Unary,
                 "EXPR_BINARY" => Self::Binary,
                 "EXPR_INIT_LIST" => Self::InitList,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                "EXPR_GROUP" => Self::Group,
+                _ => return Err(D::Error::custom("invalid enum value for type ast::ExprKind")),
             };
             Ok(value)
         }
@@ -1067,11 +1103,13 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::None,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
-        name: "values",
-        member_id: 0,
-        flags: ::intercom_cts::MemberFlag::nil(),
-    }];
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "values",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
 
     impl ::intercom_cts::Marshal for InitList {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
@@ -1102,12 +1140,89 @@ const _: () = {
 };
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct Group {
+    /// The parenthesized expression
+    pub expr: crate::ast::Expr,
+    /// Span of the entire group including parentheses
+    pub span: crate::ast::Span,
+}
+
+impl Group {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            expr: <crate::ast::Expr>::default(),
+            span: <crate::ast::Span>::default(),
+        }
+    }
+}
+
+impl ::std::default::Default for Group {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::Group",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Struct,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
+
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "expr",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for Group {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::StructSerializer as _;
+
+            let mut state = ar.encode_struct(&TYPE_INFO)?;
+            state.encode_field(&MEMBER_INFO[0], &self.expr)?;
+            state.encode_field(&MEMBER_INFO[1], &self.span)?;
+            state.end()
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for Group {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::StructDeserializer as _;
+
+            let mut state = ar.decode_struct(&TYPE_INFO)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.expr)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.span)?;
+            state.end()?;
+            Ok(())
+        }
+    }
+};
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Expr {
     Literal(crate::ast::Literal),
     Path(crate::ast::Path),
     Unary(Box<crate::ast::Unary>),
     Binary(Box<crate::ast::Binary>),
     InitList(crate::ast::InitList),
+    Group(Box<crate::ast::Group>),
 }
 
 impl Expr {
@@ -1124,6 +1239,7 @@ impl Expr {
             Self::Unary(_) => crate::ast::ExprKind::Unary,
             Self::Binary(_) => crate::ast::ExprKind::Binary,
             Self::InitList(_) => crate::ast::ExprKind::InitList,
+            Self::Group(_) => crate::ast::ExprKind::Group,
         }
     }
 }
@@ -1136,6 +1252,7 @@ impl From<crate::ast::ExprKind> for Expr {
             crate::ast::ExprKind::Unary => Self::Unary(Box::new(<crate::ast::Unary>::default())),
             crate::ast::ExprKind::Binary => Self::Binary(Box::new(<crate::ast::Binary>::default())),
             crate::ast::ExprKind::InitList => Self::InitList(<crate::ast::InitList>::default()),
+            crate::ast::ExprKind::Group => Self::Group(Box::new(<crate::ast::Group>::default())),
         }
     }
 }
@@ -1181,6 +1298,11 @@ const _: () = {
             member_id: 5,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
+        ::intercom_cts::MemberInfo {
+            name: "group",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
+        },
     ];
 
     impl ::intercom_cts::Marshal for Expr {
@@ -1198,6 +1320,7 @@ const _: () = {
                 Self::Unary(v) => state.encode_variant(&MEMBER_INFO[2], v),
                 Self::Binary(v) => state.encode_variant(&MEMBER_INFO[3], v),
                 Self::InitList(v) => state.encode_variant(&MEMBER_INFO[4], v),
+                Self::Group(v) => state.encode_variant(&MEMBER_INFO[5], v),
             }
         }
     }
@@ -1217,27 +1340,32 @@ const _: () = {
                     let mut value = <crate::ast::Literal>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Literal(value)
-                }
+                },
                 crate::ast::ExprKind::Path => {
                     let mut value = <crate::ast::Path>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Path(value)
-                }
+                },
                 crate::ast::ExprKind::Unary => {
                     let mut value = Box::new(<crate::ast::Unary>::default());
                     state.decode_variant(&MEMBER_INFO[2], &mut value)?;
                     Self::Unary(value)
-                }
+                },
                 crate::ast::ExprKind::Binary => {
                     let mut value = Box::new(<crate::ast::Binary>::default());
                     state.decode_variant(&MEMBER_INFO[3], &mut value)?;
                     Self::Binary(value)
-                }
+                },
                 crate::ast::ExprKind::InitList => {
                     let mut value = <crate::ast::InitList>::default();
                     state.decode_variant(&MEMBER_INFO[4], &mut value)?;
                     Self::InitList(value)
-                }
+                },
+                crate::ast::ExprKind::Group => {
+                    let mut value = Box::new(<crate::ast::Group>::default());
+                    state.decode_variant(&MEMBER_INFO[5], &mut value)?;
+                    Self::Group(value)
+                },
             };
             Ok(())
         }
@@ -1504,11 +1632,13 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::None,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
-        name: "span",
-        member_id: 0,
-        flags: ::intercom_cts::MemberFlag::nil(),
-    }];
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
 
     impl ::intercom_cts::Marshal for AnyType {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
@@ -2006,39 +2136,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "TYPE_ANY",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "TYPE_SEQUENCE",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "TYPE_STRING",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "TYPE_MAP",
-            member_id: 3,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "TYPE_FIXED",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "TYPE_PATH",
-            member_id: 5,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for TypeKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -2084,7 +2181,7 @@ const _: () = {
                 3 => Self::Map,
                 4 => Self::Fixed,
                 5 => Self::Path,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::TypeKind")),
             };
             Ok(value)
         }
@@ -2102,7 +2199,7 @@ const _: () = {
                 "TYPE_MAP" => Self::Map,
                 "TYPE_FIXED" => Self::Fixed,
                 "TYPE_PATH" => Self::Path,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::TypeKind")),
             };
             Ok(value)
         }
@@ -2240,32 +2337,32 @@ const _: () = {
                     let mut value = <crate::ast::AnyType>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Any(value)
-                }
+                },
                 crate::ast::TypeKind::Sequence => {
                     let mut value = <crate::ast::SequenceType>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Sequence(value)
-                }
+                },
                 crate::ast::TypeKind::String => {
                     let mut value = <crate::ast::StringType>::default();
                     state.decode_variant(&MEMBER_INFO[2], &mut value)?;
                     Self::String(value)
-                }
+                },
                 crate::ast::TypeKind::Map => {
                     let mut value = <crate::ast::MapType>::default();
                     state.decode_variant(&MEMBER_INFO[3], &mut value)?;
                     Self::Map(value)
-                }
+                },
                 crate::ast::TypeKind::Fixed => {
                     let mut value = <crate::ast::FixedType>::default();
                     state.decode_variant(&MEMBER_INFO[4], &mut value)?;
                     Self::Fixed(value)
-                }
+                },
                 crate::ast::TypeKind::Path => {
                     let mut value = <crate::ast::Path>::default();
                     state.decode_variant(&MEMBER_INFO[5], &mut value)?;
                     Self::Path(value)
-                }
+                },
             };
             Ok(())
         }
@@ -2324,19 +2421,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "DECLARATOR_SIMPLE",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "DECLARATOR_ARRAY",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for DeclaratorKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -2374,7 +2458,7 @@ const _: () = {
             let value = match de.decode_i32()? {
                 0 => Self::Simple,
                 1 => Self::Array,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::DeclaratorKind")),
             };
             Ok(value)
         }
@@ -2388,7 +2472,7 @@ const _: () = {
             let value = match name {
                 "DECLARATOR_SIMPLE" => Self::Simple,
                 "DECLARATOR_ARRAY" => Self::Array,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::DeclaratorKind")),
             };
             Ok(value)
         }
@@ -2494,9 +2578,7 @@ impl From<crate::ast::DeclaratorKind> for Declarator {
     fn from(disc: crate::ast::DeclaratorKind) -> Self {
         match disc {
             crate::ast::DeclaratorKind::Simple => Self::Simple(<crate::ast::Ident>::default()),
-            crate::ast::DeclaratorKind::Array => {
-                Self::Array(<crate::ast::ArrayDeclarator>::default())
-            }
+            crate::ast::DeclaratorKind::Array => Self::Array(<crate::ast::ArrayDeclarator>::default()),
         }
     }
 }
@@ -2560,12 +2642,12 @@ const _: () = {
                     let mut value = <crate::ast::Ident>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Simple(value)
-                }
+                },
                 crate::ast::DeclaratorKind::Array => {
                     let mut value = <crate::ast::ArrayDeclarator>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Array(value)
-                }
+                },
             };
             Ok(())
         }
@@ -2795,19 +2877,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "FIELD_DEFINITION",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "FIELD_MEMBER",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for AnnotationFieldKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -2845,7 +2914,7 @@ const _: () = {
             let value = match de.decode_i32()? {
                 0 => Self::FieldDefinition,
                 1 => Self::FieldMember,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::AnnotationFieldKind")),
             };
             Ok(value)
         }
@@ -2859,7 +2928,7 @@ const _: () = {
             let value = match name {
                 "FIELD_DEFINITION" => Self::FieldDefinition,
                 "FIELD_MEMBER" => Self::FieldMember,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::AnnotationFieldKind")),
             };
             Ok(value)
         }
@@ -2870,7 +2939,7 @@ const _: () = {
 pub struct AnnotationMember {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -2999,12 +3068,8 @@ impl AnnotationField {
 impl From<crate::ast::AnnotationFieldKind> for AnnotationField {
     fn from(disc: crate::ast::AnnotationFieldKind) -> Self {
         match disc {
-            crate::ast::AnnotationFieldKind::FieldDefinition => {
-                Self::Item(Box::new(<crate::ast::Item>::default()))
-            }
-            crate::ast::AnnotationFieldKind::FieldMember => {
-                Self::Member(Box::new(<crate::ast::AnnotationMember>::default()))
-            }
+            crate::ast::AnnotationFieldKind::FieldDefinition => Self::Item(Box::new(<crate::ast::Item>::default())),
+            crate::ast::AnnotationFieldKind::FieldMember => Self::Member(Box::new(<crate::ast::AnnotationMember>::default())),
         }
     }
 }
@@ -3068,12 +3133,12 @@ const _: () = {
                     let mut value = Box::new(<crate::ast::Item>::default());
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Item(value)
-                }
+                },
                 crate::ast::AnnotationFieldKind::FieldMember => {
                     let mut value = Box::new(<crate::ast::AnnotationMember>::default());
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Member(value)
-                }
+                },
             };
             Ok(())
         }
@@ -3084,7 +3149,7 @@ const _: () = {
 pub struct AnnotationDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -3185,7 +3250,7 @@ const _: () = {
 pub struct ModuleDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -3286,7 +3351,7 @@ const _: () = {
 pub struct Field {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -3386,7 +3451,7 @@ const _: () = {
 pub struct StructDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -3591,8 +3656,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::None,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[];
-
     impl ::intercom_cts::Marshal for Empty {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -3669,19 +3732,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "LABEL_CASE",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "LABEL_DEFAULT",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for LabelKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -3719,7 +3769,7 @@ const _: () = {
             let value = match de.decode_i32()? {
                 0 => Self::Case,
                 1 => Self::Default,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::LabelKind")),
             };
             Ok(value)
         }
@@ -3733,7 +3783,7 @@ const _: () = {
             let value = match name {
                 "LABEL_CASE" => Self::Case,
                 "LABEL_DEFAULT" => Self::Default,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::LabelKind")),
             };
             Ok(value)
         }
@@ -3829,12 +3879,12 @@ const _: () = {
                     let mut value = <crate::ast::Expr>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Case(value)
-                }
+                },
                 crate::ast::LabelKind::Default => {
                     let mut value = <crate::ast::Empty>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Default(value)
-                }
+                },
             };
             Ok(())
         }
@@ -3891,19 +3941,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "ELEMENT_MEMBER",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ELEMENT_NULL",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for UnionElementKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -3941,7 +3978,7 @@ const _: () = {
             let value = match de.decode_i32()? {
                 0 => Self::ElementMember,
                 1 => Self::ElementNull,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::UnionElementKind")),
             };
             Ok(value)
         }
@@ -3955,7 +3992,7 @@ const _: () = {
             let value = match name {
                 "ELEMENT_MEMBER" => Self::ElementMember,
                 "ELEMENT_NULL" => Self::ElementNull,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::UnionElementKind")),
             };
             Ok(value)
         }
@@ -4065,11 +4102,13 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::None,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
-        name: "span",
-        member_id: 0,
-        flags: ::intercom_cts::MemberFlag::nil(),
-    }];
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
 
     impl ::intercom_cts::Marshal for UnionNull {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
@@ -4123,12 +4162,8 @@ impl UnionElement {
 impl From<crate::ast::UnionElementKind> for UnionElement {
     fn from(disc: crate::ast::UnionElementKind) -> Self {
         match disc {
-            crate::ast::UnionElementKind::ElementMember => {
-                Self::Member(<crate::ast::UnionMember>::default())
-            }
-            crate::ast::UnionElementKind::ElementNull => {
-                Self::Null(<crate::ast::UnionNull>::default())
-            }
+            crate::ast::UnionElementKind::ElementMember => Self::Member(<crate::ast::UnionMember>::default()),
+            crate::ast::UnionElementKind::ElementNull => Self::Null(<crate::ast::UnionNull>::default()),
         }
     }
 }
@@ -4192,12 +4227,12 @@ const _: () = {
                     let mut value = <crate::ast::UnionMember>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Member(value)
-                }
+                },
                 crate::ast::UnionElementKind::ElementNull => {
                     let mut value = <crate::ast::UnionNull>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Null(value)
-                }
+                },
             };
             Ok(())
         }
@@ -4208,7 +4243,7 @@ const _: () = {
 pub struct UnionField {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -4309,7 +4344,7 @@ const _: () = {
 pub struct UnionDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -4422,7 +4457,7 @@ const _: () = {
 pub struct ConstDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -4616,7 +4651,7 @@ const _: () = {
 pub struct EnumDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -4717,7 +4752,7 @@ const _: () = {
 pub struct ExceptDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -4818,7 +4853,7 @@ const _: () = {
 pub struct AliasDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -4920,7 +4955,7 @@ const _: () = {
 pub struct Bit {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -5021,7 +5056,7 @@ const _: () = {
 pub struct BitmaskDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -5122,7 +5157,7 @@ const _: () = {
 pub struct Bitfield {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -5232,7 +5267,7 @@ const _: () = {
 pub struct BitsetDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -5342,7 +5377,9 @@ const _: () = {
 pub struct Attribute {
     /// Name of the attribute.
     pub decl: Vec<crate::ast::Declarator>,
+    /// ///
     pub setraises: Vec<crate::ast::Path>,
+    /// ///
     pub getraises: Vec<crate::ast::Path>,
     /// The type of the attribute.
     pub ty: crate::ast::Type,
@@ -5499,24 +5536,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "PARAM_IN",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "PARAM_OUT",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "PARAM_INOUT",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for ParamKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -5556,7 +5575,7 @@ const _: () = {
                 0 => Self::In,
                 1 => Self::Out,
                 2 => Self::Inout,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::ParamKind")),
             };
             Ok(value)
         }
@@ -5571,7 +5590,7 @@ const _: () = {
                 "PARAM_IN" => Self::In,
                 "PARAM_OUT" => Self::Out,
                 "PARAM_INOUT" => Self::Inout,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::ParamKind")),
             };
             Ok(value)
         }
@@ -5773,7 +5792,7 @@ const _: () = {
 pub struct InterfaceDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -5975,7 +5994,7 @@ const _: () = {
 pub struct ValuetypeDef {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -6167,34 +6186,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "DECL_STRUCT",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "DECL_UNION",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "DECL_NATIVE",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "DECL_INTERFACE",
-            member_id: 3,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "DECL_VALUETYPE",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for DeclKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -6238,7 +6229,7 @@ const _: () = {
                 2 => Self::Native,
                 3 => Self::Interface,
                 4 => Self::Valuetype,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::DeclKind")),
             };
             Ok(value)
         }
@@ -6255,7 +6246,7 @@ const _: () = {
                 "DECL_NATIVE" => Self::Native,
                 "DECL_INTERFACE" => Self::Interface,
                 "DECL_VALUETYPE" => Self::Valuetype,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::DeclKind")),
             };
             Ok(value)
         }
@@ -6266,7 +6257,7 @@ const _: () = {
 pub struct Decl {
     /// Span of the entire item, from start to end. For example, given the
     /// following IDL:
-    ///
+    /// ///
     /// ```idl
     /// module foo { ... };
     /// ````
@@ -6459,74 +6450,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_ANNOTATION",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_MODULE",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_STRUCT",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_UNION",
-            member_id: 3,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_ENUM",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_EXCEPTION",
-            member_id: 5,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_BITMASK",
-            member_id: 6,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_BITSET",
-            member_id: 7,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_CONST",
-            member_id: 8,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_TYPEDEF",
-            member_id: 9,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_INTERFACE",
-            member_id: 10,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_VALUETYPE",
-            member_id: 11,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "ITEM_DECL",
-            member_id: 12,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for ItemKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -6586,7 +6509,7 @@ const _: () = {
                 10 => Self::Interface,
                 11 => Self::Valuetype,
                 12 => Self::Decl,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::ItemKind")),
             };
             Ok(value)
         }
@@ -6611,7 +6534,7 @@ const _: () = {
                 "ITEM_INTERFACE" => Self::Interface,
                 "ITEM_VALUETYPE" => Self::Valuetype,
                 "ITEM_DECL" => Self::Decl,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::ItemKind")),
             };
             Ok(value)
         }
@@ -6677,28 +6600,18 @@ impl Item {
 impl From<crate::ast::ItemKind> for Item {
     fn from(disc: crate::ast::ItemKind) -> Self {
         match disc {
-            crate::ast::ItemKind::Annotation => {
-                Self::AnnotationValue(<crate::ast::AnnotationDef>::default())
-            }
+            crate::ast::ItemKind::Annotation => Self::AnnotationValue(<crate::ast::AnnotationDef>::default()),
             crate::ast::ItemKind::Module => Self::ModuleValue(<crate::ast::ModuleDef>::default()),
             crate::ast::ItemKind::Struct => Self::StructValue(<crate::ast::StructDef>::default()),
             crate::ast::ItemKind::Union => Self::UnionValue(<crate::ast::UnionDef>::default()),
             crate::ast::ItemKind::Enum => Self::EnumValue(<crate::ast::EnumDef>::default()),
-            crate::ast::ItemKind::Exception => {
-                Self::ExceptionValue(<crate::ast::ExceptDef>::default())
-            }
-            crate::ast::ItemKind::Bitmask => {
-                Self::BitmaskValue(<crate::ast::BitmaskDef>::default())
-            }
+            crate::ast::ItemKind::Exception => Self::ExceptionValue(<crate::ast::ExceptDef>::default()),
+            crate::ast::ItemKind::Bitmask => Self::BitmaskValue(<crate::ast::BitmaskDef>::default()),
             crate::ast::ItemKind::Bitset => Self::BitsetValue(<crate::ast::BitsetDef>::default()),
             crate::ast::ItemKind::Const => Self::ConstValue(<crate::ast::ConstDef>::default()),
             crate::ast::ItemKind::Typedef => Self::AliasValue(<crate::ast::AliasDef>::default()),
-            crate::ast::ItemKind::Interface => {
-                Self::InterfaceValue(<crate::ast::InterfaceDef>::default())
-            }
-            crate::ast::ItemKind::Valuetype => {
-                Self::ValuetypeValue(<crate::ast::ValuetypeDef>::default())
-            }
+            crate::ast::ItemKind::Interface => Self::InterfaceValue(<crate::ast::InterfaceDef>::default()),
+            crate::ast::ItemKind::Valuetype => Self::ValuetypeValue(<crate::ast::ValuetypeDef>::default()),
             crate::ast::ItemKind::Decl => Self::DeclValue(<crate::ast::Decl>::default()),
         }
     }
@@ -6829,67 +6742,67 @@ const _: () = {
                     let mut value = <crate::ast::AnnotationDef>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::AnnotationValue(value)
-                }
+                },
                 crate::ast::ItemKind::Module => {
                     let mut value = <crate::ast::ModuleDef>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::ModuleValue(value)
-                }
+                },
                 crate::ast::ItemKind::Struct => {
                     let mut value = <crate::ast::StructDef>::default();
                     state.decode_variant(&MEMBER_INFO[2], &mut value)?;
                     Self::StructValue(value)
-                }
+                },
                 crate::ast::ItemKind::Union => {
                     let mut value = <crate::ast::UnionDef>::default();
                     state.decode_variant(&MEMBER_INFO[3], &mut value)?;
                     Self::UnionValue(value)
-                }
+                },
                 crate::ast::ItemKind::Enum => {
                     let mut value = <crate::ast::EnumDef>::default();
                     state.decode_variant(&MEMBER_INFO[4], &mut value)?;
                     Self::EnumValue(value)
-                }
+                },
                 crate::ast::ItemKind::Exception => {
                     let mut value = <crate::ast::ExceptDef>::default();
                     state.decode_variant(&MEMBER_INFO[5], &mut value)?;
                     Self::ExceptionValue(value)
-                }
+                },
                 crate::ast::ItemKind::Bitmask => {
                     let mut value = <crate::ast::BitmaskDef>::default();
                     state.decode_variant(&MEMBER_INFO[6], &mut value)?;
                     Self::BitmaskValue(value)
-                }
+                },
                 crate::ast::ItemKind::Bitset => {
                     let mut value = <crate::ast::BitsetDef>::default();
                     state.decode_variant(&MEMBER_INFO[7], &mut value)?;
                     Self::BitsetValue(value)
-                }
+                },
                 crate::ast::ItemKind::Const => {
                     let mut value = <crate::ast::ConstDef>::default();
                     state.decode_variant(&MEMBER_INFO[8], &mut value)?;
                     Self::ConstValue(value)
-                }
+                },
                 crate::ast::ItemKind::Typedef => {
                     let mut value = <crate::ast::AliasDef>::default();
                     state.decode_variant(&MEMBER_INFO[9], &mut value)?;
                     Self::AliasValue(value)
-                }
+                },
                 crate::ast::ItemKind::Interface => {
                     let mut value = <crate::ast::InterfaceDef>::default();
                     state.decode_variant(&MEMBER_INFO[10], &mut value)?;
                     Self::InterfaceValue(value)
-                }
+                },
                 crate::ast::ItemKind::Valuetype => {
                     let mut value = <crate::ast::ValuetypeDef>::default();
                     state.decode_variant(&MEMBER_INFO[11], &mut value)?;
                     Self::ValuetypeValue(value)
-                }
+                },
                 crate::ast::ItemKind::Decl => {
                     let mut value = <crate::ast::Decl>::default();
                     state.decode_variant(&MEMBER_INFO[12], &mut value)?;
                     Self::DeclValue(value)
-                }
+                },
             };
             Ok(())
         }
@@ -6952,24 +6865,6 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::I32,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
-        ::intercom_cts::MemberInfo {
-            name: "INTERFACE_ATTRIBUTE",
-            member_id: 0,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "INTERFACE_PROTOTYPE",
-            member_id: 1,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "INTERFACE_ITEM",
-            member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-    ];
-
     impl ::intercom_cts::Marshal for InterfaceMemberKind {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
@@ -7009,7 +6904,7 @@ const _: () = {
                 0 => Self::Attribute,
                 1 => Self::Prototype,
                 2 => Self::Item,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::InterfaceMemberKind")),
             };
             Ok(value)
         }
@@ -7024,7 +6919,7 @@ const _: () = {
                 "INTERFACE_ATTRIBUTE" => Self::Attribute,
                 "INTERFACE_PROTOTYPE" => Self::Prototype,
                 "INTERFACE_ITEM" => Self::Item,
-                _ => return Err(D::Error::custom("Invalid enum value")),
+                _ => return Err(D::Error::custom("invalid enum value for type ast::InterfaceMemberKind")),
             };
             Ok(value)
         }
@@ -7060,12 +6955,8 @@ impl InterfaceMember {
 impl From<crate::ast::InterfaceMemberKind> for InterfaceMember {
     fn from(disc: crate::ast::InterfaceMemberKind) -> Self {
         match disc {
-            crate::ast::InterfaceMemberKind::Attribute => {
-                Self::Attr(<crate::ast::Attribute>::default())
-            }
-            crate::ast::InterfaceMemberKind::Prototype => {
-                Self::Proto(<crate::ast::Prototype>::default())
-            }
+            crate::ast::InterfaceMemberKind::Attribute => Self::Attr(<crate::ast::Attribute>::default()),
+            crate::ast::InterfaceMemberKind::Prototype => Self::Proto(<crate::ast::Prototype>::default()),
             crate::ast::InterfaceMemberKind::Item => Self::Item(<crate::ast::Item>::default()),
         }
     }
@@ -7136,19 +7027,20 @@ const _: () = {
                     let mut value = <crate::ast::Attribute>::default();
                     state.decode_variant(&MEMBER_INFO[0], &mut value)?;
                     Self::Attr(value)
-                }
+                },
                 crate::ast::InterfaceMemberKind::Prototype => {
                     let mut value = <crate::ast::Prototype>::default();
                     state.decode_variant(&MEMBER_INFO[1], &mut value)?;
                     Self::Proto(value)
-                }
+                },
                 crate::ast::InterfaceMemberKind::Item => {
                     let mut value = <crate::ast::Item>::default();
                     state.decode_variant(&MEMBER_INFO[2], &mut value)?;
                     Self::Item(value)
-                }
+                },
             };
             Ok(())
         }
     }
 };
+

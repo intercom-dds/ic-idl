@@ -58,16 +58,15 @@ impl<'a> AmbiguousPrecedence<'a> {
         }
     }
 
-    /// Get the precedence level of an operator (higher = tighter binding)
     fn precedence(op: OpKind) -> u8 {
         match op {
-            OpKind::Or => 1,                                         // |
-            OpKind::Xor => 2,                                        // ^
-            OpKind::And => 3,                                        // &
-            OpKind::Lshift | OpKind::Rshift => 4,                    // <<, >>
-            OpKind::Add | OpKind::Sub => 5,                          // +, -
-            OpKind::Multiply | OpKind::Divide | OpKind::Modulo => 6, // *, /, %
-            OpKind::Not => 7,                                        // ~ (unary)
+            OpKind::Or => 1,
+            OpKind::Xor => 2,
+            OpKind::And => 3,
+            OpKind::Lshift | OpKind::Rshift => 4,
+            OpKind::Add | OpKind::Sub => 5,
+            OpKind::Multiply | OpKind::Divide | OpKind::Modulo => 6,
+            OpKind::Not => 7,
         }
     }
 
@@ -75,53 +74,64 @@ impl<'a> AmbiguousPrecedence<'a> {
     /// We only warn when mixing operators from different "families" where
     /// the precedence might not be intuitive.
     fn should_warn_precedence(parent_op: OpKind, child_op: OpKind, is_left: bool) -> bool {
-        // For arithmetic operators, the precedence is well-known and expected
         match (parent_op, child_op) {
-            // Don't warn about standard arithmetic precedence
-            (OpKind::Add | OpKind::Sub, OpKind::Multiply | OpKind::Divide | OpKind::Modulo) => {
-                false
-            }
-
-            // Warn when mixing bitwise and arithmetic - this is often confusing
+            // Warn when mixing bitwise and arithmetic, bitwise precedence
+            // between different bitwise ops, and when bitiwse ops are mixed
+            // with bitshifts.
             (
                 OpKind::And | OpKind::Or | OpKind::Xor,
-                OpKind::Add | OpKind::Sub | OpKind::Multiply | OpKind::Divide | OpKind::Modulo,
-            ) => true,
-
-            // Warn about bitwise precedence between different bitwise ops
-            (OpKind::Or, OpKind::And | OpKind::Xor) => true,
-            (OpKind::Xor, OpKind::And) => true,
+                OpKind::Add
+                | OpKind::Sub
+                | OpKind::Multiply
+                | OpKind::Divide
+                | OpKind::Modulo
+                | OpKind::Lshift
+                | OpKind::Rshift,
+            )
+            | (OpKind::Or, OpKind::And | OpKind::Xor)
+            | (OpKind::Xor, OpKind::And) => true,
 
             // Special case: for shift operators, only warn on the right side
             // because "a << b + c" is confusing but "a + b << c" is less so
             (OpKind::Lshift | OpKind::Rshift, OpKind::Add | OpKind::Sub) => !is_left,
 
-            // Warn when bitwise ops are mixed with shifts
-            (OpKind::And | OpKind::Or | OpKind::Xor, OpKind::Lshift | OpKind::Rshift) => true,
-
+            // Don't warn about standard arithmetic precedence or any other combinations
             _ => false,
         }
     }
 
     /// Check a binary expression for ambiguous precedence
     fn check_binary_expr(&mut self, binary: &'a Binary) {
-        // Check left operand
-        if let Expr::Binary(left_binary) = &binary.lhs {
-            if Self::should_warn_precedence(binary.op.kind, left_binary.op.kind, true) {
-                self.report_ambiguous_precedence(&binary.op, &left_binary.op, binary, left_binary);
+        match &binary.lhs {
+            Expr::Binary(left_binary) => {
+                if Self::should_warn_precedence(binary.op.kind, left_binary.op.kind, true) {
+                    self.report_ambiguous_precedence(
+                        &binary.op,
+                        &left_binary.op,
+                        binary,
+                        left_binary,
+                    );
+                }
+                self.visit_expr_binary(left_binary);
             }
+            Expr::Group(group) => self.visit_expr(&group.expr),
+            _ => self.visit_expr(&binary.lhs),
         }
 
-        // Check right operand
-        if let Expr::Binary(right_binary) = &binary.rhs {
-            if Self::should_warn_precedence(binary.op.kind, right_binary.op.kind, false) {
-                self.report_ambiguous_precedence(
-                    &binary.op,
-                    &right_binary.op,
-                    binary,
-                    right_binary,
-                );
+        match &binary.rhs {
+            Expr::Binary(right_binary) => {
+                if Self::should_warn_precedence(binary.op.kind, right_binary.op.kind, false) {
+                    self.report_ambiguous_precedence(
+                        &binary.op,
+                        &right_binary.op,
+                        binary,
+                        right_binary,
+                    );
+                }
+                self.visit_expr_binary(right_binary);
             }
+            Expr::Group(group) => self.visit_expr(&group.expr),
+            _ => self.visit_expr(&binary.rhs),
         }
     }
 
@@ -134,17 +144,12 @@ impl<'a> AmbiguousPrecedence<'a> {
     ) {
         let parent_name = Self::op_name(parent_op.kind);
         let child_name = Self::op_name(child_op.kind);
-
-        // Calculate the span of the child expression using util::expr_span
         let child_span = util::expr_span(&Expr::Binary(Box::new(child_expr.clone())));
 
         if let Some(diag) = self.ctx.diag_span(
             Self::name(),
             Self::category(),
-            format!(
-                "operator `{}` has lower precedence than `{}`",
-                parent_name, child_name
-            ),
+            format!("operator `{parent_name}` has lower precedence than `{child_name}`"),
             Label::new(parent_op.span).message("this operator has lower precedence"),
         ) {
             let diag = diag
@@ -155,12 +160,10 @@ impl<'a> AmbiguousPrecedence<'a> {
         }
     }
 
-    /// Format a simple hint for an expression (used in help messages)
     fn format_expr_hint(expr: &Expr) -> &'static str {
         match expr {
-            Expr::Literal(_) | Expr::Path(_) => "...",
-            Expr::Unary(_) => "...",
-            Expr::Binary(_) => "(...)",
+            Expr::Literal(_) | Expr::Path(_) | Expr::Unary(_) => "...",
+            Expr::Binary(_) | Expr::Group(_) => "(...)",
             Expr::InitList(_) => "{...}",
         }
     }
@@ -169,9 +172,7 @@ impl<'a> AmbiguousPrecedence<'a> {
 impl<'a> Visitor<'a> for AmbiguousPrecedence<'a> {
     fn visit_expr_binary(&mut self, binary: &'a Binary) {
         self.check_binary_expr(binary);
-        // Continue traversing children
-        self.visit_expr(&binary.lhs);
-        self.visit_expr(&binary.rhs);
+        // Traversal is handled in check_binary_expr
     }
 
     fn visit_const(&mut self, def: &'a ic_syntax::ConstDef) {

@@ -31,9 +31,9 @@ use ic_lexer::token::Kw;
 use ic_syntax::{
     AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, AnyType, ArrayDeclarator,
     Attribute, Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr,
-    Field, Fixed, FixedType, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue,
-    MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
-    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
+    Field, Fixed, FixedType, Group, Ident, InitList, InterfaceMember, Item, Label, Literal,
+    LiteralValue, MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType,
+    Span, StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -333,7 +333,9 @@ fn const_type() -> impl IdlParser<Type> {
 fn const_expr() -> impl IdlParser<Expr> {
     recursive(|primary| {
         // Rule 16
-        let nested = primary.parenthesized();
+        let nested = primary
+            .parenthesized()
+            .map_with_span(|expr, span| Expr::Group(Box::new(Group { expr, span })));
 
         let lit = literal().map(Expr::Literal);
         let scoped = scoped_name().map(Expr::Path);

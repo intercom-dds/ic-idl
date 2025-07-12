@@ -30,9 +30,9 @@
 use crate::{
     AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Attribute, Binary,
     Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Declarator, Discriminator, EnumDef,
-    Enumerator, ExceptDef, Expr, Field, Ident, InitList, InterfaceDef, InterfaceMember, Item,
-    ItemKind, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, Span, StructDef, Type,
-    Unary, UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
+    Enumerator, ExceptDef, Expr, Field, Group, Ident, InitList, InterfaceDef, InterfaceMember,
+    Item, ItemKind, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, Span, StructDef,
+    Type, Unary, UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -156,6 +156,9 @@ pub trait Visitor<'a> {
 
     fn visit_expr_init_list(&mut self, init_list: &'a InitList) {
         walk_expr_init_list(self, init_list);
+    }
+    fn visit_expr_group(&mut self, group: &'a Group) {
+        walk_expr_group(self, group);
     }
 
     fn visit_forward_decl(&mut self, decl: &'a Decl) {}
@@ -470,6 +473,7 @@ where
         Expr::Literal(v) => visitor.visit_literal(v),
         Expr::InitList(v) => visitor.visit_expr_init_list(v),
         Expr::Path(v) => visitor.visit_path(v),
+        Expr::Group(v) => visitor.visit_expr_group(v),
     }
 }
 
@@ -495,6 +499,13 @@ where
     for NamedExpr { value, .. } in &init_list.values {
         visitor.visit_expr(value);
     }
+}
+
+pub fn walk_expr_group<'a, V>(visitor: &mut V, group: &'a Group)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_expr(&group.expr);
 }
 
 pub fn walk_path<'a, V>(visitor: &mut V, path: &'a Path)

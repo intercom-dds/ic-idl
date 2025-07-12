@@ -141,7 +141,7 @@ pub struct Def {
     pub flags: DefFlags,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DefKind {
     Annotation(AnnotationTy),
     Module(ModuleTy),
@@ -285,7 +285,7 @@ pub enum Numeric {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AnnotationTy {
     pub members: Vec<Member>,
 
@@ -293,12 +293,12 @@ pub struct AnnotationTy {
     pub types: Vec<DefId>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModuleTy {
     pub definitions: Vec<DefId>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StructTy {
     /// Parent type, i.e. the type from which this type inherits.
     pub parent: Option<DefId>,
@@ -307,20 +307,20 @@ pub struct StructTy {
     pub members: Vec<Member>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Member {
     pub ident: Ident,
     pub ty: Ty,
     pub annotations: Vec<Ann>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExceptTy {
     /// Direct members of the exception.
     pub members: Vec<Member>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnionTy {
     /// The type of the union's discriminator.
     pub disc: Ty,
@@ -329,7 +329,7 @@ pub struct UnionTy {
     pub variants: Vec<Variant>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Variant {
     /// Annotations attached to the variant.
     pub annotations: Vec<Ann>,
@@ -348,7 +348,7 @@ pub struct Variant {
     pub is_default: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnumTy {
     pub fields: Vec<EnumLit>,
 
@@ -356,14 +356,14 @@ pub struct EnumTy {
     pub ty: Ty,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnumLit {
     pub ident: Ident,
     pub value: isize,
     pub annotations: Vec<Ann>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConstTy {
     /// The value of the constant.
     pub value: Numeric,
@@ -372,7 +372,7 @@ pub struct ConstTy {
     pub ty: Ty,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BitmaskTy {
     /// The bitmask flags.
     pub flags: Vec<BitFlag>,
@@ -382,7 +382,7 @@ pub struct BitmaskTy {
     pub ty: Ty,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BitFlag {
     /// Name of the bitmask flag.
     pub ident: Ident,
@@ -395,7 +395,7 @@ pub struct BitFlag {
     pub annotations: Vec<Ann>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct InterfaceTy {
     pub parents: Vec<DefId>,
     pub prototypes: Vec<ProtoTy>,
@@ -404,7 +404,7 @@ pub struct InterfaceTy {
     pub is_local: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValueTy {
     pub parent: Option<DefId>,
     pub extends: Option<DefId>,
@@ -413,21 +413,21 @@ pub struct ValueTy {
     pub definitions: Vec<DefId>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProtoTy {
     pub ident: Ident,
     pub ty: Ty,
     pub params: Vec<Parameter>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Parameter {
     pub ident: Ident,
     pub ty: Ty,
     pub kind: ParamKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AliasTy {
     /// The type to which this alias points.
     pub ty: Ty,

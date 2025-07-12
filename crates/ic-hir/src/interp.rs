@@ -30,14 +30,12 @@ use std::ops::{Neg, Not};
 use std::rc::Rc;
 
 use crate::hir::{DefId, Numeric};
-use crate::lower::Lower;
-use crate::resolve::{self, Resolver, Symbol, SymbolKind};
 
-pub struct Interp<'a> {
-    pub(crate) lower: &'a Lower<'a>,
+pub struct Interp {
+    // TODO: Add any necessary context for expression evaluation
 }
 
-impl Interp<'_> {
+impl Interp {
     fn sub_num(&mut self, num: Numeric) -> Numeric {
         match num {
             // Use the NOT operator for unsigned numbers to simulate an
@@ -133,7 +131,7 @@ impl Interp<'_> {
 
         match expr {
             Expr::Literal(v) => Numeric::Octet(0),
-            Expr::Path(v) => Numeric::Const(self.lower.resolver.resolve_path(v).unwrap()),
+            Expr::Path(v) => Numeric::Const(DefId::_do_not_use()), // TODO: resolve path
             Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
             Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
             Expr::InitList(_) => todo!(),
@@ -162,12 +160,10 @@ impl Interp<'_> {
             Expr::Path(v) => Numeric::Const(DefId::_do_not_use()),
             Expr::Unary(v) => Numeric::Int64(self.eval_unary(v)),
             Expr::Binary(v) => Numeric::Int64(self.eval_binary(v)),
-            Expr::InitList(v) => Numeric::InitList(
-                v.values
-                    .iter()
-                    .map(|v| self.eval_expr_ty(&v.value))
-                    .collect(),
-            ),
+            Expr::InitList(v) => {
+                // InitList was removed from Numeric enum - need to handle differently
+                todo!("InitList evaluation not yet implemented")
+            }
             Expr::Group(v) => self.eval_expr_ty::<T>(&v.expr),
         }
     }

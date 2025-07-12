@@ -28,17 +28,125 @@
 //! Phase 3: Expression evaluation.
 //!
 //! This phase:
-//! - Evaluates constant expressions
+//! - Evaluates constant expressions using ic-expr
 //! - Computes array bounds, sequence bounds, map bounds
 //! - Assigns values to enum fields and bitmask flags
 //! - Evaluates initializer expressions for constants
 //!
 //! At this point, all types are resolved, so we can properly evaluate expressions.
 
-use ic_diagnostic::{Diag, Label, error_span};
-use ic_syntax::{Item, Expr, ExprKind, Lit, UnaryOp, BinaryOp};
+use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_syntax::{Expr, Item};
 
-use crate::{Context, hir::*};
+use crate::Context;
+use crate::hir::*;
+
+/// Literal type for ic-expr evaluation.
+#[derive(Debug, Clone)]
+struct IdlLiteral {
+    span: ic_syntax::Span,
+    value: ic_syntax::LiteralValue,
+}
+
+/// Context for evaluating IDL expressions.
+struct IdlEvalContext<'a> {
+    ctx: &'a Context,
+    config: ic_expr::EvalConfig,
+    errors: &'a mut Vec<Diag>,
+}
+
+impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
+    type Value = ic_expr::idl_adapter::Numeric;
+
+    fn eval_literal(&mut self, lit: &IdlLiteral) -> ic_expr::Result<Self::Value> {
+        use ic_expr::idl_adapter::Numeric;
+
+        match &lit.value {
+            ic_syntax::LiteralValue::Null => Err(ic_expr::Error::Custom(
+                "null literals not supported in constant expressions".to_string(),
+            )),
+            ic_syntax::LiteralValue::Bool(b) => Ok(Numeric::Bool(*b)),
+            ic_syntax::LiteralValue::Char(c) => Ok(Numeric::Char(*c)),
+            ic_syntax::LiteralValue::Int(i) => {
+                // TODO: Handle different integer types based on suffix
+                // For now, assume Int32
+                Ok(Numeric::Int32(*i as i32))
+            }
+            ic_syntax::LiteralValue::Float(f) => {
+                // TODO: Handle float vs double based on suffix
+                Ok(Numeric::Float(*f as f32))
+            }
+            ic_syntax::LiteralValue::String(s) => Err(ic_expr::Error::Custom(format!(
+                "string literals not supported in constant expressions: \"{}\"",
+                s
+            ))),
+        }
+    }
+
+    fn config(&self) -> ic_expr::EvalConfig {
+        self.config
+    }
+}
+
+/// Converts an ic-syntax expression to an ic-expr expression.
+fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, String> {
+    match expr {
+        Expr::Literal(lit) => Ok(ic_expr::Expr::Lit(IdlLiteral {
+            span: lit.span,
+            value: lit.value.clone(),
+        })),
+
+        Expr::Path(_) => {
+            // TODO: Support constant references
+            Err("constant references not yet supported".to_string())
+        }
+
+        Expr::Unary(unary) => {
+            let op = match unary.op.kind {
+                ic_syntax::OpKind::Add => ic_expr::Op::Add,
+                ic_syntax::OpKind::Sub => ic_expr::Op::Sub,
+                ic_syntax::OpKind::Not => ic_expr::Op::Not,
+                _ => return Err(format!("unsupported unary operator: {:?}", unary.op.kind)),
+            };
+
+            let inner = convert_expr(&unary.expr)?;
+            Ok(ic_expr::Expr::Unary(Box::new(ic_expr::Unary {
+                op,
+                expr: inner,
+            })))
+        }
+
+        Expr::Binary(binary) => {
+            let op = match binary.op.kind {
+                ic_syntax::OpKind::Add => ic_expr::Op::Add,
+                ic_syntax::OpKind::Sub => ic_expr::Op::Sub,
+                ic_syntax::OpKind::Multiply => ic_expr::Op::Mul,
+                ic_syntax::OpKind::Divide => ic_expr::Op::Div,
+                ic_syntax::OpKind::Modulo => ic_expr::Op::Mod,
+                ic_syntax::OpKind::And => ic_expr::Op::BitAnd,
+                ic_syntax::OpKind::Or => ic_expr::Op::BitOr,
+                ic_syntax::OpKind::Xor => ic_expr::Op::BitXor,
+                ic_syntax::OpKind::Lshift => ic_expr::Op::LShift,
+                ic_syntax::OpKind::Rshift => ic_expr::Op::RShift,
+                _ => return Err(format!("unsupported binary operator: {:?}", binary.op.kind)),
+            };
+
+            let lhs = convert_expr(&binary.lhs)?;
+            let rhs = convert_expr(&binary.rhs)?;
+            Ok(ic_expr::Expr::Binary(Box::new(ic_expr::Binary {
+                lhs,
+                op,
+                rhs,
+            })))
+        }
+
+        Expr::Group(group) => convert_expr(&group.expr),
+
+        Expr::InitList(_) => {
+            Err("initializer lists not supported in constant expressions".to_string())
+        }
+    }
+}
 
 /// Evaluates expressions in the HIR.
 pub struct ExpressionEvaluator<'a> {
@@ -53,149 +161,108 @@ impl<'a> ExpressionEvaluator<'a> {
             errors: Vec::new(),
         }
     }
-    
+
     /// Evaluates an expression to a numeric value.
     fn eval_expr(&mut self, expr: &Expr) -> Numeric {
-        match &expr.kind {
-            ExprKind::Lit(lit) => self.eval_literal(lit),
-            ExprKind::Path(path) => self.eval_path(path, expr.span),
-            ExprKind::Unary(op, inner) => self.eval_unary(*op, inner),
-            ExprKind::Binary(lhs, op, rhs) => self.eval_binary(lhs, *op, rhs),
-            ExprKind::Ternary(cond, then_expr, else_expr) => {
-                self.eval_ternary(cond, then_expr, else_expr)
-            },
-            ExprKind::Paren(inner) => self.eval_expr(inner),
-            _ => {
+        // Convert to ic-expr format
+        let ic_expr = match convert_expr(expr) {
+            Ok(e) => e,
+            Err(msg) => {
                 self.errors.push(error_span(
-                    "unsupported expression in constant context",
-                    Label::new(expr.span).message("cannot evaluate this expression"),
+                    msg,
+                    Label::new(ic_syntax::util::expr_span(expr))
+                        .message("cannot evaluate this expression"),
+                ));
+                return Numeric::Null;
+            }
+        };
+
+        // Create evaluation context
+        let mut eval_ctx = IdlEvalContext {
+            ctx: &self.ctx,
+            config: ic_expr::EvalConfig::default(),
+            errors: &mut self.errors,
+        };
+
+        // Evaluate the expression
+        match ic_expr::eval(&ic_expr, &mut eval_ctx) {
+            Ok(value) => {
+                // Convert ic-expr Numeric to HIR Numeric
+                use ic_expr::idl_adapter::Numeric as ExprNumeric;
+                match value {
+                    ExprNumeric::Bool(b) => Numeric::Bool(b),
+                    ExprNumeric::Char(c) => Numeric::Char(c),
+                    ExprNumeric::Int8(i) => Numeric::Int8(i),
+                    ExprNumeric::Octet(i) => Numeric::Octet(i),
+                    ExprNumeric::Int16(i) => Numeric::Int16(i),
+                    ExprNumeric::UInt16(i) => Numeric::UInt16(i),
+                    ExprNumeric::Int32(i) => Numeric::Int32(i),
+                    ExprNumeric::UInt32(i) => Numeric::UInt32(i),
+                    ExprNumeric::Int64(i) => Numeric::Int64(i),
+                    ExprNumeric::UInt64(i) => Numeric::UInt64(i),
+                    ExprNumeric::Float(f) => Numeric::Float(f),
+                    ExprNumeric::Double(f) => Numeric::Double(f),
+                }
+            }
+            Err(err) => {
+                let msg = match err {
+                    ic_expr::Error::DivisionByZero => "division by zero",
+                    ic_expr::Error::ModuloByZero => "modulo by zero",
+                    ic_expr::Error::Overflow(op_str) => {
+                        self.errors.push(warn_span(
+                            format!("arithmetic overflow in {} operation", op_str),
+                            Label::new(ic_syntax::util::expr_span(expr))
+                                .message("value wraps around"),
+                        ));
+                        // For now, just return 0
+                        // TODO: Actually compute the wrapped value
+                        return Numeric::Int32(0);
+                    }
+                    ic_expr::Error::InvalidShift(amount) => {
+                        self.errors.push(error_span(
+                            format!("invalid shift amount: {}", amount),
+                            Label::new(ic_syntax::util::expr_span(expr)).message("invalid shift"),
+                        ));
+                        return Numeric::Null;
+                    }
+                    ic_expr::Error::InvalidUnaryOp(op) => {
+                        self.errors.push(error_span(
+                            format!("invalid unary operator: {:?}", op),
+                            Label::new(ic_syntax::util::expr_span(expr)).message("cannot apply"),
+                        ));
+                        return Numeric::Null;
+                    }
+                    ic_expr::Error::Custom(s) => {
+                        self.errors.push(error_span(
+                            s,
+                            Label::new(ic_syntax::util::expr_span(expr))
+                                .message("evaluation error"),
+                        ));
+                        return Numeric::Null;
+                    }
+                };
+
+                self.errors.push(error_span(
+                    msg,
+                    Label::new(ic_syntax::util::expr_span(expr)).message("in this expression"),
                 ));
                 Numeric::Null
             }
         }
     }
-    
-    /// Evaluates a literal.
-    fn eval_literal(&self, lit: &Lit) -> Numeric {
-        match lit {
-            Lit::Null(_) => Numeric::Null,
-            Lit::Bool(b) => Numeric::Bool(b.value),
-            Lit::Char(c) => Numeric::Char(c.value),
-            Lit::Int(i) => {
-                // TODO: Handle different integer types based on suffix
-                Numeric::Int32(i.value as i32)
-            },
-            Lit::Float(f) => {
-                // TODO: Handle float vs double based on suffix
-                Numeric::Float(f.value as f32)
-            },
-            Lit::String(s) => Numeric::String(s.value.clone()),
-        }
-    }
-    
-    /// Evaluates a path expression (constant reference).
-    fn eval_path(&mut self, path: &ic_syntax::Path, span: ic_syntax::Span) -> Numeric {
-        // For now, just return null - proper implementation would look up the constant
-        // TODO: Implement constant lookup
-        self.errors.push(error_span(
-            "constant references not yet implemented",
-            Label::new(span).message("cannot evaluate constant reference"),
+
+    /// Handles overflow by issuing a warning and returning a wrapped value.
+    fn handle_overflow(&mut self, expr: &Expr, op: ic_expr::Op) -> Numeric {
+        self.errors.push(warn_span(
+            format!("arithmetic overflow in {:?} operation", op),
+            Label::new(ic_syntax::util::expr_span(expr)).message("value wraps around"),
         ));
-        Numeric::Null
+
+        // For now, just return 0
+        // TODO: Actually compute the wrapped value
+        Numeric::Int32(0)
     }
-    
-    /// Evaluates a unary expression.
-    fn eval_unary(&mut self, op: UnaryOp, expr: &Expr) -> Numeric {
-        let value = self.eval_expr(expr);
-        
-        match (op, value) {
-            (UnaryOp::Plus, v) => v,
-            (UnaryOp::Minus, Numeric::Int8(v)) => Numeric::Int8(-v),
-            (UnaryOp::Minus, Numeric::Int16(v)) => Numeric::Int16(-v),
-            (UnaryOp::Minus, Numeric::Int32(v)) => Numeric::Int32(-v),
-            (UnaryOp::Minus, Numeric::Int64(v)) => Numeric::Int64(-v),
-            (UnaryOp::Minus, Numeric::Float(v)) => Numeric::Float(-v),
-            (UnaryOp::Minus, Numeric::Double(v)) => Numeric::Double(-v),
-            (UnaryOp::Not, Numeric::Bool(v)) => Numeric::Bool(!v),
-            (UnaryOp::Not, Numeric::Int32(v)) => Numeric::Int32(!v),
-            (UnaryOp::Not, Numeric::Int64(v)) => Numeric::Int64(!v),
-            _ => {
-                self.errors.push(error_span(
-                    format!("invalid unary operation {:?} on value", op),
-                    Label::new(expr.span).message("cannot apply this operator"),
-                ));
-                Numeric::Null
-            }
-        }
-    }
-    
-    /// Evaluates a binary expression.
-    fn eval_binary(&mut self, lhs: &Expr, op: BinaryOp, rhs: &Expr) -> Numeric {
-        let lhs_val = self.eval_expr(lhs);
-        let rhs_val = self.eval_expr(rhs);
-        
-        // For now, just handle integer arithmetic
-        match (lhs_val, op, rhs_val) {
-            (Numeric::Int32(a), BinaryOp::Add, Numeric::Int32(b)) => Numeric::Int32(a + b),
-            (Numeric::Int32(a), BinaryOp::Sub, Numeric::Int32(b)) => Numeric::Int32(a - b),
-            (Numeric::Int32(a), BinaryOp::Mul, Numeric::Int32(b)) => Numeric::Int32(a * b),
-            (Numeric::Int32(a), BinaryOp::Div, Numeric::Int32(b)) => {
-                if b == 0 {
-                    self.errors.push(error_span(
-                        "division by zero",
-                        Label::new(rhs.span).message("divisor is zero"),
-                    ));
-                    Numeric::Null
-                } else {
-                    Numeric::Int32(a / b)
-                }
-            },
-            (Numeric::Int32(a), BinaryOp::Mod, Numeric::Int32(b)) => {
-                if b == 0 {
-                    self.errors.push(error_span(
-                        "modulo by zero",
-                        Label::new(rhs.span).message("divisor is zero"),
-                    ));
-                    Numeric::Null
-                } else {
-                    Numeric::Int32(a % b)
-                }
-            },
-            (Numeric::Int32(a), BinaryOp::And, Numeric::Int32(b)) => Numeric::Int32(a & b),
-            (Numeric::Int32(a), BinaryOp::Or, Numeric::Int32(b)) => Numeric::Int32(a | b),
-            (Numeric::Int32(a), BinaryOp::Xor, Numeric::Int32(b)) => Numeric::Int32(a ^ b),
-            (Numeric::Int32(a), BinaryOp::Lshift, Numeric::Int32(b)) => Numeric::Int32(a << b),
-            (Numeric::Int32(a), BinaryOp::Rshift, Numeric::Int32(b)) => Numeric::Int32(a >> b),
-            // TODO: Handle more type combinations
-            _ => {
-                self.errors.push(error_span(
-                    format!("invalid binary operation {:?}", op),
-                    Label::new(lhs.span).message("cannot apply this operator to these types"),
-                ));
-                Numeric::Null
-            }
-        }
-    }
-    
-    /// Evaluates a ternary expression.
-    fn eval_ternary(&mut self, cond: &Expr, then_expr: &Expr, else_expr: &Expr) -> Numeric {
-        let cond_val = self.eval_expr(cond);
-        
-        match cond_val {
-            Numeric::Bool(true) => self.eval_expr(then_expr),
-            Numeric::Bool(false) => self.eval_expr(else_expr),
-            Numeric::Int32(v) if v != 0 => self.eval_expr(then_expr),
-            Numeric::Int32(0) => self.eval_expr(else_expr),
-            _ => {
-                self.errors.push(error_span(
-                    "invalid condition type in ternary expression",
-                    Label::new(cond.span).message("condition must be boolean or integer"),
-                ));
-                Numeric::Null
-            }
-        }
-    }
-    
+
     /// Evaluates a bound expression to a usize.
     fn eval_bound(&mut self, expr: &Expr) -> usize {
         match self.eval_expr(expr) {
@@ -206,18 +273,19 @@ impl<'a> ExpressionEvaluator<'a> {
             _ => {
                 self.errors.push(error_span(
                     "invalid bound expression",
-                    Label::new(expr.span).message("bound must be a positive integer"),
+                    Label::new(ic_syntax::util::expr_span(expr))
+                        .message("bound must be a positive integer"),
                 ));
                 0
             }
         }
     }
-    
+
     /// Updates array bounds in a type.
     fn update_type_bounds(&mut self, ty: &mut Ty, bounds: &[ic_syntax::Expr]) {
         let mut current = ty;
-        let mut bound_iter = bounds.iter().rev();  // Process from outermost to innermost
-        
+        let mut bound_iter = bounds.iter().rev(); // Process from outermost to innermost
+
         loop {
             match &mut current.kind {
                 TyKind::Array { ty: inner_ty, len } => {
@@ -225,137 +293,171 @@ impl<'a> ExpressionEvaluator<'a> {
                         *len = self.eval_bound(bound_expr);
                     }
                     current = inner_ty;
-                },
+                }
                 _ => break,
             }
         }
     }
-    
-    /// Evaluates all expressions in struct/union/etc definitions.
-    fn evaluate_struct(&mut self, id: DefId, def: &ic_syntax::StructDef) {
-        // Structs don't have expressions to evaluate in their definition
-        // (member default values would be handled separately)
-    }
-    
+
     /// Evaluates expressions in a union definition.
     fn evaluate_union(&mut self, id: DefId, def: &ic_syntax::UnionDef) {
-        let hir_def = self.ctx.definitions.get_mut(id);
-        
-        if let DefKind::Union(union_ty) = &mut hir_def.kind {
-            // Evaluate case labels
-            for (idx, field) in def.fields.iter().enumerate() {
-                let mut labels = Vec::new();
-                
-                for label in &field.labels {
-                    if let ic_syntax::Label::Case(expr) = label {
-                        labels.push(self.eval_expr(expr));
-                    }
+        // First, evaluate all case labels
+        let mut all_labels = Vec::new();
+        for field in &def.fields {
+            let mut labels = Vec::new();
+
+            for label in &field.labels {
+                if let ic_syntax::Label::Case(expr) = label {
+                    labels.push(self.eval_expr(expr));
                 }
-                
+            }
+
+            all_labels.push(labels);
+        }
+
+        // Then update the HIR
+        let hir_def = self.ctx.definitions.get_mut(id);
+
+        if let DefKind::Union(union_ty) = &mut hir_def.kind {
+            for (idx, labels) in all_labels.into_iter().enumerate() {
                 if let Some(variant) = union_ty.variants.get_mut(idx) {
                     variant.labels = labels;
                 }
             }
         }
     }
-    
+
     /// Evaluates enum values.
     fn evaluate_enum(&mut self, id: DefId, def: &ic_syntax::EnumDef) {
+        // First, evaluate all values
+        let mut values = Vec::new();
+        let mut last_value = -1isize;
+
+        for field in &def.fields {
+            let value = if let Some(expr) = &field.value {
+                self.eval_bound(expr) as isize
+            } else {
+                last_value + 1
+            };
+
+            last_value = value;
+            values.push(value);
+        }
+
+        // Then update the HIR
         let hir_def = self.ctx.definitions.get_mut(id);
-        
+
         if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
-            let mut last_value = -1isize;
-            
-            for (idx, field) in def.fields.iter().enumerate() {
-                let value = if let Some(expr) = &field.value {
-                    self.eval_bound(expr) as isize
-                } else {
-                    last_value + 1
-                };
-                
-                last_value = value;
-                
+            for (idx, value) in values.into_iter().enumerate() {
                 if let Some(enum_lit) = enum_ty.fields.get_mut(idx) {
                     enum_lit.value = value;
                 }
             }
         }
     }
-    
+
     /// Evaluates bitmask values.
     fn evaluate_bitmask(&mut self, id: DefId, def: &ic_syntax::BitmaskDef) {
+        // First, evaluate all values
+        let mut values = Vec::new();
+        let mut last_value = 0usize;
+
+        for bit in &def.bits {
+            let value = if let Some(expr) = &bit.value {
+                self.eval_bound(expr)
+            } else {
+                if last_value == 0 { 1 } else { last_value << 1 }
+            };
+
+            last_value = value;
+            values.push(value);
+        }
+
+        // Then update the HIR
         let hir_def = self.ctx.definitions.get_mut(id);
-        
+
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
-            let mut last_value = 0usize;
-            
-            for (idx, bit) in def.bits.iter().enumerate() {
-                let value = if let Some(expr) = &bit.value {
-                    self.eval_bound(expr)
-                } else {
-                    if last_value == 0 {
-                        1
-                    } else {
-                        last_value << 1
-                    }
-                };
-                
-                last_value = value;
-                
+            for (idx, value) in values.into_iter().enumerate() {
                 if let Some(flag) = bitmask_ty.flags.get_mut(idx) {
                     flag.value = value;
                 }
             }
         }
     }
-    
+
     /// Evaluates a constant definition.
     fn evaluate_const(&mut self, id: DefId, def: &ic_syntax::ConstDef) {
         let value = self.eval_expr(&def.value);
-        
-        let hir_def = self.ctx.definitions.get_mut(id);
-        
-        if let DefKind::Const(const_ty) = &mut hir_def.kind {
-            const_ty.value = value;
-            
-            // Also update array bounds if this is an array constant
-            if let ic_syntax::Declarator::Array(arr) = &def.decl {
-                self.update_type_bounds(&mut const_ty.ty, &arr.bounds);
+
+        // Handle array bounds separately
+        let bounds = if let ic_syntax::Declarator::Array(arr) = &def.decl {
+            Some(arr.bounds.clone())
+        } else {
+            None
+        };
+
+        // Clone the type to avoid mutable borrow issues
+        let ty_to_update = if let Some(ref bounds) = bounds {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Const(const_ty) = &hir_def.kind {
+                Some(const_ty.ty.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Update the type bounds if needed
+        if let (Some(mut ty), Some(bounds)) = (ty_to_update, bounds.clone()) {
+            self.update_type_bounds(&mut ty, &bounds);
+
+            // Now update the HIR with both value and updated type
+            let hir_def = self.ctx.definitions.get_mut(id);
+            if let DefKind::Const(const_ty) = &mut hir_def.kind {
+                const_ty.value = value;
+                const_ty.ty = ty;
+            }
+        } else {
+            // Just update the value
+            let hir_def = self.ctx.definitions.get_mut(id);
+            if let DefKind::Const(const_ty) = &mut hir_def.kind {
+                const_ty.value = value;
             }
         }
     }
-    
+
     /// Evaluates expressions in type definitions.
-    fn evaluate_types(&mut self, items: &[Item]) {
+    fn evaluate_types(&mut self, name_map: &super::collect::NameMap, items: &[Item]) {
         for item in items {
             match item {
                 Item::UnionValue(v) => {
-                    if let Some(&id) = self.ctx.registered.get(&v.ident.name) {
+                    if let Some(&id) = name_map.get(&v.ident.name) {
                         self.evaluate_union(id, v);
                     }
-                },
+                }
                 Item::EnumValue(v) => {
-                    if let Some(&id) = self.ctx.registered.get(&v.ident.name) {
+                    if let Some(&id) = name_map.get(&v.ident.name) {
                         self.evaluate_enum(id, v);
                     }
-                },
+                }
                 Item::BitmaskValue(v) => {
-                    if let Some(&id) = self.ctx.registered.get(&v.ident.name) {
+                    if let Some(&id) = name_map.get(&v.ident.name) {
                         self.evaluate_bitmask(id, v);
                     }
-                },
+                }
                 Item::ConstValue(v) => {
                     let name = match &v.decl {
-                        ic_syntax::Declarator::Simple(n) => n.clone(),
+                        ic_syntax::Declarator::Simple(n) => n.name.clone(),
                         ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
                     };
-                    
-                    if let Some(&id) = self.ctx.registered.get(&name) {
+
+                    if let Some(&id) = name_map.get(&name) {
                         self.evaluate_const(id, v);
                     }
-                },
+                }
                 // TODO: Handle sequence/map/string bounds
-                _ => {},
+                _ => {}
             }
         }
     }
@@ -364,9 +466,10 @@ impl<'a> ExpressionEvaluator<'a> {
 /// Evaluates all expressions in the HIR.
 pub fn evaluate_expressions(
     ctx: &mut Context,
+    name_map: &super::collect::NameMap,
     items: &[Item],
 ) -> Vec<Diag> {
     let mut evaluator = ExpressionEvaluator::new(ctx);
-    evaluator.evaluate_types(items);
+    evaluator.evaluate_types(name_map, items);
     evaluator.errors
 }

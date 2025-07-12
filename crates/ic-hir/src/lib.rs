@@ -72,7 +72,7 @@ where
     I: IntoIterator<Item = ic_syntax::Item>,
 {
     let result = lower::lower(ast);
-    
+
     // Check for non-type name collisions, like struct members, etc.
     let mut errors = result.errors;
     hygiene::check(&result.context, &result.order, &mut errors);

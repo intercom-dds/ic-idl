@@ -38,7 +38,8 @@ use std::collections::HashMap;
 use ic_diagnostic::{Diag, Label, error_span};
 use ic_syntax::{Ident, Item, ItemKind, Path, Span};
 
-use crate::{Context, hir::*};
+use crate::Context;
+use crate::hir::*;
 
 /// Maps fully-qualified names to their DefIds.
 pub type NameMap = HashMap<String, DefId>;
@@ -56,29 +57,29 @@ impl ScopeStack {
             scopes: vec![("<global>".to_string(), None)],
         }
     }
-    
+
     fn push(&mut self, name: String, id: DefId) {
         self.scopes.push((name, Some(id)));
     }
-    
+
     fn pop(&mut self) {
         if self.scopes.len() > 1 {
             self.scopes.pop();
         }
     }
-    
+
     fn current_parent(&self) -> Option<DefId> {
         self.scopes.last()?.1
     }
-    
+
     fn qualified_name(&self, name: &str) -> String {
-        let path = self.scopes[1..]  // Skip <global>
+        let path = self.scopes[1..] // Skip <global>
             .iter()
             .map(|(n, _)| n.as_str())
             .chain(std::iter::once(name))
             .collect::<Vec<_>>()
             .join("::");
-        
+
         if path.is_empty() {
             name.to_string()
         } else {
@@ -106,84 +107,81 @@ impl<'a> NameCollector<'a> {
             errors: Vec::new(),
         }
     }
-    
+
     /// Allocates a placeholder definition with proper parent tracking.
-    fn alloc_definition(
-        &mut self,
-        ident: Ident,
-        kind: DefKind,
-        span: Span,
-    ) -> DefId {
+    fn alloc_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let parent = self.scope_stack.current_parent();
         let qualified_name = self.scope_stack.qualified_name(&ident.name);
-        
+
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
             parent,
-            annotations: Vec::new(),  // Will be filled in resolution phase
+            annotations: Vec::new(), // Will be filled in resolution phase
             span,
             kind,
-            flags: DefFlags::IS_INCOMPLETE,  // Mark as incomplete until resolved
+            flags: DefFlags::IS_INCOMPLETE, // Mark as incomplete until resolved
         });
-        
+
         // Check for duplicate names
         if let Some(&existing_id) = self.name_map.get(&qualified_name) {
             let existing = self.ctx.definitions.get(existing_id);
-            self.errors.push(error_span(
-                format!("duplicate definition of `{}`", ident.name),
-                Label::new(span).message("redefined here"),
-            ).label(
-                Label::new(existing.span).message("first defined here")
-            ));
+            self.errors.push(
+                error_span(
+                    format!("duplicate definition of `{}`", ident.name),
+                    Label::new(span).message("redefined here"),
+                )
+                .label(Label::new(existing.span).message("first defined here")),
+            );
         } else {
             self.name_map.insert(qualified_name, id);
         }
-        
+
         id
     }
-    
+
     /// Creates a definition that introduces a new scope.
-    fn alloc_scoped_definition(
-        &mut self,
-        ident: Ident,
-        kind: DefKind,
-        span: Span,
-    ) -> DefId {
+    fn alloc_scoped_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident.clone(), kind, span);
         self.scope_stack.push(ident.name, id);
         id
     }
-    
+
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
         let id = self.alloc_scoped_definition(
             def.ident.clone(),
-            DefKind::Module(ModuleTy { definitions: Vec::new() }),
+            DefKind::Module(ModuleTy {
+                definitions: Vec::new(),
+            }),
             def.span,
         );
-        
+
         // Collect nested definitions
         let mut child_ids = Vec::new();
         for item in &def.definitions {
             child_ids.extend(self.collect_item(item));
         }
-        
+
         // Update module with children
-        if let Def { kind: DefKind::Module(module), .. } = self.ctx.definitions.get_mut(id) {
+        if let Def {
+            kind: DefKind::Module(module),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
             module.definitions = child_ids;
         }
-        
+
         self.scope_stack.pop();
         id
     }
-    
+
     fn collect_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
         let id = self.alloc_scoped_definition(
             def.ident.clone(),
             DefKind::Interface(InterfaceTy::default()),
             def.span,
         );
-        
+
         // Collect nested type definitions
         let mut child_ids = Vec::new();
         for member in &def.members {
@@ -191,27 +189,31 @@ impl<'a> NameCollector<'a> {
                 child_ids.extend(self.collect_item(item));
             }
         }
-        
+
         // Update interface with children
-        if let Def { kind: DefKind::Interface(interface), .. } = self.ctx.definitions.get_mut(id) {
+        if let Def {
+            kind: DefKind::Interface(interface),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
             interface.definitions = child_ids;
             interface.is_local = def.local.is_some();
         }
-        
+
         self.scope_stack.pop();
         id
     }
-    
+
     fn collect_annotation(&mut self, def: &ic_syntax::AnnotationDef) -> DefId {
         let id = self.alloc_scoped_definition(
             def.ident.clone(),
-            DefKind::Annotation(AnnotationTy { 
+            DefKind::Annotation(AnnotationTy {
                 members: Vec::new(),
                 types: Vec::new(),
             }),
             def.span,
         );
-        
+
         // Collect nested type definitions
         let mut child_ids = Vec::new();
         for field in &def.params {
@@ -219,41 +221,43 @@ impl<'a> NameCollector<'a> {
                 child_ids.extend(self.collect_item(item));
             }
         }
-        
+
         // Update annotation with children
-        if let Def { kind: DefKind::Annotation(ann), .. } = self.ctx.definitions.get_mut(id) {
+        if let Def {
+            kind: DefKind::Annotation(ann),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
             ann.types = child_ids;
         }
-        
+
         self.scope_stack.pop();
         id
     }
-    
-    fn collect_simple_definition(
-        &mut self,
-        ident: Ident,
-        kind: DefKind,
-        span: Span,
-    ) -> DefId {
+
+    fn collect_simple_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident, kind, span);
         id
     }
-    
+
     fn collect_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::ModuleValue(v) => vec![self.collect_module(v)],
             Item::InterfaceValue(v) => vec![self.collect_interface(v)],
             Item::AnnotationValue(v) => vec![self.collect_annotation(v)],
-            
+
             // Simple types without nested scopes
             Item::StructValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
-                DefKind::Struct(StructTy { parent: None, members: Vec::new() }),
+                DefKind::Struct(StructTy {
+                    parent: None,
+                    members: Vec::new(),
+                }),
                 v.span,
             )],
             Item::UnionValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
-                DefKind::Union(UnionTy { 
+                DefKind::Union(UnionTy {
                     disc: placeholder_type(v.span),
                     variants: Vec::new(),
                 }),
@@ -261,7 +265,7 @@ impl<'a> NameCollector<'a> {
             )],
             Item::EnumValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
-                DefKind::Enum(EnumTy { 
+                DefKind::Enum(EnumTy {
                     fields: Vec::new(),
                     ty: placeholder_type(v.span),
                 }),
@@ -269,12 +273,14 @@ impl<'a> NameCollector<'a> {
             )],
             Item::ExceptionValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
-                DefKind::Except(ExceptTy { members: Vec::new() }),
+                DefKind::Except(ExceptTy {
+                    members: Vec::new(),
+                }),
                 v.span,
             )],
             Item::BitmaskValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
-                DefKind::Bitmask(BitmaskTy { 
+                DefKind::Bitmask(BitmaskTy {
                     flags: Vec::new(),
                     ty: placeholder_type(v.span),
                 }),
@@ -284,23 +290,28 @@ impl<'a> NameCollector<'a> {
                 // Constants might have array declarators
                 vec![self.collect_simple_definition(
                     extract_declarator_name(&v.decl),
-                    DefKind::Const(ConstTy { 
-                        value: Numeric::Null,  // Placeholder
+                    DefKind::Const(ConstTy {
+                        value: Numeric::Null, // Placeholder
                         ty: placeholder_type(v.span),
                     }),
                     v.span,
                 )]
-            },
+            }
             Item::AliasValue(v) => {
                 // Expand multiple declarators into separate definitions
-                v.decl.iter().map(|decl| {
-                    self.collect_simple_definition(
-                        extract_declarator_name(decl),
-                        DefKind::Alias(AliasTy { ty: placeholder_type(v.span) }),
-                        v.span,
-                    )
-                }).collect()
-            },
+                v.decl
+                    .iter()
+                    .map(|decl| {
+                        self.collect_simple_definition(
+                            extract_declarator_name(decl),
+                            DefKind::Alias(AliasTy {
+                                ty: placeholder_type(v.span),
+                            }),
+                            v.span,
+                        )
+                    })
+                    .collect()
+            }
             Item::DeclValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
                 DefKind::Decl(match v.kind {
@@ -312,7 +323,7 @@ impl<'a> NameCollector<'a> {
                 }),
                 v.span,
             )],
-            
+
             // Skip for now
             Item::ValuetypeValue(_) | Item::BitsetValue(_) => Vec::new(),
         }
@@ -330,10 +341,7 @@ fn placeholder_type(span: Span) -> Ty {
 /// Extracts the identifier from a declarator.
 fn extract_declarator_name(decl: &ic_syntax::Declarator) -> Ident {
     match decl {
-        ic_syntax::Declarator::Simple(name) => Ident {
-            name: name.clone(),
-            span: Span::default(),  // TODO: Get proper span
-        },
+        ic_syntax::Declarator::Simple(ident) => ident.clone(),
         ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
     }
 }
@@ -342,14 +350,19 @@ fn extract_declarator_name(decl: &ic_syntax::Declarator) -> Ident {
 pub fn collect_definitions(items: &[Item]) -> (Context, NameMap, Vec<DefId>, Vec<Diag>) {
     let mut context = Context::new();
     let mut collector = NameCollector::new(&mut context);
-    
+
     // Collect all top-level items
     for item in items {
         let ids = collector.collect_item(item);
         collector.order.extend(ids);
     }
-    
-    let NameCollector { name_map, order, errors, .. } = collector;
-    
+
+    let NameCollector {
+        name_map,
+        order,
+        errors,
+        ..
+    } = collector;
+
     (context, name_map, order, errors)
 }

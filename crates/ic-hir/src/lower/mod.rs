@@ -48,26 +48,27 @@
 use ic_diagnostic::Diag;
 use ic_syntax::Item;
 
-use crate::{Context, hir::TypeId};
+use crate::Context;
+use crate::hir::TypeId;
 
 mod collect;
-mod resolve;
 mod evaluate;
+mod resolve;
 mod validate;
 
 pub use self::collect::NameCollector;
-pub use self::resolve::TypeResolver;
 pub use self::evaluate::ExpressionEvaluator;
+pub use self::resolve::TypeResolver;
 pub use self::validate::Validator;
 
 /// Result of the lowering process.
 pub struct LoweringResult {
     /// The constructed HIR context with all definitions.
     pub context: Context,
-    
+
     /// Top-level type IDs in order of appearance.
     pub order: Vec<TypeId>,
-    
+
     /// Errors collected during all phases.
     pub errors: Vec<Diag>,
 }
@@ -79,24 +80,23 @@ where
 {
     let ast_items: Vec<Item> = ast.into_iter().collect();
     let mut errors = Vec::new();
-    
+
     // Phase 1: Collect all names and create placeholder definitions
-    let (mut context, name_map, order, mut phase_errors) = 
-        collect::collect_definitions(&ast_items);
+    let (mut context, name_map, order, mut phase_errors) = collect::collect_definitions(&ast_items);
     errors.append(&mut phase_errors);
-    
+
     // Phase 2: Resolve type references
     let mut phase_errors = resolve::resolve_types(&mut context, &name_map, &ast_items);
     errors.append(&mut phase_errors);
-    
+
     // Phase 3: Evaluate constant expressions
-    let mut phase_errors = evaluate::evaluate_expressions(&mut context, &ast_items);
+    let mut phase_errors = evaluate::evaluate_expressions(&mut context, &name_map, &ast_items);
     errors.append(&mut phase_errors);
-    
+
     // Phase 4: Validate the HIR
     let mut phase_errors = validate::validate_hir(&context, &order);
     errors.append(&mut phase_errors);
-    
+
     LoweringResult {
         context,
         order,

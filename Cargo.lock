@@ -194,6 +194,7 @@ dependencies = [
  "ic-alloc",
  "ic-cli",
  "ic-diagnostic",
+ "ic-expr",
  "ic-macros",
  "ic-syntax",
  "intercom-cts",

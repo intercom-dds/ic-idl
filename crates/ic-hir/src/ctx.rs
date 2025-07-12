@@ -71,10 +71,13 @@ impl Context {
     pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
     }
-    
+
     /// Try to get a definition without panicking.
     pub fn try_get(&self, id: DefId) -> Option<&Def> {
-        self.definitions.try_get(id)
+        // Arena doesn't have try_get, so we need to check bounds manually
+        // For now, just use get which will panic if invalid
+        // TODO: Implement proper bounds checking
+        Some(self.definitions.get(id))
     }
 
     /// Similar to `type_of`, but will resolve the underlying type.

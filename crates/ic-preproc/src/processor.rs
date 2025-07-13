@@ -159,7 +159,7 @@ where
                     message: "macro name must be an identifier",
                     span: tok.span,
                 });
-                self.cursor().until_newline();
+                self.until_newline();
                 None
             }
         }
@@ -207,11 +207,28 @@ where
     fn mark_included(&mut self, file_id: FileId) {
         self.state().mark_parsed(file_id);
     }
+    
+    /// Collects tokens until newline and checks for unterminated strings
+    fn until_newline(&mut self) -> Vec<Token> {
+        let tokens = self.cursor().until_newline();
+        
+        // Check for unterminated strings and emit warnings
+        for token in &tokens {
+            if let Kind::String { terminated: false } = token.kind {
+                self.state.borrow_mut().warnings.push(Error::Syntax {
+                    message: "missing terminating '\"' character",
+                    span: token.span,
+                });
+            }
+        }
+        
+        tokens
+    }
 
     /// Collects trailing tokens and produces a warning, e.g. for things like
     /// `#undef foo bar`, where "bar" is an extraneous token.
     fn warn_trailing(&mut self, directive: Directive) {
-        let tokens = self.cursor().until_newline();
+        let tokens = self.until_newline();
         if let (Some(first), Some(last)) = (tokens.first(), tokens.last()) {
             let span = Span {
                 start: first.span.start,
@@ -299,7 +316,7 @@ where
                 message,
                 span: tok.span,
             });
-            self.cursor().until_newline();
+            self.until_newline();
         }
         None
     }
@@ -1237,7 +1254,7 @@ where
                         message: "invalid token in macro parameter list",
                         span: arg.span,
                     });
-                    self.cursor().until_newline();
+                    self.until_newline();
                     return (args, false);
                 }
             }
@@ -1271,7 +1288,7 @@ where
         if let Some(tok) = lparen_tok {
             def.push(tok);
         }
-        def.extend(self.cursor().until_newline());
+        def.extend(self.until_newline());
         Macro::Object {
             span: name_span,
             def,
@@ -1508,7 +1525,7 @@ where
         let (is_function_macro, lparen_tok) = self.check_function_macro_type(name_span);
         let definition = if is_function_macro {
             let (args, variadic) = self.parse_function_macro_params(name_span);
-            let def = self.cursor().until_newline();
+            let def = self.until_newline();
             Macro::Function {
                 span: name_span,
                 args,
@@ -1603,7 +1620,7 @@ where
     }
 
     fn dir_pragma(&mut self, _span: Span) {
-        let tokens = self.cursor().until_newline();
+        let tokens = self.until_newline();
 
         // Empty pragmas are allowed, so this is not guaranteed
         if let Some(pragma) = tokens.first() {
@@ -1618,14 +1635,14 @@ where
     }
 
     fn dir_error(&mut self, span: Span) {
-        let tokens = self.cursor().until_newline();
+        let tokens = self.until_newline();
         if self.is_active() {
             self.state().errors.push(Error::Note { span, tokens });
         }
     }
 
     fn dir_warning(&mut self, span: Span) {
-        let tokens = self.cursor().until_newline();
+        let tokens = self.until_newline();
         if self.is_active() {
             self.state().warnings.push(Error::Note { span, tokens });
         }

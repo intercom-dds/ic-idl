@@ -8,5 +8,5 @@ warning: scoped enums are an InterCOM extension
  9 │         const Types::Result GOOD = Types::Result::SUCCESS;
    ·                                           ^^^^^^ used here
    └──
- help: remove the type name: `Types::SUCCESS`
+ help: use `SUCCESS` instead of `Result::SUCCESS`
  note: enumerators are registered in the parent scope

@@ -269,8 +269,15 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                     span: *span,
                 });
             }
-            _ => {
-                // Other error types shouldn't appear in warnings
+            ic_preproc::Error::Syntax { message, span }
+            | ic_preproc::Error::Expr { message, span } => {
+                warnings.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom((*message).to_string()),
+                    label: Some("preprocessor warning"),
+                    span: *span,
+                });
             }
         }
     }

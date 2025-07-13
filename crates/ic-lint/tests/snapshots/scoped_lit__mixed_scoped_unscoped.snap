@@ -8,7 +8,7 @@ warning: scoped enums are an InterCOM extension
  9 │         const Mode MODE2 = Mode::FAST;
    ·                            ^^^^ used here
    └──
- help: remove the type name: `FAST`
+ help: use `FAST` instead of `Mode::FAST`
  note: enumerators are registered in the parent scope
 
 warning: scoped enums are an InterCOM extension
@@ -17,5 +17,5 @@ warning: scoped enums are an InterCOM extension
  11 │         const Mode MODE4 = Mode::SLOW;
     ·                            ^^^^ used here
     └──
- help: remove the type name: `SLOW`
+ help: use `SLOW` instead of `Mode::SLOW`
  note: enumerators are registered in the parent scope

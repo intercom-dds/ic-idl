@@ -73,39 +73,49 @@ fn parse_error_to_diag_with_expansion(
 
     match &error.reason {
         Reason::Unclosed { span, delimiter } => {
-            let mut diag = diag_fn(
-                format!("unclosed delimiter {delimiter}"),
-                Label::new(*span).message("unclosed delimiter here"),
-            );
-            
-            // Add macro expansion context if available
+            // Check if this error occurred in a macro expansion
             if let Some(info) = expansion_info.get(span) {
+                // Primary error points to macro invocation
+                let mut diag = diag_fn(
+                    format!("unclosed delimiter {delimiter}"),
+                    Label::new(info.invocation_span).message("unclosed delimiter here"),
+                );
+                // Secondary label shows where in the macro definition
                 diag = diag.label(
-                    Label::new(info.invocation_span)
-                        .message(format!("in expansion of macro '{}'", info.macro_name))
+                    Label::new(*span)
+                        .message(format!("expanded from macro '{}'", info.macro_name))
                         .color(ic_diagnostic::Color::Cyan)
                 );
+                diag
+            } else {
+                diag_fn(
+                    format!("unclosed delimiter {delimiter}"),
+                    Label::new(*span).message("unclosed delimiter here"),
+                )
             }
-            
-            diag
         },
 
         Reason::Custom(message) => {
-            let mut diag = diag_fn(
-                message.clone(),
-                Label::new(error.span).message("unexpected token"),
-            );
-            
-            // Add macro expansion context if available
+            // Check if this error occurred in a macro expansion
             if let Some(info) = expansion_info.get(&error.span) {
+                // Primary error points to macro invocation
+                let mut diag = diag_fn(
+                    message.clone(),
+                    Label::new(info.invocation_span).message("unexpected token"),
+                );
+                // Secondary label shows where in the macro definition
                 diag = diag.label(
-                    Label::new(info.invocation_span)
-                        .message(format!("in expansion of macro '{}'", info.macro_name))
+                    Label::new(error.span)
+                        .message(format!("expanded from macro '{}'", info.macro_name))
                         .color(ic_diagnostic::Color::Cyan)
                 );
+                diag
+            } else {
+                diag_fn(
+                    message.clone(),
+                    Label::new(error.span).message("unexpected token"),
+                )
             }
-            
-            diag
         },
 
         Reason::Unexpected => {
@@ -132,21 +142,26 @@ fn parse_error_to_diag_with_expansion(
                 .as_ref()
                 .map_or_else(|| "end of input".to_string(), ToString::to_string);
 
-            let mut diag = diag_fn(
-                format!("{cause}, expected {expected}"),
-                Label::new(error.span).message(format!("unexpected {found}")),
-            );
-            
-            // Add macro expansion context if available
+            // Check if this error occurred in a macro expansion
             if let Some(info) = expansion_info.get(&error.span) {
+                // Primary error points to macro invocation
+                let mut diag = diag_fn(
+                    format!("{cause}, expected {expected}"),
+                    Label::new(info.invocation_span).message(format!("unexpected {found}")),
+                );
+                // Secondary label shows where in the macro definition
                 diag = diag.label(
-                    Label::new(info.invocation_span)
-                        .message(format!("in expansion of macro '{}'", info.macro_name))
+                    Label::new(error.span)
+                        .message(format!("expanded from macro '{}'", info.macro_name))
                         .color(ic_diagnostic::Color::Cyan)
                 );
+                diag
+            } else {
+                diag_fn(
+                    format!("{cause}, expected {expected}"),
+                    Label::new(error.span).message(format!("unexpected {found}")),
+                )
             }
-            
-            diag
         }
     }
 }

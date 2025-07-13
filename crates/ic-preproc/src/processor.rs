@@ -853,8 +853,16 @@ where
         // Perform token pasting
         let final_tokens = self.perform_token_pasting(&result_tokens);
 
-        // Push all final tokens
+        // Push all final tokens and record their expansion context
+        let invocation_span = ctx.token.span;
+        let expansion_info = crate::state::ExpansionInfo {
+            invocation_span,
+            macro_name: _name.to_string(),
+        };
+        
         for tok in final_tokens {
+            // Record that this token came from a macro expansion
+            self.state().expansion_info.insert(tok.span, expansion_info.clone());
             self.expand_inner(tok, seen);
         }
     }

@@ -1718,13 +1718,6 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.inner.next_active() {
-            // Check for unterminated strings
-            if let Kind::String { terminated: false } = next.kind {
-                self.inner.state().errors.push(Error::Syntax {
-                    message: "unterminated string literal",
-                    span: next.span,
-                });
-            }
             // Track previous non-newline token for error reporting
             if next.kind != Kind::Newline {
                 self.prev = Some(next.span);

@@ -142,6 +142,9 @@ pub enum Kind {
 
     /// Fallback for invalid tokens
     Invalid,
+    
+    /// String literal that was not properly terminated
+    UnterminatedString,
 }
 
 impl fmt::Display for Kind {
@@ -180,6 +183,7 @@ impl fmt::Display for Kind {
             Kind::Float(_) => write!(f, "floating-point number"),
             Kind::StringLit(_) => write!(f, "string"),
             Kind::Eoi => write!(f, "end of input"),
+            Kind::UnterminatedString => write!(f, "unterminated string literal"),
         }
     }
 }
@@ -363,11 +367,10 @@ where
                 }
                 ic_preproc::Kind::String { terminated } => {
                     if !terminated {
-                        // For unterminated strings, return an invalid token
-                        // This prevents the parser from trying to continue parsing
-                        // with a malformed string that could contain syntax characters
+                        // For unterminated strings, return a special token type
+                        // This allows the parser to give a more specific error message
                         break Some(Token {
-                            kind: Kind::Invalid,
+                            kind: Kind::UnterminatedString,
                             span: next.span,
                         });
                     }

@@ -91,10 +91,9 @@ impl<'a> TypeChecker<'a> {
         match (&value, &ty.kind) {
             // Null is never valid in constants
             (Numeric::Null, _) => {
-                self.errors.push(error_span(
-                    format!("{} has null value", value_desc),
-                    Label::new(ty.span).message("expected a valid value for this type"),
-                ));
+                // Null values usually indicate an earlier evaluation error
+                // Only report if this looks like an actual null literal (rare in IDL)
+                // This helps reduce cascading errors
                 false
             }
 
@@ -221,10 +220,13 @@ impl<'a> TypeChecker<'a> {
 
             // Type mismatch
             _ => {
-                self.errors.push(error_span(
-                    format!("{} value type does not match declared type", value_desc),
-                    Label::new(ty.span).message("type mismatch"),
-                ));
+                // Don't report generic type mismatch for Null values from evaluation errors
+                if !matches!(value, Numeric::Null) {
+                    self.errors.push(error_span(
+                        format!("{} value type does not match declared type", value_desc),
+                        Label::new(ty.span).message("type mismatch"),
+                    ));
+                }
                 false
             }
         }

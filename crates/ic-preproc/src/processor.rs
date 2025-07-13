@@ -813,9 +813,7 @@ where
                     let param_name = self.source_of(next_tok.span);
                     if let Some(replacement) = arg_map.get(param_name) {
                         let stringified = self.stringify_tokens(replacement);
-                        let mut string_token = self.create_string_token(&stringified);
-                        // Use the invocation span for stringified tokens
-                        string_token.span = ctx.token.span;
+                        let string_token = self.create_string_token(&stringified);
                         result_tokens.push(string_token);
                         i += 2;
                         continue;
@@ -841,18 +839,12 @@ where
                         result_tokens.extend_from_slice(tokens);
                     }
                 } else {
-                    // Not a parameter, but update span to invocation site
-                    result_tokens.push(Token {
-                        kind: tok.kind,
-                        span: ctx.token.span,
-                    });
+                    // Not a parameter, keep as is
+                    result_tokens.push(*tok);
                 }
             } else {
-                // Not an identifier, but update span to invocation site
-                result_tokens.push(Token {
-                    kind: tok.kind,
-                    span: ctx.token.span,
-                });
+                // Not an identifier, keep as is
+                result_tokens.push(*tok);
             }
 
             i += 1;
@@ -907,13 +899,8 @@ where
                     self.expand_function_macro(token, args, def, *variadic, seen, name);
                 }
                 Macro::Object { def, .. } => {
-                    // Use the invocation span for all expanded tokens
                     for &tok in def {
-                        let expanded_tok = Token {
-                            kind: tok.kind,
-                            span: token.span, // Use the macro invocation span
-                        };
-                        self.expand_inner(expanded_tok, seen);
+                        self.expand_inner(tok, seen);
                     }
                 }
             }

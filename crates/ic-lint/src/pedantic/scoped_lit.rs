@@ -82,7 +82,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                     };
 
                     let fixed = fixed_path(path).green();
-                    let full_path = path.segments.iter().map(|s| &s.name).join("::");
+                    let full_path = path.segments.iter().map(|s| &s.name).join("::").green();
                     let label = warn_span(
                         format!("scoped {ty}s are an InterCOM extension"),
                         Label::new(v.span).message("used here"),

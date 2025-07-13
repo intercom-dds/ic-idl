@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -34,7 +35,6 @@ use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_parse::Reason;
 use ic_parse::lexer::Kind;
 use ic_vfs::{SourceMap, Span};
-use std::collections::HashMap;
 
 use crate::util::Error;
 
@@ -65,7 +65,7 @@ fn parse_error_to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
 }
 
 fn parse_error_to_diag_with_expansion(
-    error: &ic_parse::Error, 
+    error: &ic_parse::Error,
     is_warning: bool,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
 ) -> Diag {
@@ -84,7 +84,7 @@ fn parse_error_to_diag_with_expansion(
                 diag = diag.label(
                     Label::new(*span)
                         .message(format!("expanded from macro '{}'", info.macro_name))
-                        .color(ic_diagnostic::Color::Cyan)
+                        .color(ic_diagnostic::Color::Cyan),
                 );
                 diag
             } else {
@@ -93,7 +93,7 @@ fn parse_error_to_diag_with_expansion(
                     Label::new(*span).message("unclosed delimiter here"),
                 )
             }
-        },
+        }
 
         Reason::Custom(message) => {
             // Check if this error occurred in a macro expansion
@@ -107,7 +107,7 @@ fn parse_error_to_diag_with_expansion(
                 diag = diag.label(
                     Label::new(error.span)
                         .message(format!("expanded from macro '{}'", info.macro_name))
-                        .color(ic_diagnostic::Color::Cyan)
+                        .color(ic_diagnostic::Color::Cyan),
                 );
                 diag
             } else {
@@ -116,7 +116,7 @@ fn parse_error_to_diag_with_expansion(
                     Label::new(error.span).message("unexpected token"),
                 )
             }
-        },
+        }
 
         Reason::Unexpected => {
             let cause = if let Some(e) = &error.found {
@@ -153,7 +153,7 @@ fn parse_error_to_diag_with_expansion(
                 diag = diag.label(
                     Label::new(error.span)
                         .message(format!("expanded from macro '{}'", info.macro_name))
-                        .color(ic_diagnostic::Color::Cyan)
+                        .color(ic_diagnostic::Color::Cyan),
                 );
                 diag
             } else {
@@ -171,8 +171,8 @@ fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write
 }
 
 fn emit_error_with_expansion(
-    error: &ic_parse::Error, 
-    vfs: &SourceMap, 
+    error: &ic_parse::Error,
+    vfs: &SourceMap,
     buf: &mut dyn fmt::Write,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
 ) -> fmt::Result {
@@ -183,11 +183,11 @@ fn emit_error_with_expansion(
 }
 
 pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
-    emit_errors_with_expansion(errors, vfs, &HashMap::new())
+    emit_errors_with_expansion(errors, vfs, &HashMap::new());
 }
 
 pub fn emit_errors_with_expansion(
-    errors: &[Error], 
+    errors: &[Error],
     vfs: &SourceMap,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
 ) {

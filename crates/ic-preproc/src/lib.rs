@@ -34,7 +34,7 @@ pub use ic_lexer::token::{Kind, Token};
 pub use ic_vfs::Span;
 use ic_vfs::{FileId, Include, SourceMap};
 pub use processor::TokenIter;
-pub use state::{Error, State, ExpansionInfo};
+pub use state::{Error, ExpansionInfo, State};
 
 mod directives;
 mod expression;

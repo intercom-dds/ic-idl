@@ -222,13 +222,13 @@ impl Formatter<'_> {
         let mut line_groups = Vec::new();
         let mut seen_lines = std::collections::HashSet::new();
         let mut max_line = 0;
-        
+
         for label in &diag.labels {
             let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
-            
+
             let mut group_lines = Vec::new();
-            
+
             // If the span is too large, only show context around start and end
             let total_lines = end_line - start_line + 1;
             if total_lines > MAX_LINES_PER_SPAN {
@@ -239,10 +239,10 @@ impl Formatter<'_> {
                         max_line = max_line.max(line);
                     }
                 }
-                
+
                 // Add ellipsis marker (using line number 0 as a sentinel)
                 group_lines.push(0);
-                
+
                 // Show last few lines
                 for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
                     if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
@@ -259,7 +259,7 @@ impl Formatter<'_> {
                     }
                 }
             }
-            
+
             if !group_lines.is_empty() {
                 line_groups.push(group_lines);
             }
@@ -288,10 +288,14 @@ impl Formatter<'_> {
             for &line_num in &group {
                 if line_num == 0 {
                     // Print ellipsis for skipped lines
-                    writeln!(f, "{indent}{} {}", self.chars.vertical_dx.blue().bold(), "[...]")?;
+                    writeln!(
+                        f,
+                        "{indent}{}",
+                        "┊".blue()
+                    )?;
                     continue;
                 }
-                
+
                 let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
                 write!(
                     f,
@@ -311,34 +315,31 @@ impl Formatter<'_> {
 
         writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
     }
-    
+
     fn emit_frame_for_file(
-        &self, 
-        f: &mut dyn fmt::Write, 
-        diag: &Diag, 
-        label_indices: &[usize]
+        &self,
+        f: &mut dyn fmt::Write,
+        diag: &Diag,
+        label_indices: &[usize],
     ) -> fmt::Result {
         if label_indices.is_empty() {
             return Ok(());
         }
 
         // Get only the labels for this file
-        let file_labels: Vec<&Label> = label_indices
-            .iter()
-            .map(|&idx| &diag.labels[idx])
-            .collect();
+        let file_labels: Vec<&Label> = label_indices.iter().map(|&idx| &diag.labels[idx]).collect();
 
         // First, collect all line ranges to determine what lines will be shown
         let mut line_groups = Vec::new();
         let mut seen_lines = std::collections::HashSet::new();
         let mut max_line = 0;
-        
+
         for &label in &file_labels {
             let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
-            
+
             let mut group_lines = Vec::new();
-            
+
             // If the span is too large, only show context around start and end
             let total_lines = end_line - start_line + 1;
             if total_lines > MAX_LINES_PER_SPAN {
@@ -349,10 +350,10 @@ impl Formatter<'_> {
                         max_line = max_line.max(line);
                     }
                 }
-                
+
                 // Add ellipsis marker (using line number 0 as a sentinel)
                 group_lines.push(0);
-                
+
                 // Show last few lines
                 for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
                     if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
@@ -369,7 +370,7 @@ impl Formatter<'_> {
                     }
                 }
             }
-            
+
             if !group_lines.is_empty() {
                 line_groups.push(group_lines);
             }
@@ -380,10 +381,8 @@ impl Formatter<'_> {
         let indent = " ".repeat(indent);
 
         // Get location info from the first label
-        let (first_line_number, col) = line_col(
-            self.source,
-            file_labels[0].span.start.offset as usize,
-        );
+        let (first_line_number, col) =
+            line_col(self.source, file_labels[0].span.start.offset as usize);
 
         writeln!(
             f,
@@ -398,10 +397,14 @@ impl Formatter<'_> {
             for &line_num in &group {
                 if line_num == 0 {
                     // Print ellipsis for skipped lines
-                    writeln!(f, "{indent}{} {}", self.chars.vertical_dx.blue().bold(), "[...]")?;
+                    writeln!(
+                        f,
+                        "{indent}{}",
+                        "┊".blue()
+                    )?;
                     continue;
                 }
-                
+
                 let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
                 write!(
                     f,
@@ -459,7 +462,7 @@ impl Formatter<'_> {
 
         Ok(())
     }
-    
+
     fn emit_labels_for_line_with_subset(
         &self,
         f: &mut dyn fmt::Write,
@@ -476,7 +479,7 @@ impl Formatter<'_> {
             })
             .copied()
             .collect();
-            
+
         if labels_on_line.is_empty() {
             return Ok(());
         }
@@ -530,12 +533,12 @@ impl Formatter<'_> {
         for label in labels_on_line {
             let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
-            
+
             // For multi-line spans, only draw highlights on first or last line
             if start_line != end_line && line_num != start_line && line_num != end_line {
                 continue;
             }
-            
+
             let label_start = label_start_on_line(label, line_start_offset);
             let label_end =
                 label_end_on_line(self.source, label, line_start_offset, line_num, line_len);
@@ -761,26 +764,30 @@ pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::R
     }
 
     // Group labels by file ID
-    let mut labels_by_file: std::collections::BTreeMap<ic_vfs::FileId, Vec<usize>> = std::collections::BTreeMap::new();
+    let mut labels_by_file: std::collections::BTreeMap<ic_vfs::FileId, Vec<usize>> =
+        std::collections::BTreeMap::new();
     for (idx, label) in diag.labels.iter().enumerate() {
-        labels_by_file.entry(label.span.start.file_id).or_default().push(idx);
+        labels_by_file
+            .entry(label.span.start.file_id)
+            .or_default()
+            .push(idx);
     }
 
     // Process each file's labels
     for (file_id, label_indices) in labels_by_file {
         let info = vfs.file_info(file_id);
         let name = info.included_as.to_string_lossy().to_string();
-        
+
         let fmt = Formatter {
             filename: Some(&name),
             source: &info.source,
             chars: Charset::unicode(),
         };
-        
+
         // Emit frame header for this file
         fmt.emit_frame_for_file(f, diag, &label_indices)?;
     }
-    
+
     emit_notes(f, diag)?;
     Ok(())
 }

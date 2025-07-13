@@ -133,7 +133,7 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, (Vec<Er
 
     // Collect all expansion info across files
     let mut all_expansion_info = std::collections::HashMap::new();
-    
+
     for file in files {
         let parsed = try_parse(options, args.clone(), &file, vfs);
         all_errors.extend(parsed.errors);

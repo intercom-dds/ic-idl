@@ -11,7 +11,7 @@ error: large span with ellipsis
      · 
   12 │ line 12
      · 
-     · [...]
+     ┊
  188 │ line 188
      · 
  189 │ line 189

@@ -288,7 +288,11 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
         tree,
         errors,
         warnings,
-        expansion_info: state.expansion_info.iter().map(|(k, v)| (*k, v.clone())).collect(),
+        expansion_info: state
+            .expansion_info
+            .iter()
+            .map(|(k, v)| (*k, v.clone()))
+            .collect(),
     }
 }
 

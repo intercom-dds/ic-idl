@@ -757,7 +757,7 @@ where
         &mut self,
         ctx: &MacroExpansionContext<'_>,
         seen: &mut BTreeSet<&'a str>,
-        _name: &'a str,
+        name: &'a str,
     ) {
         // Build argument mapping for substitution
         let mut arg_map = FxHashMap::default();
@@ -857,12 +857,14 @@ where
         let invocation_span = ctx.token.span;
         let expansion_info = crate::state::ExpansionInfo {
             invocation_span,
-            macro_name: _name.to_string(),
+            macro_name: name.to_string(),
         };
-        
+
         for tok in final_tokens {
             // Record that this token came from a macro expansion
-            self.state().expansion_info.insert(tok.span, expansion_info.clone());
+            self.state()
+                .expansion_info
+                .insert(tok.span, expansion_info.clone());
             self.expand_inner(tok, seen);
         }
     }
@@ -912,10 +914,12 @@ where
                         invocation_span: token.span,
                         macro_name: name.to_string(),
                     };
-                    
+
                     for &tok in def {
                         // Record that this token came from a macro expansion
-                        self.state().expansion_info.insert(tok.span, expansion_info.clone());
+                        self.state()
+                            .expansion_info
+                            .insert(tok.span, expansion_info.clone());
                         self.expand_inner(tok, seen);
                     }
                 }

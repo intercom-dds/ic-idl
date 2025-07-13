@@ -82,10 +82,8 @@ fn main() {
     let generated = match try_main(&options, &mut vfs) {
         Ok(v) => v,
         Err((errors, warning_count)) => {
-            // Errors and warnings were already emitted in try_main
             let error_plural = if errors.len() > 1 { "s" } else { "" };
             let warning_plural = if warning_count > 1 { "s" } else { "" };
-            
             if warning_count > 0 {
                 error!(
                     "aborting due to {} previous error{}, {} warning{}",
@@ -153,7 +151,20 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, (Vec<Er
         return Err((all_errors, all_warnings.len()));
     }
 
-    try_ptree(options, &trees).map_err(|e| (vec![e], all_warnings.len()))
+    let result = try_ptree(options, &trees).map_err(|e| (vec![e], all_warnings.len()))?;
+
+    // Emit warning summary if there were warnings but no errors
+    if !all_warnings.is_empty() {
+        use ic_cli::color::Colorize as _;
+        let warning_plural = if all_warnings.len() > 1 { "s" } else { "" };
+        warn!(
+            "{} warning{} emitted",
+            all_warnings.len(),
+            warning_plural,
+        );
+    }
+
+    Ok(result)
 }
 
 struct Parsed {
@@ -282,3 +293,5 @@ fn try_ptree(options: &Options, parsed: &[ParseResult]) -> Result<Vec<File>, Err
     }
     Ok(generated)
 }
+
+fn emit_summary(errors: usize, warnings: usize) {}

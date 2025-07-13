@@ -183,9 +183,9 @@ impl<'a> NameCollector<'a> {
                     self.errors.push(
                         error_span(
                             format!("duplicate definition of `{}`", ident.name),
-                            Label::new(span).message("redefined here"),
+                            Label::new(ident.span).message("redefined here"),
                         )
-                        .label(Label::new(existing.span).message("first defined here")),
+                        .label(Label::new(existing.ident.span).message("first defined here")),
                     );
                 }
                 // If the existing is a definition and new is a forward declaration,

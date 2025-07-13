@@ -950,5 +950,3 @@ module DDS { module XTypes {
 
 };  // end of module XTypes
 };  // end module DDS
-
-#endif

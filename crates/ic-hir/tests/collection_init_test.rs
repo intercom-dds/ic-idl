@@ -29,20 +29,15 @@ use ic_hir::hir::{DefKind, Numeric};
 
 #[test]
 fn test_array_init_basic() {
-    let input = r#"
+    let input = r"
         const int32 NUMS[3] = {1, 2, 3};
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
-    if !result.errors.is_empty() {
-        for err in &result.errors {
-            eprintln!("Error: {}", err);
-        }
-    }
-    assert!(result.errors.is_empty());
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let nums = result
         .context
@@ -76,12 +71,7 @@ fn test_sequence_init() {
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
-    if !result.errors.is_empty() {
-        for err in &result.errors {
-            eprintln!("Error: {}", err);
-        }
-    }
-    assert!(result.errors.is_empty());
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let names = result
         .context
@@ -122,12 +112,7 @@ fn test_map_init() {
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
-    if !result.errors.is_empty() {
-        for err in &result.errors {
-            eprintln!("Error: {}", err);
-        }
-    }
-    assert!(result.errors.is_empty());
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let ages = result
         .context
@@ -161,20 +146,15 @@ fn test_map_init() {
 
 #[test]
 fn test_nested_collections() {
-    let input = r#"
+    let input = r"
         const int32 MATRIX[2][3] = {{1, 2, 3}, {4, 5, 6}};
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
-    if !result.errors.is_empty() {
-        for err in &result.errors {
-            eprintln!("Error: {}", err);
-        }
-    }
-    assert!(result.errors.is_empty());
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let matrix = result
         .context
@@ -222,9 +202,9 @@ fn test_nested_collections() {
 
 #[test]
 fn test_array_size_mismatch_error() {
-    let input = r#"
+    let input = r"
         const int32 NUMS[3] = {1, 2};  // Too few elements
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
@@ -240,21 +220,16 @@ fn test_array_size_mismatch_error() {
 
 #[test]
 fn test_empty_collections() {
-    let input = r#"
+    let input = r"
         const sequence<string> EMPTY_SEQ = {};
         const map<int32, string> EMPTY_MAP = {};
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
-    if !result.errors.is_empty() {
-        for err in &result.errors {
-            eprintln!("Error: {}", err);
-        }
-    }
-    assert!(result.errors.is_empty());
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     // Check empty sequence
     let empty_seq = result

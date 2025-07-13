@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_preproc::{Error, ProcArgs, State};
+use ic_preproc::{ProcArgs, State};
 use ic_vfs::SourceMap;
 
 #[test]
@@ -39,16 +39,13 @@ const string s = MSG;"#;
     let file_id = vfs.embed(input);
 
     let iter = ic_preproc::with_state(file_id, ProcArgs::default(), &mut state, &mut vfs);
-    
+
     // Collect all tokens - this should not panic
     let tokens: Vec<_> = iter.collect();
-    
-    println!("Warnings: {:?}", state.warnings());
-    println!("Errors: {:?}", state.errors());
-    println!("Token count: {}", tokens.len());
-    
-    // For now, just check that we don't panic
-    println!("Test completed without panic");
+
+    // Check that we got a warning for the unterminated string
+    assert!(!state.warnings().is_empty());
+    assert!(!tokens.is_empty());
 }
 
 #[test]
@@ -62,11 +59,11 @@ const string s = MSG;"#;
     let file_id = vfs.embed(input);
 
     let iter = ic_preproc::with_state(file_id, ProcArgs::default(), &mut state, &mut vfs);
-    
+
     // This might be where the panic happens - during expansion
     let tokens: Vec<_> = iter.collect();
-    
-    println!("Warnings: {:?}", state.warnings());
-    println!("Token count: {}", tokens.len());
-    println!("Test completed without panic");
+
+    // Check that we got a warning for the unterminated string
+    assert!(!state.warnings().is_empty());
+    assert!(!tokens.is_empty());
 }

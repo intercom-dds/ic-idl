@@ -29,7 +29,7 @@
 
 #[test]
 fn test_const_enum_reference() {
-    let input = r#"
+    let input = r"
         enum MyEnum {
             ZERO,
             ONE,
@@ -39,7 +39,7 @@ fn test_const_enum_reference() {
         
         const MyEnum MY_CONST = MyEnum::ZERO;
         const int32 INT_CONST = MyEnum::TWO;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -62,7 +62,7 @@ fn test_const_enum_reference() {
     let mut found_my_const = false;
     let mut found_int_const = false;
 
-    for (_, def) in result.context.definitions.iter() {
+    for (_, def) in &result.context.definitions {
         if def.ident.name == "MY_CONST" {
             if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
                 if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
@@ -86,10 +86,10 @@ fn test_const_enum_reference() {
 
 #[test]
 fn test_const_ref_to_const() {
-    let input = r#"
+    let input = r"
         const int32 BASE = 100;
         const int32 DERIVED = BASE + 50;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -109,7 +109,7 @@ fn test_const_ref_to_const() {
     );
 
     // Verify DERIVED has the correct value
-    for (_, def) in result.context.definitions.iter() {
+    for (_, def) in &result.context.definitions {
         if def.ident.name == "DERIVED" {
             if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
                 if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
@@ -125,14 +125,14 @@ fn test_const_ref_to_const() {
 
 #[test]
 fn test_undefined_enum_field() {
-    let input = r#"
+    let input = r"
         enum MyEnum {
             ZERO,
             ONE
         };
         
         const int32 BAD = MyEnum::UNDEFINED;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -153,9 +153,9 @@ fn test_undefined_enum_field() {
 
 #[test]
 fn test_undefined_variable() {
-    let input = r#"
+    let input = r"
         const int32 BAD = UNDEFINED_VAR;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");

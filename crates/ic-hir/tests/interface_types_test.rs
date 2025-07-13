@@ -27,7 +27,7 @@
 
 #[test]
 fn test_interface_nested_types() {
-    let input = r#"
+    let input = r"
         interface FileSystem {
             struct FileInfo {
                 string name;
@@ -47,7 +47,7 @@ fn test_interface_nested_types() {
             FileInfo getInfo(in string path) raises (NotFound);
             FileType getType(in string path);
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -67,7 +67,7 @@ fn test_interface_nested_types() {
 
 #[test]
 fn test_interface_nested_type_in_typedef() {
-    let input = r#"
+    let input = r"
         interface Service {
             struct Request {
                 string method;
@@ -78,7 +78,7 @@ fn test_interface_nested_type_in_typedef() {
             
             RequestList getPendingRequests();
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -98,7 +98,7 @@ fn test_interface_nested_type_in_typedef() {
 
 #[test]
 fn test_interface_type_not_visible_outside() {
-    let input = r#"
+    let input = r"
         interface Service {
             struct InternalData {
                 long value;
@@ -109,7 +109,7 @@ fn test_interface_type_not_visible_outside() {
         struct Container {
             InternalData data;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -127,7 +127,6 @@ fn test_interface_type_not_visible_outside() {
     let error_msg = format!("{:?}", result.errors[0]);
     assert!(
         error_msg.contains("undefined type"),
-        "Error message should contain 'undefined type': {}",
-        error_msg
+        "Error message should contain 'undefined type': {error_msg}"
     );
 }

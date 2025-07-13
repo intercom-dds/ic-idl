@@ -27,12 +27,12 @@
 
 #[test]
 fn test_struct_forward_declaration() {
-    let input = r#"
+    let input = r"
         struct Foo;
         struct Foo {
             long x;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -61,12 +61,12 @@ fn test_struct_forward_declaration() {
 
 #[test]
 fn test_interface_forward_declaration() {
-    let input = r#"
+    let input = r"
         interface Service;
         interface Service {
             void method();
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -99,7 +99,7 @@ fn test_interface_forward_declaration() {
 
 #[test]
 fn test_duplicate_definitions_same_scope() {
-    let input = r#"
+    let input = r"
         struct Foo {
             long x;
         };
@@ -107,7 +107,7 @@ fn test_duplicate_definitions_same_scope() {
         struct Foo {  // Duplicate!
             double y;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -125,14 +125,13 @@ fn test_duplicate_definitions_same_scope() {
     let error_msg = format!("{:?}", result.errors[0]);
     assert!(
         error_msg.contains("duplicate definition"),
-        "Error message doesn't contain 'duplicate definition': {}",
-        error_msg
+        "Error message doesn't contain 'duplicate definition': {error_msg}"
     );
 }
 
 #[test]
 fn test_duplicate_names_different_scopes() {
-    let input = r#"
+    let input = r"
         struct Point {
             long x;
             long y;
@@ -145,7 +144,7 @@ fn test_duplicate_names_different_scopes() {
                 double z;
             };
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -174,12 +173,12 @@ fn test_duplicate_names_different_scopes() {
 
 #[test]
 fn test_forward_declaration_type_mismatch() {
-    let input = r#"
+    let input = r"
         struct Foo;
         interface Foo {  // Type mismatch!
             void method();
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");

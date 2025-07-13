@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt::Display;
-use std::iter::Enumerate;
 
 pub trait IterExt: Iterator + Sized {
     /// Joins all elements of an interator into a string with the specified
@@ -36,33 +35,6 @@ pub trait IterExt: Iterator + Sized {
         Self::Item: Display,
     {
         self.map(|v| v.to_string()).collect::<Vec<_>>().join("::")
-    }
-
-    /// Skips the `N`-th elment of an iterator. Elements before and after the
-    /// `N`-th elements will be yielded as usual.
-    fn skip_nth(self, nth: usize) -> SkipNth<Self> {
-        SkipNth {
-            nth,
-            iter: self.enumerate(),
-        }
-    }
-}
-
-pub struct SkipNth<I> {
-    nth: usize,
-    iter: Enumerate<I>,
-}
-
-impl<I: Iterator> Iterator for SkipNth<I> {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let (i, next) = self.iter.next()?;
-            if i != self.nth {
-                break Some(next);
-            }
-        }
     }
 }
 

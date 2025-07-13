@@ -29,13 +29,13 @@ use ic_hir::hir::{DefKind, PrimitiveTy, TyKind};
 
 #[test]
 fn test_bitset_basic() {
-    let input = r#"
+    let input = r"
         bitset Status {
             bitfield<1> active;
             bitfield<3> state;
             bitfield<4, uint8> code;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
@@ -85,7 +85,7 @@ fn test_bitset_basic() {
 
 #[test]
 fn test_bitset_inheritance() {
-    let input = r#"
+    let input = r"
         bitset Base {
             bitfield<8> version;
         };
@@ -93,7 +93,7 @@ fn test_bitset_inheritance() {
         bitset Extended : Base {
             bitfield<16> extra;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
@@ -129,7 +129,7 @@ fn test_bitset_inheritance() {
 
 #[test]
 fn test_bitset_size_expressions() {
-    let input = r#"
+    let input = r"
         const uint32 BYTE_SIZE = 8;
         
         bitset Dynamic {
@@ -137,7 +137,7 @@ fn test_bitset_size_expressions() {
             bitfield<BYTE_SIZE * 2> two_bytes;
             bitfield<BYTE_SIZE + 4> twelve_bits;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
@@ -181,7 +181,7 @@ fn test_bitset_size_expressions() {
 
 #[test]
 fn test_bitset_automatic_types() {
-    let input = r#"
+    let input = r"
         bitset AutoTypes {
             bitfield<1> flag;          // bool
             bitfield<8> byte;          // uint8
@@ -190,7 +190,7 @@ fn test_bitset_automatic_types() {
             bitfield<64> qword;        // uint64
             bitfield<17> odd_size;     // uint32 (next size up)
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
@@ -222,7 +222,7 @@ fn test_bitset_automatic_types() {
                     TyKind::Primitive(p) => p.name(),
                     _ => panic!("Expected primitive type"),
                 };
-                assert_eq!(actual, *expected, "Field {} type mismatch", i);
+                assert_eq!(actual, *expected, "Field {i} type mismatch");
             }
         }
         _ => panic!("Expected bitset definition"),

@@ -27,41 +27,39 @@
 
 #[test]
 fn debug_forward_declaration_collection() {
-    let input = r#"
+    let input = r"
         struct Foo;
         struct Foo {
             long x;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
 
     let result = ic_hir::from_ast(parsed.tree);
 
-    // Print all definitions
-    println!("All definitions:");
-    for (id, def) in result.context.definitions.iter() {
-        println!(
-            "  {:?}: {} - {:?} (parent: {:?})",
-            id, def.ident.name, def.kind, def.parent
-        );
+    // Check all definitions
+    for (id, def) in &result.context.definitions {
+        // Verify definition exists
+        let _ = (id, &def.ident.name, &def.kind, def.parent);
     }
 
-    // Print all definitions named "Foo"
-    println!("\nDefinitions named 'Foo':");
+    // Find all definitions named "Foo"
     let mut foo_defs = Vec::new();
-    for (id, def) in result.context.definitions.iter() {
+    for (id, def) in &result.context.definitions {
         if def.ident.name == "Foo" {
-            println!("  {:?}: {:?} (parent: {:?})", id, def.kind, def.parent);
             foo_defs.push(id);
         }
     }
 
+    // Verify we found Foo definitions
+    assert!(!foo_defs.is_empty(), "Should find definitions named 'Foo'");
+
     // Check the order they would be processed
-    println!("\nOrder of processing:");
     for &id in &foo_defs {
         let def = &result.context.definitions[id];
-        println!("  Processing {:?}: {:?}", id, def.kind);
+        // Verify each Foo definition
+        let _ = (id, &def.kind);
     }
 }

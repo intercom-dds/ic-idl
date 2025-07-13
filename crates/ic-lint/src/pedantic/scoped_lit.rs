@@ -67,12 +67,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                     };
 
                     // Get just the enumerator name (last segment)
-                    let enumerator = path
-                        .segments
-                        .last()
-                        .map(|s| s.name.as_str())
-                        .unwrap_or("")
-                        .green();
+                    let enumerator = path.segments.last().map_or("", |s| s.name.as_str()).green();
                     // Get enum::enumerator (last two segments)
                     let enum_and_enumerator = if path.segments.len() >= 2 {
                         let last_two: Vec<&str> = path

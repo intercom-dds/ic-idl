@@ -27,13 +27,13 @@
 
 #[test]
 fn test_bounded_sequence() {
-    let input = r#"
+    let input = r"
         typedef sequence<long, 100> BoundedIntList;
         typedef sequence<long> UnboundedIntList;
         
         const long MAX_SIZE = 50;
         typedef sequence<string, MAX_SIZE> BoundedStrings;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -89,11 +89,11 @@ fn test_bounded_sequence() {
 
 #[test]
 fn test_bounded_string() {
-    let input = r#"
+    let input = r"
         typedef string<128> ShortString;
         typedef wstring<1024> LongWideString;
         typedef string UnboundedString;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -151,10 +151,10 @@ fn test_bounded_string() {
 
 #[test]
 fn test_bounded_map() {
-    let input = r#"
+    let input = r"
         typedef map<string, long, 1000> BoundedMap;
         typedef map<string, long> UnboundedMap;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
@@ -192,10 +192,10 @@ fn test_bounded_map() {
 
 #[test]
 fn test_nested_bounded_types() {
-    let input = r#"
+    let input = r"
         typedef sequence<string<50>, 10> BoundedStringArray;
         typedef map<string<32>, sequence<long, 5>, 100> ComplexBoundedMap;
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");

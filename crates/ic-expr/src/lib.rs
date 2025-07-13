@@ -223,7 +223,7 @@ pub trait EvalContext<T> {
     /// # Errors
     /// Returns an error if the variable is not found or cannot be evaluated
     fn lookup_var(&mut self, name: &str) -> Result<Self::Value> {
-        Err(Error::Custom(format!("undefined variable: {}", name)))
+        Err(Error::Custom(format!("undefined variable: {name}")))
     }
 
     /// Get the evaluation configuration

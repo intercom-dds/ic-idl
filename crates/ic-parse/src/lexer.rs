@@ -142,7 +142,7 @@ pub enum Kind {
 
     /// Fallback for invalid tokens
     Invalid,
-    
+
     /// String literal that was not properly terminated
     UnterminatedString,
 }
@@ -374,12 +374,13 @@ where
                             span: next.span,
                         });
                     }
-                    
+
                     let source = iter.source_of(next.span);
+                    #[allow(clippy::map_unwrap_or)]
                     let str = source
                         .strip_prefix('"')
                         .and_then(|v| v.strip_suffix('"'))
-                        .map(|s| s.to_string())
+                        .map(std::string::ToString::to_string)
                         .unwrap_or_else(|| {
                             // Handle malformed string - return the content without quotes if possible
                             source.strip_prefix('"').unwrap_or(source).to_string()

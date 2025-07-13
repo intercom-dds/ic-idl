@@ -69,7 +69,7 @@ impl NumericValue for GenericNumeric {
 
     fn negate(&self, config: EvalConfig) -> Result<Self> {
         match self {
-            Self::Bool(v) => Ok(Self::Int32(-(*v as i32))),
+            Self::Bool(v) => Ok(Self::Int32(-i32::from(*v))),
             Self::Char(v) => Ok(Self::Int32(-(*v as i32))),
             Self::Int8(v) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int8(v.wrapping_neg())),
@@ -79,7 +79,7 @@ impl NumericValue for GenericNumeric {
                     .ok_or(Error::Overflow("negation")),
                 OverflowBehavior::Saturate => Ok(Self::Int8(v.saturating_neg())),
             },
-            Self::UInt8(v) => Ok(Self::Int16(-(*v as i16))),
+            Self::UInt8(v) => Ok(Self::Int16(-i16::from(*v))),
             Self::Int16(v) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int16(v.wrapping_neg())),
                 OverflowBehavior::Error => v
@@ -88,7 +88,7 @@ impl NumericValue for GenericNumeric {
                     .ok_or(Error::Overflow("negation")),
                 OverflowBehavior::Saturate => Ok(Self::Int16(v.saturating_neg())),
             },
-            Self::UInt16(v) => Ok(Self::Int32(-(*v as i32))),
+            Self::UInt16(v) => Ok(Self::Int32(-i32::from(*v))),
             Self::Int32(v) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int32(v.wrapping_neg())),
                 OverflowBehavior::Error => v
@@ -97,7 +97,7 @@ impl NumericValue for GenericNumeric {
                     .ok_or(Error::Overflow("negation")),
                 OverflowBehavior::Saturate => Ok(Self::Int32(v.saturating_neg())),
             },
-            Self::UInt32(v) => Ok(Self::Int64(-(*v as i64))),
+            Self::UInt32(v) => Ok(Self::Int64(-i64::from(*v))),
             Self::Int64(v) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int64(v.wrapping_neg())),
                 OverflowBehavior::Error => v
@@ -582,20 +582,21 @@ impl NumericValue for GenericNumeric {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn shl(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         let shift = match rhs {
-            Self::Int8(v) => *v as i128,
-            Self::UInt8(v) => *v as i128,
-            Self::Int16(v) => *v as i128,
-            Self::UInt16(v) => *v as i128,
-            Self::Int32(v) => *v as i128,
-            Self::UInt32(v) => *v as i128,
-            Self::Int64(v) => *v as i128,
-            Self::UInt64(v) => *v as i128,
+            Self::Int8(v) => i128::from(*v),
+            Self::UInt8(v) => i128::from(*v),
+            Self::Int16(v) => i128::from(*v),
+            Self::UInt16(v) => i128::from(*v),
+            Self::Int32(v) => i128::from(*v),
+            Self::UInt32(v) => i128::from(*v),
+            Self::Int64(v) => i128::from(*v),
+            Self::UInt64(v) => i128::from(*v),
             _ => return Err(Error::Custom("invalid shift amount type".to_string())),
         };
 
-        if shift < 0 || shift > config.max_shift as i128 {
+        if shift < 0 || shift > i128::from(config.max_shift) {
             return Err(Error::InvalidShift(shift));
         }
 
@@ -613,20 +614,21 @@ impl NumericValue for GenericNumeric {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn shr(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
         let shift = match rhs {
-            Self::Int8(v) => *v as i128,
-            Self::UInt8(v) => *v as i128,
-            Self::Int16(v) => *v as i128,
-            Self::UInt16(v) => *v as i128,
-            Self::Int32(v) => *v as i128,
-            Self::UInt32(v) => *v as i128,
-            Self::Int64(v) => *v as i128,
-            Self::UInt64(v) => *v as i128,
+            Self::Int8(v) => i128::from(*v),
+            Self::UInt8(v) => i128::from(*v),
+            Self::Int16(v) => i128::from(*v),
+            Self::UInt16(v) => i128::from(*v),
+            Self::Int32(v) => i128::from(*v),
+            Self::UInt32(v) => i128::from(*v),
+            Self::Int64(v) => i128::from(*v),
+            Self::UInt64(v) => i128::from(*v),
             _ => return Err(Error::Custom("invalid shift amount type".to_string())),
         };
 
-        if shift < 0 || shift > config.max_shift as i128 {
+        if shift < 0 || shift > i128::from(config.max_shift) {
             return Err(Error::InvalidShift(shift));
         }
 
@@ -682,7 +684,7 @@ impl NumericValue for GenericNumeric {
 
     fn gt(&self, rhs: &Self) -> bool {
         match (self, rhs) {
-            (Self::Bool(a), Self::Bool(b)) => *a & (!b),
+            (Self::Bool(a), Self::Bool(b)) => *a && (!b),
             (Self::Char(a), Self::Char(b)) => a > b,
             (Self::Int8(a), Self::Int8(b)) => a > b,
             (Self::UInt8(a), Self::UInt8(b)) => a > b,

@@ -207,11 +207,11 @@ where
     fn mark_included(&mut self, file_id: FileId) {
         self.state().mark_parsed(file_id);
     }
-    
+
     /// Collects tokens until newline and checks for unterminated strings
     fn until_newline(&mut self) -> Vec<Token> {
         let tokens = self.cursor().until_newline();
-        
+
         // Check for unterminated strings and emit warnings
         for token in &tokens {
             if let Kind::String { terminated: false } = token.kind {
@@ -221,7 +221,7 @@ where
                 });
             }
         }
-        
+
         tokens
     }
 
@@ -843,14 +843,14 @@ where
                 } else {
                     // Not a parameter, but update span to invocation site
                     result_tokens.push(Token {
-                        kind: tok.kind.clone(),
+                        kind: tok.kind,
                         span: ctx.token.span,
                     });
                 }
             } else {
                 // Not an identifier, but update span to invocation site
                 result_tokens.push(Token {
-                    kind: tok.kind.clone(),
+                    kind: tok.kind,
                     span: ctx.token.span,
                 });
             }
@@ -910,7 +910,7 @@ where
                     // Use the invocation span for all expanded tokens
                     for &tok in def {
                         let expanded_tok = Token {
-                            kind: tok.kind.clone(),
+                            kind: tok.kind,
                             span: token.span, // Use the macro invocation span
                         };
                         self.expand_inner(expanded_tok, seen);
@@ -1738,8 +1738,8 @@ where
     pub fn prev_span(&self) -> Option<Span> {
         self.prev
     }
-    
-    /// Get the current file_id being processed
+
+    /// Get the current `file_id` being processed
     pub fn current_file_id(&mut self) -> Option<FileId> {
         self.inner.stack.last().map(|file| file.cursor.file_id())
     }
@@ -1765,15 +1765,11 @@ where
                 self.prev = Some(next.span);
             }
             Some(next)
-        } else if let Some(span) = self.prev.take() {
-            // Return EOI token with the last seen span
-            Some(Token {
+        } else {
+            self.prev.take().map(|span| Token {
                 kind: Kind::Eoi,
                 span,
             })
-        } else {
-            // No more tokens and we've already returned EOI
-            None
         }
     }
 }
@@ -1787,14 +1783,14 @@ pub fn preprocess<S: BorrowMut<State>>(
     let source = vfs.source(file_id);
     let file = File::from_src(source, file_id);
     let parser = Parser::with_state(file, args, state, vfs);
-    
+
     // For empty files, we need a valid span for the EOI token
     // Use the beginning of the file as the span
     let initial_span = Span {
         start: Location::new(0, file_id),
         end: Location::new(0, file_id),
     };
-    
+
     TokenIter {
         inner: parser,
         prev: Some(initial_span),

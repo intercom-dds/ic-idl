@@ -29,21 +29,16 @@ use ic_hir::hir::{DefKind, Numeric};
 
 #[test]
 fn test_struct_init_basic() {
-    let input = r#"
+    let input = r"
         struct Point {
             int32 x;
             int32 y;
         };
         
         const Point ORIGIN = { x = 0, y = 0 };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
-    if !parsed.errors.is_empty() {
-        for err in &parsed.errors {
-            eprintln!("Parse error= {}", err);
-        }
-    }
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
@@ -91,11 +86,6 @@ fn test_struct_init_with_strings() {
     "#;
 
     let parsed = ic_parse::from_str(input);
-    if !parsed.errors.is_empty() {
-        for err in &parsed.errors {
-            eprintln!("Parse error= {}", err);
-        }
-    }
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
@@ -137,7 +127,7 @@ fn test_struct_init_with_strings() {
 
 #[test]
 fn test_struct_init_positional() {
-    let input = r#"
+    let input = r"
         struct Vec3 {
             float x;
             float y;
@@ -145,14 +135,9 @@ fn test_struct_init_positional() {
         };
         
         const Vec3 UNIT_X = { 1.0, 0.0, 0.0 };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
-    if !parsed.errors.is_empty() {
-        for err in &parsed.errors {
-            eprintln!("Parse error= {}", err);
-        }
-    }
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
@@ -177,9 +162,9 @@ fn test_struct_init_positional() {
 
                     match (&fields[0].1, &fields[1].1, &fields[2].1) {
                         (Numeric::Float(x), Numeric::Float(y), Numeric::Float(z)) => {
-                            assert_eq!(*x, 1.0);
-                            assert_eq!(*y, 0.0);
-                            assert_eq!(*z, 0.0);
+                            assert!((x - 1.0).abs() < f32::EPSILON);
+                            assert!(y.abs() < f32::EPSILON);
+                            assert!(z.abs() < f32::EPSILON);
                         }
                         _ => panic!("Expected float values"),
                     }
@@ -193,21 +178,16 @@ fn test_struct_init_positional() {
 
 #[test]
 fn test_struct_init_with_null() {
-    let input = r#"
+    let input = r"
         struct Optional {
             string<16> name;
             int32 value;
         };
         
         const Optional EMPTY = { name= null, value= 42 };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
-    if !parsed.errors.is_empty() {
-        for err in &parsed.errors {
-            eprintln!("Parse error= {}", err);
-        }
-    }
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
@@ -245,21 +225,16 @@ fn test_struct_init_with_null() {
 #[test]
 #[ignore = "Field order validation not yet implemented"]
 fn test_struct_init_field_order_error() {
-    let input = r#"
+    let input = r"
         struct Point {
             int32 x;
             int32 y;
         };
         
         const Point BAD = { y= 1, x= 2 };  // Wrong order
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
-    if !parsed.errors.is_empty() {
-        for err in &parsed.errors {
-            eprintln!("Parse error= {}", err);
-        }
-    }
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
@@ -274,21 +249,16 @@ fn test_struct_init_field_order_error() {
 #[test]
 #[ignore = "Missing field validation not yet implemented"]
 fn test_struct_init_missing_field_error() {
-    let input = r#"
+    let input = r"
         struct Point {
             int32 x;
             int32 y;
         };
         
         const Point INCOMPLETE = { x= 1 };  // Missing y
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
-    if !parsed.errors.is_empty() {
-        for err in &parsed.errors {
-            eprintln!("Parse error= {}", err);
-        }
-    }
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);

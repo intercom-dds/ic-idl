@@ -193,8 +193,7 @@ fn find_div_mod_span(expr: &Expr) -> Option<Span> {
         ic_expr::Expr::Ternary(t) => find_div_mod_span(&t.cond)
             .or_else(|| find_div_mod_span(&t.then))
             .or_else(|| find_div_mod_span(&t.els)),
-        ic_expr::Expr::Lit(_) => None,
-        ic_expr::Expr::Var(_) => None,
+        ic_expr::Expr::Lit(_) | ic_expr::Expr::Var(_) => None,
     }
 }
 

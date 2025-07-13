@@ -34,7 +34,7 @@ fn test_malformed_string_no_panic() {
     // Should not panic, but will have parse errors
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
-    
+
     // The parser will report an error about the unterminated string token
     // We just verify that we get an error (no panic) and parsing fails
 }
@@ -47,7 +47,7 @@ fn test_unterminated_string() {
     // Should not panic
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
-    
+
     // The parser will report an error about the unterminated string token
 }
 
@@ -77,6 +77,6 @@ fn test_string_with_newline() {
 
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
-    
+
     // The parser will report an error about the unterminated string token
 }

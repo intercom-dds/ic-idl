@@ -361,7 +361,17 @@ where
                         span: next.span,
                     });
                 }
-                ic_preproc::Kind::String { .. } => {
+                ic_preproc::Kind::String { terminated } => {
+                    if !terminated {
+                        // For unterminated strings, return an invalid token
+                        // This prevents the parser from trying to continue parsing
+                        // with a malformed string that could contain syntax characters
+                        break Some(Token {
+                            kind: Kind::Invalid,
+                            span: next.span,
+                        });
+                    }
+                    
                     let source = iter.source_of(next.span);
                     let str = source
                         .strip_prefix('"')

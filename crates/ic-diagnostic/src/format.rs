@@ -180,29 +180,35 @@ impl Formatter<'_> {
     }
 
     fn report(self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
-        let title = format!("{}:", diag.title.text);
-        writeln!(
-            f,
-            "{} {}",
-            title.fg(diag.title.color).bold(),
-            diag.msg.bold(),
-        )?;
+        // Only print title and message if message is not empty
+        if !diag.msg.is_empty() {
+            let title = format!("{}:", diag.title.text);
+            writeln!(
+                f,
+                "{} {}",
+                title.fg(diag.title.color).bold(),
+                diag.msg.bold(),
+            )?;
+        }
 
         if !diag.labels.is_empty() {
             self.emit_frame(f, diag)?;
         }
 
-        if let Some(v) = &diag.warn {
-            writeln!(f, " {} {v}", "warn:".purple().bold())?;
-        }
-        if let Some(v) = &diag.help {
-            writeln!(f, " {} {v}", "help:".cyan().bold())?;
-        }
-        if let Some(v) = &diag.note {
-            writeln!(f, " {} {v}", "note:".gray().bold())?;
-        }
-        if let Some(v) = &diag.desc {
-            writeln!(f, "\n{v}")?;
+        if !diag.msg.is_empty() {
+            // Only print notes if we printed the message
+            if let Some(v) = &diag.warn {
+                writeln!(f, " {} {v}", "warn:".purple().bold())?;
+            }
+            if let Some(v) = &diag.help {
+                writeln!(f, " {} {v}", "help:".cyan().bold())?;
+            }
+            if let Some(v) = &diag.note {
+                writeln!(f, " {} {v}", "note:".gray().bold())?;
+            }
+            if let Some(v) = &diag.desc {
+                writeln!(f, "\n{v}")?;
+            }
         }
         Ok(())
     }
@@ -305,6 +311,116 @@ impl Formatter<'_> {
 
         writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
     }
+    
+    fn emit_frame_for_file(
+        &self, 
+        f: &mut dyn fmt::Write, 
+        diag: &Diag, 
+        label_indices: &[usize]
+    ) -> fmt::Result {
+        if label_indices.is_empty() {
+            return Ok(());
+        }
+
+        // Get only the labels for this file
+        let file_labels: Vec<&Label> = label_indices
+            .iter()
+            .map(|&idx| &diag.labels[idx])
+            .collect();
+
+        // Calculate the maximum line number for proper indentation
+        let mut max_line = 0;
+        for label in &file_labels {
+            let end_line = line_number(self.source, label.span.end.offset as usize);
+            max_line = max_line.max(end_line);
+        }
+
+        let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
+        let indent = " ".repeat(indent);
+
+        // Get location info from the first label
+        let (first_line_number, col) = line_col(
+            self.source,
+            file_labels[0].span.start.offset as usize,
+        );
+
+        writeln!(
+            f,
+            "{indent}{} {}:{first_line_number}:{col}",
+            self.chars.up_right.blue().bold(),
+            self.filename.unwrap_or("unknown"),
+        )?;
+        writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
+
+        // Collect line ranges for each label, preserving order
+        let mut line_groups = Vec::new();
+        let mut seen_lines = std::collections::HashSet::new();
+        
+        for &label in &file_labels {
+            let start_line = line_number(self.source, label.span.start.offset as usize);
+            let end_line = line_number(self.source, label.span.end.offset as usize);
+            
+            let mut group_lines = Vec::new();
+            
+            // If the span is too large, only show context around start and end
+            let total_lines = end_line - start_line + 1;
+            if total_lines > MAX_LINES_PER_SPAN {
+                // Show first few lines
+                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
+                    if line <= end_line && seen_lines.insert(line) {
+                        group_lines.push(line);
+                    }
+                }
+                
+                // Add ellipsis marker (using line number 0 as a sentinel)
+                group_lines.push(0);
+                
+                // Show last few lines
+                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
+                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
+                        group_lines.push(line);
+                    }
+                }
+            } else {
+                // Show all lines for small spans
+                for line in start_line..=end_line {
+                    if seen_lines.insert(line) {
+                        group_lines.push(line);
+                    }
+                }
+            }
+            
+            if !group_lines.is_empty() {
+                line_groups.push(group_lines);
+            }
+        }
+
+        // Display line groups in order
+        for group in line_groups {
+            for &line_num in &group {
+                if line_num == 0 {
+                    // Print ellipsis for skipped lines
+                    writeln!(f, "{indent}{} {}", self.chars.vertical_dx.blue().bold(), "[...]")?;
+                    continue;
+                }
+                
+                write!(
+                    f,
+                    " {} {}",
+                    line_num.blue().bold(),
+                    self.chars.vertical.blue().bold(),
+                )?;
+
+                let line_start = self.line_start_offset(line_num);
+                let range = line_span(self.source, line_start as u32);
+                writeln!(f, " {}", self.source[range].trim_end())?;
+
+                self.emit_labels_for_line_with_subset(f, &indent, &file_labels, line_num)?;
+            }
+        }
+
+        writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
+    }
 
     fn emit_labels_for_line(
         &self,
@@ -314,6 +430,53 @@ impl Formatter<'_> {
         line_num: usize,
     ) -> fmt::Result {
         let labels_on_line = self.labels_on_line(labels, line_num);
+        if labels_on_line.is_empty() {
+            return Ok(());
+        }
+
+        let line_start_offset = self.line_start_offset(line_num) as u32;
+        let line_range = line_span(self.source, line_start_offset);
+        let line_len = self.source[line_range.clone()].trim_end().len();
+
+        write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
+
+        let col_labels =
+            self.build_column_label_map(&labels_on_line, line_start_offset, line_num, line_len);
+        self.draw_highlights(f, &col_labels)?;
+
+        let labels_starting_here = self.labels_starting_on_line(&labels_on_line, line_num);
+        if labels_starting_here.is_empty() {
+            writeln!(f)?;
+        } else {
+            self.draw_label_messages(
+                f,
+                indent,
+                &labels_starting_here,
+                line_start_offset,
+                &line_range,
+            )?;
+        }
+
+        Ok(())
+    }
+    
+    fn emit_labels_for_line_with_subset(
+        &self,
+        f: &mut dyn fmt::Write,
+        indent: &str,
+        labels: &[&Label],
+        line_num: usize,
+    ) -> fmt::Result {
+        let labels_on_line: Vec<&Label> = labels
+            .iter()
+            .filter(|label| {
+                let start_line = line_number(self.source, label.span.start.offset as usize);
+                let end_line = line_number(self.source, label.span.end.offset as usize);
+                start_line <= line_num && line_num <= end_line
+            })
+            .copied()
+            .collect();
+            
         if labels_on_line.is_empty() {
             return Ok(());
         }
@@ -365,6 +528,14 @@ impl Formatter<'_> {
         let mut col_labels: Vec<Vec<&'a Label>> = vec![Vec::new(); line_len];
 
         for label in labels_on_line {
+            let start_line = line_number(self.source, label.span.start.offset as usize);
+            let end_line = line_number(self.source, label.span.end.offset as usize);
+            
+            // For multi-line spans, only draw highlights on first or last line
+            if start_line != end_line && line_num != start_line && line_num != end_line {
+                continue;
+            }
+            
             let label_start = label_start_on_line(label, line_start_offset);
             let label_end =
                 label_end_on_line(self.source, label, line_start_offset, line_num, line_len);
@@ -575,13 +746,59 @@ impl fmt::Display for Diag {
 }
 
 pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
-    if let Some(label) = diag.labels.first() {
-        let info = vfs.file_info(label.span.start.file_id);
-        let name = info.included_as.to_string_lossy().to_string();
-        with_source(f, &name, &info.source, diag)
-    } else {
-        Ok(())
+    // First, emit the main error message
+    let title = format!("{}:", diag.title.text);
+    writeln!(
+        f,
+        "{} {}",
+        title.fg(diag.title.color).bold(),
+        diag.msg.bold(),
+    )?;
+
+    if diag.labels.is_empty() {
+        emit_notes(f, diag)?;
+        return Ok(());
     }
+
+    // Group labels by file ID
+    let mut labels_by_file: std::collections::BTreeMap<ic_vfs::FileId, Vec<usize>> = std::collections::BTreeMap::new();
+    for (idx, label) in diag.labels.iter().enumerate() {
+        labels_by_file.entry(label.span.start.file_id).or_default().push(idx);
+    }
+
+    // Process each file's labels
+    for (file_id, label_indices) in labels_by_file {
+        let info = vfs.file_info(file_id);
+        let name = info.included_as.to_string_lossy().to_string();
+        
+        let fmt = Formatter {
+            filename: Some(&name),
+            source: &info.source,
+            chars: Charset::unicode(),
+        };
+        
+        // Emit frame header for this file
+        fmt.emit_frame_for_file(f, diag, &label_indices)?;
+    }
+    
+    emit_notes(f, diag)?;
+    Ok(())
+}
+
+fn emit_notes(f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
+    if let Some(v) = &diag.warn {
+        writeln!(f, " {} {v}", "warn:".purple().bold())?;
+    }
+    if let Some(v) = &diag.help {
+        writeln!(f, " {} {v}", "help:".cyan().bold())?;
+    }
+    if let Some(v) = &diag.note {
+        writeln!(f, " {} {v}", "note:".gray().bold())?;
+    }
+    if let Some(v) = &diag.desc {
+        writeln!(f, "\n{v}")?;
+    }
+    Ok(())
 }
 
 pub fn with_source(f: &mut dyn fmt::Write, name: &str, source: &str, diag: &Diag) -> fmt::Result {

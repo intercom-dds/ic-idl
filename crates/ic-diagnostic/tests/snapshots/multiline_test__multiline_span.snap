@@ -8,9 +8,9 @@ error: method spans multiple lines
  3 │     void myMethod(
    ·          ^^^^^^^^^ this method definition spans multiple lines
  4 │         int param1,
-   · ^^^^^^^^^^^^^^^^^^^
+   · 
  5 │         string param2
-   · ^^^^^^^^^^^^^^^^^^^^^
+   · 
  6 │     );
    · 
    └──

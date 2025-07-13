@@ -8,11 +8,11 @@ error: large multi-line block
  2 │ interface MyInterface {
    ·                      ^^ entire method block
  3 │     void myMethod(
-   · ^^^^^^^^^^^^^^^^^^
+   · 
  4 │         int param1,
-   · ^^^^^^^^^^^^^^^^^^^
+   · 
  5 │         string param2
-   · ^^^^^^^^^^^^^^^^^^^^^
+   · 
  6 │     );
    · ^^^^^
    └──

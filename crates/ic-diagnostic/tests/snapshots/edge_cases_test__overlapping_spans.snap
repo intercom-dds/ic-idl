@@ -9,7 +9,7 @@ error: overlapping spans
    · ^^^^^^^^^^^^^^^ second overlap
    · └─ first overlap
  3 │     int field2;
-   · ^^^^^^^^^^^^^^^
+   · ^^^^^^^^^^
  4 │     int field3;
    · ^^^^^^^^
    └──

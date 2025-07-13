@@ -10,7 +10,7 @@ error: span across empty lines
  2 │ 
    · 
  3 │     void method();
-   · ^^^^^^^^^^^^^^^^^^
+   · 
  4 │ 
    · 
  5 │ }

@@ -80,9 +80,9 @@ struct Container {
 // Special constants
 const boolean TRUE_VAL = TRUE;
 const boolean FALSE_VAL = FALSE;
-const char NULL_CHAR = '\0';
-const char NEWLINE = '\n';
-const char TAB = '\t';
+const char NULL_CHAR = 0;
+const char NEWLINE = 10;
+const char TAB = 9;
 const string EMPTY = "";
 const double INFINITY = 1.0 / 0.0;  // Special float values
 

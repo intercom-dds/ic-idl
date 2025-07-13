@@ -468,22 +468,23 @@ impl<'a> Validator<'a> {
 
     /// Validates that forward declarations match their definitions.
     fn validate_forward_declarations(&mut self, order: &[DefId]) {
-        // Group definitions by name
-        let mut definitions_by_name: HashMap<String, Vec<DefId>> = HashMap::new();
+        // Group definitions by name AND parent scope
+        let mut definitions_by_name_and_scope: HashMap<(String, Option<DefId>), Vec<DefId>> = HashMap::new();
 
         for &id in order {
             let def = self.get_def(id);
-            definitions_by_name
-                .entry(def.ident.name.clone())
+            definitions_by_name_and_scope
+                .entry((def.ident.name.clone(), def.parent))
                 .or_default()
                 .push(id);
         }
 
-        // Check each group of definitions with the same name
-        for (name, ids) in definitions_by_name {
+        // Check each group of definitions with the same name in the same scope
+        for ((name, parent), ids) in definitions_by_name_and_scope {
             if ids.len() < 2 {
                 continue; // No duplicates to check
             }
+            
 
             // Find the actual definition (non-Decl) if any
             let mut actual_def: Option<(DefId, &str)> = None;
@@ -496,37 +497,49 @@ impl<'a> Validator<'a> {
                         forward_decls.push(id);
                     }
                     DefKind::Struct(_) => {
-                        if actual_def.is_some() {
+                        if let Some((first_id, _)) = actual_def {
+                            let first_def = self.get_def(first_id);
                             self.errors.push(error_span(
                                 format!("multiple definitions of struct `{}`", name),
                                 Label::new(def.span).message("redefined here"),
+                            ).label(
+                                Label::new(first_def.span).message("first defined here"),
                             ));
                         }
                         actual_def = Some((id, "struct"));
                     }
                     DefKind::Union(_) => {
-                        if actual_def.is_some() {
+                        if let Some((first_id, _)) = actual_def {
+                            let first_def = self.get_def(first_id);
                             self.errors.push(error_span(
                                 format!("multiple definitions of union `{}`", name),
                                 Label::new(def.span).message("redefined here"),
+                            ).label(
+                                Label::new(first_def.span).message("first defined here"),
                             ));
                         }
                         actual_def = Some((id, "union"));
                     }
                     DefKind::Interface(_) => {
-                        if actual_def.is_some() {
+                        if let Some((first_id, _)) = actual_def {
+                            let first_def = self.get_def(first_id);
                             self.errors.push(error_span(
                                 format!("multiple definitions of interface `{}`", name),
                                 Label::new(def.span).message("redefined here"),
+                            ).label(
+                                Label::new(first_def.span).message("first defined here"),
                             ));
                         }
                         actual_def = Some((id, "interface"));
                     }
                     DefKind::Valuetype(_) => {
-                        if actual_def.is_some() {
+                        if let Some((first_id, _)) = actual_def {
+                            let first_def = self.get_def(first_id);
                             self.errors.push(error_span(
                                 format!("multiple definitions of valuetype `{}`", name),
                                 Label::new(def.span).message("redefined here"),
+                            ).label(
+                                Label::new(first_def.span).message("first defined here"),
                             ));
                         }
                         actual_def = Some((id, "valuetype"));

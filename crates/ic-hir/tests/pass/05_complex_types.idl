@@ -171,7 +171,7 @@ interface Extended : Base {
 valuetype ComplexValue {
     public sequence<long> int_list;
     public map<string, double> double_map;
-    private @shared TreeNode internal_tree;
+    @shared private TreeNode internal_tree;
     
     factory create(in sequence<long> ints, in map<string, double> doubles);
 };

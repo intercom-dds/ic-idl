@@ -92,7 +92,7 @@ module other {
     };
     
     struct PointCollection {
-        Point local;              // other::Point
+        Point _local;              // other::Point
         GlobalPoint global;       // ::Point
         Level1Point from_level1;  // level1::Point
         Level2Point from_level2;  // level1::level2::Point

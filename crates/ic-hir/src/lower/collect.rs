@@ -256,11 +256,16 @@ impl<'a> NameCollector<'a> {
         // Update interface with children
         if let Def {
             kind: DefKind::Interface(interface),
+            flags,
             ..
         } = self.ctx.definitions.get_mut(id)
         {
             interface.definitions = child_ids;
             interface.is_local = def.local.is_some();
+            // Interface with members is complete
+            if !def.members.is_empty() {
+                *flags &= !DefFlags::IS_INCOMPLETE;
+            }
         }
 
         self.scope_stack.pop();
@@ -330,10 +335,15 @@ impl<'a> NameCollector<'a> {
         // Update valuetype with children
         if let Def {
             kind: DefKind::Valuetype(valuetype),
+            flags,
             ..
         } = self.ctx.definitions.get_mut(id)
         {
             valuetype.definitions = child_ids;
+            // Valuetype with members or definitions is complete
+            if !def.members.is_empty() || !def.definitions.is_empty() {
+                *flags &= !DefFlags::IS_INCOMPLETE;
+            }
         }
 
         self.scope_stack.pop();
@@ -357,22 +367,46 @@ impl<'a> NameCollector<'a> {
             Item::AnnotationValue(v) => vec![self.collect_annotation(v)],
 
             // Simple types without nested scopes
-            Item::StructValue(v) => vec![self.collect_simple_definition(
-                v.ident.clone(),
-                DefKind::Struct(StructTy {
-                    parent: None,
-                    members: Vec::new(),
-                }),
-                v.span,
-            )],
-            Item::UnionValue(v) => vec![self.collect_simple_definition(
-                v.ident.clone(),
-                DefKind::Union(UnionTy {
-                    disc: placeholder_type(v.span),
-                    variants: Vec::new(),
-                }),
-                v.span,
-            )],
+            Item::StructValue(v) => {
+                let id = self.alloc_definition(
+                    v.ident.clone(),
+                    DefKind::Struct(StructTy {
+                        parent: None,
+                        members: Vec::new(),
+                    }),
+                    v.span,
+                );
+                
+                // If the struct has members, it's a complete definition, not a forward declaration
+                if !v.members.is_empty() {
+                    if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
+                        *flags &= !DefFlags::IS_INCOMPLETE;
+                    }
+                }
+                
+                // Already registered in scope by alloc_definition
+                vec![id]
+            },
+            Item::UnionValue(v) => {
+                let id = self.alloc_definition(
+                    v.ident.clone(),
+                    DefKind::Union(UnionTy {
+                        disc: placeholder_type(v.span),
+                        variants: Vec::new(),
+                    }),
+                    v.span,
+                );
+                
+                // If the union has fields, it's a complete definition
+                if !v.fields.is_empty() {
+                    if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
+                        *flags &= !DefFlags::IS_INCOMPLETE;
+                    }
+                }
+                
+                // Already registered in scope by alloc_definition
+                vec![id]
+            },
             Item::EnumValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
                 DefKind::Enum(EnumTy {
@@ -381,13 +415,25 @@ impl<'a> NameCollector<'a> {
                 }),
                 v.span,
             )],
-            Item::ExceptionValue(v) => vec![self.collect_simple_definition(
-                v.ident.clone(),
-                DefKind::Except(ExceptTy {
-                    members: Vec::new(),
-                }),
-                v.span,
-            )],
+            Item::ExceptionValue(v) => {
+                let id = self.alloc_definition(
+                    v.ident.clone(),
+                    DefKind::Except(ExceptTy {
+                        members: Vec::new(),
+                    }),
+                    v.span,
+                );
+                
+                // If the exception has members, it's a complete definition
+                if !v.members.is_empty() {
+                    if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
+                        *flags &= !DefFlags::IS_INCOMPLETE;
+                    }
+                }
+                
+                // Already registered in scope by alloc_definition
+                vec![id]
+            },
             Item::BitmaskValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
                 DefKind::Bitmask(BitmaskTy {

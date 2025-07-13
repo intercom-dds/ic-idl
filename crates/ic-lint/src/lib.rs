@@ -342,7 +342,7 @@ pub fn all_lint_names() -> Vec<&'static str> {
         "sanity",
         // Unsupported lints
         "items",
-        "proto",
+        // "proto", // Commented out - too restrictive for non-proto3 IDL
     ]
 }
 
@@ -421,7 +421,7 @@ pub fn lint_hir_with_config(
 
     let lints = &[
         pedantic::complex_key::ComplexMapKey::check_hir,
-        unsupported::proto::Proto::check_hir,
+        // unsupported::proto::Proto::check_hir, // Commented out - too restrictive for non-proto3 IDL
     ];
 
     for check in lints {

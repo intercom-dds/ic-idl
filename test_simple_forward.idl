@@ -1,0 +1,16 @@
+// Test what forward declarations are supported
+
+// Struct forward declaration
+struct Foo;
+
+// Interface forward declaration  
+interface Bar;
+
+// Define them
+struct Foo {
+    long x;
+};
+
+interface Bar {
+    void method();
+};

@@ -1,0 +1,5 @@
+// Debug forward declarations
+struct Foo;
+struct Foo {
+    long x;
+};

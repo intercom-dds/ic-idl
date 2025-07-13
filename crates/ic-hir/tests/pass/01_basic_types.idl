@@ -108,7 +108,7 @@ interface Service;
 // Define forward declared types
 struct Node {
     long value;
-    Node next;  // Self-reference through forward declaration
+    @shared Node next;  // Self-reference needs pointer annotation
 };
 
 interface Service {

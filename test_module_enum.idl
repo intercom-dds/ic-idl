@@ -1,0 +1,21 @@
+module foo {
+    module bar {
+        enum Color {
+            RED,
+            GREEN,
+            BLUE
+        };
+        
+        // Test within module
+        const Color c1 = RED;           // Should work
+        const Color c2 = Color::GREEN;  // Should work  
+    };
+    
+    // Test outside inner module but inside foo
+    const bar::Color c3 = bar::RED;          // Should work
+    const bar::Color c4 = bar::Color::BLUE;  // Should work
+};
+
+// Test outside all modules
+const foo::bar::Color c5 = foo::bar::RED;          // Should work
+const foo::bar::Color c6 = foo::bar::Color::GREEN; // Should work

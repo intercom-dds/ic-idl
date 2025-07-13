@@ -288,10 +288,13 @@ impl Formatter<'_> {
             for &line_num in &group {
                 if line_num == 0 {
                     // Print ellipsis for skipped lines
+                    let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
                     writeln!(
                         f,
-                        "{indent}{}",
-                        "┊".blue()
+                        "{:>width$} {}",
+                        "···".gray(),
+                        self.chars.vertical.blue().bold(),
+                        width = line_width + 1
                     )?;
                     continue;
                 }
@@ -397,10 +400,13 @@ impl Formatter<'_> {
             for &line_num in &group {
                 if line_num == 0 {
                     // Print ellipsis for skipped lines
+                    let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
                     writeln!(
                         f,
-                        "{indent}{}",
-                        "┊".blue()
+                        "{:>width$} {}",
+                        "···".gray(),
+                        self.chars.vertical.blue().bold(),
+                        width = line_width + 1
                     )?;
                     continue;
                 }

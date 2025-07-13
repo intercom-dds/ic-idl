@@ -43,6 +43,7 @@ mod typechk;
 pub mod fold;
 pub mod hir;
 pub mod keywords;
+pub mod scope;
 pub mod visit;
 
 #[derive(Debug)]

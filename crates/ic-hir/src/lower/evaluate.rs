@@ -44,6 +44,7 @@ use ic_syntax::{Expr, Item};
 
 use crate::Context;
 use crate::hir::*;
+use crate::scope::ScopeId;
 
 /// Literal type for ic-expr evaluation.
 #[derive(Debug, Clone)]
@@ -97,6 +98,7 @@ struct IdlEvalContext<'a> {
     ctx: &'a Context,
     config: ic_expr::EvalConfig,
     errors: &'a mut Vec<Diag>,
+    current_scope: crate::scope::ScopeId,
 }
 
 impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
@@ -126,65 +128,109 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
     }
 
     fn lookup_var(&mut self, name: &str) -> ExprResult<Self::Value> {
-        // Try to parse as a qualified name (e.g., "MyEnum::VALUE")
         let parts: Vec<&str> = name.split("::").collect();
 
-        if parts.len() == 2 {
-            // This might be an enum constant reference
-            let enum_name = parts[0];
-            let field_name = parts[1];
+        // Try to resolve the path using the scope tree
+        if let Some(def_id) = self.ctx.scopes.resolve_path(self.current_scope, &parts) {
+            let def = self.ctx.definitions.get(def_id);
 
-            // Look through all definitions to find the enum
-            for (_, def) in self.ctx.definitions.iter() {
-                if def.ident.name == enum_name {
-                    if let DefKind::Enum(enum_ty) = &def.kind {
-                        // Find the field
-                        for field in &enum_ty.fields {
-                            if field.ident.name == field_name {
-                                // Return the enum field value
-                                return Ok(GenericNumeric::Int32(field.value as i32));
+            // Check if it's a constant
+            if let DefKind::Const(const_ty) = &def.kind {
+                if let Some(eval_num) = from_hir_numeric(&const_ty.value) {
+                    return Ok(eval_num);
+                }
+            }
+        }
+
+        // Handle enum field references (e.g., "Color::GREEN" or "MyEnum::VALUE")
+        if parts.len() >= 2 {
+            // Try different ways to split the path into enum + field
+            for split_pos in 1..parts.len() {
+                let enum_parts = &parts[..split_pos];
+                let field_name = parts[split_pos];
+
+                // Only handle single field name after the enum
+                if split_pos == parts.len() - 1 {
+                    // Try to resolve the enum path
+                    if let Some(enum_id) =
+                        self.ctx.scopes.resolve_path(self.current_scope, enum_parts)
+                    {
+                        let enum_def = self.ctx.definitions.get(enum_id);
+                        if let DefKind::Enum(enum_ty) = &enum_def.kind {
+                            // Look for the field
+                            for field in &enum_ty.fields {
+                                if field.ident.name == field_name {
+                                    return Ok(GenericNumeric::Int32(field.value as i32));
+                                }
                             }
                         }
-                        // Debug: Print all field names
-                        let field_names: Vec<&str> = enum_ty
-                            .fields
-                            .iter()
-                            .map(|f| f.ident.name.as_str())
-                            .collect();
-                        return Err(ExprError::Custom(format!(
-                            "enum field `{}::{}` not found. Available fields: {:?}",
-                            enum_name, field_name, field_names
-                        )));
                     }
                 }
             }
         }
 
-        // Try to find a constant with this name
-        for (_, def) in self.ctx.definitions.iter() {
-            if def.ident.name == name {
-                if let DefKind::Const(const_ty) = &def.kind {
-                    // Convert HIR Numeric to GenericNumeric
-                    if let Some(eval_num) = from_hir_numeric(&const_ty.value) {
-                        return Ok(eval_num);
-                    } else {
-                        return Err(ExprError::Custom(format!(
-                            "constant `{}` has non-numeric value",
-                            name
-                        )));
+        // Handle unscoped enum enumerator (e.g., just "RED")
+        if parts.len() == 1 {
+            let enumerator = parts[0];
+
+            // Get all visible enums from current scope
+            let visible_enums = self
+                .ctx
+                .scopes
+                .get_visible_enums(self.current_scope, &self.ctx.definitions);
+
+            // Check each enum for this enumerator
+            for enum_id in visible_enums {
+                let enum_def = self.ctx.definitions.get(enum_id);
+                if let DefKind::Enum(enum_ty) = &enum_def.kind {
+                    for field in &enum_ty.fields {
+                        if field.ident.name == enumerator {
+                            return Ok(GenericNumeric::Int32(field.value as i32));
+                        }
                     }
                 }
             }
         }
 
-        // Try to find an unscoped enum enumerator
-        for (_, def) in self.ctx.definitions.iter() {
-            if let DefKind::Enum(enum_ty) = &def.kind {
-                // Look for the enumerator in this enum
-                for field in &enum_ty.fields {
-                    if field.ident.name == name {
-                        // Found it! Return the enum field value
-                        return Ok(GenericNumeric::Int32(field.value as i32));
+        // Handle module-qualified enumerator (e.g., "foo::bar::RED")
+        // This is when someone uses a module path directly to an enumerator
+        if parts.len() >= 2 {
+            let module_parts = &parts[..parts.len() - 1];
+            let enumerator = parts[parts.len() - 1];
+
+            // Try to resolve the module path
+            if let Some(module_id) = self
+                .ctx
+                .scopes
+                .resolve_path(self.current_scope, module_parts)
+            {
+                // Find the scope for this module
+                for scope in &self.ctx.scopes.scopes {
+                    if scope.def_id == Some(module_id) {
+                        let scope_id = ScopeId(
+                            self.ctx
+                                .scopes
+                                .scopes
+                                .iter()
+                                .position(|s| std::ptr::eq(s, scope))
+                                .unwrap(),
+                        );
+                        // Find enums in this module that have the enumerator
+                        let enums = self.ctx.scopes.find_enums_with_enumerator(
+                            scope_id,
+                            enumerator,
+                            &self.ctx.definitions,
+                        );
+                        if let Some(&enum_id) = enums.first() {
+                            let enum_def = self.ctx.definitions.get(enum_id);
+                            if let DefKind::Enum(enum_ty) = &enum_def.kind {
+                                for field in &enum_ty.fields {
+                                    if field.ident.name == enumerator {
+                                        return Ok(GenericNumeric::Int32(field.value as i32));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -271,13 +317,16 @@ fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, Str
 pub struct ExpressionEvaluator<'a> {
     ctx: &'a mut Context,
     errors: Vec<Diag>,
+    current_scope: crate::scope::ScopeId,
 }
 
 impl<'a> ExpressionEvaluator<'a> {
     fn new(ctx: &'a mut Context) -> Self {
+        let root_scope = ctx.scopes.root();
         Self {
             ctx,
             errors: Vec::new(),
+            current_scope: root_scope,
         }
     }
 
@@ -301,6 +350,7 @@ impl<'a> ExpressionEvaluator<'a> {
             ctx: &self.ctx,
             config: ic_expr::EvalConfig::default(),
             errors: &mut self.errors,
+            current_scope: self.current_scope,
         };
 
         // Evaluate the expression
@@ -535,32 +585,59 @@ impl<'a> ExpressionEvaluator<'a> {
     }
 
     /// Evaluates expressions in type definitions.
-    fn evaluate_types(&mut self, name_map: &super::collect::NameMap, items: &[Item]) {
+    fn evaluate_types(&mut self, items: &[Item]) {
         for item in items {
             match item {
+                Item::ModuleValue(v) => {
+                    // Find the child scope for this module
+                    let current_scope_data = self.ctx.scopes.get_scope(self.current_scope);
+                    if let Some(&module_scope) = current_scope_data.children.get(&v.ident.name) {
+                        // Save current scope
+                        let saved_scope = self.current_scope;
+                        self.current_scope = module_scope;
+
+                        // Recursively evaluate module contents
+                        self.evaluate_types(&v.definitions);
+
+                        // Restore scope
+                        self.current_scope = saved_scope;
+                    }
+                }
                 Item::UnionValue(v) => {
-                    if let Some(&id) = name_map.get(&v.ident.name) {
-                        self.evaluate_union(id, v);
+                    // Look up the definition in the current scope
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_union(def_id, v);
                     }
                 }
                 Item::EnumValue(v) => {
-                    if let Some(&id) = name_map.get(&v.ident.name) {
-                        self.evaluate_enum(id, v);
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_enum(def_id, v);
                     }
                 }
                 Item::BitmaskValue(v) => {
-                    if let Some(&id) = name_map.get(&v.ident.name) {
-                        self.evaluate_bitmask(id, v);
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_bitmask(def_id, v);
                     }
                 }
                 Item::ConstValue(v) => {
                     let name = match &v.decl {
-                        ic_syntax::Declarator::Simple(n) => n.name.clone(),
-                        ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
+                        ic_syntax::Declarator::Simple(n) => &n.name,
+                        ic_syntax::Declarator::Array(a) => &a.ident.name,
                     };
-
-                    if let Some(&id) = name_map.get(&name) {
-                        self.evaluate_const(id, v);
+                    if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, name) {
+                        self.evaluate_const(def_id, v);
                     }
                 }
                 // TODO: Handle sequence/map/string bounds
@@ -577,6 +654,6 @@ pub fn evaluate_expressions(
     items: &[Item],
 ) -> Vec<Diag> {
     let mut evaluator = ExpressionEvaluator::new(ctx);
-    evaluator.evaluate_types(name_map, items);
+    evaluator.evaluate_types(items);
     evaluator.errors
 }

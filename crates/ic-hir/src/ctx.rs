@@ -30,6 +30,7 @@ use ic_alloc::insensitive::CaseMap;
 use ic_syntax::util::{path_name, type_name};
 
 use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, Ty, TyKind, TypeId};
+use crate::scope::ScopeTree;
 
 #[derive(Debug)]
 pub struct Type;
@@ -41,6 +42,9 @@ pub struct Context {
 
     // Fully qualified type name => DefId
     pub registered: CaseMap<'static, DefId>,
+
+    // Scope hierarchy for name resolution
+    pub scopes: ScopeTree,
 }
 
 impl Context {
@@ -58,6 +62,7 @@ impl Context {
             types: Arena::default(),
             definitions: Arena::default(),
             registered: CaseMap::default(),
+            scopes: ScopeTree::new(),
         }
     }
 

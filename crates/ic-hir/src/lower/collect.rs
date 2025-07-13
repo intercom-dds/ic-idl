@@ -40,6 +40,7 @@ use ic_syntax::{Ident, Item, ItemKind, Path, Span};
 
 use crate::Context;
 use crate::hir::*;
+use crate::scope::{ScopeId, ScopeTree};
 
 /// Maps fully-qualified names to their DefIds.
 pub type NameMap = HashMap<String, DefId>;
@@ -93,16 +94,19 @@ pub struct NameCollector<'a> {
     ctx: &'a mut Context,
     name_map: NameMap,
     scope_stack: ScopeStack,
+    current_scope: ScopeId,
     order: Vec<DefId>,
     errors: Vec<Diag>,
 }
 
 impl<'a> NameCollector<'a> {
     fn new(ctx: &'a mut Context) -> Self {
+        let root_scope = ctx.scopes.root();
         Self {
             ctx,
             name_map: HashMap::new(),
             scope_stack: ScopeStack::new(),
+            current_scope: root_scope,
             order: Vec::new(),
             errors: Vec::new(),
         }
@@ -178,13 +182,26 @@ impl<'a> NameCollector<'a> {
             self.name_map.insert(qualified_name, id);
         }
 
+        // Add to scope tree
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, ident.name.clone(), id);
+
         id
     }
 
     /// Creates a definition that introduces a new scope.
     fn alloc_scoped_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident.clone(), kind, span);
-        self.scope_stack.push(ident.name, id);
+        self.scope_stack.push(ident.name.clone(), id);
+
+        // Create a child scope in the scope tree
+        let new_scope =
+            self.ctx
+                .scopes
+                .create_child_scope(self.current_scope, ident.name, Some(id));
+        self.current_scope = new_scope;
+
         id
     }
 
@@ -213,6 +230,11 @@ impl<'a> NameCollector<'a> {
         }
 
         self.scope_stack.pop();
+
+        // Restore parent scope
+        let parent_scope = self.ctx.scopes.get_scope(self.current_scope).parent;
+        self.current_scope = parent_scope.unwrap_or(self.ctx.scopes.root());
+
         id
     }
 
@@ -242,6 +264,11 @@ impl<'a> NameCollector<'a> {
         }
 
         self.scope_stack.pop();
+
+        // Restore parent scope
+        let parent_scope = self.ctx.scopes.get_scope(self.current_scope).parent;
+        self.current_scope = parent_scope.unwrap_or(self.ctx.scopes.root());
+
         id
     }
 
@@ -273,6 +300,11 @@ impl<'a> NameCollector<'a> {
         }
 
         self.scope_stack.pop();
+
+        // Restore parent scope
+        let parent_scope = self.ctx.scopes.get_scope(self.current_scope).parent;
+        self.current_scope = parent_scope.unwrap_or(self.ctx.scopes.root());
+
         id
     }
 
@@ -305,6 +337,11 @@ impl<'a> NameCollector<'a> {
         }
 
         self.scope_stack.pop();
+
+        // Restore parent scope
+        let parent_scope = self.ctx.scopes.get_scope(self.current_scope).parent;
+        self.current_scope = parent_scope.unwrap_or(self.ctx.scopes.root());
+
         id
     }
 

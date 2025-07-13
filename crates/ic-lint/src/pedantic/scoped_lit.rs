@@ -46,21 +46,6 @@ pub struct ScopedLit<'a> {
     seen: HashMap<&'a str, Kind>,
 }
 
-fn fixed_path(path: &Path) -> String {
-    let name = path
-        .segments
-        .iter()
-        .skip_nth(path.segments.len() - 2)
-        .map(|p| &p.name)
-        .join("::");
-
-    if path.leading_colons.is_some() {
-        format!("::{name}")
-    } else {
-        name
-    }
-}
-
 impl<'a> Visitor<'a> for ScopedLit<'a> {
     // TODO: in the future we should use the HIR ctx to do lookups instead of
     // registering the type name here.

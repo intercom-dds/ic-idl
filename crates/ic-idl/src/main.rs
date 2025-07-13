@@ -81,13 +81,26 @@ fn main() {
     let mut vfs = SourceMap::default();
     let generated = match try_main(&options, &mut vfs) {
         Ok(v) => v,
-        Err(e) => {
+        Err((errors, warning_count)) => {
             // Errors and warnings were already emitted in try_main
-            error!(
-                "aborting due to {} previous error{}",
-                e.len(),
-                if e.len() > 1 { "s" } else { "" },
-            );
+            let error_plural = if errors.len() > 1 { "s" } else { "" };
+            let warning_plural = if warning_count > 1 { "s" } else { "" };
+            
+            if warning_count > 0 {
+                error!(
+                    "aborting due to {} previous error{}, {} warning{}",
+                    errors.len(),
+                    error_plural,
+                    warning_count,
+                    warning_plural,
+                );
+            } else {
+                error!(
+                    "aborting due to {} previous error{}",
+                    errors.len(),
+                    error_plural,
+                );
+            }
             std::process::exit(1);
         }
     };
@@ -101,7 +114,7 @@ fn main() {
     }
 }
 
-fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Error>> {
+fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, (Vec<Error>, usize)> {
     let defines = options.define.iter().map(|v| {
         v.split_once('=')
             .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
@@ -118,7 +131,7 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
     let mut all_warnings = vec![];
 
     let files = collect_files(&options.files)
-        .map_err(|e| e.into_iter().map(Error::Io).collect::<Vec<_>>())?;
+        .map_err(|e| (e.into_iter().map(Error::Io).collect::<Vec<_>>(), 0))?;
 
     for file in files {
         let parsed = try_parse(options, args.clone(), &file, vfs);
@@ -137,10 +150,10 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, Vec<Err
     // If there were any errors, emit them and return
     if !all_errors.is_empty() {
         pretty::emit_errors(&all_errors, vfs);
-        return Err(all_errors);
+        return Err((all_errors, all_warnings.len()));
     }
 
-    try_ptree(options, &trees).map_err(|e| vec![e])
+    try_ptree(options, &trees).map_err(|e| (vec![e], all_warnings.len()))
 }
 
 struct Parsed {

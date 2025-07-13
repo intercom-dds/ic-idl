@@ -1,0 +1,172 @@
+// Test interfaces, inheritance, and operations
+
+// Basic interface
+interface Calculator {
+    long add(in long a, in long b);
+    long subtract(in long a, in long b);
+    long multiply(in long a, in long b);
+    double divide(in double a, in double b) raises (DivideByZero);
+    
+    exception DivideByZero {
+        string message;
+    };
+};
+
+// Interface with various parameter modes
+interface DataProcessor {
+    void processIn(in string input);
+    void processOut(out string output);
+    void processInOut(inout string data);
+    
+    // Multiple parameters
+    boolean transform(in string input, out string output, inout long count);
+    
+    // Sequence and map parameters
+    void processList(in sequence<long> numbers, out sequence<long> results);
+    void processMap(inout map<string, long> data);
+    
+    // Oneway operations (no return value, no out/inout params, no exceptions)
+    oneway void notifyStart(in string id);
+    oneway void notifyComplete(in string id, in long result);
+};
+
+// Interface inheritance chain
+interface Readable {
+    typedef sequence<octet> ByteArray;
+    
+    ByteArray read(in long size) raises (IOException);
+    long available();
+    
+    exception IOException {
+        string message;
+        long error_code;
+    };
+};
+
+interface Writable {
+    typedef sequence<octet> ByteArray;
+    
+    void write(in ByteArray data) raises (IOException);
+    void flush() raises (IOException);
+    
+    exception IOException {
+        string message;
+        long error_code;
+    };
+};
+
+interface Stream : Readable, Writable {
+    void close() raises (IOException);
+    boolean isOpen();
+    
+    // Can use types from parent interfaces
+    void copy(in Readable source) raises (IOException);
+};
+
+interface SeekableStream : Stream {
+    void seek(in long position) raises (IOException, InvalidPosition);
+    long tell();
+    
+    exception InvalidPosition {
+        long requested_pos;
+        long max_pos;
+    };
+};
+
+// Complex interface with nested types
+interface FileSystem {
+    // Nested type definitions
+    enum FileType {
+        FILE,
+        DIRECTORY,
+        SYMLINK,
+        DEVICE
+    };
+    
+    struct FileInfo {
+        string name;
+        FileType type;
+        long size;
+        long modified_time;
+        map<string, string> attributes;
+    };
+    
+    struct DirectoryEntry {
+        FileInfo info;
+        sequence<DirectoryEntry> children;  // For directories
+    };
+    
+    // Operations using nested types
+    FileInfo getInfo(in string path) raises (NotFound, AccessDenied);
+    sequence<FileInfo> listDirectory(in string path) raises (NotFound, NotDirectory);
+    DirectoryEntry getTree(in string path, in long max_depth) raises (NotFound);
+    
+    // Operations returning interfaces
+    Stream openFile(in string path, in string mode) raises (NotFound, AccessDenied);
+    
+    // Exceptions
+    exception NotFound {
+        string path;
+    };
+    
+    exception NotDirectory {
+        string path;
+        FileType actual_type;
+    };
+    
+    exception AccessDenied {
+        string path;
+        string reason;
+    };
+};
+
+// Forward declared interface
+interface Service;
+
+interface Client {
+    void connect(in Service svc);
+    Service getService();
+};
+
+interface Service {
+    void registerClient(in Client client);
+    sequence<Client> getClients();
+};
+
+// Interface with attributes (readonly, etc.)
+interface ConfigManager {
+    // Readonly attributes
+    readonly attribute string version;
+    readonly attribute long build_number;
+    
+    // Read-write attributes
+    attribute string config_path;
+    attribute boolean debug_enabled;
+    
+    // Methods
+    void reload() raises (ConfigError);
+    boolean save() raises (ConfigError, IOException);
+    
+    exception ConfigError {
+        string message;
+        string config_key;
+    };
+    
+    exception IOException {
+        string message;
+    };
+};
+
+// Local interface (can't be used remotely)
+local interface CallbackHandler {
+    void onEvent(in string event_type, in any event_data);
+    void onError(in string error_message);
+    void onComplete();
+};
+
+// Interface using local interface
+interface EventSource {
+    void subscribe(in CallbackHandler handler);
+    void unsubscribe(in CallbackHandler handler);
+    void emit(in string event_type, in any data);
+};

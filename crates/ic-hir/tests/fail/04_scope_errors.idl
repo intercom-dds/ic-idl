@@ -1,0 +1,108 @@
+// Test scope resolution errors
+
+module outer {
+    struct Point { long x; long y; };
+    
+    module inner {
+        struct Circle {
+            Point center;  // OK - finds outer::Point
+            Line axis;     // ERROR: Line not defined
+        };
+    };
+};
+
+// ERROR: Can't access inner types without qualification
+typedef Circle GlobalCircle;  // ERROR: Circle not in scope
+
+// ERROR: Wrong module path
+typedef outer::inner::Point WrongPoint;  // ERROR: Point is in outer, not inner
+
+// ERROR: Module doesn't contain type
+typedef outer::Rectangle Rect;  // ERROR: Rectangle not defined in outer
+
+// ERROR: Too many qualifiers
+typedef outer::inner::Circle::center BadType;  // ERROR: Can't access struct members as types
+
+// ERROR: Enum scoping errors
+module enums {
+    enum Color { RED, GREEN, BLUE };
+};
+
+// ERROR: Enumerator without proper scope
+const long COLOR1 = RED;  // ERROR: RED not in global scope
+const long COLOR2 = Color::RED;  // ERROR: Color not in global scope
+const long COLOR3 = enums::RED;  // ERROR: Must use enums::Color::RED or enums::RED with unscoped
+
+// ERROR: Using module as type
+typedef outer MyType;  // ERROR: outer is a module, not a type
+
+// ERROR: Qualified path to non-existent module
+typedef foo::bar::baz::Type DeepError;  // ERROR: foo doesn't exist
+
+// ERROR: Accessing private/local types
+module privacy {
+    local interface LocalOnly {
+        void method();
+    };
+    
+    interface Public {
+        LocalOnly getLocal();  // OK - same module
+    };
+};
+
+interface External {
+    privacy::LocalOnly getLocal();  // ERROR: Can't use local interface outside module
+};
+
+// ERROR: Forward reference without declaration
+module forward {
+    struct A {
+        B field;  // ERROR: B not forward declared
+    };
+    
+    struct B {
+        A field;  // Would be OK if A was after B, or B was forward declared
+    };
+};
+
+// ERROR: Scope confusion with same names
+module scope1 {
+    struct Data { long value; };
+};
+
+module scope2 {
+    struct Data { string name; };
+    
+    struct Container {
+        scope1::Data data1;  // OK
+        scope2::Data data2;  // OK
+        Data data3;          // OK - refers to scope2::Data
+        ::Data global;       // ERROR: No Data at global scope
+    };
+};
+
+// ERROR: Invalid global scope references
+typedef ::no::such::Type GlobalError;  // ERROR: 'no' doesn't exist at global scope
+
+// ERROR: Case sensitivity in lookups (if case-insensitive)
+module CasedModule {
+    struct CasedType {};
+};
+
+typedef casedmodule::CasedType WrongCase;  // ERROR or OK depending on case sensitivity
+typedef CasedModule::casedtype WrongCase2;  // ERROR or OK depending on case sensitivity
+
+// ERROR: Accessing enum fields as types
+enum Options {
+    OPTION_A,
+    OPTION_B
+};
+
+typedef Options::OPTION_A OptionType;  // ERROR: OPTION_A is not a type
+
+// ERROR: Module qualification of non-enum constants
+module constants {
+    const long VALUE = 42;
+};
+
+const long BAD = constants::VALUE::something;  // ERROR: Can't further qualify constants

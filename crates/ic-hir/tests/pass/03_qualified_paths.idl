@@ -1,0 +1,82 @@
+// Test various forms of qualified and unqualified paths
+
+module graphics {
+    enum Color {
+        RED = 0xFF0000,
+        GREEN = 0x00FF00,
+        BLUE = 0x0000FF,
+        WHITE = 0xFFFFFF,
+        BLACK = 0x000000
+    };
+    
+    module shapes {
+        enum ShapeType {
+            CIRCLE,
+            RECTANGLE,
+            TRIANGLE,
+            POLYGON
+        };
+        
+        struct Shape {
+            ShapeType type;
+            graphics::Color color;  // Qualified reference to parent module
+        };
+    };
+    
+    module advanced {
+        // Fully qualified enum references
+        const long PRIMARY_COLOR = graphics::Color::RED;
+        const long SHAPE_COLOR = Color::BLUE;  // Unqualified (in parent scope)
+        
+        // Module-qualified enumerator
+        const long BG_COLOR = graphics::BLACK;  // Enumerator without enum name
+        const long FG_COLOR = WHITE;  // Unqualified enumerator
+        
+        struct Theme {
+            long background;
+            long foreground;
+            shapes::ShapeType default_shape;
+        };
+    };
+};
+
+// Global constants with various path forms
+const long GLOBAL_RED = graphics::Color::RED;  // Fully qualified
+const long GLOBAL_GREEN = graphics::GREEN;     // Module-qualified enumerator
+
+module ui {
+    // Import and use types from graphics module
+    typedef graphics::Color UIColor;
+    typedef graphics::shapes::Shape UIShape;
+    
+    const long DEFAULT_BG = graphics::BLACK;
+    const long DEFAULT_FG = graphics::WHITE;
+    
+    struct Button {
+        string label;
+        UIColor background;
+        UIColor foreground;
+    };
+    
+    module themes {
+        // Nested references
+        const long DARK_BG = graphics::Color::BLACK;
+        const long DARK_FG = graphics::Color::WHITE;
+        const long LIGHT_BG = graphics::WHITE;  // Module-qualified
+        const long LIGHT_FG = graphics::BLACK;  // Module-qualified
+    };
+};
+
+// Test paths in expressions
+const long COLOR_MASK = graphics::Color::RED | graphics::Color::GREEN | graphics::Color::BLUE;
+const long SHAPE_MASK = graphics::shapes::ShapeType::CIRCLE + 1;
+
+// Test in union discriminators
+union GraphicsObject switch (graphics::shapes::ShapeType) {
+    case graphics::shapes::ShapeType::CIRCLE:
+        long radius;
+    case graphics::shapes::ShapeType::RECTANGLE:
+        graphics::shapes::Shape rect;
+    default:
+        string description;
+};

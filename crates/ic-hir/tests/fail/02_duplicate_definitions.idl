@@ -1,0 +1,99 @@
+// Test duplicate definition errors
+
+// ERROR: Duplicate struct definition
+struct Point {
+    long x;
+    long y;
+};
+
+struct Point {  // ERROR: Already defined
+    double x;
+    double y;
+};
+
+// ERROR: Duplicate enum
+enum Status {
+    OK,
+    ERROR
+};
+
+enum Status {  // ERROR: Already defined
+    SUCCESS,
+    FAILURE
+};
+
+// ERROR: Duplicate module
+module foo {
+    struct A {};
+};
+
+module foo {  // ERROR: Already defined
+    struct B {};
+};
+
+// ERROR: Duplicate interface
+interface Service {
+    void method1();
+};
+
+interface Service {  // ERROR: Already defined
+    void method2();
+};
+
+// ERROR: Duplicate typedef
+typedef long Integer;
+typedef double Integer;  // ERROR: Already defined
+
+// ERROR: Duplicate constant
+const long MAX = 100;
+const long MAX = 200;  // ERROR: Already defined
+
+// ERROR: Duplicate within module
+module test {
+    struct Data {};
+    struct Data {};  // ERROR: Duplicate in same module
+    
+    enum Type { A, B };
+    enum Type { C, D };  // ERROR: Duplicate in same module
+};
+
+// ERROR: Duplicate across different scopes (still error)
+struct Global {};
+
+module scope {
+    struct Global {};  // This is OK - different scope
+};
+
+// But this is still an error:
+struct Global {};  // ERROR: Duplicate at global scope
+
+// ERROR: Duplicate enum values
+enum Colors {
+    RED,
+    GREEN,
+    BLUE,
+    RED  // ERROR: Duplicate enumerator
+};
+
+// ERROR: Duplicate union cases
+union Value switch (long) {
+    case 0: long int_val;
+    case 1: string str_val;
+    case 0: double float_val;  // ERROR: Duplicate case
+};
+
+// ERROR: Duplicate interface members
+interface Calculator {
+    long add(in long a, in long b);
+    long add(in long x, in long y);  // ERROR: Duplicate method name
+    
+    attribute long value;
+    attribute long value;  // ERROR: Duplicate attribute
+};
+
+// ERROR: Duplicate exception members
+exception Error {
+    string message;
+    long code;
+    string message;  // ERROR: Duplicate member
+};

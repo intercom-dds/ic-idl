@@ -1,0 +1,108 @@
+// Test scope resolution, shadowing, and name lookup
+
+// Global types
+struct Point {
+    long x;
+    long y;
+};
+
+enum Status {
+    OK,
+    ERROR
+};
+
+const long GLOBAL_CONST = 100;
+
+module level1 {
+    // Shadow global Point
+    struct Point {
+        double x;
+        double y;
+        double z;
+    };
+    
+    // Local Point shadows global Point
+    typedef Point LocalPoint;
+    typedef ::Point GlobalPoint;  // Explicitly reference global Point
+    
+    const long LOCAL_CONST = 200;
+    
+    module level2 {
+        // Another Point
+        struct Point {
+            string label;
+            long value;
+        };
+        
+        // Test various scope resolutions
+        struct Container {
+            Point local_point;           // level2::Point
+            level1::Point parent_point;  // level1::Point
+            ::Point global_point;        // Global Point
+        };
+        
+        // Shadow parent's constant
+        const long LOCAL_CONST = 300;
+        
+        // Reference constants from different scopes
+        const long USE_LOCAL = LOCAL_CONST;           // 300
+        const long USE_PARENT = level1::LOCAL_CONST;  // 200
+        const long USE_GLOBAL = ::GLOBAL_CONST;       // 100
+        const long USE_GLOBAL2 = GLOBAL_CONST;        // Also 100 (found via scope chain)
+        
+        module level3 {
+            // Can see all Points through qualified paths
+            typedef Point L3Point;                    // level2::Point
+            typedef level2::Point L2Point;            // level2::Point
+            typedef level1::Point L1Point;            // level1::Point
+            typedef ::Point GlobalPoint;              // Global Point
+            
+            // Test that unqualified lookup finds nearest scope
+            typedef Status LocalStatus;               // Finds global Status
+            
+            enum Status {  // Now shadow it
+                PENDING,
+                COMPLETE
+            };
+            
+            const long STATUS_VAL = Status::PENDING;  // Uses local Status
+            const long GLOBAL_STATUS = ::Status::OK;  // Uses global Status
+        };
+    };
+    
+    // Test resolution after nested scopes
+    struct Summary {
+        Point point;                      // level1::Point
+        level2::Point labeled_point;      // level2::Point
+        level2::level3::Status status;    // level2::level3::Status
+        ::Status global_status;           // Global Status
+    };
+};
+
+// Test cross-module references with shadowing
+module other {
+    // Import various Points
+    typedef ::Point GlobalPoint;
+    typedef level1::Point Level1Point;
+    typedef level1::level2::Point Level2Point;
+    
+    // Create local Point that shadows
+    struct Point {
+        sequence<long> values;
+    };
+    
+    struct PointCollection {
+        Point local;              // other::Point
+        GlobalPoint global;       // ::Point
+        Level1Point from_level1;  // level1::Point
+        Level2Point from_level2;  // level1::level2::Point
+    };
+};
+
+// Interface using types from different scopes
+interface PointManager {
+    ::Point getGlobalPoint();
+    level1::Point getLevel1Point();
+    level1::level2::Point getLevel2Point();
+    other::Point getOtherPoint();
+};

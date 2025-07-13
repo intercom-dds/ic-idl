@@ -1,0 +1,88 @@
+// Test invalid expressions and constant errors
+
+// ERROR: Division by zero
+const long DIV_ZERO = 100 / 0;
+const long MOD_ZERO = 100 % 0;
+
+// ERROR: Invalid operations on types
+const string STR_MATH = "hello" + "world";  // ERROR: No string concatenation in const
+const boolean BOOL_MATH = TRUE * FALSE;     // ERROR: Can't multiply booleans
+const long COMPARE = 10 < 20;               // ERROR: Comparison not allowed in const
+
+// ERROR: Overflow in constant expressions
+const octet OVERFLOW1 = 200 + 100;  // ERROR: 300 overflows octet (0-255)
+const short OVERFLOW2 = 32767 + 1;  // ERROR: Overflows signed short
+
+// ERROR: Type mismatch in expressions
+const long MIXED = 10 + "20";              // ERROR: Can't add long and string
+const double BOOL_ADD = 3.14 + TRUE;       // ERROR: Can't add double and boolean
+
+// ERROR: Undefined identifiers in expressions
+const long UNDEF1 = UNDEFINED_CONST + 10;
+const long UNDEF2 = SomeModule::VALUE;      // ERROR: SomeModule doesn't exist
+
+// ERROR: Using non-const values in const expressions
+struct Point { long x; long y; };
+Point p;  // Variable, not const
+const long INVALID = p.x + 10;  // ERROR: Can't use non-const in const expr
+
+// ERROR: Invalid enum usage in expressions
+enum Status { OK = 0, ERROR = 1 };
+const long ENUM_MATH = Status + 1;  // ERROR: Can't do arithmetic on enum type
+const string ENUM_STR = Status::OK;  // ERROR: Type mismatch
+
+// ERROR: Invalid array bounds
+typedef long BadArray1[-5];          // ERROR: Negative array size
+typedef long BadArray2[0];           // ERROR: Zero-sized array
+typedef long BadArray3[3.14];        // ERROR: Non-integer array size
+typedef long BadArray4["size"];      // ERROR: String as array size
+
+const double PI = 3.14159;
+typedef long BadArray5[PI];          // ERROR: Float constant as array size
+
+// ERROR: Invalid sequence/map bounds
+typedef sequence<long, -10> BadSeq1;    // ERROR: Negative bound
+typedef sequence<long, 0> BadSeq2;      // ERROR: Zero bound might be invalid
+typedef sequence<long, 3.14> BadSeq3;   // ERROR: Non-integer bound
+typedef map<string, long, -1> BadMap;   // ERROR: Negative bound
+
+// ERROR: String bounds must be positive
+typedef string<0> EmptyString;       // ERROR: Zero-length string
+typedef string<-10> NegString;       // ERROR: Negative length
+typedef wstring<3.14> FloatString;   // ERROR: Non-integer bound
+
+// ERROR: Shift operations with invalid amounts
+const long LSHIFT1 = 1 << -1;       // ERROR: Negative shift
+const long LSHIFT2 = 1 << 64;       // ERROR: Shift too large for long
+const long RSHIFT1 = 100 >> -5;     // ERROR: Negative shift
+
+// ERROR: Invalid bitwise operations
+const double BIT_OP1 = 3.14 & 2.71;  // ERROR: Bitwise ops on floating point
+const string BIT_OP2 = "hello" | "world";  // ERROR: Bitwise ops on strings
+
+// ERROR: Complex expressions that fail
+module expr {
+    enum E { A = 1, B = 2 };
+    const long SIZE = 10;
+};
+
+const long COMPLEX1 = expr::E::A + expr::E::B;  // Might be OK depending on rules
+const long COMPLEX2 = expr::SIZE + expr::E;     // ERROR: Can't add constant and enum type
+const long COMPLEX3 = (10 + 20) / (5 - 5);      // ERROR: Division by zero in subexpression
+
+// ERROR: Recursive constant definition
+const long RECURSIVE = RECURSIVE + 1;  // ERROR: Self-reference
+
+// ERROR: Forward reference in constants
+const long FORWARD = LATER + 10;  // ERROR: LATER not yet defined
+const long LATER = 20;
+
+// ERROR: Using interface types in arithmetic
+interface Service {};
+const long INTF_MATH = Service + 10;  // ERROR: Can't use interface type in expression
+
+// ERROR: Invalid unary operations
+const long UNARY1 = -"string";    // ERROR: Can't negate string
+const long UNARY2 = +TRUE;        // ERROR: Can't use + on boolean
+const long UNARY3 = ~3.14;        // ERROR: Can't use bitwise NOT on float
+const boolean UNARY4 = !42;       // ERROR: Type mismatch (! returns boolean)

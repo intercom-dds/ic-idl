@@ -1,0 +1,52 @@
+// Test undefined type errors
+
+// ERROR: UndefinedType is not defined
+struct BadStruct {
+    UndefinedType field;
+};
+
+// ERROR: NonExistent module doesn't exist
+typedef NonExistent::Type BadTypedef;
+
+// ERROR: Undefined type in sequence
+typedef sequence<MissingType> BadSequence;
+
+// ERROR: Undefined type in map
+typedef map<string, NoSuchType> BadMap;
+
+// ERROR: Using type before declaration (without forward decl)
+struct Order {
+    Product product;  // ERROR: Product not declared yet
+};
+
+struct Product {
+    string name;
+};
+
+// ERROR: Undefined enum in constant
+const long BAD_ENUM = UndefinedEnum::VALUE;
+
+// ERROR: Undefined interface in inheritance
+interface BadInterface : NoSuchInterface {
+    void method();
+};
+
+// ERROR: Undefined exception in raises clause
+interface Service {
+    void process() raises (UndefinedException);
+};
+
+// ERROR: Undefined type in union discriminator
+union BadUnion switch (MissingEnum) {
+    case 0: long value;
+};
+
+// ERROR: Undefined module in qualified path
+typedef some::missing::module::Type BadPath;
+
+// ERROR: Partially undefined path
+module existing {
+    struct Point { long x; long y; };
+};
+
+typedef existing::Line BadType;  // ERROR: Line not defined in existing

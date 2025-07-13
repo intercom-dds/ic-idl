@@ -1,0 +1,164 @@
+// Test complex type scenarios and edge cases
+
+// Recursive types through forward declarations
+struct TreeNode;
+struct TreeNode {
+    long value;
+    sequence<TreeNode> children;
+    TreeNode parent;  // Optional in IDL, can be null
+};
+
+// Mutually recursive types
+struct Expression;
+struct Statement;
+
+struct Expression {
+    enum ExprType {
+        LITERAL,
+        BINARY,
+        CALL,
+        STMT_EXPR
+    };
+    
+    union ExprData switch (ExprType) {
+        case LITERAL:
+            long literal_value;
+        case BINARY:
+            struct BinaryExpr {
+                Expression left;
+                Expression right;
+                string op;
+            } binary;
+        case CALL:
+            struct CallExpr {
+                string name;
+                sequence<Expression> args;
+            } call;
+        case STMT_EXPR:
+            Statement stmt;
+    } data;
+};
+
+struct Statement {
+    enum StmtType {
+        EXPR_STMT,
+        BLOCK,
+        IF_STMT
+    };
+    
+    union StmtData switch (StmtType) {
+        case EXPR_STMT:
+            Expression expr;
+        case BLOCK:
+            sequence<Statement> statements;
+        case IF_STMT:
+            struct IfStmt {
+                Expression condition;
+                Statement then_stmt;
+                Statement else_stmt;
+            } if_stmt;
+    } data;
+};
+
+// Complex nested types
+module collections {
+    struct Pair<T, U> {
+        T first;
+        U second;
+    };
+    
+    typedef sequence<Pair<string, long>> StringIntPairs;
+    typedef map<string, sequence<Pair<long, double>>> ComplexMap;
+    
+    // Multi-dimensional arrays with typedef chains
+    typedef long Row[10];
+    typedef Row Matrix[10];
+    typedef Matrix Tensor[10];
+    
+    // Nested sequences and maps
+    typedef sequence<sequence<sequence<long>>> Tensor3D;
+    typedef map<string, map<string, map<string, long>>> NestedMap;
+};
+
+// Union with complex discriminator
+module protocol {
+    enum MessageType {
+        REQUEST = 0x0100,
+        RESPONSE = 0x0200,
+        NOTIFICATION = 0x0300,
+        ERROR = 0x0400
+    };
+    
+    struct Header {
+        MessageType type;
+        long sequence_num;
+        string sender_id;
+    };
+    
+    union Message switch (MessageType) {
+        case REQUEST:
+            struct Request {
+                string method;
+                any params;  // Using 'any' type
+            } request;
+            
+        case RESPONSE:
+            struct Response {
+                long request_seq;
+                any result;
+                boolean success;
+            } response;
+            
+        case NOTIFICATION:
+            struct Notification {
+                string event;
+                any data;
+            } notification;
+            
+        case ERROR:
+            struct Error {
+                long error_code;
+                string message;
+                any details;
+            } error;
+            
+        default:
+            octet raw_data[1024];
+    } body;
+};
+
+// Interface inheritance with complex types
+interface Base {
+    any getValue(in string key);
+    void setValue(in string key, in any value);
+};
+
+interface Extended : Base {
+    typedef map<string, any> ValueMap;
+    
+    ValueMap getAllValues();
+    void setAllValues(in ValueMap values);
+    
+    // Method overloading with different signatures
+    any getValue(in string key, in any default_value);
+};
+
+// Valuetype with complex members
+valuetype ComplexValue {
+    public sequence<long> int_list;
+    public map<string, double> double_map;
+    private TreeNode internal_tree;
+    
+    factory create(in sequence<long> ints, in map<string, double> doubles);
+};
+
+// Constants with complex expressions
+const long EXPR1 = 10 + 20 * 30;
+const long EXPR2 = (100 + 200) / 3;
+const long EXPR3 = 0xFF & 0x0F;
+const long EXPR4 = 1 << 8 | 1 << 4 | 1;
+
+// Enum references in expressions
+const long MSG_MASK = protocol::MessageType::REQUEST | 
+                      protocol::MessageType::RESPONSE;
+const long ERROR_BASE = protocol::MessageType::ERROR + 1000;

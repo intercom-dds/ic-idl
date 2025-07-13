@@ -1,0 +1,135 @@
+// Test interface and inheritance errors
+
+// ERROR: Interface inheriting from non-interface
+struct NotInterface {};
+interface Bad1 : NotInterface {  // ERROR: Can't inherit from struct
+    void method();
+};
+
+// ERROR: Duplicate method names in interface
+interface DuplicateMethods {
+    void process(in string data);
+    long process(in string data);   // ERROR: Duplicate method name
+    void process(in long data);     // ERROR: Still duplicate (overloading not supported)
+};
+
+// ERROR: Invalid parameter directions
+interface BadParams {
+    void method1(long x);           // ERROR: Missing direction (in/out/inout)
+    void method2(out long x, out long y) raises (Error);  // OK
+    long method3(out long result);  // ERROR: Can't have return value with out param
+    
+    exception Error {};
+};
+
+// ERROR: Oneway restrictions
+interface OnewayErrors {
+    oneway long getValue();         // ERROR: Oneway can't have return value
+    oneway void process(out string result);  // ERROR: Oneway can't have out params
+    oneway void notify(inout long count);    // ERROR: Oneway can't have inout params
+    oneway void risky() raises (Error);      // ERROR: Oneway can't raise exceptions
+    
+    exception Error {};
+};
+
+// ERROR: Attribute errors
+interface AttributeErrors {
+    attribute long value = 10;      // ERROR: Can't initialize attributes
+    readonly attribute void invalid;  // ERROR: void can't be an attribute type
+    writeonly attribute string data;  // ERROR: No writeonly keyword
+    attribute;                       // ERROR: Missing type and name
+};
+
+// ERROR: Circular interface inheritance
+interface Circular1 : Circular2 {};
+interface Circular2 : Circular3 {};
+interface Circular3 : Circular1 {};  // ERROR: Circular inheritance
+
+// ERROR: Diamond inheritance problem
+interface Base {
+    void method();
+};
+
+interface Left : Base {
+    void leftMethod();
+};
+
+interface Right : Base {
+    void rightMethod();
+};
+
+interface Diamond : Left, Right {  // This might be OK or ERROR depending on rules
+    void diamondMethod();
+};
+
+// ERROR: Local interface misuse
+local interface LocalCallback {
+    void onEvent();
+};
+
+interface RemoteService {
+    LocalCallback getCallback();     // ERROR: Can't return local interface remotely
+    void register(in LocalCallback cb);  // ERROR: Can't pass local interface remotely
+};
+
+// ERROR: Method name conflicts in inheritance
+interface Parent {
+    void process(in string data);
+    attribute long value;
+};
+
+interface Child : Parent {
+    long process(in long data);     // ERROR: Conflicts with inherited method
+    attribute string value;         // ERROR: Conflicts with inherited attribute
+};
+
+// ERROR: Exception redefinition in interface
+interface ExceptionConflict {
+    exception Error {
+        string message;
+    };
+    
+    exception Error {  // ERROR: Duplicate exception in same interface
+        long code;
+    };
+    
+    void method1() raises (Error);
+};
+
+// ERROR: Undefined exceptions in raises clause
+interface UndefinedExceptions {
+    void method1() raises (NoSuchException);  // ERROR: Exception not defined
+    void method2() raises (Error);  // ERROR: Error not defined in this scope
+};
+
+// ERROR: Non-exception types in raises clause
+interface BadRaises {
+    struct NotAnException { string data; };
+    
+    void method() raises (NotAnException);  // ERROR: Only exceptions in raises
+    void method2() raises (long);           // ERROR: Primitive type in raises
+};
+
+// ERROR: Forward declared interface with inheritance
+interface Forward;  // Forward declaration
+interface Forward : Base {  // ERROR: Can't specify inheritance in definition after forward decl
+    void method();
+};
+
+// ERROR: Interface with duplicate inherited methods
+interface Multi1 {
+    void common();
+};
+
+interface Multi2 {
+    void common();  // Same signature
+};
+
+interface MultiError : Multi1, Multi2 {  // ERROR: Inherits 'common' from multiple interfaces
+    void specific();
+};
+
+// ERROR: Invalid factory in interface (should be in valuetype)
+interface FactoryError {
+    factory create(in string name);  // ERROR: Factories only in valuetypes
+};

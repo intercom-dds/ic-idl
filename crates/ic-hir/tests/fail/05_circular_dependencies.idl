@@ -1,0 +1,118 @@
+// Test circular dependency errors
+
+// ERROR: Direct circular struct dependency (no indirection)
+struct Cycle1 {
+    Cycle2 field;
+};
+
+struct Cycle2 {
+    Cycle1 field;  // ERROR: Creates infinite size
+};
+
+// ERROR: Three-way cycle
+struct A {
+    B b;
+};
+
+struct B {
+    C c;
+};
+
+struct C {
+    A a;  // ERROR: Circular dependency A -> B -> C -> A
+};
+
+// ERROR: Self-referencing without indirection
+struct SelfRef {
+    SelfRef self;  // ERROR: Infinite size
+};
+
+// ERROR: Circular typedef
+typedef Circular1 Circular2;
+typedef Circular2 Circular3;
+typedef Circular3 Circular1;  // ERROR: Circular typedef chain
+
+// ERROR: Union circular dependency
+union Union1 switch (long) {
+    case 0: Union2 u2;
+};
+
+union Union2 switch (long) {
+    case 0: Union1 u1;  // ERROR: Circular dependency
+};
+
+// ERROR: Circular through array (still infinite size)
+struct ArrayCycle1 {
+    ArrayCycle2 arr[10];  // Still embeds ArrayCycle2 directly
+};
+
+struct ArrayCycle2 {
+    ArrayCycle1 item;  // ERROR: Circular even through array
+};
+
+// ERROR: Circular module dependency (in nested types)
+module mod1 {
+    struct S1 {
+        mod2::S2 field;  // Forward reference - might be OK depending on implementation
+    };
+};
+
+module mod2 {
+    struct S2 {
+        mod1::S1 field;  // ERROR: Would create circular struct dependency
+    };
+};
+
+// ERROR: Interface circular inheritance
+interface I1 : I2 {  // ERROR: I2 not yet defined
+    void method1();
+};
+
+interface I2 : I3 {
+    void method2();
+};
+
+interface I3 : I1 {  // ERROR: Circular inheritance I1 -> I2 -> I3 -> I1
+    void method3();
+};
+
+// ERROR: Complex circular dependency through multiple paths
+struct Root {
+    Branch1 b1;
+    Branch2 b2;
+};
+
+struct Branch1 {
+    Leaf shared;
+};
+
+struct Branch2 {
+    Leaf shared;
+};
+
+struct Leaf {
+    Root back;  // ERROR: Creates cycle Root -> Branch1/Branch2 -> Leaf -> Root
+};
+
+// ERROR: Circular constant dependency
+const long CONST_A = CONST_B + 1;  // ERROR: CONST_B not yet defined
+const long CONST_B = CONST_C + 1;
+const long CONST_C = CONST_A + 1;  // ERROR: Circular constant dependency
+
+// ERROR: Valuetype circular dependency
+valuetype Value1 {
+    public Value2 value;
+};
+
+valuetype Value2 {
+    public Value1 value;  // ERROR: Circular valuetype embedding
+};
+
+// ERROR: Exception circular dependency
+exception Exception1 {
+    Exception2 nested;
+};
+
+exception Exception2 {
+    Exception1 nested;  // ERROR: Circular exception dependency
+};

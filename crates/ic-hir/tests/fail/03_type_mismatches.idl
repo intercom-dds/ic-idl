@@ -1,0 +1,81 @@
+// Test type mismatch errors
+
+// ERROR: String assigned to numeric constant
+const long NUMBER = "not a number";
+
+// ERROR: Wrong numeric type
+const boolean FLAG = 42;  // ERROR: Expected boolean, got integer
+
+// ERROR: Type mismatch in struct initialization
+struct Point {
+    long x;
+    long y;
+};
+
+const Point ORIGIN = { "zero", "zero" };  // ERROR: Expected long, got string
+
+// ERROR: Enum type mismatch
+enum Color { RED, GREEN, BLUE };
+enum Size { SMALL, MEDIUM, LARGE };
+
+const Color MY_COLOR = Size::MEDIUM;  // ERROR: Type mismatch
+
+// ERROR: Wrong type in sequence
+typedef sequence<long> IntList;
+typedef sequence<string> StringList;
+
+const IntList NUMBERS = { "one", "two", "three" };  // ERROR: Wrong element type
+
+// ERROR: Union discriminator type mismatch
+enum UnionType { INT, STRING };
+
+union Value switch (boolean) {  // Discriminator is boolean
+    case UnionType::INT: long i;  // ERROR: Can't use enum value for boolean
+    case UnionType::STRING: string s;
+};
+
+// ERROR: Array dimension type mismatch
+typedef long Matrix["foo"]["bar"];  // ERROR: Array dimensions must be integers
+
+// ERROR: Constant expression type errors
+const long CALC1 = "hello" + "world";  // ERROR: Can't add strings in const expr
+const long CALC2 = TRUE + FALSE;  // ERROR: Can't add booleans
+const string CALC3 = 10 + 20;  // ERROR: Numeric result assigned to string
+
+// ERROR: Forward declaration type mismatch
+struct Node;  // Forward declare as struct
+interface Node {  // ERROR: Redefined as different type
+    void method();
+};
+
+// ERROR: Interface inheritance type mismatch
+struct Data {};
+interface Service : Data {  // ERROR: Can't inherit from struct
+    void process();
+};
+
+// ERROR: Exception in non-raising method
+exception Error { string msg; };
+
+interface Processor {
+    void safe_method() raises (Error);  // OK
+    oneway void notify() raises (Error);  // ERROR: Oneway can't raise
+};
+
+// ERROR: Invalid attribute types
+interface Config {
+    attribute void invalid;  // ERROR: void can't be an attribute
+    readonly attribute sequence<any> data;  // OK
+};
+
+// ERROR: Circular typedef
+typedef A B;  // ERROR: A not defined yet
+typedef B A;  // ERROR: Circular reference
+
+// ERROR: Self-referencing typedef
+typedef C C;  // ERROR: Direct self-reference
+
+// ERROR: Invalid map key types
+typedef map<sequence<long>, string> BadMap1;  // ERROR: Sequence can't be map key
+typedef map<any, string> BadMap2;  // ERROR: any can't be map key
+typedef map<double, string> BadMap3;  // ERROR: float types can't be map key

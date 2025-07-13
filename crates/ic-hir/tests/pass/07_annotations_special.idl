@@ -1,0 +1,147 @@
+// Test annotations and special cases
+
+// Annotations on types
+@id(100)
+@deprecated("Use NewService instead")
+interface OldService {
+    @deprecated
+    void oldMethod();
+    
+    @id(1)
+    void methodOne();
+    
+    @id(2)
+    void methodTwo();
+};
+
+// Annotations on struct members
+@packed
+struct PackedData {
+    @id(1) octet version;
+    @id(2) long timestamp;
+    @id(3) @optional string description;
+    @id(4) sequence<octet> payload;
+};
+
+// Enum with annotations
+enum ErrorCode {
+    @value(0) SUCCESS,
+    @value(100) @deprecated INVALID_ARGUMENT,
+    @value(200) NOT_FOUND,
+    @value(300) @description("Internal server error") INTERNAL_ERROR
+};
+
+// Bitmask with annotations
+@bit_bound(16)
+bitmask Features {
+    @value(0x0001) FEATURE_A,
+    @value(0x0002) FEATURE_B,
+    @value(0x0100) EXPERIMENTAL_X,
+    @value(0x0200) EXPERIMENTAL_Y
+};
+
+// String bounds
+typedef string<128> ShortString;
+typedef wstring<1024> LongWideString;
+typedef string<> UnboundedString;  // Explicitly unbounded
+
+// Sequence bounds
+typedef sequence<long, 100> BoundedIntList;
+typedef sequence<string<50>, 10> BoundedStringArray;
+typedef sequence<sequence<long, 5>, 5> Matrix5x5;
+
+// Map bounds
+typedef map<string<32>, long, 1000> BoundedMap;
+typedef map<long, sequence<string, 10>, 100> ComplexBoundedMap;
+
+// Fixed arrays vs sequences
+typedef long FixedArray[10];
+typedef sequence<long, 10> BoundedSeq;
+typedef sequence<long> UnboundedSeq;
+
+// Native types
+native NativeHandle;
+native ThreadId;
+
+struct SystemInfo {
+    NativeHandle process;
+    ThreadId main_thread;
+    map<string, NativeHandle> resources;
+};
+
+// Any type usage
+typedef any Value;
+typedef sequence<any> ValueList;
+typedef map<string, any> ValueMap;
+
+struct Container {
+    any data;
+    ValueList items;
+    ValueMap properties;
+};
+
+// Special constants
+const boolean TRUE_VAL = TRUE;
+const boolean FALSE_VAL = FALSE;
+const char NULL_CHAR = '\0';
+const char NEWLINE = '\n';
+const char TAB = '\t';
+const string EMPTY = "";
+const double INFINITY = 1.0 / 0.0;  // Special float values
+
+// Hexadecimal and octal constants
+const long HEX_VAL = 0xDEADBEEF;
+const long OCTAL_VAL = 0755;
+const long BINARY_CALC = 0xFF00 & 0x0F0F;
+
+// Complex constant expressions
+module calc {
+    const long BASE = 1000;
+    const long OFFSET = 100;
+    const long MULTIPLIER = 10;
+    
+    const long RESULT1 = BASE + OFFSET * MULTIPLIER;
+    const long RESULT2 = (BASE + OFFSET) * MULTIPLIER;
+    const long RESULT3 = BASE << 2 | OFFSET >> 2;
+};
+
+// Typedef chains
+typedef long Integer;
+typedef Integer Number;
+typedef Number Value;
+typedef sequence<Value> ValueSequence;
+typedef ValueSequence NumberList;
+
+// Anonymous types in unions
+union Variant switch (long) {
+    case 0:
+        struct {
+            long x;
+            long y;
+        } point;
+    case 1:
+        struct {
+            double real;
+            double imag;
+        } complex;
+    case 2:
+        sequence<struct {
+            string key;
+            any value;
+        }> properties;
+    default:
+        any generic;
+};
+
+// Pragma directives (ignored but should parse)
+#pragma prefix "com.example"
+#pragma version(1, 0)
+
+module versioned {
+    #pragma prefix "com.example.v2"
+    
+    interface Service {
+        #pragma version(2, 0)
+        void method();
+    };
+};

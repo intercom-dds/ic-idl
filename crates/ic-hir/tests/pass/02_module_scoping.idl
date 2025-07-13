@@ -1,0 +1,78 @@
+// Test module scoping and nested modules
+
+module outer {
+    struct Point {
+        long x;
+        long y;
+    };
+    
+    enum Direction {
+        NORTH,
+        SOUTH,
+        EAST,
+        WEST
+    };
+    
+    // Nested module
+    module inner {
+        struct Point {  // Different Point than outer::Point
+            double x;
+            double y;
+            double z;
+        };
+        
+        // Can reference parent module types
+        typedef outer::Point Point2D;
+        typedef Point Point3D;
+        
+        const long MAGIC = 42;
+        
+        module deeply {
+            module nested {
+                struct Config {
+                    string name;
+                    long value;
+                };
+                
+                // Reference types from various scopes
+                struct Container {
+                    outer::Point origin;
+                    inner::Point position;
+                    Config config;
+                };
+            };
+        };
+    };
+    
+    // Can use inner module types
+    struct Path {
+        sequence<Point> points;
+        inner::Point3D endpoint;
+    };
+};
+
+// Global scope can reference module types
+typedef outer::Point GlobalPoint;
+typedef outer::inner::Point Point3D;
+typedef outer::inner::deeply::nested::Config Configuration;
+
+// Test relative vs absolute paths
+module test {
+    // Import types from other modules
+    struct TestStruct {
+        outer::Point p1;
+        outer::inner::Point p2;
+        outer::inner::deeply::nested::Config cfg;
+    };
+};
+
+// Constants referencing module enums
+const long NORTH_VALUE = outer::Direction::NORTH;
+const long MAGIC_VALUE = outer::inner::MAGIC;
+
+// Interface using module types
+interface Navigator {
+    outer::Point getPosition();
+    void setDirection(in outer::Direction dir);
+    outer::inner::deeply::nested::Config getConfig();
+};

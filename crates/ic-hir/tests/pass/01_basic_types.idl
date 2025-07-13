@@ -1,0 +1,116 @@
+// Test basic type definitions and primitives
+
+// Basic struct
+struct Point {
+    long x;
+    long y;
+};
+
+// Struct with various primitive types
+struct AllPrimitives {
+    boolean bool_val;
+    char char_val;
+    octet byte_val;
+    short short_val;
+    unsigned short ushort_val;
+    long long_val;
+    unsigned long ulong_val;
+    long long longlong_val;
+    unsigned long long ulonglong_val;
+    float float_val;
+    double double_val;
+    string string_val;
+    wstring wstring_val;
+};
+
+// Basic enum
+enum Color {
+    RED,
+    GREEN,
+    BLUE
+};
+
+// Enum with explicit values
+enum Status {
+    OK = 0,
+    WARNING = 100,
+    ERROR = 200
+};
+
+// Bitmask
+bitmask Permissions {
+    READ,
+    WRITE,
+    EXECUTE
+};
+
+// Bitmask with explicit values
+bitmask Flags {
+    FLAG_A = 0x01,
+    FLAG_B = 0x02,
+    FLAG_C = 0x04,
+    FLAG_D = 0x08
+};
+
+// Type aliases
+typedef long Integer;
+typedef string Name;
+typedef sequence<long> IntList;
+
+// Arrays
+typedef long IntArray[10];
+typedef double Matrix[3][3];
+
+// Sequences
+typedef sequence<Point> PointList;
+typedef sequence<string> StringList;
+typedef sequence<Color> ColorList;
+
+// Maps
+typedef map<string, long> StringIntMap;
+typedef map<long, Point> IntPointMap;
+
+// Nested collections
+typedef sequence<sequence<long>> IntMatrix;
+typedef map<string, sequence<Point>> NamedPaths;
+
+// Constants
+const long MAX_SIZE = 1024;
+const double PI = 3.14159;
+const string GREETING = "Hello, World!";
+const boolean ENABLED = TRUE;
+
+// Unions
+union Value switch (long) {
+    case 0: long int_value;
+    case 1: double double_value;
+    case 2: string string_value;
+    default: boolean bool_value;
+};
+
+// Exception
+exception InvalidArgument {
+    string message;
+    long error_code;
+};
+
+// Interface
+interface Calculator {
+    long add(in long a, in long b);
+    long subtract(in long a, in long b);
+    double divide(in double a, in double b) raises (InvalidArgument);
+};
+
+// Forward declarations
+struct Node;
+interface Service;
+
+// Define forward declared types
+struct Node {
+    long value;
+    Node next;  // Self-reference through forward declaration
+};
+
+interface Service {
+    void process(in Node data);
+};

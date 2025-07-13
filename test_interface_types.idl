@@ -1,0 +1,10 @@
+// Test interface-scoped types
+
+interface TestInterface {
+    struct InnerStruct {
+        long x;
+    };
+    
+    // Method using inner type
+    InnerStruct getStruct();
+};

@@ -341,6 +341,26 @@ impl<'a> TypeResolver<'a> {
     fn resolve_interface(&mut self, id: DefId, def: &ic_syntax::InterfaceDef) {
         // Mark any forward declarations as resolved
         self.mark_forward_declarations_resolved(&def.ident.name);
+        
+        // Save current scope
+        let saved_scope_id = self.current_scope_id;
+        
+        // Enter interface scope
+        if let Some(interface_scope) = self.ctx.scopes.find_scope_for_def(id) {
+            self.current_scope_id = interface_scope;
+        }
+        
+        // Resolve nested type definitions first
+        let mut nested_items = Vec::new();
+        for member in &def.members {
+            if let ic_syntax::InterfaceMember::Item(item) = member {
+                nested_items.push(item.clone());
+            }
+        }
+        if !nested_items.is_empty() {
+            self.resolve_all(&nested_items);
+        }
+        
         let parents = def
             .inherits
             .iter()
@@ -380,6 +400,9 @@ impl<'a> TypeResolver<'a> {
             interface.parents = parents;
             interface.prototypes = prototypes;
         }
+        
+        // Restore scope
+        self.current_scope_id = saved_scope_id;
     }
 
     /// Builds a mapping from AST items to their DefIds.

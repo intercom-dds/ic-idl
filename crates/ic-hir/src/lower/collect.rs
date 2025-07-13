@@ -398,7 +398,7 @@ impl<'a> NameCollector<'a> {
             )],
 
             Item::ValuetypeValue(v) => vec![self.collect_valuetype(v)],
-            
+
             // Skip bitset for now - it's a low priority feature
             Item::BitsetValue(_) => Vec::new(),
         }

@@ -84,7 +84,8 @@ impl<'a> Validator<'a> {
         match &ty.kind {
             TyKind::Adt(id) => {
                 self.validate_complete(*id);
-                self.validate_type(*id);
+                // Don't validate_type here - it would cause infinite recursion
+                // The type will be validated separately in validate_all
             }
             TyKind::Array { ty, len } => {
                 if *len == 0 {

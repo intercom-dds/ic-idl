@@ -49,6 +49,8 @@ pub struct TypeResolver<'a> {
     errors: Vec<Diag>,
     /// Maps AST items to their DefIds for easy lookup.
     item_map: HashMap<ItemKey, DefId>,
+    /// Current scope for resolving unqualified names.
+    current_scope: Vec<String>,
 }
 
 /// Key for looking up items by their AST identity.
@@ -65,6 +67,7 @@ impl<'a> TypeResolver<'a> {
             name_map,
             errors: Vec::new(),
             item_map: HashMap::new(),
+            current_scope: Vec::new(),
         }
     }
 
@@ -72,21 +75,33 @@ impl<'a> TypeResolver<'a> {
     fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
         let qualified = path_to_string(path);
 
-        match self.name_map.get(&qualified) {
-            Some(&id) => Some(id),
-            None => {
-                // Check if it's a primitive type
-                if path.segments.len() == 1 && path.leading_colons.is_none() {
-                    return None; // Might be a primitive, handled in resolve_type
-                }
+        // First try the path as-is
+        if let Some(&id) = self.name_map.get(&qualified) {
+            return Some(id);
+        }
 
-                self.errors.push(error_span(
-                    format!("unresolved type `{}`", qualified),
-                    Label::new(ic_syntax::util::path_span(path)).message("unknown type"),
-                ));
-                None
+        // If it's an unqualified name and we're in a scope, try with the current scope
+        if path.segments.len() == 1
+            && path.leading_colons.is_none()
+            && !self.current_scope.is_empty()
+        {
+            let scoped_name = format!("{}::{}", self.current_scope.join("::"), qualified);
+
+            if let Some(&id) = self.name_map.get(&scoped_name) {
+                return Some(id);
             }
         }
+
+        // Check if it's a primitive type
+        if path.segments.len() == 1 && path.leading_colons.is_none() {
+            return None; // Might be a primitive, handled in resolve_type
+        }
+
+        self.errors.push(error_span(
+            format!("unresolved type `{}`", qualified),
+            Label::new(ic_syntax::util::path_span(path)).message("unknown type"),
+        ));
+        None
     }
 
     /// Resolves an AST type to a HIR type.
@@ -136,11 +151,28 @@ impl<'a> TypeResolver<'a> {
                 }
 
                 // Otherwise resolve as user-defined type
-                let kind = self.resolve_path(v).map(TyKind::Adt).unwrap_or(TyKind::Any);
-
-                Ty {
-                    kind,
-                    span: ic_syntax::util::path_span(v),
+                let path_str = v
+                    .segments
+                    .iter()
+                    .map(|s| s.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join("::");
+                match self.resolve_path(v) {
+                    Some(id) => Ty {
+                        kind: TyKind::Adt(id),
+                        span: ic_syntax::util::path_span(v),
+                    },
+                    None => {
+                        self.errors.push(error_span(
+                            format!("undefined type `{}`", path_str),
+                            Label::new(ic_syntax::util::path_span(v)).message("type not found"),
+                        ));
+                        // Return a placeholder type to continue processing
+                        Ty {
+                            kind: TyKind::Any,
+                            span: ic_syntax::util::path_span(v),
+                        }
+                    }
                 }
             }
         }
@@ -353,50 +385,48 @@ impl<'a> TypeResolver<'a> {
 
     /// Builds a mapping from AST items to their DefIds.
     fn build_item_map(&mut self, items: &[Item]) {
+        self.build_item_map_with_scope(items, &Vec::new());
+    }
+
+    /// Builds a mapping from AST items to their DefIds with a given scope.
+    fn build_item_map_with_scope(&mut self, items: &[Item], scope: &[String]) {
         for item in items {
-            let key = match item {
-                Item::StructValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "struct",
-                },
-                Item::UnionValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "union",
-                },
-                Item::EnumValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "enum",
-                },
-                Item::ExceptionValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "exception",
-                },
-                Item::BitmaskValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "bitmask",
-                },
-                Item::InterfaceValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "interface",
-                },
-                Item::ModuleValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "module",
-                },
-                Item::AnnotationValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "annotation",
-                },
-                Item::ValuetypeValue(v) => ItemKey {
-                    name: v.ident.name.clone(),
-                    kind: "valuetype",
-                },
+            let (name, kind, nested_items) = match item {
+                Item::StructValue(v) => (v.ident.name.clone(), "struct", None),
+                Item::UnionValue(v) => (v.ident.name.clone(), "union", None),
+                Item::EnumValue(v) => (v.ident.name.clone(), "enum", None),
+                Item::ExceptionValue(v) => (v.ident.name.clone(), "exception", None),
+                Item::BitmaskValue(v) => (v.ident.name.clone(), "bitmask", None),
+                Item::InterfaceValue(v) => (v.ident.name.clone(), "interface", None),
+                Item::ModuleValue(v) => (v.ident.name.clone(), "module", Some(&v.definitions)),
+                Item::AnnotationValue(v) => (v.ident.name.clone(), "annotation", None),
+                Item::ValuetypeValue(v) => (v.ident.name.clone(), "valuetype", None),
                 _ => continue,
             };
 
-            // Look up in global scope for now (TODO: handle nested scopes)
-            if let Some(&id) = self.name_map.get(&key.name) {
+            // Build the qualified name
+            let qualified_name = if scope.is_empty() {
+                name.clone()
+            } else {
+                format!("{}::{}", scope.join("::"), name)
+            };
+
+            let key = ItemKey {
+                name: name.clone(),
+                kind,
+            };
+
+            // Look up with qualified name
+            if let Some(&id) = self.name_map.get(&qualified_name) {
                 self.item_map.insert(key, id);
+            } else {
+            }
+
+            // Process nested items if this is a module
+            if let Some(nested) = nested_items {
+                let mut new_scope = scope.to_vec();
+                new_scope.push(name.clone());
+                self.build_item_map_with_scope(nested, &new_scope);
             }
         }
     }
@@ -487,6 +517,14 @@ impl<'a> TypeResolver<'a> {
                         self.resolve_bitmask(id, v);
                     }
                 }
+                Item::ModuleValue(v) => {
+                    if let Some(&id) = self.item_map.get(&ItemKey {
+                        name: v.ident.name.clone(),
+                        kind: "module",
+                    }) {
+                        self.resolve_module(id, v);
+                    }
+                }
                 // TODO: Handle other item types
                 _ => {}
             }
@@ -511,14 +549,20 @@ impl<'a> TypeResolver<'a> {
         self.mark_forward_declarations_resolved(&def.ident.name);
 
         // Resolve parent/extends types
-        let parent_id = def.inherits.as_ref().and_then(|path| self.resolve_path(path));
-        let extends_id = def.supports.as_ref().and_then(|path| self.resolve_path(path));
+        let parent_id = def
+            .inherits
+            .as_ref()
+            .and_then(|path| self.resolve_path(path));
+        let extends_id = def
+            .supports
+            .as_ref()
+            .and_then(|path| self.resolve_path(path));
 
         // Resolve prototypes
         let mut prototypes = Vec::new();
         for proto in &def.prototypes {
             let ty = self.resolve_type(&proto.ret);
-            
+
             let mut params = Vec::new();
             for param in &proto.params {
                 // Get the identifier from the declarator
@@ -526,14 +570,14 @@ impl<'a> TypeResolver<'a> {
                     ic_syntax::Declarator::Simple(name) => name.clone(),
                     ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
                 };
-                
+
                 params.push(Parameter {
                     ident,
                     ty: self.resolve_type(&param.ty),
                     kind: param.kind.unwrap_or(ic_syntax::ParamKind::In),
                 });
             }
-            
+
             prototypes.push(ProtoTy {
                 ident: proto.ident.clone(),
                 ty,
@@ -582,6 +626,22 @@ impl<'a> TypeResolver<'a> {
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
             bitmask_ty.ty = underlying_ty;
         }
+    }
+
+    /// Resolves a module definition and its nested items.
+    fn resolve_module(&mut self, id: DefId, def: &ic_syntax::ModuleDef) {
+        // Mark module as resolved
+        let hir_def = self.ctx.definitions.get_mut(id);
+        hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+
+        // Push module name to current scope
+        self.current_scope.push(def.ident.name.clone());
+
+        // Recursively resolve all nested items
+        self.resolve_all(&def.definitions);
+
+        // Pop module name from current scope
+        self.current_scope.pop();
     }
 }
 

@@ -276,6 +276,38 @@ impl<'a> NameCollector<'a> {
         id
     }
 
+    fn collect_valuetype(&mut self, def: &ic_syntax::ValuetypeDef) -> DefId {
+        let id = self.alloc_scoped_definition(
+            def.ident.clone(),
+            DefKind::Valuetype(ValueTy {
+                parent: None,
+                extends: None,
+                prototypes: Vec::new(),
+                members: Vec::new(),
+                definitions: Vec::new(),
+            }),
+            def.span,
+        );
+
+        // Collect nested type definitions
+        let mut child_ids = Vec::new();
+        for item in &def.definitions {
+            child_ids.extend(self.collect_item(item));
+        }
+
+        // Update valuetype with children
+        if let Def {
+            kind: DefKind::Valuetype(valuetype),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
+            valuetype.definitions = child_ids;
+        }
+
+        self.scope_stack.pop();
+        id
+    }
+
     fn collect_simple_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident, kind, span);
         id
@@ -365,8 +397,10 @@ impl<'a> NameCollector<'a> {
                 v.span,
             )],
 
-            // Skip for now
-            Item::ValuetypeValue(_) | Item::BitsetValue(_) => Vec::new(),
+            Item::ValuetypeValue(v) => vec![self.collect_valuetype(v)],
+            
+            // Skip bitset for now - it's a low priority feature
+            Item::BitsetValue(_) => Vec::new(),
         }
     }
 }

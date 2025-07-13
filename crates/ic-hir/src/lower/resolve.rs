@@ -510,15 +510,46 @@ impl<'a> TypeResolver<'a> {
         // Mark any forward declarations as resolved
         self.mark_forward_declarations_resolved(&def.ident.name);
 
-        // TODO: Properly handle valuetype members (they're different from struct members)
-        // For now, just mark as complete
+        // Resolve parent/extends types
+        let parent_id = def.inherits.as_ref().and_then(|path| self.resolve_path(path));
+        let extends_id = def.supports.as_ref().and_then(|path| self.resolve_path(path));
+
+        // Resolve prototypes
+        let mut prototypes = Vec::new();
+        for proto in &def.prototypes {
+            let ty = self.resolve_type(&proto.ret);
+            
+            let mut params = Vec::new();
+            for param in &proto.params {
+                // Get the identifier from the declarator
+                let ident = match &param.decl {
+                    ic_syntax::Declarator::Simple(name) => name.clone(),
+                    ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
+                };
+                
+                params.push(Parameter {
+                    ident,
+                    ty: self.resolve_type(&param.ty),
+                    kind: param.kind.unwrap_or(ic_syntax::ParamKind::In),
+                });
+            }
+            
+            prototypes.push(ProtoTy {
+                ident: proto.ident.clone(),
+                ty,
+                params,
+            });
+        }
 
         // Update the definition
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
 
         if let DefKind::Valuetype(vt) = &mut hir_def.kind {
-            // TODO: Resolve parent, extends, prototypes, members, definitions
+            vt.parent = parent_id;
+            vt.extends = extends_id;
+            vt.prototypes = prototypes;
+            // Members are still TODO - they're more complex
             vt.members = Vec::new();
         }
     }

@@ -86,7 +86,7 @@ impl<'a> TypeChecker<'a> {
                 ));
                 false
             }
-            
+
             // Enum values - check that the numeric value is compatible with the enum's underlying type
             (value, TyKind::Adt(type_id)) => {
                 let def = self.ctx.definitions.get(*type_id);

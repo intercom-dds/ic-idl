@@ -117,19 +117,19 @@ impl<'a> NameCollector<'a> {
         let flags = match &kind {
             // These are complete immediately
             DefKind::Const(_) => DefFlags::default(),
-            DefKind::Enum(_) => DefFlags::default(),      // Enums can't be forward declared
-            DefKind::Bitmask(_) => DefFlags::default(),   // Bitmasks can't be forward declared
-            DefKind::Module(_) => DefFlags::default(),    // Modules can't be forward declared
+            DefKind::Enum(_) => DefFlags::default(), // Enums can't be forward declared
+            DefKind::Bitmask(_) => DefFlags::default(), // Bitmasks can't be forward declared
+            DefKind::Module(_) => DefFlags::default(), // Modules can't be forward declared
             DefKind::Annotation(_) => DefFlags::default(), // Annotations can't be forward declared
-            DefKind::Alias(_) => DefFlags::default(),      // Type aliases can't be forward declared
-            
+            DefKind::Alias(_) => DefFlags::default(), // Type aliases can't be forward declared
+
             // These need resolution and can have forward declarations
-            DefKind::Decl(_) => DefFlags::IS_INCOMPLETE,      // Forward declarations are always incomplete
-            DefKind::Struct(_) => DefFlags::IS_INCOMPLETE,    // Can be forward declared
-            DefKind::Union(_) => DefFlags::IS_INCOMPLETE,     // Can be forward declared
+            DefKind::Decl(_) => DefFlags::IS_INCOMPLETE, // Forward declarations are always incomplete
+            DefKind::Struct(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
+            DefKind::Union(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
             DefKind::Interface(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
             DefKind::Valuetype(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
-            DefKind::Except(_) => DefFlags::IS_INCOMPLETE,    // Exceptions need member resolution
+            DefKind::Except(_) => DefFlags::IS_INCOMPLETE, // Exceptions need member resolution
         };
 
         // Check if this is a forward declaration before moving kind

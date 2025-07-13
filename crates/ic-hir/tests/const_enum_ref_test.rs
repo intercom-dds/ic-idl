@@ -40,20 +40,28 @@ fn test_const_enum_reference() {
         const MyEnum MY_CONST = MyEnum::ZERO;
         const int32 INT_CONST = MyEnum::TWO;
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
-    assert!(result.errors.is_empty(), "Unexpected errors: {:?}", result.errors);
-    
+    assert!(
+        result.errors.is_empty(),
+        "Unexpected errors: {:?}",
+        result.errors
+    );
+
     // Verify the constant values were resolved correctly
     let mut found_my_const = false;
     let mut found_int_const = false;
-    
+
     for (_, def) in result.context.definitions.iter() {
         if def.ident.name == "MY_CONST" {
             if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
@@ -71,7 +79,7 @@ fn test_const_enum_reference() {
             }
         }
     }
-    
+
     assert!(found_my_const, "MY_CONST not found or has wrong type");
     assert!(found_int_const, "INT_CONST not found or has wrong type");
 }
@@ -82,16 +90,24 @@ fn test_const_ref_to_const() {
         const int32 BASE = 100;
         const int32 DERIVED = BASE + 50;
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
-    assert!(result.errors.is_empty(), "Unexpected errors: {:?}", result.errors);
-    
+    assert!(
+        result.errors.is_empty(),
+        "Unexpected errors: {:?}",
+        result.errors
+    );
+
     // Verify DERIVED has the correct value
     for (_, def) in result.context.definitions.iter() {
         if def.ident.name == "DERIVED" {
@@ -103,7 +119,7 @@ fn test_const_ref_to_const() {
             }
         }
     }
-    
+
     panic!("DERIVED constant not found or has wrong type");
 }
 
@@ -117,15 +133,22 @@ fn test_undefined_enum_field() {
         
         const int32 BAD = MyEnum::UNDEFINED;
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have an error about undefined enum field
-    assert!(!result.errors.is_empty(), "Expected error for undefined enum field");
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for undefined enum field"
+    );
 }
 
 #[test]
@@ -133,13 +156,20 @@ fn test_undefined_variable() {
     let input = r#"
         const int32 BAD = UNDEFINED_VAR;
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have an error about undefined variable
-    assert!(!result.errors.is_empty(), "Expected error for undefined variable");
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for undefined variable"
+    );
 }

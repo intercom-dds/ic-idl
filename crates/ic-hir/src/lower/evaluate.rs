@@ -36,6 +36,10 @@
 //! At this point, all types are resolved, so we can properly evaluate expressions.
 
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_expr::{
+    Error as ExprError, EvalConfig, GenericNumeric, NumericValue, OverflowBehavior,
+    Result as ExprResult,
+};
 use ic_syntax::{Expr, Item};
 
 use crate::Context;
@@ -48,6 +52,46 @@ struct IdlLiteral {
     value: ic_syntax::LiteralValue,
 }
 
+/// Type alias for the generic numeric type from ic-expr.
+type EvalNumeric = GenericNumeric;
+
+/// Convert from GenericNumeric to HIR Numeric type
+fn to_hir_numeric(val: GenericNumeric) -> Numeric {
+    match val {
+        GenericNumeric::Bool(v) => Numeric::Bool(v),
+        GenericNumeric::Char(v) => Numeric::Char(v),
+        GenericNumeric::Int8(v) => Numeric::Int8(v),
+        GenericNumeric::UInt8(v) => Numeric::Octet(v),
+        GenericNumeric::Int16(v) => Numeric::Int16(v),
+        GenericNumeric::UInt16(v) => Numeric::UInt16(v),
+        GenericNumeric::Int32(v) => Numeric::Int32(v),
+        GenericNumeric::UInt32(v) => Numeric::UInt32(v),
+        GenericNumeric::Int64(v) => Numeric::Int64(v),
+        GenericNumeric::UInt64(v) => Numeric::UInt64(v),
+        GenericNumeric::Float(v) => Numeric::Float(v),
+        GenericNumeric::Double(v) => Numeric::Double(v),
+    }
+}
+
+/// Try to convert from HIR Numeric type to GenericNumeric
+fn from_hir_numeric(n: &Numeric) -> Option<GenericNumeric> {
+    match n {
+        Numeric::Bool(v) => Some(GenericNumeric::Bool(*v)),
+        Numeric::Char(v) => Some(GenericNumeric::Char(*v)),
+        Numeric::Int8(v) => Some(GenericNumeric::Int8(*v)),
+        Numeric::Octet(v) => Some(GenericNumeric::UInt8(*v)),
+        Numeric::Int16(v) => Some(GenericNumeric::Int16(*v)),
+        Numeric::UInt16(v) => Some(GenericNumeric::UInt16(*v)),
+        Numeric::Int32(v) => Some(GenericNumeric::Int32(*v)),
+        Numeric::UInt32(v) => Some(GenericNumeric::UInt32(*v)),
+        Numeric::Int64(v) => Some(GenericNumeric::Int64(*v)),
+        Numeric::UInt64(v) => Some(GenericNumeric::UInt64(*v)),
+        Numeric::Float(v) => Some(GenericNumeric::Float(*v)),
+        Numeric::Double(v) => Some(GenericNumeric::Double(*v)),
+        _ => None, // Non-arithmetic variants
+    }
+}
+
 /// Context for evaluating IDL expressions.
 struct IdlEvalContext<'a> {
     ctx: &'a Context,
@@ -56,44 +100,40 @@ struct IdlEvalContext<'a> {
 }
 
 impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
-    type Value = ic_expr::idl_adapter::Numeric;
+    type Value = EvalNumeric;
 
-    fn eval_literal(&mut self, lit: &IdlLiteral) -> ic_expr::Result<Self::Value> {
-        use ic_expr::idl_adapter::Numeric;
-
+    fn eval_literal(&mut self, lit: &IdlLiteral) -> ExprResult<Self::Value> {
         match &lit.value {
-            ic_syntax::LiteralValue::Null => Err(ic_expr::Error::Custom(
+            ic_syntax::LiteralValue::Null => Err(ExprError::Custom(
                 "null literals not supported in constant expressions".to_string(),
             )),
-            ic_syntax::LiteralValue::Bool(b) => Ok(Numeric::Bool(*b)),
-            ic_syntax::LiteralValue::Char(c) => Ok(Numeric::Char(*c)),
+            ic_syntax::LiteralValue::Bool(b) => Ok(GenericNumeric::Bool(*b)),
+            ic_syntax::LiteralValue::Char(c) => Ok(GenericNumeric::Char(*c)),
             ic_syntax::LiteralValue::Int(i) => {
                 // TODO: Handle different integer types based on suffix
                 // For now, assume Int32
-                Ok(Numeric::Int32(*i as i32))
+                Ok(GenericNumeric::Int32(*i as i32))
             }
             ic_syntax::LiteralValue::Float(f) => {
                 // TODO: Handle float vs double based on suffix
-                Ok(Numeric::Float(*f as f32))
+                Ok(GenericNumeric::Float(*f as f32))
             }
-            ic_syntax::LiteralValue::String(s) => Err(ic_expr::Error::Custom(format!(
+            ic_syntax::LiteralValue::String(s) => Err(ExprError::Custom(format!(
                 "string literals not supported in constant expressions: \"{}\"",
                 s
             ))),
         }
     }
 
-    fn lookup_var(&mut self, name: &str) -> ic_expr::Result<Self::Value> {
-        use ic_expr::idl_adapter::Numeric;
-        
+    fn lookup_var(&mut self, name: &str) -> ExprResult<Self::Value> {
         // Try to parse as a qualified name (e.g., "MyEnum::VALUE")
         let parts: Vec<&str> = name.split("::").collect();
-        
+
         if parts.len() == 2 {
             // This might be an enum constant reference
             let enum_name = parts[0];
             let field_name = parts[1];
-            
+
             // Look through all definitions to find the enum
             for (_, def) in self.ctx.definitions.iter() {
                 if def.ident.name == enum_name {
@@ -102,49 +142,42 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                         for field in &enum_ty.fields {
                             if field.ident.name == field_name {
                                 // Return the enum field value
-                                return Ok(Numeric::Int32(field.value as i32));
+                                return Ok(GenericNumeric::Int32(field.value as i32));
                             }
                         }
                         // Debug: Print all field names
-                        let field_names: Vec<&str> = enum_ty.fields.iter()
+                        let field_names: Vec<&str> = enum_ty
+                            .fields
+                            .iter()
                             .map(|f| f.ident.name.as_str())
                             .collect();
-                        return Err(ic_expr::Error::Custom(
-                            format!("enum field `{}::{}` not found. Available fields: {:?}", 
-                                enum_name, field_name, field_names)
-                        ));
+                        return Err(ExprError::Custom(format!(
+                            "enum field `{}::{}` not found. Available fields: {:?}",
+                            enum_name, field_name, field_names
+                        )));
                     }
                 }
             }
         }
-        
+
         // Try to find a constant with this name
         for (_, def) in self.ctx.definitions.iter() {
             if def.ident.name == name {
                 if let DefKind::Const(const_ty) = &def.kind {
-                    // Convert HIR Numeric to ic_expr Numeric
-                    match &const_ty.value {
-                        crate::hir::Numeric::Bool(b) => return Ok(Numeric::Bool(*b)),
-                        crate::hir::Numeric::Char(c) => return Ok(Numeric::Char(*c)),
-                        crate::hir::Numeric::Int8(i) => return Ok(Numeric::Int8(*i)),
-                        crate::hir::Numeric::Octet(i) => return Ok(Numeric::Octet(*i)),
-                        crate::hir::Numeric::Int16(i) => return Ok(Numeric::Int16(*i)),
-                        crate::hir::Numeric::UInt16(i) => return Ok(Numeric::UInt16(*i)),
-                        crate::hir::Numeric::Int32(i) => return Ok(Numeric::Int32(*i)),
-                        crate::hir::Numeric::UInt32(i) => return Ok(Numeric::UInt32(*i)),
-                        crate::hir::Numeric::Int64(i) => return Ok(Numeric::Int64(*i)),
-                        crate::hir::Numeric::UInt64(i) => return Ok(Numeric::UInt64(*i)),
-                        crate::hir::Numeric::Float(f) => return Ok(Numeric::Float(*f)),
-                        crate::hir::Numeric::Double(f) => return Ok(Numeric::Double(*f)),
-                        _ => return Err(ic_expr::Error::Custom(
-                            format!("constant `{}` has non-numeric value", name)
-                        )),
+                    // Convert HIR Numeric to GenericNumeric
+                    if let Some(eval_num) = from_hir_numeric(&const_ty.value) {
+                        return Ok(eval_num);
+                    } else {
+                        return Err(ExprError::Custom(format!(
+                            "constant `{}` has non-numeric value",
+                            name
+                        )));
                     }
                 }
             }
         }
-        
-        Err(ic_expr::Error::Custom(format!("undefined variable: {}", name)))
+
+        Err(ExprError::Custom(format!("undefined variable: {}", name)))
     }
 
     fn config(&self) -> ic_expr::EvalConfig {
@@ -260,28 +293,14 @@ impl<'a> ExpressionEvaluator<'a> {
         // Evaluate the expression
         match ic_expr::eval(&ic_expr, &mut eval_ctx) {
             Ok(value) => {
-                // Convert ic-expr Numeric to HIR Numeric
-                use ic_expr::idl_adapter::Numeric as ExprNumeric;
-                match value {
-                    ExprNumeric::Bool(b) => Numeric::Bool(b),
-                    ExprNumeric::Char(c) => Numeric::Char(c),
-                    ExprNumeric::Int8(i) => Numeric::Int8(i),
-                    ExprNumeric::Octet(i) => Numeric::Octet(i),
-                    ExprNumeric::Int16(i) => Numeric::Int16(i),
-                    ExprNumeric::UInt16(i) => Numeric::UInt16(i),
-                    ExprNumeric::Int32(i) => Numeric::Int32(i),
-                    ExprNumeric::UInt32(i) => Numeric::UInt32(i),
-                    ExprNumeric::Int64(i) => Numeric::Int64(i),
-                    ExprNumeric::UInt64(i) => Numeric::UInt64(i),
-                    ExprNumeric::Float(f) => Numeric::Float(f),
-                    ExprNumeric::Double(f) => Numeric::Double(f),
-                }
+                // Convert GenericNumeric to HIR Numeric
+                to_hir_numeric(value)
             }
             Err(err) => {
                 let msg = match err {
-                    ic_expr::Error::DivisionByZero => "division by zero",
-                    ic_expr::Error::ModuloByZero => "modulo by zero",
-                    ic_expr::Error::Overflow(op_str) => {
+                    ExprError::DivisionByZero => "division by zero",
+                    ExprError::ModuloByZero => "modulo by zero",
+                    ExprError::Overflow(op_str) => {
                         self.errors.push(warn_span(
                             format!("arithmetic overflow in {} operation", op_str),
                             Label::new(ic_syntax::util::expr_span(expr))
@@ -291,21 +310,21 @@ impl<'a> ExpressionEvaluator<'a> {
                         // TODO: Actually compute the wrapped value
                         return Numeric::Int32(0);
                     }
-                    ic_expr::Error::InvalidShift(amount) => {
+                    ExprError::InvalidShift(amount) => {
                         self.errors.push(error_span(
                             format!("invalid shift amount: {}", amount),
                             Label::new(ic_syntax::util::expr_span(expr)).message("invalid shift"),
                         ));
                         return Numeric::Null;
                     }
-                    ic_expr::Error::InvalidUnaryOp(op) => {
+                    ExprError::InvalidUnaryOp(op) => {
                         self.errors.push(error_span(
                             format!("invalid unary operator: {:?}", op),
                             Label::new(ic_syntax::util::expr_span(expr)).message("cannot apply"),
                         ));
                         return Numeric::Null;
                     }
-                    ic_expr::Error::Custom(s) => {
+                    ExprError::Custom(s) => {
                         self.errors.push(error_span(
                             s,
                             Label::new(ic_syntax::util::expr_span(expr))
@@ -414,7 +433,7 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             last_value = value;
-            
+
             fields.push(EnumLit {
                 ident: field.ident.clone(),
                 value,
@@ -444,7 +463,7 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             last_value = value;
-            
+
             flags.push(BitFlag {
                 ident: bit.ident.clone(),
                 value,

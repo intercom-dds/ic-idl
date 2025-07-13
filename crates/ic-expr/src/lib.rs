@@ -31,7 +31,8 @@ pub mod error;
 pub use error::{Error, Result};
 
 pub mod c_adapter;
-pub mod idl_adapter;
+pub mod generic_numeric;
+pub use generic_numeric::GenericNumeric;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Op {
@@ -216,7 +217,7 @@ pub trait EvalContext<T> {
     /// # Errors
     /// Returns an error if the literal cannot be evaluated
     fn eval_literal(&mut self, lit: &T) -> Result<Self::Value>;
-    
+
     /// Look up a variable by name
     ///
     /// # Errors
@@ -239,7 +240,7 @@ where
 {
     match expr {
         Expr::Lit(lit) => ctx.eval_literal(lit),
-        
+
         Expr::Var(name) => ctx.lookup_var(name),
 
         Expr::Unary(unary) => {

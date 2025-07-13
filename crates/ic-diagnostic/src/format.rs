@@ -203,25 +203,25 @@ impl Formatter<'_> {
     }
 
     fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
-        let (first_line_number, col) = line_col(
-            self.source,
-            diag.labels
-                .first()
-                .map_or(0, |v| v.span.start.offset as usize),
-        );
+        if diag.labels.is_empty() {
+            return Ok(());
+        }
 
-        let mut min_line = first_line_number;
-        let mut max_line = first_line_number;
-
+        // Calculate the maximum line number for proper indentation
+        let mut max_line = 0;
         for label in &diag.labels {
-            let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
-            min_line = min_line.min(start_line);
             max_line = max_line.max(end_line);
         }
 
         let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
+
+        // Get location info from the first label
+        let (first_line_number, col) = line_col(
+            self.source,
+            diag.labels.first().unwrap().span.start.offset as usize,
+        );
 
         writeln!(
             f,
@@ -231,20 +231,42 @@ impl Formatter<'_> {
         )?;
         writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
 
-        for line_num in min_line..=max_line {
-            write!(
-                f,
-                " {} {}",
-                line_num.blue().bold(),
-                self.chars.vertical.blue().bold(),
-            )?;
+        // Collect line ranges for each label, preserving order
+        let mut line_groups = Vec::new();
+        let mut seen_lines = std::collections::HashSet::new();
+        
+        for label in &diag.labels {
+            let start_line = line_number(self.source, label.span.start.offset as usize);
+            let end_line = line_number(self.source, label.span.end.offset as usize);
+            
+            let mut group_lines = Vec::new();
+            for line in start_line..=end_line {
+                if seen_lines.insert(line) {
+                    group_lines.push(line);
+                }
+            }
+            
+            if !group_lines.is_empty() {
+                line_groups.push(group_lines);
+            }
+        }
 
-            let line_start = self.line_start_offset(line_num);
+        // Display line groups in order
+        for group in line_groups {
+            for line_num in group {
+                write!(
+                    f,
+                    " {} {}",
+                    line_num.blue().bold(),
+                    self.chars.vertical.blue().bold(),
+                )?;
 
-            let range = line_span(self.source, line_start as u32);
-            writeln!(f, " {}", self.source[range].trim_end())?;
+                let line_start = self.line_start_offset(line_num);
+                let range = line_span(self.source, line_start as u32);
+                writeln!(f, " {}", self.source[range].trim_end())?;
 
-            self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
+                self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
+            }
         }
 
         writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())

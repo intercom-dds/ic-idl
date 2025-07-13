@@ -238,7 +238,7 @@ impl ScopeTree {
         }
         None
     }
-    
+
     /// Gets all visible enums from a scope (including parent scopes).
     pub fn get_visible_enums(&self, scope: ScopeId, definitions: &Arena<Def>) -> Vec<DefId> {
         let mut results = Vec::new();

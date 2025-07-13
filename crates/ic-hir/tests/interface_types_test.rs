@@ -48,13 +48,21 @@ fn test_interface_nested_types() {
             FileType getType(in string path);
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -71,13 +79,21 @@ fn test_interface_nested_type_in_typedef() {
             RequestList getPendingRequests();
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 }
 
 #[test]
@@ -94,13 +110,24 @@ fn test_interface_type_not_visible_outside() {
             InternalData data;
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(!result.errors.is_empty(), "Expected error for type not visible outside interface");
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for type not visible outside interface"
+    );
     let error_msg = format!("{:?}", result.errors[0]);
-    assert!(error_msg.contains("undefined type"), "Error message should contain 'undefined type': {}", error_msg);
+    assert!(
+        error_msg.contains("undefined type"),
+        "Error message should contain 'undefined type': {}",
+        error_msg
+    );
 }

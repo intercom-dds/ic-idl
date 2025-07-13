@@ -33,16 +33,27 @@ fn test_struct_forward_declaration() {
             long x;
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
-    // Verify we have one struct definition  
-    let structs: Vec<_> = result.context.definitions.iter()
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
+    // Verify we have one struct definition
+    let structs: Vec<_> = result
+        .context
+        .definitions
+        .iter()
         .filter(|(_, def)| matches!(def.kind, ic_hir::hir::DefKind::Struct(_)))
         .collect();
     assert_eq!(structs.len(), 1, "Expected exactly one struct definition");
@@ -56,19 +67,34 @@ fn test_interface_forward_declaration() {
             void method();
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
     // Verify we have one interface definition
-    let interfaces: Vec<_> = result.context.definitions.iter()
+    let interfaces: Vec<_> = result
+        .context
+        .definitions
+        .iter()
         .filter(|(_, def)| matches!(def.kind, ic_hir::hir::DefKind::Interface(_)))
         .collect();
-    assert_eq!(interfaces.len(), 1, "Expected exactly one interface definition");
+    assert_eq!(
+        interfaces.len(),
+        1,
+        "Expected exactly one interface definition"
+    );
 }
 
 #[test]
@@ -82,15 +108,26 @@ fn test_duplicate_definitions_same_scope() {
             double y;
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(!result.errors.is_empty(), "Expected error for duplicate struct");
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for duplicate struct"
+    );
     let error_msg = format!("{:?}", result.errors[0]);
-    assert!(error_msg.contains("duplicate definition"), "Error message doesn't contain 'duplicate definition': {}", error_msg);
+    assert!(
+        error_msg.contains("duplicate definition"),
+        "Error message doesn't contain 'duplicate definition': {}",
+        error_msg
+    );
 }
 
 #[test]
@@ -109,16 +146,27 @@ fn test_duplicate_names_different_scopes() {
             };
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty(), "Expected no errors for same name in different scopes, got: {:?}", result.errors);
-    
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors for same name in different scopes, got: {:?}",
+        result.errors
+    );
+
     // Verify we have two struct definitions
-    let structs: Vec<_> = result.context.definitions.iter()
+    let structs: Vec<_> = result
+        .context
+        .definitions
+        .iter()
         .filter(|(_, def)| matches!(def.kind, ic_hir::hir::DefKind::Struct(_)))
         .collect();
     assert_eq!(structs.len(), 2, "Expected exactly two struct definitions");
@@ -132,11 +180,18 @@ fn test_forward_declaration_type_mismatch() {
             void method();
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let result = ic_hir::from_ast(parsed.tree);
-    assert!(!result.errors.is_empty(), "Expected error for type mismatch");
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for type mismatch"
+    );
 }

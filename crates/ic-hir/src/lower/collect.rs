@@ -376,17 +376,17 @@ impl<'a> NameCollector<'a> {
                     }),
                     v.span,
                 );
-                
+
                 // If the struct has members, it's a complete definition, not a forward declaration
                 if !v.members.is_empty() {
                     if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
                         *flags &= !DefFlags::IS_INCOMPLETE;
                     }
                 }
-                
+
                 // Already registered in scope by alloc_definition
                 vec![id]
-            },
+            }
             Item::UnionValue(v) => {
                 let id = self.alloc_definition(
                     v.ident.clone(),
@@ -396,17 +396,17 @@ impl<'a> NameCollector<'a> {
                     }),
                     v.span,
                 );
-                
+
                 // If the union has fields, it's a complete definition
                 if !v.fields.is_empty() {
                     if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
                         *flags &= !DefFlags::IS_INCOMPLETE;
                     }
                 }
-                
+
                 // Already registered in scope by alloc_definition
                 vec![id]
-            },
+            }
             Item::EnumValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
                 DefKind::Enum(EnumTy {
@@ -423,17 +423,17 @@ impl<'a> NameCollector<'a> {
                     }),
                     v.span,
                 );
-                
+
                 // If the exception has members, it's a complete definition
                 if !v.members.is_empty() {
                     if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
                         *flags &= !DefFlags::IS_INCOMPLETE;
                     }
                 }
-                
+
                 // Already registered in scope by alloc_definition
                 vec![id]
-            },
+            }
             Item::BitmaskValue(v) => vec![self.collect_simple_definition(
                 v.ident.clone(),
                 DefKind::Bitmask(BitmaskTy {

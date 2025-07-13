@@ -128,10 +128,17 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
     }
 
     fn lookup_var(&mut self, name: &str) -> ExprResult<Self::Value> {
-        let parts: Vec<&str> = name.split("::").collect();
+        // Check if name starts with :: for global scope resolution
+        let (start_scope, name_without_prefix) = if name.starts_with("::") {
+            (self.ctx.scopes.root(), &name[2..])
+        } else {
+            (self.current_scope, name)
+        };
+
+        let parts: Vec<&str> = name_without_prefix.split("::").collect();
 
         // Try to resolve the path using the scope tree
-        if let Some(def_id) = self.ctx.scopes.resolve_path(self.current_scope, &parts) {
+        if let Some(def_id) = self.ctx.scopes.resolve_path(start_scope, &parts) {
             let def = self.ctx.definitions.get(def_id);
 
             // Check if it's a constant
@@ -152,9 +159,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                 // Only handle single field name after the enum
                 if split_pos == parts.len() - 1 {
                     // Try to resolve the enum path
-                    if let Some(enum_id) =
-                        self.ctx.scopes.resolve_path(self.current_scope, enum_parts)
-                    {
+                    if let Some(enum_id) = self.ctx.scopes.resolve_path(start_scope, enum_parts) {
                         let enum_def = self.ctx.definitions.get(enum_id);
                         if let DefKind::Enum(enum_ty) = &enum_def.kind {
                             // Look for the field
@@ -246,11 +251,19 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
 
 /// Converts a path to its string representation.
 fn path_to_string(path: &ic_syntax::Path) -> String {
-    path.segments
+    let segments = path
+        .segments
         .iter()
         .map(|s| s.name.as_str())
         .collect::<Vec<_>>()
-        .join("::")
+        .join("::");
+
+    // Preserve leading :: for global scope resolution
+    if path.leading_colons.is_some() {
+        format!("::{}", segments)
+    } else {
+        segments
+    }
 }
 
 /// Converts an ic-syntax expression to an ic-expr expression.

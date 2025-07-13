@@ -33,19 +33,21 @@ fn debug_forward_declaration_collection() {
             long x;
         };
     "#;
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    
+
     let result = ic_hir::from_ast(parsed.tree);
-    
+
     // Print all definitions
     println!("All definitions:");
     for (id, def) in result.context.definitions.iter() {
-        println!("  {:?}: {} - {:?} (parent: {:?})", 
-            id, def.ident.name, def.kind, def.parent);
+        println!(
+            "  {:?}: {} - {:?} (parent: {:?})",
+            id, def.ident.name, def.kind, def.parent
+        );
     }
-    
+
     // Print all definitions named "Foo"
     println!("\nDefinitions named 'Foo':");
     let mut foo_defs = Vec::new();
@@ -55,7 +57,7 @@ fn debug_forward_declaration_collection() {
             foo_defs.push(id);
         }
     }
-    
+
     // Check the order they would be processed
     println!("\nOrder of processing:");
     for &id in &foo_defs {

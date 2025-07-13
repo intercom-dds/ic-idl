@@ -80,12 +80,15 @@ impl<'a> TypeResolver<'a> {
         // Convert path segments to string slice
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
 
+        // If path has leading colons (::), resolve from global scope
+        let start_scope = if path.leading_colons.is_some() {
+            self.ctx.scopes.root()
+        } else {
+            self.current_scope_id
+        };
+
         // Use the scope tree to resolve the path
-        if let Some(def_id) = self
-            .ctx
-            .scopes
-            .resolve_path(self.current_scope_id, &segments)
-        {
+        if let Some(def_id) = self.ctx.scopes.resolve_path(start_scope, &segments) {
             return Some(def_id);
         }
 
@@ -341,15 +344,15 @@ impl<'a> TypeResolver<'a> {
     fn resolve_interface(&mut self, id: DefId, def: &ic_syntax::InterfaceDef) {
         // Mark any forward declarations as resolved
         self.mark_forward_declarations_resolved(&def.ident.name);
-        
+
         // Save current scope
         let saved_scope_id = self.current_scope_id;
-        
+
         // Enter interface scope
         if let Some(interface_scope) = self.ctx.scopes.find_scope_for_def(id) {
             self.current_scope_id = interface_scope;
         }
-        
+
         // Resolve nested type definitions first
         let mut nested_items = Vec::new();
         for member in &def.members {
@@ -360,7 +363,7 @@ impl<'a> TypeResolver<'a> {
         if !nested_items.is_empty() {
             self.resolve_all(&nested_items);
         }
-        
+
         let parents = def
             .inherits
             .iter()
@@ -400,7 +403,7 @@ impl<'a> TypeResolver<'a> {
             interface.parents = parents;
             interface.prototypes = prototypes;
         }
-        
+
         // Restore scope
         self.current_scope_id = saved_scope_id;
     }

@@ -218,13 +218,54 @@ impl Formatter<'_> {
             return Ok(());
         }
 
-        // Calculate the maximum line number for proper indentation
+        // First, collect all line ranges to determine what lines will be shown
+        let mut line_groups = Vec::new();
+        let mut seen_lines = std::collections::HashSet::new();
         let mut max_line = 0;
+        
         for label in &diag.labels {
+            let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
-            max_line = max_line.max(end_line);
+            
+            let mut group_lines = Vec::new();
+            
+            // If the span is too large, only show context around start and end
+            let total_lines = end_line - start_line + 1;
+            if total_lines > MAX_LINES_PER_SPAN {
+                // Show first few lines
+                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
+                    if line <= end_line && seen_lines.insert(line) {
+                        group_lines.push(line);
+                        max_line = max_line.max(line);
+                    }
+                }
+                
+                // Add ellipsis marker (using line number 0 as a sentinel)
+                group_lines.push(0);
+                
+                // Show last few lines
+                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
+                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
+                        group_lines.push(line);
+                        max_line = max_line.max(line);
+                    }
+                }
+            } else {
+                // Show all lines for small spans
+                for line in start_line..=end_line {
+                    if seen_lines.insert(line) {
+                        group_lines.push(line);
+                        max_line = max_line.max(line);
+                    }
+                }
+            }
+            
+            if !group_lines.is_empty() {
+                line_groups.push(group_lines);
+            }
         }
 
+        // Calculate proper indentation based on the maximum line number we'll display
         let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
@@ -241,49 +282,6 @@ impl Formatter<'_> {
             self.filename.unwrap_or("unknown"),
         )?;
         writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
-
-        // Collect line ranges for each label, preserving order
-        let mut line_groups = Vec::new();
-        let mut seen_lines = std::collections::HashSet::new();
-        
-        for label in &diag.labels {
-            let start_line = line_number(self.source, label.span.start.offset as usize);
-            let end_line = line_number(self.source, label.span.end.offset as usize);
-            
-            let mut group_lines = Vec::new();
-            
-            // If the span is too large, only show context around start and end
-            let total_lines = end_line - start_line + 1;
-            if total_lines > MAX_LINES_PER_SPAN {
-                // Show first few lines
-                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
-                    if line <= end_line && seen_lines.insert(line) {
-                        group_lines.push(line);
-                    }
-                }
-                
-                // Add ellipsis marker (using line number 0 as a sentinel)
-                group_lines.push(0);
-                
-                // Show last few lines
-                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
-                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
-                        group_lines.push(line);
-                    }
-                }
-            } else {
-                // Show all lines for small spans
-                for line in start_line..=end_line {
-                    if seen_lines.insert(line) {
-                        group_lines.push(line);
-                    }
-                }
-            }
-            
-            if !group_lines.is_empty() {
-                line_groups.push(group_lines);
-            }
-        }
 
         // Display line groups in order
         for group in line_groups {
@@ -328,13 +326,54 @@ impl Formatter<'_> {
             .map(|&idx| &diag.labels[idx])
             .collect();
 
-        // Calculate the maximum line number for proper indentation
+        // First, collect all line ranges to determine what lines will be shown
+        let mut line_groups = Vec::new();
+        let mut seen_lines = std::collections::HashSet::new();
         let mut max_line = 0;
-        for label in &file_labels {
+        
+        for &label in &file_labels {
+            let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
-            max_line = max_line.max(end_line);
+            
+            let mut group_lines = Vec::new();
+            
+            // If the span is too large, only show context around start and end
+            let total_lines = end_line - start_line + 1;
+            if total_lines > MAX_LINES_PER_SPAN {
+                // Show first few lines
+                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
+                    if line <= end_line && seen_lines.insert(line) {
+                        group_lines.push(line);
+                        max_line = max_line.max(line);
+                    }
+                }
+                
+                // Add ellipsis marker (using line number 0 as a sentinel)
+                group_lines.push(0);
+                
+                // Show last few lines
+                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
+                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
+                        group_lines.push(line);
+                        max_line = max_line.max(line);
+                    }
+                }
+            } else {
+                // Show all lines for small spans
+                for line in start_line..=end_line {
+                    if seen_lines.insert(line) {
+                        group_lines.push(line);
+                        max_line = max_line.max(line);
+                    }
+                }
+            }
+            
+            if !group_lines.is_empty() {
+                line_groups.push(group_lines);
+            }
         }
 
+        // Calculate proper indentation based on the maximum line number we'll display
         let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
         let indent = " ".repeat(indent);
 
@@ -351,49 +390,6 @@ impl Formatter<'_> {
             self.filename.unwrap_or("unknown"),
         )?;
         writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
-
-        // Collect line ranges for each label, preserving order
-        let mut line_groups = Vec::new();
-        let mut seen_lines = std::collections::HashSet::new();
-        
-        for &label in &file_labels {
-            let start_line = line_number(self.source, label.span.start.offset as usize);
-            let end_line = line_number(self.source, label.span.end.offset as usize);
-            
-            let mut group_lines = Vec::new();
-            
-            // If the span is too large, only show context around start and end
-            let total_lines = end_line - start_line + 1;
-            if total_lines > MAX_LINES_PER_SPAN {
-                // Show first few lines
-                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
-                    if line <= end_line && seen_lines.insert(line) {
-                        group_lines.push(line);
-                    }
-                }
-                
-                // Add ellipsis marker (using line number 0 as a sentinel)
-                group_lines.push(0);
-                
-                // Show last few lines
-                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
-                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
-                        group_lines.push(line);
-                    }
-                }
-            } else {
-                // Show all lines for small spans
-                for line in start_line..=end_line {
-                    if seen_lines.insert(line) {
-                        group_lines.push(line);
-                    }
-                }
-            }
-            
-            if !group_lines.is_empty() {
-                line_groups.push(group_lines);
-            }
-        }
 
         // Display line groups in order
         for group in line_groups {

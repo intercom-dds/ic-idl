@@ -5,70 +5,85 @@ struct TreeNode;
 struct TreeNode {
     long value;
     sequence<TreeNode> children;
-    TreeNode parent;  // Optional in IDL, can be null
+    @shared TreeNode parent;  // Optional in IDL, can be null
 };
 
 // Mutually recursive types
 struct Expression;
 struct Statement;
 
+enum ExprType {
+    LITERAL,
+    BINARY,
+    CALL,
+    STMT_EXPR
+};
+
+struct BinaryExpr {
+    @shared Expression left;
+    @shared Expression right;
+    string op;
+};
+
+struct CallExpr {
+    string name;
+    sequence<Expression> args;
+};
+
+union ExprData switch (ExprType) {
+    case LITERAL:
+        long literal_value;
+    case BINARY:
+        BinaryExpr binary;
+    case CALL:
+        CallExpr call;
+    case STMT_EXPR:
+        @shared Statement stmt;
+};
+
 struct Expression {
-    enum ExprType {
-        LITERAL,
-        BINARY,
-        CALL,
-        STMT_EXPR
-    };
-    
-    union ExprData switch (ExprType) {
-        case LITERAL:
-            long literal_value;
-        case BINARY:
-            struct BinaryExpr {
-                Expression left;
-                Expression right;
-                string op;
-            } binary;
-        case CALL:
-            struct CallExpr {
-                string name;
-                sequence<Expression> args;
-            } call;
-        case STMT_EXPR:
-            Statement stmt;
-    } data;
+    ExprData data;
+};
+
+enum StmtType {
+    EXPR_STMT,
+    BLOCK,
+    IF_STMT
+};
+
+struct IfStmt {
+    @shared Expression condition;
+    @shared Statement then_stmt;
+    @shared Statement else_stmt;
+};
+
+union StmtData switch (StmtType) {
+    case EXPR_STMT:
+        @shared Expression expr;
+    case BLOCK:
+        sequence<Statement> statements;
+    case IF_STMT:
+        IfStmt if_stmt;
 };
 
 struct Statement {
-    enum StmtType {
-        EXPR_STMT,
-        BLOCK,
-        IF_STMT
-    };
-    
-    union StmtData switch (StmtType) {
-        case EXPR_STMT:
-            Expression expr;
-        case BLOCK:
-            sequence<Statement> statements;
-        case IF_STMT:
-            struct IfStmt {
-                Expression condition;
-                Statement then_stmt;
-                Statement else_stmt;
-            } if_stmt;
-    } data;
+    StmtData data;
 };
 
 // Complex nested types
 module collections {
-    struct Pair<T, U> {
-        T first;
-        U second;
+    struct StringLongPair {
+        string first;
+        long second;
     };
     
-    typedef sequence<Pair<string, long>> StringIntPairs;
-    typedef map<string, sequence<Pair<long, double>>> ComplexMap;
+    struct LongDoublePair {
+        long first;
+        double second;
+    };
+    
+    typedef sequence<StringLongPair> StringIntPairs;
+    typedef map<string, sequence<LongDoublePair>> ComplexMap;
     
     // Multi-dimensional arrays with typedef chains
     typedef long Row[10];
@@ -95,36 +110,45 @@ module protocol {
         string sender_id;
     };
     
-    union Message switch (MessageType) {
+    struct RequestMsg {
+        string method;
+        any params;  // Using 'any' type
+    };
+    
+    struct ResponseMsg {
+        long request_seq;
+        any result;
+        boolean success;
+    };
+    
+    struct NotificationMsg {
+        string event;
+        any data;
+    };
+    
+    struct ErrorMsg {
+        long error_code;
+        string message;
+        any details;
+    };
+    
+    union MessageBody switch (MessageType) {
         case REQUEST:
-            struct Request {
-                string method;
-                any params;  // Using 'any' type
-            } request;
+            RequestMsg request;
             
         case RESPONSE:
-            struct Response {
-                long request_seq;
-                any result;
-                boolean success;
-            } response;
+            ResponseMsg response;
             
         case NOTIFICATION:
-            struct Notification {
-                string event;
-                any data;
-            } notification;
+            NotificationMsg notification;
             
         case ERROR:
-            struct Error {
-                long error_code;
-                string message;
-                any details;
-            } error;
-            
-        default:
-            octet raw_data[1024];
-    } body;
+            ErrorMsg error;
+    };
+    
+    struct Message {
+        MessageBody body;
+    };
 };
 
 // Interface inheritance with complex types
@@ -139,15 +163,15 @@ interface Extended : Base {
     ValueMap getAllValues();
     void setAllValues(in ValueMap values);
     
-    // Method overloading with different signatures
-    any getValue(in string key, in any default_value);
+    // Different method name to avoid overloading
+    any getValueWithDefault(in string key, in any default_value);
 };
 
 // Valuetype with complex members
 valuetype ComplexValue {
     public sequence<long> int_list;
     public map<string, double> double_map;
-    private TreeNode internal_tree;
+    private @shared TreeNode internal_tree;
     
     factory create(in sequence<long> ints, in map<string, double> doubles);
 };

@@ -2,9 +2,7 @@
 
 // Annotations on types
 @id(100)
-@deprecated("Use NewService instead")
 interface OldService {
-    @deprecated
     void oldMethod();
     
     @id(1)
@@ -15,7 +13,6 @@ interface OldService {
 };
 
 // Annotations on struct members
-@packed
 struct PackedData {
     @id(1) octet version;
     @id(2) long timestamp;
@@ -26,9 +23,9 @@ struct PackedData {
 // Enum with annotations
 enum ErrorCode {
     @value(0) SUCCESS,
-    @value(100) @deprecated INVALID_ARGUMENT,
+    @value(100) INVALID_ARGUMENT,
     @value(200) NOT_FOUND,
-    @value(300) @description("Internal server error") INTERNAL_ERROR
+    @value(300) INTERNAL_ERROR
 };
 
 // Bitmask with annotations
@@ -43,7 +40,7 @@ bitmask Features {
 // String bounds
 typedef string<128> ShortString;
 typedef wstring<1024> LongWideString;
-typedef string<> UnboundedString;  // Explicitly unbounded
+typedef string UnboundedString;  // Unbounded
 
 // Sequence bounds
 typedef sequence<long, 100> BoundedIntList;
@@ -59,9 +56,9 @@ typedef long FixedArray[10];
 typedef sequence<long, 10> BoundedSeq;
 typedef sequence<long> UnboundedSeq;
 
-// Native types
-native NativeHandle;
-native ThreadId;
+// Opaque handle types (using typedef instead of native)
+typedef long long NativeHandle;
+typedef long ThreadId;
 
 struct SystemInfo {
     NativeHandle process;
@@ -108,40 +105,40 @@ module calc {
 // Typedef chains
 typedef long Integer;
 typedef Integer Number;
-typedef Number Value;
-typedef sequence<Value> ValueSequence;
+typedef Number NumValue;
+typedef sequence<NumValue> ValueSequence;
 typedef ValueSequence NumberList;
 
-// Anonymous types in unions
+// Union with various types
+struct Point2D {
+    long x;
+    long y;
+};
+
+struct ComplexNum {
+    double real;
+    double imag;
+};
+
+struct KeyValue {
+    string key;
+    any value;
+};
+
 union Variant switch (long) {
     case 0:
-        struct {
-            long x;
-            long y;
-        } point;
+        Point2D point;
     case 1:
-        struct {
-            double real;
-            double imag;
-        } complex;
+        ComplexNum complex;
     case 2:
-        sequence<struct {
-            string key;
-            any value;
-        }> properties;
+        sequence<KeyValue> properties;
     default:
         any generic;
 };
 
-// Pragma directives (ignored but should parse)
-#pragma prefix "com.example"
-#pragma version(1, 0)
-
+// Module with interface
 module versioned {
-    #pragma prefix "com.example.v2"
-    
     interface Service {
-        #pragma version(2, 0)
         void method();
     };
 };

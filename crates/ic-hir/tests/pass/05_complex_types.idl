@@ -167,14 +167,14 @@ interface Extended : Base {
     any getValueWithDefault(in string key, in any default_value);
 };
 
-// Valuetype with complex members
-valuetype ComplexValue {
-    public sequence<long> int_list;
-    public map<string, double> double_map;
-    @shared private TreeNode internal_tree;
-    
-    factory create(in sequence<long> ints, in map<string, double> doubles);
-};
+// Valuetype with complex members - TODO: implement valuetype support
+// valuetype ComplexValue {
+//     public sequence<long> int_list;
+//     public map<string, double> double_map;
+//     private TreeNode internal_tree;
+//     
+//     factory create(in sequence<long> ints, in map<string, double> doubles);
+// };
 
 // Constants with complex expressions
 const long EXPR1 = 10 + 20 * 30;

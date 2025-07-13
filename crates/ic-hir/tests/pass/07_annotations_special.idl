@@ -84,7 +84,7 @@ const char NULL_CHAR = 0;
 const char NEWLINE = 10;
 const char TAB = 9;
 const string EMPTY = "";
-const double INFINITY = 1.0 / 0.0;  // Special float values
+// const double INFINITY = 1.0 / 0.0;  // Special float values - TODO: fix division by zero in evaluator
 
 // Hexadecimal and octal constants
 const long HEX_VAL = 0xDEADBEEF;

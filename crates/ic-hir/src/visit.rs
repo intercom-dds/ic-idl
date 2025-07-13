@@ -28,8 +28,8 @@
 #![allow(unused)]
 
 use crate::hir::{
-    AliasTy, AnnotationTy, BitmaskTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy, InterfaceTy,
-    ModuleTy, Numeric, StructTy, Ty, UnionTy, ValueTy,
+    AliasTy, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
+    InterfaceTy, ModuleTy, Numeric, StructTy, Ty, UnionTy, ValueTy,
 };
 
 pub trait Visitor<'a> {
@@ -54,6 +54,8 @@ pub trait Visitor<'a> {
     fn visit_alias(&mut self, def: &'a Def, data: &'a AliasTy) {}
 
     fn visit_bitmask(&mut self, def: &'a Def, data: &'a BitmaskTy) {}
+
+    fn visit_bitset(&mut self, def: &'a Def, data: &'a BitsetTy) {}
 
     fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {}
 
@@ -90,6 +92,7 @@ where
         DefKind::Enum(v) => visitor.visit_enum(def, v),
         DefKind::Const(v) => visitor.visit_const(def, v),
         DefKind::Bitmask(v) => visitor.visit_bitmask(def, v),
+        DefKind::Bitset(v) => visitor.visit_bitset(def, v),
         DefKind::Alias(v) => visitor.visit_alias(def, v),
         DefKind::Interface(v) => visitor.visit_interface(def, v),
         DefKind::Valuetype(v) => visitor.visit_valuetype(def, v),

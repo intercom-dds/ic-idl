@@ -82,6 +82,7 @@ impl Fold for Renamer {
             hir::DefKind::Enum(_) => todo!(),
             hir::DefKind::Const(_) => todo!(),
             hir::DefKind::Bitmask(_) => todo!(),
+            hir::DefKind::Bitset(_) => todo!(),
             hir::DefKind::Alias(_) => todo!(),
             hir::DefKind::Interface(_) => todo!(),
             hir::DefKind::Valuetype(_) => todo!(),

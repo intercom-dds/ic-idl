@@ -243,7 +243,10 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
             }
         }
 
-        Err(ExprError::Custom(format!("undefined constant or enum value `{}`", name)))
+        Err(ExprError::Custom(format!(
+            "undefined constant or enum value `{}`",
+            name
+        )))
     }
 
     fn config(&self) -> ic_expr::EvalConfig {
@@ -418,14 +421,14 @@ impl<'a> ExpressionEvaluator<'a> {
                             Label::new(ic_syntax::util::expr_span(expr))
                                 .message("evaluation error"),
                         );
-                        
+
                         // Add helpful notes for common errors
                         if s.contains("undefined constant") {
                             diag = diag.note("check that the name is spelled correctly");
                         } else if s.contains("string literals cannot be used") {
                             diag = diag.note("string literals can only be used in struct initialization or string constants");
                         }
-                        
+
                         self.errors.push(diag);
                         return Numeric::Null;
                     }
@@ -473,7 +476,7 @@ impl<'a> ExpressionEvaluator<'a> {
     /// Updates array bounds in a type.
     fn update_type_bounds(&mut self, ty: &mut Ty, bounds: &[ic_syntax::Expr]) {
         let mut current = ty;
-        let mut bound_iter = bounds.iter().rev(); // Process from outermost to innermost
+        let mut bound_iter = bounds.iter(); // Process in order
 
         loop {
             match &mut current.kind {
@@ -576,6 +579,63 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates a bitset definition.
+    fn evaluate_bitset(&mut self, id: DefId, def: &ic_syntax::BitsetDef) {
+        // Get the current bitset definition
+        let hir_def = self.ctx.definitions.get(id);
+
+        // Get the current fields with their resolved types
+        let mut updated_fields = if let DefKind::Bitset(bitset_ty) = &hir_def.kind {
+            bitset_ty.fields.clone()
+        } else {
+            return;
+        };
+
+        // Update the sizes by evaluating the size expressions and assign default types
+        for (i, field) in def.fields.iter().enumerate() {
+            if let Some(updated_field) = updated_fields.get_mut(i) {
+                // Evaluate the size
+                updated_field.size = self.eval_bound(&field.size);
+
+                // If the type is a placeholder (Any), assign the appropriate type based on size
+                if matches!(updated_field.ty.kind, TyKind::Any) {
+                    updated_field.ty = self.default_bitfield_type(updated_field.size);
+                }
+            }
+        }
+
+        // Update the HIR with evaluated sizes and types
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Bitset(bitset_ty) = &mut hir_def.kind {
+            bitset_ty.fields = updated_fields;
+        }
+    }
+
+    /// Determines the default type for a bitfield based on its size.
+    /// Returns the smallest unsigned integer type that can hold the specified number of bits.
+    fn default_bitfield_type(&self, bits: usize) -> Ty {
+        let prim = if bits == 1 {
+            PrimitiveTy::Bool // Special case: 1-bit fields are booleans
+        } else if bits <= 8 {
+            PrimitiveTy::UInt8
+        } else if bits <= 16 {
+            PrimitiveTy::UInt16
+        } else if bits <= 32 {
+            PrimitiveTy::UInt32
+        } else if bits <= 64 {
+            PrimitiveTy::UInt64
+        } else {
+            // For fields larger than 64 bits, we might want to error or use a special type
+            // For now, default to uint64
+            PrimitiveTy::UInt64
+        };
+
+        Ty {
+            kind: TyKind::Primitive(prim),
+            span: Span::default(), // We don't have a good span for synthetic types
+        }
+    }
+
     /// Evaluates an alias (typedef) definition.
     fn evaluate_alias(&mut self, id: DefId, decl: &ic_syntax::Declarator) {
         if let ic_syntax::Declarator::Array(arr) = decl {
@@ -602,6 +662,60 @@ impl<'a> ExpressionEvaluator<'a> {
                 ic_syntax::LiteralValue::String(s) => return Numeric::String(s.clone()),
                 ic_syntax::LiteralValue::Null => return Numeric::Null,
                 _ => {}
+            }
+        }
+
+        // Otherwise evaluate as normal expression
+        self.eval_expr(expr)
+    }
+
+    /// Evaluates an expression that may contain nested init lists
+    fn eval_init_expr_with_type(
+        &mut self,
+        expr: &Expr,
+        expected_ty: &Ty,
+        parent_type_id: DefId,
+    ) -> Numeric {
+        // Check if this is a string literal
+        if let Expr::Literal(lit) = expr {
+            match &lit.value {
+                ic_syntax::LiteralValue::String(s) => return Numeric::String(s.clone()),
+                ic_syntax::LiteralValue::Null => return Numeric::Null,
+                _ => {}
+            }
+        }
+
+        // Handle nested init lists
+        if let Expr::InitList(init_list) = expr {
+            match &expected_ty.kind {
+                TyKind::Array { ty, len } => {
+                    // Use the parent type ID for nested arrays
+                    return self.eval_array_init(
+                        init_list,
+                        ty.as_ref().clone(),
+                        *len,
+                        parent_type_id,
+                    );
+                }
+                TyKind::Sequence { ty, .. } => {
+                    return self.eval_sequence_init(init_list, ty.as_ref().clone(), parent_type_id);
+                }
+                TyKind::Map { key, elem, .. } => {
+                    return self.eval_map_init(
+                        init_list,
+                        key.as_ref().clone(),
+                        elem.as_ref().clone(),
+                        parent_type_id,
+                    );
+                }
+                _ => {
+                    self.errors.push(error_span(
+                        "unexpected initializer list",
+                        Label::new(ic_syntax::util::expr_span(expr))
+                            .message("initializer list not allowed here"),
+                    ));
+                    return Numeric::Null;
+                }
             }
         }
 
@@ -649,7 +763,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     )
                     .note("all struct fields must be initialized")
                     .note("add the missing field to the initializer list");
-                    
+
                     self.errors.push(diag);
                     return Numeric::Null;
                 }
@@ -681,7 +795,7 @@ impl<'a> ExpressionEvaluator<'a> {
             )
             .note("use either all named fields (e.g., {.x = 1, .y = 2}) or all positional ({1, 2})")
             .help("consider using named initialization for clarity");
-            
+
             self.errors.push(diag);
             return Numeric::Null;
         }
@@ -692,8 +806,160 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates an array initializer list.
+    fn eval_array_init(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        elem_ty: Ty,
+        expected_len: usize,
+        array_type_id: DefId,
+    ) -> Numeric {
+        let mut values = Vec::new();
+
+        for named_expr in &init_list.values {
+            if named_expr.ident.is_some() {
+                self.errors.push(error_span(
+                    "array elements cannot have names",
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("remove the field name"),
+                ));
+                continue;
+            }
+
+            let value = self.eval_init_expr_with_type(&named_expr.value, &elem_ty, array_type_id);
+            values.push(value);
+        }
+
+        // Check array size
+        if values.len() != expected_len {
+            self.errors.push(error_span(
+                format!(
+                    "array size mismatch: expected {} elements, found {}",
+                    expected_len,
+                    values.len()
+                ),
+                Label::new(Span::default()).message("in this initializer"),
+            ));
+        }
+
+        Numeric::Array {
+            ty: array_type_id,
+            values: values.into_boxed_slice(),
+        }
+    }
+
+    /// Evaluates a sequence initializer list.
+    fn eval_sequence_init(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        elem_ty: Ty,
+        seq_type_id: DefId,
+    ) -> Numeric {
+        let mut values = Vec::new();
+
+        for named_expr in &init_list.values {
+            if named_expr.ident.is_some() {
+                self.errors.push(error_span(
+                    "sequence elements cannot have names",
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("remove the field name"),
+                ));
+                continue;
+            }
+
+            let value = self.eval_init_expr(&named_expr.value);
+            values.push(value);
+        }
+
+        Numeric::Sequence {
+            ty: seq_type_id,
+            values: values.into_boxed_slice(),
+        }
+    }
+
+    /// Evaluates a map initializer list.
+    fn eval_map_init(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        key_ty: Ty,
+        elem_ty: Ty,
+        map_type_id: DefId,
+    ) -> Numeric {
+        let mut entries = Vec::new();
+
+        for named_expr in &init_list.values {
+            if named_expr.ident.is_some() {
+                self.errors.push(error_span(
+                    "map entries cannot have names",
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("remove the field name"),
+                ));
+                continue;
+            }
+
+            // Map entries should be initializer lists with exactly 2 elements
+            match &named_expr.value {
+                Expr::InitList(entry_list) => {
+                    if entry_list.values.len() != 2 {
+                        self.errors.push(error_span(
+                            format!(
+                                "map entry must have exactly 2 elements (key and value), found {}",
+                                entry_list.values.len()
+                            ),
+                            Label::new(Span::default()).message("in this entry"),
+                        ));
+                        continue;
+                    }
+
+                    let key = self.eval_init_expr(&entry_list.values[0].value);
+                    let value = self.eval_init_expr(&entry_list.values[1].value);
+                    entries.push((key, value));
+                }
+                _ => {
+                    self.errors.push(error_span(
+                        "map entries must be initializer lists with {key, value}",
+                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                            .message("expected {key, value}"),
+                    ));
+                }
+            }
+        }
+
+        Numeric::Map {
+            ty: map_type_id,
+            values: entries.into_boxed_slice(),
+        }
+    }
+
     /// Evaluates a constant definition.
     fn evaluate_const(&mut self, id: DefId, def: &ic_syntax::ConstDef) {
+        // First, handle array bounds if present
+        let bounds = if let ic_syntax::Declarator::Array(arr) = &def.decl {
+            Some(arr.bounds.clone())
+        } else {
+            None
+        };
+
+        // Update array bounds in the type before evaluating the value
+        if let Some(bounds) = bounds {
+            let hir_def = self.ctx.definitions.get(id);
+            let ty_to_update = if let DefKind::Const(const_ty) = &hir_def.kind {
+                Some(const_ty.ty.clone())
+            } else {
+                None
+            };
+
+            if let Some(mut ty) = ty_to_update {
+                self.update_type_bounds(&mut ty, &bounds);
+
+                // Update the type with evaluated bounds
+                let hir_def = self.ctx.definitions.get_mut(id);
+                if let DefKind::Const(const_ty) = &mut hir_def.kind {
+                    const_ty.ty = ty;
+                }
+            }
+        }
+
         // Check if this is a string constant
         let hir_def = self.ctx.definitions.get(id);
         let is_string = if let DefKind::Const(const_ty) = &hir_def.kind {
@@ -702,6 +968,7 @@ impl<'a> ExpressionEvaluator<'a> {
             false
         };
 
+        // Now evaluate the value with the updated type
         let value = if is_string {
             // For string constants, we don't evaluate them as expressions
             // Just store an empty string as placeholder
@@ -710,7 +977,7 @@ impl<'a> ExpressionEvaluator<'a> {
             // Check if the expression is an init list that needs type context
             match &def.value {
                 ic_syntax::Expr::InitList(init_list) => {
-                    // Get the type information
+                    // Get the type information (now with evaluated bounds)
                     let hir_def = self.ctx.definitions.get(id);
                     if let DefKind::Const(const_ty) = &hir_def.kind {
                         match &const_ty.ty.kind {
@@ -731,10 +998,22 @@ impl<'a> ExpressionEvaluator<'a> {
                                     }
                                 }
                             }
+                            TyKind::Array { ty, len } => {
+                                self.eval_array_init(init_list, ty.as_ref().clone(), *len, id)
+                            }
+                            TyKind::Sequence { ty, .. } => {
+                                self.eval_sequence_init(init_list, ty.as_ref().clone(), id)
+                            }
+                            TyKind::Map { key, elem, .. } => self.eval_map_init(
+                                init_list,
+                                key.as_ref().clone(),
+                                elem.as_ref().clone(),
+                                id,
+                            ),
                             _ => {
                                 self.errors.push(error_span(
-                                    "initializer lists can only be used with struct types",
-                                    Label::new(def.span).message("not a struct type"),
+                                    "initializer lists can only be used with struct, array, sequence, or map types",
+                                    Label::new(def.span).message("incompatible type"),
                                 ));
                                 Numeric::Null
                             }
@@ -747,41 +1026,10 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         };
 
-        // Handle array bounds separately
-        let bounds = if let ic_syntax::Declarator::Array(arr) = &def.decl {
-            Some(arr.bounds.clone())
-        } else {
-            None
-        };
-
-        // Clone the type to avoid mutable borrow issues
-        let ty_to_update = if let Some(ref bounds) = bounds {
-            let hir_def = self.ctx.definitions.get(id);
-            if let DefKind::Const(const_ty) = &hir_def.kind {
-                Some(const_ty.ty.clone())
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        // Update the type bounds if needed
-        if let (Some(mut ty), Some(bounds)) = (ty_to_update, bounds.clone()) {
-            self.update_type_bounds(&mut ty, &bounds);
-
-            // Now update the HIR with both value and updated type
-            let hir_def = self.ctx.definitions.get_mut(id);
-            if let DefKind::Const(const_ty) = &mut hir_def.kind {
-                const_ty.value = value;
-                const_ty.ty = ty;
-            }
-        } else {
-            // Just update the value
-            let hir_def = self.ctx.definitions.get_mut(id);
-            if let DefKind::Const(const_ty) = &mut hir_def.kind {
-                const_ty.value = value;
-            }
+        // Update the value
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Const(const_ty) = &mut hir_def.kind {
+            const_ty.value = value;
         }
     }
 
@@ -875,6 +1123,15 @@ impl<'a> ExpressionEvaluator<'a> {
                         .resolve_name(self.current_scope, &v.ident.name)
                     {
                         self.evaluate_bitmask(def_id, v);
+                    }
+                }
+                Item::BitsetValue(v) => {
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_bitset(def_id, v);
                     }
                 }
                 Item::ConstValue(v) => {

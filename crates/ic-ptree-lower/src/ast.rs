@@ -419,7 +419,7 @@ unsafe fn lower_item(state: *mut sys::parser_state, item: &Item) -> *mut sys::pt
         }
         Item::BitsetValue(v) => {
             let bitfields = collect_with(state, sys::append_node, &v.fields, |field| {
-                let ident = create_ident(&v.ident.name);
+                let ident = create_ident(&field.ident.name);
                 let size = lower_expr(state, &field.size);
                 let ty = field
                     .ty

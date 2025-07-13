@@ -167,6 +167,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         DefKind::Enum(_) => "enum",
         DefKind::Const(_) => "const",
         DefKind::Bitmask(_) => "bitmask",
+        DefKind::Bitset(_) => "bitset",
         DefKind::Alias(_) => "alias",
         DefKind::Interface(_) => "interface",
         DefKind::Valuetype(_) => "valuetype",
@@ -281,6 +282,24 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         DefKind::Valuetype(v) => {
             for def in &v.definitions {
                 node.push(emit_def(context, *def));
+            }
+        }
+        DefKind::Bitset(v) => {
+            if let Some(parent) = v.parent {
+                let parent = &context.type_of(parent).ident.name;
+                node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
+            }
+
+            for field in &v.fields {
+                let span = emit_span(&field.ident.span);
+                let mut field_node = leaf!(
+                    "{} {span} {} size={}",
+                    "bitfield".green().bold(),
+                    &field.ident.name.cyan(),
+                    field.size.to_string().purple(),
+                );
+                field_node.push(leaf!("{} {}", "type".purple(), emit_ty(context, &field.ty)));
+                node.push(field_node);
             }
         }
         DefKind::Decl(kind) => {

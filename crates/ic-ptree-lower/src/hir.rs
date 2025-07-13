@@ -321,6 +321,13 @@ impl<'a> TreeBuilder<'a> {
                 self.lowered.insert(id, ty);
                 sys::create_valuetype_finish(self.state, ptr::null_mut())
             }
+            DefKind::Bitset(_) => {
+                // TODO: Implement bitset lowering when ptree supports it
+                // For now, create a dummy struct
+                let ty = sys::create_struct_start(self.state, ident, ptr::null_mut());
+                self.lowered.insert(id, ty);
+                sys::create_struct_finish(self.state, ptr::null_mut())
+            }
             DefKind::Decl(v) => match v {
                 Decl::Struct => sys::create_struct_dcl(self.state, ident),
                 Decl::Union => sys::create_union_dcl(self.state, ident),

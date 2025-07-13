@@ -141,6 +141,7 @@ impl<'a> NameCollector<'a> {
             DefKind::Const(_) => DefFlags::default(),
             DefKind::Enum(_) => DefFlags::default(), // Enums can't be forward declared
             DefKind::Bitmask(_) => DefFlags::default(), // Bitmasks can't be forward declared
+            DefKind::Bitset(_) => DefFlags::default(), // Bitsets can't be forward declared
             DefKind::Module(_) => DefFlags::default(), // Modules can't be forward declared
             DefKind::Annotation(_) => DefFlags::default(), // Annotations can't be forward declared
             DefKind::Alias(_) => DefFlags::default(), // Type aliases can't be forward declared
@@ -397,6 +398,24 @@ impl<'a> NameCollector<'a> {
         id
     }
 
+    fn collect_bitset(&mut self, def: &ic_syntax::BitsetDef) -> DefId {
+        let id = self.alloc_definition_with_annotations(
+            def.ident.clone(),
+            DefKind::Bitset(BitsetTy {
+                parent: None,       // Will be resolved in resolve phase
+                fields: Vec::new(), // Will be populated in resolve phase
+            }),
+            def.span,
+            &def.annotations,
+        );
+
+        // Bitsets are complete immediately
+        let hir_def = self.ctx.definitions.get_mut(id);
+        hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+
+        id
+    }
+
     fn collect_simple_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident, kind, span);
         id
@@ -541,9 +560,7 @@ impl<'a> NameCollector<'a> {
             )],
 
             Item::ValuetypeValue(v) => vec![self.collect_valuetype(v)],
-
-            // Skip bitset for now - it's a low priority feature
-            Item::BitsetValue(_) => Vec::new(),
+            Item::BitsetValue(v) => vec![self.collect_bitset(v)],
         }
     }
 }

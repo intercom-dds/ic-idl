@@ -422,6 +422,7 @@ impl<'a> TypeResolver<'a> {
                 Item::EnumValue(v) => (v.ident.name.clone(), "enum", None),
                 Item::ExceptionValue(v) => (v.ident.name.clone(), "exception", None),
                 Item::BitmaskValue(v) => (v.ident.name.clone(), "bitmask", None),
+                Item::BitsetValue(v) => (v.ident.name.clone(), "bitset", None),
                 Item::InterfaceValue(v) => (v.ident.name.clone(), "interface", None),
                 Item::ModuleValue(v) => (v.ident.name.clone(), "module", Some(&v.definitions)),
                 Item::AnnotationValue(v) => (v.ident.name.clone(), "annotation", None),
@@ -542,6 +543,14 @@ impl<'a> TypeResolver<'a> {
                         self.resolve_bitmask(id, v);
                     }
                 }
+                Item::BitsetValue(v) => {
+                    if let Some(&id) = self.item_map.get(&ItemKey {
+                        name: v.ident.name.clone(),
+                        kind: "bitset",
+                    }) {
+                        self.resolve_bitset(id, v);
+                    }
+                }
                 Item::ModuleValue(v) => {
                     if let Some(&id) = self.item_map.get(&ItemKey {
                         name: v.ident.name.clone(),
@@ -558,8 +567,11 @@ impl<'a> TypeResolver<'a> {
 
     /// Resolves a constant definition.
     fn resolve_const(&mut self, id: DefId, ast: &ic_syntax::ConstDef) {
-        // Resolve the type
-        let ty = self.resolve_type(&ast.ty);
+        // Resolve the base type
+        let base_ty = self.resolve_type(&ast.ty);
+
+        // Apply declarator to get the actual type
+        let (_, ty) = self.resolve_declarator(&ast.decl, base_ty);
 
         // Update the constant's type
         let def = self.ctx.definitions.get_mut(id);
@@ -650,6 +662,44 @@ impl<'a> TypeResolver<'a> {
         let hir_def = self.ctx.definitions.get_mut(id);
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
             bitmask_ty.ty = underlying_ty;
+        }
+    }
+
+    /// Resolves a bitset definition.
+    fn resolve_bitset(&mut self, id: DefId, def: &ic_syntax::BitsetDef) {
+        // Resolve parent if present
+        let parent_id = if let Some(parent_path) = &def.parent {
+            self.resolve_path(parent_path)
+        } else {
+            None
+        };
+
+        // Resolve field types (sizes will be evaluated in the evaluation phase)
+        // We need a placeholder type for now; the actual type will be determined
+        // in the evaluation phase based on the size
+        let mut fields = Vec::new();
+        for field in &def.fields {
+            let ty = if let Some(explicit_ty) = &field.ty {
+                self.resolve_type(explicit_ty)
+            } else {
+                // Use a placeholder type - will be replaced in evaluation phase
+                Ty {
+                    kind: TyKind::Any,
+                    span: field.span,
+                }
+            };
+            fields.push(BitsetField {
+                ident: field.ident.clone(),
+                size: 0, // Will be filled in evaluation phase
+                ty,
+                annotations: super::convert_annotations(&field.annotations),
+            });
+        }
+
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Bitset(bitset_ty) = &mut hir_def.kind {
+            bitset_ty.parent = parent_id;
+            bitset_ty.fields = fields;
         }
     }
 

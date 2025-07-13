@@ -154,6 +154,7 @@ pub enum DefKind {
     Enum(EnumTy),
     Const(ConstTy),
     Bitmask(BitmaskTy),
+    Bitset(BitsetTy),
     Alias(AliasTy),
     Interface(InterfaceTy),
     Valuetype(ValueTy),
@@ -395,6 +396,26 @@ pub struct BitFlag {
     // pub value: Numeric,
     pub value: usize,
 
+    pub annotations: Vec<Ann>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BitsetTy {
+    /// Parent bitset for inheritance.
+    pub parent: Option<DefId>,
+    /// The bitset fields.
+    pub fields: Vec<BitsetField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BitsetField {
+    /// Name of the bitfield.
+    pub ident: Ident,
+    /// Size in bits (evaluated expression).
+    pub size: usize,
+    /// Type for the field.
+    pub ty: Ty,
+    /// Annotations on this field.
     pub annotations: Vec<Ann>,
 }
 

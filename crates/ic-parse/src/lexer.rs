@@ -362,12 +362,15 @@ where
                     });
                 }
                 ic_preproc::Kind::String { .. } => {
-                    let str = iter
-                        .source_of(next.span)
+                    let source = iter.source_of(next.span);
+                    let str = source
                         .strip_prefix('"')
                         .and_then(|v| v.strip_suffix('"'))
-                        .unwrap()
-                        .to_string();
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| {
+                            // Handle malformed string - return the content without quotes if possible
+                            source.strip_prefix('"').unwrap_or(source).to_string()
+                        });
 
                     break Some(Token {
                         kind: Kind::StringLit(str),

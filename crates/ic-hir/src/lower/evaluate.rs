@@ -123,7 +123,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
             ic_syntax::LiteralValue::String(s) => {
                 // String literals are not supported in numeric expressions
                 Err(ExprError::Custom(
-                    "string literals are not supported in constant expressions".to_string(),
+                    "string literals cannot be used in arithmetic expressions".to_string(),
                 ))
             }
         }
@@ -243,7 +243,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
             }
         }
 
-        Err(ExprError::Custom(format!("undefined variable: {}", name)))
+        Err(ExprError::Custom(format!("undefined constant or enum value `{}`", name)))
     }
 
     fn config(&self) -> ic_expr::EvalConfig {
@@ -386,8 +386,8 @@ impl<'a> ExpressionEvaluator<'a> {
             }
             Err(err) => {
                 let msg = match err {
-                    ExprError::DivisionByZero => "division by zero",
-                    ExprError::ModuloByZero => "modulo by zero",
+                    ExprError::DivisionByZero => "division by zero in constant expression",
+                    ExprError::ModuloByZero => "modulo by zero in constant expression",
                     ExprError::Overflow(op_str) => {
                         self.errors.push(warn_span(
                             format!("arithmetic overflow in {} operation", op_str),
@@ -413,11 +413,20 @@ impl<'a> ExpressionEvaluator<'a> {
                         return Numeric::Null;
                     }
                     ExprError::Custom(s) => {
-                        self.errors.push(error_span(
-                            s,
+                        let mut diag = error_span(
+                            s.clone(),
                             Label::new(ic_syntax::util::expr_span(expr))
                                 .message("evaluation error"),
-                        ));
+                        );
+                        
+                        // Add helpful notes for common errors
+                        if s.contains("undefined constant") {
+                            diag = diag.note("check that the name is spelled correctly");
+                        } else if s.contains("string literals cannot be used") {
+                            diag = diag.note("string literals can only be used in struct initialization or string constants");
+                        }
+                        
+                        self.errors.push(diag);
                         return Numeric::Null;
                     }
                 };
@@ -631,13 +640,17 @@ impl<'a> ExpressionEvaluator<'a> {
                     fields.push((member.ident.clone(), value));
                 } else {
                     // Field not provided in initializer
-                    self.errors.push(error_span(
+                    let diag = error_span(
                         format!(
-                            "missing field '{}' in struct initializer",
+                            "missing required field `{}` in struct initializer",
                             member.ident.name
                         ),
-                        Label::new(member.ident.span).message("field required"),
-                    ));
+                        Label::new(member.ident.span).message("field is required here"),
+                    )
+                    .note("all struct fields must be initialized")
+                    .note("add the missing field to the initializer list");
+                    
+                    self.errors.push(diag);
                     return Numeric::Null;
                 }
             }
@@ -661,11 +674,15 @@ impl<'a> ExpressionEvaluator<'a> {
                 }
             }
         } else {
-            self.errors.push(error_span(
-                "mixing named and positional initializers is not allowed",
-                Label::new(init_list.values[0].value.span()) // Use first value's span
-                    .message("use either all named or all positional"),
-            ));
+            let diag = error_span(
+                "cannot mix named and positional initializers",
+                Label::new(init_list.values[0].value.span())
+                    .message("mixing initialization styles"),
+            )
+            .note("use either all named fields (e.g., {.x = 1, .y = 2}) or all positional ({1, 2})")
+            .help("consider using named initialization for clarity");
+            
+            self.errors.push(diag);
             return Numeric::Null;
         }
 

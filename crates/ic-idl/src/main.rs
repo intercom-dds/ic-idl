@@ -155,13 +155,8 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, (Vec<Er
 
     // Emit warning summary if there were warnings but no errors
     if !all_warnings.is_empty() {
-        use ic_cli::color::Colorize as _;
         let warning_plural = if all_warnings.len() > 1 { "s" } else { "" };
-        warn!(
-            "{} warning{} emitted",
-            all_warnings.len(),
-            warning_plural,
-        );
+        warn!("{} warning{} emitted", all_warnings.len(), warning_plural);
     }
 
     Ok(result)
@@ -200,7 +195,19 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
 
     // Collect parse errors and warnings
     errors.extend(ast.errors.iter().cloned().map(Into::into));
-    warnings.extend(ast.warnings.iter().map(pretty::parse_error_to_warning));
+
+    // Filter preprocessor warnings based on options
+    if options.warn.preprocessor_enabled() {
+        warnings.extend(ast.warnings.iter().map(pretty::parse_error_to_warning));
+    } else {
+        // Only include non-preprocessor warnings
+        warnings.extend(
+            ast.warnings
+                .iter()
+                .filter(|w| w.label != Some("preprocessor warning"))
+                .map(pretty::parse_error_to_warning),
+        );
+    }
 
     if options.unstable.ast_dump {
         println!("{:#?}", ast.tree);
@@ -293,5 +300,3 @@ fn try_ptree(options: &Options, parsed: &[ParseResult]) -> Result<Vec<File>, Err
     }
     Ok(generated)
 }
-
-fn emit_summary(errors: usize, warnings: usize) {}

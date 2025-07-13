@@ -55,6 +55,10 @@ pub struct Warnings {
     #[option(long)]
     pedantic: bool,
 
+    /// Preprocessor-related warnings
+    #[option(long)]
+    preprocessor: bool,
+
     /// Upgrade warnings to errors
     #[option(long)]
     error: bool,
@@ -65,6 +69,12 @@ pub struct Warnings {
 }
 
 impl Warnings {
+    /// Check if preprocessor warnings should be emitted.
+    /// They are enabled by default unless explicitly disabled.
+    pub fn preprocessor_enabled(&self) -> bool {
+        self.preprocessor
+    }
+
     /// Build a LintConfig from the warning flags.
     pub fn to_lint_config(&self) -> LintConfig {
         let mut config = LintConfig::new();
@@ -326,7 +336,10 @@ impl convert::Convert for Unstable {
 
 impl convert::Convert for Warnings {
     fn from_result(input: &[String]) -> convert::Result<Self> {
-        let mut warnings = Self::default();
+        let mut warnings = Self {
+            preprocessor: true,
+            ..Self::default()
+        };
         let known_lints = ic_lint::all_lint_names();
 
         for arg in input {
@@ -352,6 +365,7 @@ impl convert::Convert for Warnings {
                 "annotation" => warnings.annotation = enabled,
                 "unknown-annotation" => warnings.unknown_annotation = enabled,
                 "pedantic" => warnings.pedantic = enabled,
+                "preprocessor" => warnings.preprocessor = enabled,
                 "error" => warnings.error = enabled,
                 "help" => crate::unstable::warning_help(),
                 _ => {

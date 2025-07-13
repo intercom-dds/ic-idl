@@ -292,11 +292,13 @@ impl Formatter<'_> {
                     continue;
                 }
                 
+                let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
                 write!(
                     f,
-                    " {} {}",
+                    " {:>width$} {}",
                     line_num.blue().bold(),
                     self.chars.vertical.blue().bold(),
+                    width = line_width
                 )?;
 
                 let line_start = self.line_start_offset(line_num);
@@ -400,11 +402,13 @@ impl Formatter<'_> {
                     continue;
                 }
                 
+                let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
                 write!(
                     f,
-                    " {} {}",
+                    " {:>width$} {}",
                     line_num.blue().bold(),
                     self.chars.vertical.blue().bold(),
+                    width = line_width
                 )?;
 
                 let line_start = self.line_start_offset(line_num);

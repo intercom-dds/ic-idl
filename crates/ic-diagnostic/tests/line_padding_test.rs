@@ -145,3 +145,69 @@ fn test_line_padding_with_ellipsis() {
     
     insta::assert_snapshot!(buf);
 }
+
+#[test]
+fn test_line_padding_four_digits() {
+    // Create a source with 10000+ lines
+    let mut lines = Vec::new();
+    let mut offsets = Vec::new();
+    let mut current_offset = 0;
+    
+    for i in 1..=10005 {
+        let line = format!("line {}", i);
+        offsets.push((i, current_offset, current_offset + line.len()));
+        current_offset += line.len() + 1; // +1 for newline
+        lines.push(line);
+    }
+    let source = lines.join("\n");
+    let file_id = FileId::_do_not_use();
+    
+    // Get exact offsets for lines 1, 99, 999, and 9999
+    let (_, start_1, end_1) = offsets[0];
+    let (_, start_99, end_99) = offsets[98];
+    let (_, start_999, end_999) = offsets[998];
+    let (_, start_9999, end_9999) = offsets[9998];
+    
+    // Create labels on lines with different digit counts
+    let diag = Diag::error("labels with up to 4-digit line numbers")
+        .label(Label::new(make_span(file_id, start_1 as u32, end_1 as u32)).message("on line 1"))
+        .label(Label::new(make_span(file_id, start_99 as u32, end_99 as u32)).message("on line 99"))
+        .label(Label::new(make_span(file_id, start_999 as u32, end_999 as u32)).message("on line 999"))
+        .label(Label::new(make_span(file_id, start_9999 as u32, end_9999 as u32)).message("on line 9999"));
+    
+    let mut buf = String::new();
+    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    
+    insta::assert_snapshot!(buf);
+}
+
+#[test]
+fn test_line_padding_mixed_extreme() {
+    // Test with a mix of single digit and 5-digit line numbers to ensure padding works
+    let mut lines = Vec::new();
+    let mut offsets = Vec::new();
+    let mut current_offset = 0;
+    
+    for i in 1..=10000 {
+        let line = format!("line {}", i);
+        offsets.push((i, current_offset, current_offset + line.len()));
+        current_offset += line.len() + 1; // +1 for newline
+        lines.push(line);
+    }
+    let source = lines.join("\n");
+    let file_id = FileId::_do_not_use();
+    
+    // Get exact offsets for lines 5 and 10000
+    let (_, start_5, end_5) = offsets[4];
+    let (_, start_10000, end_10000) = offsets[9999];
+    
+    // Create labels on lines 5 and 10000 - the most extreme case
+    let diag = Diag::error("extreme line number difference")
+        .label(Label::new(make_span(file_id, start_5 as u32, end_5 as u32)).message("on line 5"))
+        .label(Label::new(make_span(file_id, start_10000 as u32, end_10000 as u32)).message("on line 10000"));
+    
+    let mut buf = String::new();
+    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    
+    insta::assert_snapshot!(buf);
+}

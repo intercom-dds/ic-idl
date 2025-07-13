@@ -1,0 +1,12 @@
+---
+source: crates/ic-diagnostic/tests/line_padding_test.rs
+expression: buf
+---
+error: extreme line number difference
+       ┌ test.idl:5:1
+       │
+     5 │ line 5
+       · ^^^^^^ on line 5
+ 10000 │ line 10000
+       · ^^^^^^^^^^ on line 10000
+       └──

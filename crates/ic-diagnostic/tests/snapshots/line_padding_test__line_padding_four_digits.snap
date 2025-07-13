@@ -1,0 +1,16 @@
+---
+source: crates/ic-diagnostic/tests/line_padding_test.rs
+expression: buf
+---
+error: labels with up to 4-digit line numbers
+      ┌ test.idl:1:1
+      │
+    1 │ line 1
+      · ^^^^^^ on line 1
+   99 │ line 99
+      · ^^^^^^^ on line 99
+  999 │ line 999
+      · ^^^^^^^^ on line 999
+ 9999 │ line 9999
+      · ^^^^^^^^^ on line 9999
+      └──

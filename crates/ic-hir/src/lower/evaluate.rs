@@ -177,6 +177,19 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
             }
         }
 
+        // Try to find an unscoped enum enumerator
+        for (_, def) in self.ctx.definitions.iter() {
+            if let DefKind::Enum(enum_ty) = &def.kind {
+                // Look for the enumerator in this enum
+                for field in &enum_ty.fields {
+                    if field.ident.name == name {
+                        // Found it! Return the enum field value
+                        return Ok(GenericNumeric::Int32(field.value as i32));
+                    }
+                }
+            }
+        }
+
         Err(ExprError::Custom(format!("undefined variable: {}", name)))
     }
 

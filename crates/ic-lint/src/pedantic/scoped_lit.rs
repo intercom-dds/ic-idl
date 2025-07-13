@@ -81,14 +81,35 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                         Kind::Enum => ("enum", "enumerators"),
                     };
 
-                    let fixed = fixed_path(path).green();
-                    let full_path = path.segments.iter().map(|s| &s.name).join("::").green();
+                    // Get just the enumerator name (last segment)
+                    let enumerator = path
+                        .segments
+                        .last()
+                        .map(|s| s.name.as_str())
+                        .unwrap_or("")
+                        .green();
+                    // Get enum::enumerator (last two segments)
+                    let enum_and_enumerator = if path.segments.len() >= 2 {
+                        let last_two: Vec<&str> = path
+                            .segments
+                            .iter()
+                            .rev()
+                            .take(2)
+                            .rev()
+                            .map(|s| s.name.as_str())
+                            .collect();
+                        last_two.join("::").green()
+                    } else {
+                        path.segments.iter().map(|s| &s.name).join("::").green()
+                    };
                     let label = warn_span(
                         format!("scoped {ty}s are an InterCOM extension"),
                         Label::new(v.span).message("used here"),
                     )
                     .note(format!("{member} are registered in the parent scope"))
-                    .help(format!("use `{fixed}` instead of `{full_path}`"));
+                    .help(format!(
+                        "use `{enumerator}` instead of `{enum_and_enumerator}`"
+                    ));
 
                     self.ctx.report_warn(label);
                 }

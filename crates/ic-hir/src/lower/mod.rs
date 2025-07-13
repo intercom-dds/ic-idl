@@ -58,6 +58,43 @@ mod resolve;
 mod typecheck;
 mod validate;
 
+/// Converts AST annotations to HIR annotations
+pub(crate) fn convert_annotations(ast_anns: &[ic_syntax::AnnotationAppl]) -> Vec<crate::hir::Ann> {
+    ast_anns
+        .iter()
+        .map(|ann| {
+            crate::hir::Ann {
+                path: ann.ident.clone(),
+                ty: None, // Annotations don't have types in the AST
+                args: ann
+                    .args
+                    .iter()
+                    .map(|arg| crate::hir::AnnArg {
+                        ident: arg.ident.clone(),
+                        value: convert_annotation_value(&arg.value),
+                    })
+                    .collect(),
+            }
+        })
+        .collect()
+}
+
+/// Converts an annotation argument value (expression) to a Numeric value
+fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {
+    // For now, only handle literal expressions
+    // TODO: Full expression evaluation should happen in the evaluate phase
+    match expr {
+        ic_syntax::Expr::Literal(lit) => match &lit.value {
+            ic_syntax::LiteralValue::Bool(b) => crate::hir::Numeric::Bool(*b),
+            ic_syntax::LiteralValue::Int(i) => crate::hir::Numeric::Int32(*i as i32),
+            ic_syntax::LiteralValue::Float(f) => crate::hir::Numeric::Double(*f),
+            ic_syntax::LiteralValue::String(s) => crate::hir::Numeric::String(s.clone()),
+            _ => crate::hir::Numeric::Null,
+        },
+        _ => crate::hir::Numeric::Null, // Non-literal expressions need evaluation
+    }
+}
+
 pub use self::collect::NameCollector;
 pub use self::evaluate::ExpressionEvaluator;
 pub use self::resolve::TypeResolver;

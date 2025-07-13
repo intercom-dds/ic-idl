@@ -42,7 +42,7 @@ union BadUnion switch (MissingEnum) {
 };
 
 // ERROR: Undefined module in qualified path
-typedef some::missing::module::Type BadPath;
+typedef missing::Type BadPath;
 
 // ERROR: Partially undefined path
 module existing {

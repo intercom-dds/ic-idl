@@ -112,6 +112,24 @@ impl<'a> NameCollector<'a> {
         }
     }
 
+    /// Allocates a definition with annotations
+    fn alloc_definition_with_annotations(
+        &mut self,
+        ident: Ident,
+        kind: DefKind,
+        span: Span,
+        annotations: &[ic_syntax::AnnotationAppl],
+    ) -> DefId {
+        let id = self.alloc_definition(ident, kind, span);
+
+        // Convert and set annotations
+        let hir_annotations = super::convert_annotations(annotations);
+        let def = self.ctx.definitions.get_mut(id);
+        def.annotations = hir_annotations;
+
+        id
+    }
+
     /// Allocates a placeholder definition with proper parent tracking.
     fn alloc_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let parent = self.scope_stack.current_parent();
@@ -143,7 +161,7 @@ impl<'a> NameCollector<'a> {
             id,
             ident: ident.clone(),
             parent,
-            annotations: Vec::new(), // Will be filled in resolution phase
+            annotations: Vec::new(), // Annotations will be set by caller
             span,
             kind,
             flags,
@@ -190,6 +208,26 @@ impl<'a> NameCollector<'a> {
         id
     }
 
+    /// Creates a scoped definition with annotations
+    fn alloc_scoped_definition_with_annotations(
+        &mut self,
+        ident: Ident,
+        kind: DefKind,
+        span: Span,
+        annotations: &[ic_syntax::AnnotationAppl],
+    ) -> DefId {
+        let id = self.alloc_definition_with_annotations(ident.clone(), kind, span, annotations);
+        self.scope_stack.push(ident.name.clone(), id);
+        // Create a child scope in the scope tree
+        let new_scope =
+            self.ctx
+                .scopes
+                .create_child_scope(self.current_scope, ident.name, Some(id));
+        self.current_scope = new_scope;
+
+        id
+    }
+
     /// Creates a definition that introduces a new scope.
     fn alloc_scoped_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident.clone(), kind, span);
@@ -206,12 +244,13 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
-        let id = self.alloc_scoped_definition(
+        let id = self.alloc_scoped_definition_with_annotations(
             def.ident.clone(),
             DefKind::Module(ModuleTy {
                 definitions: Vec::new(),
             }),
             def.span,
+            &def.annotations,
         );
 
         // Collect nested definitions
@@ -239,10 +278,11 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
-        let id = self.alloc_scoped_definition(
+        let id = self.alloc_scoped_definition_with_annotations(
             def.ident.clone(),
             DefKind::Interface(InterfaceTy::default()),
             def.span,
+            &def.annotations,
         );
 
         // Collect nested type definitions
@@ -278,13 +318,14 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_annotation(&mut self, def: &ic_syntax::AnnotationDef) -> DefId {
-        let id = self.alloc_scoped_definition(
+        let id = self.alloc_scoped_definition_with_annotations(
             def.ident.clone(),
             DefKind::Annotation(AnnotationTy {
                 members: Vec::new(),
                 types: Vec::new(),
             }),
             def.span,
+            &def.annotations,
         );
 
         // Collect nested type definitions
@@ -314,7 +355,7 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_valuetype(&mut self, def: &ic_syntax::ValuetypeDef) -> DefId {
-        let id = self.alloc_scoped_definition(
+        let id = self.alloc_scoped_definition_with_annotations(
             def.ident.clone(),
             DefKind::Valuetype(ValueTy {
                 parent: None,
@@ -324,6 +365,7 @@ impl<'a> NameCollector<'a> {
                 definitions: Vec::new(),
             }),
             def.span,
+            &def.annotations,
         );
 
         // Collect nested type definitions
@@ -360,6 +402,17 @@ impl<'a> NameCollector<'a> {
         id
     }
 
+    fn collect_simple_definition_with_annotations(
+        &mut self,
+        ident: Ident,
+        kind: DefKind,
+        span: Span,
+        annotations: &[ic_syntax::AnnotationAppl],
+    ) -> DefId {
+        let id = self.alloc_definition_with_annotations(ident, kind, span, annotations);
+        id
+    }
+
     fn collect_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::ModuleValue(v) => vec![self.collect_module(v)],
@@ -368,13 +421,14 @@ impl<'a> NameCollector<'a> {
 
             // Simple types without nested scopes
             Item::StructValue(v) => {
-                let id = self.alloc_definition(
+                let id = self.alloc_definition_with_annotations(
                     v.ident.clone(),
                     DefKind::Struct(StructTy {
                         parent: None,
                         members: Vec::new(),
                     }),
                     v.span,
+                    &v.annotations,
                 );
 
                 // If the struct has members, it's a complete definition, not a forward declaration
@@ -388,13 +442,14 @@ impl<'a> NameCollector<'a> {
                 vec![id]
             }
             Item::UnionValue(v) => {
-                let id = self.alloc_definition(
+                let id = self.alloc_definition_with_annotations(
                     v.ident.clone(),
                     DefKind::Union(UnionTy {
                         disc: placeholder_type(v.span),
                         variants: Vec::new(),
                     }),
                     v.span,
+                    &v.annotations,
                 );
 
                 // If the union has fields, it's a complete definition
@@ -407,21 +462,23 @@ impl<'a> NameCollector<'a> {
                 // Already registered in scope by alloc_definition
                 vec![id]
             }
-            Item::EnumValue(v) => vec![self.collect_simple_definition(
+            Item::EnumValue(v) => vec![self.collect_simple_definition_with_annotations(
                 v.ident.clone(),
                 DefKind::Enum(EnumTy {
                     fields: Vec::new(),
                     ty: placeholder_type(v.span),
                 }),
                 v.span,
+                &v.annotations,
             )],
             Item::ExceptionValue(v) => {
-                let id = self.alloc_definition(
+                let id = self.alloc_definition_with_annotations(
                     v.ident.clone(),
                     DefKind::Except(ExceptTy {
                         members: Vec::new(),
                     }),
                     v.span,
+                    &v.annotations,
                 );
 
                 // If the exception has members, it's a complete definition
@@ -434,23 +491,25 @@ impl<'a> NameCollector<'a> {
                 // Already registered in scope by alloc_definition
                 vec![id]
             }
-            Item::BitmaskValue(v) => vec![self.collect_simple_definition(
+            Item::BitmaskValue(v) => vec![self.collect_simple_definition_with_annotations(
                 v.ident.clone(),
                 DefKind::Bitmask(BitmaskTy {
                     flags: Vec::new(),
                     ty: placeholder_type(v.span),
                 }),
                 v.span,
+                &v.annotations,
             )],
             Item::ConstValue(v) => {
                 // Constants might have array declarators
-                vec![self.collect_simple_definition(
+                vec![self.collect_simple_definition_with_annotations(
                     extract_declarator_name(&v.decl),
                     DefKind::Const(ConstTy {
                         value: Numeric::Null, // Placeholder
                         ty: placeholder_type(v.span),
                     }),
                     v.span,
+                    &v.annotations,
                 )]
             }
             Item::AliasValue(v) => {
@@ -458,12 +517,13 @@ impl<'a> NameCollector<'a> {
                 v.decl
                     .iter()
                     .map(|decl| {
-                        self.collect_simple_definition(
+                        self.collect_simple_definition_with_annotations(
                             extract_declarator_name(decl),
                             DefKind::Alias(AliasTy {
                                 ty: placeholder_type(v.span),
                             }),
                             v.span,
+                            &v.annotations,
                         )
                     })
                     .collect()

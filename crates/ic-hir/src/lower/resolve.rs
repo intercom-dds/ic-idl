@@ -213,7 +213,7 @@ impl<'a> TypeResolver<'a> {
                 members.push(Member {
                     ident,
                     ty,
-                    annotations: Vec::new(), // TODO: Resolve annotations
+                    annotations: super::convert_annotations(&field.annotations),
                 });
             }
         }

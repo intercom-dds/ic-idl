@@ -513,7 +513,7 @@ impl<'a> ExpressionEvaluator<'a> {
             fields.push(EnumLit {
                 ident: field.ident.clone(),
                 value,
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations: super::convert_annotations(&field.annotations),
             });
         }
 
@@ -543,7 +543,7 @@ impl<'a> ExpressionEvaluator<'a> {
             flags.push(BitFlag {
                 ident: bit.ident.clone(),
                 value,
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations: super::convert_annotations(&bit.annotations),
             });
         }
 
@@ -629,6 +629,51 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates bounds in a type (for sequence/string/map)
+    fn evaluate_type_bounds_in_alias(&mut self, id: DefId, ast_ty: &ic_syntax::Type) {
+        // Get the current HIR type
+        let hir_def = self.ctx.definitions.get(id);
+        if let DefKind::Alias(alias_ty) = &hir_def.kind {
+            let mut ty = alias_ty.ty.clone();
+            self.evaluate_type_bounds(&mut ty, ast_ty);
+
+            // Update the HIR with the evaluated type
+            let hir_def = self.ctx.definitions.get_mut(id);
+            if let DefKind::Alias(alias_ty) = &mut hir_def.kind {
+                alias_ty.ty = ty;
+            }
+        }
+    }
+
+    /// Recursively evaluates bounds in a type
+    fn evaluate_type_bounds(&mut self, hir_ty: &mut Ty, ast_ty: &ic_syntax::Type) {
+        use ic_syntax::Type;
+
+        match (ast_ty, &mut hir_ty.kind) {
+            (Type::Sequence(seq), TyKind::Sequence { ty, bound }) => {
+                if let Some(ref bound_expr) = seq.bound {
+                    *bound = Some(self.eval_bound(bound_expr));
+                }
+                // Recursively handle nested type
+                self.evaluate_type_bounds(ty, &seq.ty);
+            }
+            (Type::String(str), TyKind::String { bound, .. }) => {
+                if let Some(ref bound_expr) = str.bound {
+                    *bound = Some(self.eval_bound(bound_expr));
+                }
+            }
+            (Type::Map(map), TyKind::Map { key, elem, bound }) => {
+                if let Some(ref bound_expr) = map.bound {
+                    *bound = Some(self.eval_bound(bound_expr));
+                }
+                // Recursively handle key and value types
+                self.evaluate_type_bounds(key, &map.key);
+                self.evaluate_type_bounds(elem, &map.value);
+            }
+            _ => {} // Other types don't have bounds
+        }
+    }
+
     /// Evaluates expressions in type definitions.
     fn evaluate_types(&mut self, items: &[Item]) {
         for item in items {
@@ -695,10 +740,11 @@ impl<'a> ExpressionEvaluator<'a> {
                         if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, name)
                         {
                             self.evaluate_alias(def_id, decl);
+                            // Also evaluate bounds in the type itself
+                            self.evaluate_type_bounds_in_alias(def_id, &v.ty);
                         }
                     }
                 }
-                // TODO: Handle sequence/map/string bounds
                 _ => {}
             }
         }

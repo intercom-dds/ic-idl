@@ -427,15 +427,11 @@ impl NumericValue for GenericNumeric {
                 Ok(Self::UInt64(a / b))
             }
             (Self::Float(a), Self::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::DivisionByZero);
-                }
+                // IEEE 754: division by zero produces infinity
                 Ok(Self::Float(a / b))
             }
             (Self::Double(a), Self::Double(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::DivisionByZero);
-                }
+                // IEEE 754: division by zero produces infinity
                 Ok(Self::Double(a / b))
             }
             _ => Err(Error::Custom("type mismatch in division".to_string())),
@@ -521,15 +517,11 @@ impl NumericValue for GenericNumeric {
                 Ok(Self::UInt64(a % b))
             }
             (Self::Float(a), Self::Float(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::ModuloByZero);
-                }
+                // IEEE 754: modulo by zero produces NaN
                 Ok(Self::Float(a % b))
             }
             (Self::Double(a), Self::Double(b)) => {
-                if *b == 0.0 {
-                    return Err(Error::ModuloByZero);
-                }
+                // IEEE 754: modulo by zero produces NaN
                 Ok(Self::Double(a % b))
             }
             _ => Err(Error::Custom("type mismatch in modulo".to_string())),

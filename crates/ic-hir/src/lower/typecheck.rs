@@ -57,6 +57,37 @@ impl<'a> TypeChecker<'a> {
 
     /// Checks if a numeric value is compatible with a type.
     fn check_numeric_type(&mut self, value: &Numeric, ty: &Ty, value_desc: &str) -> bool {
+        // Special case for struct values first
+        if let Numeric::Struct {
+            ty: value_ty,
+            fields,
+        } = value
+        {
+            if let TyKind::Adt(expected_ty) = &ty.kind {
+                // Check that the value type matches the expected type
+                if value_ty != expected_ty {
+                    self.errors.push(error_span(
+                        format!("{} struct type mismatch", value_desc),
+                        Label::new(ty.span).message("incompatible struct types"),
+                    ));
+                    return false;
+                }
+
+                // Check that it's actually a struct
+                let def = self.ctx.definitions.get(*expected_ty);
+                if let DefKind::Struct(struct_ty) = &def.kind {
+                    // TODO: Check field types match
+                    return true;
+                } else {
+                    self.errors.push(error_span(
+                        format!("{} is not a struct type", value_desc),
+                        Label::new(ty.span).message("expected struct type"),
+                    ));
+                    return false;
+                }
+            }
+        }
+
         match (&value, &ty.kind) {
             // Null is never valid in constants
             (Numeric::Null, _) => {
@@ -176,12 +207,11 @@ impl<'a> TypeChecker<'a> {
                 }
             }
 
-            // Array/sequence/map/struct/union values
+            // Array/sequence/map/union values
             (
                 Numeric::Array { .. }
                 | Numeric::Sequence { .. }
                 | Numeric::Map { .. }
-                | Numeric::Struct { .. }
                 | Numeric::Union { .. },
                 _,
             ) => {

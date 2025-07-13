@@ -120,10 +120,12 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                 // TODO: Handle float vs double based on suffix
                 Ok(GenericNumeric::Float(*f as f32))
             }
-            ic_syntax::LiteralValue::String(s) => Err(ExprError::Custom(format!(
-                "string literals not supported in constant expressions: \"{}\"",
-                s
-            ))),
+            ic_syntax::LiteralValue::String(s) => {
+                // String literals are not supported in numeric expressions
+                Err(ExprError::Custom(
+                    "string literals are not supported in constant expressions".to_string(),
+                ))
+            }
         }
     }
 
@@ -266,6 +268,14 @@ fn path_to_string(path: &ic_syntax::Path) -> String {
     }
 }
 
+/// Extract name from const def
+fn extract_const_name(def: &ic_syntax::ConstDef) -> &str {
+    match &def.decl {
+        ic_syntax::Declarator::Simple(ident) => &ident.name,
+        ic_syntax::Declarator::Array(arr) => &arr.ident.name,
+    }
+}
+
 /// Converts an ic-syntax expression to an ic-expr expression.
 fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, String> {
     match expr {
@@ -320,8 +330,10 @@ fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, Str
 
         Expr::Group(group) => convert_expr(&group.expr),
 
-        Expr::InitList(_) => {
-            Err("initializer lists not supported in constant expressions".to_string())
+        Expr::InitList(init) => {
+            // For now, return a placeholder - proper evaluation needs type context
+            // This will be handled in evaluate_const where we have the expected type
+            Err("initializer lists need type context for evaluation".to_string())
         }
     }
 }
@@ -573,6 +585,96 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates an expression that may contain string literals (for initializers)
+    fn eval_init_expr(&mut self, expr: &Expr) -> Numeric {
+        // Check if this is a string literal
+        if let Expr::Literal(lit) = expr {
+            match &lit.value {
+                ic_syntax::LiteralValue::String(s) => return Numeric::String(s.clone()),
+                ic_syntax::LiteralValue::Null => return Numeric::Null,
+                _ => {}
+            }
+        }
+
+        // Otherwise evaluate as normal expression
+        self.eval_expr(expr)
+    }
+
+    /// Evaluates an initializer list for a struct type
+    fn eval_struct_init(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        struct_ty: &StructTy,
+        type_id: TypeId,
+    ) -> Numeric {
+        let mut fields = Vec::new();
+
+        // If all fields are named, use them directly
+        let all_named = init_list.values.iter().all(|v| v.ident.is_some());
+
+        if all_named {
+            // Named initialization - match fields to struct member order
+            for member in &struct_ty.members {
+                // Find the corresponding initializer
+                let init_value = init_list
+                    .values
+                    .iter()
+                    .find(|v| {
+                        v.ident
+                            .as_ref()
+                            .map(|i| i.name == member.ident.name)
+                            .unwrap_or(false)
+                    })
+                    .map(|v| self.eval_init_expr(&v.value));
+
+                if let Some(value) = init_value {
+                    fields.push((member.ident.clone(), value));
+                } else {
+                    // Field not provided in initializer
+                    self.errors.push(error_span(
+                        format!(
+                            "missing field '{}' in struct initializer",
+                            member.ident.name
+                        ),
+                        Label::new(member.ident.span).message("field required"),
+                    ));
+                    return Numeric::Null;
+                }
+            }
+        } else if init_list.values.iter().all(|v| v.ident.is_none()) {
+            // Positional initialization - match with struct member order
+            for (i, named_expr) in init_list.values.iter().enumerate() {
+                if let Some(member) = struct_ty.members.get(i) {
+                    let value = self.eval_init_expr(&named_expr.value);
+                    fields.push((member.ident.clone(), value));
+                } else {
+                    self.errors.push(error_span(
+                        format!(
+                            "too many initializers for struct (expected {}, got {})",
+                            struct_ty.members.len(),
+                            init_list.values.len()
+                        ),
+                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                            .message("extra initializer"),
+                    ));
+                    break;
+                }
+            }
+        } else {
+            self.errors.push(error_span(
+                "mixing named and positional initializers is not allowed",
+                Label::new(init_list.values[0].value.span()) // Use first value's span
+                    .message("use either all named or all positional"),
+            ));
+            return Numeric::Null;
+        }
+
+        Numeric::Struct {
+            ty: type_id,
+            fields: fields.into_boxed_slice(),
+        }
+    }
+
     /// Evaluates a constant definition.
     fn evaluate_const(&mut self, id: DefId, def: &ic_syntax::ConstDef) {
         // Check if this is a string constant
@@ -588,7 +690,44 @@ impl<'a> ExpressionEvaluator<'a> {
             // Just store an empty string as placeholder
             Numeric::String(String::new())
         } else {
-            self.eval_expr(&def.value)
+            // Check if the expression is an init list that needs type context
+            match &def.value {
+                ic_syntax::Expr::InitList(init_list) => {
+                    // Get the type information
+                    let hir_def = self.ctx.definitions.get(id);
+                    if let DefKind::Const(const_ty) = &hir_def.kind {
+                        match &const_ty.ty.kind {
+                            TyKind::Adt(type_id) => {
+                                // Look up the ADT definition
+                                let adt_def = self.ctx.definitions.get(*type_id);
+                                match &adt_def.kind {
+                                    DefKind::Struct(struct_ty) => {
+                                        let struct_ty = struct_ty.clone();
+                                        self.eval_struct_init(init_list, &struct_ty, *type_id)
+                                    }
+                                    _ => {
+                                        self.errors.push(error_span(
+                                            "initializer lists can only be used with struct types",
+                                            Label::new(def.span).message("not a struct type"),
+                                        ));
+                                        Numeric::Null
+                                    }
+                                }
+                            }
+                            _ => {
+                                self.errors.push(error_span(
+                                    "initializer lists can only be used with struct types",
+                                    Label::new(def.span).message("not a struct type"),
+                                ));
+                                Numeric::Null
+                            }
+                        }
+                    } else {
+                        Numeric::Null
+                    }
+                }
+                _ => self.eval_expr(&def.value),
+            }
         };
 
         // Handle array bounds separately

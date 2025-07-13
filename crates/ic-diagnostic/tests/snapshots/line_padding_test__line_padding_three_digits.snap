@@ -1,0 +1,14 @@
+---
+source: crates/ic-diagnostic/tests/line_padding_test.rs
+expression: buf
+---
+error: multiple labels with different line number widths
+     ┌ test.idl:1:1
+     │
+ 1 │ line 1
+     · ^^^^^^ on line 1
+ 50 │ line 50
+     · ^^^^^^^ on line 50
+ 100 │ line 100
+     · ^^^^^^^^ on line 100
+     └──

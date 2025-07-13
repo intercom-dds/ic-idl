@@ -1,0 +1,18 @@
+---
+source: crates/ic-diagnostic/tests/line_padding_test.rs
+expression: buf
+---
+error: multi-line span with distant label
+     ┌ test.idl:5:1
+     │
+ 5 │ line 5
+     · ^^^^^^ spans lines 5-8
+ 6 │ line 6
+     · 
+ 7 │ line 7
+     · 
+ 8 │ line 8
+     · ^^^^^^
+ 145 │ line 145
+     · ^^^^^^^^ on line 145
+     └──

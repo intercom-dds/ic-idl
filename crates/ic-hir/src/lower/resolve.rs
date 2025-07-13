@@ -51,6 +51,8 @@ pub struct TypeResolver<'a> {
     item_map: HashMap<ItemKey, DefId>,
     /// Current scope for resolving unqualified names.
     current_scope: Vec<String>,
+    /// Current scope ID in the scope tree.
+    current_scope_id: crate::scope::ScopeId,
 }
 
 /// Key for looking up items by their AST identity.
@@ -62,41 +64,38 @@ struct ItemKey {
 
 impl<'a> TypeResolver<'a> {
     fn new(ctx: &'a mut Context, name_map: &'a NameMap) -> Self {
+        let root_scope = ctx.scopes.root();
         Self {
             ctx,
             name_map,
             errors: Vec::new(),
             item_map: HashMap::new(),
             current_scope: Vec::new(),
+            current_scope_id: root_scope,
         }
     }
 
     /// Resolves a path to a DefId.
     fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
-        let qualified = path_to_string(path);
+        // Convert path segments to string slice
+        let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
 
-        // First try the path as-is
-        if let Some(&id) = self.name_map.get(&qualified) {
-            return Some(id);
-        }
-
-        // If it's an unqualified name and we're in a scope, try with the current scope
-        if path.segments.len() == 1
-            && path.leading_colons.is_none()
-            && !self.current_scope.is_empty()
+        // Use the scope tree to resolve the path
+        if let Some(def_id) = self
+            .ctx
+            .scopes
+            .resolve_path(self.current_scope_id, &segments)
         {
-            let scoped_name = format!("{}::{}", self.current_scope.join("::"), qualified);
-
-            if let Some(&id) = self.name_map.get(&scoped_name) {
-                return Some(id);
-            }
+            return Some(def_id);
         }
 
-        // Check if it's a primitive type
+        // If not found and it's a single segment, might be a primitive
         if path.segments.len() == 1 && path.leading_colons.is_none() {
-            return None; // Might be a primitive, handled in resolve_type
+            return None; // Primitive types are handled in resolve_type
         }
 
+        // Report error
+        let qualified = path_to_string(path);
         self.errors.push(error_span(
             format!("unresolved type `{}`", qualified),
             Label::new(ic_syntax::util::path_span(path)).message("unknown type"),
@@ -634,11 +633,25 @@ impl<'a> TypeResolver<'a> {
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
 
-        // Push module name to current scope
+        // Push module name to current scope (for compatibility)
         self.current_scope.push(def.ident.name.clone());
 
-        // Recursively resolve all nested items
-        self.resolve_all(&def.definitions);
+        // Find the child scope for this module
+        let current_scope_data = self.ctx.scopes.get_scope(self.current_scope_id);
+        if let Some(&module_scope) = current_scope_data.children.get(&def.ident.name) {
+            // Save current scope
+            let saved_scope = self.current_scope_id;
+            self.current_scope_id = module_scope;
+
+            // Recursively resolve all nested items
+            self.resolve_all(&def.definitions);
+
+            // Restore scope
+            self.current_scope_id = saved_scope;
+        } else {
+            // Fallback: just resolve without changing scope
+            self.resolve_all(&def.definitions);
+        }
 
         // Pop module name from current scope
         self.current_scope.pop();

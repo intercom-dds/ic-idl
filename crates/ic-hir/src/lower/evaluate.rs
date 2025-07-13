@@ -542,9 +542,41 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates an alias (typedef) definition.
+    fn evaluate_alias(&mut self, id: DefId, decl: &ic_syntax::Declarator) {
+        if let ic_syntax::Declarator::Array(arr) = decl {
+            // Get the current type
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Alias(alias_ty) = &hir_def.kind {
+                let mut ty = alias_ty.ty.clone();
+                self.update_type_bounds(&mut ty, &arr.bounds);
+
+                // Update the HIR with the evaluated type
+                let hir_def = self.ctx.definitions.get_mut(id);
+                if let DefKind::Alias(alias_ty) = &mut hir_def.kind {
+                    alias_ty.ty = ty;
+                }
+            }
+        }
+    }
+
     /// Evaluates a constant definition.
     fn evaluate_const(&mut self, id: DefId, def: &ic_syntax::ConstDef) {
-        let value = self.eval_expr(&def.value);
+        // Check if this is a string constant
+        let hir_def = self.ctx.definitions.get(id);
+        let is_string = if let DefKind::Const(const_ty) = &hir_def.kind {
+            matches!(const_ty.ty.kind, TyKind::String { .. })
+        } else {
+            false
+        };
+
+        let value = if is_string {
+            // For string constants, we don't evaluate them as expressions
+            // Just store an empty string as placeholder
+            Numeric::String(String::new())
+        } else {
+            self.eval_expr(&def.value)
+        };
 
         // Handle array bounds separately
         let bounds = if let ic_syntax::Declarator::Array(arr) = &def.decl {
@@ -638,6 +670,19 @@ impl<'a> ExpressionEvaluator<'a> {
                     };
                     if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, name) {
                         self.evaluate_const(def_id, v);
+                    }
+                }
+                Item::AliasValue(v) => {
+                    // Handle each declarator in the alias
+                    for decl in &v.decl {
+                        let name = match decl {
+                            ic_syntax::Declarator::Simple(n) => &n.name,
+                            ic_syntax::Declarator::Array(a) => &a.ident.name,
+                        };
+                        if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, name)
+                        {
+                            self.evaluate_alias(def_id, decl);
+                        }
                     }
                 }
                 // TODO: Handle sequence/map/string bounds

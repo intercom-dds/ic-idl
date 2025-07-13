@@ -30,7 +30,7 @@ use std::collections::HashMap;
 use ic_cli::color::Colorize;
 use ic_diagnostic::{Label, warn_span};
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
-use ic_syntax::{BitmaskDef, EnumDef, Expr, Item, Path};
+use ic_syntax::{BitmaskDef, EnumDef, Expr, Item};
 
 use crate::iter::IterExt;
 use crate::{Category, Lint, LintCtx};

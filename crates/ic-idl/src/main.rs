@@ -131,10 +131,14 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, (Vec<Er
     let files = collect_files(&options.files)
         .map_err(|e| (e.into_iter().map(Error::Io).collect::<Vec<_>>(), 0))?;
 
+    // Collect all expansion info across files
+    let mut all_expansion_info = std::collections::HashMap::new();
+    
     for file in files {
         let parsed = try_parse(options, args.clone(), &file, vfs);
         all_errors.extend(parsed.errors);
         all_warnings.extend(parsed.warnings);
+        all_expansion_info.extend(parsed.expansion_info);
         if let Some(result) = parsed.result {
             trees.push(result);
         }
@@ -147,7 +151,7 @@ fn try_main(options: &Options, vfs: &mut SourceMap) -> Result<Vec<File>, (Vec<Er
 
     // If there were any errors, emit them and return
     if !all_errors.is_empty() {
-        pretty::emit_errors(&all_errors, vfs);
+        pretty::emit_errors_with_expansion(&all_errors, vfs, &all_expansion_info);
         return Err((all_errors, all_warnings.len()));
     }
 
@@ -166,6 +170,7 @@ struct Parsed {
     result: Option<ParseResult>,
     errors: Vec<Error>,
     warnings: Vec<Diag>,
+    expansion_info: std::collections::HashMap<ic_vfs::Span, ic_preproc::ExpansionInfo>,
 }
 
 // To report as much information as possible at once, we keep going even if we
@@ -189,6 +194,7 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
                 result: None,
                 errors,
                 warnings,
+                expansion_info: std::collections::HashMap::new(),
             };
         }
     };
@@ -251,6 +257,7 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
         result,
         errors,
         warnings,
+        expansion_info: ast.expansion_info,
     }
 }
 

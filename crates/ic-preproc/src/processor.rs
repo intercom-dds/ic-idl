@@ -899,7 +899,15 @@ where
                     self.expand_function_macro(token, args, def, *variadic, seen, name);
                 }
                 Macro::Object { def, .. } => {
+                    // Record expansion context for object macros
+                    let expansion_info = crate::state::ExpansionInfo {
+                        invocation_span: token.span,
+                        macro_name: name.to_string(),
+                    };
+                    
                     for &tok in def {
+                        // Record that this token came from a macro expansion
+                        self.state().expansion_info.insert(tok.span, expansion_info.clone());
                         self.expand_inner(tok, seen);
                     }
                 }

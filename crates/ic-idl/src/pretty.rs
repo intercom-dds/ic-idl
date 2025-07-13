@@ -33,7 +33,8 @@ use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_parse::Reason;
 use ic_parse::lexer::Kind;
-use ic_vfs::SourceMap;
+use ic_vfs::{SourceMap, Span};
+use std::collections::HashMap;
 
 use crate::util::Error;
 
@@ -60,18 +61,52 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
 }
 
 fn parse_error_to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
+    parse_error_to_diag_with_expansion(error, is_warning, &HashMap::new())
+}
+
+fn parse_error_to_diag_with_expansion(
+    error: &ic_parse::Error, 
+    is_warning: bool,
+    expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
+) -> Diag {
     let diag_fn = if is_warning { warn_span } else { error_span };
 
     match &error.reason {
-        Reason::Unclosed { span, delimiter } => diag_fn(
-            format!("unclosed delimiter {delimiter}"),
-            Label::new(*span).message("unclosed delimiter here"),
-        ),
+        Reason::Unclosed { span, delimiter } => {
+            let mut diag = diag_fn(
+                format!("unclosed delimiter {delimiter}"),
+                Label::new(*span).message("unclosed delimiter here"),
+            );
+            
+            // Add macro expansion context if available
+            if let Some(info) = expansion_info.get(span) {
+                diag = diag.label(
+                    Label::new(info.invocation_span)
+                        .message(format!("in expansion of macro '{}'", info.macro_name))
+                        .color(ic_diagnostic::Color::Cyan)
+                );
+            }
+            
+            diag
+        },
 
-        Reason::Custom(message) => diag_fn(
-            message.clone(),
-            Label::new(error.span).message("unexpected token"),
-        ),
+        Reason::Custom(message) => {
+            let mut diag = diag_fn(
+                message.clone(),
+                Label::new(error.span).message("unexpected token"),
+            );
+            
+            // Add macro expansion context if available
+            if let Some(info) = expansion_info.get(&error.span) {
+                diag = diag.label(
+                    Label::new(info.invocation_span)
+                        .message(format!("in expansion of macro '{}'", info.macro_name))
+                        .color(ic_diagnostic::Color::Cyan)
+                );
+            }
+            
+            diag
+        },
 
         Reason::Unexpected => {
             let cause = if let Some(e) = &error.found {
@@ -97,22 +132,50 @@ fn parse_error_to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
                 .as_ref()
                 .map_or_else(|| "end of input".to_string(), ToString::to_string);
 
-            diag_fn(
+            let mut diag = diag_fn(
                 format!("{cause}, expected {expected}"),
                 Label::new(error.span).message(format!("unexpected {found}")),
-            )
+            );
+            
+            // Add macro expansion context if available
+            if let Some(info) = expansion_info.get(&error.span) {
+                diag = diag.label(
+                    Label::new(info.invocation_span)
+                        .message(format!("in expansion of macro '{}'", info.macro_name))
+                        .color(ic_diagnostic::Color::Cyan)
+                );
+            }
+            
+            diag
         }
     }
 }
 
 fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write) -> fmt::Result {
-    let diag = parse_error_to_diag(error, false);
+    emit_error_with_expansion(error, vfs, buf, &HashMap::new())
+}
+
+fn emit_error_with_expansion(
+    error: &ic_parse::Error, 
+    vfs: &SourceMap, 
+    buf: &mut dyn fmt::Write,
+    expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
+) -> fmt::Result {
+    let diag = parse_error_to_diag_with_expansion(error, false, expansion_info);
     let file = vfs.file_info(error.span.start.file_id);
     let relative = rel_path(&file.path).to_string_lossy().to_string();
     ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag)
 }
 
 pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
+    emit_errors_with_expansion(errors, vfs, &HashMap::new())
+}
+
+pub fn emit_errors_with_expansion(
+    errors: &[Error], 
+    vfs: &SourceMap,
+    expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
+) {
     let mut buf = String::new();
     let prefix = "error:".red().bold();
 
@@ -125,7 +188,7 @@ pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
             Error::Preproc(e) => writeln!(&mut buf, "{prefix} {e}"),
             Error::Io(e) => writeln!(&mut buf, "{prefix} {e}"),
             Error::Custom(e) => writeln!(&mut buf, "{prefix} {e}"),
-            Error::Parse(e) => emit_error(e, vfs, &mut buf),
+            Error::Parse(e) => emit_error_with_expansion(e, vfs, &mut buf, expansion_info),
             Error::Diagnostic(diag) => ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag),
         };
     }

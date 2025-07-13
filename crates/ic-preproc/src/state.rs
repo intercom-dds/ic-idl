@@ -34,6 +34,15 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::Span;
 use crate::macros::Macro;
 
+/// Information about where a token was expanded from
+#[derive(Debug, Clone)]
+pub struct ExpansionInfo {
+    /// The span where the macro was invoked
+    pub invocation_span: Span,
+    /// The name of the macro that was expanded
+    pub macro_name: String,
+}
+
 /// Preprocessor state containing macro definitions, error state, and token queue
 #[derive(Debug, Default)]
 pub struct State {
@@ -52,6 +61,9 @@ pub struct State {
     /// Set of files we've already parsed.
     /// Used to enable `#pragma once`-like functionality.
     pub parsed_files: FxHashSet<FileId>,
+
+    /// Map from token spans to their macro expansion context
+    pub expansion_info: FxHashMap<Span, ExpansionInfo>,
 }
 
 impl State {
@@ -64,6 +76,7 @@ impl State {
             warnings: Vec::new(),
             queue: VecDeque::new(),
             parsed_files: FxHashSet::default(),
+            expansion_info: FxHashMap::default(),
         }
     }
 

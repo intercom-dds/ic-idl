@@ -94,6 +94,8 @@ pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
     pub warnings: Vec<Error>,
+    /// Map of spans to their macro expansion context
+    pub expansion_info: std::collections::HashMap<Span, ic_preproc::ExpansionInfo>,
 }
 
 #[derive(Clone, Debug)]
@@ -286,6 +288,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
         tree,
         errors,
         warnings,
+        expansion_info: state.expansion_info.iter().map(|(k, v)| (*k, v.clone())).collect(),
     }
 }
 
@@ -308,5 +311,6 @@ where
         tree: tree.unwrap_or_default(),
         errors: errors.into_iter().map(Error::from).collect(),
         warnings: Vec::new(),
+        expansion_info: std::collections::HashMap::default(),
     }
 }

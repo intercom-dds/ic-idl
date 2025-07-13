@@ -35,6 +35,11 @@ use ic_vfs::SourceMap;
 
 use crate::{Color, Diag, Label};
 
+/// Maximum number of lines to show before and after in a diagnostic span
+const CONTEXT_LINES: usize = 2;
+/// Maximum total lines to show for a single label span
+const MAX_LINES_PER_SPAN: usize = 10;
+
 #[derive(Debug)]
 struct Charset {
     up_right: &'static str,
@@ -240,9 +245,32 @@ impl Formatter<'_> {
             let end_line = line_number(self.source, label.span.end.offset as usize);
             
             let mut group_lines = Vec::new();
-            for line in start_line..=end_line {
-                if seen_lines.insert(line) {
-                    group_lines.push(line);
+            
+            // If the span is too large, only show context around start and end
+            let total_lines = end_line - start_line + 1;
+            if total_lines > MAX_LINES_PER_SPAN {
+                // Show first few lines
+                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
+                    if line <= end_line && seen_lines.insert(line) {
+                        group_lines.push(line);
+                    }
+                }
+                
+                // Add ellipsis marker (using line number 0 as a sentinel)
+                group_lines.push(0);
+                
+                // Show last few lines
+                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
+                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
+                        group_lines.push(line);
+                    }
+                }
+            } else {
+                // Show all lines for small spans
+                for line in start_line..=end_line {
+                    if seen_lines.insert(line) {
+                        group_lines.push(line);
+                    }
                 }
             }
             
@@ -253,7 +281,13 @@ impl Formatter<'_> {
 
         // Display line groups in order
         for group in line_groups {
-            for line_num in group {
+            for &line_num in &group {
+                if line_num == 0 {
+                    // Print ellipsis for skipped lines
+                    writeln!(f, "{indent}{} {}", self.chars.vertical_dx.blue().bold(), "[...]")?;
+                    continue;
+                }
+                
                 write!(
                     f,
                     " {} {}",

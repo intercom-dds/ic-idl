@@ -1314,7 +1314,10 @@ impl<'a> ExpressionEvaluator<'a> {
                             ic_syntax::Declarator::Simple(n) => &n.name,
                             ic_syntax::Declarator::Array(a) => &a.ident.name,
                         };
-                        if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, &name.to_lowercase())
+                        if let Some(def_id) = self
+                            .ctx
+                            .scopes
+                            .resolve_name(self.current_scope, &name.to_lowercase())
                         {
                             self.evaluate_alias(def_id, decl);
                             // Also evaluate bounds in the type itself

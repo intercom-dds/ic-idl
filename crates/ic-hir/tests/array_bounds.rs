@@ -31,13 +31,13 @@ use ic_preproc::ProcArgs;
 
 #[test]
 fn test_array_bounds_in_struct() {
-    let idl = r#"
+    let idl = r"
         struct MyStruct {
             long array1[5];
             long array2[10];
             long array3[2 + 3];
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -74,14 +74,14 @@ fn test_array_bounds_in_struct() {
 
 #[test]
 fn test_array_bounds_in_union() {
-    let idl = r#"
+    let idl = r"
         union MyUnion switch (long) {
             case 1:
                 char buffer[256];
             case 2:
                 long data[4 * 2];
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -114,12 +114,12 @@ fn test_array_bounds_in_union() {
 
 #[test]
 fn test_array_bounds_in_exception() {
-    let idl = r#"
+    let idl = r"
         exception MyException {
             string messages[3];
             octet codes[1 << 3];  // 8
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -152,12 +152,12 @@ fn test_array_bounds_in_exception() {
 
 #[test]
 fn test_multidimensional_arrays() {
-    let idl = r#"
+    let idl = r"
         struct Matrix {
             long matrix2d[3][4];
             long matrix3d[2][3][4];
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -199,7 +199,7 @@ fn test_multidimensional_arrays() {
 
 #[test]
 fn test_array_bounds_with_enum_values() {
-    let idl = r#"
+    let idl = r"
         enum Sizes {
             SMALL = 4,
             MEDIUM = 8,
@@ -210,7 +210,7 @@ fn test_array_bounds_with_enum_values() {
             octet small_buffer[Sizes::SMALL];
             octet large_buffer[Sizes::LARGE];
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);

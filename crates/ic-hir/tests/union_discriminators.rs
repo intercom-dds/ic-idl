@@ -30,14 +30,14 @@ use ic_preproc::ProcArgs;
 
 #[test]
 fn test_union_with_octet_discriminator() {
-    let idl = r#"
+    let idl = r"
         union MyUnion switch (octet) {
             case 0:
                 long a;
             case 1:
                 string b;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -50,7 +50,7 @@ fn test_union_with_octet_discriminator() {
 
 #[test]
 fn test_union_with_various_discriminators() {
-    let idl = r#"
+    let idl = r"
         enum MyEnum { A, B, C };
         
         union Union1 switch (boolean) {
@@ -77,7 +77,7 @@ fn test_union_with_various_discriminators() {
             case A: long x;
             case B: string y;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -90,13 +90,13 @@ fn test_union_with_various_discriminators() {
 
 #[test]
 fn test_invalid_union_discriminator() {
-    let idl = r#"
+    let idl = r"
         struct Point { long x, y; };
         
         union BadUnion switch (Point) {  // Structs can't be discriminators
             case 1: long value;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -104,12 +104,12 @@ fn test_invalid_union_discriminator() {
     let hir = ic_hir::from_ast(ast.tree);
 
     // Should have an error about invalid discriminator type
-    assert!(hir.errors.len() > 0);
+    assert!(!hir.errors.is_empty());
 }
 
 #[test]
 fn test_union_discriminator_case_insensitive() {
-    let idl = r#"
+    let idl = r"
         union Union1 switch (OCTET) {    // Uppercase
             case 0: long x;
         };
@@ -121,7 +121,7 @@ fn test_union_discriminator_case_insensitive() {
         union Union3 switch (octet) {    // Lowercase
             case 2: double z;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -134,7 +134,7 @@ fn test_union_discriminator_case_insensitive() {
 
 #[test]
 fn test_nested_union_resolution() {
-    let idl = r#"
+    let idl = r"
         module Test {
             union Inner switch (octet) {
                 case 0: long a;
@@ -146,7 +146,7 @@ fn test_nested_union_resolution() {
                 case FALSE: double value;
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);

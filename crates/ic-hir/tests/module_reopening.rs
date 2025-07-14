@@ -30,7 +30,7 @@ use ic_preproc::ProcArgs;
 
 #[test]
 fn test_module_reopening() {
-    let idl = r#"
+    let idl = r"
         module Foo {
             struct Bar {
                 long x;
@@ -42,7 +42,7 @@ fn test_module_reopening() {
                 Bar bar;
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -75,7 +75,7 @@ fn test_module_reopening() {
 
 #[test]
 fn test_module_reopening_with_references() {
-    let idl = r#"
+    let idl = r"
         module DDS {
             struct TypeA {
                 long value;
@@ -87,7 +87,7 @@ fn test_module_reopening_with_references() {
                 TypeA a;  // Should resolve to DDS::TypeA
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -100,7 +100,7 @@ fn test_module_reopening_with_references() {
 
 #[test]
 fn test_nested_module_reopening() {
-    let idl = r#"
+    let idl = r"
         module Outer {
             module Inner {
                 struct First {
@@ -116,7 +116,7 @@ fn test_nested_module_reopening() {
                 };
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -130,7 +130,7 @@ fn test_nested_module_reopening() {
 #[test]
 fn test_module_reopening_different_case() {
     // IDL is case-insensitive, so FOO and Foo should be the same module
-    let idl = r#"
+    let idl = r"
         module FOO {
             struct TypeA {
                 long x;
@@ -142,7 +142,7 @@ fn test_module_reopening_different_case() {
                 TypeA a;  // Should resolve
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);

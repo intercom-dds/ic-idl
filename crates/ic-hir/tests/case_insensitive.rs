@@ -30,7 +30,7 @@ use ic_preproc::ProcArgs;
 
 #[test]
 fn test_case_insensitive_type_resolution() {
-    let idl = r#"
+    let idl = r"
         struct MyStruct {
             long value;
         };
@@ -40,7 +40,7 @@ fn test_case_insensitive_type_resolution() {
             mystruct s2;     // Lowercase
             MyStruct s3;     // Original case
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -53,7 +53,7 @@ fn test_case_insensitive_type_resolution() {
 
 #[test]
 fn test_case_insensitive_module_paths() {
-    let idl = r#"
+    let idl = r"
         module DDS {
             module XTypes {
                 struct TypeIdentifier {
@@ -67,7 +67,7 @@ fn test_case_insensitive_module_paths() {
             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -80,7 +80,7 @@ fn test_case_insensitive_module_paths() {
 
 #[test]
 fn test_case_insensitive_primitive_types() {
-    let idl = r#"
+    let idl = r"
         struct PrimitiveTypes {
             OCTET o1;
             octet o2;
@@ -94,7 +94,7 @@ fn test_case_insensitive_primitive_types() {
             unsigned short us2;
             Unsigned Short us3;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -107,7 +107,7 @@ fn test_case_insensitive_primitive_types() {
 
 #[test]
 fn test_case_insensitive_enum_references() {
-    let idl = r#"
+    let idl = r"
         enum Color {
             RED,
             GREEN,
@@ -118,7 +118,7 @@ fn test_case_insensitive_enum_references() {
             COLOR c1;  // Uppercase enum name
             color c2;  // Lowercase enum name
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -132,7 +132,7 @@ fn test_case_insensitive_enum_references() {
 #[test]
 fn test_case_sensitive_same_module() {
     // Within the same module, names must still be unique when case-folded
-    let idl = r#"
+    let idl = r"
         module Test {
             struct foo {
                 long x;
@@ -142,7 +142,7 @@ fn test_case_sensitive_same_module() {
                 long y;
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", idl);
@@ -150,5 +150,5 @@ fn test_case_sensitive_same_module() {
     let hir = ic_hir::from_ast(ast.tree);
 
     // Should have an error about duplicate definition
-    assert!(hir.errors.len() > 0);
+    assert!(!hir.errors.is_empty());
 }

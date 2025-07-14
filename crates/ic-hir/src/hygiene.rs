@@ -47,7 +47,7 @@ impl Hygiene<'_> {
         self.with_set(&mut seen, elems)
     }
 
-    fn with_set<'a>(&mut self, seen: &mut CaseSet<'a>, elems: impl Iterator<Item = &'a Ident>) {
+    fn with_set<'a>(&mut self, seen: &mut CaseSet, elems: impl Iterator<Item = &'a Ident>) {
         for ident in elems {
             if !seen.insert(ident.name.as_str()) {
                 let diag = error_span(

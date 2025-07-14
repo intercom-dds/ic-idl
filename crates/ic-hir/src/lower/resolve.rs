@@ -442,8 +442,8 @@ impl<'a> TypeResolver<'a> {
                 kind,
             };
 
-            // Look up with qualified name (case-insensitive)
-            if let Some(&id) = self.name_map.get(&qualified_name.to_lowercase()) {
+            // Look up with qualified name
+            if let Some(&id) = self.name_map.get(&qualified_name) {
                 self.item_map.insert(key, id);
             } else {
             }
@@ -505,7 +505,7 @@ impl<'a> TypeResolver<'a> {
                             ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
                         };
 
-                        if let Some(&id) = self.name_map.get(&name.to_lowercase()) {
+                        if let Some(&id) = self.name_map.get(&name) {
                             self.resolve_alias(id, v, idx);
                         }
                     }
@@ -515,7 +515,7 @@ impl<'a> TypeResolver<'a> {
                         ic_syntax::Declarator::Simple(n) => n.name.clone(),
                         ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
                     };
-                    if let Some(&id) = self.name_map.get(&name.to_lowercase()) {
+                    if let Some(&id) = self.name_map.get(&name) {
                         self.resolve_const(id, v);
                     }
                 }
@@ -714,10 +714,7 @@ impl<'a> TypeResolver<'a> {
 
         // Find the child scope for this module
         let current_scope_data = self.ctx.scopes.get_scope(self.current_scope_id);
-        if let Some(&module_scope) = current_scope_data
-            .children
-            .get(&def.ident.name.to_lowercase())
-        {
+        if let Some(&module_scope) = current_scope_data.children.get(&def.ident.name) {
             // Save current scope
             let saved_scope = self.current_scope_id;
             self.current_scope_id = module_scope;

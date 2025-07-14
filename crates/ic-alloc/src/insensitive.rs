@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -27,121 +27,306 @@
 
 //! Case-insensitive strings and maps.
 
-use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
-/// A copy-on-write string type that always performs case-insensitive
-/// comparisons and hashing.
-#[derive(Clone, Debug, Default, Eq)]
-pub struct CaseString<'a>(Cow<'a, str>);
-
-impl AsRef<str> for CaseString<'_> {
-    #[inline]
-    fn as_ref(&self) -> &str {
-        self.0.as_ref()
-    }
-}
-
-impl std::fmt::Display for CaseString<'_> {
-    #[inline]
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0, fmt)
-    }
-}
-
-impl<S> PartialEq<S> for CaseString<'_>
-where
-    S: AsRef<str>,
-{
-    #[inline]
-    fn eq(&self, other: &S) -> bool {
-        self.0.eq_ignore_ascii_case(other.as_ref())
-    }
-}
-
-impl Hash for CaseString<'_> {
-    #[inline]
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.0
-            .bytes()
-            .map(|v| v.to_ascii_lowercase())
-            .for_each(|b| hasher.write_u8(b));
-    }
-}
-
-/// A case-insensitive map that stores the key in its initial form, but
-/// performs case-insensitive hashing and lookups.
-#[must_use]
+/// A wrapper type for case-insensitive string comparison.
+/// Used internally for lookups without allocating.
 #[derive(Debug)]
-pub struct CaseMap<'a, T>(HashMap<CaseString<'a>, T>);
+struct CaseInsensitiveStr<'a>(&'a str);
 
-impl<'a, T> CaseMap<'a, T> {
-    pub fn insert<K>(&mut self, key: K, value: T) -> Option<T>
-    where
-        K: Into<Cow<'a, str>>,
-    {
-        self.0.insert(CaseString(key.into()), value)
-    }
-
-    pub fn remove(&mut self, key: &'a str) -> Option<T> {
-        self.0.remove(&CaseString(Cow::Borrowed(key)))
-    }
-
-    #[must_use]
-    pub fn get(&self, key: &'a str) -> Option<&T> {
-        self.0.get(&CaseString(Cow::Borrowed(key)))
-    }
-
-    #[must_use]
-    pub fn get_mut(&mut self, key: &'a str) -> Option<&mut T> {
-        self.0.get_mut(&CaseString(Cow::Borrowed(key)))
-    }
-
-    pub fn entry<K>(&mut self, key: K) -> Entry<'_, CaseString<'a>, T>
-    where
-        K: Into<Cow<'a, str>>,
-    {
-        self.0.entry(CaseString(key.into()))
+impl Hash for CaseInsensitiveStr<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for byte in self.0.bytes() {
+            state.write_u8(byte.to_ascii_lowercase());
+        }
     }
 }
 
-impl<T> Default for CaseMap<'_, T> {
-    fn default() -> Self {
-        Self(HashMap::default())
+impl PartialEq for CaseInsensitiveStr<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(other.0)
     }
 }
 
-/// A case-insensitive set that stores the key in its initial form, but
-/// performs case-insensitive hashing and lookups.
-#[must_use]
+impl Eq for CaseInsensitiveStr<'_> {}
+
+/// A string that preserves its original casing but compares case-insensitively.
+#[derive(Clone, Debug)]
+pub struct CaseString {
+    original: String,
+}
+
+impl CaseString {
+    /// Creates a new CaseString from the given string.
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        Self { original: s.into() }
+    }
+
+    /// Returns the string with its original casing.
+    pub fn as_str(&self) -> &str {
+        &self.original
+    }
+}
+
+impl AsRef<str> for CaseString {
+    fn as_ref(&self) -> &str {
+        &self.original
+    }
+}
+
+impl std::fmt::Display for CaseString {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.original)
+    }
+}
+
+impl Hash for CaseString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        CaseInsensitiveStr(&self.original).hash(state);
+    }
+}
+
+impl PartialEq for CaseString {
+    fn eq(&self, other: &Self) -> bool {
+        self.original.eq_ignore_ascii_case(&other.original)
+    }
+}
+
+impl Eq for CaseString {}
+
+/// A case-insensitive map that stores keys in their original form but
+/// performs case-insensitive lookups.
 #[derive(Debug, Default)]
-pub struct CaseSet<'a>(HashSet<CaseString<'a>>);
+pub struct CaseMap<T> {
+    inner: HashMap<CaseString, T>,
+}
 
-impl<'a> CaseSet<'a> {
-    pub fn insert<K>(&mut self, key: K) -> bool
-    where
-        K: Into<Cow<'a, str>>,
-    {
-        self.0.insert(CaseString(key.into()))
+impl<T> CaseMap<T> {
+    /// Creates a new empty CaseMap.
+    pub fn new() -> Self {
+        Self {
+            inner: HashMap::new(),
+        }
     }
 
-    #[must_use]
-    pub fn remove(&mut self, key: &'a str) -> bool {
-        self.0.remove(&CaseString(Cow::Borrowed(key)))
+    /// Inserts a key-value pair into the map.
+    /// Returns the previous value if the key was already present.
+    pub fn insert<K: Into<String>>(&mut self, key: K, value: T) -> Option<T> {
+        let key_str = key.into();
+        // First check if key already exists (case-insensitive)
+        if let Some((existing_key, _)) = self
+            .inner
+            .iter()
+            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(&key_str))
+        {
+            let existing_key = existing_key.clone();
+            self.inner.insert(existing_key, value)
+        } else {
+            let key = CaseString::new(key_str);
+            self.inner.insert(key, value)
+        }
     }
 
-    #[must_use]
-    pub fn contains(&self, key: &str) -> bool {
-        self.0.contains(&CaseString(Cow::Borrowed(key)))
+    /// Gets a reference to the value for the given key.
+    pub fn get<Q: AsRef<str>>(&self, key: Q) -> Option<&T> {
+        self.inner
+            .iter()
+            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .map(|(_, v)| v)
     }
 
-    #[must_use]
-    pub fn get(&self, key: &'a str) -> Option<&str> {
-        self.0
-            .get(&CaseString(Cow::Borrowed(key)))
-            .map(|v| v.0.as_ref())
+    /// Gets a mutable reference to the value for the given key.
+    pub fn get_mut<Q: AsRef<str>>(&mut self, key: Q) -> Option<&mut T> {
+        self.inner
+            .iter_mut()
+            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .map(|(_, v)| v)
+    }
+
+    /// Gets the original casing of a key if it exists in the map.
+    pub fn get_key<Q: AsRef<str>>(&self, key: Q) -> Option<&str> {
+        self.inner
+            .keys()
+            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .map(|k| k.as_str())
+    }
+
+    /// Removes a key from the map, returning the value if it was present.
+    pub fn remove<Q: AsRef<str>>(&mut self, key: Q) -> Option<T> {
+        let key_to_remove = self
+            .inner
+            .keys()
+            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .cloned()?;
+        self.inner.remove(&key_to_remove)
+    }
+
+    /// Checks if the map contains the given key.
+    pub fn contains_key<Q: AsRef<str>>(&self, key: Q) -> bool {
+        self.inner
+            .keys()
+            .any(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+    }
+
+    /// Returns the number of entries in the map.
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Returns true if the map is empty.
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Clears the map, removing all entries.
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
+    /// Returns an iterator over the entries in the map.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &T)> {
+        self.inner.iter().map(|(k, v)| (k.as_str(), v))
+    }
+
+    /// Returns a mutable iterator over the entries in the map.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, &mut T)> {
+        self.inner.iter_mut().map(|(k, v)| (k.as_str(), v))
+    }
+
+    /// Returns an iterator over the values in the map.
+    pub fn values(&self) -> impl Iterator<Item = &T> {
+        self.inner.values()
+    }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    pub fn entry<K: Into<String>>(&mut self, key: K) -> CaseMapEntry<'_, T> {
+        let key_str = key.into();
+
+        // Check if key already exists (case-insensitive)
+        if let Some(existing_key) = self
+            .inner
+            .keys()
+            .find(|k| k.as_str().eq_ignore_ascii_case(&key_str))
+            .cloned()
+        {
+            CaseMapEntry {
+                inner: self.inner.entry(existing_key),
+            }
+        } else {
+            let case_key = CaseString::new(key_str);
+            CaseMapEntry {
+                inner: self.inner.entry(case_key),
+            }
+        }
+    }
+}
+
+/// An entry in a CaseMap.
+pub struct CaseMapEntry<'a, T> {
+    inner: Entry<'a, CaseString, T>,
+}
+
+impl<'a, T> CaseMapEntry<'a, T> {
+    /// Returns a reference to this entry's key with original casing.
+    pub fn key(&self) -> &str {
+        match &self.inner {
+            Entry::Occupied(e) => e.key().as_str(),
+            Entry::Vacant(e) => e.key().as_str(),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting the default if empty.
+    pub fn or_insert(self, default: T) -> &'a mut T {
+        self.inner.or_insert(default)
+    }
+
+    /// Ensures a value is in the entry by inserting the result of the function if empty.
+    pub fn or_insert_with<F: FnOnce() -> T>(self, f: F) -> &'a mut T {
+        self.inner.or_insert_with(f)
+    }
+}
+
+/// A case-insensitive set that stores strings in their original form.
+#[derive(Debug, Default)]
+pub struct CaseSet {
+    inner: HashSet<CaseString>,
+}
+
+impl CaseSet {
+    /// Creates a new empty CaseSet.
+    pub fn new() -> Self {
+        Self {
+            inner: HashSet::new(),
+        }
+    }
+
+    /// Inserts a string into the set.
+    /// Returns true if the value was newly inserted.
+    pub fn insert<K: Into<String>>(&mut self, key: K) -> bool {
+        let key_str = key.into();
+        // Check if key already exists (case-insensitive)
+        if self
+            .inner
+            .iter()
+            .any(|k| k.as_str().eq_ignore_ascii_case(&key_str))
+        {
+            false
+        } else {
+            let key = CaseString::new(key_str);
+            self.inner.insert(key)
+        }
+    }
+
+    /// Checks if the set contains the given string.
+    pub fn contains<Q: AsRef<str>>(&self, key: Q) -> bool {
+        self.inner
+            .iter()
+            .any(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+    }
+
+    /// Gets the original casing of a string if it exists in the set.
+    pub fn get<Q: AsRef<str>>(&self, key: Q) -> Option<&str> {
+        self.inner
+            .iter()
+            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .map(|k| k.as_str())
+    }
+
+    /// Removes a string from the set.
+    /// Returns true if the value was present.
+    pub fn remove<Q: AsRef<str>>(&mut self, key: Q) -> bool {
+        if let Some(key_to_remove) = self
+            .inner
+            .iter()
+            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .cloned()
+        {
+            self.inner.remove(&key_to_remove)
+        } else {
+            false
+        }
+    }
+
+    /// Returns the number of strings in the set.
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Returns true if the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Clears the set, removing all strings.
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
+    /// Returns an iterator over the strings in the set.
+    pub fn iter(&self) -> impl Iterator<Item = &str> {
+        self.inner.iter().map(|k| k.as_str())
     }
 }
 
@@ -150,24 +335,107 @@ mod tests {
     use super::*;
 
     #[test]
-    fn insensitive_key() {
-        let mut map = CaseMap::default();
-        map.insert("foo", 1);
-        assert!(map.get("foo").is_some());
-        assert!(map.get("FOo").is_some());
+    fn case_insensitive_map_basic() {
+        let mut map = CaseMap::new();
+
+        // Insert with original casing
+        map.insert("FooBar", 42);
+
+        // Lookup with different casings
+        assert_eq!(map.get("foobar"), Some(&42));
+        assert_eq!(map.get("FOOBAR"), Some(&42));
+        assert_eq!(map.get("FooBar"), Some(&42));
+        assert_eq!(map.get("fOoBaR"), Some(&42));
+
+        // Get original casing
+        assert_eq!(map.get_key("foobar"), Some("FooBar"));
+        assert_eq!(map.get_key("FOOBAR"), Some("FooBar"));
     }
 
     #[test]
-    fn insensitive_entry() {
-        let mut map = CaseMap::default();
-        map.insert("foo", 1);
+    fn case_insensitive_map_overwrite() {
+        let mut map = CaseMap::new();
 
-        match map.entry("FoO") {
-            Entry::Occupied(v) => {
-                assert_eq!(v.key().as_ref(), "foo");
-                assert_eq!(*v.get(), 1);
-            }
-            Entry::Vacant(_) => unreachable!(),
-        }
+        // Insert with one casing
+        map.insert("test", 1);
+        assert_eq!(map.get_key("TEST"), Some("test"));
+
+        // Insert with different casing overwrites
+        map.insert("TEST", 2);
+        assert_eq!(map.get("test"), Some(&2));
+        // Original casing is preserved from first insert
+        assert_eq!(map.get_key("test"), Some("test"));
+    }
+
+    #[test]
+    fn case_insensitive_map_entry() {
+        let mut map = CaseMap::new();
+
+        // Insert via entry API
+        map.entry("Hello").or_insert(1);
+        assert_eq!(map.get("hello"), Some(&1));
+        assert_eq!(map.get_key("HELLO"), Some("Hello"));
+
+        // Access existing entry with different casing
+        *map.entry("HELLO").or_insert(999) = 2;
+        assert_eq!(map.get("hello"), Some(&2));
+        // Original casing preserved
+        assert_eq!(map.get_key("hello"), Some("Hello"));
+    }
+
+    #[test]
+    fn case_insensitive_set_basic() {
+        let mut set = CaseSet::new();
+
+        // Insert with original casing
+        assert!(set.insert("FooBar"));
+
+        // Contains checks with different casings
+        assert!(set.contains("foobar"));
+        assert!(set.contains("FOOBAR"));
+        assert!(set.contains("FooBar"));
+
+        // Get original casing
+        assert_eq!(set.get("foobar"), Some("FooBar"));
+        assert_eq!(set.get("FOOBAR"), Some("FooBar"));
+
+        // Duplicate insert returns false
+        assert!(!set.insert("foobar"));
+        assert!(!set.insert("FOOBAR"));
+    }
+
+    #[test]
+    fn case_insensitive_map_remove() {
+        let mut map = CaseMap::new();
+        map.insert("Test", 123);
+
+        // Remove with different casing
+        assert_eq!(map.remove("TEST"), Some(123));
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn case_insensitive_set_remove() {
+        let mut set = CaseSet::new();
+        set.insert("Test");
+
+        // Remove with different casing
+        assert!(set.remove("TEST"));
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn case_insensitive_map_iter() {
+        let mut map = CaseMap::new();
+        map.insert("Alpha", 1);
+        map.insert("BETA", 2);
+        map.insert("gamma", 3);
+
+        let mut entries: Vec<_> = map.iter().collect();
+        entries.sort_by_key(|&(_, &v)| v);
+
+        assert_eq!(entries[0].0, "Alpha");
+        assert_eq!(entries[1].0, "BETA");
+        assert_eq!(entries[2].0, "gamma");
     }
 }

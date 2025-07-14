@@ -41,7 +41,7 @@ pub struct Context {
     pub definitions: Arena<hir::Def>,
 
     // Fully qualified type name => DefId
-    pub registered: CaseMap<'static, DefId>,
+    pub registered: CaseMap<DefId>,
 
     // Scope hierarchy for name resolution
     pub scopes: ScopeTree,
@@ -61,7 +61,7 @@ impl Context {
         Self {
             types: Arena::default(),
             definitions: Arena::default(),
-            registered: CaseMap::default(),
+            registered: CaseMap::new(),
             scopes: ScopeTree::new(),
         }
     }

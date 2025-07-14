@@ -27,14 +27,13 @@
 
 //! Hierarchical scope management for name resolution.
 
-use std::collections::HashMap;
-
 use ic_alloc::arena::Arena;
+use ic_alloc::insensitive::CaseMap;
 
 use crate::hir::{Def, DefId};
 
 /// A scope in the hierarchy.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Scope {
     /// The definition ID of this scope (if it's a module/interface/etc).
     pub def_id: Option<DefId>,
@@ -43,10 +42,10 @@ pub struct Scope {
     pub parent: Option<ScopeId>,
 
     /// Child scopes by name.
-    pub children: HashMap<String, ScopeId>,
+    pub children: CaseMap<ScopeId>,
 
     /// Local definitions in this scope.
-    pub definitions: HashMap<String, DefId>,
+    pub definitions: CaseMap<DefId>,
 }
 
 /// Unique identifier for a scope.
@@ -69,8 +68,8 @@ impl ScopeTree {
         let root_scope = Scope {
             def_id: None,
             parent: None,
-            children: HashMap::default(),
-            definitions: HashMap::default(),
+            children: CaseMap::new(),
+            definitions: CaseMap::new(),
         };
 
         Self {
@@ -96,26 +95,21 @@ impl ScopeTree {
         let scope = Scope {
             def_id,
             parent: Some(parent),
-            children: HashMap::default(),
-            definitions: HashMap::default(),
+            children: CaseMap::new(),
+            definitions: CaseMap::new(),
         };
 
         self.scopes.push(scope);
 
-        // Add to parent's children with lowercase key for case-insensitive lookup
-        self.scopes[parent.0]
-            .children
-            .insert(name.to_lowercase(), scope_id);
+        // Add to parent's children
+        self.scopes[parent.0].children.insert(name, scope_id);
 
         scope_id
     }
 
     /// Adds a definition to a scope.
     pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) {
-        // Store with lowercase key for case-insensitive lookup
-        self.scopes[scope.0]
-            .definitions
-            .insert(name.to_lowercase(), def_id);
+        self.scopes[scope.0].definitions.insert(name, def_id);
     }
 
     /// Gets a scope by ID.
@@ -126,18 +120,17 @@ impl ScopeTree {
     /// Resolves a single name segment in a scope (looks in this scope and parents).
     pub fn resolve_name(&self, scope: ScopeId, name: &str) -> Option<DefId> {
         let mut current = Some(scope);
-        let lowercase_name = name.to_lowercase();
 
         while let Some(scope_id) = current {
             let scope = &self.scopes[scope_id.0];
 
-            // Check local definitions (case-insensitive)
-            if let Some(&def_id) = scope.definitions.get(&lowercase_name) {
+            // Check local definitions
+            if let Some(&def_id) = scope.definitions.get(name) {
                 return Some(def_id);
             }
 
-            // Check child scopes (for module names, case-insensitive)
-            if let Some(&child_scope_id) = scope.children.get(&lowercase_name) {
+            // Check child scopes (for module names)
+            if let Some(&child_scope_id) = scope.children.get(name) {
                 if let Some(def_id) = self.scopes[child_scope_id.0].def_id {
                     return Some(def_id);
                 }
@@ -196,12 +189,12 @@ impl ScopeTree {
         let scope_data = &self.scopes[scope.0];
 
         if path.len() == 1 {
-            // Single segment - check definitions (case-insensitive)
-            return scope_data.definitions.get(&path[0].to_lowercase()).copied();
+            // Single segment - check definitions
+            return scope_data.definitions.get(path[0]).copied();
         }
 
-        // Multi-segment path - first segment should be a child scope (case-insensitive)
-        if let Some(&child_scope) = scope_data.children.get(&path[0].to_lowercase()) {
+        // Multi-segment path - first segment should be a child scope
+        if let Some(&child_scope) = scope_data.children.get(path[0]) {
             // Recurse into child scope
             return self.resolve_path_from_scope(child_scope, &path[1..]);
         }
@@ -220,7 +213,7 @@ impl ScopeTree {
         let scope_data = &self.scopes[scope.0];
 
         // Check all definitions in this scope
-        for &def_id in scope_data.definitions.values() {
+        for (_, &def_id) in scope_data.definitions.iter() {
             let def = definitions.get(def_id);
             if let crate::hir::DefKind::Enum(enum_ty) = &def.kind {
                 for field in &enum_ty.fields {
@@ -254,7 +247,7 @@ impl ScopeTree {
             let scope_data = &self.scopes[scope_id.0];
 
             // Add all enums from this scope
-            for &def_id in scope_data.definitions.values() {
+            for (_, &def_id) in scope_data.definitions.iter() {
                 let def = definitions.get(def_id);
                 if matches!(def.kind, crate::hir::DefKind::Enum(_)) {
                     results.push(def_id);

@@ -33,8 +33,7 @@
 //! - Constructs a name resolution map
 //! - Does NOT resolve type references or evaluate expressions
 
-use std::collections::HashMap;
-
+use ic_alloc::insensitive::CaseMap;
 use ic_diagnostic::{Diag, Label, error_span};
 use ic_syntax::{Ident, Item, ItemKind, Path, Span};
 
@@ -43,7 +42,7 @@ use crate::hir::*;
 use crate::scope::{ScopeId, ScopeTree};
 
 /// Maps fully-qualified names to their DefIds.
-pub type NameMap = HashMap<String, DefId>;
+pub type NameMap = CaseMap<DefId>;
 
 /// Tracks the current scope during collection.
 #[derive(Debug)]
@@ -76,13 +75,13 @@ impl ScopeStack {
     fn qualified_name(&self, name: &str) -> String {
         let path = self.scopes[1..] // Skip <global>
             .iter()
-            .map(|(n, _)| n.to_lowercase())
-            .chain(std::iter::once(name.to_lowercase()))
+            .map(|(n, _)| n.as_str())
+            .chain(std::iter::once(name))
             .collect::<Vec<_>>()
             .join("::");
 
         if path.is_empty() {
-            name.to_lowercase()
+            name.to_string()
         } else {
             path
         }
@@ -104,7 +103,7 @@ impl<'a> NameCollector<'a> {
         let root_scope = ctx.scopes.root();
         Self {
             ctx,
-            name_map: HashMap::new(),
+            name_map: CaseMap::new(),
             scope_stack: ScopeStack::new(),
             current_scope: root_scope,
             order: Vec::new(),

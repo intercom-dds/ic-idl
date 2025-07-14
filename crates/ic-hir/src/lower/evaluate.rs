@@ -454,7 +454,8 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates a bound expression to a usize.
     fn eval_bound(&mut self, expr: &Expr) -> usize {
-        match self.eval_expr(expr) {
+        let result = self.eval_expr(expr);
+        match result {
             Numeric::Int32(v) if v >= 0 => v as usize,
             Numeric::UInt32(v) => v as usize,
             Numeric::Int64(v) if v >= 0 => v as usize,
@@ -519,6 +520,9 @@ impl<'a> ExpressionEvaluator<'a> {
 
         // Process bounds and collect updated types
         let mut updates = Vec::new();
+        let mut processed_indices = std::collections::HashSet::new();
+
+        // First handle array bounds
         {
             let hir_def = self.ctx.definitions.get(id);
             if let DefKind::Struct(struct_ty) = &hir_def.kind {
@@ -527,9 +531,44 @@ impl<'a> ExpressionEvaluator<'a> {
                         let mut ty = member.ty.clone();
                         Self::update_type_bounds_with_values(&mut ty, &bounds);
                         updates.push((idx, ty));
+                        processed_indices.insert(idx);
                     }
                 }
             }
+        }
+
+        // Then handle sequence/string/map bounds
+        // First collect the member types and AST types
+        let member_type_pairs: Vec<(usize, Ty, &ic_syntax::Type)> = {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Struct(struct_ty) = &hir_def.kind {
+                let mut pairs = Vec::new();
+                let mut member_idx = 0;
+                for (field_idx, field) in def.members.iter().enumerate() {
+                    for _decl in &field.names {
+                        if let Some(member) = struct_ty.members.get(member_idx) {
+                            // Only process if we haven't already handled this member's array bounds
+                            if !processed_indices.contains(&member_idx) {
+                                pairs.push((
+                                    member_idx,
+                                    member.ty.clone(),
+                                    &def.members[field_idx].ty,
+                                ));
+                            }
+                        }
+                        member_idx += 1;
+                    }
+                }
+                pairs
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Now evaluate bounds outside the borrow scope
+        for (idx, mut ty, ast_ty) in member_type_pairs {
+            self.evaluate_type_bounds(&mut ty, ast_ty);
+            updates.push((idx, ty));
         }
 
         // Apply updates

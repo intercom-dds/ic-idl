@@ -39,7 +39,6 @@ struct Foo {
 "#,
     );
 
-    
     assert_eq!(report.errors.len(), 1);
     // Check that the error message contains the expected text
     let error_output = format!("{:?}", report.errors[0]);
@@ -107,6 +106,12 @@ struct Foo {
 "#,
     );
 
+    if !report.errors.is_empty() {
+        eprintln!("Unexpected errors:");
+        for error in &report.errors {
+            eprintln!("{:?}", error);
+        }
+    }
     assert_eq!(report.errors.len(), 0);
     assert_eq!(report.warnings.len(), 0);
 }
@@ -131,16 +136,20 @@ struct Foo {
 fn nested_zero_bounds() {
     let report = lint_hir(
         r#"
-typedef sequence<long[0]> BadSequence;
-typedef map<string, sequence<long, 0>> BadMap;
+typedef long BadArray[0];
+typedef sequence<long, 0> BadSequence;
+typedef string<0> BadString;
+typedef map<string, long, 0> BadMap;
 
 struct Foo {
-    BadSequence field1;
-    BadMap field2;
+    BadArray field1;
+    BadSequence field2;
+    BadString field3;
+    BadMap field4;
 };
 "#,
     );
 
     // Should catch the zero bounds in the typedef definitions
-    assert_eq!(report.errors.len(), 2);
+    assert_eq!(report.errors.len(), 4);
 }

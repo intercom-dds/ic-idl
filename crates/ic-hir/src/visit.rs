@@ -26,9 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::hir::{
-    AliasTy, Ann, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl,
-    Def, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
-    ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Ann, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
+    InterfaceTy, Member, ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy,
+    ValueTy, Variant,
 };
 
 pub trait Visitor<'a> {
@@ -387,4 +387,3 @@ where
         visitor.visit_numeric(&arg.value);
     }
 }
-

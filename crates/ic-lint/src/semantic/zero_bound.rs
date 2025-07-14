@@ -112,7 +112,7 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
             }
             _ => {}
         }
-        
+
         // Continue visiting nested types
         ic_hir::visit::walk_ty(self, ty);
     }

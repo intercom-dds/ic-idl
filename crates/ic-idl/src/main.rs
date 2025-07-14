@@ -219,6 +219,8 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
         println!("{:#?}", ast.tree);
     }
 
+    let mut hir = None;
+    
     // Only run linting if there are no parse errors
     if errors.is_empty() {
         // Create lint configuration from CLI flags
@@ -230,25 +232,27 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
         warnings.extend(report.warnings);
 
         // Lower the AST to a HIR
-        let hir = ic_hir::from_ast(ast.tree.clone());
+        let mut hir_result = ic_hir::from_ast(ast.tree.clone());
         if options.unstable.hir_dump {
-            ic_hir_tree::emit_tree(&hir);
+            ic_hir_tree::emit_tree(&hir_result);
         }
 
         // Only lint HIR if no errors so far
         if errors.is_empty() {
             // Lint the HIR
-            let report = ic_lint::lint_hir_with_config(&hir, vfs, &lint_config);
+            let report = ic_lint::lint_hir_with_config(&hir_result, vfs, &lint_config);
             errors.extend(report.errors.into_iter().map(Into::into));
             warnings.extend(report.warnings);
         }
 
-        errors.extend(hir.errors.into_iter().map(Into::into));
+        let hir_errors = std::mem::take(&mut hir_result.errors);
+        errors.extend(hir_errors.into_iter().map(Into::into));
+        hir = Some(hir_result);
     }
 
-    // Only lower to ptree if no errors
+    // Only lower to ptree if no errors and we have a HIR
     let result = if errors.is_empty() {
-        Some(ic_ptree_lower::from_ast(&ast, vfs))
+        hir.and_then(|h| Some(ic_ptree_lower::from_hir(&h, vfs)))
     } else {
         None
     };

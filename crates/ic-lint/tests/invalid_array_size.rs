@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,16 +25,84 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod circular_inheritance;
-pub mod deprecated;
-pub mod duplicate_annotations;
-pub mod duplicate_case_labels;
-pub mod invalid_enum_value;
-pub mod keywords;
-pub mod oneway;
-pub mod range_bound;
-pub mod redundant_inheritance;
-pub mod unnamed_args;
-pub mod unreachable_union_cases;
-pub mod zero_bound;
+mod common;
+
+use common::test_lint;
+
+#[test]
+fn reasonable_array_sizes() {
+    let output = test_lint(
+        r#"
+struct Foo {
+    long small[10];
+    long medium[1000];
+    long large[100000];
+};
+"#,
+    );
+
+    assert!(output.is_empty());
+}
+
+#[test]
+fn very_large_array() {
+    let output = test_lint(
+        r#"
+struct Foo {
+    long huge[10000000];  // 10 million
+};
+"#,
+    );
+
+    assert!(output.contains("exceeds reasonable limit"));
+    assert!(output.contains("consider using a sequence"));
+}
+
+#[test]
+fn negative_array_size() {
+    let output = test_lint(
+        r#"
+struct Foo {
+    long invalid[-10];
+};
+"#,
+    );
+
+    assert!(output.contains("negative array size"));
+    assert!(output.contains("must be positive"));
+}
+
+#[test]
+fn multi_dimensional_large_array() {
+    let output = test_lint(
+        r#"
+struct Foo {
+    long matrix[2000000][10];  // 2 million rows
+};
+"#,
+    );
+
+    assert!(output.contains("exceeds reasonable limit"));
+}
+
+#[test]
+fn typedef_large_array() {
+    let output = test_lint(
+        r#"
+typedef long BigArray[5000000];
+"#,
+    );
+
+    assert!(output.contains("exceeds reasonable limit"));
+}
+
+#[test]
+fn const_array_large() {
+    let output = test_lint(
+        r#"
+const long DATA[2000000] = {1, 2, 3};
+"#,
+    );
+
+    assert!(output.contains("exceeds reasonable limit"));
+}

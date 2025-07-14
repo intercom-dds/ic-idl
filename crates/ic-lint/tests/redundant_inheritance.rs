@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,16 +25,74 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod circular_inheritance;
-pub mod deprecated;
-pub mod duplicate_annotations;
-pub mod duplicate_case_labels;
-pub mod invalid_enum_value;
-pub mod keywords;
-pub mod oneway;
-pub mod range_bound;
-pub mod redundant_inheritance;
-pub mod unnamed_args;
-pub mod unreachable_union_cases;
-pub mod zero_bound;
+mod common;
+
+use common::test_lint;
+
+#[test]
+fn valid_inheritance() {
+    let output = test_lint(
+        r#"
+interface Base {};
+interface Derived : Base {};
+interface MultiDerived : Base, Derived {};
+"#,
+    );
+
+    assert!(output.is_empty());
+}
+
+#[test]
+fn redundant_interface_inheritance() {
+    let output = test_lint(
+        r#"
+interface Base {};
+interface Derived : Base, Base {};
+"#,
+    );
+
+    assert!(output.contains("inherits from 'Base' multiple times"));
+    assert!(output.contains("redundant inheritance"));
+}
+
+#[test]
+fn redundant_qualified_inheritance() {
+    let output = test_lint(
+        r#"
+module M {
+    interface Base {};
+};
+
+interface Derived : M::Base, M::Base {};
+"#,
+    );
+
+    assert!(output.contains("inherits from 'M::Base' multiple times"));
+}
+
+#[test]
+fn redundant_valuetype_inheritance() {
+    let output = test_lint(
+        r#"
+valuetype Base {};
+valuetype Derived : Base supports Base {};
+"#,
+    );
+
+    assert!(output.contains("inherits from 'Base' multiple times"));
+}
+
+#[test]
+fn multiple_redundant_parents() {
+    let output = test_lint(
+        r#"
+interface A {};
+interface B {};
+interface C : A, B, A, B {};
+"#,
+    );
+
+    // Should report both A and B as redundant
+    assert!(output.contains("inherits from 'A' multiple times"));
+    assert!(output.contains("inherits from 'B' multiple times"));
+}

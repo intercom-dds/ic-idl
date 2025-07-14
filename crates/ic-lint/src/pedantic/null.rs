@@ -44,7 +44,7 @@ impl<'a> Visitor<'a> for NullVariant<'a> {
         )
         .note("all case labels must map to a value");
 
-        self.ctx.report_warn(diag);
+        self.ctx.report(Self::name(), Self::category(), diag);
     }
 }
 

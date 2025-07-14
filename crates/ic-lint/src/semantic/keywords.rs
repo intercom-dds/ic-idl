@@ -65,7 +65,7 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
                 fixed.green(),
             ));
 
-            self.ctx.report_error(diag);
+            self.ctx.report(Self::name(), Self::category(), diag);
         }
     }
 }

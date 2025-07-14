@@ -44,7 +44,7 @@ impl<'a> Visitor<'a> for EmptyMod<'a> {
                 Label::new(def.span),
             )
             .help("either remove the declaration or add an item to it");
-            self.ctx.report_warn(diag);
+            self.ctx.report(Self::name(), Self::category(), diag);
         }
         walk_module(self, def);
     }

@@ -35,10 +35,7 @@ pub use crate::ctx::Context;
 
 mod ctx;
 mod hygiene;
-mod interp;
 mod lower;
-mod resolve;
-mod typechk;
 
 pub mod fold;
 pub mod hir;

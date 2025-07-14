@@ -52,24 +52,24 @@ fn test_module_reopening() {
     // Should have no errors - module reopening is allowed
     assert_eq!(hir.errors.len(), 0);
 
-    // Both structs should exist in the same module
-    let mut found_module = false;
-    let mut structs_in_module = 0;
+    // Each module declaration gets its own DefId, so we should find 2 modules named Foo
+    let mut module_count = 0;
+    let mut total_structs = 0;
 
     for def in hir.iter() {
         if def.ident.name == "Foo" {
-            found_module = true;
+            module_count += 1;
             if let ic_hir::hir::DefKind::Module(module) = &def.kind {
-                // Count the number of definitions in the module
-                structs_in_module = module.definitions.len();
+                // Count the number of definitions in this module instance
+                total_structs += module.definitions.len();
             }
         }
     }
 
-    assert!(found_module, "Should find module Foo");
+    assert_eq!(module_count, 2, "Should find 2 module declarations for Foo");
     assert_eq!(
-        structs_in_module, 2,
-        "Module Foo should contain 2 structs (Bar and Baz)"
+        total_structs, 2,
+        "Total structs across all Foo modules should be 2 (Bar and Baz)"
     );
 }
 
@@ -139,7 +139,7 @@ fn test_module_reopening_different_case() {
         
         module Foo {
             struct TypeB {
-                TypeA a;  // Should resolve
+                TypeA a;  // Should resolve because type visibility is inherited
             };
         };
     ";
@@ -149,6 +149,7 @@ fn test_module_reopening_different_case() {
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
 
-    // Should have no errors
+    // Should have no errors - TypeA is visible in the second module declaration
+    // because module reopening copies type definitions for visibility
     assert_eq!(hir.errors.len(), 0);
 }

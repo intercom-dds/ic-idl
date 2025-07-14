@@ -205,7 +205,7 @@ impl<'a> TreeBuilder<'a> {
         if let Some(v) = self.lowered.get(&id) {
             return *v;
         }
-        
+
         self.recursion_depth += 1;
         if self.recursion_depth > 100 {
             panic!("Recursion depth exceeded while lowering {:?}", id);

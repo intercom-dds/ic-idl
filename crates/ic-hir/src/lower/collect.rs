@@ -251,11 +251,12 @@ impl<'a> NameCollector<'a> {
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
         // Check if this module already exists (for module reopening)
         let qualified_name = self.scope_stack.qualified_name(&def.ident.name);
-        let existing_modules: Vec<DefId> = self.name_map
+        let existing_modules: Vec<DefId> = self
+            .name_map
             .iter()
             .filter(|(k, v)| {
-                k == &qualified_name && 
-                matches!(&self.ctx.definitions.get(**v).kind, DefKind::Module(_))
+                k.eq_ignore_ascii_case(&qualified_name)
+                    && matches!(&self.ctx.definitions.get(**v).kind, DefKind::Module(_))
             })
             .map(|(_, v)| *v)
             .collect();
@@ -284,7 +285,7 @@ impl<'a> NameCollector<'a> {
                         .iter()
                         .map(|(k, v)| (k.to_string(), *v))
                         .collect();
-                    
+
                     for (name, def_id) in definitions_to_copy {
                         self.ctx.scopes.add_definition(new_scope, name, def_id);
                     }

@@ -166,10 +166,6 @@ fn parse_error_to_diag_with_expansion(
     }
 }
 
-fn emit_error(error: &ic_parse::Error, vfs: &SourceMap, buf: &mut dyn fmt::Write) -> fmt::Result {
-    emit_error_with_expansion(error, vfs, buf, &HashMap::new())
-}
-
 fn emit_error_with_expansion(
     error: &ic_parse::Error,
     vfs: &SourceMap,
@@ -180,10 +176,6 @@ fn emit_error_with_expansion(
     let file = vfs.file_info(error.span.start.file_id);
     let relative = rel_path(&file.path).to_string_lossy().to_string();
     ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag)
-}
-
-pub fn emit_errors(errors: &[Error], vfs: &SourceMap) {
-    emit_errors_with_expansion(errors, vfs, &HashMap::new());
 }
 
 pub fn emit_errors_with_expansion(

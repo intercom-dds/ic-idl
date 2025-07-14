@@ -36,10 +36,7 @@
 //! At this point, all types are resolved, so we can properly evaluate expressions.
 
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
-use ic_expr::{
-    Error as ExprError, EvalConfig, GenericNumeric, NumericValue, OverflowBehavior,
-    Result as ExprResult,
-};
+use ic_expr::{Error as ExprError, GenericNumeric, Result as ExprResult};
 use ic_syntax::{Expr, Item};
 
 use crate::Context;

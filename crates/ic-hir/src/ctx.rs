@@ -27,9 +27,8 @@
 
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
-use ic_syntax::util::{path_name, type_name};
 
-use crate::hir::{self, Def, DefId, DefKind, PrimitiveTy, Ty, TyKind, TypeId};
+use crate::hir::{self, Def, DefId, DefKind, Ty, TyKind};
 use crate::scope::ScopeTree;
 
 #[derive(Debug)]
@@ -118,17 +117,9 @@ impl Context {
             _ => None,
         }
     }
-
-    pub fn resolve_path(&self, _path: &ic_syntax::Path) -> TypeId {
-        todo!()
-    }
 }
 
 /// Inserts primitive types and built-in annotations into the context.
-fn init_ctx_state(ctx: &mut Context) {
-    for ty in PrimitiveTy::iter() {
-        // let name = name.into();
-        // tracing::info!("registering type {name}: {ty:?}");
-        // ctx.register_type(ty.name(), Type::Primitive(ty));
-    }
+fn init_ctx_state(_ctx: &mut Context) {
+    // Currently no built-in types are injected
 }

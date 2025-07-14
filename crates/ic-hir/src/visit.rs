@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused)]
-
 use crate::hir::{
     AliasTy, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
     InterfaceTy, ModuleTy, Numeric, StructTy, Ty, UnionTy, ValueTy,

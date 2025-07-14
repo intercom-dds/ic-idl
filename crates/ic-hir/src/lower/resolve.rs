@@ -36,7 +36,7 @@
 use std::collections::HashMap;
 
 use ic_diagnostic::{Diag, Label, error_span};
-use ic_syntax::{Item, Path, Span};
+use ic_syntax::{Item, Path};
 
 use super::collect::NameMap;
 use crate::Context;

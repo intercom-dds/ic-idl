@@ -30,8 +30,7 @@ use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::hir::{
-    BitmaskTy, Def, DefId, DefKind, EnumTy, ExceptTy, Ident, InterfaceTy, ProtoTy, StructTy,
-    UnionTy,
+    BitmaskTy, Def, DefId, DefKind, EnumTy, ExceptTy, Ident, InterfaceTy, StructTy, UnionTy,
 };
 use crate::visit::{Visitor, walk_def};
 use crate::{Context, DefIter};

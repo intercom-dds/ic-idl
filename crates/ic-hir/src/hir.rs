@@ -28,13 +28,7 @@
 //! Type definitions of the HIR.
 
 use std::fmt::Debug;
-use std::num::NonZero;
-use std::rc::Rc;
 
-use ic_alloc::arena::{Arena, Id};
-use ic_expr::{
-    Error as ExprError, EvalConfig, NumericValue, OverflowBehavior, Result as ExprResult,
-};
 use ic_macros::{EnumIter, ToString};
 use ic_syntax::Path;
 pub use ic_syntax::{Ident, ParamKind, Span};

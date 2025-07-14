@@ -35,11 +35,11 @@
 
 use ic_alloc::insensitive::CaseMap;
 use ic_diagnostic::{Diag, Label, error_span};
-use ic_syntax::{Ident, Item, ItemKind, Path, Span};
+use ic_syntax::{Ident, Item, Span};
 
 use crate::Context;
 use crate::hir::*;
-use crate::scope::{ScopeId, ScopeTree};
+use crate::scope::ScopeId;
 
 /// Maps fully-qualified names to their DefIds.
 pub type NameMap = CaseMap<DefId>;

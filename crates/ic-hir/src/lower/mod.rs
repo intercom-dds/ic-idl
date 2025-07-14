@@ -95,12 +95,6 @@ fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {
     }
 }
 
-pub use self::collect::NameCollector;
-pub use self::evaluate::ExpressionEvaluator;
-pub use self::resolve::TypeResolver;
-pub use self::typecheck::TypeChecker;
-pub use self::validate::Validator;
-
 /// Result of the lowering process.
 pub struct LoweringResult {
     /// The constructed HIR context with all definitions.

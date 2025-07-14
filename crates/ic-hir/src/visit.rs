@@ -26,8 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::hir::{
-    AliasTy, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
-    InterfaceTy, ModuleTy, Numeric, StructTy, Ty, UnionTy, ValueTy,
+    AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
+    Def, DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
+    ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 
 pub trait Visitor<'a> {
@@ -35,37 +36,101 @@ pub trait Visitor<'a> {
         walk_def(self, def);
     }
 
-    fn visit_annotation(&mut self, def: &'a Def, data: &'a AnnotationTy) {}
-
-    fn visit_module(&mut self, def: &'a Def, data: &'a ModuleTy) {}
-
-    fn visit_struct(&mut self, def: &'a Def, data: &'a StructTy) {
-        walk_struct(self, data)
+    fn visit_annotation_def(&mut self, def: &'a Def, data: &'a AnnotationTy) {
+        walk_annotation_def(self, def, data);
     }
 
-    fn visit_except(&mut self, def: &'a Def, data: &'a ExceptTy) {}
+    fn visit_module(&mut self, def: &'a Def, data: &'a ModuleTy) {
+        walk_module(self, def, data);
+    }
 
-    fn visit_enum(&mut self, def: &'a Def, data: &'a EnumTy) {}
+    fn visit_struct(&mut self, def: &'a Def, data: &'a StructTy) {
+        walk_struct(self, data);
+    }
 
-    fn visit_union(&mut self, def: &'a Def, data: &'a UnionTy) {}
+    fn visit_except(&mut self, def: &'a Def, data: &'a ExceptTy) {
+        walk_except(self, data);
+    }
 
-    fn visit_alias(&mut self, def: &'a Def, data: &'a AliasTy) {}
+    fn visit_enum(&mut self, def: &'a Def, data: &'a EnumTy) {
+        walk_enum(self, data);
+    }
 
-    fn visit_bitmask(&mut self, def: &'a Def, data: &'a BitmaskTy) {}
+    fn visit_union(&mut self, def: &'a Def, data: &'a UnionTy) {
+        walk_union(self, data);
+    }
 
-    fn visit_bitset(&mut self, def: &'a Def, data: &'a BitsetTy) {}
+    fn visit_alias(&mut self, def: &'a Def, data: &'a AliasTy) {
+        walk_alias(self, data);
+    }
 
-    fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {}
+    fn visit_bitmask(&mut self, def: &'a Def, data: &'a BitmaskTy) {
+        walk_bitmask(self, data);
+    }
 
-    fn visit_interface(&mut self, def: &'a Def, data: &'a InterfaceTy) {}
+    fn visit_bitset(&mut self, def: &'a Def, data: &'a BitsetTy) {
+        walk_bitset(self, data);
+    }
 
-    fn visit_valuetype(&mut self, def: &'a Def, data: &'a ValueTy) {}
+    fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {
+        walk_const(self, data);
+    }
 
-    fn visit_decl(&mut self, def: &'a Def, data: &'a Decl) {}
+    fn visit_interface(&mut self, def: &'a Def, data: &'a InterfaceTy) {
+        walk_interface(self, def, data);
+    }
 
-    fn visit_ty(&mut self, ty: &'a Ty) {}
+    fn visit_valuetype(&mut self, def: &'a Def, data: &'a ValueTy) {
+        walk_valuetype(self, def, data);
+    }
 
-    fn visit_numeric(&mut self, num: &'a Numeric) {}
+    fn visit_decl(&mut self, def: &'a Def, data: &'a Decl) {
+        walk_decl(self, data);
+    }
+
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        walk_ty(self, ty);
+    }
+
+    fn visit_numeric(&mut self, num: &'a Numeric) {
+        walk_numeric(self, num);
+    }
+
+    fn visit_member(&mut self, member: &'a Member) {
+        walk_member(self, member);
+    }
+
+    fn visit_variant(&mut self, variant: &'a Variant) {
+        walk_variant(self, variant);
+    }
+
+    fn visit_enum_lit(&mut self, lit: &'a EnumLit) {
+        walk_enum_lit(self, lit);
+    }
+
+    fn visit_bit_flag(&mut self, flag: &'a BitFlag) {
+        walk_bit_flag(self, flag);
+    }
+
+    fn visit_bitset_field(&mut self, field: &'a BitsetField) {
+        walk_bitset_field(self, field);
+    }
+
+    fn visit_proto(&mut self, proto: &'a ProtoTy) {
+        walk_proto(self, proto);
+    }
+
+    fn visit_parameter(&mut self, param: &'a Parameter) {
+        walk_parameter(self, param);
+    }
+
+    fn visit_annotation(&mut self, ann: &'a Ann) {
+        walk_annotation(self, ann);
+    }
+
+    fn visit_annotation_arg(&mut self, arg: &'a AnnArg) {
+        walk_annotation_arg(self, arg);
+    }
 }
 
 pub fn walk_tree<'a, V>(visitor: &mut V, tree: &'a [Def])
@@ -81,8 +146,14 @@ pub fn walk_def<'a, V>(visitor: &mut V, def: &'a Def)
 where
     V: Visitor<'a> + ?Sized,
 {
+    // First visit annotations on the definition itself
+    for ann in &def.annotations {
+        visitor.visit_annotation(ann);
+    }
+
+    // Then visit the specific definition kind
     match &def.kind {
-        DefKind::Annotation(v) => visitor.visit_annotation(def, v),
+        DefKind::Annotation(v) => visitor.visit_annotation_def(def, v),
         DefKind::Module(v) => visitor.visit_module(def, v),
         DefKind::Struct(v) => visitor.visit_struct(def, v),
         DefKind::Except(v) => visitor.visit_except(def, v),
@@ -102,7 +173,257 @@ pub fn walk_struct<'a, V>(visitor: &mut V, data: &'a StructTy)
 where
     V: Visitor<'a> + ?Sized,
 {
-    for mem in &data.members {
-        visitor.visit_ty(&mem.ty);
+    for member in &data.members {
+        visitor.visit_member(member);
     }
+}
+
+pub fn walk_annotation_def<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a AnnotationTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for member in &data.members {
+        visitor.visit_member(member);
+    }
+    // Note: We don't visit nested types here as they're already visited via walk_def
+}
+
+pub fn walk_module<'a, V>(visitor: &mut V, _def: &'a Def, _data: &'a ModuleTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    // Module definitions are visited separately via walk_def, not here
+}
+
+pub fn walk_except<'a, V>(visitor: &mut V, data: &'a ExceptTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for member in &data.members {
+        visitor.visit_member(member);
+    }
+}
+
+pub fn walk_enum<'a, V>(visitor: &mut V, data: &'a EnumTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&data.ty);
+    for field in &data.fields {
+        visitor.visit_enum_lit(field);
+    }
+}
+
+pub fn walk_union<'a, V>(visitor: &mut V, data: &'a UnionTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&data.disc);
+    for variant in &data.variants {
+        visitor.visit_variant(variant);
+    }
+}
+
+pub fn walk_alias<'a, V>(visitor: &mut V, data: &'a AliasTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&data.ty);
+}
+
+pub fn walk_bitmask<'a, V>(visitor: &mut V, data: &'a BitmaskTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&data.ty);
+    for flag in &data.flags {
+        visitor.visit_bit_flag(flag);
+    }
+}
+
+pub fn walk_bitset<'a, V>(visitor: &mut V, data: &'a BitsetTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for field in &data.fields {
+        visitor.visit_bitset_field(field);
+    }
+}
+
+pub fn walk_const<'a, V>(visitor: &mut V, data: &'a ConstTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&data.ty);
+    visitor.visit_numeric(&data.value);
+}
+
+pub fn walk_interface<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a InterfaceTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for proto in &data.prototypes {
+        visitor.visit_proto(proto);
+    }
+    // Note: definitions and attributes would be visited separately
+}
+
+pub fn walk_valuetype<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a ValueTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for proto in &data.prototypes {
+        visitor.visit_proto(proto);
+    }
+    // Note: members and definitions would be visited separately when implemented
+}
+
+pub fn walk_decl<'a, V>(_visitor: &mut V, _data: &'a Decl)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    // Forward declarations have no content to visit
+}
+
+pub fn walk_ty<'a, V>(visitor: &mut V, ty: &'a Ty)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match &ty.kind {
+        TyKind::Array { ty, .. } => visitor.visit_ty(ty),
+        TyKind::Sequence { ty, .. } => visitor.visit_ty(ty),
+        TyKind::Map { key, elem, .. } => {
+            visitor.visit_ty(key);
+            visitor.visit_ty(elem);
+        }
+        TyKind::String { .. }
+        | TyKind::Primitive(_)
+        | TyKind::Any
+        | TyKind::Fixed
+        | TyKind::Adt(_) => {
+            // No nested types to visit
+        }
+    }
+}
+
+pub fn walk_numeric<'a, V>(visitor: &mut V, num: &'a Numeric)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match num {
+        Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
+            for value in values.iter() {
+                visitor.visit_numeric(value);
+            }
+        }
+        Numeric::Map { values, .. } => {
+            for (key, value) in values.iter() {
+                visitor.visit_numeric(key);
+                visitor.visit_numeric(value);
+            }
+        }
+        Numeric::Struct { fields, .. } => {
+            for (_, value) in fields.iter() {
+                visitor.visit_numeric(value);
+            }
+        }
+        Numeric::Union {
+            discriminant,
+            value,
+            ..
+        } => {
+            visitor.visit_numeric(discriminant);
+            visitor.visit_numeric(value);
+        }
+        _ => {
+            // Primitive numeric values have nothing to visit
+        }
+    }
+}
+
+pub fn walk_member<'a, V>(visitor: &mut V, member: &'a Member)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&member.ty);
+    for ann in &member.annotations {
+        visitor.visit_annotation(ann);
+    }
+}
+
+pub fn walk_variant<'a, V>(visitor: &mut V, variant: &'a Variant)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for ann in &variant.annotations {
+        visitor.visit_annotation(ann);
+    }
+    visitor.visit_ty(&variant.ty);
+    for label in &variant.labels {
+        visitor.visit_numeric(label);
+    }
+}
+
+pub fn walk_enum_lit<'a, V>(visitor: &mut V, lit: &'a EnumLit)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for ann in &lit.annotations {
+        visitor.visit_annotation(ann);
+    }
+}
+
+pub fn walk_bit_flag<'a, V>(visitor: &mut V, flag: &'a BitFlag)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for ann in &flag.annotations {
+        visitor.visit_annotation(ann);
+    }
+}
+
+pub fn walk_bitset_field<'a, V>(visitor: &mut V, field: &'a BitsetField)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&field.ty);
+    for ann in &field.annotations {
+        visitor.visit_annotation(ann);
+    }
+}
+
+pub fn walk_proto<'a, V>(visitor: &mut V, proto: &'a ProtoTy)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&proto.ty);
+    for param in &proto.params {
+        visitor.visit_parameter(param);
+    }
+}
+
+pub fn walk_parameter<'a, V>(visitor: &mut V, param: &'a Parameter)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&param.ty);
+}
+
+pub fn walk_annotation<'a, V>(visitor: &mut V, ann: &'a Ann)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    if let Some(ty) = &ann.ty {
+        visitor.visit_ty(ty);
+    }
+    for arg in &ann.args {
+        visitor.visit_annotation_arg(arg);
+    }
+}
+
+pub fn walk_annotation_arg<'a, V>(visitor: &mut V, arg: &'a AnnArg)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_numeric(&arg.value);
 }

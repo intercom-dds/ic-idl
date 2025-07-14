@@ -62,10 +62,10 @@ fn test_bounded_sequence() {
         if let ic_hir::hir::TyKind::Sequence { bound, .. } = &alias_ty.ty.kind {
             assert_eq!(*bound, Some(100), "Expected bound of 100");
         } else {
-            panic!("Expected sequence type");
+            panic!("Expected sequence type, got: {:?}", alias_ty.ty.kind);
         }
     } else {
-        panic!("Expected alias definition");
+        panic!("Expected alias definition, got: {:?}", bounded_def.1.kind);
     }
 
     // Check computed bound

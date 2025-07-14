@@ -1256,7 +1256,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     if let Some(def_id) = self
                         .ctx
                         .scopes
-                        .resolve_name(self.current_scope, &v.ident.name)
+                        .resolve_name(self.current_scope, &v.ident.name.to_lowercase())
                     {
                         self.evaluate_struct(def_id, v);
                     }
@@ -1266,7 +1266,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     if let Some(def_id) = self
                         .ctx
                         .scopes
-                        .resolve_name(self.current_scope, &v.ident.name)
+                        .resolve_name(self.current_scope, &v.ident.name.to_lowercase())
                     {
                         self.evaluate_union(def_id, v);
                     }
@@ -1275,7 +1275,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     if let Some(def_id) = self
                         .ctx
                         .scopes
-                        .resolve_name(self.current_scope, &v.ident.name)
+                        .resolve_name(self.current_scope, &v.ident.name.to_lowercase())
                     {
                         self.evaluate_enum(def_id, v);
                     }
@@ -1284,7 +1284,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     if let Some(def_id) = self
                         .ctx
                         .scopes
-                        .resolve_name(self.current_scope, &v.ident.name)
+                        .resolve_name(self.current_scope, &v.ident.name.to_lowercase())
                     {
                         self.evaluate_bitmask(def_id, v);
                     }
@@ -1293,7 +1293,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     if let Some(def_id) = self
                         .ctx
                         .scopes
-                        .resolve_name(self.current_scope, &v.ident.name)
+                        .resolve_name(self.current_scope, &v.ident.name.to_lowercase())
                     {
                         self.evaluate_bitset(def_id, v);
                     }
@@ -1314,7 +1314,7 @@ impl<'a> ExpressionEvaluator<'a> {
                             ic_syntax::Declarator::Simple(n) => &n.name,
                             ic_syntax::Declarator::Array(a) => &a.ident.name,
                         };
-                        if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, name)
+                        if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, &name.to_lowercase())
                         {
                             self.evaluate_alias(def_id, decl);
                             // Also evaluate bounds in the type itself
@@ -1326,7 +1326,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     if let Some(def_id) = self
                         .ctx
                         .scopes
-                        .resolve_name(self.current_scope, &v.ident.name)
+                        .resolve_name(self.current_scope, &v.ident.name.to_lowercase())
                     {
                         self.evaluate_exception(def_id, v);
                     }

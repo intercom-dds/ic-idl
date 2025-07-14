@@ -505,7 +505,7 @@ impl<'a> TypeResolver<'a> {
                             ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
                         };
 
-                        if let Some(&id) = self.name_map.get(&name) {
+                        if let Some(&id) = self.name_map.get(&name.to_lowercase()) {
                             self.resolve_alias(id, v, idx);
                         }
                     }
@@ -515,7 +515,7 @@ impl<'a> TypeResolver<'a> {
                         ic_syntax::Declarator::Simple(n) => n.name.clone(),
                         ic_syntax::Declarator::Array(a) => a.ident.name.clone(),
                     };
-                    if let Some(&id) = self.name_map.get(&name) {
+                    if let Some(&id) = self.name_map.get(&name.to_lowercase()) {
                         self.resolve_const(id, v);
                     }
                 }

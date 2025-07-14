@@ -143,6 +143,11 @@ fn test_bitset_size_expressions() {
     assert!(parsed.errors.is_empty());
 
     let result = ic_hir::from_ast(parsed.tree);
+    if !result.errors.is_empty() {
+        for err in &result.errors {
+            eprintln!("HIR error in test_bitset_size_expressions: {:?}", err);
+        }
+    }
     assert!(result.errors.is_empty());
 
     let dynamic = result

@@ -102,15 +102,20 @@ impl ScopeTree {
 
         self.scopes.push(scope);
 
-        // Add to parent's children
-        self.scopes[parent.0].children.insert(name, scope_id);
+        // Add to parent's children with lowercase key for case-insensitive lookup
+        self.scopes[parent.0]
+            .children
+            .insert(name.to_lowercase(), scope_id);
 
         scope_id
     }
 
     /// Adds a definition to a scope.
     pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) {
-        self.scopes[scope.0].definitions.insert(name, def_id);
+        // Store with lowercase key for case-insensitive lookup
+        self.scopes[scope.0]
+            .definitions
+            .insert(name.to_lowercase(), def_id);
     }
 
     /// Gets a scope by ID.
@@ -121,17 +126,18 @@ impl ScopeTree {
     /// Resolves a single name segment in a scope (looks in this scope and parents).
     pub fn resolve_name(&self, scope: ScopeId, name: &str) -> Option<DefId> {
         let mut current = Some(scope);
+        let lowercase_name = name.to_lowercase();
 
         while let Some(scope_id) = current {
             let scope = &self.scopes[scope_id.0];
 
-            // Check local definitions
-            if let Some(&def_id) = scope.definitions.get(name) {
+            // Check local definitions (case-insensitive)
+            if let Some(&def_id) = scope.definitions.get(&lowercase_name) {
                 return Some(def_id);
             }
 
-            // Check child scopes (for module names)
-            if let Some(&child_scope_id) = scope.children.get(name) {
+            // Check child scopes (for module names, case-insensitive)
+            if let Some(&child_scope_id) = scope.children.get(&lowercase_name) {
                 if let Some(def_id) = self.scopes[child_scope_id.0].def_id {
                     return Some(def_id);
                 }
@@ -190,12 +196,12 @@ impl ScopeTree {
         let scope_data = &self.scopes[scope.0];
 
         if path.len() == 1 {
-            // Single segment - check definitions
-            return scope_data.definitions.get(path[0]).copied();
+            // Single segment - check definitions (case-insensitive)
+            return scope_data.definitions.get(&path[0].to_lowercase()).copied();
         }
 
-        // Multi-segment path - first segment should be a child scope
-        if let Some(&child_scope) = scope_data.children.get(path[0]) {
+        // Multi-segment path - first segment should be a child scope (case-insensitive)
+        if let Some(&child_scope) = scope_data.children.get(&path[0].to_lowercase()) {
             // Recurse into child scope
             return self.resolve_path_from_scope(child_scope, &path[1..]);
         }

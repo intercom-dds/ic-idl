@@ -76,13 +76,13 @@ impl ScopeStack {
     fn qualified_name(&self, name: &str) -> String {
         let path = self.scopes[1..] // Skip <global>
             .iter()
-            .map(|(n, _)| n.as_str())
-            .chain(std::iter::once(name))
+            .map(|(n, _)| n.to_lowercase())
+            .chain(std::iter::once(name.to_lowercase()))
             .collect::<Vec<_>>()
             .join("::");
 
         if path.is_empty() {
-            name.to_string()
+            name.to_lowercase()
         } else {
             path
         }
@@ -135,6 +135,10 @@ impl<'a> NameCollector<'a> {
         let parent = self.scope_stack.current_parent();
         let qualified_name = self.scope_stack.qualified_name(&ident.name);
 
+        // Check if this is a forward declaration or module before moving kind
+        let new_is_decl = matches!(&kind, DefKind::Decl(_));
+        let new_is_module = matches!(&kind, DefKind::Module(_));
+
         // Determine which types are complete immediately vs need resolution
         let flags = match &kind {
             // These are complete immediately
@@ -155,9 +159,6 @@ impl<'a> NameCollector<'a> {
             DefKind::Except(_) => DefFlags::IS_INCOMPLETE, // Exceptions need member resolution
         };
 
-        // Check if this is a forward declaration before moving kind
-        let new_is_decl = matches!(&kind, DefKind::Decl(_));
-
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
@@ -168,18 +169,22 @@ impl<'a> NameCollector<'a> {
             flags,
         });
 
-        // Check for duplicate names - but allow forward declarations
+        // Check for duplicate names - but allow forward declarations and module reopening
         if let Some(&existing_id) = self.name_map.get(&qualified_name) {
             let existing = self.ctx.definitions.get(existing_id);
 
             // Check if either the existing or new definition is a forward declaration
             let existing_is_decl = matches!(&existing.kind, DefKind::Decl(_));
 
+            // Check if existing is a module (modules can be reopened)
+            let existing_is_module = matches!(&existing.kind, DefKind::Module(_));
+
             // Allow multiple forward declarations or a forward declaration + definition
             if !existing_is_decl || !new_is_decl {
                 // We have at least one actual definition
                 // If both are definitions (not forward declarations), it's an error
-                if !existing_is_decl && !new_is_decl {
+                // UNLESS they are both modules (which can be reopened)
+                if !existing_is_decl && !new_is_decl && !(existing_is_module && new_is_module) {
                     self.errors.push(
                         error_span(
                             format!("duplicate definition of `{}`", ident.name),
@@ -245,14 +250,45 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
-        let id = self.alloc_scoped_definition_with_annotations(
-            def.ident.clone(),
-            DefKind::Module(ModuleTy {
-                definitions: Vec::new(),
-            }),
-            def.span,
-            &def.annotations,
-        );
+        // Check if this module already exists (module reopening)
+        let qualified_name = self.scope_stack.qualified_name(&def.ident.name);
+        let existing_id = self.name_map.get(&qualified_name).copied();
+
+        let id = if let Some(existing_id) = existing_id {
+            // Module already exists - reuse it
+            let existing_def = self.ctx.definitions.get(existing_id);
+            if matches!(&existing_def.kind, DefKind::Module(_)) {
+                // Push the existing module onto scope stack
+                self.scope_stack.push(def.ident.name.clone(), existing_id);
+
+                // Set current scope to the existing module's scope
+                if let Some(module_scope) = self.ctx.scopes.find_scope_for_def(existing_id) {
+                    self.current_scope = module_scope;
+                }
+
+                existing_id
+            } else {
+                // Name exists but it's not a module - error will be reported by alloc_definition
+                self.alloc_scoped_definition_with_annotations(
+                    def.ident.clone(),
+                    DefKind::Module(ModuleTy {
+                        definitions: Vec::new(),
+                    }),
+                    def.span,
+                    &def.annotations,
+                )
+            }
+        } else {
+            // New module
+            self.alloc_scoped_definition_with_annotations(
+                def.ident.clone(),
+                DefKind::Module(ModuleTy {
+                    definitions: Vec::new(),
+                }),
+                def.span,
+                &def.annotations,
+            )
+        };
 
         // Collect nested definitions
         let mut child_ids = Vec::new();
@@ -260,13 +296,13 @@ impl<'a> NameCollector<'a> {
             child_ids.extend(self.collect_item(item));
         }
 
-        // Update module with children
+        // Update module with children - append to existing definitions if reopening
         if let Def {
             kind: DefKind::Module(module),
             ..
         } = self.ctx.definitions.get_mut(id)
         {
-            module.definitions = child_ids;
+            module.definitions.extend(child_ids);
         }
 
         self.scope_stack.pop();

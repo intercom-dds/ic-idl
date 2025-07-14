@@ -442,8 +442,8 @@ impl<'a> TypeResolver<'a> {
                 kind,
             };
 
-            // Look up with qualified name
-            if let Some(&id) = self.name_map.get(&qualified_name) {
+            // Look up with qualified name (case-insensitive)
+            if let Some(&id) = self.name_map.get(&qualified_name.to_lowercase()) {
                 self.item_map.insert(key, id);
             } else {
             }
@@ -714,7 +714,10 @@ impl<'a> TypeResolver<'a> {
 
         // Find the child scope for this module
         let current_scope_data = self.ctx.scopes.get_scope(self.current_scope_id);
-        if let Some(&module_scope) = current_scope_data.children.get(&def.ident.name) {
+        if let Some(&module_scope) = current_scope_data
+            .children
+            .get(&def.ident.name.to_lowercase())
+        {
             // Save current scope
             let saved_scope = self.current_scope_id;
             self.current_scope_id = module_scope;
@@ -752,19 +755,20 @@ fn path_to_string(path: &Path) -> String {
 
 /// Resolves a primitive type name.
 fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
-    match name {
+    // IDL is case-insensitive
+    match name.to_lowercase().as_str() {
         "void" => Some(PrimitiveTy::Void),
         "boolean" => Some(PrimitiveTy::Bool),
         "char" => Some(PrimitiveTy::Char),
         "wchar" => Some(PrimitiveTy::WChar),
         "int8" => Some(PrimitiveTy::Int8),
         "octet" | "uint8" => Some(PrimitiveTy::UInt8),
-        "int16" => Some(PrimitiveTy::Int16),
-        "uint16" => Some(PrimitiveTy::UInt16),
-        "int32" => Some(PrimitiveTy::Int32),
-        "uint32" => Some(PrimitiveTy::UInt32),
-        "int64" => Some(PrimitiveTy::Int64),
-        "uint64" => Some(PrimitiveTy::UInt64),
+        "short" | "int16" => Some(PrimitiveTy::Int16),
+        "unsigned short" | "uint16" => Some(PrimitiveTy::UInt16),
+        "long" | "int32" => Some(PrimitiveTy::Int32),
+        "unsigned long" | "uint32" => Some(PrimitiveTy::UInt32),
+        "long long" | "int64" => Some(PrimitiveTy::Int64),
+        "unsigned long long" | "uint64" => Some(PrimitiveTy::UInt64),
         "float" => Some(PrimitiveTy::Float32),
         "double" => Some(PrimitiveTy::Float64),
         "long double" => Some(PrimitiveTy::Float128),

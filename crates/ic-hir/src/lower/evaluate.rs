@@ -473,16 +473,21 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
-    /// Updates array bounds in a type.
-    fn update_type_bounds(&mut self, ty: &mut Ty, bounds: &[ic_syntax::Expr]) {
+    /// Updates array bounds in a type, returning the evaluated bounds.
+    fn evaluate_array_bounds(&mut self, bounds: &[ic_syntax::Expr]) -> Vec<usize> {
+        bounds.iter().map(|expr| self.eval_bound(expr)).collect()
+    }
+
+    /// Updates array bounds in a type using pre-evaluated bounds.
+    fn update_type_bounds_with_values(ty: &mut Ty, evaluated_bounds: &[usize]) {
         let mut current = ty;
-        let mut bound_iter = bounds.iter(); // Process in order
+        let mut bound_iter = evaluated_bounds.iter();
 
         loop {
             match &mut current.kind {
                 TyKind::Array { ty: inner_ty, len } => {
-                    if let Some(bound_expr) = bound_iter.next() {
-                        *len = self.eval_bound(bound_expr);
+                    if let Some(&bound_value) = bound_iter.next() {
+                        *len = bound_value;
                     }
                     current = inner_ty;
                 }
@@ -491,11 +496,63 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates expressions in a struct definition.
+    fn evaluate_struct(&mut self, id: DefId, def: &ic_syntax::StructDef) {
+        // Collect array bounds for struct members
+        let mut array_bounds = Vec::new();
+        let mut member_idx = 0;
+
+        for field in &def.members {
+            for decl in &field.names {
+                if let ic_syntax::Declarator::Array(arr) = decl {
+                    array_bounds.push((member_idx, arr.bounds.clone()));
+                }
+                member_idx += 1;
+            }
+        }
+
+        // Evaluate all bounds first
+        let evaluated_bounds: Vec<(usize, Vec<usize>)> = array_bounds
+            .into_iter()
+            .map(|(idx, bounds)| {
+                let evaluated = self.evaluate_array_bounds(&bounds);
+                (idx, evaluated)
+            })
+            .collect();
+
+        // Process bounds and collect updated types
+        let mut updates = Vec::new();
+        {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Struct(struct_ty) = &hir_def.kind {
+                for (idx, bounds) in evaluated_bounds {
+                    if let Some(member) = struct_ty.members.get(idx) {
+                        let mut ty = member.ty.clone();
+                        Self::update_type_bounds_with_values(&mut ty, &bounds);
+                        updates.push((idx, ty));
+                    }
+                }
+            }
+        }
+
+        // Apply updates
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Struct(struct_ty) = &mut hir_def.kind {
+            for (idx, ty) in updates {
+                if let Some(member) = struct_ty.members.get_mut(idx) {
+                    member.ty = ty;
+                }
+            }
+        }
+    }
+
     /// Evaluates expressions in a union definition.
     fn evaluate_union(&mut self, id: DefId, def: &ic_syntax::UnionDef) {
-        // First, evaluate all case labels
+        // First, evaluate all case labels and collect array bounds
         let mut all_labels = Vec::new();
-        for field in &def.fields {
+        let mut array_bounds = Vec::new();
+
+        for (idx, field) in def.fields.iter().enumerate() {
             let mut labels = Vec::new();
 
             for label in &field.labels {
@@ -505,15 +562,104 @@ impl<'a> ExpressionEvaluator<'a> {
             }
 
             all_labels.push(labels);
+
+            // Check if this field has array bounds to evaluate
+            if let ic_syntax::UnionElement::Member(m) = &field.field {
+                if let ic_syntax::Declarator::Array(arr) = &m.decl {
+                    array_bounds.push((idx, arr.bounds.clone()));
+                }
+            }
+        }
+
+        // Evaluate all bounds first
+        let evaluated_bounds: Vec<(usize, Vec<usize>)> = array_bounds
+            .into_iter()
+            .map(|(idx, bounds)| {
+                let evaluated = self.evaluate_array_bounds(&bounds);
+                (idx, evaluated)
+            })
+            .collect();
+
+        // Process bounds and collect updated types
+        let mut type_updates = Vec::new();
+        {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Union(union_ty) = &hir_def.kind {
+                for (idx, bounds) in evaluated_bounds {
+                    if let Some(variant) = union_ty.variants.get(idx) {
+                        let mut ty = variant.ty.clone();
+                        Self::update_type_bounds_with_values(&mut ty, &bounds);
+                        type_updates.push((idx, ty));
+                    }
+                }
+            }
         }
 
         // Then update the HIR
         let hir_def = self.ctx.definitions.get_mut(id);
 
         if let DefKind::Union(union_ty) = &mut hir_def.kind {
+            // Update labels
             for (idx, labels) in all_labels.into_iter().enumerate() {
                 if let Some(variant) = union_ty.variants.get_mut(idx) {
                     variant.labels = labels;
+                }
+            }
+
+            // Update array bounds
+            for (idx, ty) in type_updates {
+                if let Some(variant) = union_ty.variants.get_mut(idx) {
+                    variant.ty = ty;
+                }
+            }
+        }
+    }
+
+    /// Evaluates expressions in an exception definition.
+    fn evaluate_exception(&mut self, id: DefId, def: &ic_syntax::ExceptDef) {
+        // Collect array bounds for exception members
+        let mut array_bounds = Vec::new();
+        let mut member_idx = 0;
+
+        for field in &def.members {
+            for decl in &field.names {
+                if let ic_syntax::Declarator::Array(arr) = decl {
+                    array_bounds.push((member_idx, arr.bounds.clone()));
+                }
+                member_idx += 1;
+            }
+        }
+
+        // Evaluate all bounds first
+        let evaluated_bounds: Vec<(usize, Vec<usize>)> = array_bounds
+            .into_iter()
+            .map(|(idx, bounds)| {
+                let evaluated = self.evaluate_array_bounds(&bounds);
+                (idx, evaluated)
+            })
+            .collect();
+
+        // Process bounds and collect updated types
+        let mut updates = Vec::new();
+        {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Except(except_ty) = &hir_def.kind {
+                for (idx, bounds) in evaluated_bounds {
+                    if let Some(member) = except_ty.members.get(idx) {
+                        let mut ty = member.ty.clone();
+                        Self::update_type_bounds_with_values(&mut ty, &bounds);
+                        updates.push((idx, ty));
+                    }
+                }
+            }
+        }
+
+        // Apply updates
+        let hir_def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Except(except_ty) = &mut hir_def.kind {
+            for (idx, ty) in updates {
+                if let Some(member) = except_ty.members.get_mut(idx) {
+                    member.ty = ty;
                 }
             }
         }
@@ -639,11 +785,14 @@ impl<'a> ExpressionEvaluator<'a> {
     /// Evaluates an alias (typedef) definition.
     fn evaluate_alias(&mut self, id: DefId, decl: &ic_syntax::Declarator) {
         if let ic_syntax::Declarator::Array(arr) = decl {
+            // Evaluate the bounds
+            let evaluated_bounds = self.evaluate_array_bounds(&arr.bounds);
+
             // Get the current type
             let hir_def = self.ctx.definitions.get(id);
             if let DefKind::Alias(alias_ty) = &hir_def.kind {
                 let mut ty = alias_ty.ty.clone();
-                self.update_type_bounds(&mut ty, &arr.bounds);
+                Self::update_type_bounds_with_values(&mut ty, &evaluated_bounds);
 
                 // Update the HIR with the evaluated type
                 let hir_def = self.ctx.definitions.get_mut(id);
@@ -950,7 +1099,9 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             if let Some(mut ty) = ty_to_update {
-                self.update_type_bounds(&mut ty, &bounds);
+                // Evaluate the bounds
+                let evaluated_bounds = self.evaluate_array_bounds(&bounds);
+                Self::update_type_bounds_with_values(&mut ty, &evaluated_bounds);
 
                 // Update the type with evaluated bounds
                 let hir_def = self.ctx.definitions.get_mut(id);
@@ -1085,7 +1236,10 @@ impl<'a> ExpressionEvaluator<'a> {
                 Item::ModuleValue(v) => {
                     // Find the child scope for this module
                     let current_scope_data = self.ctx.scopes.get_scope(self.current_scope);
-                    if let Some(&module_scope) = current_scope_data.children.get(&v.ident.name) {
+                    if let Some(&module_scope) = current_scope_data
+                        .children
+                        .get(&v.ident.name.to_lowercase())
+                    {
                         // Save current scope
                         let saved_scope = self.current_scope;
                         self.current_scope = module_scope;
@@ -1095,6 +1249,16 @@ impl<'a> ExpressionEvaluator<'a> {
 
                         // Restore scope
                         self.current_scope = saved_scope;
+                    }
+                }
+                Item::StructValue(v) => {
+                    // Look up the definition in the current scope
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_struct(def_id, v);
                     }
                 }
                 Item::UnionValue(v) => {
@@ -1156,6 +1320,15 @@ impl<'a> ExpressionEvaluator<'a> {
                             // Also evaluate bounds in the type itself
                             self.evaluate_type_bounds_in_alias(def_id, &v.ty);
                         }
+                    }
+                }
+                Item::ExceptionValue(v) => {
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_exception(def_id, v);
                     }
                 }
                 _ => {}

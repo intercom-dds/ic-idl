@@ -249,45 +249,16 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
-        // Check if this module already exists (module reopening)
-        let qualified_name = self.scope_stack.qualified_name(&def.ident.name);
-        let existing_id = self.name_map.get(&qualified_name).copied();
-
-        let id = if let Some(existing_id) = existing_id {
-            // Module already exists - reuse it
-            let existing_def = self.ctx.definitions.get(existing_id);
-            if matches!(&existing_def.kind, DefKind::Module(_)) {
-                // Push the existing module onto scope stack
-                self.scope_stack.push(def.ident.name.clone(), existing_id);
-
-                // Set current scope to the existing module's scope
-                if let Some(module_scope) = self.ctx.scopes.find_scope_for_def(existing_id) {
-                    self.current_scope = module_scope;
-                }
-
-                existing_id
-            } else {
-                // Name exists but it's not a module - error will be reported by alloc_definition
-                self.alloc_scoped_definition_with_annotations(
-                    def.ident.clone(),
-                    DefKind::Module(ModuleTy {
-                        definitions: Vec::new(),
-                    }),
-                    def.span,
-                    &def.annotations,
-                )
-            }
-        } else {
-            // New module
-            self.alloc_scoped_definition_with_annotations(
-                def.ident.clone(),
-                DefKind::Module(ModuleTy {
-                    definitions: Vec::new(),
-                }),
-                def.span,
-                &def.annotations,
-            )
-        };
+        // Always create a new DefId for module declarations, even when reopening
+        // This ensures each module declaration gets its own DefId in the HIR
+        let id = self.alloc_scoped_definition_with_annotations(
+            def.ident.clone(),
+            DefKind::Module(ModuleTy {
+                definitions: Vec::new(),
+            }),
+            def.span,
+            &def.annotations,
+        );
 
         // Collect nested definitions
         let mut child_ids = Vec::new();

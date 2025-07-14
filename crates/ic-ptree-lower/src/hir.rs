@@ -45,6 +45,7 @@ struct TreeBuilder<'a> {
     ctx: &'a Context,
     state: *mut sys::parser_state,
     lowered: HashMap<DefId, *mut sys::ptree>,
+    recursion_depth: usize,
 }
 
 impl<'a> TreeBuilder<'a> {
@@ -53,6 +54,7 @@ impl<'a> TreeBuilder<'a> {
             state,
             ctx: &tree.context,
             lowered: HashMap::new(),
+            recursion_depth: 0,
         }
     }
 
@@ -203,6 +205,11 @@ impl<'a> TreeBuilder<'a> {
         if let Some(v) = self.lowered.get(&id) {
             return *v;
         }
+        
+        self.recursion_depth += 1;
+        if self.recursion_depth > 100 {
+            panic!("Recursion depth exceeded while lowering {:?}", id);
+        }
 
         let def = self.ctx.type_of(id);
         let ident = create_ident(&def.ident.name);
@@ -341,6 +348,7 @@ impl<'a> TreeBuilder<'a> {
         // Apply annotations
         self.annotate(node, &def.annotations);
         self.lowered.insert(id, node);
+        self.recursion_depth -= 1;
         node
     }
 }

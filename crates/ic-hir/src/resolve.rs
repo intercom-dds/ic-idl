@@ -271,27 +271,30 @@ impl Resolver {
     /// If an error is returned, a scope is not created and the implementation
     /// should skip processing any items found within the module.
     pub fn start_module(&mut self, ident: &Ident) -> Result<()> {
+        // Always create a new DefId for module declarations, even when reopening
+        let id = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
+
+        // Check if there's an existing module with the same name
         if let Some(sym) = self.local_symbol(ident) {
             match sym {
-                Symbol::Module(v) => {
-                    let id = *v;
-                    self.current_scope.push(id);
-                    Ok(())
+                Symbol::Module(_existing_id) => {
+                    // Module reopening is allowed - we'll merge contents later
+                    // For now, just update the symbol to point to the new module
+                    self.current_scope()
+                        .symbols
+                        .insert(ident.name.clone(), Symbol::Module(id));
                 }
-                _ => Err(ResolveError::Redefined(ident.span)),
+                _ => return Err(ResolveError::Redefined(ident.span)),
             }
         } else {
-            // TODO: might be a good idea to let each mod know what the parent ID is.
-            let id = self.lexical_scopes.alloc(Scope::new(ident.name.clone()));
-
-            // Register the module
+            // Register the new module
             self.current_scope()
                 .symbols
                 .insert(ident.name.clone(), Symbol::Module(id));
-
-            self.current_scope.push(id);
-            Ok(())
         }
+
+        self.current_scope.push(id);
+        Ok(())
     }
 
     /// Returns `true` if the given symbol has been fully defined. This will

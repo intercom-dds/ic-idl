@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::{from_file, SourceMap};
+use ic_parse::{SourceMap, from_file};
 use ic_preproc::ProcArgs;
 
 #[test]
@@ -46,7 +46,7 @@ fn test_case_insensitive_type_resolution() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors - all references should resolve
     assert_eq!(hir.errors.len(), 0);
 }
@@ -73,7 +73,7 @@ fn test_case_insensitive_module_paths() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors
     assert_eq!(hir.errors.len(), 0);
 }
@@ -100,7 +100,7 @@ fn test_case_insensitive_primitive_types() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors
     assert_eq!(hir.errors.len(), 0);
 }
@@ -124,7 +124,7 @@ fn test_case_insensitive_enum_references() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors
     assert_eq!(hir.errors.len(), 0);
 }
@@ -148,7 +148,7 @@ fn test_case_sensitive_same_module() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have an error about duplicate definition
     assert!(hir.errors.len() > 0);
 }

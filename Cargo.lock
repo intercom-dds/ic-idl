@@ -197,7 +197,9 @@ dependencies = [
  "ic-expr",
  "ic-macros",
  "ic-parse",
+ "ic-preproc",
  "ic-syntax",
+ "ic-vfs",
  "intercom-cts",
 ]
 

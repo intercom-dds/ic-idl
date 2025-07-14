@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::{from_file, SourceMap};
+use ic_parse::{SourceMap, from_file};
 use ic_preproc::ProcArgs;
 
 #[test]
@@ -48,14 +48,14 @@ fn test_module_reopening() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors - module reopening is allowed
     assert_eq!(hir.errors.len(), 0);
-    
+
     // Both structs should exist in the same module
     let mut found_module = false;
     let mut structs_in_module = 0;
-    
+
     for def in hir.iter() {
         if def.ident.name == "Foo" {
             found_module = true;
@@ -65,9 +65,12 @@ fn test_module_reopening() {
             }
         }
     }
-    
+
     assert!(found_module, "Should find module Foo");
-    assert_eq!(structs_in_module, 2, "Module Foo should contain 2 structs (Bar and Baz)");
+    assert_eq!(
+        structs_in_module, 2,
+        "Module Foo should contain 2 structs (Bar and Baz)"
+    );
 }
 
 #[test]
@@ -90,7 +93,7 @@ fn test_module_reopening_with_references() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors
     assert_eq!(hir.errors.len(), 0);
 }
@@ -119,7 +122,7 @@ fn test_nested_module_reopening() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors
     assert_eq!(hir.errors.len(), 0);
 }
@@ -145,7 +148,7 @@ fn test_module_reopening_different_case() {
     let file_id = vfs.embed_with_name("<test>", idl);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let hir = ic_hir::from_ast(ast.tree);
-    
+
     // Should have no errors
     assert_eq!(hir.errors.len(), 0);
 }

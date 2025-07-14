@@ -59,12 +59,13 @@ pub struct CaseString {
 }
 
 impl CaseString {
-    /// Creates a new CaseString from the given string.
+    /// Creates a new `CaseString` from the given string.
     pub fn new<S: Into<String>>(s: S) -> Self {
         Self { original: s.into() }
     }
 
     /// Returns the string with its original casing.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.original
     }
@@ -104,7 +105,8 @@ pub struct CaseMap<T> {
 }
 
 impl<T> CaseMap<T> {
-    /// Creates a new empty CaseMap.
+    /// Creates a new empty `CaseMap`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: HashMap::new(),
@@ -150,7 +152,7 @@ impl<T> CaseMap<T> {
         self.inner
             .keys()
             .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .map(|k| k.as_str())
+            .map(CaseString::as_str)
     }
 
     /// Removes a key from the map, returning the value if it was present.
@@ -171,11 +173,13 @@ impl<T> CaseMap<T> {
     }
 
     /// Returns the number of entries in the map.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     /// Returns true if the map is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -223,13 +227,14 @@ impl<T> CaseMap<T> {
     }
 }
 
-/// An entry in a CaseMap.
+/// An entry in a `CaseMap`.
 pub struct CaseMapEntry<'a, T> {
     inner: Entry<'a, CaseString, T>,
 }
 
 impl<'a, T> CaseMapEntry<'a, T> {
     /// Returns a reference to this entry's key with original casing.
+    #[must_use]
     pub fn key(&self) -> &str {
         match &self.inner {
             Entry::Occupied(e) => e.key().as_str(),
@@ -255,7 +260,8 @@ pub struct CaseSet {
 }
 
 impl CaseSet {
-    /// Creates a new empty CaseSet.
+    /// Creates a new empty `CaseSet`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: HashSet::new(),
@@ -291,7 +297,7 @@ impl CaseSet {
         self.inner
             .iter()
             .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .map(|k| k.as_str())
+            .map(CaseString::as_str)
     }
 
     /// Removes a string from the set.
@@ -310,11 +316,13 @@ impl CaseSet {
     }
 
     /// Returns the number of strings in the set.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     /// Returns true if the set is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -326,7 +334,7 @@ impl CaseSet {
 
     /// Returns an iterator over the strings in the set.
     pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.inner.iter().map(|k| k.as_str())
+        self.inner.iter().map(CaseString::as_str)
     }
 }
 

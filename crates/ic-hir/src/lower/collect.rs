@@ -249,6 +249,17 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
+        // Check if this module already exists (for module reopening)
+        let qualified_name = self.scope_stack.qualified_name(&def.ident.name);
+        let existing_modules: Vec<DefId> = self.name_map
+            .iter()
+            .filter(|(k, v)| {
+                k == &qualified_name && 
+                matches!(&self.ctx.definitions.get(**v).kind, DefKind::Module(_))
+            })
+            .map(|(_, v)| *v)
+            .collect();
+
         // Always create a new DefId for module declarations, even when reopening
         // This ensures each module declaration gets its own DefId in the HIR
         let id = self.alloc_scoped_definition_with_annotations(
@@ -259,6 +270,27 @@ impl<'a> NameCollector<'a> {
             def.span,
             &def.annotations,
         );
+
+        // If this is a module reopening, copy all definitions from previous instances
+        // into the new module's scope so they're visible for type resolution
+        if !existing_modules.is_empty() {
+            let new_scope = self.current_scope;
+            for &existing_id in &existing_modules {
+                if let Some(existing_scope) = self.ctx.scopes.find_scope_for_def(existing_id) {
+                    // Copy all definitions from the existing module scope to the new one
+                    let existing_scope_data = self.ctx.scopes.get_scope(existing_scope);
+                    let definitions_to_copy: Vec<(String, DefId)> = existing_scope_data
+                        .definitions
+                        .iter()
+                        .map(|(k, v)| (k.to_string(), *v))
+                        .collect();
+                    
+                    for (name, def_id) in definitions_to_copy {
+                        self.ctx.scopes.add_definition(new_scope, name, def_id);
+                    }
+                }
+            }
+        }
 
         // Collect nested definitions
         let mut child_ids = Vec::new();

@@ -75,7 +75,7 @@ pub fn lint_hir(source: &str) -> Report {
     // Parse the IDL code
     let args = ic_preproc::ProcArgs::default();
     let ast = ic_parse::from_file(file_id, args, &mut vfs);
-
+    
     // Lower to HIR
     let hir = ic_hir::from_ast(ast.tree);
 

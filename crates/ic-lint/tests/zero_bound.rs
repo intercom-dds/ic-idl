@@ -34,11 +34,12 @@ fn zero_sized_array() {
     let report = lint_hir(
         r#"
 struct Foo {
-    field: long[0];
+    long field[0];
 };
 "#,
     );
 
+    
     assert_eq!(report.errors.len(), 1);
     // Check that the error message contains the expected text
     let error_output = format!("{:?}", report.errors[0]);
@@ -50,7 +51,7 @@ fn zero_bound_sequence() {
     let report = lint_hir(
         r#"
 struct Foo {
-    field: sequence<long, 0>;
+    sequence<long, 0> field;
 };
 "#,
     );
@@ -65,7 +66,7 @@ fn zero_bound_string() {
     let report = lint_hir(
         r#"
 struct Foo {
-    field: string<0>;
+    string<0> field;
 };
 "#,
     );
@@ -80,7 +81,7 @@ fn zero_bound_map() {
     let report = lint_hir(
         r#"
 struct Foo {
-    field: map<string, long, 0>;
+    map<string, long, 0> field;
 };
 "#,
     );
@@ -95,13 +96,13 @@ fn valid_bounds() {
     let report = lint_hir(
         r#"
 struct Foo {
-    array_field: long[10];
-    seq_field: sequence<long, 100>;
-    str_field: string<255>;
-    map_field: map<string, long, 50>;
-    unbounded_seq: sequence<long>;
-    unbounded_str: string;
-    unbounded_map: map<string, long>;
+    long array_field[10];
+    sequence<long, 100> seq_field;
+    string<255> str_field;
+    map<string, long, 50> map_field;
+    sequence<long> unbounded_seq;
+    string unbounded_str;
+    map<string, long> unbounded_map;
 };
 "#,
     );
@@ -115,10 +116,10 @@ fn multiple_zero_bounds() {
     let report = lint_hir(
         r#"
 struct Foo {
-    field1: long[0];
-    field2: sequence<string, 0>;
-    field3: string<0>;
-    field4: map<long, string, 0>;
+    long field1[0];
+    sequence<string, 0> field2;
+    string<0> field3;
+    map<long, string, 0> field4;
 };
 "#,
     );
@@ -134,8 +135,8 @@ typedef sequence<long[0]> BadSequence;
 typedef map<string, sequence<long, 0>> BadMap;
 
 struct Foo {
-    field1: BadSequence;
-    field2: BadMap;
+    BadSequence field1;
+    BadMap field2;
 };
 "#,
     );

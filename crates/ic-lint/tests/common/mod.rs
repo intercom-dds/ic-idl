@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::Level;
-use ic_lint::{Category, LintConfig};
+use ic_lint::{Category, LintConfig, Report};
 use ic_vfs::SourceMap;
 
 pub fn test_lint(source: &str) -> String {
@@ -66,4 +66,28 @@ pub fn test_lint(source: &str) -> String {
     }
 
     output
+}
+
+pub fn lint_hir(source: &str) -> Report {
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(source);
+
+    // Parse the IDL code
+    let args = ic_preproc::ProcArgs::default();
+    let ast = ic_parse::from_file(file_id, args, &mut vfs);
+
+    // Lower to HIR
+    let hir = ic_hir::from_ast(ast.tree);
+
+    // Configure lint to enable semantic errors
+    let mut config = LintConfig::new();
+    config.set_category_level(Category::Semantic, Level::Error);
+
+    // Run HIR lints
+    let mut report = ic_lint::lint_hir_with_config(&hir, &vfs, &config);
+    
+    // Add any HIR errors to the report
+    report.errors.extend(hir.errors);
+    
+    report
 }

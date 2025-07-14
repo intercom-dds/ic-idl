@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::hir::{
-    AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
-    Def, DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
+    AliasTy, Ann, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl,
+    Def, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
     ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 
@@ -104,18 +104,6 @@ pub trait Visitor<'a> {
         walk_variant(self, variant);
     }
 
-    fn visit_enum_lit(&mut self, lit: &'a EnumLit) {
-        walk_enum_lit(self, lit);
-    }
-
-    fn visit_bit_flag(&mut self, flag: &'a BitFlag) {
-        walk_bit_flag(self, flag);
-    }
-
-    fn visit_bitset_field(&mut self, field: &'a BitsetField) {
-        walk_bitset_field(self, field);
-    }
-
     fn visit_proto(&mut self, proto: &'a ProtoTy) {
         walk_proto(self, proto);
     }
@@ -126,10 +114,6 @@ pub trait Visitor<'a> {
 
     fn visit_annotation(&mut self, ann: &'a Ann) {
         walk_annotation(self, ann);
-    }
-
-    fn visit_annotation_arg(&mut self, arg: &'a AnnArg) {
-        walk_annotation_arg(self, arg);
     }
 }
 
@@ -210,7 +194,10 @@ where
 {
     visitor.visit_ty(&data.ty);
     for field in &data.fields {
-        visitor.visit_enum_lit(field);
+        // Visit annotations on enum literals
+        for ann in &field.annotations {
+            visitor.visit_annotation(ann);
+        }
     }
 }
 
@@ -237,7 +224,10 @@ where
 {
     visitor.visit_ty(&data.ty);
     for flag in &data.flags {
-        visitor.visit_bit_flag(flag);
+        // Visit annotations on bit flags
+        for ann in &flag.annotations {
+            visitor.visit_annotation(ann);
+        }
     }
 }
 
@@ -246,7 +236,11 @@ where
     V: Visitor<'a> + ?Sized,
 {
     for field in &data.fields {
-        visitor.visit_bitset_field(field);
+        // Visit the field's type and annotations directly
+        visitor.visit_ty(&field.ty);
+        for ann in &field.annotations {
+            visitor.visit_annotation(ann);
+        }
     }
 }
 
@@ -364,34 +358,6 @@ where
     }
 }
 
-pub fn walk_enum_lit<'a, V>(visitor: &mut V, lit: &'a EnumLit)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    for ann in &lit.annotations {
-        visitor.visit_annotation(ann);
-    }
-}
-
-pub fn walk_bit_flag<'a, V>(visitor: &mut V, flag: &'a BitFlag)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    for ann in &flag.annotations {
-        visitor.visit_annotation(ann);
-    }
-}
-
-pub fn walk_bitset_field<'a, V>(visitor: &mut V, field: &'a BitsetField)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    visitor.visit_ty(&field.ty);
-    for ann in &field.annotations {
-        visitor.visit_annotation(ann);
-    }
-}
-
 pub fn walk_proto<'a, V>(visitor: &mut V, proto: &'a ProtoTy)
 where
     V: Visitor<'a> + ?Sized,
@@ -417,13 +383,8 @@ where
         visitor.visit_ty(ty);
     }
     for arg in &ann.args {
-        visitor.visit_annotation_arg(arg);
+        // Visit the argument's value directly
+        visitor.visit_numeric(&arg.value);
     }
 }
 
-pub fn walk_annotation_arg<'a, V>(visitor: &mut V, arg: &'a AnnArg)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    visitor.visit_numeric(&arg.value);
-}

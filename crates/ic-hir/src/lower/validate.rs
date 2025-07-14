@@ -37,7 +37,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
 use crate::hir::*;
@@ -87,41 +87,17 @@ impl<'a> Validator<'a> {
                 // Don't validate_type here - it would cause infinite recursion
                 // The type will be validated separately in validate_all
             }
-            TyKind::Array { ty, len } => {
-                if *len == 0 {
-                    self.errors.push(error_span(
-                        "array size must be greater than zero",
-                        Label::new(ty.span).message("invalid array size"),
-                    ));
-                }
+            TyKind::Array { ty, .. } => {
                 self.validate_type_ref(ty);
             }
-            TyKind::Sequence { ty, bound } => {
-                if let Some(b) = bound {
-                    if *b == 0 {
-                        self.errors.push(warn_span(
-                            "sequence bound of zero is unusual",
-                            Label::new(ty.span).message("consider using a positive bound"),
-                        ));
-                    }
-                }
+            TyKind::Sequence { ty, .. } => {
                 self.validate_type_ref(ty);
             }
             TyKind::Map { key, elem, .. } => {
                 self.validate_type_ref(key);
                 self.validate_type_ref(elem);
-                // TODO: Validate that key type is valid for maps
             }
-            TyKind::String { bound, .. } => {
-                if let Some(b) = bound {
-                    if *b == 0 {
-                        self.errors.push(warn_span(
-                            "string bound of zero is unusual",
-                            Label::new(ty.span).message("consider using a positive bound"),
-                        ));
-                    }
-                }
-            }
+            TyKind::String { .. } => {}
             _ => {}
         }
     }

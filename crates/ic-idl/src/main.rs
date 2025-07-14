@@ -220,7 +220,7 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
     }
 
     let mut hir = None;
-    
+
     // Only run linting if there are no parse errors
     if errors.is_empty() {
         // Create lint configuration from CLI flags

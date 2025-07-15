@@ -30,7 +30,7 @@ mod common;
 use common::lint_hir;
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn valid_single_unnamed_args() {
     let report = lint_hir(
         r"
@@ -48,7 +48,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn valid_named_args() {
     let report = lint_hir(
         r#"
@@ -68,7 +68,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn valid_range_unnamed() {
     let report = lint_hir(
         r"
@@ -83,7 +83,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn invalid_multiple_unnamed_args() {
     let report = lint_hir(
         r"
@@ -105,7 +105,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn invalid_mixed_args() {
     let report = lint_hir(
         r"
@@ -126,7 +126,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working  
+#[ignore = "Annotation lowering not implemented"]
 fn builtin_annotation_extra_args() {
     let report = lint_hir(
         r"

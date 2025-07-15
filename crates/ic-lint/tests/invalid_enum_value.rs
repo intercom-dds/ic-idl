@@ -30,7 +30,7 @@ mod common;
 use common::lint_hir;
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn valid_enum_default_type() {
     let report = lint_hir(
         r"
@@ -46,7 +46,7 @@ enum Color {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn valid_enum_implicit_values() {
     let report = lint_hir(
         r"
@@ -62,7 +62,7 @@ enum Status {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn duplicate_explicit_values() {
     let report = lint_hir(
         r"
@@ -81,7 +81,7 @@ enum Priority {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn duplicate_implicit_value() {
     let report = lint_hir(
         r"
@@ -100,7 +100,7 @@ enum Mixed {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn value_out_of_range_octet() {
     let report = lint_hir(
         r"
@@ -119,7 +119,7 @@ enum SmallEnum : octet {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn implicit_value_overflow() {
     let report = lint_hir(
         r"
@@ -138,7 +138,7 @@ enum OverflowEnum : octet {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn negative_value_unsigned_type() {
     let report = lint_hir(
         r"
@@ -156,7 +156,7 @@ enum UnsignedEnum : unsigned short {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn multiple_duplicates() {
     let report = lint_hir(
         r"
@@ -174,7 +174,7 @@ enum MultiDup {
 }
 
 #[test]
-#[ignore] // HIR enum lowering not fully working
+#[ignore = "HIR enum lowering not fully working"]
 fn large_values_int64() {
     let report = lint_hir(
         r"

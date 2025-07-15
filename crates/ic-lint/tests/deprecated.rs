@@ -30,7 +30,7 @@ mod common;
 use common::lint_hir;
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn no_deprecated_usage() {
     let report = lint_hir(
         r"
@@ -50,7 +50,7 @@ struct Line {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn deprecated_struct_usage() {
     let report = lint_hir(
         r"
@@ -73,7 +73,7 @@ struct Line {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn deprecated_with_message() {
     let report = lint_hir(
         r#"
@@ -92,7 +92,7 @@ typedef OldAPI ServiceRef;  // Should warn
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn deprecated_const_usage() {
     let report = lint_hir(
         r"
@@ -109,7 +109,7 @@ const long CURRENT_VERSION = OLD_VERSION + 1;  // Should warn
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn obsolete_annotation() {
     let report = lint_hir(
         r"
@@ -131,7 +131,7 @@ struct Record {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn nested_deprecated_usage() {
     let report = lint_hir(
         r"

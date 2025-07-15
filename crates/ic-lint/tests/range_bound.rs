@@ -30,7 +30,7 @@ mod common;
 use common::lint_hir;
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn valid_range_bounds() {
     let report = lint_hir(
         r"
@@ -51,7 +51,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn invalid_min_bound() {
     let report = lint_hir(
         r"
@@ -68,7 +68,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn invalid_max_bound() {
     let report = lint_hir(
         r"
@@ -85,7 +85,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn invalid_range_order() {
     let report = lint_hir(
         r"
@@ -102,7 +102,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn range_exceeds_type_bounds() {
     let report = lint_hir(
         r"
@@ -117,7 +117,7 @@ struct Foo {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn const_with_range() {
     let report = lint_hir(
         r"
@@ -133,7 +133,7 @@ const octet MIN_VALUE = 250;
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn typedef_with_range() {
     let report = lint_hir(
         r"

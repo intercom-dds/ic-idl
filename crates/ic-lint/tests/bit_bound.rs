@@ -30,7 +30,7 @@ mod common;
 use common::lint_hir;
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn valid_bit_positions() {
     let report = lint_hir(
         r"
@@ -50,7 +50,7 @@ bitmask<unsigned short> LargeFlags {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn bit_exceeds_octet_width() {
     let report = lint_hir(
         r"
@@ -66,7 +66,7 @@ bitmask MyFlags {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn bit_exceeds_custom_type_width() {
     let report = lint_hir(
         r"
@@ -82,7 +82,7 @@ bitmask<unsigned short> MyFlags {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn explicit_value_exceeds_bounds() {
     let report = lint_hir(
         r"
@@ -98,7 +98,7 @@ bitmask MyFlags {
 }
 
 #[test]
-#[ignore] // Ignore until annotation lowering is working
+#[ignore = "Annotation lowering not implemented"]
 fn mixed_valid_invalid_bits() {
     let report = lint_hir(
         r"

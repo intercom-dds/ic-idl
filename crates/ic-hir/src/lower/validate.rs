@@ -87,10 +87,7 @@ impl<'a> Validator<'a> {
                 // Don't validate_type here - it would cause infinite recursion
                 // The type will be validated separately in validate_all
             }
-            TyKind::Array { ty, .. } => {
-                self.validate_type_ref(ty);
-            }
-            TyKind::Sequence { ty, .. } => {
+            TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
                 self.validate_type_ref(ty);
             }
             TyKind::Map { key, elem, .. } => {
@@ -417,10 +414,9 @@ impl<'a> Validator<'a> {
                     }
                 }
             }
-            DefKind::Decl(_) => {
+            DefKind::Decl(_) | _ => {
                 // Forward declarations are checked for completion elsewhere
             }
-            _ => {}
         }
 
         self.validated.insert(id);

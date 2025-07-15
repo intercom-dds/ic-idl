@@ -95,19 +95,12 @@ pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
 fn primitive_size(prim: &PrimitiveTy) -> Option<usize> {
     match prim {
         PrimitiveTy::Void => None, // No size
-        PrimitiveTy::Bool => Some(1),
-        PrimitiveTy::Char => Some(1),
-        PrimitiveTy::WChar => Some(4), // Assuming UTF-32
-        PrimitiveTy::Int8 => Some(1),
-        PrimitiveTy::UInt8 => Some(1),
-        PrimitiveTy::Int16 => Some(2),
-        PrimitiveTy::UInt16 => Some(2),
-        PrimitiveTy::Int32 => Some(4),
-        PrimitiveTy::UInt32 => Some(4),
-        PrimitiveTy::Int64 => Some(8),
-        PrimitiveTy::UInt64 => Some(8),
-        PrimitiveTy::Float32 => Some(4),
-        PrimitiveTy::Float64 => Some(8),
+        PrimitiveTy::Bool | PrimitiveTy::Char | PrimitiveTy::Int8 | PrimitiveTy::UInt8 => Some(1),
+        PrimitiveTy::Int16 | PrimitiveTy::UInt16 => Some(2),
+        PrimitiveTy::WChar | PrimitiveTy::Int32 | PrimitiveTy::UInt32 | PrimitiveTy::Float32 => {
+            Some(4)
+        }
+        PrimitiveTy::Int64 | PrimitiveTy::UInt64 | PrimitiveTy::Float64 => Some(8),
         PrimitiveTy::Float128 => Some(16), // Platform-specific, but often 16
     }
 }

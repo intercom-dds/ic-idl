@@ -100,7 +100,7 @@ impl<'a> DuplicateCaseLabels<'a> {
     fn numeric_to_string(&self, num: &Numeric) -> String {
         match num {
             Numeric::Bool(v) => v.to_string(),
-            Numeric::Char(v) => format!("'{v}'", v),
+            Numeric::Char(v) => format!("'{v}'"),
             Numeric::Int8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
             Numeric::Int32(v) => v.to_string(),

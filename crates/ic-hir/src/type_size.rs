@@ -303,7 +303,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
                 parent: None,
@@ -357,7 +357,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Alias(AliasTy {
                 ty: make_array_type(make_primitive_type(PrimitiveTy::Int32), 100),
@@ -390,7 +390,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Union(UnionTy {
                 disc: make_primitive_type(PrimitiveTy::Int32),
@@ -450,7 +450,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Enum(EnumTy {
                 ty: make_primitive_type(PrimitiveTy::Int32),
@@ -479,7 +479,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Bitmask(BitmaskTy {
                 ty: make_primitive_type(PrimitiveTy::UInt16),
@@ -508,7 +508,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Bitset(BitsetTy {
                 parent: None,
@@ -566,7 +566,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
                 parent: None,
@@ -600,7 +600,7 @@ mod tests {
                 span: Span::default(),
             },
             span: Span::default(),
-            flags: Default::default(),
+            flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
                 parent: None,

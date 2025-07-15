@@ -40,7 +40,9 @@ use ic_expr::{Error as ExprError, GenericNumeric, Result as ExprResult};
 use ic_syntax::{Expr, Item};
 
 use crate::Context;
-use crate::hir::*;
+use crate::hir::{
+    BitFlag, DefId, DefKind, EnumLit, Numeric, PrimitiveTy, Span, StructTy, Ty, TyKind, TypeId,
+};
 use crate::scope::ScopeId;
 
 /// Literal type for ic-expr evaluation.
@@ -54,7 +56,7 @@ struct IdlLiteral {
 /// Type alias for the generic numeric type from ic-expr.
 type EvalNumeric = GenericNumeric;
 
-/// Convert from GenericNumeric to HIR Numeric type
+/// Convert from `GenericNumeric` to HIR `Numeric` type
 fn to_hir_numeric(val: GenericNumeric) -> Numeric {
     match val {
         GenericNumeric::Bool(v) => Numeric::Bool(v),
@@ -72,7 +74,7 @@ fn to_hir_numeric(val: GenericNumeric) -> Numeric {
     }
 }
 
-/// Try to convert from HIR Numeric type to GenericNumeric
+/// Try to convert from HIR `Numeric` type to `GenericNumeric`
 fn from_hir_numeric(n: &Numeric) -> Option<GenericNumeric> {
     match n {
         Numeric::Bool(v) => Some(GenericNumeric::Bool(*v)),
@@ -100,7 +102,7 @@ struct IdlEvalContext<'a> {
     current_scope: crate::scope::ScopeId,
 }
 
-impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
+impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
     type Value = EvalNumeric;
 
     fn eval_literal(&mut self, lit: &IdlLiteral) -> ExprResult<Self::Value> {
@@ -130,8 +132,8 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
 
     fn lookup_var(&mut self, name: &str) -> ExprResult<Self::Value> {
         // Check if name starts with :: for global scope resolution
-        let (start_scope, name_without_prefix) = if name.starts_with("::") {
-            (self.ctx.scopes.root(), &name[2..])
+        let (start_scope, name_without_prefix) = if let Some(stripped) = name.strip_prefix("::") {
+            (self.ctx.scopes.root(), stripped)
         } else {
             (self.current_scope, name)
         };
@@ -166,6 +168,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                             // Look for the field
                             for field in &enum_ty.fields {
                                 if field.ident.name == field_name {
+                                    #[allow(clippy::cast_possible_truncation)]
                                     return Ok(GenericNumeric::Int32(field.value as i32));
                                 }
                             }
@@ -191,6 +194,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                 if let DefKind::Enum(enum_ty) = &enum_def.kind {
                     for field in &enum_ty.fields {
                         if field.ident.name == enumerator {
+                            #[allow(clippy::cast_possible_truncation)]
                             return Ok(GenericNumeric::Int32(field.value as i32));
                         }
                     }
@@ -232,6 +236,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                             if let DefKind::Enum(enum_ty) = &enum_def.kind {
                                 for field in &enum_ty.fields {
                                     if field.ident.name == enumerator {
+                                        #[allow(clippy::cast_possible_truncation)]
                                         return Ok(GenericNumeric::Int32(field.value as i32));
                                     }
                                 }
@@ -243,8 +248,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
         }
 
         Err(ExprError::Custom(format!(
-            "undefined constant or enum value `{}`",
-            name
+            "undefined constant or enum value `{name}`"
         )))
     }
 
@@ -264,7 +268,7 @@ fn path_to_string(path: &ic_syntax::Path) -> String {
 
     // Preserve leading :: for global scope resolution
     if path.leading_colons.is_some() {
-        format!("::{}", segments)
+        format!("::{segments}")
     } else {
         segments
     }
@@ -319,7 +323,9 @@ fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, Str
                 ic_syntax::OpKind::Xor => ic_expr::Op::BitXor,
                 ic_syntax::OpKind::Lshift => ic_expr::Op::LShift,
                 ic_syntax::OpKind::Rshift => ic_expr::Op::RShift,
-                _ => return Err(format!("unsupported binary operator: {:?}", binary.op.kind)),
+                ic_syntax::OpKind::Not => {
+                    return Err(format!("unsupported binary operator: {:?}", binary.op.kind));
+                }
             };
 
             let lhs = convert_expr(&binary.lhs)?;
@@ -375,7 +381,7 @@ impl<'a> ExpressionEvaluator<'a> {
 
         // Create evaluation context
         let mut eval_ctx = IdlEvalContext {
-            ctx: &self.ctx,
+            ctx: self.ctx,
             config: ic_expr::EvalConfig::default(),
             errors: &mut self.errors,
             current_scope: self.current_scope,
@@ -393,7 +399,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     ExprError::ModuloByZero => "modulo by zero in constant expression",
                     ExprError::Overflow(op_str) => {
                         self.errors.push(warn_span(
-                            format!("arithmetic overflow in {} operation", op_str),
+                            format!("arithmetic overflow in {op_str} operation"),
                             Label::new(ic_syntax::util::expr_span(expr))
                                 .message("value wraps around"),
                         ));
@@ -403,14 +409,14 @@ impl<'a> ExpressionEvaluator<'a> {
                     }
                     ExprError::InvalidShift(amount) => {
                         self.errors.push(error_span(
-                            format!("invalid shift amount: {}", amount),
+                            format!("invalid shift amount: {amount}"),
                             Label::new(ic_syntax::util::expr_span(expr)).message("invalid shift"),
                         ));
                         return Numeric::Null;
                     }
                     ExprError::InvalidUnaryOp(op) => {
                         self.errors.push(error_span(
-                            format!("invalid unary operator: {:?}", op),
+                            format!("invalid unary operator: {op:?}"),
                             Label::new(ic_syntax::util::expr_span(expr)).message("cannot apply"),
                         ));
                         return Numeric::Null;
@@ -447,7 +453,7 @@ impl<'a> ExpressionEvaluator<'a> {
     #[allow(dead_code)]
     fn handle_overflow(&mut self, expr: &Expr, op: ic_expr::Op) -> Numeric {
         self.errors.push(warn_span(
-            format!("arithmetic overflow in {:?} operation", op),
+            format!("arithmetic overflow in {op:?} operation"),
             Label::new(ic_syntax::util::expr_span(expr)).message("value wraps around"),
         ));
 
@@ -1351,8 +1357,7 @@ impl<'a> ExpressionEvaluator<'a> {
                             ic_syntax::Declarator::Simple(n) => &n.name,
                             ic_syntax::Declarator::Array(a) => &a.ident.name,
                         };
-                        if let Some(def_id) =
-                            self.ctx.scopes.resolve_name(self.current_scope, &name)
+                        if let Some(def_id) = self.ctx.scopes.resolve_name(self.current_scope, name)
                         {
                             self.evaluate_alias(def_id, decl);
                             // Also evaluate bounds in the type itself

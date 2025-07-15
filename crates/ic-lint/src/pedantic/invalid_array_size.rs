@@ -71,7 +71,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                         if let Some(diag) = self.ctx.diag_span(
                             Self::name(),
                             Self::category(),
-                            &format!(
+                            format!(
                                 "array size {} bytes exceeds reasonable limit of {} bytes ({} elements × {} bytes each)",
                                 total_size, MAX_REASONABLE_SIZE_BYTES, len, elem_size
                             ),
@@ -91,7 +91,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             if let Some(diag) = self.ctx.diag_span(
                                 Self::name(),
                                 Self::category(),
-                                &format!(
+                                format!(
                                     "sequence maximum size {} bytes exceeds reasonable limit of {} bytes ({} elements × {} bytes each)",
                                     max_size, MAX_REASONABLE_SIZE_BYTES, b, elem_size
                                 ),
@@ -112,7 +112,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                         if let Some(diag) = self.ctx.diag_span(
                             Self::name(),
                             Self::category(),
-                            &format!(
+                            format!(
                                 "string maximum size {} bytes exceeds reasonable limit of {} bytes ({} characters × {} bytes each)",
                                 max_size, MAX_REASONABLE_SIZE_BYTES, b, char_size
                             ),

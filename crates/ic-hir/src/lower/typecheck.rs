@@ -67,7 +67,7 @@ impl<'a> TypeChecker<'a> {
                 // Check that the value type matches the expected type
                 if value_ty != expected_ty {
                     self.errors.push(error_span(
-                        format!("{} struct type mismatch", value_desc),
+                        format!("{value_desc} struct type mismatch"),
                         Label::new(ty.span).message("incompatible struct types"),
                     ));
                     return false;
@@ -80,7 +80,7 @@ impl<'a> TypeChecker<'a> {
                     return true;
                 }
                 self.errors.push(error_span(
-                    format!("{} is not a struct type", value_desc),
+                    format!("{value_desc} is not a struct type"),
                     Label::new(ty.span).message("expected struct type"),
                 ));
                 return false;
@@ -100,7 +100,7 @@ impl<'a> TypeChecker<'a> {
             (Numeric::String(_), TyKind::String { .. }) => true,
             (Numeric::String(_), _) => {
                 self.errors.push(error_span(
-                    format!("{} has string value but type is not string", value_desc),
+                    format!("{value_desc} has string value but type is not string"),
                     Label::new(ty.span).message("expected string type"),
                 ));
                 false
@@ -110,7 +110,7 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Bool(_), TyKind::Primitive(PrimitiveTy::Bool)) => true,
             (Numeric::Bool(_), _) => {
                 self.errors.push(error_span(
-                    format!("{} has boolean value but type is not boolean", value_desc),
+                    format!("{value_desc} has boolean value but type is not boolean"),
                     Label::new(ty.span).message("expected boolean type"),
                 ));
                 false
@@ -125,7 +125,7 @@ impl<'a> TypeChecker<'a> {
                 }
                 // Not an enum, report type mismatch
                 self.errors.push(error_span(
-                    format!("{} value type does not match declared type", value_desc),
+                    format!("{value_desc} value type does not match declared type"),
                     Label::new(ty.span).message("type mismatch"),
                 ));
                 false
@@ -139,10 +139,7 @@ impl<'a> TypeChecker<'a> {
             }
             (Numeric::Char(_), _) => {
                 self.errors.push(error_span(
-                    format!(
-                        "{} has character value but type is not char/wchar",
-                        value_desc
-                    ),
+                    format!("{value_desc} has character value but type is not char/wchar"),
                     Label::new(ty.span).message("expected character type"),
                 ));
                 false
@@ -181,10 +178,7 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Double(_), TyKind::Primitive(PrimitiveTy::Float128)) => true, // double promotes to long double
             (Numeric::Float(_) | Numeric::Double(_), _) => {
                 self.errors.push(error_span(
-                    format!(
-                        "{} has floating-point value but type is not float/double",
-                        value_desc
-                    ),
+                    format!("{value_desc} has floating-point value but type is not float/double"),
                     Label::new(ty.span).message("expected floating-point type"),
                 ));
                 false
@@ -198,7 +192,7 @@ impl<'a> TypeChecker<'a> {
                     self.check_type_compatible(&const_ty.ty, ty, value_desc)
                 } else {
                     self.errors.push(error_span(
-                        format!("{} references a non-constant definition", value_desc),
+                        format!("{value_desc} references a non-constant definition"),
                         Label::new(ty.span).message("expected constant reference"),
                     ));
                     false
@@ -222,7 +216,7 @@ impl<'a> TypeChecker<'a> {
                 // Don't report generic type mismatch for Null values from evaluation errors
                 if !matches!(value, Numeric::Null) {
                     self.errors.push(error_span(
-                        format!("{} value type does not match declared type", value_desc),
+                        format!("{value_desc} value type does not match declared type"),
                         Label::new(ty.span).message("type mismatch"),
                     ));
                 }
@@ -252,7 +246,7 @@ impl<'a> TypeChecker<'a> {
             PrimitiveTy::Int64 => true, // Always fits
             PrimitiveTy::UInt64 => value >= 0,
             PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => true, // Can convert to float
-            _ => false,
+            PrimitiveTy::Void => false,
         };
 
         if !fits {
@@ -348,7 +342,7 @@ impl<'a> TypeChecker<'a> {
 
             _ => {
                 self.errors.push(error_span(
-                    format!("{} type mismatch", value_desc),
+                    format!("{value_desc} type mismatch"),
                     Label::new(to_ty.span).message("incompatible types"),
                 ));
                 false

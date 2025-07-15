@@ -64,7 +64,7 @@ impl<'a> DuplicateCaseLabels<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("union '{}' has multiple default cases", union_name),
+                        &format!("union '{union_name}' has multiple default cases"),
                         Label::new(variant.ident.span).message("duplicate default"),
                     ) {
                         self.ctx.report(Self::name(), Self::category(), diag);
@@ -80,10 +80,7 @@ impl<'a> DuplicateCaseLabels<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!(
-                            "union '{}' has duplicate case label '{}'",
-                            union_name, label_key
-                        ),
+                        &format!("union '{union_name}' has duplicate case label '{label_key}'"),
                         Label::new(variant.ident.span).message("duplicate case label"),
                     ) {
                         self.ctx.report(Self::name(), Self::category(), diag);
@@ -103,7 +100,7 @@ impl<'a> DuplicateCaseLabels<'a> {
     fn numeric_to_string(&self, num: &Numeric) -> String {
         match num {
             Numeric::Bool(v) => v.to_string(),
-            Numeric::Char(v) => format!("'{}'", v),
+            Numeric::Char(v) => format!("'{v}'", v),
             Numeric::Int8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
             Numeric::Int32(v) => v.to_string(),
@@ -114,9 +111,9 @@ impl<'a> DuplicateCaseLabels<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
-            Numeric::String(v) => format!("\"{}\"", v),
-            Numeric::Const(id) => format!("const_{:?}", id),
-            _ => format!("{:?}", num),
+            Numeric::String(v) => format!("\"{v}\""),
+            Numeric::Const(id) => format!("const_{id:?}"),
+            _ => format!("{num:?}"),
         }
     }
 }

@@ -100,7 +100,7 @@ impl<'a> TypeResolver<'a> {
         // Report error
         let qualified = path_to_string(path);
         self.errors.push(error_span(
-            format!("unresolved type `{}`", qualified),
+            format!("unresolved type `{qualified}`"),
             Label::new(ic_syntax::util::path_span(path)).message("unknown type"),
         ));
         None
@@ -166,7 +166,7 @@ impl<'a> TypeResolver<'a> {
                     },
                     None => {
                         self.errors.push(error_span(
-                            format!("undefined type `{}`", path_str),
+                            format!("undefined type `{path_str}`"),
                             Label::new(ic_syntax::util::path_span(v)).message("type not found"),
                         ));
                         // Return a placeholder type to continue processing
@@ -743,7 +743,7 @@ fn path_to_string(path: &Path) -> String {
         .join("::");
 
     if path.leading_colons.is_some() {
-        format!("::{}", segments)
+        format!("::{segments}")
     } else {
         segments
     }

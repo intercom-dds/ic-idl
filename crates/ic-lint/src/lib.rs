@@ -390,7 +390,6 @@ pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConf
         pedantic::bitmask_ann::BitmaskAnn::check,
         pedantic::complex_lit::ComplexLit::check,
         pedantic::empty_mod::EmptyMod::check,
-        pedantic::invalid_array_size::InvalidArraySize::check,
         pedantic::lowercase_bool::LowercaseBool::check,
         pedantic::null::NullVariant::check,
         pedantic::omitted_in::OmittedIn::check,
@@ -436,6 +435,7 @@ pub fn lint_hir_with_config(
 
     let lints = &[
         pedantic::complex_key::ComplexMapKey::check_hir,
+        pedantic::invalid_array_size::InvalidArraySize::check_hir,
         semantic::bit_bound::BitBound::check_hir,
         semantic::circular_inheritance::CircularInheritance::check_hir,
         semantic::deprecated::Deprecated::check_hir,

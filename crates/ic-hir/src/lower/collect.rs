@@ -117,7 +117,7 @@ impl<'a> NameCollector<'a> {
     /// Allocates a definition with annotations
     fn alloc_definition_with_annotations(
         &mut self,
-        ident: Ident,
+        ident: &Ident,
         kind: DefKind,
         span: Span,
         annotations: &[ic_syntax::AnnotationAppl],
@@ -133,7 +133,7 @@ impl<'a> NameCollector<'a> {
     }
 
     /// Allocates a placeholder definition with proper parent tracking.
-    fn alloc_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
+    fn alloc_definition(&mut self, ident: &Ident, kind: DefKind, span: Span) -> DefId {
         let parent = self.scope_stack.current_parent();
         let qualified_name = self.scope_stack.qualified_name(&ident.name);
 
@@ -144,21 +144,21 @@ impl<'a> NameCollector<'a> {
         // Determine which types are complete immediately vs need resolution
         let flags = match &kind {
             // These are complete immediately
-            DefKind::Const(_) => DefFlags::default(),
-            DefKind::Enum(_) => DefFlags::default(), // Enums can't be forward declared
-            DefKind::Bitmask(_) => DefFlags::default(), // Bitmasks can't be forward declared
-            DefKind::Bitset(_) => DefFlags::default(), // Bitsets can't be forward declared
-            DefKind::Module(_) => DefFlags::default(), // Modules can't be forward declared
-            DefKind::Annotation(_) => DefFlags::default(), // Annotations can't be forward declared
-            DefKind::Alias(_) => DefFlags::default(), // Type aliases can't be forward declared
+            DefKind::Const(_)
+            | DefKind::Enum(_)      // Enums can't be forward declared
+            | DefKind::Bitmask(_)   // Bitmasks can't be forward declared
+            | DefKind::Bitset(_)    // Bitsets can't be forward declared
+            | DefKind::Module(_)    // Modules can't be forward declared
+            | DefKind::Annotation(_) // Annotations can't be forward declared
+            | DefKind::Alias(_) => DefFlags::default(), // Type aliases can't be forward declared
 
             // These need resolution and can have forward declarations
-            DefKind::Decl(_) => DefFlags::IS_INCOMPLETE, // Forward declarations are always incomplete
-            DefKind::Struct(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
-            DefKind::Union(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
-            DefKind::Interface(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
-            DefKind::Valuetype(_) => DefFlags::IS_INCOMPLETE, // Can be forward declared
-            DefKind::Except(_) => DefFlags::IS_INCOMPLETE, // Exceptions need member resolution
+            DefKind::Decl(_)
+            | DefKind::Struct(_)    // Can be forward declared
+            | DefKind::Union(_)     // Can be forward declared
+            | DefKind::Interface(_) // Can be forward declared
+            | DefKind::Valuetype(_) // Can be forward declared
+            | DefKind::Except(_) => DefFlags::IS_INCOMPLETE, // Exceptions need member resolution
         };
 
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
@@ -219,18 +219,18 @@ impl<'a> NameCollector<'a> {
     /// Creates a scoped definition with annotations
     fn alloc_scoped_definition_with_annotations(
         &mut self,
-        ident: Ident,
+        ident: &Ident,
         kind: DefKind,
         span: Span,
         annotations: &[ic_syntax::AnnotationAppl],
     ) -> DefId {
-        let id = self.alloc_definition_with_annotations(ident.clone(), kind, span, annotations);
+        let id = self.alloc_definition_with_annotations(ident, kind, span, annotations);
         self.scope_stack.push(ident.name.clone(), id);
         // Create a child scope in the scope tree
         let new_scope =
             self.ctx
                 .scopes
-                .create_child_scope(self.current_scope, ident.name, Some(id));
+                .create_child_scope(self.current_scope, ident.name.clone(), Some(id));
         self.current_scope = new_scope;
 
         id
@@ -238,15 +238,15 @@ impl<'a> NameCollector<'a> {
 
     /// Creates a definition that introduces a new scope.
     #[allow(dead_code)]
-    fn alloc_scoped_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
-        let id = self.alloc_definition(ident.clone(), kind, span);
+    fn alloc_scoped_definition(&mut self, ident: &Ident, kind: DefKind, span: Span) -> DefId {
+        let id = self.alloc_definition(ident, kind, span);
         self.scope_stack.push(ident.name.clone(), id);
 
         // Create a child scope in the scope tree
         let new_scope =
             self.ctx
                 .scopes
-                .create_child_scope(self.current_scope, ident.name, Some(id));
+                .create_child_scope(self.current_scope, ident.name.clone(), Some(id));
         self.current_scope = new_scope;
 
         id
@@ -268,7 +268,7 @@ impl<'a> NameCollector<'a> {
         // Always create a new DefId for module declarations, even when reopening
         // This ensures each module declaration gets its own DefId in the HIR
         let id = self.alloc_scoped_definition_with_annotations(
-            def.ident.clone(),
+            &def.ident,
             DefKind::Module(ModuleTy {
                 definitions: Vec::new(),
             }),
@@ -323,7 +323,7 @@ impl<'a> NameCollector<'a> {
 
     fn collect_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
         let id = self.alloc_scoped_definition_with_annotations(
-            def.ident.clone(),
+            &def.ident,
             DefKind::Interface(InterfaceTy::default()),
             def.span,
             &def.annotations,
@@ -363,7 +363,7 @@ impl<'a> NameCollector<'a> {
 
     fn collect_annotation(&mut self, def: &ic_syntax::AnnotationDef) -> DefId {
         let id = self.alloc_scoped_definition_with_annotations(
-            def.ident.clone(),
+            &def.ident,
             DefKind::Annotation(AnnotationTy {
                 members: Vec::new(),
                 types: Vec::new(),
@@ -400,7 +400,7 @@ impl<'a> NameCollector<'a> {
 
     fn collect_valuetype(&mut self, def: &ic_syntax::ValuetypeDef) -> DefId {
         let id = self.alloc_scoped_definition_with_annotations(
-            def.ident.clone(),
+            &def.ident,
             DefKind::Valuetype(ValueTy {
                 parent: None,
                 extends: None,
@@ -443,7 +443,7 @@ impl<'a> NameCollector<'a> {
 
     fn collect_bitset(&mut self, def: &ic_syntax::BitsetDef) -> DefId {
         let id = self.alloc_definition_with_annotations(
-            def.ident.clone(),
+            &def.ident,
             DefKind::Bitset(BitsetTy {
                 parent: None,       // Will be resolved in resolve phase
                 fields: Vec::new(), // Will be populated in resolve phase
@@ -459,13 +459,13 @@ impl<'a> NameCollector<'a> {
         id
     }
 
-    fn collect_simple_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
+    fn collect_simple_definition(&mut self, ident: &Ident, kind: DefKind, span: Span) -> DefId {
         self.alloc_definition(ident, kind, span)
     }
 
     fn collect_simple_definition_with_annotations(
         &mut self,
-        ident: Ident,
+        ident: &Ident,
         kind: DefKind,
         span: Span,
         annotations: &[ic_syntax::AnnotationAppl],
@@ -473,6 +473,7 @@ impl<'a> NameCollector<'a> {
         self.alloc_definition_with_annotations(ident, kind, span, annotations)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn collect_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::ModuleValue(v) => vec![self.collect_module(v)],
@@ -482,7 +483,7 @@ impl<'a> NameCollector<'a> {
             // Simple types without nested scopes
             Item::StructValue(v) => {
                 let id = self.alloc_definition_with_annotations(
-                    v.ident.clone(),
+                    &v.ident,
                     DefKind::Struct(StructTy {
                         parent: None,
                         members: Vec::new(),
@@ -502,7 +503,7 @@ impl<'a> NameCollector<'a> {
             }
             Item::UnionValue(v) => {
                 let id = self.alloc_definition_with_annotations(
-                    v.ident.clone(),
+                    &v.ident,
                     DefKind::Union(UnionTy {
                         disc: placeholder_type(v.span),
                         variants: Vec::new(),
@@ -521,7 +522,7 @@ impl<'a> NameCollector<'a> {
                 vec![id]
             }
             Item::EnumValue(v) => vec![self.collect_simple_definition_with_annotations(
-                v.ident.clone(),
+                &v.ident,
                 DefKind::Enum(EnumTy {
                     fields: Vec::new(),
                     ty: placeholder_type(v.span),
@@ -531,7 +532,7 @@ impl<'a> NameCollector<'a> {
             )],
             Item::ExceptionValue(v) => {
                 let id = self.alloc_definition_with_annotations(
-                    v.ident.clone(),
+                    &v.ident,
                     DefKind::Except(ExceptTy {
                         members: Vec::new(),
                     }),
@@ -549,7 +550,7 @@ impl<'a> NameCollector<'a> {
                 vec![id]
             }
             Item::BitmaskValue(v) => vec![self.collect_simple_definition_with_annotations(
-                v.ident.clone(),
+                &v.ident,
                 DefKind::Bitmask(BitmaskTy {
                     flags: Vec::new(),
                     ty: placeholder_type(v.span),
@@ -560,7 +561,7 @@ impl<'a> NameCollector<'a> {
             Item::ConstValue(v) => {
                 // Constants might have array declarators
                 vec![self.collect_simple_definition_with_annotations(
-                    extract_declarator_name(&v.decl),
+                    &extract_declarator_name(&v.decl),
                     DefKind::Const(ConstTy {
                         value: Numeric::Null, // Placeholder
                         ty: placeholder_type(v.span),
@@ -575,7 +576,7 @@ impl<'a> NameCollector<'a> {
                     .iter()
                     .map(|decl| {
                         self.collect_simple_definition_with_annotations(
-                            extract_declarator_name(decl),
+                            &extract_declarator_name(decl),
                             DefKind::Alias(AliasTy {
                                 ty: placeholder_type(v.span),
                             }),
@@ -586,7 +587,7 @@ impl<'a> NameCollector<'a> {
                     .collect()
             }
             Item::DeclValue(v) => vec![self.collect_simple_definition(
-                v.ident.clone(),
+                &v.ident,
                 DefKind::Decl(match v.kind {
                     ic_syntax::DeclKind::Struct => Decl::Struct,
                     ic_syntax::DeclKind::Union => Decl::Union,

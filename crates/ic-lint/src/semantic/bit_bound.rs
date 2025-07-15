@@ -68,7 +68,7 @@ impl<'a> BitBound<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!("@bit({}) exceeds type bit width of {}", bit_pos, type_bits),
+                    &format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
                     Label::new(ic_syntax::util::path_span(&ann.path))
                         .message("bit position out of bounds"),
                 ) {
@@ -127,8 +127,8 @@ impl<'a> Visitor<'a> for BitBound<'a> {
                         Self::name(),
                         Self::category(),
                         &format!(
-                            "bitmask value {} exceeds type bit width of {}",
-                            flag.value, type_bits
+                            "bitmask value {value} exceeds type bit width of {type_bits}",
+                            value = flag.value
                         ),
                         Label::new(flag.ident.span).message("value out of bounds"),
                     ) {

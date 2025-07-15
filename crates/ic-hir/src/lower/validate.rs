@@ -172,7 +172,7 @@ impl<'a> Validator<'a> {
                 }
                 _ => {
                     self.errors.push(error_span(
-                        format!("invalid discriminator type for union `{}`", def_name),
+                        format!("invalid discriminator type for union `{def_name}`"),
                         Label::new(union_ty.disc.span)
                             .message("discriminator must be an integral type"),
                     ));
@@ -182,7 +182,7 @@ impl<'a> Validator<'a> {
                 let disc_def = self.get_def(*id);
                 if !matches!(disc_def.kind, DefKind::Enum(_)) {
                     self.errors.push(error_span(
-                        format!("invalid discriminator type for union `{}`", def_name),
+                        format!("invalid discriminator type for union `{def_name}`"),
                         Label::new(union_ty.disc.span)
                             .message("discriminator must be an enum or integral type"),
                     ));
@@ -190,7 +190,7 @@ impl<'a> Validator<'a> {
             }
             _ => {
                 self.errors.push(error_span(
-                    format!("invalid discriminator type for union `{}`", def_name),
+                    format!("invalid discriminator type for union `{def_name}`"),
                     Label::new(union_ty.disc.span)
                         .message("discriminator must be an integral type"),
                 ));
@@ -221,7 +221,7 @@ impl<'a> Validator<'a> {
             if variant.is_default {
                 if has_default {
                     self.errors.push(error_span(
-                        format!("multiple default cases in union `{}`", def_name),
+                        format!("multiple default cases in union `{def_name}`"),
                         Label::new(variant.ident.span).message("default case already defined"),
                     ));
                 }
@@ -477,7 +477,7 @@ impl<'a> Validator<'a> {
                             let first_def = self.get_def(first_id);
                             self.errors.push(
                                 error_span(
-                                    format!("multiple definitions of struct `{}`", name),
+                                    format!("multiple definitions of struct `{name}`"),
                                     Label::new(def.span).message("redefined here"),
                                 )
                                 .label(Label::new(first_def.span).message("first defined here")),
@@ -490,7 +490,7 @@ impl<'a> Validator<'a> {
                             let first_def = self.get_def(first_id);
                             self.errors.push(
                                 error_span(
-                                    format!("multiple definitions of union `{}`", name),
+                                    format!("multiple definitions of union `{name}`"),
                                     Label::new(def.span).message("redefined here"),
                                 )
                                 .label(Label::new(first_def.span).message("first defined here")),
@@ -503,7 +503,7 @@ impl<'a> Validator<'a> {
                             let first_def = self.get_def(first_id);
                             self.errors.push(
                                 error_span(
-                                    format!("multiple definitions of interface `{}`", name),
+                                    format!("multiple definitions of interface `{name}`"),
                                     Label::new(def.span).message("redefined here"),
                                 )
                                 .label(Label::new(first_def.span).message("first defined here")),
@@ -516,7 +516,7 @@ impl<'a> Validator<'a> {
                             let first_def = self.get_def(first_id);
                             self.errors.push(
                                 error_span(
-                                    format!("multiple definitions of valuetype `{}`", name),
+                                    format!("multiple definitions of valuetype `{name}`"),
                                     Label::new(def.span).message("redefined here"),
                                 )
                                 .label(Label::new(first_def.span).message("first defined here")),
@@ -550,7 +550,7 @@ impl<'a> Validator<'a> {
                                 ),
                                 Label::new(decl_def.span).message("forward declared here"),
                             ).label(
-                                Label::new(actual_def.span).message(&format!("defined as {} here", def_type))
+                                Label::new(actual_def.span).message(format!("defined as {def_type} here"))
                             ));
                         }
                     }

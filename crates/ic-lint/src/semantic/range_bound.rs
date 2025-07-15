@@ -78,7 +78,7 @@ impl RangeBound<'_> {
         }
     }
 
-    fn get_numeric_arg<'b>(ann: &'b Ann, index: usize) -> Option<&'b Numeric> {
+    fn get_numeric_arg(ann: &Ann, index: usize) -> Option<&Numeric> {
         ann.args.get(index).map(|arg| &arg.value)
     }
 

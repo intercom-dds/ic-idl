@@ -107,7 +107,8 @@ impl<'a, W: Write> Serializer for &'a mut JsonWriter<W> {
     }
 
     fn encode_char(self, value: char) -> Result<Self::Ok, Self::Error> {
-        self.write_str(&value.to_string())
+        let s = value.to_string();
+        self.write_str(&s)
     }
 
     fn encode_wchar(self, value: char) -> Result<Self::Ok, Self::Error> {

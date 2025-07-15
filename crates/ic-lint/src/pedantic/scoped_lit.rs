@@ -50,11 +50,11 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
     // TODO: in the future we should use the HIR ctx to do lookups instead of
     // registering the type name here.
     fn visit_enum(&mut self, def: &'a EnumDef) {
-        self.seen.insert(&def.ident.name, Kind::Enum);
+        self.seen.insert(def.ident.name.as_str(), Kind::Enum);
     }
 
     fn visit_bitmask(&mut self, def: &'a BitmaskDef) {
-        self.seen.insert(&def.ident.name, Kind::Bitmask);
+        self.seen.insert(def.ident.name.as_str(), Kind::Bitmask);
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {

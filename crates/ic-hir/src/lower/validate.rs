@@ -131,7 +131,7 @@ impl<'a> Validator<'a> {
         // Validate members
         let mut member_names = HashSet::new();
         for member in &struct_ty.members {
-            if !member_names.insert(&member.ident.name) {
+            if !member_names.insert(member.ident.name.as_str()) {
                 self.errors.push(error_span(
                     format!(
                         "duplicate member `{}` in struct `{}`",
@@ -202,7 +202,7 @@ impl<'a> Validator<'a> {
         let mut has_default = false;
 
         for variant in &union_ty.variants {
-            if !variant_names.insert(&variant.ident.name) {
+            if !variant_names.insert(variant.ident.name.as_str()) {
                 self.errors.push(error_span(
                     format!(
                         "duplicate variant `{}` in union `{}`",
@@ -258,7 +258,7 @@ impl<'a> Validator<'a> {
         // Validate prototypes
         let mut method_names = HashSet::new();
         for proto in &interface.prototypes {
-            if !method_names.insert(&proto.ident.name) {
+            if !method_names.insert(proto.ident.name.as_str()) {
                 self.errors.push(error_span(
                     format!(
                         "duplicate method `{}` in interface `{}`",
@@ -291,7 +291,7 @@ impl<'a> Validator<'a> {
         let mut field_values = HashSet::new();
 
         for field in &enum_ty.fields {
-            if !field_names.insert(&field.ident.name) {
+            if !field_names.insert(field.ident.name.as_str()) {
                 self.errors.push(error_span(
                     format!(
                         "duplicate field `{}` in enum `{}`",
@@ -396,7 +396,7 @@ impl<'a> Validator<'a> {
                 let bitmask_name = def_name.clone();
 
                 for flag in &b.flags {
-                    if !flag_names.insert(&flag.ident.name) {
+                    if !flag_names.insert(flag.ident.name.as_str()) {
                         self.errors.push(error_span(
                             format!(
                                 "duplicate flag `{}` in bitmask `{}`",

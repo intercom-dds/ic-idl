@@ -145,11 +145,7 @@ impl RangeBound<'_> {
             Numeric::UInt32(v) => Some(i64::from(*v)),
             Numeric::UInt64(v) => {
                 // Be careful with large unsigned values
-                if i64::try_from(*v).is_ok() {
-                    Some(*v as i64)
-                } else {
-                    None
-                }
+                i64::try_from(*v).ok()
             }
             _ => None,
         }

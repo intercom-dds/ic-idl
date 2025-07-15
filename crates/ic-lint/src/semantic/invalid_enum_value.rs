@@ -75,7 +75,7 @@ impl InvalidEnumValue<'_> {
 
         // Check each enumerator
         for field in &enum_ty.fields {
-            let value = field.value as i64;
+            let value = i64::try_from(field.value).unwrap();
 
             // Check if value is in range
             if value < min || value > max {

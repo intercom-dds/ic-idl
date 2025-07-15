@@ -142,7 +142,10 @@ impl<'a> Cursor<'a> {
 
     #[inline]
     pub fn read_i64<E: Endian>(&mut self) -> Result<i64> {
-        self.read_u64::<E>().map(|v| v as i64)
+        self.read_u64::<E>().map(|v| {
+            // Safe reinterpretation of u64 bits as i64 for decoding
+            i64::from_ne_bytes(v.to_ne_bytes())
+        })
     }
 
     #[inline]

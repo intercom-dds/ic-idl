@@ -244,7 +244,7 @@ where
             if value > i64::MAX as u64 + 1 {
                 Err(error!(self, "invalid number"))
             } else {
-                Ok(Number::Signed((value as i64).wrapping_neg()))
+                Ok(Number::Signed(i64::try_from(value).unwrap().wrapping_neg()))
             }
         } else {
             Ok(Number::Unsigned(value))

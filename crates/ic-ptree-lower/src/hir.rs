@@ -280,7 +280,7 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Enum(v) => {
                 let values = collect_with(self.state, sys::append_enum_node, &v.fields, |var| {
                     let name = create_ident(&var.ident.name);
-                    let value = sys::create_i64(self.state, var.value as i64, 10);
+                    let value = sys::create_i64(self.state, i64::try_from(var.value).unwrap(), 10);
                     let node = sys::create_enum_value(self.state, name.as_ptr(), value);
                     self.annotate(node, &var.annotations)
                 });

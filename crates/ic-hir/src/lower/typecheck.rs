@@ -277,8 +277,8 @@ impl<'a> TypeChecker<'a> {
             PrimitiveTy::Int64 => i64::try_from(value).is_ok(),
             _ => {
                 // For smaller types, delegate to check_int_fits if it fits in i64
-                if i64::try_from(value).is_ok() {
-                    return self.check_int_fits(value as i64, prim, value_desc, span);
+                if let Ok(v) = i64::try_from(value) {
+                    return self.check_int_fits(v, prim, value_desc, span);
                 }
                 false
             }
@@ -377,7 +377,7 @@ impl<'a> TypeChecker<'a> {
             for field in &enum_ty.fields {
                 let value_desc = format!("enum field `{}::{}`", def.ident.name, field.ident.name);
                 self.check_int_fits(
-                    field.value as i64,
+                    i64::try_from(field.value).unwrap(),
                     underlying_prim,
                     &value_desc,
                     field.ident.span,
@@ -403,7 +403,7 @@ impl<'a> TypeChecker<'a> {
             for flag in &bitmask_ty.flags {
                 let value_desc = format!("bitmask flag `{}::{}`", def.ident.name, flag.ident.name);
                 self.check_int_fits(
-                    flag.value as i64,
+                    i64::try_from(flag.value).unwrap(),
                     underlying_prim,
                     &value_desc,
                     flag.ident.span,

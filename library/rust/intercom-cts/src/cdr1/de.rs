@@ -242,7 +242,10 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i64(self) -> Result<i64, Self::Error> {
-        self.decode_u64().map(|v| v as i64)
+        self.decode_u64().map(|v| {
+            // Safe reinterpretation of u64 bits as i64 for decoding
+            i64::from_ne_bytes(v.to_ne_bytes())
+        })
     }
 
     #[inline]

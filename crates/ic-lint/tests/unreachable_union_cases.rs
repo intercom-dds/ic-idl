@@ -98,7 +98,7 @@ union MyUnion switch (octet) {
 
 #[test]
 fn case_label_negative_for_unsigned() {
-    let report = lint_hir(
+    let _report = lint_hir(
         r"
 union MyUnion switch (unsigned short) {
     case 100: long a;

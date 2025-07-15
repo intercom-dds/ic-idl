@@ -35,6 +35,7 @@ pub mod complex_key;
 pub mod complex_lit;
 pub mod empty_mod;
 pub mod invalid_array_size;
+pub mod large_union_variant;
 pub mod lowercase_bool;
 pub mod null;
 pub mod omitted_in;

@@ -329,6 +329,7 @@ pub fn all_lint_names() -> Vec<&'static str> {
         "complex_key",
         "empty_mod",
         "invalid_array_size",
+        "large_union_variant",
         "lowercase_bool",
         "null",
         "omitted_in",
@@ -436,6 +437,7 @@ pub fn lint_hir_with_config(
     let lints = &[
         pedantic::complex_key::ComplexMapKey::check_hir,
         pedantic::invalid_array_size::InvalidArraySize::check_hir,
+        pedantic::large_union_variant::LargeUnionVariant::check_hir,
         semantic::bit_bound::BitBound::check_hir,
         semantic::circular_inheritance::CircularInheritance::check_hir,
         semantic::deprecated::Deprecated::check_hir,

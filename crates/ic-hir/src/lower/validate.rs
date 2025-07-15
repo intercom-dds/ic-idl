@@ -112,8 +112,7 @@ impl<'a> Validator<'a> {
             let parent = self.get_def(parent_id);
             match &parent.kind {
                 DefKind::Struct(_) => {
-                    // Valid inheritance
-                    self.validate_type(parent_id);
+                    // Valid inheritance - parent will be validated separately
                 }
                 _ => {
                     self.errors.push(error_span(
@@ -241,7 +240,7 @@ impl<'a> Validator<'a> {
             let parent = self.get_def(parent_id);
             match &parent.kind {
                 DefKind::Interface(_) => {
-                    self.validate_type(parent_id);
+                    // Valid inheritance - parent will be validated separately
                 }
                 _ => {
                     self.errors.push(error_span(

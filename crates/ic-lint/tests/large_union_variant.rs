@@ -181,4 +181,3 @@ union MyUnion switch (short) {
     // The warning might not trigger if too many variants have unknown size
     // This depends on the implementation
 }
-

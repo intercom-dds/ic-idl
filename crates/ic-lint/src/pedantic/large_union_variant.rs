@@ -114,7 +114,7 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                         avg_except_largest
                     ),
                     Label::new(largest.ident.span)
-                        .message(format!("large variant ({} bytes)", largest_size)),
+                        .message(format!("large variant ({} bytes)", largest_size))
                 );
 
                 if let Some(mut diag) = diag {
@@ -128,7 +128,7 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                     }
 
                     diag = diag.note(
-                        "consider boxing the large variant or restructuring the union to reduce memory usage"
+                        "consider annotating large variants with `@shared` to heap allocate them",
                     );
 
                     self.ctx.report(Self::name(), Self::category(), diag);
@@ -140,4 +140,3 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
         ic_hir::visit::walk_union(self, union_ty);
     }
 }
-

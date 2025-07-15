@@ -57,6 +57,7 @@ pub struct ResolvedGraph {
 impl ResolvedGraph {
     /// Returns an iterator of the definitions, iterating over all top-level
     /// definitions in the order they were defined.
+    #[must_use]
     pub fn iter(&self) -> DefIter<'_> {
         DefIter::new(self)
     }
@@ -85,10 +86,12 @@ pub struct DefIter<'a> {
 }
 
 impl<'a> DefIter<'a> {
+    #[must_use]
     pub fn new(hir: &'a ResolvedGraph) -> Self {
         Self::with_order(&hir.context, &hir.order)
     }
 
+    #[must_use]
     pub fn with_order(ctx: &'a Context, order: &'a [hir::DefId]) -> Self {
         let iter = order.iter();
         Self { ctx, iter }

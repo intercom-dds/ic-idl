@@ -52,7 +52,7 @@ impl<'a> Lint<'a> for RedundantInheritance<'a> {
     }
 }
 
-impl<'a> RedundantInheritance<'a> {
+impl RedundantInheritance<'_> {
     fn check_inheritance_list(&mut self, inherits: &[ic_syntax::Path], item_name: &str) {
         let mut seen = HashSet::new();
 
@@ -69,10 +69,7 @@ impl<'a> RedundantInheritance<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!(
-                        "{} inherits from '{}' multiple times",
-                        item_name, parent_name
-                    ),
+                    format!("{item_name} inherits from '{parent_name}' multiple times"),
                     Label::new(ic_syntax::util::path_span(parent_path))
                         .message("redundant inheritance"),
                 ) {

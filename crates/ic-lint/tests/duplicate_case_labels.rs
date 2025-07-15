@@ -32,14 +32,14 @@ use common::lint_hir;
 #[test]
 fn valid_union_cases() {
     let report = lint_hir(
-        r#"
+        r"
 union MyUnion switch (long) {
     case 1: long a;
     case 2: string b;
     case 3: boolean c;
     default: octet d;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -48,13 +48,13 @@ union MyUnion switch (long) {
 #[test]
 fn duplicate_case_values() {
     let report = lint_hir(
-        r#"
+        r"
 union MyUnion switch (long) {
     case 1: long a;
     case 2: string b;
     case 1: boolean c;  // Duplicate of first case
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -66,14 +66,14 @@ union MyUnion switch (long) {
 #[test]
 fn multiple_defaults() {
     let report = lint_hir(
-        r#"
+        r"
 union MyUnion switch (long) {
     case 1: long a;
     default: string b;
     case 2: boolean c;
     default: octet d;  // Second default
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -84,7 +84,7 @@ union MyUnion switch (long) {
 #[test]
 fn duplicate_enum_case() {
     let report = lint_hir(
-        r#"
+        r"
 enum Color { RED, GREEN, BLUE };
 
 union ColorUnion switch (Color) {
@@ -92,7 +92,7 @@ union ColorUnion switch (Color) {
     case GREEN: long g;
     case RED: long r2;  // Duplicate
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -103,7 +103,7 @@ union ColorUnion switch (Color) {
 #[test]
 fn multiple_labels_with_duplicate() {
     let report = lint_hir(
-        r#"
+        r"
 union MyUnion switch (long) {
     case 1:
     case 2: long a;
@@ -111,7 +111,7 @@ union MyUnion switch (long) {
     case 2: string b;  // 2 is duplicate
     default: boolean c;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);

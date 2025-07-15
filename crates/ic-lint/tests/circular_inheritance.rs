@@ -32,12 +32,12 @@ use common::lint_hir;
 #[test]
 fn valid_inheritance_chain() {
     let report = lint_hir(
-        r#"
+        r"
 interface A {};
 interface B : A {};
 interface C : B {};
 interface D : C, A {};
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -46,9 +46,9 @@ interface D : C, A {};
 #[test]
 fn self_inheritance() {
     let report = lint_hir(
-        r#"
+        r"
 interface A : A {};
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -59,13 +59,13 @@ interface A : A {};
 #[test]
 fn circular_interface_inheritance() {
     let report = lint_hir(
-        r#"
+        r"
 interface A : B {};
 interface B : A {};
-"#,
+",
     );
 
-    assert!(report.errors.len() >= 1); // May report for both A and B
+    assert!(!report.errors.is_empty()); // May report for both A and B
     let error_output = format!("{:?}", report.errors[0]);
     assert!(error_output.contains("circular inheritance"));
 }
@@ -73,14 +73,14 @@ interface B : A {};
 #[test]
 fn circular_struct_inheritance() {
     let report = lint_hir(
-        r#"
+        r"
 struct A : B {};
 struct B : C {};
 struct C : A {};
-"#,
+",
     );
 
-    assert!(report.errors.len() >= 1);
+    assert!(!report.errors.is_empty());
     let error_output = format!("{:?}", report.errors[0]);
     assert!(error_output.contains("circular inheritance"));
 }
@@ -88,15 +88,15 @@ struct C : A {};
 #[test]
 fn complex_circular_inheritance() {
     let report = lint_hir(
-        r#"
+        r"
 interface A : B, C {};
 interface B : D {};
 interface C {};
 interface D : A {};
-"#,
+",
     );
 
-    assert!(report.errors.len() >= 1);
+    assert!(!report.errors.is_empty());
     let error_output = format!("{:?}", report.errors[0]);
     assert!(error_output.contains("circular inheritance"));
 }
@@ -104,13 +104,13 @@ interface D : A {};
 #[test]
 fn valuetype_circular_inheritance() {
     let report = lint_hir(
-        r#"
+        r"
 valuetype A : B {};
 valuetype B : A {};
-"#,
+",
     );
 
-    assert!(report.errors.len() >= 1);
+    assert!(!report.errors.is_empty());
     let error_output = format!("{:?}", report.errors[0]);
     assert!(error_output.contains("circular inheritance"));
 }

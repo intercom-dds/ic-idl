@@ -33,7 +33,7 @@ use common::lint_hir;
 #[ignore] // Ignore until annotation lowering is working
 fn valid_range_bounds() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @range(0, 255)
     octet field1;
@@ -44,7 +44,7 @@ struct Foo {
     @range(-32768, 32767)
     short field3;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -54,12 +54,12 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn invalid_min_bound() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @min(-200)
     int8 field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -71,12 +71,12 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn invalid_max_bound() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @max(300)
     octet field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -88,12 +88,12 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn invalid_range_order() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @range(100, 50)
     octet field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -105,12 +105,12 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn range_exceeds_type_bounds() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @range(-1000, 1000)
     int8 field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 2); // Both min and max are out of bounds
@@ -120,13 +120,13 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn const_with_range() {
     let report = lint_hir(
-        r#"
+        r"
 @range(0, 100)
 const short MAX_VALUE = 50;
 
 @min(200)
 const octet MIN_VALUE = 250;
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0); // First is valid, second would overflow but that's a different check
@@ -136,13 +136,13 @@ const octet MIN_VALUE = 250;
 #[ignore] // Ignore until annotation lowering is working
 fn typedef_with_range() {
     let report = lint_hir(
-        r#"
+        r"
 @range(0, 1000)
 typedef short SmallInt;
 
 @range(-10000, 10000)
 typedef int8 TinyInt; // This should fail
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 2); // Both min and max out of bounds for int8

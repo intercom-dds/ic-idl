@@ -62,8 +62,15 @@ pub struct ScopeTree {
     root: ScopeId,
 }
 
+impl Default for ScopeTree {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScopeTree {
     /// Creates a new scope tree with a root scope.
+    #[must_use]
     pub fn new() -> Self {
         let root_scope = Scope {
             def_id: None,
@@ -79,6 +86,7 @@ impl ScopeTree {
     }
 
     /// Gets the root scope.
+    #[must_use]
     pub fn root(&self) -> ScopeId {
         self.root
     }
@@ -113,11 +121,13 @@ impl ScopeTree {
     }
 
     /// Gets a scope by ID.
+    #[must_use]
     pub fn get_scope(&self, scope: ScopeId) -> &Scope {
         &self.scopes[scope.0]
     }
 
     /// Resolves a single name segment in a scope (looks in this scope and parents).
+    #[must_use]
     pub fn resolve_name(&self, scope: ScopeId, name: &str) -> Option<DefId> {
         let mut current = Some(scope);
 
@@ -144,6 +154,7 @@ impl ScopeTree {
     }
 
     /// Resolves a path starting from a scope.
+    #[must_use]
     pub fn resolve_path(&self, scope: ScopeId, path: &[&str]) -> Option<DefId> {
         if path.is_empty() {
             return None;
@@ -203,6 +214,7 @@ impl ScopeTree {
     }
 
     /// Finds all enums in a scope that contain a specific enumerator.
+    #[must_use]
     pub fn find_enums_with_enumerator(
         &self,
         scope: ScopeId,
@@ -229,6 +241,7 @@ impl ScopeTree {
     }
 
     /// Finds the scope ID for a given definition.
+    #[must_use]
     pub fn find_scope_for_def(&self, def_id: DefId) -> Option<ScopeId> {
         for (idx, scope) in self.scopes.iter().enumerate() {
             if scope.def_id == Some(def_id) {
@@ -239,6 +252,7 @@ impl ScopeTree {
     }
 
     /// Gets all visible enums from a scope (including parent scopes).
+    #[must_use]
     pub fn get_visible_enums(&self, scope: ScopeId, definitions: &Arena<Def>) -> Vec<DefId> {
         let mut results = Vec::new();
         let mut current = Some(scope);

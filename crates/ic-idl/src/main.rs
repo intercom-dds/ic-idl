@@ -252,7 +252,7 @@ fn try_parse(options: &Options, proc: ProcArgs, path: &Path, vfs: &mut SourceMap
 
     // Only lower to ptree if no errors and we have a HIR
     let result = if errors.is_empty() {
-        hir.and_then(|h| Some(ic_ptree_lower::from_hir(&h, vfs)))
+        hir.map(|h| ic_ptree_lower::from_hir(&h, vfs))
     } else {
         None
     };

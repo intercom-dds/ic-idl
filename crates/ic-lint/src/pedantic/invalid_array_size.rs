@@ -72,8 +72,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             Self::name(),
                             Self::category(),
                             format!(
-                                "array size {} bytes exceeds reasonable limit of {} bytes ({} elements × {} bytes each)",
-                                total_size, MAX_REASONABLE_SIZE_BYTES, len, elem_size
+                                "array size {total_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({len} elements × {elem_size} bytes each)"
                             ),
                             Label::new(ty.span).message("very large array"),
                         ) {
@@ -92,8 +91,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                                 Self::name(),
                                 Self::category(),
                                 format!(
-                                    "sequence maximum size {} bytes exceeds reasonable limit of {} bytes ({} elements × {} bytes each)",
-                                    max_size, MAX_REASONABLE_SIZE_BYTES, b, elem_size
+                                    "sequence maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} elements × {elem_size} bytes each)"
                                 ),
                                 Label::new(ty.span).message("very large sequence bound"),
                             ) {
@@ -113,8 +111,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             Self::name(),
                             Self::category(),
                             format!(
-                                "string maximum size {} bytes exceeds reasonable limit of {} bytes ({} characters × {} bytes each)",
-                                max_size, MAX_REASONABLE_SIZE_BYTES, b, char_size
+                                "string maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} characters × {char_size} bytes each)"
                             ),
                             Label::new(ty.span).message("very large string bound"),
                         ) {

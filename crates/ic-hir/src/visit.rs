@@ -306,18 +306,18 @@ where
 {
     match num {
         Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
-            for value in values.iter() {
+            for value in values {
                 visitor.visit_numeric(value);
             }
         }
         Numeric::Map { values, .. } => {
-            for (key, value) in values.iter() {
+            for (key, value) in values {
                 visitor.visit_numeric(key);
                 visitor.visit_numeric(value);
             }
         }
         Numeric::Struct { fields, .. } => {
-            for (_, value) in fields.iter() {
+            for (_, value) in fields {
                 visitor.visit_numeric(value);
             }
         }

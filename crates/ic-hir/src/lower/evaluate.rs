@@ -750,8 +750,10 @@ impl<'a> ExpressionEvaluator<'a> {
         for bit in &def.bits {
             let value = if let Some(expr) = &bit.value {
                 self.eval_bound(expr)
+            } else if last_value == 0 {
+                1
             } else {
-                if last_value == 0 { 1 } else { last_value << 1 }
+                last_value << 1
             };
 
             last_value = value;
@@ -940,8 +942,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     .find(|v| {
                         v.ident
                             .as_ref()
-                            .map(|i| i.name == member.ident.name)
-                            .unwrap_or(false)
+                            .is_some_and(|i| i.name == member.ident.name)
                     })
                     .map(|v| self.eval_init_expr(&v.value));
 
@@ -1181,18 +1182,15 @@ impl<'a> ExpressionEvaluator<'a> {
                             TyKind::Adt(type_id) => {
                                 // Look up the ADT definition
                                 let adt_def = self.ctx.definitions.get(*type_id);
-                                match &adt_def.kind {
-                                    DefKind::Struct(struct_ty) => {
-                                        let struct_ty = struct_ty.clone();
-                                        self.eval_struct_init(init_list, &struct_ty, *type_id)
-                                    }
-                                    _ => {
-                                        self.errors.push(error_span(
-                                            "initializer lists can only be used with struct types",
-                                            Label::new(def.span).message("not a struct type"),
-                                        ));
-                                        Numeric::Null
-                                    }
+                                if let DefKind::Struct(struct_ty) = &adt_def.kind {
+                                    let struct_ty = struct_ty.clone();
+                                    self.eval_struct_init(init_list, &struct_ty, *type_id)
+                                } else {
+                                    self.errors.push(error_span(
+                                        "initializer lists can only be used with struct types",
+                                        Label::new(def.span).message("not a struct type"),
+                                    ));
+                                    Numeric::Null
                                 }
                             }
                             TyKind::Array { ty, len } => {

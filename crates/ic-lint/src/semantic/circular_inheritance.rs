@@ -52,9 +52,9 @@ impl<'a> Lint<'a> for CircularInheritance<'a> {
     }
 }
 
-impl<'a> CircularInheritance<'a> {
+impl CircularInheritance<'_> {
     fn check_all_inheritance(&self, hir_ctx: &Context) {
-        for (id, def) in hir_ctx.definitions.iter() {
+        for (id, def) in &hir_ctx.definitions {
             match &def.kind {
                 DefKind::Struct(struct_ty) => {
                     if let Some(parent) = struct_ty.parent {
@@ -97,7 +97,7 @@ impl<'a> CircularInheritance<'a> {
             if let Some(diag) = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
-                &format!(
+                format!(
                     "{} '{}' has circular inheritance through '{}'",
                     kind, start_def.ident.name, parent_def.ident.name
                 ),

@@ -55,7 +55,7 @@ impl<'a> Lint<'a> for UnnamedArgs<'a> {
     }
 }
 
-impl<'a> UnnamedArgs<'a> {
+impl UnnamedArgs<'_> {
     fn check_annotation(&mut self, ann: &Ann) {
         // Skip if all arguments are named
         if ann.args.iter().all(|arg| arg.ident.is_some()) {
@@ -68,12 +68,7 @@ impl<'a> UnnamedArgs<'a> {
         }
 
         // Check if this is a known annotation that requires named args
-        let name = ann
-            .path
-            .segments
-            .last()
-            .map(|s| s.name.as_str())
-            .unwrap_or("");
+        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
         match name {
             // These annotations accept single unnamed argument
             "min" | "max" | "bit" | "id" | "optional" | "key" => {
@@ -106,21 +101,15 @@ impl<'a> UnnamedArgs<'a> {
     }
 
     fn report_unnamed_args(&mut self, ann: &Ann) {
-        let name = ann
-            .path
-            .segments
-            .last()
-            .map(|s| s.name.as_str())
-            .unwrap_or("");
+        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
         if let Some(mut diag) = self.ctx.diag_span(
             Self::name(),
             Self::category(),
             "annotation arguments should be named when multiple parameters exist",
             Label::new(ic_syntax::util::path_span(&ann.path)).message("use named arguments"),
         ) {
-            diag = diag.help(&format!(
-                "use named arguments like @{}(param1=value1, param2=value2)",
-                name
+            diag = diag.help(format!(
+                "use named arguments like @{name}(param1=value1, param2=value2)"
             ));
             self.ctx.report(Self::name(), Self::category(), diag);
         }
@@ -129,7 +118,7 @@ impl<'a> UnnamedArgs<'a> {
     fn resolve_annotation(&self, name: &str) -> Option<DefId> {
         // TODO: This is a simplified lookup. In reality, we'd need to use the scope tree
         // to properly resolve the annotation name considering imports and scoping
-        for (id, def) in self.hir_ctx.definitions.iter() {
+        for (id, def) in &self.hir_ctx.definitions {
             if def.ident.name == name && matches!(def.kind, DefKind::Annotation(_)) {
                 return Some(id);
             }

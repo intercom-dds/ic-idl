@@ -33,7 +33,7 @@ use common::lint_hir;
 #[ignore] // Ignore until annotation lowering is working
 fn valid_bit_positions() {
     let report = lint_hir(
-        r#"
+        r"
 bitmask MyFlags {
     @bit(0) FLAG_A,
     @bit(7) FLAG_B
@@ -43,7 +43,7 @@ bitmask<unsigned short> LargeFlags {
     @bit(0) FLAG_X,
     @bit(15) FLAG_Y
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -53,11 +53,11 @@ bitmask<unsigned short> LargeFlags {
 #[ignore] // Ignore until annotation lowering is working
 fn bit_exceeds_octet_width() {
     let report = lint_hir(
-        r#"
+        r"
 bitmask MyFlags {
     @bit(8) FLAG_TOO_HIGH
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -69,11 +69,11 @@ bitmask MyFlags {
 #[ignore] // Ignore until annotation lowering is working
 fn bit_exceeds_custom_type_width() {
     let report = lint_hir(
-        r#"
+        r"
 bitmask<unsigned short> MyFlags {
     @bit(16) FLAG_OUT_OF_BOUNDS
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -85,11 +85,11 @@ bitmask<unsigned short> MyFlags {
 #[ignore] // Ignore until annotation lowering is working
 fn explicit_value_exceeds_bounds() {
     let report = lint_hir(
-        r#"
+        r"
 bitmask MyFlags {
     FLAG_A = 256  // Too large for octet (8-bit)
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -101,14 +101,14 @@ bitmask MyFlags {
 #[ignore] // Ignore until annotation lowering is working
 fn mixed_valid_invalid_bits() {
     let report = lint_hir(
-        r#"
+        r"
 bitmask<unsigned long> Flags {
     @bit(0) FLAG_VALID1,
     @bit(31) FLAG_VALID2,
     @bit(32) FLAG_INVALID,  // Out of bounds for 32-bit
     @bit(63) FLAG_INVALID2  // Way out of bounds
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 2);

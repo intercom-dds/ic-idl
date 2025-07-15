@@ -33,7 +33,7 @@ use common::lint_hir;
 #[ignore] // Ignore until annotation lowering is working
 fn no_deprecated_usage() {
     let report = lint_hir(
-        r#"
+        r"
 struct Point {
     long x;
     long y;
@@ -43,7 +43,7 @@ struct Line {
     Point start;
     Point end;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -53,7 +53,7 @@ struct Line {
 #[ignore] // Ignore until annotation lowering is working
 fn deprecated_struct_usage() {
     let report = lint_hir(
-        r#"
+        r"
 @deprecated
 struct OldPoint {
     long x;
@@ -64,7 +64,7 @@ struct Line {
     OldPoint start;  // Should warn
     OldPoint end;    // Should warn
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 2);
@@ -95,12 +95,12 @@ typedef OldAPI ServiceRef;  // Should warn
 #[ignore] // Ignore until annotation lowering is working
 fn deprecated_const_usage() {
     let report = lint_hir(
-        r#"
+        r"
 @deprecated
 const long OLD_VERSION = 1;
 
 const long CURRENT_VERSION = OLD_VERSION + 1;  // Should warn
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -112,7 +112,7 @@ const long CURRENT_VERSION = OLD_VERSION + 1;  // Should warn
 #[ignore] // Ignore until annotation lowering is working
 fn obsolete_annotation() {
     let report = lint_hir(
-        r#"
+        r"
 @obsolete
 enum OldStatus {
     ACTIVE,
@@ -122,7 +122,7 @@ enum OldStatus {
 struct Record {
     OldStatus status;  // Should warn
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -134,7 +134,7 @@ struct Record {
 #[ignore] // Ignore until annotation lowering is working
 fn nested_deprecated_usage() {
     let report = lint_hir(
-        r#"
+        r"
 @deprecated
 struct OldData {
     long value;
@@ -145,8 +145,8 @@ typedef sequence<OldData> OldDataList;  // Should warn about OldData
 struct Container {
     OldDataList items;  // Should warn about OldData (through typedef)
 };
-"#,
+",
     );
 
-    assert!(report.errors.len() >= 1); // At least one warning for OldData usage
+    assert!(!report.errors.is_empty()); // At least one warning for OldData usage
 }

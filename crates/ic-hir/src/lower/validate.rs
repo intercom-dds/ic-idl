@@ -40,7 +40,10 @@ use std::collections::{HashMap, HashSet};
 use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
-use crate::hir::*;
+use crate::hir::{
+    Decl, Def, DefFlags, DefId, DefKind, EnumTy, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind,
+    UnionTy,
+};
 
 /// Validates the HIR for semantic correctness.
 pub struct Validator<'a> {
@@ -541,8 +544,7 @@ impl<'a> Validator<'a> {
                             let actual_def = self.get_def(def_id);
                             self.errors.push(error_span(
                                 format!(
-                                    "forward declaration of `{}` as {} conflicts with {} definition",
-                                    name, decl_type_str, def_type
+                                    "forward declaration of `{name}` as {decl_type_str} conflicts with {def_type} definition"
                                 ),
                                 Label::new(decl_def.span).message("forward declared here"),
                             ).label(

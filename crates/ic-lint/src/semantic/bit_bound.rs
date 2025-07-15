@@ -51,14 +51,9 @@ impl<'a> Lint<'a> for BitBound<'a> {
     }
 }
 
-impl<'a> BitBound<'a> {
+impl BitBound<'_> {
     fn check_bit_annotation(&mut self, ann: &Ann, type_bits: u32) {
-        let name = ann
-            .path
-            .segments
-            .last()
-            .map(|s| s.name.as_str())
-            .unwrap_or("");
+        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
         if name != "bit" {
             return;
         }
@@ -68,7 +63,7 @@ impl<'a> BitBound<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
+                    format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
                     Label::new(ic_syntax::util::path_span(&ann.path))
                         .message("bit position out of bounds"),
                 ) {
@@ -79,11 +74,11 @@ impl<'a> BitBound<'a> {
     }
 
     fn get_bit_position(&self, ann: &Ann) -> Option<u32> {
-        ann.args.get(0).and_then(|arg| match &arg.value {
+        ann.args.first().and_then(|arg| match &arg.value {
             Numeric::Int32(v) if *v >= 0 => Some(*v as u32),
             Numeric::UInt32(v) => Some(*v),
-            Numeric::Int64(v) if *v >= 0 && *v <= u32::MAX as i64 => Some(*v as u32),
-            Numeric::UInt64(v) if *v <= u32::MAX as u64 => Some(*v as u32),
+            Numeric::Int64(v) if u32::try_from(*v).is_ok() => Some(*v as u32),
+            Numeric::UInt64(v) if u32::try_from(*v).is_ok() => Some(*v as u32),
             _ => None,
         })
     }
@@ -126,7 +121,7 @@ impl<'a> Visitor<'a> for BitBound<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!(
+                        format!(
                             "bitmask value {value} exceeds type bit width of {type_bits}",
                             value = flag.value
                         ),

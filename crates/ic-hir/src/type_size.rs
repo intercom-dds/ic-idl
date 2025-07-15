@@ -30,6 +30,7 @@ use crate::hir::{PrimitiveTy, Ty, TyKind};
 
 /// Calculate the size in bytes of a type.
 /// Returns None for dynamically-sized types or types with unknown size.
+#[must_use]
 pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
     match &ty.kind {
         TyKind::Any => None,      // Unknown size
@@ -79,7 +80,7 @@ pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
                     for field in &bitset_ty.fields {
                         total_bits += field.size;
                     }
-                    Some((total_bits + 7) / 8)
+                    Some(total_bits.div_ceil(8))
                 }
                 crate::hir::DefKind::Alias(alias_ty) => {
                     // Alias size = aliased type size

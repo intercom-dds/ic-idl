@@ -51,14 +51,9 @@ impl<'a> Lint<'a> for RangeBound<'a> {
     }
 }
 
-impl<'a> RangeBound<'a> {
+impl RangeBound<'_> {
     fn check_annotation(&mut self, ann: &Ann, ty: &Ty) {
-        let name = ann
-            .path
-            .segments
-            .last()
-            .map(|s| s.name.as_str())
-            .unwrap_or("");
+        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
         match name {
             "min" => {
                 if let Some(value) = self.get_numeric_arg(ann, 0) {
@@ -94,7 +89,7 @@ impl<'a> RangeBound<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("@min value {} is less than type minimum {}", val, min),
+                        format!("@min value {val} is less than type minimum {min}"),
                         Label::new(ic_syntax::util::path_span(&ann.path))
                             .message("invalid minimum bound"),
                     ) {
@@ -112,7 +107,7 @@ impl<'a> RangeBound<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("@max value {} is greater than type maximum {}", val, max),
+                        format!("@max value {val} is greater than type maximum {max}"),
                         Label::new(ic_syntax::util::path_span(&ann.path))
                             .message("invalid maximum bound"),
                     ) {
@@ -130,10 +125,7 @@ impl<'a> RangeBound<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!(
-                        "@range minimum {} is greater than maximum {}",
-                        min_val, max_val
-                    ),
+                    format!("@range minimum {min_val} is greater than maximum {max_val}"),
                     Label::new(ic_syntax::util::path_span(&ann.path)).message("invalid range"),
                 ) {
                     self.ctx.report(Self::name(), Self::category(), diag);
@@ -144,16 +136,16 @@ impl<'a> RangeBound<'a> {
 
     fn numeric_to_i64(&self, num: &Numeric) -> Option<i64> {
         match num {
-            Numeric::Int8(v) => Some(*v as i64),
-            Numeric::Int16(v) => Some(*v as i64),
-            Numeric::Int32(v) => Some(*v as i64),
+            Numeric::Int8(v) => Some(i64::from(*v)),
+            Numeric::Int16(v) => Some(i64::from(*v)),
+            Numeric::Int32(v) => Some(i64::from(*v)),
             Numeric::Int64(v) => Some(*v),
-            Numeric::Octet(v) => Some(*v as i64),
-            Numeric::UInt16(v) => Some(*v as i64),
-            Numeric::UInt32(v) => Some(*v as i64),
+            Numeric::Octet(v) => Some(i64::from(*v)),
+            Numeric::UInt16(v) => Some(i64::from(*v)),
+            Numeric::UInt32(v) => Some(i64::from(*v)),
             Numeric::UInt64(v) => {
                 // Be careful with large unsigned values
-                if *v <= i64::MAX as u64 {
+                if i64::try_from(*v).is_ok() {
                     Some(*v as i64)
                 } else {
                     None
@@ -166,13 +158,13 @@ impl<'a> RangeBound<'a> {
     fn get_type_bounds(&self, ty: &Ty) -> Option<(i64, i64)> {
         match &ty.kind {
             TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::Int8 => Some((i8::MIN as i64, i8::MAX as i64)),
-                PrimitiveTy::Int16 => Some((i16::MIN as i64, i16::MAX as i64)),
-                PrimitiveTy::Int32 => Some((i32::MIN as i64, i32::MAX as i64)),
+                PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),
+                PrimitiveTy::Int16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
+                PrimitiveTy::Int32 => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
                 PrimitiveTy::Int64 => Some((i64::MIN, i64::MAX)),
-                PrimitiveTy::UInt8 => Some((0, u8::MAX as i64)),
-                PrimitiveTy::UInt16 => Some((0, u16::MAX as i64)),
-                PrimitiveTy::UInt32 => Some((0, u32::MAX as i64)),
+                PrimitiveTy::UInt8 => Some((0, i64::from(u8::MAX))),
+                PrimitiveTy::UInt16 => Some((0, i64::from(u16::MAX))),
+                PrimitiveTy::UInt32 => Some((0, i64::from(u32::MAX))),
                 PrimitiveTy::UInt64 => Some((0, i64::MAX)), // Limited by i64 representation
                 _ => None,
             },

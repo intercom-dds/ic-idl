@@ -53,24 +53,24 @@ impl<'a> Lint<'a> for InvalidEnumValue<'a> {
     }
 }
 
-impl<'a> InvalidEnumValue<'a> {
+impl InvalidEnumValue<'_> {
     fn check_enum(&mut self, enum_ty: &EnumTy, _enum_name: &str) {
         let mut seen_values = HashMap::new();
 
         // Get the underlying type's range
         let (min, max) = match &enum_ty.ty.kind {
             TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::Int8 => (i8::MIN as i64, i8::MAX as i64),
-                PrimitiveTy::Int16 => (i16::MIN as i64, i16::MAX as i64),
-                PrimitiveTy::Int32 => (i32::MIN as i64, i32::MAX as i64),
+                PrimitiveTy::Int8 => (i64::from(i8::MIN), i64::from(i8::MAX)),
+                PrimitiveTy::Int16 => (i64::from(i16::MIN), i64::from(i16::MAX)),
+                PrimitiveTy::Int32 => (i64::from(i32::MIN), i64::from(i32::MAX)),
                 PrimitiveTy::Int64 => (i64::MIN, i64::MAX),
-                PrimitiveTy::UInt8 => (0, u8::MAX as i64),
-                PrimitiveTy::UInt16 => (0, u16::MAX as i64),
-                PrimitiveTy::UInt32 => (0, u32::MAX as i64),
+                PrimitiveTy::UInt8 => (0, i64::from(u8::MAX)),
+                PrimitiveTy::UInt16 => (0, i64::from(u16::MAX)),
+                PrimitiveTy::UInt32 => (0, i64::from(u32::MAX)),
                 PrimitiveTy::UInt64 => (0, i64::MAX), // Limited by i64
-                _ => (i32::MIN as i64, i32::MAX as i64), // Default to int32
+                _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
             },
-            _ => (i32::MIN as i64, i32::MAX as i64), // Default to int32
+            _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
         };
 
         // Check each enumerator
@@ -82,9 +82,8 @@ impl<'a> InvalidEnumValue<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!(
-                        "enum value {} is outside the range [{}, {}] for the underlying type",
-                        value, min, max
+                    format!(
+                        "enum value {value} is outside the range [{min}, {max}] for the underlying type"
                     ),
                     Label::new(field.ident.span).message("value out of range"),
                 ) {
@@ -97,7 +96,7 @@ impl<'a> InvalidEnumValue<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!("enum value {} is already used by '{}'", value, prev_name),
+                    format!("enum value {value} is already used by '{prev_name}'"),
                     Label::new(field.ident.span).message("duplicate value"),
                 ) {
                     self.ctx.report(Self::name(), Self::category(), diag);

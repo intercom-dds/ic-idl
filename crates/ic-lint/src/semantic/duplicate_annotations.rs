@@ -52,7 +52,7 @@ impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
     }
 }
 
-impl<'a> DuplicateAnnotations<'a> {
+impl DuplicateAnnotations<'_> {
     fn check_annotation_list(&mut self, annotations: &[AnnotationAppl]) {
         let mut seen = HashSet::new();
         let conflicting_pairs = vec![("optional", "required"), ("readonly", "readwrite")];
@@ -71,7 +71,7 @@ impl<'a> DuplicateAnnotations<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!("duplicate annotation '@{ann_name}'"),
+                    format!("duplicate annotation '@{ann_name}'"),
                     Label::new(ic_syntax::util::path_span(&ann.ident))
                         .message("duplicate annotation"),
                 ) {
@@ -85,7 +85,7 @@ impl<'a> DuplicateAnnotations<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("conflicting annotations '@{ann1}' and '@{ann2}'"),
+                        format!("conflicting annotations '@{ann1}' and '@{ann2}'"),
                         Label::new(ic_syntax::util::path_span(&ann.ident))
                             .message("conflicts with previous annotation"),
                     ) {
@@ -95,7 +95,7 @@ impl<'a> DuplicateAnnotations<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("conflicting annotations '@{ann1}' and '@{ann2}'"),
+                        format!("conflicting annotations '@{ann1}' and '@{ann2}'"),
                         Label::new(ic_syntax::util::path_span(&ann.ident))
                             .message("conflicts with previous annotation"),
                     ) {

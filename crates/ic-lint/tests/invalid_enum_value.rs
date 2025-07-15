@@ -33,13 +33,13 @@ use common::lint_hir;
 #[ignore] // HIR enum lowering not fully working
 fn valid_enum_default_type() {
     let report = lint_hir(
-        r#"
+        r"
 enum Color {
     RED = 0,
     GREEN = 1,
     BLUE = 2
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -49,13 +49,13 @@ enum Color {
 #[ignore] // HIR enum lowering not fully working
 fn valid_enum_implicit_values() {
     let report = lint_hir(
-        r#"
+        r"
 enum Status {
     PENDING,    // 0
     ACTIVE,     // 1
     COMPLETED   // 2
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -65,13 +65,13 @@ enum Status {
 #[ignore] // HIR enum lowering not fully working
 fn duplicate_explicit_values() {
     let report = lint_hir(
-        r#"
+        r"
 enum Priority {
     LOW = 1,
     MEDIUM = 2,
     HIGH = 1    // Duplicate value
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -84,14 +84,14 @@ enum Priority {
 #[ignore] // HIR enum lowering not fully working
 fn duplicate_implicit_value() {
     let report = lint_hir(
-        r#"
+        r"
 enum Mixed {
     A = 0,
     B = 2,
     C,      // Implicit value 3
     D = 3   // Duplicate of C's implicit value
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -103,13 +103,13 @@ enum Mixed {
 #[ignore] // HIR enum lowering not fully working
 fn value_out_of_range_octet() {
     let report = lint_hir(
-        r#"
+        r"
 enum SmallEnum : octet {
     A = 100,
     B = 200,
     C = 300  // Out of range for octet (0-255)
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -122,13 +122,13 @@ enum SmallEnum : octet {
 #[ignore] // HIR enum lowering not fully working
 fn implicit_value_overflow() {
     let report = lint_hir(
-        r#"
+        r"
 enum OverflowEnum : octet {
     A = 254,
     B,      // 255 - still valid
     C       // 256 - overflows octet range
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -141,13 +141,13 @@ enum OverflowEnum : octet {
 #[ignore] // HIR enum lowering not fully working
 fn negative_value_unsigned_type() {
     let report = lint_hir(
-        r#"
+        r"
 enum UnsignedEnum : unsigned short {
     A = -1,  // Negative value for unsigned type
     B = 0,
     C = 1
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -159,7 +159,7 @@ enum UnsignedEnum : unsigned short {
 #[ignore] // HIR enum lowering not fully working
 fn multiple_duplicates() {
     let report = lint_hir(
-        r#"
+        r"
 enum MultiDup {
     A = 1,
     B = 2,
@@ -167,7 +167,7 @@ enum MultiDup {
     D = 2,  // Duplicate of B
     E = 3
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 2);
@@ -177,13 +177,13 @@ enum MultiDup {
 #[ignore] // HIR enum lowering not fully working
 fn large_values_int64() {
     let report = lint_hir(
-        r#"
+        r"
 enum LargeEnum : long long {
     MIN = -9223372036854775808,
     MAX = 9223372036854775807,
     ZERO = 0
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);

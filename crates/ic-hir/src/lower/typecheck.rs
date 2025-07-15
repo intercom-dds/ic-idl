@@ -39,7 +39,7 @@
 use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
-use crate::hir::*;
+use crate::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 
 /// Type checks the HIR.
 pub struct TypeChecker<'a> {
@@ -147,22 +147,22 @@ impl<'a> TypeChecker<'a> {
 
             // Integer values - check range
             (Numeric::Int8(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
             }
             (Numeric::Octet(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
             }
             (Numeric::Int16(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
             }
             (Numeric::UInt16(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
             }
             (Numeric::Int32(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
             }
             (Numeric::UInt32(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v as i64, prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
             }
             (Numeric::Int64(v), TyKind::Primitive(prim)) => {
                 self.check_int_fits(*v, prim, value_desc, ty.span)
@@ -274,10 +274,10 @@ impl<'a> TypeChecker<'a> {
     ) -> bool {
         let fits = match prim {
             PrimitiveTy::UInt64 => true,
-            PrimitiveTy::Int64 => value <= i64::MAX as u64,
+            PrimitiveTy::Int64 => i64::try_from(value).is_ok(),
             _ => {
                 // For smaller types, delegate to check_int_fits if it fits in i64
-                if value <= i64::MAX as u64 {
+                if i64::try_from(value).is_ok() {
                     return self.check_int_fits(value as i64, prim, value_desc, span);
                 }
                 false

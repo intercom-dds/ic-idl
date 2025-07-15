@@ -28,7 +28,7 @@
 //! Phase 2: Type resolution.
 //!
 //! This phase walks the AST again and:
-//! - Resolves all type references (Path -> DefId)
+//! - Resolves all type references (Path -> `DefId`)
 //! - Fills in struct members, union variants, etc.
 //! - Resolves inheritance relationships
 //! - Does NOT evaluate constant expressions yet
@@ -40,14 +40,17 @@ use ic_syntax::{Item, Path};
 
 use super::collect::NameMap;
 use crate::Context;
-use crate::hir::*;
+use crate::hir::{
+    BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
+    ProtoTy, Ty, TyKind, Variant,
+};
 
 /// Resolves type references in the HIR.
 pub struct TypeResolver<'a> {
     ctx: &'a mut Context,
     name_map: &'a NameMap,
     errors: Vec<Diag>,
-    /// Maps AST items to their DefIds for easy lookup.
+    /// Maps AST items to their `DefIds` for easy lookup.
     item_map: HashMap<ItemKey, DefId>,
     /// Current scope for resolving unqualified names.
     current_scope: Vec<String>,
@@ -75,7 +78,7 @@ impl<'a> TypeResolver<'a> {
         }
     }
 
-    /// Resolves a path to a DefId.
+    /// Resolves a path to a `DefId`.
     fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
         // Convert path segments to string slice
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
@@ -159,21 +162,20 @@ impl<'a> TypeResolver<'a> {
                     .map(|s| s.name.as_str())
                     .collect::<Vec<_>>()
                     .join("::");
-                match self.resolve_path(v) {
-                    Some(id) => Ty {
+                if let Some(id) = self.resolve_path(v) {
+                    Ty {
                         kind: TyKind::Adt(id),
                         span: ic_syntax::util::path_span(v),
-                    },
-                    None => {
-                        self.errors.push(error_span(
-                            format!("undefined type `{path_str}`"),
-                            Label::new(ic_syntax::util::path_span(v)).message("type not found"),
-                        ));
-                        // Return a placeholder type to continue processing
-                        Ty {
-                            kind: TyKind::Any,
-                            span: ic_syntax::util::path_span(v),
-                        }
+                    }
+                } else {
+                    self.errors.push(error_span(
+                        format!("undefined type `{path_str}`"),
+                        Label::new(ic_syntax::util::path_span(v)).message("type not found"),
+                    ));
+                    // Return a placeholder type to continue processing
+                    Ty {
+                        kind: TyKind::Any,
+                        span: ic_syntax::util::path_span(v),
                     }
                 }
             }
@@ -224,7 +226,7 @@ impl<'a> TypeResolver<'a> {
     /// Marks any forward declarations of the given type as resolved.
     fn mark_forward_declarations_resolved(&mut self, name: &str) {
         // Find all definitions with this name
-        for (_, def) in self.ctx.definitions.iter_mut() {
+        for (_, def) in &mut self.ctx.definitions {
             if def.ident.name == name && matches!(def.kind, DefKind::Decl(_)) {
                 // This is a forward declaration - mark it as complete since we found the definition
                 def.flags.unset(DefFlags::IS_INCOMPLETE);
@@ -408,12 +410,12 @@ impl<'a> TypeResolver<'a> {
         self.current_scope_id = saved_scope_id;
     }
 
-    /// Builds a mapping from AST items to their DefIds.
+    /// Builds a mapping from AST items to their `DefIds`.
     fn build_item_map(&mut self, items: &[Item]) {
         self.build_item_map_with_scope(items, &Vec::new());
     }
 
-    /// Builds a mapping from AST items to their DefIds with a given scope.
+    /// Builds a mapping from AST items to their `DefIds` with a given scope.
     fn build_item_map_with_scope(&mut self, items: &[Item], scope: &[String]) {
         for item in items {
             let (name, kind, nested_items) = match item {

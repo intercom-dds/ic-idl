@@ -33,7 +33,7 @@ use common::lint_hir;
 #[ignore] // Ignore until annotation lowering is working
 fn valid_single_unnamed_args() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @min(0)
     @max(100)
@@ -41,7 +41,7 @@ struct Foo {
     @id(42)
     long field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0);
@@ -71,12 +71,12 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn valid_range_unnamed() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @range(0, 100)
     long field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 0); // range allows 2 unnamed args
@@ -86,7 +86,7 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn invalid_multiple_unnamed_args() {
     let report = lint_hir(
-        r#"
+        r"
 annotation MyAnn {
     long value1;
     long value2;
@@ -96,7 +96,7 @@ annotation MyAnn {
 struct Foo {
     long field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -108,7 +108,7 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working
 fn invalid_mixed_args() {
     let report = lint_hir(
-        r#"
+        r"
 annotation MyAnn {
     long value1;
     long value2;
@@ -119,7 +119,7 @@ annotation MyAnn {
 struct Foo {
     long field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1); // Mixed named/unnamed with multiple params
@@ -129,12 +129,12 @@ struct Foo {
 #[ignore] // Ignore until annotation lowering is working  
 fn builtin_annotation_extra_args() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     @min(0, 10, 20)  // min only takes 1 argument
     long field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);

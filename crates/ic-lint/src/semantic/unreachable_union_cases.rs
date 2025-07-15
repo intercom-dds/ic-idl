@@ -51,7 +51,7 @@ impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
     }
 }
 
-impl<'a> UnreachableUnionCases<'a> {
+impl UnreachableUnionCases<'_> {
     fn check_union(&mut self, union_ty: &UnionTy, _union_name: &str) {
         let mut default_index = None;
 
@@ -70,7 +70,7 @@ impl<'a> UnreachableUnionCases<'a> {
                     if let Some(mut diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!(
+                        format!(
                             "case '{}' is unreachable because it appears after default",
                             variant.ident.name
                         ),
@@ -92,9 +92,8 @@ impl<'a> UnreachableUnionCases<'a> {
                             if let Some(diag) = self.ctx.diag_span(
                                 Self::name(),
                                 Self::category(),
-                                &format!(
-                                    "case label {} is outside the range [{}, {}] of the discriminator type",
-                                    value, min, max
+                                format!(
+                                    "case label {value} is outside the range [{min}, {max}] of the discriminator type"
                                 ),
                                 Label::new(variant.ident.span)
                                     .message("case label out of range"),
@@ -114,13 +113,13 @@ impl<'a> UnreachableUnionCases<'a> {
                 PrimitiveTy::Bool => Some((0, 1)),
                 PrimitiveTy::Char => Some((0, 127)), // ASCII range
                 PrimitiveTy::WChar => Some((0, 65535)), // Unicode BMP
-                PrimitiveTy::Int8 => Some((i8::MIN as i64, i8::MAX as i64)),
-                PrimitiveTy::Int16 => Some((i16::MIN as i64, i16::MAX as i64)),
-                PrimitiveTy::Int32 => Some((i32::MIN as i64, i32::MAX as i64)),
+                PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),
+                PrimitiveTy::Int16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
+                PrimitiveTy::Int32 => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
                 PrimitiveTy::Int64 => Some((i64::MIN, i64::MAX)),
-                PrimitiveTy::UInt8 => Some((0, u8::MAX as i64)),
-                PrimitiveTy::UInt16 => Some((0, u16::MAX as i64)),
-                PrimitiveTy::UInt32 => Some((0, u32::MAX as i64)),
+                PrimitiveTy::UInt8 => Some((0, i64::from(u8::MAX))),
+                PrimitiveTy::UInt16 => Some((0, i64::from(u16::MAX))),
+                PrimitiveTy::UInt32 => Some((0, i64::from(u32::MAX))),
                 PrimitiveTy::UInt64 => Some((0, i64::MAX)), // Limited by i64
                 _ => None,
             },
@@ -134,17 +133,17 @@ impl<'a> UnreachableUnionCases<'a> {
 
     fn numeric_to_i64(&self, num: &Numeric) -> Option<i64> {
         match num {
-            Numeric::Bool(v) => Some(if *v { 1 } else { 0 }),
+            Numeric::Bool(v) => Some(i64::from(*v)),
             Numeric::Char(v) => Some(*v as i64),
-            Numeric::Int8(v) => Some(*v as i64),
-            Numeric::Int16(v) => Some(*v as i64),
-            Numeric::Int32(v) => Some(*v as i64),
+            Numeric::Int8(v) => Some(i64::from(*v)),
+            Numeric::Int16(v) => Some(i64::from(*v)),
+            Numeric::Int32(v) => Some(i64::from(*v)),
             Numeric::Int64(v) => Some(*v),
-            Numeric::Octet(v) => Some(*v as i64),
-            Numeric::UInt16(v) => Some(*v as i64),
-            Numeric::UInt32(v) => Some(*v as i64),
+            Numeric::Octet(v) => Some(i64::from(*v)),
+            Numeric::UInt16(v) => Some(i64::from(*v)),
+            Numeric::UInt32(v) => Some(i64::from(*v)),
             Numeric::UInt64(v) => {
-                if *v <= i64::MAX as u64 {
+                if i64::try_from(*v).is_ok() {
                     Some(*v as i64)
                 } else {
                     None

@@ -32,11 +32,11 @@ use common::lint_hir;
 #[test]
 fn zero_sized_array() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     long field[0];
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -48,11 +48,11 @@ struct Foo {
 #[test]
 fn zero_bound_sequence() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     sequence<long, 0> field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -63,11 +63,11 @@ struct Foo {
 #[test]
 fn zero_bound_string() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     string<0> field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -78,11 +78,11 @@ struct Foo {
 #[test]
 fn zero_bound_map() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     map<string, long, 0> field;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 1);
@@ -93,7 +93,7 @@ struct Foo {
 #[test]
 fn valid_bounds() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     long array_field[10];
     sequence<long, 100> seq_field;
@@ -103,13 +103,13 @@ struct Foo {
     string unbounded_str;
     map<string, long> unbounded_map;
 };
-"#,
+",
     );
 
     if !report.errors.is_empty() {
         eprintln!("Unexpected errors:");
         for error in &report.errors {
-            eprintln!("{:?}", error);
+            eprintln!("{error:?}");
         }
     }
     assert_eq!(report.errors.len(), 0);
@@ -119,14 +119,14 @@ struct Foo {
 #[test]
 fn multiple_zero_bounds() {
     let report = lint_hir(
-        r#"
+        r"
 struct Foo {
     long field1[0];
     sequence<string, 0> field2;
     string<0> field3;
     map<long, string, 0> field4;
 };
-"#,
+",
     );
 
     assert_eq!(report.errors.len(), 4);
@@ -135,7 +135,7 @@ struct Foo {
 #[test]
 fn nested_zero_bounds() {
     let report = lint_hir(
-        r#"
+        r"
 typedef long BadArray[0];
 typedef sequence<long, 0> BadSequence;
 typedef string<0> BadString;
@@ -147,7 +147,7 @@ struct Foo {
     BadString field3;
     BadMap field4;
 };
-"#,
+",
     );
 
     // Should catch the zero bounds in the typedef definitions

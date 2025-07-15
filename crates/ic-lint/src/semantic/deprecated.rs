@@ -53,7 +53,7 @@ impl<'a> Lint<'a> for Deprecated<'a> {
         let mut deprecated_items = HashSet::new();
 
         // First pass: collect all deprecated items
-        for (id, def) in hir.context.definitions.iter() {
+        for (id, def) in &hir.context.definitions {
             if is_deprecated(def) {
                 deprecated_items.insert(id);
             }
@@ -76,17 +76,17 @@ fn is_deprecated(def: &Def) -> bool {
     })
 }
 
-impl<'a> Deprecated<'a> {
+impl Deprecated<'_> {
     fn check_type_usage(&mut self, ty: &Ty, usage_context: &str) {
         if let TyKind::Adt(def_id) = &ty.kind {
             if self.deprecated_items.contains(def_id) {
                 let def = self.hir_ctx.definitions.get(*def_id);
-                let message = self.get_deprecation_message(&def);
+                let message = self.get_deprecation_message(def);
 
                 if let Some(mut diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    &format!(
+                    format!(
                         "use of deprecated type '{}' {}",
                         def.ident.name, usage_context
                     ),
@@ -102,12 +102,12 @@ impl<'a> Deprecated<'a> {
     fn check_const_usage(&mut self, def_id: DefId, span: ic_syntax::Span) {
         if self.deprecated_items.contains(&def_id) {
             let def = self.hir_ctx.definitions.get(def_id);
-            let message = self.get_deprecation_message(&def);
+            let message = self.get_deprecation_message(def);
 
             if let Some(mut diag) = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
-                &format!("use of deprecated constant '{}'", def.ident.name),
+                format!("use of deprecated constant '{}'", def.ident.name),
                 Label::new(span).message("deprecated constant used here"),
             ) {
                 diag = diag.help(&message);
@@ -119,12 +119,7 @@ impl<'a> Deprecated<'a> {
     fn get_deprecation_message(&self, def: &Def) -> String {
         // Try to find a deprecation message in the annotation
         for ann in &def.annotations {
-            let name = ann
-                .path
-                .segments
-                .last()
-                .map(|s| s.name.as_str())
-                .unwrap_or("");
+            let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
             if name == "deprecated" || name == "obsolete" {
                 // Look for a "reason" or "message" argument, or the first string argument
                 for arg in &ann.args {

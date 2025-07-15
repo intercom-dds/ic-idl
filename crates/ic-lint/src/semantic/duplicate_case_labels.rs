@@ -53,7 +53,7 @@ impl<'a> Lint<'a> for DuplicateCaseLabels<'a> {
     }
 }
 
-impl<'a> DuplicateCaseLabels<'a> {
+impl DuplicateCaseLabels<'_> {
     fn check_union(&mut self, union_ty: &UnionTy, union_name: &str) {
         let mut seen_labels = HashSet::new();
         let mut has_default = false;
@@ -64,7 +64,7 @@ impl<'a> DuplicateCaseLabels<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("union '{union_name}' has multiple default cases"),
+                        format!("union '{union_name}' has multiple default cases"),
                         Label::new(variant.ident.span).message("duplicate default"),
                     ) {
                         self.ctx.report(Self::name(), Self::category(), diag);
@@ -80,7 +80,7 @@ impl<'a> DuplicateCaseLabels<'a> {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
-                        &format!("union '{union_name}' has duplicate case label '{label_key}'"),
+                        format!("union '{union_name}' has duplicate case label '{label_key}'"),
                         Label::new(variant.ident.span).message("duplicate case label"),
                     ) {
                         self.ctx.report(Self::name(), Self::category(), diag);

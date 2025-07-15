@@ -207,9 +207,10 @@ impl<'a> TreeBuilder<'a> {
         }
 
         self.recursion_depth += 1;
-        if self.recursion_depth > 100 {
-            panic!("Recursion depth exceeded while lowering {:?}", id);
-        }
+        assert!(
+            (self.recursion_depth <= 100),
+            "Recursion depth exceeded while lowering {id:?}"
+        );
 
         let def = self.ctx.type_of(id);
         let ident = create_ident(&def.ident.name);

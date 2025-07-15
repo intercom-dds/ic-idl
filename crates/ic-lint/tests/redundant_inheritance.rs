@@ -32,11 +32,11 @@ use common::test_lint;
 #[test]
 fn valid_inheritance() {
     let output = test_lint(
-        r#"
+        r"
 interface Base {};
 interface Derived : Base {};
 interface MultiDerived : Base, Derived {};
-"#,
+",
     );
 
     assert!(output.is_empty());
@@ -45,10 +45,10 @@ interface MultiDerived : Base, Derived {};
 #[test]
 fn redundant_interface_inheritance() {
     let output = test_lint(
-        r#"
+        r"
 interface Base {};
 interface Derived : Base, Base {};
-"#,
+",
     );
 
     assert!(output.contains("inherits from 'Base' multiple times"));
@@ -58,13 +58,13 @@ interface Derived : Base, Base {};
 #[test]
 fn redundant_qualified_inheritance() {
     let output = test_lint(
-        r#"
+        r"
 module M {
     interface Base {};
 };
 
 interface Derived : M::Base, M::Base {};
-"#,
+",
     );
 
     assert!(output.contains("inherits from 'M::Base' multiple times"));
@@ -73,10 +73,10 @@ interface Derived : M::Base, M::Base {};
 #[test]
 fn redundant_valuetype_inheritance() {
     let output = test_lint(
-        r#"
+        r"
 valuetype Base {};
 valuetype Derived : Base supports Base {};
-"#,
+",
     );
 
     assert!(output.contains("inherits from 'Base' multiple times"));
@@ -85,11 +85,11 @@ valuetype Derived : Base supports Base {};
 #[test]
 fn multiple_redundant_parents() {
     let output = test_lint(
-        r#"
+        r"
 interface A {};
 interface B {};
 interface C : A, B, A, B {};
-"#,
+",
     );
 
     // Should report both A and B as redundant

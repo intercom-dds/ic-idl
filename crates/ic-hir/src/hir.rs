@@ -59,6 +59,7 @@ pub enum PrimitiveTy {
 }
 
 impl PrimitiveTy {
+    #[must_use]
     pub fn name(&self) -> &str {
         match self {
             PrimitiveTy::Void => "void",

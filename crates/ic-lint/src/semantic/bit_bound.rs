@@ -75,10 +75,22 @@ impl BitBound<'_> {
 
     fn get_bit_position(ann: &Ann) -> Option<u32> {
         ann.args.first().and_then(|arg| match &arg.value {
-            Numeric::Int32(v) if *v >= 0 => Some(*v as u32),
+            Numeric::Int32(v) if *v >= 0 =>
+            {
+                #[allow(clippy::cast_sign_loss)]
+                Some(*v as u32)
+            }
             Numeric::UInt32(v) => Some(*v),
-            Numeric::Int64(v) if u32::try_from(*v).is_ok() => Some(*v as u32),
-            Numeric::UInt64(v) if u32::try_from(*v).is_ok() => Some(*v as u32),
+            Numeric::Int64(v) if u32::try_from(*v).is_ok() =>
+            {
+                #[allow(clippy::cast_possible_truncation)]
+                Some(*v as u32)
+            }
+            Numeric::UInt64(v) if u32::try_from(*v).is_ok() =>
+            {
+                #[allow(clippy::cast_possible_truncation)]
+                Some(*v as u32)
+            }
             _ => None,
         })
     }
@@ -112,6 +124,7 @@ impl<'a> Visitor<'a> for BitBound<'a> {
                 }
 
                 // Also check if the explicit value exceeds the type bounds
+                #[allow(clippy::cast_possible_truncation)]
                 if flag.value >= (1u64 << type_bits) as usize {
                     // This would be a different lint, but we can warn here too
                     if let Some(diag) = self.ctx.diag_span(

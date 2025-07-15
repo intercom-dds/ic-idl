@@ -81,45 +81,49 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                     }
                 }
             }
-            TyKind::Sequence { ty: elem_ty, bound } => {
+            TyKind::Sequence {
+                ty: elem_ty,
+                bound: Some(b),
+            } => {
                 // For bounded sequences, check the maximum possible size
-                if let Some(b) = bound {
-                    if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
-                        let max_size = elem_size * b;
-                        if max_size > MAX_REASONABLE_SIZE_BYTES {
-                            if let Some(diag) = self.ctx.diag_span(
-                                Self::name(),
-                                Self::category(),
-                                format!(
-                                    "sequence maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} elements × {elem_size} bytes each)"
-                                ),
-                                Label::new(ty.span).message("very large sequence bound"),
-                            ) {
-                                self.ctx.report(Self::name(), Self::category(), diag);
-                            }
-                        }
-                    }
-                }
-            }
-            TyKind::String { bound, wide } => {
-                // For bounded strings, check based on character size
-                if let Some(b) = bound {
-                    let char_size = if *wide { 4 } else { 1 }; // wchar is 4 bytes, char is 1 byte
-                    let max_size = char_size * b;
+                if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
+                    let max_size = elem_size * b;
                     if max_size > MAX_REASONABLE_SIZE_BYTES {
                         if let Some(diag) = self.ctx.diag_span(
                             Self::name(),
                             Self::category(),
                             format!(
-                                "string maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} characters × {char_size} bytes each)"
+                                "sequence maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} elements × {elem_size} bytes each)"
                             ),
-                            Label::new(ty.span).message("very large string bound"),
+                            Label::new(ty.span).message("very large sequence bound"),
                         ) {
                             self.ctx.report(Self::name(), Self::category(), diag);
                         }
                     }
                 }
             }
+            TyKind::Sequence { .. } => {}
+            TyKind::String {
+                bound: Some(b),
+                wide,
+            } => {
+                // For bounded strings, check based on character size
+                let char_size = if *wide { 4 } else { 1 }; // wchar is 4 bytes, char is 1 byte
+                let max_size = char_size * b;
+                if max_size > MAX_REASONABLE_SIZE_BYTES {
+                    if let Some(diag) = self.ctx.diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!(
+                            "string maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} characters × {char_size} bytes each)"
+                        ),
+                        Label::new(ty.span).message("very large string bound"),
+                    ) {
+                        self.ctx.report(Self::name(), Self::category(), diag);
+                    }
+                }
+            }
+            TyKind::String { .. } => {}
             _ => {}
         }
 

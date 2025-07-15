@@ -97,8 +97,7 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref(key);
                 self.validate_type_ref(elem);
             }
-            TyKind::String { .. } => {}
-            _ => {}
+            TyKind::String { .. } | _ => {}
         }
     }
 
@@ -156,7 +155,7 @@ impl<'a> Validator<'a> {
 
         // Check that discriminator is an appropriate type
         match &union_ty.disc.kind {
-            TyKind::Primitive(prim) => match prim {
+            TyKind::Primitive(
                 PrimitiveTy::Bool
                 | PrimitiveTy::Char
                 | PrimitiveTy::WChar
@@ -167,17 +166,17 @@ impl<'a> Validator<'a> {
                 | PrimitiveTy::Int32
                 | PrimitiveTy::UInt32
                 | PrimitiveTy::Int64
-                | PrimitiveTy::UInt64 => {
-                    // Valid discriminator types
-                }
-                _ => {
-                    self.errors.push(error_span(
-                        format!("invalid discriminator type for union `{def_name}`"),
-                        Label::new(union_ty.disc.span)
-                            .message("discriminator must be an integral type"),
-                    ));
-                }
-            },
+                | PrimitiveTy::UInt64,
+            ) => {
+                // Valid discriminator types
+            }
+            TyKind::Primitive(_) => {
+                self.errors.push(error_span(
+                    format!("invalid discriminator type for union `{def_name}`"),
+                    Label::new(union_ty.disc.span)
+                        .message("discriminator must be an integral type"),
+                ));
+            }
             TyKind::Adt(id) => {
                 let disc_def = self.get_def(*id);
                 if !matches!(disc_def.kind, DefKind::Enum(_)) {

@@ -132,11 +132,7 @@ impl<'a> TypeChecker<'a> {
             }
 
             // Character values
-            (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char)) => true,
-            (Numeric::Char(_c), TyKind::Primitive(PrimitiveTy::WChar)) => {
-                // Check if char fits in wchar
-                true
-            }
+            (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char | PrimitiveTy::WChar)) => true,
             (Numeric::Char(_), _) => {
                 self.errors.push(error_span(
                     format!("{value_desc} has character value but type is not char/wchar"),
@@ -147,28 +143,28 @@ impl<'a> TypeChecker<'a> {
 
             // Integer values - check range
             (Numeric::Int8(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
             }
             (Numeric::Octet(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
             }
             (Numeric::Int16(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
             }
             (Numeric::UInt16(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
             }
             (Numeric::Int32(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
             }
             (Numeric::UInt32(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
             }
             (Numeric::Int64(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v, prim, value_desc, ty.span)
+                self.check_int_fits(*v, *prim, value_desc, ty.span)
             }
             (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
-                self.check_uint_fits(*v, prim, value_desc, ty.span)
+                self.check_uint_fits(*v, *prim, value_desc, ty.span)
             }
 
             // Float values
@@ -229,7 +225,7 @@ impl<'a> TypeChecker<'a> {
     fn check_int_fits(
         &mut self,
         value: i64,
-        prim: &PrimitiveTy,
+        prim: PrimitiveTy,
         value_desc: &str,
         span: ic_syntax::Span,
     ) -> bool {
@@ -269,7 +265,7 @@ impl<'a> TypeChecker<'a> {
     fn check_uint_fits(
         &mut self,
         value: u64,
-        prim: &PrimitiveTy,
+        prim: PrimitiveTy,
         value_desc: &str,
         span: ic_syntax::Span,
     ) -> bool {
@@ -363,19 +359,16 @@ impl<'a> TypeChecker<'a> {
 
         if let DefKind::Enum(enum_ty) = &def.kind {
             // Determine the underlying type
-            let underlying_prim = match &enum_ty.ty.kind {
-                TyKind::Primitive(p) => p,
-                _ => {
-                    // Should have been caught in validation
-                    return;
-                }
+            let TyKind::Primitive(underlying_prim) = &enum_ty.ty.kind else {
+                // Should have been caught in validation
+                return;
             };
 
             for field in &enum_ty.fields {
                 let value_desc = format!("enum field `{}::{}`", def.ident.name, field.ident.name);
                 self.check_int_fits(
                     i64::try_from(field.value).unwrap(),
-                    underlying_prim,
+                    *underlying_prim,
                     &value_desc,
                     field.ident.span,
                 );
@@ -389,19 +382,16 @@ impl<'a> TypeChecker<'a> {
 
         if let DefKind::Bitmask(bitmask_ty) = &def.kind {
             // Determine the underlying type
-            let underlying_prim = match &bitmask_ty.ty.kind {
-                TyKind::Primitive(p) => p,
-                _ => {
-                    // Should have been caught in validation
-                    return;
-                }
+            let TyKind::Primitive(underlying_prim) = &bitmask_ty.ty.kind else {
+                // Should have been caught in validation
+                return;
             };
 
             for flag in &bitmask_ty.flags {
                 let value_desc = format!("bitmask flag `{}::{}`", def.ident.name, flag.ident.name);
                 self.check_int_fits(
                     i64::try_from(flag.value).unwrap(),
-                    underlying_prim,
+                    *underlying_prim,
                     &value_desc,
                     flag.ident.span,
                 );

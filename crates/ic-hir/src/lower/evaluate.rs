@@ -117,11 +117,16 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                 // For now, assume Int32
                 match i32::try_from(*i) {
                     Ok(v) => Ok(GenericNumeric::Int32(v)),
-                    Err(_) => Ok(GenericNumeric::Int64(*i as i64)),
+                    Err(_) =>
+                    {
+                        #[allow(clippy::cast_possible_wrap)]
+                        Ok(GenericNumeric::Int64(*i as i64))
+                    }
                 }
             }
             ic_syntax::LiteralValue::Float(f) => {
                 // TODO: Handle float vs double based on suffix
+                #[allow(clippy::cast_possible_truncation)]
                 Ok(GenericNumeric::Float(*f as f32))
             }
             ic_syntax::LiteralValue::String(_s) => {
@@ -716,6 +721,7 @@ impl<'a> ExpressionEvaluator<'a> {
         let mut last_value = -1isize;
 
         for field in &def.fields {
+            #[allow(clippy::cast_possible_wrap)]
             let value = if let Some(expr) = &field.value {
                 self.eval_bound(expr) as isize
             } else {

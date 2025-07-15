@@ -86,7 +86,11 @@ fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {
     match expr {
         ic_syntax::Expr::Literal(lit) => match &lit.value {
             ic_syntax::LiteralValue::Bool(b) => crate::hir::Numeric::Bool(*b),
-            ic_syntax::LiteralValue::Int(i) => crate::hir::Numeric::Int32(*i as i32),
+            ic_syntax::LiteralValue::Int(i) =>
+            {
+                #[allow(clippy::cast_possible_truncation)]
+                crate::hir::Numeric::Int32(*i as i32)
+            }
             ic_syntax::LiteralValue::Float(f) => crate::hir::Numeric::Double(*f),
             ic_syntax::LiteralValue::String(s) => crate::hir::Numeric::String(s.clone()),
             _ => crate::hir::Numeric::Null,

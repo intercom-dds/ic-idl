@@ -97,7 +97,7 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref(key);
                 self.validate_type_ref(elem);
             }
-            TyKind::String { .. } | _ => {}
+            _ => {}
         }
     }
 

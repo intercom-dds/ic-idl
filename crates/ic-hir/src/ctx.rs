@@ -46,9 +46,16 @@ pub struct Context {
     pub scopes: ScopeTree,
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Context {
     /// Creates a new context where built-in type definitions and annotations
     /// have been injected.
+    #[must_use]
     pub fn new() -> Self {
         let mut ctx = Self::empty();
         init_ctx_state(&mut ctx);
@@ -56,6 +63,7 @@ impl Context {
     }
 
     /// Creates a new context without injecting any of the built-in types.
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             types: Arena::default(),
@@ -72,11 +80,13 @@ impl Context {
     /// Panics if the given type ID does not exist, or if the ID came from a
     /// different arena. This can only ever happen if there are multiple
     /// `Context`s whose arenas have been mixed up.
+    #[must_use]
     pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
     }
 
     /// Try to get a definition without panicking.
+    #[must_use]
     pub fn try_get(&self, id: DefId) -> Option<&Def> {
         // Arena doesn't have try_get, so we need to check bounds manually
         // For now, just use get which will panic if invalid
@@ -91,6 +101,7 @@ impl Context {
     /// Panics if the given type ID does not exist, or if the ID came from a
     /// different arena. This can only ever happen if there are multiple
     /// `Context`s whose arenas have been mixed up.
+    #[must_use]
     pub fn base_type_of(&self, id: DefId) -> Ty {
         let ty = self.type_of(id);
         match &ty.kind {
@@ -108,6 +119,8 @@ impl Context {
     /// Returns the `DefId` of the given type, if one exists. For arrays,
     /// sequences, and maps, this will return the element type if it points to
     /// a definition.
+    #[must_use]
+    #[allow(clippy::only_used_in_recursion)]
     pub fn def_of(&self, ty: &Ty) -> Option<DefId> {
         match &ty.kind {
             TyKind::Array { ty, .. }

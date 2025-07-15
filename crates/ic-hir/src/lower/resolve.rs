@@ -445,7 +445,6 @@ impl<'a> TypeResolver<'a> {
             // Look up with qualified name
             if let Some(&id) = self.name_map.get(&qualified_name) {
                 self.item_map.insert(key, id);
-            } else {
             }
 
             // Process nested items if this is a module

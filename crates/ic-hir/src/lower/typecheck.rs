@@ -60,7 +60,7 @@ impl<'a> TypeChecker<'a> {
         // Special case for struct values first
         if let Numeric::Struct {
             ty: value_ty,
-            fields,
+            fields: _,
         } = value
         {
             if let TyKind::Adt(expected_ty) = &ty.kind {
@@ -75,16 +75,15 @@ impl<'a> TypeChecker<'a> {
 
                 // Check that it's actually a struct
                 let def = self.ctx.definitions.get(*expected_ty);
-                if let DefKind::Struct(struct_ty) = &def.kind {
+                if let DefKind::Struct(_struct_ty) = &def.kind {
                     // TODO: Check field types match
                     return true;
-                } else {
-                    self.errors.push(error_span(
-                        format!("{} is not a struct type", value_desc),
-                        Label::new(ty.span).message("expected struct type"),
-                    ));
-                    return false;
                 }
+                self.errors.push(error_span(
+                    format!("{} is not a struct type", value_desc),
+                    Label::new(ty.span).message("expected struct type"),
+                ));
+                return false;
             }
         }
 
@@ -134,7 +133,7 @@ impl<'a> TypeChecker<'a> {
 
             // Character values
             (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char)) => true,
-            (Numeric::Char(c), TyKind::Primitive(PrimitiveTy::WChar)) => {
+            (Numeric::Char(_c), TyKind::Primitive(PrimitiveTy::WChar)) => {
                 // Check if char fits in wchar
                 true
             }
@@ -177,7 +176,7 @@ impl<'a> TypeChecker<'a> {
 
             // Float values
             (Numeric::Float(_), TyKind::Primitive(PrimitiveTy::Float32)) => true,
-            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Float64)) => true, // float promotes to double
+            (Numeric::Float(_v), TyKind::Primitive(PrimitiveTy::Float64)) => true, // float promotes to double
             (Numeric::Double(_), TyKind::Primitive(PrimitiveTy::Float64)) => true,
             (Numeric::Double(_), TyKind::Primitive(PrimitiveTy::Float128)) => true, // double promotes to long double
             (Numeric::Float(_) | Numeric::Double(_), _) => {
@@ -192,7 +191,7 @@ impl<'a> TypeChecker<'a> {
             }
 
             // Constant references
-            (Numeric::Const(id), expected_ty) => {
+            (Numeric::Const(id), _expected_ty) => {
                 let const_def = self.ctx.definitions.get(*id);
                 if let DefKind::Const(const_ty) = &const_def.kind {
                     // Check if the referenced constant's type matches
@@ -248,8 +247,8 @@ impl<'a> TypeChecker<'a> {
             PrimitiveTy::UInt8 => value >= 0 && value <= 255,
             PrimitiveTy::Int16 => value >= -32768 && value <= 32767,
             PrimitiveTy::UInt16 => value >= 0 && value <= 65535,
-            PrimitiveTy::Int32 => value >= -2147483648 && value <= 2147483647,
-            PrimitiveTy::UInt32 => value >= 0 && value <= 4294967295,
+            PrimitiveTy::Int32 => value >= -2_147_483_648 && value <= 2_147_483_647,
+            PrimitiveTy::UInt32 => value >= 0 && value <= 4_294_967_295,
             PrimitiveTy::Int64 => true, // Always fits
             PrimitiveTy::UInt64 => value >= 0,
             PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => true, // Can convert to float
@@ -313,7 +312,7 @@ impl<'a> TypeChecker<'a> {
             (TyKind::Primitive(p1), TyKind::Primitive(p2)) if p1 == p2 => true,
 
             // Numeric promotions (e.g., int32 to int64)
-            (TyKind::Primitive(from), TyKind::Primitive(to)) => {
+            (TyKind::Primitive(_from), TyKind::Primitive(_to)) => {
                 // TODO: Implement proper numeric promotion rules
                 false
             }

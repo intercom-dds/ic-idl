@@ -41,7 +41,7 @@ struct Data {
 "#,
     );
 
-    assert_eq!(report.warnings.len(), 0);
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -152,7 +152,7 @@ struct MultiDim {
     );
 
     // Should warn about the outer dimension being large
-    assert!(report.warnings.len() >= 1);
+    assert!(!report.warnings.is_empty());
 }
 
 #[test]

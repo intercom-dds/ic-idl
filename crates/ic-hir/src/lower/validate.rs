@@ -147,7 +147,7 @@ impl<'a> Validator<'a> {
 
     /// Validates a union definition.
     fn validate_union(&mut self, id: DefId, union_ty: &UnionTy) {
-        let (def_name, def_span) = {
+        let (def_name, _def_span) = {
             let def = self.get_def(id);
             (def.ident.name.clone(), def.span)
         };
@@ -283,7 +283,7 @@ impl<'a> Validator<'a> {
 
     /// Validates an enum definition.
     fn validate_enum(&mut self, id: DefId, enum_ty: &EnumTy) {
-        let (def_name, def_span) = {
+        let (def_name, _def_span) = {
             let def = self.get_def(id);
             (def.ident.name.clone(), def.span)
         };
@@ -457,7 +457,7 @@ impl<'a> Validator<'a> {
         }
 
         // Check each group of definitions with the same name in the same scope
-        for ((name, parent), ids) in definitions_by_name_and_scope {
+        for ((name, _parent), ids) in definitions_by_name_and_scope {
             if ids.len() < 2 {
                 continue; // No duplicates to check
             }
@@ -469,7 +469,7 @@ impl<'a> Validator<'a> {
             for &id in &ids {
                 let def = self.get_def(id);
                 match &def.kind {
-                    DefKind::Decl(decl_type) => {
+                    DefKind::Decl(_decl_type) => {
                         forward_decls.push(id);
                     }
                     DefKind::Struct(_) => {

@@ -646,4 +646,3 @@ mod tests {
         assert_eq!(type_size(&outer_type, &ctx), Some(9));
     }
 }
-

@@ -44,35 +44,35 @@ pub trait Visitor<'a> {
         walk_module(self, def, data);
     }
 
-    fn visit_struct(&mut self, def: &'a Def, data: &'a StructTy) {
+    fn visit_struct(&mut self, _def: &'a Def, data: &'a StructTy) {
         walk_struct(self, data);
     }
 
-    fn visit_except(&mut self, def: &'a Def, data: &'a ExceptTy) {
+    fn visit_except(&mut self, _def: &'a Def, data: &'a ExceptTy) {
         walk_except(self, data);
     }
 
-    fn visit_enum(&mut self, def: &'a Def, data: &'a EnumTy) {
+    fn visit_enum(&mut self, _def: &'a Def, data: &'a EnumTy) {
         walk_enum(self, data);
     }
 
-    fn visit_union(&mut self, def: &'a Def, data: &'a UnionTy) {
+    fn visit_union(&mut self, _def: &'a Def, data: &'a UnionTy) {
         walk_union(self, data);
     }
 
-    fn visit_alias(&mut self, def: &'a Def, data: &'a AliasTy) {
+    fn visit_alias(&mut self, _def: &'a Def, data: &'a AliasTy) {
         walk_alias(self, data);
     }
 
-    fn visit_bitmask(&mut self, def: &'a Def, data: &'a BitmaskTy) {
+    fn visit_bitmask(&mut self, _def: &'a Def, data: &'a BitmaskTy) {
         walk_bitmask(self, data);
     }
 
-    fn visit_bitset(&mut self, def: &'a Def, data: &'a BitsetTy) {
+    fn visit_bitset(&mut self, _def: &'a Def, data: &'a BitsetTy) {
         walk_bitset(self, data);
     }
 
-    fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {
+    fn visit_const(&mut self, _def: &'a Def, data: &'a ConstTy) {
         walk_const(self, data);
     }
 
@@ -84,7 +84,7 @@ pub trait Visitor<'a> {
         walk_valuetype(self, def, data);
     }
 
-    fn visit_decl(&mut self, def: &'a Def, data: &'a Decl) {
+    fn visit_decl(&mut self, _def: &'a Def, data: &'a Decl) {
         walk_decl(self, data);
     }
 
@@ -172,7 +172,7 @@ where
     // Note: We don't visit nested types here as they're already visited via walk_def
 }
 
-pub fn walk_module<'a, V>(visitor: &mut V, _def: &'a Def, _data: &'a ModuleTy)
+pub fn walk_module<'a, V>(_visitor: &mut V, _def: &'a Def, _data: &'a ModuleTy)
 where
     V: Visitor<'a> + ?Sized,
 {

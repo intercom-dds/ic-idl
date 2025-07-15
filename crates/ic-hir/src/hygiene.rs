@@ -43,7 +43,7 @@ struct Hygiene<'a> {
 impl Hygiene<'_> {
     fn check_def<'a>(&mut self, elems: impl Iterator<Item = &'a Ident>) {
         let mut seen = CaseSet::default();
-        self.with_set(&mut seen, elems)
+        self.with_set(&mut seen, elems);
     }
 
     fn with_set<'a>(&mut self, seen: &mut CaseSet, elems: impl Iterator<Item = &'a Ident>) {
@@ -60,7 +60,7 @@ impl Hygiene<'_> {
 }
 
 impl<'a> Visitor<'a> for Hygiene<'_> {
-    fn visit_struct(&mut self, def: &'a Def, data: &'a StructTy) {
+    fn visit_struct(&mut self, _def: &'a Def, data: &'a StructTy) {
         let mut seen = CaseSet::default();
 
         // Iterate over members of all parents first
@@ -70,36 +70,33 @@ impl<'a> Visitor<'a> for Hygiene<'_> {
 
             // TODO: move this to a separate function and re-use for
             // valuetype/interfaces.
-            match &parent.kind {
-                DefKind::Struct(v) => {
-                    self.with_set(&mut seen, v.members.iter().map(|v| &v.ident));
-                    parent_id = v.parent;
-                }
-                _ => (),
+            if let DefKind::Struct(v) = &parent.kind {
+                self.with_set(&mut seen, v.members.iter().map(|v| &v.ident));
+                parent_id = v.parent;
             }
         }
 
         self.with_set(&mut seen, data.members.iter().map(|v| &v.ident));
     }
 
-    fn visit_except(&mut self, def: &'a Def, data: &'a ExceptTy) {
+    fn visit_except(&mut self, _def: &'a Def, data: &'a ExceptTy) {
         self.check_def(data.members.iter().map(|v| &v.ident));
     }
 
-    fn visit_enum(&mut self, def: &'a Def, data: &'a EnumTy) {
+    fn visit_enum(&mut self, _def: &'a Def, data: &'a EnumTy) {
         self.check_def(data.fields.iter().map(|v| &v.ident));
     }
 
-    fn visit_bitmask(&mut self, def: &'a Def, data: &'a BitmaskTy) {
+    fn visit_bitmask(&mut self, _def: &'a Def, data: &'a BitmaskTy) {
         self.check_def(data.flags.iter().map(|v| &v.ident));
     }
 
-    fn visit_union(&mut self, def: &'a Def, data: &'a UnionTy) {
+    fn visit_union(&mut self, _def: &'a Def, data: &'a UnionTy) {
         // TODO: check for duplicated case labels too?
         self.check_def(data.variants.iter().map(|v| &v.ident));
     }
 
-    fn visit_interface(&mut self, def: &'a Def, data: &'a InterfaceTy) {
+    fn visit_interface(&mut self, _def: &'a Def, data: &'a InterfaceTy) {
         // TODO: attributes and nested items. continue traversing nested defs.
         self.check_def(data.prototypes.iter().map(|v| &v.ident));
     }

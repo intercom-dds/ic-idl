@@ -38,16 +38,19 @@ use ic_diagnostic::{Diag, Label, error_span};
 use ic_syntax::{Ident, Item, Span};
 
 use crate::Context;
-use crate::hir::*;
+use crate::hir::{
+    AliasTy, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
+    EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, StructTy, Ty, TyKind, UnionTy, ValueTy,
+};
 use crate::scope::ScopeId;
 
-/// Maps fully-qualified names to their DefIds.
+/// Maps fully-qualified names to their `DefIds`.
 pub type NameMap = CaseMap<DefId>;
 
 /// Tracks the current scope during collection.
 #[derive(Debug)]
 struct ScopeStack {
-    /// Stack of (name, DefId) pairs representing the current scope hierarchy.
+    /// Stack of (name, `DefId`) pairs representing the current scope hierarchy.
     scopes: Vec<(String, Option<DefId>)>,
 }
 
@@ -183,7 +186,7 @@ impl<'a> NameCollector<'a> {
                 // We have at least one actual definition
                 // If both are definitions (not forward declarations), it's an error
                 // UNLESS they are both modules (which can be reopened)
-                if !existing_is_decl && !new_is_decl && !(existing_is_module && new_is_module) {
+                if !(existing_is_decl || new_is_decl || existing_is_module && new_is_module) {
                     self.errors.push(
                         error_span(
                             format!("duplicate definition of `{}`", ident.name),
@@ -234,6 +237,7 @@ impl<'a> NameCollector<'a> {
     }
 
     /// Creates a definition that introduces a new scope.
+    #[allow(dead_code)]
     fn alloc_scoped_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
         let id = self.alloc_definition(ident.clone(), kind, span);
         self.scope_stack.push(ident.name.clone(), id);
@@ -456,8 +460,7 @@ impl<'a> NameCollector<'a> {
     }
 
     fn collect_simple_definition(&mut self, ident: Ident, kind: DefKind, span: Span) -> DefId {
-        let id = self.alloc_definition(ident, kind, span);
-        id
+        self.alloc_definition(ident, kind, span)
     }
 
     fn collect_simple_definition_with_annotations(
@@ -467,8 +470,7 @@ impl<'a> NameCollector<'a> {
         span: Span,
         annotations: &[ic_syntax::AnnotationAppl],
     ) -> DefId {
-        let id = self.alloc_definition_with_annotations(ident, kind, span, annotations);
-        id
+        self.alloc_definition_with_annotations(ident, kind, span, annotations)
     }
 
     fn collect_item(&mut self, item: &Item) -> Vec<DefId> {
@@ -491,9 +493,8 @@ impl<'a> NameCollector<'a> {
 
                 // If the struct has members, it's a complete definition, not a forward declaration
                 if !v.members.is_empty() {
-                    if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
-                        *flags &= !DefFlags::IS_INCOMPLETE;
-                    }
+                    let Def { flags, .. } = self.ctx.definitions.get_mut(id);
+                    *flags &= !DefFlags::IS_INCOMPLETE;
                 }
 
                 // Already registered in scope by alloc_definition
@@ -512,9 +513,8 @@ impl<'a> NameCollector<'a> {
 
                 // If the union has fields, it's a complete definition
                 if !v.fields.is_empty() {
-                    if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
-                        *flags &= !DefFlags::IS_INCOMPLETE;
-                    }
+                    let Def { flags, .. } = self.ctx.definitions.get_mut(id);
+                    *flags &= !DefFlags::IS_INCOMPLETE;
                 }
 
                 // Already registered in scope by alloc_definition
@@ -541,9 +541,8 @@ impl<'a> NameCollector<'a> {
 
                 // If the exception has members, it's a complete definition
                 if !v.members.is_empty() {
-                    if let Def { flags, .. } = self.ctx.definitions.get_mut(id) {
-                        *flags &= !DefFlags::IS_INCOMPLETE;
-                    }
+                    let Def { flags, .. } = self.ctx.definitions.get_mut(id);
+                    *flags &= !DefFlags::IS_INCOMPLETE;
                 }
 
                 // Already registered in scope by alloc_definition

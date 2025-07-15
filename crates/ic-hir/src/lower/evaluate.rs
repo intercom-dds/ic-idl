@@ -46,6 +46,7 @@ use crate::scope::ScopeId;
 /// Literal type for ic-expr evaluation.
 #[derive(Debug, Clone)]
 struct IdlLiteral {
+    #[allow(dead_code)]
     span: ic_syntax::Span,
     value: ic_syntax::LiteralValue,
 }
@@ -94,6 +95,7 @@ fn from_hir_numeric(n: &Numeric) -> Option<GenericNumeric> {
 struct IdlEvalContext<'a> {
     ctx: &'a Context,
     config: ic_expr::EvalConfig,
+    #[allow(dead_code)]
     errors: &'a mut Vec<Diag>,
     current_scope: crate::scope::ScopeId,
 }
@@ -117,7 +119,7 @@ impl<'a> ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'a> {
                 // TODO: Handle float vs double based on suffix
                 Ok(GenericNumeric::Float(*f as f32))
             }
-            ic_syntax::LiteralValue::String(s) => {
+            ic_syntax::LiteralValue::String(_s) => {
                 // String literals are not supported in numeric expressions
                 Err(ExprError::Custom(
                     "string literals cannot be used in arithmetic expressions".to_string(),
@@ -269,6 +271,7 @@ fn path_to_string(path: &ic_syntax::Path) -> String {
 }
 
 /// Extract name from const def
+#[allow(dead_code)]
 fn extract_const_name(def: &ic_syntax::ConstDef) -> &str {
     match &def.decl {
         ic_syntax::Declarator::Simple(ident) => &ident.name,
@@ -330,7 +333,7 @@ fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, Str
 
         Expr::Group(group) => convert_expr(&group.expr),
 
-        Expr::InitList(init) => {
+        Expr::InitList(_init) => {
             // For now, return a placeholder - proper evaluation needs type context
             // This will be handled in evaluate_const where we have the expected type
             Err("initializer lists need type context for evaluation".to_string())
@@ -441,6 +444,7 @@ impl<'a> ExpressionEvaluator<'a> {
     }
 
     /// Handles overflow by issuing a warning and returning a wrapped value.
+    #[allow(dead_code)]
     fn handle_overflow(&mut self, expr: &Expr, op: ic_expr::Op) -> Numeric {
         self.errors.push(warn_span(
             format!("arithmetic overflow in {:?} operation", op),
@@ -1037,7 +1041,7 @@ impl<'a> ExpressionEvaluator<'a> {
     fn eval_sequence_init(
         &mut self,
         init_list: &ic_syntax::InitList,
-        elem_ty: Ty,
+        _elem_ty: Ty,
         seq_type_id: DefId,
     ) -> Numeric {
         let mut values = Vec::new();
@@ -1066,8 +1070,8 @@ impl<'a> ExpressionEvaluator<'a> {
     fn eval_map_init(
         &mut self,
         init_list: &ic_syntax::InitList,
-        key_ty: Ty,
-        elem_ty: Ty,
+        _key_ty: Ty,
+        _elem_ty: Ty,
         map_type_id: DefId,
     ) -> Numeric {
         let mut entries = Vec::new();
@@ -1374,7 +1378,7 @@ impl<'a> ExpressionEvaluator<'a> {
 /// Evaluates all expressions in the HIR.
 pub fn evaluate_expressions(
     ctx: &mut Context,
-    name_map: &super::collect::NameMap,
+    _name_map: &super::collect::NameMap,
     items: &[Item],
 ) -> Vec<Diag> {
     let mut evaluator = ExpressionEvaluator::new(ctx);

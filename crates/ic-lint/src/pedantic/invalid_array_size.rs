@@ -26,94 +26,107 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::Label;
-use ic_syntax::{Declarator, Expr, LiteralValue, OpKind};
-use ic_syntax::visit::{Visitor, walk_tree};
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{Ty, TyKind};
+use ic_hir::type_size::type_size;
+use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
 
+// Maximum reasonable size in bytes - 16KB
+const MAX_REASONABLE_SIZE_BYTES: usize = 16384;
+
+/// Lint that checks for unreasonably large array sizes based on total byte size.
 pub struct InvalidArraySize<'a> {
     ctx: &'a LintCtx<'a>,
+    hir_ctx: &'a ic_hir::Context,
 }
-
-// Reasonable limit for array sizes - 1 million elements
-const MAX_REASONABLE_ARRAY_SIZE: i64 = 1_000_000;
 
 impl<'a> Lint<'a> for InvalidArraySize<'a> {
     fn name() -> &'static str {
-        "InvalidArraySize"
+        "invalid_array_size"
     }
 
     fn category() -> Category {
         Category::Pedantic
     }
 
-    fn check(ctx: &'a LintCtx<'_>, ast: &[ic_syntax::Item]) {
-        let mut visitor = InvalidArraySize { ctx };
-        walk_tree(&mut visitor, ast);
-    }
-}
-
-impl<'a> InvalidArraySize<'a> {
-    fn check_array_bounds(&mut self, arr: &ic_syntax::ArrayDeclarator) {
-        for bound_expr in &arr.bounds {
-            if let Some(size) = self.get_literal_value(bound_expr) {
-                if size > MAX_REASONABLE_ARRAY_SIZE {
-                    if let Some(mut diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        &format!(
-                            "array size {} exceeds reasonable limit of {}",
-                            size, MAX_REASONABLE_ARRAY_SIZE
-                        ),
-                        Label::new(ic_syntax::util::expr_span(bound_expr))
-                            .message("very large array size"),
-                    ) {
-                        diag = diag.help("consider using a sequence instead for large collections");
-                        self.ctx.report(Self::name(), Self::category(), diag);
-                    }
-                } else if size < 0 {
-                    // This would be caught by other lints, but report it here too
-                    if let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        "negative array size",
-                        Label::new(ic_syntax::util::expr_span(bound_expr))
-                            .message("array size must be positive"),
-                    ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
-                    }
-                }
-            }
-        }
-    }
-
-    fn get_literal_value(&self, expr: &Expr) -> Option<i64> {
-        match expr {
-            Expr::Literal(lit) => match &lit.value {
-                LiteralValue::Int(v) => Some(*v as i64),
-                _ => None,
-            },
-            Expr::Unary(unary) => {
-                if let Some(val) = self.get_literal_value(&unary.expr) {
-                    match &unary.op.kind {
-                        OpKind::Sub => Some(-val),
-                        OpKind::Add => Some(val),
-                        _ => None,
-                    }
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
+        let mut visitor = InvalidArraySize {
+            ctx,
+            hir_ctx: &hir.context,
+        };
+        ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
 
 impl<'a> Visitor<'a> for InvalidArraySize<'a> {
-    fn visit_declarator(&mut self, decl: &'a Declarator) {
-        if let Declarator::Array(arr) = decl {
-            self.check_array_bounds(arr);
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        match &ty.kind {
+            TyKind::Array { ty: elem_ty, len } => {
+                // Calculate the total size of the array
+                if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
+                    let total_size = elem_size * len;
+                    if total_size > MAX_REASONABLE_SIZE_BYTES {
+                        if let Some(diag) = self.ctx.diag_span(
+                            Self::name(),
+                            Self::category(),
+                            &format!(
+                                "array size {} bytes exceeds reasonable limit of {} bytes ({} elements × {} bytes each)",
+                                total_size, MAX_REASONABLE_SIZE_BYTES, len, elem_size
+                            ),
+                            Label::new(ty.span).message("very large array"),
+                        ) {
+                            self.ctx.report(Self::name(), Self::category(), diag);
+                        }
+                    }
+                }
+            }
+            TyKind::Sequence { ty: elem_ty, bound } => {
+                // For bounded sequences, check the maximum possible size
+                if let Some(b) = bound {
+                    if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
+                        let max_size = elem_size * b;
+                        if max_size > MAX_REASONABLE_SIZE_BYTES {
+                            if let Some(diag) = self.ctx.diag_span(
+                                Self::name(),
+                                Self::category(),
+                                &format!(
+                                    "sequence maximum size {} bytes exceeds reasonable limit of {} bytes ({} elements × {} bytes each)",
+                                    max_size, MAX_REASONABLE_SIZE_BYTES, b, elem_size
+                                ),
+                                Label::new(ty.span).message("very large sequence bound"),
+                            ) {
+                                self.ctx.report(Self::name(), Self::category(), diag);
+                            }
+                        }
+                    }
+                }
+            }
+            TyKind::String { bound, wide } => {
+                // For bounded strings, check based on character size
+                if let Some(b) = bound {
+                    let char_size = if *wide { 4 } else { 1 }; // wchar is 4 bytes, char is 1 byte
+                    let max_size = char_size * b;
+                    if max_size > MAX_REASONABLE_SIZE_BYTES {
+                        if let Some(diag) = self.ctx.diag_span(
+                            Self::name(),
+                            Self::category(),
+                            &format!(
+                                "string maximum size {} bytes exceeds reasonable limit of {} bytes ({} characters × {} bytes each)",
+                                max_size, MAX_REASONABLE_SIZE_BYTES, b, char_size
+                            ),
+                            Label::new(ty.span).message("very large string bound"),
+                        ) {
+                            self.ctx.report(Self::name(), Self::category(), diag);
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
-        // No walk function for declarator
+
+        // Continue visiting nested types
+        ic_hir::visit::walk_ty(self, ty);
     }
 }

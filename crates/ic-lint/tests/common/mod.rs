@@ -29,6 +29,7 @@ use ic_diagnostic::Level;
 use ic_lint::{Category, LintConfig, Report};
 use ic_vfs::SourceMap;
 
+#[allow(dead_code)]
 pub fn test_lint(source: &str) -> String {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);
@@ -68,6 +69,7 @@ pub fn test_lint(source: &str) -> String {
     output
 }
 
+#[allow(dead_code)]
 pub fn lint_hir(source: &str) -> Report {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);

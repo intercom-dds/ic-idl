@@ -109,7 +109,6 @@ union MyUnion switch (unsigned short) {
 
     // This might not be caught if -1 is converted to a large unsigned value
     // The test depends on how the HIR handles negative literals for unsigned types
-    assert!(report.errors.len() >= 0);
 }
 
 #[test]

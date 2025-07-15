@@ -78,7 +78,6 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     self.ctx.report(Self::name(), Self::category(), diag);
                 }
             }
-            TyKind::Sequence { .. } => {}
             TyKind::String { bound: Some(b), .. } if *b == 0 => {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
@@ -89,7 +88,6 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     self.ctx.report(Self::name(), Self::category(), diag);
                 }
             }
-            TyKind::String { .. } => {}
             TyKind::Map { bound: Some(b), .. } if *b == 0 => {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
@@ -100,7 +98,6 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     self.ctx.report(Self::name(), Self::category(), diag);
                 }
             }
-            TyKind::Map { .. } => {}
             _ => {}
         }
 

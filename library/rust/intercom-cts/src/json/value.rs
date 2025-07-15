@@ -79,34 +79,42 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
 
+    #[must_use]
     pub fn is_bool(&self) -> bool {
         matches!(self, Value::Bool(_))
     }
 
+    #[must_use]
     pub fn is_integer(&self) -> bool {
         matches!(self, Value::Number(Number::Signed(_) | Number::Unsigned(_)))
     }
 
+    #[must_use]
     pub fn is_float(&self) -> bool {
         matches!(self, Value::Number(Number::Float(_)))
     }
 
+    #[must_use]
     pub fn is_string(&self) -> bool {
         matches!(self, Value::String(_))
     }
 
+    #[must_use]
     pub fn is_array(&self) -> bool {
         matches!(self, Value::Array(_))
     }
 
+    #[must_use]
     pub fn is_object(&self) -> bool {
         matches!(self, Value::Object(_))
     }
 
+    #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
             Some(*v)
@@ -115,6 +123,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_u64(&self) -> Option<u64> {
         if let Self::Number(Number::Unsigned(v)) = self {
             Some(*v)
@@ -123,6 +132,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_i64(&self) -> Option<i64> {
         if let Self::Number(Number::Signed(v)) = self {
             Some(*v)
@@ -131,6 +141,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_f64(&self) -> Option<f64> {
         if let Self::Number(Number::Float(v)) = self {
             Some(*v)
@@ -139,6 +150,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         if let Self::String(v) = self {
             Some(v)

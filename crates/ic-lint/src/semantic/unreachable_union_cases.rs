@@ -84,10 +84,10 @@ impl UnreachableUnionCases<'_> {
         }
 
         // Check for out-of-range case labels
-        if let Some((min, max)) = self.get_discriminator_range(&union_ty.disc.kind) {
+        if let Some((min, max)) = Self::get_discriminator_range(&union_ty.disc.kind) {
             for variant in &union_ty.variants {
                 for label in &variant.labels {
-                    if let Some(value) = self.numeric_to_i64(label) {
+                    if let Some(value) = Self::numeric_to_i64(label) {
                         if value < min || value > max {
                             if let Some(diag) = self.ctx.diag_span(
                                 Self::name(),
@@ -107,7 +107,7 @@ impl UnreachableUnionCases<'_> {
         }
     }
 
-    fn get_discriminator_range(&self, ty_kind: &TyKind) -> Option<(i64, i64)> {
+    fn get_discriminator_range(ty_kind: &TyKind) -> Option<(i64, i64)> {
         match ty_kind {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveTy::Bool => Some((0, 1)),
@@ -131,7 +131,7 @@ impl UnreachableUnionCases<'_> {
         }
     }
 
-    fn numeric_to_i64(&self, num: &Numeric) -> Option<i64> {
+    fn numeric_to_i64(num: &Numeric) -> Option<i64> {
         match num {
             Numeric::Bool(v) => Some(i64::from(*v)),
             Numeric::Char(v) => Some(i64::from(*v as u32)),

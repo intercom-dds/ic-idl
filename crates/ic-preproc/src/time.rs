@@ -80,7 +80,7 @@ fn format_date(secs: u64) -> String {
         }
     }
 
-    format!("{} {:2} {}", day + 1, MONTH[month], year)
+    format!("{} {:2} {year}", day + 1, MONTH[month])
 }
 
 fn now_secs() -> Option<u64> {

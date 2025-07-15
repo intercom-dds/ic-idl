@@ -58,7 +58,7 @@ impl BitBound<'_> {
             return;
         }
 
-        if let Some(bit_pos) = self.get_bit_position(ann) {
+        if let Some(bit_pos) = Self::get_bit_position(ann) {
             if bit_pos >= type_bits {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
@@ -73,7 +73,7 @@ impl BitBound<'_> {
         }
     }
 
-    fn get_bit_position(&self, ann: &Ann) -> Option<u32> {
+    fn get_bit_position(ann: &Ann) -> Option<u32> {
         ann.args.first().and_then(|arg| match &arg.value {
             Numeric::Int32(v) if *v >= 0 => Some(*v as u32),
             Numeric::UInt32(v) => Some(*v),
@@ -86,14 +86,10 @@ impl BitBound<'_> {
     fn get_type_bits(ty: &TyKind) -> Option<u32> {
         match ty {
             TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::UInt8 => Some(8),
-                PrimitiveTy::UInt16 => Some(16),
-                PrimitiveTy::UInt32 => Some(32),
-                PrimitiveTy::UInt64 => Some(64),
-                PrimitiveTy::Int8 => Some(8),
-                PrimitiveTy::Int16 => Some(16),
-                PrimitiveTy::Int32 => Some(32),
-                PrimitiveTy::Int64 => Some(64),
+                PrimitiveTy::UInt8 | PrimitiveTy::Int8 => Some(8),
+                PrimitiveTy::UInt16 | PrimitiveTy::Int16 => Some(16),
+                PrimitiveTy::UInt32 | PrimitiveTy::Int32 => Some(32),
+                PrimitiveTy::UInt64 | PrimitiveTy::Int64 => Some(64),
                 _ => None,
             },
             TyKind::Adt(_) => {

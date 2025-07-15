@@ -62,13 +62,12 @@ impl InvalidEnumValue<'_> {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveTy::Int8 => (i64::from(i8::MIN), i64::from(i8::MAX)),
                 PrimitiveTy::Int16 => (i64::from(i16::MIN), i64::from(i16::MAX)),
-                PrimitiveTy::Int32 => (i64::from(i32::MIN), i64::from(i32::MAX)),
+                PrimitiveTy::Int32 | _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
                 PrimitiveTy::Int64 => (i64::MIN, i64::MAX),
                 PrimitiveTy::UInt8 => (0, i64::from(u8::MAX)),
                 PrimitiveTy::UInt16 => (0, i64::from(u16::MAX)),
                 PrimitiveTy::UInt32 => (0, i64::from(u32::MAX)),
                 PrimitiveTy::UInt64 => (0, i64::MAX), // Limited by i64
-                _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
             },
             _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
         };

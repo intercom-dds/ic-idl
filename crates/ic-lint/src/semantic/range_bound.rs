@@ -56,18 +56,18 @@ impl RangeBound<'_> {
         let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
         match name {
             "min" => {
-                if let Some(value) = self.get_numeric_arg(ann, 0) {
+                if let Some(value) = Self::get_numeric_arg(ann, 0) {
                     self.check_min_bound(value, ty, ann);
                 }
             }
             "max" => {
-                if let Some(value) = self.get_numeric_arg(ann, 0) {
+                if let Some(value) = Self::get_numeric_arg(ann, 0) {
                     self.check_max_bound(value, ty, ann);
                 }
             }
             "range" => {
                 if let (Some(min), Some(max)) =
-                    (self.get_numeric_arg(ann, 0), self.get_numeric_arg(ann, 1))
+                    (Self::get_numeric_arg(ann, 0), Self::get_numeric_arg(ann, 1))
                 {
                     self.check_min_bound(min, ty, ann);
                     self.check_max_bound(max, ty, ann);
@@ -78,13 +78,13 @@ impl RangeBound<'_> {
         }
     }
 
-    fn get_numeric_arg<'b>(&self, ann: &'b Ann, index: usize) -> Option<&'b Numeric> {
+    fn get_numeric_arg<'b>(ann: &'b Ann, index: usize) -> Option<&'b Numeric> {
         ann.args.get(index).map(|arg| &arg.value)
     }
 
     fn check_min_bound(&mut self, value: &Numeric, ty: &Ty, ann: &Ann) {
-        if let Some((min, _)) = self.get_type_bounds(ty) {
-            if let Some(val) = self.numeric_to_i64(value) {
+        if let Some((min, _)) = Self::get_type_bounds(ty) {
+            if let Some(val) = Self::numeric_to_i64(value) {
                 if val < min {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
@@ -101,8 +101,8 @@ impl RangeBound<'_> {
     }
 
     fn check_max_bound(&mut self, value: &Numeric, ty: &Ty, ann: &Ann) {
-        if let Some((_, max)) = self.get_type_bounds(ty) {
-            if let Some(val) = self.numeric_to_i64(value) {
+        if let Some((_, max)) = Self::get_type_bounds(ty) {
+            if let Some(val) = Self::numeric_to_i64(value) {
                 if val > max {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
@@ -119,7 +119,8 @@ impl RangeBound<'_> {
     }
 
     fn check_range_order(&mut self, min: &Numeric, max: &Numeric, ann: &Ann) {
-        if let (Some(min_val), Some(max_val)) = (self.numeric_to_i64(min), self.numeric_to_i64(max))
+        if let (Some(min_val), Some(max_val)) =
+            (Self::numeric_to_i64(min), Self::numeric_to_i64(max))
         {
             if min_val > max_val {
                 if let Some(diag) = self.ctx.diag_span(
@@ -134,7 +135,7 @@ impl RangeBound<'_> {
         }
     }
 
-    fn numeric_to_i64(&self, num: &Numeric) -> Option<i64> {
+    fn numeric_to_i64(num: &Numeric) -> Option<i64> {
         match num {
             Numeric::Int8(v) => Some(i64::from(*v)),
             Numeric::Int16(v) => Some(i64::from(*v)),
@@ -151,7 +152,7 @@ impl RangeBound<'_> {
         }
     }
 
-    fn get_type_bounds(&self, ty: &Ty) -> Option<(i64, i64)> {
+    fn get_type_bounds(ty: &Ty) -> Option<(i64, i64)> {
         match &ty.kind {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),

@@ -56,9 +56,9 @@ fn create_macro_heavy_input() -> String {
             i,
             i + 1
         ));
-        input.push_str(&format!("int min{} = MIN({}, {});\n", i, i * 2, i * 3));
+        input.push_str(&format!("int min{i} = MIN({}, {});\n", i * 2, i * 3));
         input.push_str(&format!("const char* str{i} = STRINGIFY(value_{i});\n"));
-        input.push_str(&format!("int CONCAT(var_, {}) = {};\n", i, i * 10));
+        input.push_str(&format!("int CONCAT(var_, {i}) = {};\n", i * 10));
     }
 
     input
@@ -100,7 +100,7 @@ fn create_token_manipulation_input() -> String {
 
     for i in 0..100 {
         input.push_str(&format!("MAKE_FUNC(test_{i})\n"));
-        input.push_str(&format!("DECLARE_VAR(int, var_{}, {})\n", i, i * 100));
+        input.push_str(&format!("DECLARE_VAR(int, var_{i}, {})\n", i * 100));
     }
 
     input

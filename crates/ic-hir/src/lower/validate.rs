@@ -97,8 +97,7 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref(key);
                 self.validate_type_ref(elem);
             }
-            TyKind::String { .. } => {}
-            _ => {}
+            TyKind::String { .. } | _ => {}
         }
     }
 
@@ -303,7 +302,7 @@ impl<'a> Validator<'a> {
 
             if !field_values.insert(field.value) {
                 self.errors.push(error_span(
-                    format!("duplicate value {} in enum `{}`", field.value, def_name),
+                    format!("duplicate value {} in enum `{def_name}`", field.value),
                     Label::new(field.ident.span).message("value already used"),
                 ));
             }

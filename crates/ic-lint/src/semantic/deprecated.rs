@@ -81,7 +81,7 @@ impl Deprecated<'_> {
         if let TyKind::Adt(def_id) = &ty.kind {
             if self.deprecated_items.contains(def_id) {
                 let def = self.hir_ctx.definitions.get(*def_id);
-                let message = self.get_deprecation_message(def);
+                let message = Self::get_deprecation_message(def);
 
                 if let Some(mut diag) = self.ctx.diag_span(
                     Self::name(),
@@ -102,7 +102,7 @@ impl Deprecated<'_> {
     fn check_const_usage(&mut self, def_id: DefId, span: ic_syntax::Span) {
         if self.deprecated_items.contains(&def_id) {
             let def = self.hir_ctx.definitions.get(def_id);
-            let message = self.get_deprecation_message(def);
+            let message = Self::get_deprecation_message(def);
 
             if let Some(mut diag) = self.ctx.diag_span(
                 Self::name(),
@@ -116,7 +116,7 @@ impl Deprecated<'_> {
         }
     }
 
-    fn get_deprecation_message(&self, def: &Def) -> String {
+    fn get_deprecation_message(def: &Def) -> String {
         // Try to find a deprecation message in the annotation
         for ann in &def.annotations {
             let name = ann.path.segments.last().map_or("", |s| s.name.as_str());

@@ -33,16 +33,13 @@ use crate::hir::{PrimitiveTy, Ty, TyKind};
 #[must_use]
 pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
     match &ty.kind {
-        TyKind::Any => None,      // Unknown size
+        TyKind::Any | TyKind::Sequence { .. } | TyKind::String { .. } | TyKind::Map { .. } => None, // Dynamic or unknown size
         TyKind::Fixed => Some(8), // Fixed point, assume 64-bit
         TyKind::Primitive(prim) => primitive_size(prim),
         TyKind::Array { ty: elem_ty, len } => {
             // Array size = element size * count
             type_size(elem_ty, ctx).map(|elem_size| elem_size * len)
         }
-        TyKind::Sequence { .. } => None, // Dynamic size
-        TyKind::String { .. } => None,   // Dynamic size
-        TyKind::Map { .. } => None,      // Dynamic size
         TyKind::Adt(id) => {
             // Look up the definition and get its size
             let def = ctx.definitions.get(*id);

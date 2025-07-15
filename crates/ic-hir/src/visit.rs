@@ -284,8 +284,7 @@ where
     V: Visitor<'a> + ?Sized,
 {
     match &ty.kind {
-        TyKind::Array { ty, .. } => visitor.visit_ty(ty),
-        TyKind::Sequence { ty, .. } => visitor.visit_ty(ty),
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => visitor.visit_ty(ty),
         TyKind::Map { key, elem, .. } => {
             visitor.visit_ty(key);
             visitor.visit_ty(elem);

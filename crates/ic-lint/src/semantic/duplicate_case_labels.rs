@@ -75,7 +75,7 @@ impl DuplicateCaseLabels<'_> {
             }
 
             for label in &variant.labels {
-                let label_key = self.numeric_to_string(label);
+                let label_key = Self::numeric_to_string(label);
                 if !seen_labels.insert(label_key.clone()) {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
@@ -97,7 +97,7 @@ impl DuplicateCaseLabels<'_> {
         }
     }
 
-    fn numeric_to_string(&self, num: &Numeric) -> String {
+    fn numeric_to_string(num: &Numeric) -> String {
         match num {
             Numeric::Bool(v) => v.to_string(),
             Numeric::Char(v) => format!("'{v}'"),

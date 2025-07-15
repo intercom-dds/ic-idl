@@ -183,7 +183,7 @@ impl<'a> TypeResolver<'a> {
     }
 
     /// Resolves a declarator into (name, type).
-    fn resolve_declarator(&mut self, decl: &ic_syntax::Declarator, base_ty: Ty) -> (Ident, Ty) {
+    fn resolve_declarator(decl: &ic_syntax::Declarator, base_ty: Ty) -> (Ident, Ty) {
         match decl {
             ic_syntax::Declarator::Simple(ident) => (ident.clone(), base_ty),
             ic_syntax::Declarator::Array(arr) => {
@@ -211,7 +211,7 @@ impl<'a> TypeResolver<'a> {
             let base_ty = self.resolve_type(&field.ty);
 
             for decl in &field.names {
-                let (ident, ty) = self.resolve_declarator(decl, base_ty.clone());
+                let (ident, ty) = Self::resolve_declarator(decl, base_ty.clone());
                 members.push(Member {
                     ident,
                     ty,
@@ -265,7 +265,7 @@ impl<'a> TypeResolver<'a> {
             let variant = match &field.field {
                 UnionElement::Member(m) => {
                     let base_ty = self.resolve_type(&m.ty);
-                    let (ident, ty) = self.resolve_declarator(&m.decl, base_ty);
+                    let (ident, ty) = Self::resolve_declarator(&m.decl, base_ty);
 
                     Variant {
                         annotations: Vec::new(), // TODO
@@ -332,7 +332,7 @@ impl<'a> TypeResolver<'a> {
     /// Resolves an alias definition.
     fn resolve_alias(&mut self, id: DefId, def: &ic_syntax::AliasDef, decl_idx: usize) {
         let base_ty = self.resolve_type(&def.ty);
-        let (_, ty) = self.resolve_declarator(&def.decl[decl_idx], base_ty);
+        let (_, ty) = Self::resolve_declarator(&def.decl[decl_idx], base_ty);
 
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
@@ -381,7 +381,7 @@ impl<'a> TypeResolver<'a> {
 
                 for param in &proto.params {
                     let param_ty = self.resolve_type(&param.ty);
-                    let (ident, ty) = self.resolve_declarator(&param.decl, param_ty);
+                    let (ident, ty) = Self::resolve_declarator(&param.decl, param_ty);
 
                     params.push(Parameter {
                         ident,
@@ -436,7 +436,7 @@ impl<'a> TypeResolver<'a> {
             let qualified_name = if scope.is_empty() {
                 name.clone()
             } else {
-                format!("{}::{}", scope.join("::"), name)
+                format!("{}::{name}", scope.join("::"))
             };
 
             let key = ItemKey {
@@ -572,7 +572,7 @@ impl<'a> TypeResolver<'a> {
         let base_ty = self.resolve_type(&ast.ty);
 
         // Apply declarator to get the actual type
-        let (_, ty) = self.resolve_declarator(&ast.decl, base_ty);
+        let (_, ty) = Self::resolve_declarator(&ast.decl, base_ty);
 
         // Update the constant's type
         let def = self.ctx.definitions.get_mut(id);

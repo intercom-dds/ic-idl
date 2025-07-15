@@ -793,7 +793,7 @@ impl<'a> ExpressionEvaluator<'a> {
 
                 // If the type is a placeholder (Any), assign the appropriate type based on size
                 if matches!(updated_field.ty.kind, TyKind::Any) {
-                    updated_field.ty = self.default_bitfield_type(updated_field.size);
+                    updated_field.ty = Self::default_bitfield_type(updated_field.size);
                 }
             }
         }
@@ -807,7 +807,7 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Determines the default type for a bitfield based on its size.
     /// Returns the smallest unsigned integer type that can hold the specified number of bits.
-    fn default_bitfield_type(&self, bits: usize) -> Ty {
+    fn default_bitfield_type(bits: usize) -> Ty {
         let prim = if bits == 1 {
             PrimitiveTy::Bool // Special case: 1-bit fields are booleans
         } else if bits <= 8 {

@@ -129,7 +129,7 @@ impl CircularInheritance<'_> {
         path.push(current_id);
 
         // Get parents of current node
-        let parents = self.get_parents(current_id, hir_ctx);
+        let parents = Self::get_parents(current_id, hir_ctx);
 
         for parent in parents {
             if self.has_cycle(parent, visited, path, hir_ctx) {
@@ -141,7 +141,7 @@ impl CircularInheritance<'_> {
         false
     }
 
-    fn get_parents(&self, id: DefId, hir_ctx: &Context) -> Vec<DefId> {
+    fn get_parents(id: DefId, hir_ctx: &Context) -> Vec<DefId> {
         let def = hir_ctx.definitions.get(id);
         match &def.kind {
             DefKind::Struct(struct_ty) => struct_ty.parent.into_iter().collect(),

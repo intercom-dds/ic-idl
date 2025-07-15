@@ -236,16 +236,17 @@ impl<'a> TypeChecker<'a> {
         let fits = match prim {
             PrimitiveTy::Bool => value == 0 || value == 1,
             PrimitiveTy::Char => (0..=127).contains(&value),
-            PrimitiveTy::WChar => (0..=0xFFFF).contains(&value),
+            PrimitiveTy::WChar | PrimitiveTy::UInt16 => (0..=0xFFFF).contains(&value),
             PrimitiveTy::Int8 => (-128..=127).contains(&value),
             PrimitiveTy::UInt8 => (0..=255).contains(&value),
             PrimitiveTy::Int16 => (-32768..=32767).contains(&value),
-            PrimitiveTy::UInt16 => (0..=65535).contains(&value),
             PrimitiveTy::Int32 => (-2_147_483_648..=2_147_483_647).contains(&value),
             PrimitiveTy::UInt32 => (0..=4_294_967_295).contains(&value),
-            PrimitiveTy::Int64 => true, // Always fits
             PrimitiveTy::UInt64 => value >= 0,
-            PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => true, // Can convert to float
+            PrimitiveTy::Float32
+            | PrimitiveTy::Float64
+            | PrimitiveTy::Float128
+            | PrimitiveTy::Int64 => true, // Always fits
             PrimitiveTy::Void => false,
         };
 
@@ -317,13 +318,9 @@ impl<'a> TypeChecker<'a> {
             // Same string types
             (TyKind::String { wide: w1, .. }, TyKind::String { wide: w2, .. }) if w1 == w2 => true,
 
-            // Arrays with same element type
-            (TyKind::Array { ty: ty1, .. }, TyKind::Array { ty: ty2, .. }) => {
-                self.check_type_compatible(ty1, ty2, value_desc)
-            }
-
-            // Sequences with same element type
-            (TyKind::Sequence { ty: ty1, .. }, TyKind::Sequence { ty: ty2, .. }) => {
+            // Arrays and Sequences with same element type
+            (TyKind::Array { ty: ty1, .. }, TyKind::Array { ty: ty2, .. })
+            | (TyKind::Sequence { ty: ty1, .. }, TyKind::Sequence { ty: ty2, .. }) => {
                 self.check_type_compatible(ty1, ty2, value_desc)
             }
 

@@ -81,17 +81,9 @@ impl DuplicateAnnotations<'_> {
 
             // Check for conflicting annotations
             for (ann1, ann2) in &conflicting_pairs {
-                if ann_name == *ann1 && seen.contains(*ann2) {
-                    if let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        format!("conflicting annotations '@{ann1}' and '@{ann2}'"),
-                        Label::new(ic_syntax::util::path_span(&ann.ident))
-                            .message("conflicts with previous annotation"),
-                    ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
-                    }
-                } else if ann_name == *ann2 && seen.contains(*ann1) {
+                if (ann_name == *ann1 && seen.contains(*ann2))
+                    || (ann_name == *ann2 && seen.contains(*ann1))
+                {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),

@@ -41,12 +41,12 @@ struct Hygiene<'a> {
 }
 
 impl Hygiene<'_> {
-    fn check_def(&mut self, elems: impl Iterator<Item = &Ident>) {
+    fn check_def<'a>(&mut self, elems: impl Iterator<Item = &'a Ident>) {
         let mut seen = CaseSet::default();
         self.with_set(&mut seen, elems);
     }
 
-    fn with_set(&mut self, seen: &mut CaseSet, elems: impl Iterator<Item = &Ident>) {
+    fn with_set<'a>(&mut self, seen: &mut CaseSet, elems: impl Iterator<Item = &'a Ident>) {
         for ident in elems {
             if !seen.insert(ident.name.as_str()) {
                 let diag = error_span(

@@ -285,7 +285,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
     column[len_a]
 }
 
-fn closest_match(input: &str, options: &[Opt]) -> Option<&str> {
+fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
     let mut min = usize::MAX;
     let mut closest = None;
 

@@ -68,48 +68,39 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     }
                 }
             }
-            TyKind::Sequence { bound, .. } => {
-                if let Some(b) = bound {
-                    if *b == 0 {
-                        if let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            "sequence bound must be greater than zero",
-                            Label::new(ty.span).message("invalid sequence bound"),
-                        ) {
-                            self.ctx.report(Self::name(), Self::category(), diag);
-                        }
-                    }
+            TyKind::Sequence { bound: Some(b), .. } if *b == 0 => {
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "sequence bound must be greater than zero",
+                    Label::new(ty.span).message("invalid sequence bound"),
+                ) {
+                    self.ctx.report(Self::name(), Self::category(), diag);
                 }
             }
-            TyKind::String { bound, .. } => {
-                if let Some(b) = bound {
-                    if *b == 0 {
-                        if let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            "string bound must be greater than zero",
-                            Label::new(ty.span).message("invalid string bound"),
-                        ) {
-                            self.ctx.report(Self::name(), Self::category(), diag);
-                        }
-                    }
+            TyKind::Sequence { .. } => {}
+            TyKind::String { bound: Some(b), .. } if *b == 0 => {
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "string bound must be greater than zero",
+                    Label::new(ty.span).message("invalid string bound"),
+                ) {
+                    self.ctx.report(Self::name(), Self::category(), diag);
                 }
             }
-            TyKind::Map { bound, .. } => {
-                if let Some(b) = bound {
-                    if *b == 0 {
-                        if let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            "map bound must be greater than zero",
-                            Label::new(ty.span).message("invalid map bound"),
-                        ) {
-                            self.ctx.report(Self::name(), Self::category(), diag);
-                        }
-                    }
+            TyKind::String { .. } => {}
+            TyKind::Map { bound: Some(b), .. } if *b == 0 => {
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "map bound must be greater than zero",
+                    Label::new(ty.span).message("invalid map bound"),
+                ) {
+                    self.ctx.report(Self::name(), Self::category(), diag);
                 }
             }
+            TyKind::Map { .. } => {}
             _ => {}
         }
 

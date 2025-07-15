@@ -516,7 +516,7 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn labels_on_line(&self, labels: &[Label], line_num: usize) -> Vec<&Label> {
+    fn labels_on_line<'a>(&self, labels: &'a [Label], line_num: usize) -> Vec<&'a Label> {
         labels
             .iter()
             .filter(|label| {
@@ -700,7 +700,7 @@ impl Formatter<'_> {
         )
     }
 
-    fn sort_labels_left_to_right(labels: &[&Label]) -> Vec<&Label> {
+    fn sort_labels_left_to_right<'a>(labels: &[&'a Label]) -> Vec<&'a Label> {
         let mut sorted = labels.to_vec();
         sorted.sort_by_key(|v| v.span.start.offset);
         sorted

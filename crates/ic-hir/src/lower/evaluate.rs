@@ -115,7 +115,10 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
             ic_syntax::LiteralValue::Int(i) => {
                 // TODO: Handle different integer types based on suffix
                 // For now, assume Int32
-                Ok(GenericNumeric::Int32(*i as i32))
+                match i32::try_from(*i) {
+                    Ok(v) => Ok(GenericNumeric::Int32(v)),
+                    Err(_) => Ok(GenericNumeric::Int64(*i as i64)),
+                }
             }
             ic_syntax::LiteralValue::Float(f) => {
                 // TODO: Handle float vs double based on suffix
@@ -466,10 +469,10 @@ impl<'a> ExpressionEvaluator<'a> {
     fn eval_bound(&mut self, expr: &Expr) -> usize {
         let result = self.eval_expr(expr);
         match result {
-            Numeric::Int32(v) if v >= 0 => v as usize,
-            Numeric::UInt32(v) => v as usize,
-            Numeric::Int64(v) if v >= 0 => v as usize,
-            Numeric::UInt64(v) => v as usize,
+            Numeric::Int32(v) if v >= 0 => usize::try_from(v).unwrap_or(0),
+            Numeric::UInt32(v) => usize::try_from(v).unwrap_or(0),
+            Numeric::Int64(v) if v >= 0 => usize::try_from(v).unwrap_or(0),
+            Numeric::UInt64(v) => usize::try_from(v).unwrap_or(0),
             _ => {
                 self.errors.push(error_span(
                     "invalid bound expression",
@@ -491,16 +494,11 @@ impl<'a> ExpressionEvaluator<'a> {
         let mut current = ty;
         let mut bound_iter = evaluated_bounds.iter();
 
-        loop {
-            match &mut current.kind {
-                TyKind::Array { ty: inner_ty, len } => {
-                    if let Some(&bound_value) = bound_iter.next() {
-                        *len = bound_value;
-                    }
-                    current = inner_ty;
-                }
-                _ => break,
+        while let TyKind::Array { ty: inner_ty, len } = &mut current.kind {
+            if let Some(&bound_value) = bound_iter.next() {
+                *len = bound_value;
             }
+            current = inner_ty;
         }
     }
 

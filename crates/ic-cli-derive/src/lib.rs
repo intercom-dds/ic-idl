@@ -145,7 +145,7 @@ fn doc_attr(attrs: &Vec<Attribute>) -> String {
     lines.join("\n")
 }
 
-fn attr_lit(name: &str, attrs: &[Attribute]) -> Option<&ExprLit> {
+fn attr_lit<'a>(name: &str, attrs: &'a [Attribute]) -> Option<&'a ExprLit> {
     let attr = attrs.iter().find(|v| v.path().is_ident(name));
     if let Some(attr) = attr {
         if let Meta::NameValue(syn::MetaNameValue {

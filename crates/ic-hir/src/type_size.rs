@@ -109,8 +109,8 @@ mod tests {
 
     use super::*;
     use crate::hir::{
-        AliasTy, BitmaskTy, BitsetField, BitsetTy, Def, DefKind, EnumTy, Member, StructTy, UnionTy,
-        Variant,
+        AliasTy, BitmaskTy, BitsetField, BitsetTy, Def, DefFlags, DefKind, EnumTy, Member,
+        StructTy, UnionTy, Variant,
     };
 
     fn make_primitive_type(prim: PrimitiveTy) -> Ty {

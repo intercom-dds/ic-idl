@@ -97,7 +97,8 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref(key);
                 self.validate_type_ref(elem);
             }
-            TyKind::String { .. } | _ => {}
+            TyKind::String { .. } => {}
+            _ => {}
         }
     }
 
@@ -416,9 +417,10 @@ impl<'a> Validator<'a> {
                     }
                 }
             }
-            DefKind::Decl(_) | _ => {
+            DefKind::Decl(_) => {
                 // Forward declarations are checked for completion elsewhere
             }
+            _ => {}
         }
 
         self.validated.insert(id);

@@ -1,0 +1,12 @@
+---
+source: crates/ic-diagnostic/tests/tab_test.rs
+expression: buf
+---
+error: struct fields
+   ┌ test.rs:2:1
+   │
+ 2 │     int x;
+   · ^^^^^^^^^ first field
+ 3 │     float y;
+   · ^^^^^^^^^^^ second field
+   └──

@@ -1,0 +1,10 @@
+---
+source: crates/ic-diagnostic/tests/tab_test.rs
+expression: buf
+---
+error: test error
+   ┌ test.rs:1:13
+   │
+ 1 │         int x = 42;
+   ·             ^ here
+   └──

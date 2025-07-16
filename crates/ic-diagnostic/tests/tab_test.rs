@@ -37,7 +37,7 @@ fn make_span(start: u32, end: u32) -> Span {
 }
 
 #[test]
-fn test_tab_expansion_single_tab() {
+fn single_tab() {
     let source = "\tint x = 42;";
     let diag = Diag::error("test error").label(
         Label::new(make_span(5, 6))
@@ -47,14 +47,11 @@ fn test_tab_expansion_single_tab() {
 
     let mut buf = String::new();
     emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
-
-    // Tab should be expanded to 4 spaces, so the highlight should align with 'x'
-    assert!(buf.contains("    int x = 42;"));
-    assert!(buf.contains("        ^"));
+    insta::assert_snapshot!(buf);
 }
 
 #[test]
-fn test_tab_expansion_multiple_tabs() {
+fn multiple_tabs() {
     let source = "\t\tint x = 42;";
     let diag = Diag::error("test error").label(
         Label::new(make_span(6, 7))
@@ -64,14 +61,11 @@ fn test_tab_expansion_multiple_tabs() {
 
     let mut buf = String::new();
     emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
-
-    // Two tabs should be expanded to 8 spaces
-    assert!(buf.contains("        int x = 42;"));
-    assert!(buf.contains("            ^"));
+    insta::assert_snapshot!(buf);
 }
 
 #[test]
-fn test_tab_expansion_mixed_spaces_and_tabs() {
+fn mixed_spaces_and_tabs() {
     let source = " \tint x = 42;";
     let diag = Diag::error("test error").label(
         Label::new(make_span(6, 7))
@@ -81,14 +75,11 @@ fn test_tab_expansion_mixed_spaces_and_tabs() {
 
     let mut buf = String::new();
     emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
-
-    // Space + tab should expand to align at column 4
-    assert!(buf.contains("    int x = 42;"));
-    assert!(buf.contains("        ^"));
+    insta::assert_snapshot!(buf);
 }
 
 #[test]
-fn test_tab_column_calculation() {
+fn tabs_between_tokens() {
     // Test that column numbers are calculated correctly with tabs
     let source = "\tint\tx = 42;";
     let diag = Diag::error("test error").label(
@@ -99,7 +90,64 @@ fn test_tab_column_calculation() {
 
     let mut buf = String::new();
     emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    insta::assert_snapshot!(buf);
+}
 
-    // The location should show the correct column accounting for tabs
-    assert!(buf.contains("test.rs:1:9")); // Column 9 (1 tab = 4 columns, 'int' = 3, 1 tab = 4 more)
+#[test]
+fn tab_at_end_of_line() {
+    let source = "int x = 42;\t";
+    let diag = Diag::error("trailing tab").label(
+        Label::new(make_span(11, 12))
+            .message("tab here")
+            .color(Color::Red),
+    );
+
+    let mut buf = String::new();
+    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    insta::assert_snapshot!(buf);
+}
+
+#[test]
+fn multiple_errors_with_tabs() {
+    let source = "\tint\tx\t=\t42;";
+    let diag = Diag::error("multiple tabs")
+        .label(
+            Label::new(make_span(1, 4))
+                .message("type")
+                .color(Color::Red),
+        )
+        .label(
+            Label::new(make_span(5, 6))
+                .message("variable")
+                .color(Color::Yellow),
+        )
+        .label(
+            Label::new(make_span(9, 11))
+                .message("value")
+                .color(Color::Blue),
+        );
+
+    let mut buf = String::new();
+    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    insta::assert_snapshot!(buf);
+}
+
+#[test]
+fn tab_in_multiline_error() {
+    let source = "struct Foo {\n\tint x;\n\tfloat y;\n}";
+    let diag = Diag::error("struct fields")
+        .label(
+            Label::new(make_span(13, 19))
+                .message("first field")
+                .color(Color::Red),
+        )
+        .label(
+            Label::new(make_span(21, 29))
+                .message("second field")
+                .color(Color::Yellow),
+        );
+
+    let mut buf = String::new();
+    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    insta::assert_snapshot!(buf);
 }

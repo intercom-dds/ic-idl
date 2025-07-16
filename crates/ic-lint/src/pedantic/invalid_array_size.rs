@@ -37,6 +37,8 @@ use crate::{Category, Lint, LintCtx};
 const MAX_REASONABLE_SIZE_BYTES: usize = 16384;
 
 /// Lint that checks for unreasonably large array sizes based on total byte size.
+/// Only checks actual arrays, not bounds on strings/sequences/maps which are
+/// just constraints, not allocations.
 pub struct InvalidArraySize<'a> {
     ctx: &'a LintCtx<'a>,
     hir_ctx: &'a ic_hir::Context,
@@ -82,49 +84,6 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                         ) {
                             Self::report(self.ctx, diag);
                         }
-                    }
-                }
-            }
-            TyKind::Sequence {
-                ty: elem_ty,
-                bound: Some(b),
-                bound_span,
-            } => {
-                // For bounded sequences, check the maximum possible size
-                if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
-                    let max_size = elem_size * b;
-                    if max_size > MAX_REASONABLE_SIZE_BYTES {
-                        if let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            format!(
-                                "sequence maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} elements × {elem_size} bytes each)"
-                            ),
-                            Label::new(bound_span.unwrap_or(ty.span)).message("very large sequence bound"),
-                        ) {
-                            Self::report(self.ctx, diag);
-                        }
-                    }
-                }
-            }
-            TyKind::String {
-                bound: Some(b),
-                wide,
-                bound_span,
-            } => {
-                // For bounded strings, check based on character size
-                let char_size = if *wide { 4 } else { 1 }; // wchar is 4 bytes, char is 1 byte
-                let max_size = char_size * b;
-                if max_size > MAX_REASONABLE_SIZE_BYTES {
-                    if let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        format!(
-                            "string maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} characters × {char_size} bytes each)"
-                        ),
-                        Label::new(bound_span.unwrap_or(ty.span)).message("very large string bound"),
-                    ) {
-                        Self::report(self.ctx, diag);
                     }
                 }
             }

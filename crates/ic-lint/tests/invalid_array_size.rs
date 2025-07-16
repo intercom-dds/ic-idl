@@ -93,13 +93,16 @@ struct ConstArrays {
 
 #[test]
 fn string_with_large_bound() {
+    // String bounds are just constraints, not allocations, so we don't warn about them
     let source = r"
 struct LargeString {
-    string<20000> huge_str;  // 20000 chars × 1 byte = 20KB
-    wstring<5000> wide_str;  // 5000 chars × 4 bytes = 20KB
+    string<20000> huge_str;  // 20000 chars × 1 byte = 20KB - OK, just a max length
+    wstring<5000> wide_str;  // 5000 chars × 4 bytes = 20KB - OK, just a max length
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -140,4 +143,18 @@ struct TypeSizes {
 };
 ";
     assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn sequence_and_map_with_large_bounds() {
+    // Sequence and map bounds are just constraints, not allocations, so we don't warn about them
+    let source = r"
+struct LargeBounds {
+    sequence<long, 100000> huge_seq;     // OK, just a max length
+    map<string, long, 50000> huge_map;   // OK, just a max length
+};
+";
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }

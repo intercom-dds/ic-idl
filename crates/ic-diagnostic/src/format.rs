@@ -39,6 +39,8 @@ use crate::{Color, Diag, Label};
 const CONTEXT_LINES: usize = 2;
 /// Maximum total lines to show for a single label span
 const MAX_LINES_PER_SPAN: usize = 10;
+/// Tab width for display purposes
+const TAB_WIDTH: usize = 4;
 
 #[derive(Debug)]
 struct Charset {
@@ -87,17 +89,32 @@ fn line_number(input: &str, offset: usize) -> usize {
 }
 
 /// Converts a byte offset in a buffer to the corresponding (line, column) pair.
+/// Column calculation accounts for tab characters (assumes 4-space tabs).
 fn line_col(input: &str, offset: usize) -> (usize, usize) {
     let mut line = 1;
-    let mut last_newl = 1;
+    let mut last_newl = 0;
+    let mut col = 1;
 
     for (idx, b) in input.bytes().take(offset).enumerate() {
         if b == b'\n' {
             line += 1;
-            last_newl = idx;
+            last_newl = idx + 1;
+            col = 1;
         }
     }
-    (line, offset.checked_sub(last_newl).unwrap_or(1))
+
+    // Calculate visual column, accounting for tabs
+    let line_start = last_newl;
+    for b in input[line_start..offset].bytes() {
+        if b == b'\t' {
+            // Tab moves to next multiple of 4
+            col = ((col - 1) / 4 + 1) * 4 + 1;
+        } else {
+            col += 1;
+        }
+    }
+
+    (line, col)
 }
 
 /// Returns the span of the line in which the given byte offset exists.
@@ -118,6 +135,49 @@ fn line_span(input: &str, offset: u32) -> Range<usize> {
         .map_or(input.len(), |v| v.0);
 
     Range { start, end }
+}
+
+/// Expands tabs to spaces in a string
+fn expand_tabs(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut col = 0;
+
+    for ch in s.chars() {
+        if ch == '\t' {
+            let spaces_to_add = TAB_WIDTH - (col % TAB_WIDTH);
+            for _ in 0..spaces_to_add {
+                result.push(' ');
+                col += 1;
+            }
+        } else if ch == '\n' {
+            result.push(ch);
+            col = 0;
+        } else {
+            result.push(ch);
+            col += 1;
+        }
+    }
+
+    result
+}
+
+/// Returns the visual column position accounting for tabs
+fn visual_column(line: &str, byte_offset: usize) -> usize {
+    let mut col = 0;
+    let mut byte_pos = 0;
+
+    for ch in line.chars() {
+        if byte_pos >= byte_offset {
+            break;
+        }
+        if ch == '\t' {
+            col = ((col / TAB_WIDTH) + 1) * TAB_WIDTH;
+        } else {
+            col += 1;
+        }
+        byte_pos += ch.len_utf8();
+    }
+    col
 }
 
 /// Returns the start column of a label on the given line.
@@ -310,7 +370,8 @@ impl Formatter<'_> {
 
                 let line_start = self.line_start_offset(line_num);
                 let range = line_span(self.source, line_start as u32);
-                writeln!(f, " {}", self.source[range].trim_end())?;
+                let line_text = expand_tabs(self.source[range].trim_end());
+                writeln!(f, " {}", line_text)?;
 
                 self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
             }
@@ -422,7 +483,8 @@ impl Formatter<'_> {
 
                 let line_start = self.line_start_offset(line_num);
                 let range = line_span(self.source, line_start as u32);
-                writeln!(f, " {}", self.source[range].trim_end())?;
+                let line_text = expand_tabs(self.source[range].trim_end());
+                writeln!(f, " {}", line_text)?;
 
                 self.emit_labels_for_line_with_subset(f, &indent, &file_labels, line_num)?;
             }
@@ -532,9 +594,15 @@ impl Formatter<'_> {
         labels_on_line: &[&'a Label],
         line_start_offset: u32,
         line_num: usize,
-        line_len: usize,
+        _line_len: usize,
     ) -> Vec<Vec<&'a Label>> {
-        let mut col_labels: Vec<Vec<&'a Label>> = vec![Vec::new(); line_len];
+        // Get the actual source line to calculate visual columns
+        let range = line_span(self.source, line_start_offset);
+        let source_line = &self.source[range];
+        let expanded_line = expand_tabs(source_line.trim_end());
+        let visual_len = expanded_line.len();
+
+        let mut col_labels: Vec<Vec<&'a Label>> = vec![Vec::new(); visual_len];
 
         for label in labels_on_line {
             let start_line = line_number(self.source, label.span.start.offset as usize);
@@ -545,20 +613,29 @@ impl Formatter<'_> {
                 continue;
             }
 
-            let label_start = label_start_on_line(label, line_start_offset);
-            let label_end =
-                label_end_on_line(self.source, label, line_start_offset, line_num, line_len);
+            let label_start_byte = label_start_on_line(label, line_start_offset);
+            let label_end_byte = label_end_on_line(
+                self.source,
+                label,
+                line_start_offset,
+                line_num,
+                source_line.trim_end().len(),
+            );
+
+            // Convert byte offsets to visual columns
+            let label_start = visual_column(source_line, label_start_byte);
+            let label_end = visual_column(source_line, label_end_byte);
 
             for labels_at_col in col_labels
                 .iter_mut()
-                .take(label_end.min(line_len))
+                .take(label_end.min(visual_len))
                 .skip(label_start)
             {
                 labels_at_col.push(label);
             }
         }
 
-        self.sort_labels_by_size(&mut col_labels, line_start_offset, line_num, line_len);
+        self.sort_labels_by_size(&mut col_labels, line_start_offset, line_num, visual_len);
         col_labels
     }
 
@@ -629,6 +706,7 @@ impl Formatter<'_> {
         line_start_offset: u32,
         line_range: &Range<usize>,
     ) -> fmt::Result {
+        let source_line = &self.source[line_range.clone()];
         let sorted_labels =
             self.sort_labels_for_display(labels_starting_here, line_start_offset, line_range);
         let labels_left_to_right = Self::sort_labels_left_to_right(&sorted_labels);
@@ -639,7 +717,8 @@ impl Formatter<'_> {
             for (i, label) in sorted_labels.iter().skip(1).enumerate() {
                 write!(f, "{indent}{} ", self.chars.vertical_dx.blue())?;
 
-                let label_col = (label.span.start.offset - line_start_offset) as usize;
+                let label_byte_offset = (label.span.start.offset - line_start_offset) as usize;
+                let label_col = visual_column(source_line, label_byte_offset);
                 self.draw_vertical_connectors(
                     f,
                     &labels_left_to_right,
@@ -647,6 +726,7 @@ impl Formatter<'_> {
                     i,
                     label_col,
                     line_start_offset,
+                    source_line,
                 )?;
 
                 writeln!(
@@ -714,11 +794,13 @@ impl Formatter<'_> {
         shown_index: usize,
         label_col: usize,
         line_start_offset: u32,
+        source_line: &str,
     ) -> fmt::Result {
         let mut current_col = 0;
 
         for &other_label in labels_left_to_right {
-            let other_col = (other_label.span.start.offset - line_start_offset) as usize;
+            let other_byte_offset = (other_label.span.start.offset - line_start_offset) as usize;
+            let other_col = visual_column(source_line, other_byte_offset);
 
             if other_col >= label_col {
                 continue;

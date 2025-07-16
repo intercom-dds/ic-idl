@@ -53,36 +53,6 @@ impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
 
 impl UnreachableUnionCases<'_> {
     fn check_union(&mut self, union_ty: &UnionTy, _union_name: &str) {
-        let mut default_index = None;
-
-        // First pass: find if there's a default case
-        for (idx, variant) in union_ty.variants.iter().enumerate() {
-            if variant.is_default {
-                default_index = Some(idx);
-                break;
-            }
-        }
-
-        // Check for cases after default
-        if let Some(default_idx) = default_index {
-            for (idx, variant) in union_ty.variants.iter().enumerate() {
-                if idx > default_idx && !variant.is_default {
-                    if let Some(mut diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        format!(
-                            "case '{}' is unreachable because it appears after default",
-                            variant.ident.name
-                        ),
-                        Label::new(variant.ident.span).message("unreachable case"),
-                    ) {
-                        diag = diag.help("move this case before the default case");
-                        Self::report(self.ctx, diag);
-                    }
-                }
-            }
-        }
-
         // Check for out-of-range case labels
         if let Some((min, max)) = Self::get_discriminator_range(&union_ty.disc.kind) {
             for variant in &union_ty.variants {

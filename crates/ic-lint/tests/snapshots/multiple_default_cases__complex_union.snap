@@ -18,14 +18,6 @@ error: union `ComplexUnion` has 2 default cases, but only one is allowed
     ·                      ^^^^^^^^^ first default case here
     └──
 
-error: case 'number' is unreachable because it appears after default
-    ┌ test.idl:11:19
-    │
- 11 │     case 3: float number;
-    ·                   ^^^^^^ unreachable case
-    └──
- help: move this case before the default case
-
 error: multiple default cases in union `ComplexUnion`
     ┌ test.idl:12:21
     │

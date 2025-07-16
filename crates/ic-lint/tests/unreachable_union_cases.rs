@@ -44,11 +44,12 @@ union MyUnion switch (long) {
 
 #[test]
 fn case_after_default() {
+    // Default cases can appear anywhere - this is now valid
     let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     default: string b;
-    case 2: boolean c;  // Unreachable
+    case 2: boolean c;  // This is now valid
 };
 ";
     assert_snapshot!(test_lint_hir(source));
@@ -56,12 +57,13 @@ union MyUnion switch (long) {
 
 #[test]
 fn multiple_cases_after_default() {
+    // Default cases can appear anywhere - these are now valid
     let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     default: string b;
-    case 2: boolean c;  // Unreachable
-    case 3: octet d;    // Also unreachable
+    case 2: boolean c;  // This is now valid
+    case 3: octet d;    // This is also valid
 };
 ";
     assert_snapshot!(test_lint_hir(source));
@@ -97,6 +99,35 @@ union MyUnion switch (boolean) {
     case 0: long a;     // false
     case 1: string b;   // true
     case 2: boolean c;  // Out of range for boolean
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn default_in_middle() {
+    // Test that default can appear in the middle
+    let source = r"
+union MyUnion switch (long) {
+    case 1: long a;
+    case 2: string b;
+    default: boolean c;
+    case 3: octet d;
+    case 4: float e;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn default_at_beginning() {
+    // Test that default can appear at the beginning
+    let source = r"
+union MyUnion switch (long) {
+    default: boolean a;
+    case 1: long b;
+    case 2: string c;
+    case 3: octet d;
 };
 ";
     assert_snapshot!(test_lint_hir(source));

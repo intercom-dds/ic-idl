@@ -8,11 +8,3 @@ error: union 'MyUnion' has duplicate case label '1'
  6 │     case 1: octet d;  // Duplicate, even with default present
    ·                   ^ duplicate case label
    └──
-
-error: case 'd' is unreachable because it appears after default
-   ┌ test.idl:6:19
-   │
- 6 │     case 1: octet d;  // Duplicate, even with default present
-   ·                   ^ unreachable case
-   └──
- help: move this case before the default case

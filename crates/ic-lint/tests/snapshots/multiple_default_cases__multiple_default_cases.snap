@@ -18,14 +18,6 @@ error: union `MyUnion` has 2 default cases, but only one is allowed
    ·                     ^ first default case here
    └──
 
-error: case 'f' is unreachable because it appears after default
-   ┌ test.idl:5:19
-   │
- 5 │     case 2: float f;
-   ·                   ^ unreachable case
-   └──
- help: move this case before the default case
-
 error: multiple default cases in union `MyUnion`
    ┌ test.idl:6:21
    │

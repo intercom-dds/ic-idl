@@ -33,6 +33,14 @@ publish.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[[bin]]
+name = "ic-idl"
+path = "src/main.rs"
+
+[lib]
+name = "ic_idl"
+path = "src/lib.rs"
+
 [lints]
 workspace = true
 

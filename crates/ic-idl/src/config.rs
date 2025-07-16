@@ -63,6 +63,9 @@ pub struct Warnings {
     #[option(long)]
     error: bool,
 
+    /// Show help for warning options
+    pub help: bool,
+
     // These fields don't have #[option] so they're not parsed by the derive macro
     specific_lints: HashMap<String, bool>,
     error_lints: HashMap<String, bool>,
@@ -71,6 +74,7 @@ pub struct Warnings {
 impl Warnings {
     /// Check if preprocessor warnings should be emitted.
     /// They are enabled by default unless explicitly disabled.
+    #[must_use]
     pub fn preprocessor_enabled(&self) -> bool {
         self.preprocessor
     }
@@ -142,6 +146,7 @@ impl Warnings {
 
 /// Generic IDL code generator
 #[derive(Command, Debug, Default)]
+#[must_use]
 pub struct Options {
     /// Only run the preprocessor
     #[option(short = 'E', long)]
@@ -311,6 +316,9 @@ pub struct Unstable {
     /// Print the ptree in a tree-like format
     #[option(long)]
     pub ptree_dump: bool,
+
+    /// Show help for unstable options
+    pub help: bool,
 }
 
 impl convert::Convert for Unstable {
@@ -321,7 +329,10 @@ impl convert::Convert for Unstable {
                 "ast-dump" => this.ast_dump = true,
                 "hir-dump" => this.hir_dump = true,
                 "ptree-dump" => this.ptree_dump = true,
-                "help" => crate::unstable::unstable_help(),
+                "help" => {
+                    this.help = true;
+                    return Ok(this);
+                }
                 _ => {
                     return Err(ConvertError::InvalidValue(format!(
                         "unknown unstable option '{}'",
@@ -367,7 +378,10 @@ impl convert::Convert for Warnings {
                 "pedantic" => warnings.pedantic = enabled,
                 "preprocessor" => warnings.preprocessor = enabled,
                 "error" => warnings.error = enabled,
-                "help" => crate::unstable::warning_help(),
+                "help" => {
+                    warnings.help = true;
+                    return Ok(warnings);
+                }
                 _ => {
                     // Check if it's a specific lint name
                     let normalized = normalize_lint_name(arg);

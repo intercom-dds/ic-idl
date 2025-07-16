@@ -27,8 +27,7 @@
 
 use ic_cli::Command;
 use ic_cli::color::Colorize;
-
-use crate::config::{Unstable, Warnings};
+use ic_idl::{Unstable, Warnings};
 
 pub fn unstable_help() -> ! {
     let command = Unstable::command();

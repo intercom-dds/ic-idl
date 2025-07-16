@@ -55,6 +55,11 @@
 //! let mut compiler = Compiler::new(CompilerOptions::default());
 //! let ptree = compiler.parse_to_ptree(&PathBuf::from("example.idl")).unwrap();
 //! let files = ic_codegen_rust::codegen_rust(&ptree);
+//!
+//! // Example 3: Access the compilation pipeline stages
+//! let ast = compiler.parse_to_ast(&PathBuf::from("example.idl")).unwrap();
+//! let hir = compiler.ast_to_hir(ast).unwrap();
+//! // You can now use ic_idl::hir, ic_idl::parse, etc. to work with these types
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -112,10 +117,11 @@ impl From<std::io::Error> for CompileError {
     }
 }
 
-// Re-export types for the compilation pipeline
-pub use ic_hir::ResolvedGraph as HirResult;
+// Re-export core modules for the compilation pipeline
+// Re-export other useful modules
+pub use ic_diagnostic as diagnostic;
 pub use ic_parse::ParseResult as AstResult;
-pub use ic_ptree::ParseResult as PTreeResult;
+pub use {ic_hir as hir, ic_lint as lint, ic_ptree as ptree, ic_vfs as vfs};
 
 /// Main compiler interface.
 #[must_use]
@@ -154,7 +160,7 @@ impl Compiler {
     /// # Errors
     ///
     /// Returns an error if the file cannot be read or parsed.
-    pub fn parse_file(&mut self, path: &Path) -> Result<ic_ptree::ParseResult, CompileError> {
+    pub fn parse_file(&mut self, path: &Path) -> Result<ptree::ParseResult, CompileError> {
         let proc_args = self.create_proc_args();
         let parsed = try_parse(&self.options, proc_args, path, &mut self.source_map);
 
@@ -180,7 +186,7 @@ impl Compiler {
     pub fn parse_files(
         &mut self,
         paths: &[PathBuf],
-    ) -> Result<Vec<ic_ptree::ParseResult>, CompileError> {
+    ) -> Result<Vec<ptree::ParseResult>, CompileError> {
         let mut results = Vec::new();
         for path in paths {
             results.push(self.parse_file(path)?);
@@ -211,7 +217,7 @@ impl Compiler {
     /// # Errors
     ///
     /// Returns an error if the file cannot be parsed.
-    pub fn parse_to_ast(&mut self, path: &Path) -> Result<ic_parse::ParseResult, CompileError> {
+    pub fn parse_to_ast(&mut self, path: &Path) -> Result<AstResult, CompileError> {
         let proc_args = self.create_proc_args();
         let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
             CompileError::Io(std::io::Error::other(format!("Failed to parse file: {e}")))
@@ -230,11 +236,8 @@ impl Compiler {
     /// # Errors
     ///
     /// Returns an error if the AST contains semantic errors.
-    pub fn ast_to_hir(
-        &self,
-        ast: ic_parse::ParseResult,
-    ) -> Result<ic_hir::ResolvedGraph, CompileError> {
-        let hir = ic_hir::from_ast(ast.tree);
+    pub fn ast_to_hir(&self, ast: AstResult) -> Result<hir::ResolvedGraph, CompileError> {
+        let hir = hir::from_ast(ast.tree);
 
         if !hir.errors.is_empty() {
             let error_strings = hir.errors.iter().map(|e| format!("{e:?}")).collect();
@@ -245,7 +248,7 @@ impl Compiler {
     }
 
     /// Convert HIR to ptree.
-    pub fn hir_to_ptree(&self, hir: &ic_hir::ResolvedGraph) -> ic_ptree::ParseResult {
+    pub fn hir_to_ptree(&self, hir: &hir::ResolvedGraph) -> ptree::ParseResult {
         ic_ptree_lower::from_hir(hir, &self.source_map)
     }
 
@@ -254,7 +257,7 @@ impl Compiler {
     /// # Errors
     ///
     /// Returns an error if any stage of the pipeline fails.
-    pub fn parse_to_ptree(&mut self, path: &Path) -> Result<ic_ptree::ParseResult, CompileError> {
+    pub fn parse_to_ptree(&mut self, path: &Path) -> Result<ptree::ParseResult, CompileError> {
         let ast = self.parse_to_ast(path)?;
         let hir = self.ast_to_hir(ast)?;
         Ok(self.hir_to_ptree(&hir))

@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/redundant_inheritance.rs
+expression: test_lint_hir(source)
+---
+

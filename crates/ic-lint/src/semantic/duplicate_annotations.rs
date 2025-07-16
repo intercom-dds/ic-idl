@@ -39,7 +39,7 @@ pub struct DuplicateAnnotations<'a> {
 
 impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
     fn name() -> &'static str {
-        "DuplicateAnnotations"
+        "duplicate_annotations"
     }
 
     fn category() -> Category {

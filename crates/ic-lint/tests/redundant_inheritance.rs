@@ -27,72 +27,60 @@
 
 mod common;
 
-use common::test_lint;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 fn valid_inheritance() {
-    let output = test_lint(
-        r"
+    let source = r"
 interface Base {};
 interface Derived : Base {};
 interface MultiDerived : Base, Derived {};
-",
-    );
+";
 
-    assert!(output.is_empty());
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn redundant_interface_inheritance() {
-    let output = test_lint(
-        r"
+    let source = r"
 interface Base {};
 interface Derived : Base, Base {};
-",
-    );
+";
 
-    assert!(output.contains("inherits from 'Base' multiple times"));
-    assert!(output.contains("redundant inheritance"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn redundant_qualified_inheritance() {
-    let output = test_lint(
-        r"
+    let source = r"
 module M {
     interface Base {};
 };
 
 interface Derived : M::Base, M::Base {};
-",
-    );
+";
 
-    assert!(output.contains("inherits from 'M::Base' multiple times"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn redundant_valuetype_inheritance() {
-    let output = test_lint(
-        r"
+    let source = r"
 valuetype Base {};
 valuetype Derived : Base supports Base {};
-",
-    );
+";
 
-    assert!(output.contains("inherits from 'Base' multiple times"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn multiple_redundant_parents() {
-    let output = test_lint(
-        r"
+    let source = r"
 interface A {};
 interface B {};
 interface C : A, B, A, B {};
-",
-    );
+";
 
-    // Should report both A and B as redundant
-    assert!(output.contains("inherits from 'A' multiple times"));
-    assert!(output.contains("inherits from 'B' multiple times"));
+    assert_snapshot!(test_lint_hir(source));
 }

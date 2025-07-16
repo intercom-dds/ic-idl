@@ -27,12 +27,12 @@
 
 mod common;
 
-use common::test_lint;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 fn valid_annotations() {
-    let output = test_lint(
-        r#"
+    let source = r#"
 @id(1)
 @version("1.0")
 struct Foo {
@@ -40,94 +40,80 @@ struct Foo {
     @min(0)
     long field;
 };
-"#,
-    );
+"#;
 
-    assert!(output.is_empty());
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn duplicate_annotation_on_struct() {
-    let output = test_lint(
-        r"
+    let source = r"
 @id(1)
 @id(2)
 struct Foo {
     long field;
 };
-",
-    );
+";
 
-    assert!(output.contains("duplicate annotation '@id'"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn duplicate_annotation_on_field() {
-    let output = test_lint(
-        r"
+    let source = r"
 struct Foo {
     @min(0)
     @max(100)
     @min(10)
     long field;
 };
-",
-    );
+";
 
-    assert!(output.contains("duplicate annotation '@min'"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn conflicting_optional_required() {
-    let output = test_lint(
-        r"
+    let source = r"
 struct Foo {
     @optional
     @required
     long field;
 };
-",
-    );
+";
 
-    assert!(output.contains("conflicting annotations"));
-    assert!(output.contains("@optional") && output.contains("@required"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn conflicting_readonly_readwrite() {
-    let output = test_lint(
-        r"
+    let source = r"
 interface Service {
     @readonly
     @readwrite
     attribute long value;
 };
-",
-    );
+";
 
-    assert!(output.contains("conflicting annotations"));
-    assert!(output.contains("@readonly") && output.contains("@readwrite"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn duplicate_on_interface_method() {
-    let output = test_lint(
-        r"
+    let source = r"
 interface Service {
     @oneway
     @oneway
     void notify();
 };
-",
-    );
+";
 
-    assert!(output.contains("duplicate annotation '@oneway'"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn duplicate_qualified_annotation() {
-    let output = test_lint(
-        r"
+    let source = r"
 annotation MyAnn {
     long value;
 };
@@ -137,8 +123,7 @@ annotation MyAnn {
 struct Foo {
     long field;
 };
-",
-    );
+";
 
-    assert!(output.contains("duplicate annotation '@MyAnn'"));
+    assert_snapshot!(test_lint_hir(source));
 }

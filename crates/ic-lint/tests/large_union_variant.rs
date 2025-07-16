@@ -30,7 +30,7 @@
 use insta::assert_snapshot;
 
 mod common;
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 
 #[test]
 fn large_variant_with_array() {
@@ -77,7 +77,9 @@ union MyUnion switch (short) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -90,7 +92,9 @@ union MyUnion switch (short) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -133,7 +137,9 @@ union MyUnion switch (short) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -147,5 +153,7 @@ union MyUnion switch (short) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }

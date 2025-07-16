@@ -27,8 +27,7 @@
 
 mod common;
 
-use common::test_lint_hir;
-use insta::assert_snapshot;
+use common::lint_hir;
 
 #[test]
 fn valid_inheritance() {
@@ -38,7 +37,9 @@ interface Derived : Base {};
 interface MultiDerived : Base, Derived {};
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -48,7 +49,9 @@ interface Base {};
 interface Derived : Base, Base {};
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -61,7 +64,9 @@ module M {
 interface Derived : M::Base, M::Base {};
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -71,7 +76,9 @@ valuetype Base {};
 valuetype Derived : Base supports Base {};
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -82,5 +89,7 @@ interface B {};
 interface C : A, B, A, B {};
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }

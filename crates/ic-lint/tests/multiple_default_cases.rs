@@ -28,7 +28,7 @@
 use insta::assert_snapshot;
 
 mod common;
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 
 #[test]
 fn test_single_default_case() {
@@ -40,7 +40,9 @@ union MyUnion switch(long) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -81,7 +83,9 @@ union MyUnion switch(long) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -110,7 +114,9 @@ union ColorData switch(Color) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]

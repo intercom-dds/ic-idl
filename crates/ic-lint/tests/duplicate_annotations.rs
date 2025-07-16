@@ -27,8 +27,7 @@
 
 mod common;
 
-use common::test_lint_hir;
-use insta::assert_snapshot;
+use common::lint_hir;
 
 #[test]
 fn valid_annotations() {
@@ -42,7 +41,9 @@ struct Foo {
 };
 "#;
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -55,7 +56,9 @@ struct Foo {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -69,7 +72,9 @@ struct Foo {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -82,7 +87,9 @@ struct Foo {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -95,7 +102,9 @@ interface Service {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -108,7 +117,9 @@ interface Service {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -125,5 +136,7 @@ struct Foo {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }

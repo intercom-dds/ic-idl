@@ -29,7 +29,7 @@
 
 mod common;
 
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 use insta::assert_snapshot;
 
 #[test]
@@ -85,7 +85,9 @@ struct Foo {
     map<string, long> unbounded_map;
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]

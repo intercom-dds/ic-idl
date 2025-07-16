@@ -28,7 +28,7 @@
 use insta::assert_snapshot;
 
 mod common;
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 
 #[test]
 fn test_duplicate_method_direct() {
@@ -128,7 +128,9 @@ interface C : A, B {  // Should not error - same method from Base
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -145,7 +147,9 @@ interface Derived : Base {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -162,7 +166,9 @@ interface Outer {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]

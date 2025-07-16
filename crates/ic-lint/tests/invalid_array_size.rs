@@ -27,7 +27,7 @@
 
 mod common;
 
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 use insta::assert_snapshot;
 
 #[test]
@@ -39,7 +39,9 @@ struct Data {
     octet large[16000];    // 16000 bytes (just under 16KB limit)
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]

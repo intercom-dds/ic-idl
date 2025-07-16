@@ -28,27 +28,14 @@
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use ic_cli::{Command, ParseError};
-use ic_idl::{CompileError, Compiler, CompilerOptions, write_generated_files};
+use ic_emit::File;
+// Import the error macro from the library
+use ic_idl::error;
+use ic_idl::{CompileError, Compiler, CompilerOptions, GeneratedFile, write_generated_files};
 
 mod info;
 mod panic;
 mod unstable;
-
-#[macro_export]
-macro_rules! error {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
-    }}
-}
-
-#[macro_export]
-macro_rules! warn {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("{} {}", "warning:".purple().bold(), format!($($arg)*));
-    }}
-}
 
 fn main() {
     let result = CompilerOptions::command()
@@ -94,7 +81,7 @@ fn main() {
 
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
-    let generated = match compiler.compile() {
+    let ptree = match compiler.compile() {
         Ok(v) => v,
         Err(CompileError::Io(e)) => {
             error!("I/O error: {}", e);
@@ -121,7 +108,17 @@ fn main() {
             }
             std::process::exit(1);
         }
-        Err(CompileError::Codegen(e)) => {
+    };
+
+    // Dump ptree if requested
+    if compiler.options().unstable.ptree_dump {
+        ic_ptree_dump::ptree_dump(&ptree);
+    }
+
+    // Generate code using backends
+    let generated = match generate_code(compiler.options(), &ptree) {
+        Ok(files) => files,
+        Err(e) => {
             error!("code generation error: {}", e);
             std::process::exit(1);
         }
@@ -136,4 +133,50 @@ fn main() {
         error!("failed to write files: {}", e);
         std::process::exit(1);
     }
+}
+
+fn generate_code(
+    options: &CompilerOptions,
+    ptree: &ic_idl::ptree::ParseResult,
+) -> Result<Vec<GeneratedFile>, String> {
+    let backends: &[(_, fn(_) -> _)] = &[
+        (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
+        (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
+        (&options.codegen.json_out, ic_codegen_json::codegen_json),
+        (&options.codegen.xml_out, ic_codegen_xml::codegen_xml),
+        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
+        (
+            &options.codegen.proto_out,
+            ic_codegen_protobuf::codegen_proto,
+        ),
+        (
+            &options.codegen.python_out,
+            ic_codegen_python::codegen_python,
+        ),
+    ];
+
+    let mut generated = vec![];
+    for (dir, backend) in backends
+        .iter()
+        .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
+    {
+        let dir = std::path::absolute(dir).map_err(|e| format!("Failed to resolve path: {e}"))?;
+
+        if options.purge_dirs {
+            std::fs::remove_dir_all(&dir).ok(); // Ignore if doesn't exist
+            std::fs::create_dir_all(&dir)
+                .map_err(|e| format!("Failed to create directory: {e}"))?;
+        }
+
+        // Invoke the backend and update the file paths
+        let files = backend(ptree).into_iter().map(|v| match v {
+            File::Generated { path, source } => File::Generated {
+                path: dir.join(path),
+                source,
+            },
+            File::Dep(_) => v,
+        });
+        generated.extend(files);
+    }
+    Ok(generated)
 }

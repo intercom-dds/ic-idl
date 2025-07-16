@@ -39,14 +39,13 @@
 //! // Example 1: Use the built-in compilation pipeline
 //! let mut options = CompilerOptions::default();
 //! options.files.push(PathBuf::from("example.idl"));
-//! options.codegen.cpp_out = Some(PathBuf::from("generated/cpp"));
 //!
 //! let mut compiler = Compiler::new(options);
 //! match compiler.compile() {
-//!     Ok(files) => {
-//!         for file in files {
-//!             println!("Generated: {}", file.path().display());
-//!         }
+//!     Ok(ptree) => {
+//!         // Now you can use the ptree with any backend
+//!         let files = ic_codegen_rust::codegen_rust(&ptree);
+//!         println!("Generated {} files", files.len());
 //!     }
 //!     Err(e) => eprintln!("Compilation failed: {}", e),
 //! }
@@ -66,7 +65,6 @@ use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize;
 use ic_diagnostic::Diag;
-use ic_emit::File;
 use ic_preproc::{ExpansionInfo, ProcArgs};
 use ic_vfs::SourceMap;
 
@@ -92,8 +90,6 @@ pub enum CompileError {
     Io(std::io::Error),
     /// Parse or semantic analysis error.
     Analysis(Vec<String>, usize), // errors, warning count
-    /// Backend code generation error.
-    Codegen(String),
 }
 
 impl std::fmt::Display for CompileError {
@@ -104,7 +100,6 @@ impl std::fmt::Display for CompileError {
                 let errors_str = errors.join("\n");
                 write!(f, "Analysis errors:\n{errors_str}")
             }
-            CompileError::Codegen(e) => write!(f, "Code generation error: {e}"),
         }
     }
 }
@@ -118,10 +113,8 @@ impl From<std::io::Error> for CompileError {
 }
 
 // Re-export core modules for the compilation pipeline
-// Re-export other useful modules
-pub use ic_diagnostic as diagnostic;
 pub use ic_parse::ParseResult as AstResult;
-pub use {ic_hir as hir, ic_lint as lint, ic_ptree as ptree, ic_vfs as vfs};
+pub use {ic_hir as hir, ic_ptree as ptree, ic_vfs as vfs};
 
 /// Main compiler interface.
 #[must_use]
@@ -194,12 +187,12 @@ impl Compiler {
         Ok(results)
     }
 
-    /// Compile the configured IDL files and generate code.
+    /// Compile the configured IDL files to a merged ptree.
     ///
     /// # Errors
     ///
     /// Returns an error if compilation fails.
-    pub fn compile(&mut self) -> Result<Vec<GeneratedFile>, CompileError> {
+    pub fn compile(&mut self) -> Result<ptree::ParseResult, CompileError> {
         if self.options.files.is_empty() {
             return Err(CompileError::Analysis(
                 vec!["no input files".to_string()],
@@ -207,9 +200,19 @@ impl Compiler {
             ));
         }
 
-        // Use the existing try_main logic
-        let result = try_main(&self.options, &mut self.source_map)?;
-        Ok(result)
+        // Parse all files and merge into a single ptree
+        let ptrees = self.compile_to_ptrees()?;
+        Ok(ptree::merge_trees(&ptrees))
+    }
+
+    /// Compile the configured IDL files to individual ptrees.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if compilation fails.
+    pub fn compile_to_ptrees(&mut self) -> Result<Vec<ptree::ParseResult>, CompileError> {
+        // Use try_main to get proper error handling and warnings
+        try_main(&self.options, &mut self.source_map)
     }
 
     /// Parse files and get the AST.
@@ -296,10 +299,14 @@ struct Parsed {
     result: Option<ic_ptree::ParseResult>,
     errors: Vec<InternalError>,
     warnings: Vec<Diag>,
+    #[allow(dead_code)]
     expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
 }
 
-fn try_main(options: &CompilerOptions, vfs: &mut SourceMap) -> Result<Vec<File>, CompileError> {
+fn try_main(
+    options: &CompilerOptions,
+    vfs: &mut SourceMap,
+) -> Result<Vec<ptree::ParseResult>, CompileError> {
     let defines = options.define.iter().map(|v| {
         v.split_once('=')
             .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
@@ -360,9 +367,7 @@ fn try_main(options: &CompilerOptions, vfs: &mut SourceMap) -> Result<Vec<File>,
         }
     }
 
-    let result = try_ptree(options, &trees)
-        .map_err(|e| CompileError::Analysis(vec![format!("{:?}", e)], all_warnings.len()))?;
-    Ok(result)
+    Ok(trees)
 }
 
 fn try_parse(
@@ -441,53 +446,4 @@ fn try_parse(
         warnings,
         expansion_info: ast.expansion_info,
     }
-}
-
-fn try_ptree(
-    options: &CompilerOptions,
-    parsed: &[ic_ptree::ParseResult],
-) -> Result<Vec<File>, InternalError> {
-    // Merge multiple ptrees into one
-    let merged = ic_ptree::merge_trees(parsed);
-    if options.unstable.ptree_dump {
-        ic_ptree_dump::ptree_dump(&merged);
-    }
-
-    let backends: &[(_, fn(_) -> _)] = &[
-        (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
-        (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
-        (&options.codegen.json_out, ic_codegen_json::codegen_json),
-        (&options.codegen.xml_out, ic_codegen_xml::codegen_xml),
-        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
-        (
-            &options.codegen.proto_out,
-            ic_codegen_protobuf::codegen_proto,
-        ),
-        (
-            &options.codegen.python_out,
-            ic_codegen_python::codegen_python,
-        ),
-    ];
-
-    let mut generated = vec![];
-    for (dir, backend) in backends
-        .iter()
-        .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
-    {
-        let dir = std::path::absolute(dir)?;
-        if options.purge_dirs {
-            util::safe_purge(&dir)?;
-        }
-
-        // Invoke the backend and update the file paths
-        let files = backend(&merged).into_iter().map(|v| match v {
-            File::Generated { path, source } => File::Generated {
-                path: dir.join(path),
-                source,
-            },
-            File::Dep(_) => v,
-        });
-        generated.extend(files);
-    }
-    Ok(generated)
 }

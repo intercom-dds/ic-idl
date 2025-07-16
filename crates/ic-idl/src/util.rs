@@ -132,7 +132,8 @@ where
     Ok(())
 }
 
-pub fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
+#[allow(dead_code)]
+fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
 where
     P: AsRef<Path>,
 {

@@ -213,24 +213,12 @@ pub struct LintCtx<'a> {
 }
 
 impl LintCtx<'_> {
-    /// Emit a diagnostic.
-    ///
-    /// Diagnostics will be collected and emitted after all lints have been
-    /// ran.
-    pub fn report_error(&self, diag: Diag) {
-        self.errors.borrow_mut().push(diag);
-    }
-
-    pub fn report_warn(&self, diag: Diag) {
-        self.warnings.borrow_mut().push(diag);
-    }
-
     /// Report a diagnostic with the appropriate level based on lint configuration.
     pub fn report(&self, lint_name: &'static str, category: Category, diag: Diag) {
         let level = self.config.get_level(lint_name, category);
         match level {
-            Level::Error => self.report_error(diag),
-            Level::Warning => self.report_warn(diag),
+            Level::Error => self.errors.borrow_mut().push(diag),
+            Level::Warning => self.warnings.borrow_mut().push(diag),
             Level::Disabled => {} // Don't emit disabled diagnostics
         }
     }
@@ -337,8 +325,8 @@ macro_rules! define_lints {
             }
 
             Report {
-                errors: ctx.errors.take(),
-                warnings: ctx.warnings.take(),
+                errors: ctx.errors.into_inner(),
+                warnings: ctx.warnings.into_inner(),
             }
         }
 
@@ -369,8 +357,8 @@ macro_rules! define_lints {
             }
 
             Report {
-                errors: ctx.errors.take(),
-                warnings: ctx.warnings.take(),
+                errors: ctx.errors.into_inner(),
+                warnings: ctx.warnings.into_inner(),
             }
         }
     };

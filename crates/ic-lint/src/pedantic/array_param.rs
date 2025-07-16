@@ -57,7 +57,7 @@ impl<'a> Lint<'a> for ArrayParam<'_> {
         Category::Pedantic
     }
 
-    fn check(ctx: &'a crate::LintCtx<'_>, tree: &[ic_syntax::Item]) {
+    fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = ArrayParam { ctx };
         walk_tree(&mut lint, tree);
     }

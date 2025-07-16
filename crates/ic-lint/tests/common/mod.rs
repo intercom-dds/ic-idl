@@ -93,3 +93,49 @@ pub fn lint_hir(source: &str) -> Report {
 
     report
 }
+
+#[allow(dead_code)]
+pub fn test_lint_hir(source: &str) -> String {
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(source);
+
+    // Parse the IDL code
+    let args = ic_preproc::ProcArgs::default();
+    let ast = ic_parse::from_file(file_id, args, &mut vfs);
+
+    // Lower to HIR
+    let hir = ic_hir::from_ast(ast.tree);
+
+    // Configure lint to enable semantic errors
+    let mut config = LintConfig::new();
+    config.set_category_level(Category::Semantic, Level::Error);
+
+    // Run HIR lints
+    let mut report = ic_lint::lint_hir_with_config(&hir, &vfs, &config);
+
+    // Add any HIR errors to the report
+    report.errors.extend(hir.errors);
+
+    // Format all diagnostics
+    let mut output = String::new();
+
+    // Emit errors
+    for (i, diag) in report.errors.iter().enumerate() {
+        if i > 0 {
+            output.push('\n');
+        }
+        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
+            .expect("Failed to format diagnostic");
+    }
+
+    // Emit warnings
+    for (i, diag) in report.warnings.iter().enumerate() {
+        if i > 0 || !report.errors.is_empty() {
+            output.push('\n');
+        }
+        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
+            .expect("Failed to format diagnostic");
+    }
+
+    output
+}

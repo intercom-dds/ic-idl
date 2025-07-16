@@ -1,0 +1,34 @@
+---
+source: crates/ic-lint/tests/multiple_default_cases.rs
+expression: test_lint_hir(source)
+---
+error: union 'ComplexUnion' has multiple default cases
+    ┌ test.idl:12:21
+    │
+ 12 │     default: double fallback2;  // Error
+    ·                     ^^^^^^^^^ duplicate default
+    └──
+
+error: union `ComplexUnion` has 2 default cases, but only one is allowed
+    ┌ test.idl:12:21
+    │
+ 12 │     default: double fallback2;  // Error
+    ·                     ^^^^^^^^^ additional default case here
+ 10 │     default: boolean fallback1;
+    ·                      ^^^^^^^^^ first default case here
+    └──
+
+error: case 'number' is unreachable because it appears after default
+    ┌ test.idl:11:19
+    │
+ 11 │     case 3: float number;
+    ·                   ^^^^^^ unreachable case
+    └──
+ help: move this case before the default case
+
+error: multiple default cases in union `ComplexUnion`
+    ┌ test.idl:12:21
+    │
+ 12 │     default: double fallback2;  // Error
+    ·                     ^^^^^^^^^ default case already defined
+    └──

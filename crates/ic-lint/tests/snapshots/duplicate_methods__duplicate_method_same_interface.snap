@@ -1,0 +1,24 @@
+---
+source: crates/ic-lint/tests/duplicate_methods.rs
+expression: test_lint_hir(source)
+---
+error: interface `Test` defines method `method` which conflicts with inherited method
+   ┌ test.idl:3:10
+   │
+ 3 │     void method();
+   ·          ^^^^^^ conflicting method definition
+   └──
+
+error: duplicate method `method` in interface `Test`
+   ┌ test.idl:4:10
+   │
+ 4 │     long method();  // Should be caught by validate.rs, not this lint
+   ·          ^^^^^^ duplicate method
+   └──
+
+error: duplicate registration of name `method`
+   ┌ test.idl:4:10
+   │
+ 4 │     long method();  // Should be caught by validate.rs, not this lint
+   ·          ^^^^^^ redefined here
+   └──

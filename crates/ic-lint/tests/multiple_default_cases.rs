@@ -25,135 +25,82 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod common;
+use insta::assert_snapshot;
 
-use common::lint_hir;
+mod common;
+use common::test_lint_hir;
 
 #[test]
 fn test_single_default_case() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch(long) {
     case 1: long x;
     case 2: string s;
     default: float f;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 0);
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_multiple_default_cases() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch(long) {
     case 1: long x;
     default: string s;
     case 2: float f;
     default: double d;  // Error: multiple default cases
 };
-",
-    );
-
-    // Multiple errors may be reported by different validators
-    assert!(!report.errors.is_empty());
-
-    // Find our specific error about multiple default cases
-    let our_error = report
-        .errors
-        .iter()
-        .find(|e| {
-            let msg = format!("{e:?}");
-            msg.contains("2 default cases") && msg.contains("only one is allowed")
-        })
-        .expect("Should have our specific error about multiple default cases");
-
-    let error_output = format!("{our_error:?}");
-    assert!(error_output.contains("2 default cases"));
-    assert!(error_output.contains("only one is allowed"));
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_three_default_cases() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch(long) {
     case 1: long x;
     default: string s;
     default: float f;
     default: double d;  // Error: 3 default cases
 };
-",
-    );
-
-    assert!(!report.errors.is_empty());
-
-    // Find our specific error
-    let our_error = report
-        .errors
-        .iter()
-        .find(|e| {
-            let msg = format!("{e:?}");
-            msg.contains("3 default cases") && msg.contains("only one is allowed")
-        })
-        .expect("Should have our specific error about 3 default cases");
-
-    let error_output = format!("{our_error:?}");
-    assert!(error_output.contains("3 default cases"));
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_no_default_case() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch(long) {
     case 1: long x;
     case 2: string s;
     case 3: float f;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 0);
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_default_case_ordering() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch(long) {
     default: string s;  // Default at beginning
     case 1: long x;
     case 2: float f;
     default: double d;  // Error: second default
 };
-",
-    );
-
-    assert!(!report.errors.is_empty());
-
-    // Find our specific error
-    let our_error = report
-        .errors
-        .iter()
-        .find(|e| {
-            let msg = format!("{e:?}");
-            msg.contains("2 default cases") && msg.contains("only one is allowed")
-        })
-        .expect("Should have our specific error");
-
-    let error_output = format!("{our_error:?}");
-    assert!(error_output.contains("2 default cases"));
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_enum_discriminator() {
-    let report = lint_hir(
-        r"
+    let source = r"
 enum Color { RED, GREEN, BLUE };
 
 union ColorData switch(Color) {
@@ -161,17 +108,14 @@ union ColorData switch(Color) {
     case GREEN: long green_value;
     default: long other_value;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 0);
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_nested_unions() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union Outer switch(long) {
     case 1: long x;
     default: string s;
@@ -182,24 +126,14 @@ union Inner switch(long) {
     default: double d1;
     default: double d2;  // Error in inner union
 };
-",
-    );
-
-    // Should have at least one error for the Inner union
-    assert!(!report.errors.is_empty());
-
-    // Check that we have an error mentioning Inner
-    let has_inner_error = report.errors.iter().any(|e| {
-        let msg = format!("{e:?}");
-        msg.contains("Inner") && msg.contains("default")
-    });
-    assert!(has_inner_error, "Should have error for Inner union");
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_multiple_unions_with_defaults() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union Union1 switch(long) {
     case 1: long x;
     default: string s;
@@ -215,23 +149,14 @@ union Union3 switch(char) {
     case 'a': string a;
     default: string other;
 };
-",
-    );
-
-    assert!(!report.errors.is_empty());
-
-    // Check for Union2 error
-    let has_union2_error = report.errors.iter().any(|e| {
-        let msg = format!("{e:?}");
-        msg.contains("Union2") && msg.contains("default")
-    });
-    assert!(has_union2_error, "Should have error for Union2");
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_complex_union() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Data {
     long value;
 };
@@ -244,23 +169,14 @@ union ComplexUnion switch(unsigned long) {
     case 3: float number;
     default: double fallback2;  // Error
 };
-",
-    );
-
-    assert!(!report.errors.is_empty());
-
-    // Check for ComplexUnion error
-    let has_complex_error = report.errors.iter().any(|e| {
-        let msg = format!("{e:?}");
-        msg.contains("ComplexUnion") && msg.contains("default")
-    });
-    assert!(has_complex_error, "Should have error for ComplexUnion");
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn test_union_in_interface() {
-    let report = lint_hir(
-        r"
+    let source = r"
 interface Service {
     union Result switch(long) {
         case 0: string success;
@@ -270,25 +186,7 @@ interface Service {
     
     Result doSomething();
 };
-",
-    );
-
-    // Debug output
-    println!("Union in interface - Errors: {}", report.errors.len());
-    for (i, err) in report.errors.iter().enumerate() {
-        println!("Error {i}: {err:?}");
-    }
-
-    // This might not work if unions inside interfaces aren't visited
-    // Let's just check that if there are errors, at least one is about defaults
-    if report.errors.is_empty() {
-        println!("SKIP: No errors found - unions in interfaces might not be visited");
-        return;
-    }
-
-    let has_relevant_error = report.errors.iter().any(|e| {
-        let msg = format!("{e:?}");
-        msg.contains("Result") || msg.contains("default")
-    });
-    assert!(has_relevant_error, "Should have relevant errors");
+";
+    
+    assert_snapshot!(test_lint_hir(source));
 }

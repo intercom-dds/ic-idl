@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/duplicate_methods.rs
+expression: test_lint_hir(source)
+---
+error: interface `C` inherits conflicting definitions of method `method`
+    ┌ test.idl:10:11
+    │
+ 10 │ interface C : A, B {  // Error: inherits conflicting methods
+    ·           ^ interface with conflicting inherited methods
+  3 │     void method();
+    ·          ^^^^^^ defined in `A`
+  7 │     long method();  // Different return type
+    ·          ^^^^^^ defined in `B`
+    └──

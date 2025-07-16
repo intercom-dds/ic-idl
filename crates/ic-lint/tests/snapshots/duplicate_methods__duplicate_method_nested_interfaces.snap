@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/duplicate_methods.rs
+expression: test_lint_hir(source)
+---
+

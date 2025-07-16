@@ -1,0 +1,42 @@
+---
+source: crates/ic-lint/tests/multiple_default_cases.rs
+expression: test_lint_hir(source)
+---
+error: union 'MyUnion' has multiple default cases
+   ┌ test.idl:6:21
+   │
+ 6 │     default: double d;  // Error: second default
+   ·                     ^ duplicate default
+   └──
+
+error: union `MyUnion` has 2 default cases, but only one is allowed
+   ┌ test.idl:6:21
+   │
+ 6 │     default: double d;  // Error: second default
+   ·                     ^ additional default case here
+ 3 │     default: string s;  // Default at beginning
+   ·                     ^ first default case here
+   └──
+
+error: case 'x' is unreachable because it appears after default
+   ┌ test.idl:4:18
+   │
+ 4 │     case 1: long x;
+   ·                  ^ unreachable case
+   └──
+ help: move this case before the default case
+
+error: case 'f' is unreachable because it appears after default
+   ┌ test.idl:5:19
+   │
+ 5 │     case 2: float f;
+   ·                   ^ unreachable case
+   └──
+ help: move this case before the default case
+
+error: multiple default cases in union `MyUnion`
+   ┌ test.idl:6:21
+   │
+ 6 │     default: double d;  // Error: second default
+   ·                     ^ default case already defined
+   └──

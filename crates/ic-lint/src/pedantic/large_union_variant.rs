@@ -114,7 +114,7 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                         avg_except_largest
                     ),
                     Label::new(largest.ident.span)
-                        .message(format!("large variant ({} bytes)", largest_size))
+                        .message(format!("large variant ({largest_size} bytes)"))
                 );
 
                 if let Some(mut diag) = diag {
@@ -122,7 +122,7 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                     for (variant, size) in &variant_sizes {
                         if variant.ident.name != largest.ident.name {
                             diag = diag.label(
-                                Label::new(variant.ident.span).message(format!("{} bytes", size)),
+                                Label::new(variant.ident.span).message(format!("{size} bytes")),
                             );
                         }
                     }

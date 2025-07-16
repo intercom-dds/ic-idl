@@ -67,7 +67,7 @@ impl BitBound<'_> {
                     Label::new(ic_syntax::util::path_span(&ann.path))
                         .message("bit position out of bounds"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }
@@ -136,7 +136,7 @@ impl<'a> Visitor<'a> for BitBound<'a> {
                         ),
                         Label::new(flag.ident.span).message("value out of bounds"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }

@@ -86,7 +86,7 @@ impl InvalidEnumValue<'_> {
                     ),
                     Label::new(field.ident.span).message("value out of range"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
 
@@ -98,7 +98,7 @@ impl InvalidEnumValue<'_> {
                     format!("enum value {value} is already used by '{prev_name}'"),
                     Label::new(field.ident.span).message("duplicate value"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             } else {
                 seen_values.insert(value, field.ident.name.clone());

@@ -64,7 +64,7 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                         "array size must be greater than zero",
                         Label::new(ty.span).message("invalid array size"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }
@@ -75,7 +75,7 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     "sequence bound must be greater than zero",
                     Label::new(ty.span).message("invalid sequence bound"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
             TyKind::String { bound: Some(b), .. } if *b == 0 => {
@@ -85,7 +85,7 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     "string bound must be greater than zero",
                     Label::new(ty.span).message("invalid string bound"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
             TyKind::Map { bound: Some(b), .. } if *b == 0 => {
@@ -95,7 +95,7 @@ impl<'a> Visitor<'a> for ZeroBound<'a> {
                     "map bound must be greater than zero",
                     Label::new(ty.span).message("invalid map bound"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
             _ => {}

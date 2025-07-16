@@ -66,7 +66,7 @@ impl AmbiguousPrecedence<'_> {
                 .label(Label::new(child_span).message("than this expression"))
                 .help("add parentheses to clarify the intended order of operations");
 
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 }

@@ -82,7 +82,7 @@ impl<'a> Visitor<'a> for MultipleDefaultCases<'a> {
             )
             .label(Label::new(first_default_span.unwrap()).message("first default case here"));
 
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
 
         // Continue visiting

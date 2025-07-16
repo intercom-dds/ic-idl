@@ -49,7 +49,7 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
                 "identifiers can only consist of alphanumeric ASCII characters",
                 Label::new(ident.span).message("non-ASCII identifier"),
             );
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 
@@ -60,7 +60,7 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
                     "character literals can only consist of alphanumeric ASCII characters",
                     Label::new(num.span).message("non-ASCII character"),
                 );
-                self.ctx.report(Self::name(), Self::category(), diag);
+                Self::report(self.ctx, diag);
             }
         }
     }

@@ -44,7 +44,7 @@ impl<'a> Visitor<'a> for Unsupported<'a> {
         )
         .note("the bitset will be skipped during codegen");
 
-        self.ctx.report(Self::name(), Self::category(), diag);
+        Self::report(self.ctx, diag);
     }
 
     fn visit_path(&mut self, path: &'a ic_syntax::Path) {
@@ -57,7 +57,7 @@ impl<'a> Visitor<'a> for Unsupported<'a> {
                 )
                 .note("long double will be treated as a normal double during codegen");
 
-                self.ctx.report(Self::name(), Self::category(), diag);
+                Self::report(self.ctx, diag);
             }
         }
     }

@@ -55,7 +55,7 @@ impl<'a> Visitor<'a> for AnnMembers<'_> {
                         Label::new(span)
                             .message(format!("`{name}`s are not allowed in annotations")),
                     );
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }

@@ -45,7 +45,7 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
             )
             .help("use the `@position` annotation instead");
 
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 
@@ -57,7 +57,7 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
             )
             .help("use the `@value` annotation instead");
 
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 }

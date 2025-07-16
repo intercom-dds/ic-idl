@@ -161,7 +161,7 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                             }
                         }
 
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     } else {
                         // This interface inherits conflicting methods from multiple parents
                         let diag = ic_diagnostic::error_span(
@@ -183,7 +183,7 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                             );
                         }
 
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 } else if sources.len() > 1 {
                     // Compatible duplicate methods - still worth a warning
@@ -218,7 +218,7 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                                 "while this redefinition is compatible, it may cause confusion",
                             );
 
-                            self.ctx.report(Self::name(), Self::category(), diag);
+                            Self::report(self.ctx, diag);
                         }
                     }
                 }

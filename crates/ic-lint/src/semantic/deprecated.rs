@@ -93,7 +93,7 @@ impl Deprecated<'_> {
                     Label::new(ty.span).message("deprecated type used here"),
                 ) {
                     diag = diag.help(&message);
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }
@@ -111,7 +111,7 @@ impl Deprecated<'_> {
                 Label::new(span).message("deprecated constant used here"),
             ) {
                 diag = diag.help(&message);
-                self.ctx.report(Self::name(), Self::category(), diag);
+                Self::report(self.ctx, diag);
             }
         }
     }

@@ -52,7 +52,7 @@ impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
             )
             .help("move the annotation to the definition of the type");
 
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 }

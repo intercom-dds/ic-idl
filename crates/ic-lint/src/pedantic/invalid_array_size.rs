@@ -76,7 +76,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             ),
                             Label::new(ty.span).message("very large array"),
                         ) {
-                            self.ctx.report(Self::name(), Self::category(), diag);
+                            Self::report(self.ctx, diag);
                         }
                     }
                 }
@@ -97,7 +97,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             ),
                             Label::new(ty.span).message("very large sequence bound"),
                         ) {
-                            self.ctx.report(Self::name(), Self::category(), diag);
+                            Self::report(self.ctx, diag);
                         }
                     }
                 }
@@ -118,7 +118,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                         ),
                         Label::new(ty.span).message("very large string bound"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }

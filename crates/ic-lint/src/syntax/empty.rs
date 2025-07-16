@@ -51,7 +51,7 @@ impl EmptyTypes<'_> {
         )
         .note(note);
 
-        self.ctx.report(Self::name(), Self::category(), diag);
+        Self::report(self.ctx, diag);
     }
 }
 

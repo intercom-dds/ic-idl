@@ -67,7 +67,7 @@ impl DuplicateCaseLabels<'_> {
                         format!("union '{union_name}' has multiple default cases"),
                         Label::new(variant.ident.span).message("duplicate default"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 } else {
                     has_default = true;
@@ -83,7 +83,7 @@ impl DuplicateCaseLabels<'_> {
                         format!("union '{union_name}' has duplicate case label '{label_key}'"),
                         Label::new(variant.ident.span).message("duplicate case label"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }

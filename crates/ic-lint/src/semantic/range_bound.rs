@@ -93,7 +93,7 @@ impl RangeBound<'_> {
                         Label::new(ic_syntax::util::path_span(&ann.path))
                             .message("invalid minimum bound"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }
@@ -111,7 +111,7 @@ impl RangeBound<'_> {
                         Label::new(ic_syntax::util::path_span(&ann.path))
                             .message("invalid maximum bound"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }
@@ -129,7 +129,7 @@ impl RangeBound<'_> {
                     format!("@range minimum {min_val} is greater than maximum {max_val}"),
                     Label::new(ic_syntax::util::path_span(&ann.path)).message("invalid range"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }

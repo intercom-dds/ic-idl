@@ -103,7 +103,7 @@ impl CircularInheritance<'_> {
                 ),
                 Label::new(start_def.ident.span).message("circular inheritance detected"),
             ) {
-                self.ctx.report(Self::name(), Self::category(), diag);
+                Self::report(self.ctx, diag);
             }
         }
     }

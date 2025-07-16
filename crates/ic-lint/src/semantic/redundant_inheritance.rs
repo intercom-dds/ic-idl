@@ -73,7 +73,7 @@ impl RedundantInheritance<'_> {
                     Label::new(ic_syntax::util::path_span(parent_path))
                         .message("redundant inheritance"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }

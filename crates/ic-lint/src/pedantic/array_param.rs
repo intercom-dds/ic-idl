@@ -43,7 +43,7 @@ impl<'a> Visitor<'a> for ArrayParam<'a> {
                 Label::new(decl.ident.span).message("this parameter is an array"),
             )
             .note("standard IDL does not permit arrays as parameters");
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 }

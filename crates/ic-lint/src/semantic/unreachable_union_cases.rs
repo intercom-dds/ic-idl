@@ -77,7 +77,7 @@ impl UnreachableUnionCases<'_> {
                         Label::new(variant.ident.span).message("unreachable case"),
                     ) {
                         diag = diag.help("move this case before the default case");
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }
@@ -98,7 +98,7 @@ impl UnreachableUnionCases<'_> {
                                 Label::new(variant.ident.span)
                                     .message("case label out of range"),
                             ) {
-                                self.ctx.report(Self::name(), Self::category(), diag);
+                                Self::report(self.ctx, diag);
                             }
                         }
                     }

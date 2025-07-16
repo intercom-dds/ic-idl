@@ -66,7 +66,7 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
                     Label::new(num.span).message("lowercase boolean literal"),
                 ) {
                     let diag = diag.help(format!("use `{fixed}` instead"));
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }

@@ -131,7 +131,7 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                         "consider annotating large variants with `@shared` to heap allocate them",
                     );
 
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
         }

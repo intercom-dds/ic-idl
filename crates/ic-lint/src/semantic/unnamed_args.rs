@@ -111,7 +111,7 @@ impl UnnamedArgs<'_> {
             diag = diag.help(format!(
                 "use named arguments like @{name}(param1=value1, param2=value2)"
             ));
-            self.ctx.report(Self::name(), Self::category(), diag);
+            Self::report(self.ctx, diag);
         }
     }
 

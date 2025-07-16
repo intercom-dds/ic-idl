@@ -91,7 +91,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                         "use `{enumerator}` instead of `{enum_and_enumerator}`"
                     ));
 
-                    self.ctx.report(Self::name(), Self::category(), label);
+                    Self::report(self.ctx, label);
                 }
             }
         } else {

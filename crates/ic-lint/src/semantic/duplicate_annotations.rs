@@ -75,7 +75,7 @@ impl DuplicateAnnotations<'_> {
                     Label::new(ic_syntax::util::path_span(&ann.ident))
                         .message("duplicate annotation"),
                 ) {
-                    self.ctx.report(Self::name(), Self::category(), diag);
+                    Self::report(self.ctx, diag);
                 }
             }
 
@@ -91,7 +91,7 @@ impl DuplicateAnnotations<'_> {
                         Label::new(ic_syntax::util::path_span(&ann.ident))
                             .message("conflicts with previous annotation"),
                     ) {
-                        self.ctx.report(Self::name(), Self::category(), diag);
+                        Self::report(self.ctx, diag);
                     }
                 }
             }

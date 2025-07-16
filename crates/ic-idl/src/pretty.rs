@@ -180,11 +180,13 @@ fn emit_error_with_expansion(
     ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag)
 }
 
-pub fn emit_errors_with_expansion(
+#[must_use]
+#[allow(clippy::implicit_hasher)]
+pub fn format_errors_with_expansion(
     errors: &[Error],
     vfs: &SourceMap,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
-) {
+) -> String {
     let mut buf = String::new();
     let prefix = "error:".red().bold();
 
@@ -201,10 +203,11 @@ pub fn emit_errors_with_expansion(
             Error::Diagnostic(diag) => ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag),
         };
     }
-    eprintln!("{buf}");
+    buf
 }
 
-pub fn emit_warnings(warnings: &[Diag], vfs: &SourceMap) {
+#[must_use]
+pub fn format_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     let mut buf = String::new();
     for diag in warnings {
         if !buf.is_empty() {
@@ -212,10 +215,7 @@ pub fn emit_warnings(warnings: &[Diag], vfs: &SourceMap) {
         }
         _ = ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag);
     }
-
-    if !buf.is_empty() {
-        eprintln!("{buf}");
-    }
+    buf
 }
 
 pub fn parse_error_to_warning(error: &ic_parse::Error) -> Diag {

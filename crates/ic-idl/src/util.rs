@@ -26,27 +26,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashSet;
-use std::fs::DirEntry;
 use std::io::{self, Result};
 use std::path::{Path, PathBuf};
 
-use ic_cli::color::Colorize;
 
-#[macro_export]
-macro_rules! error {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
-    }}
-}
-
-#[macro_export]
-macro_rules! warn {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("{} {}", "warning:".purple().bold(), format!($($arg)*));
-    }}
-}
 
 #[derive(Debug)]
 #[allow(unused)]
@@ -139,19 +122,16 @@ where
 {
     const BLACKLIST: &[&str] = &[".git", ".hg"];
 
-    let filter = |entry: DirEntry| {
-        BLACKLIST
-            .iter()
-            .find(|v| entry.file_name().eq_ignore_ascii_case(v))
-    };
-
     if let Ok(v) = std::fs::metadata(&dir) {
         if v.is_dir() {
-            if let Some(deny) = std::fs::read_dir(&dir)?.flatten().find_map(filter) {
-                Err(Error::Custom(format!(
-                    "cowardly refusing to purge output directory that contains `{}`",
-                    deny.yellow(),
-                )))?;
+            for entry in std::fs::read_dir(&dir)?.flatten() {
+                let file_name = entry.file_name();
+                if BLACKLIST.iter().any(|v| file_name.eq_ignore_ascii_case(v)) {
+                    return Err(Error::Custom(format!(
+                        "cowardly refusing to purge output directory that contains `{}`",
+                        file_name.to_string_lossy(),
+                    )));
+                }
             }
             std::fs::remove_dir_all(&dir)?;
         }

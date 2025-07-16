@@ -28,10 +28,23 @@
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use ic_cli::{Command, ParseError};
+use ic_cli::color::Colorize;
 use ic_emit::File;
-// Import the error macro from the library
-use ic_idl::error;
 use ic_idl::{CompileError, Compiler, CompilerOptions, GeneratedFile, write_generated_files};
+
+macro_rules! error {
+    ($($arg:tt)*) => {{
+        use ic_cli::color::Colorize as _;
+        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
+    }}
+}
+
+macro_rules! warn {
+    ($($arg:tt)*) => {{
+        use ic_cli::color::Colorize as _;
+        eprintln!("{} {}", "warning:".purple().bold(), format!($($arg)*));
+    }}
+}
 
 mod info;
 mod panic;
@@ -71,6 +84,11 @@ fn main() {
         unstable::warning_help();
     }
 
+    // Print unknown warnings
+    for unknown in &options.warn.unknown_warnings {
+        warn!("unknown warning '{}'", unknown);
+    }
+
     if options.files.is_empty() {
         error!("no input files");
         return;
@@ -81,28 +99,48 @@ fn main() {
 
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
-    let ptree = match compiler.compile() {
-        Ok(v) => v,
+    let (ptree, _diagnostics) = match compiler.compile() {
+        Ok((ptree, diagnostics)) => {
+            // Print warnings if any
+            if !diagnostics.warnings.is_empty() {
+                let formatted_warnings = ic_idl::pretty::format_warnings(&diagnostics.warnings, compiler.source_map());
+                eprintln!("{}", formatted_warnings);
+                
+                let warning_plural = if diagnostics.warnings.len() > 1 { "s" } else { "" };
+                eprintln!("\n{} {} warning{} emitted", "warning:".purple().bold(), diagnostics.warnings.len(), warning_plural);
+            }
+            (ptree, diagnostics)
+        }
         Err(CompileError::Io(e)) => {
             error!("I/O error: {}", e);
             std::process::exit(1);
         }
-        Err(CompileError::Analysis(errors, warning_count)) => {
-            // Errors have already been printed by the library
-            let error_plural = if errors.len() > 1 { "s" } else { "" };
-            let warning_plural = if warning_count > 1 { "s" } else { "" };
-            if warning_count > 0 {
+        Err(CompileError::Diagnostics(diagnostics)) => {
+            // Print warnings if any
+            if !diagnostics.warnings.is_empty() {
+                let formatted_warnings = ic_idl::pretty::format_warnings(&diagnostics.warnings, compiler.source_map());
+                eprintln!("{}", formatted_warnings);
+            }
+            
+            // Print errors
+            let formatted_errors = ic_idl::pretty::format_errors_with_expansion(&diagnostics.errors, compiler.source_map(), &diagnostics.expansion_info);
+            eprintln!("{}", formatted_errors);
+            
+            // Print error summary
+            let error_plural = if diagnostics.errors.len() > 1 { "s" } else { "" };
+            let warning_plural = if diagnostics.warnings.len() > 1 { "s" } else { "" };
+            if !diagnostics.warnings.is_empty() {
                 error!(
                     "aborting due to {} previous error{}, {} warning{}",
-                    errors.len(),
+                    diagnostics.errors.len(),
                     error_plural,
-                    warning_count,
+                    diagnostics.warnings.len(),
                     warning_plural,
                 );
             } else {
                 error!(
                     "aborting due to {} previous error{}",
-                    errors.len(),
+                    diagnostics.errors.len(),
                     error_plural,
                 );
             }

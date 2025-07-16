@@ -27,8 +27,6 @@
 
 use std::{backtrace, panic};
 
-use crate::error;
-
 #[allow(deprecated)]
 fn dump_backtrace(info: &std::panic::PanicInfo) {
     let thread = std::thread::current();

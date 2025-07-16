@@ -42,12 +42,30 @@
 //!
 //! let mut compiler = Compiler::new(options);
 //! match compiler.compile() {
-//!     Ok(ptree) => {
+//!     Ok((ptree, diagnostics)) => {
+//!         // Check for warnings
+//!         if !diagnostics.warnings.is_empty() {
+//!             // Use the pretty module to format warnings
+//!             let formatted = ic_idl::pretty::format_warnings(&diagnostics.warnings, compiler.source_map());
+//!             // User can print formatted warnings if desired
+//!         }
+//!         
 //!         // Now you can use the ptree with any backend
 //!         let files = ic_codegen_rust::codegen_rust(&ptree);
-//!         println!("Generated {} files", files.len());
+//!         // User can print or handle files as needed
 //!     }
-//!     Err(e) => eprintln!("Compilation failed: {}", e),
+//!     Err(ic_idl::CompileError::Diagnostics(diagnostics)) => {
+//!         // Format errors and warnings using the pretty module
+//!         let formatted_errors = ic_idl::pretty::format_errors_with_expansion(
+//!             &diagnostics.errors,
+//!             compiler.source_map(),
+//!             &diagnostics.expansion_info
+//!         );
+//!         // User can print formatted errors if desired
+//!     }
+//!     Err(e) => {
+//!         // Handle other errors as needed
+//!     }
 //! }
 //!
 //! // Example 2: Parse to ptree and use a backend directly
@@ -63,14 +81,13 @@
 
 use std::path::{Path, PathBuf};
 
-use ic_cli::color::Colorize;
 use ic_diagnostic::Diag;
 use ic_preproc::{ExpansionInfo, ProcArgs};
 use ic_vfs::SourceMap;
 
 // Import modules
 pub(crate) mod config;
-pub(crate) mod pretty;
+pub mod pretty;
 pub(crate) mod util;
 
 // Re-export configuration types
@@ -81,6 +98,7 @@ pub use config::{
 // Re-export useful types
 pub use ic_emit::File as GeneratedFile;
 pub use ic_lint::{Category as LintCategory, Level as LintLevel, LintConfig};
+pub use util::Error as DiagnosticError;
 use util::Error as InternalError;
 
 /// Error type for compilation failures.
@@ -88,17 +106,27 @@ use util::Error as InternalError;
 pub enum CompileError {
     /// I/O error (e.g., file not found).
     Io(std::io::Error),
-    /// Parse or semantic analysis error.
-    Analysis(Vec<String>, usize), // errors, warning count
+    /// Parse or semantic analysis error with diagnostics.
+    Diagnostics(CompileDiagnostics),
+}
+
+/// Diagnostics collected during compilation.
+#[derive(Debug)]
+pub struct CompileDiagnostics {
+    /// Raw errors
+    pub errors: Vec<DiagnosticError>,
+    /// Warning diagnostics
+    pub warnings: Vec<Diag>,
+    /// Expansion info for macro expansion contexts
+    pub expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
 }
 
 impl std::fmt::Display for CompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CompileError::Io(e) => write!(f, "I/O error: {e}"),
-            CompileError::Analysis(errors, _) => {
-                let errors_str = errors.join("\n");
-                write!(f, "Analysis errors:\n{errors_str}")
+            CompileError::Diagnostics(diag) => {
+                write!(f, "{} errors, {} warnings", diag.errors.len(), diag.warnings.len())
             }
         }
     }
@@ -115,6 +143,7 @@ impl From<std::io::Error> for CompileError {
 // Re-export core modules for the compilation pipeline
 pub use ic_parse::ParseResult as AstResult;
 pub use {ic_hir as hir, ic_ptree as ptree, ic_vfs as vfs};
+
 
 /// Main compiler interface.
 #[must_use]
@@ -158,17 +187,20 @@ impl Compiler {
         let parsed = try_parse(&self.options, proc_args, path, &mut self.source_map);
 
         if !parsed.errors.is_empty() {
-            let error_strings = parsed
-                .errors
-                .into_iter()
-                .map(|e| format!("{e:?}"))
-                .collect();
-            return Err(CompileError::Analysis(error_strings, parsed.warnings.len()));
+            return Err(CompileError::Diagnostics(CompileDiagnostics {
+                errors: parsed.errors,
+                warnings: parsed.warnings,
+                expansion_info: std::collections::HashMap::new(),
+            }));
         }
 
         parsed
             .result
-            .ok_or_else(|| CompileError::Analysis(vec!["Failed to parse file".to_string()], 0))
+            .ok_or_else(|| CompileError::Diagnostics(CompileDiagnostics {
+                errors: vec![InternalError::Custom("Failed to parse file".to_string())],
+                warnings: Vec::new(),
+                expansion_info: std::collections::HashMap::new(),
+            }))
     }
 
     /// Parse multiple IDL files.
@@ -189,20 +221,26 @@ impl Compiler {
 
     /// Compile the configured IDL files to a merged ptree.
     ///
+    /// Returns the compiled ptree and any diagnostics (warnings) that were generated.
+    ///
     /// # Errors
     ///
-    /// Returns an error if compilation fails.
-    pub fn compile(&mut self) -> Result<ptree::ParseResult, CompileError> {
+    /// Returns an error if compilation fails. The error will contain all diagnostics
+    /// including both errors and warnings.
+    pub fn compile(&mut self) -> Result<(ptree::ParseResult, CompileDiagnostics), CompileError> {
         if self.options.files.is_empty() {
-            return Err(CompileError::Analysis(
-                vec!["no input files".to_string()],
-                0,
-            ));
+            return Err(CompileError::Diagnostics(CompileDiagnostics {
+                errors: vec![InternalError::Custom("no input files".to_string())],
+                warnings: Vec::new(),
+                expansion_info: std::collections::HashMap::new(),
+            }));
         }
 
-        // Parse all files and merge into a single ptree
-        let ptrees = self.compile_to_ptrees()?;
-        Ok(ptree::merge_trees(&ptrees))
+        // Use try_main to get the result with all diagnostics
+        let (ptrees, diagnostics) = try_main_with_diagnostics(&self.options, &mut self.source_map)?;
+        let merged_ptree = ptree::merge_trees(&ptrees);
+        
+        Ok((merged_ptree, diagnostics))
     }
 
     /// Compile the configured IDL files to individual ptrees.
@@ -211,8 +249,9 @@ impl Compiler {
     ///
     /// Returns an error if compilation fails.
     pub fn compile_to_ptrees(&mut self) -> Result<Vec<ptree::ParseResult>, CompileError> {
-        // Use try_main to get proper error handling and warnings
-        try_main(&self.options, &mut self.source_map)
+        // Use try_main_with_diagnostics but discard the diagnostics
+        let (ptrees, _diagnostics) = try_main_with_diagnostics(&self.options, &mut self.source_map)?;
+        Ok(ptrees)
     }
 
     /// Parse files and get the AST.
@@ -227,8 +266,11 @@ impl Compiler {
         })?;
 
         if !ast.errors.is_empty() {
-            let error_strings = ast.errors.iter().map(|e| format!("{e:?}")).collect();
-            return Err(CompileError::Analysis(error_strings, ast.warnings.len()));
+            return Err(CompileError::Diagnostics(CompileDiagnostics {
+                errors: ast.errors.into_iter().map(Into::into).collect(),
+                warnings: Vec::new(),
+                expansion_info: std::collections::HashMap::new(),
+            }));
         }
 
         Ok(ast)
@@ -243,8 +285,11 @@ impl Compiler {
         let hir = hir::from_ast(ast.tree);
 
         if !hir.errors.is_empty() {
-            let error_strings = hir.errors.iter().map(|e| format!("{e:?}")).collect();
-            return Err(CompileError::Analysis(error_strings, 0));
+            return Err(CompileError::Diagnostics(CompileDiagnostics {
+                errors: hir.errors.into_iter().map(Into::into).collect(),
+                warnings: Vec::new(),
+                expansion_info: std::collections::HashMap::new(),
+            }));
         }
 
         Ok(hir)
@@ -303,10 +348,10 @@ struct Parsed {
     expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
 }
 
-fn try_main(
+fn try_main_with_diagnostics(
     options: &CompilerOptions,
     vfs: &mut SourceMap,
-) -> Result<Vec<ptree::ParseResult>, CompileError> {
+) -> Result<(Vec<ptree::ParseResult>, CompileDiagnostics), CompileError> {
     let defines = options.define.iter().map(|v| {
         v.split_once('=')
             .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
@@ -341,33 +386,21 @@ fn try_main(
         }
     }
 
-    // Emit all warnings regardless of errors
-    if !all_warnings.is_empty() {
-        pretty::emit_warnings(&all_warnings, vfs);
-    }
-
-    // If there were any errors, emit them and return
+    // If there were any errors, return them as diagnostics
     if !all_errors.is_empty() {
-        pretty::emit_errors_with_expansion(&all_errors, vfs, &all_expansion_info);
-        let error_strings = all_errors.into_iter().map(|e| format!("{e:?}")).collect();
-        return Err(CompileError::Analysis(error_strings, all_warnings.len()));
+        return Err(CompileError::Diagnostics(CompileDiagnostics {
+            errors: all_errors,
+            warnings: all_warnings,
+            expansion_info: all_expansion_info,
+        }));
     }
 
-    // Emit warning summary if there were warnings but no errors
-    #[allow(clippy::print_stderr)]
-    {
-        if !all_warnings.is_empty() {
-            let warning_plural = if all_warnings.len() > 1 { "s" } else { "" };
-            eprintln!(
-                "{} {} warning{} emitted",
-                "warning:".purple().bold(),
-                all_warnings.len(),
-                warning_plural
-            );
-        }
-    }
-
-    Ok(trees)
+    // Return success with any warnings as diagnostics
+    Ok((trees, CompileDiagnostics {
+        errors: Vec::new(),
+        warnings: all_warnings,
+        expansion_info: all_expansion_info,
+    }))
 }
 
 fn try_parse(

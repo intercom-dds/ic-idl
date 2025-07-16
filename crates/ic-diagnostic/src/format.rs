@@ -105,12 +105,14 @@ fn line_col(input: &str, offset: usize) -> (usize, usize) {
 
     // Calculate visual column, accounting for tabs
     let line_start = last_newl;
-    for b in input[line_start..offset].bytes() {
-        if b == b'\t' {
-            // Tab moves to next multiple of 4
-            col = ((col - 1) / 4 + 1) * 4 + 1;
-        } else {
-            col += 1;
+    if line_start < input.len() && offset > line_start {
+        for b in input[line_start..offset.min(input.len())].bytes() {
+            if b == b'\t' {
+                // Tab moves to next multiple of 4
+                col = ((col - 1) / 4 + 1) * 4 + 1;
+            } else {
+                col += 1;
+            }
         }
     }
 
@@ -913,4 +915,65 @@ pub fn compact(f: &mut dyn fmt::Write, filename: &str, diag: &Diag) -> fmt::Resu
         title.fg(diag.title.color).bold(),
         diag.msg.bold(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_line_col_empty_input() {
+        // Test with empty input
+        assert_eq!(line_col("", 0), (1, 1));
+        // Test with offset beyond empty input
+        assert_eq!(line_col("", 10), (1, 1));
+    }
+
+    #[test]
+    fn test_line_col_no_tabs() {
+        // Test basic column calculation without tabs
+        assert_eq!(line_col("hello", 0), (1, 1));
+        assert_eq!(line_col("hello", 1), (1, 2));
+        assert_eq!(line_col("hello", 4), (1, 5));
+
+        // Test with content like in debug_overlap_test
+        let source = "void process(struct Data { int x; int y; } data);";
+        assert_eq!(line_col(source, 0), (1, 1)); // 'v'
+        assert_eq!(line_col(source, 13), (1, 14)); // 's' in 'struct'
+        assert_eq!(line_col(source, 27), (1, 28)); // 'i' in 'int x'
+    }
+
+    #[test]
+    fn test_line_col_with_newlines() {
+        let source = "line1\nline2\nline3";
+        assert_eq!(line_col(source, 0), (1, 1)); // 'l' in line1
+        assert_eq!(line_col(source, 5), (1, 6)); // '\n' after line1
+        assert_eq!(line_col(source, 6), (2, 1)); // 'l' in line2
+        assert_eq!(line_col(source, 11), (2, 6)); // '\n' after line2
+        assert_eq!(line_col(source, 12), (3, 1)); // 'l' in line3
+    }
+
+    #[test]
+    fn test_line_col_with_tabs() {
+        // Test tab expansion
+        assert_eq!(line_col("\tx", 0), (1, 1)); // '\t'
+        assert_eq!(line_col("\tx", 1), (1, 5)); // 'x' after tab (col 5)
+
+        // Test mixed spaces and tabs
+        assert_eq!(line_col(" \tx", 0), (1, 1)); // ' '
+        assert_eq!(line_col(" \tx", 1), (1, 2)); // '\t'
+        assert_eq!(line_col(" \tx", 2), (1, 5)); // 'x' (space + tab = 4 cols)
+
+        // Test multiple tabs
+        assert_eq!(line_col("\t\tx", 0), (1, 1)); // first '\t'
+        assert_eq!(line_col("\t\tx", 1), (1, 5)); // second '\t'
+        assert_eq!(line_col("\t\tx", 2), (1, 9)); // 'x' after 2 tabs
+    }
+
+    #[test]
+    fn test_line_col_offset_beyond_input() {
+        // Test offset beyond input length
+        assert_eq!(line_col("hi", 10), (1, 3)); // Should handle gracefully
+        assert_eq!(line_col("a\nb", 10), (2, 2)); // Should count lines correctly
+    }
 }

@@ -65,10 +65,11 @@ impl<'a> Lint<'a> for InvalidArraySize<'a> {
 impl<'a> Visitor<'a> for InvalidArraySize<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         if let TyKind::Array {
-                ty: elem_ty,
-                len,
-                len_span,
-            } = &ty.kind {
+            ty: elem_ty,
+            len,
+            len_span,
+        } = &ty.kind
+        {
             // Calculate the total size of the array
             if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
                 let total_size = elem_size * len;

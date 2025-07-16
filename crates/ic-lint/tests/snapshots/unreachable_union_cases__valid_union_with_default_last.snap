@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/unreachable_union_cases.rs
+expression: test_lint_hir(source)
+---
+

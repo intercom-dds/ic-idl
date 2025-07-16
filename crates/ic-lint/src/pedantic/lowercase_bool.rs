@@ -30,7 +30,7 @@ use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Literal, LiteralValue};
 
-use crate::{Category, Lint, LintCtx, lint_impl};
+use crate::{Category, Lint, LintCtx};
 
 /// Lint that checks for uses of lowercase `true` or `false`, neither of which
 /// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
@@ -39,9 +39,12 @@ pub struct LowercaseBool<'a> {
 }
 
 impl<'a> Lint<'a> for LowercaseBool<'a> {
-    lint_impl! {
-        name: "lowercase_bool",
-        category: Category::Pedantic,
+    fn name() -> &'static str {
+        "lowercase_bool"
+    }
+
+    fn category() -> Category {
+        Category::Pedantic
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

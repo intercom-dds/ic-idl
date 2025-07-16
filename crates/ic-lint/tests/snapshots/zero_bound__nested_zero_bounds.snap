@@ -1,0 +1,31 @@
+---
+source: crates/ic-lint/tests/zero_bound.rs
+expression: test_lint_hir(source)
+---
+error: array size must be greater than zero
+   ┌ test.idl:2:9
+   │
+ 2 │ typedef long BadArray[0];
+   ·         ^^^^ invalid array size
+   └──
+
+error: sequence bound must be greater than zero
+   ┌ test.idl:3:9
+   │
+ 3 │ typedef sequence<long, 0> BadSequence;
+   ·         ^^^^^^^^^^^^^^^^^ invalid sequence bound
+   └──
+
+error: string bound must be greater than zero
+   ┌ test.idl:4:9
+   │
+ 4 │ typedef string<0> BadString;
+   ·         ^^^^^^^^^ invalid string bound
+   └──
+
+error: map bound must be greater than zero
+   ┌ test.idl:5:9
+   │
+ 5 │ typedef map<string, long, 0> BadMap;
+   ·         ^^^^^^^^^^^^^^^^^^^^ invalid map bound
+   └──

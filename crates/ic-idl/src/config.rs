@@ -345,7 +345,7 @@ impl convert::Convert for Warnings {
         for arg in input {
             // Handle error=lint_name syntax
             if let Some(lint_name) = arg.strip_prefix("error=") {
-                let normalized = ic_lint::normalize_lint_name(lint_name);
+                let normalized = normalize_lint_name(lint_name);
                 if known_lints.contains(&normalized.as_str()) {
                     warnings.error_lints.insert(normalized, true);
                 } else {
@@ -370,7 +370,7 @@ impl convert::Convert for Warnings {
                 "help" => crate::unstable::warning_help(),
                 _ => {
                     // Check if it's a specific lint name
-                    let normalized = ic_lint::normalize_lint_name(arg);
+                    let normalized = normalize_lint_name(arg);
                     if known_lints.contains(&normalized.as_str()) {
                         warnings.specific_lints.insert(normalized, enabled);
                     } else {
@@ -382,4 +382,8 @@ impl convert::Convert for Warnings {
 
         Ok(warnings)
     }
+}
+
+fn normalize_lint_name(name: &str) -> String {
+    name.replace('-', "_")
 }

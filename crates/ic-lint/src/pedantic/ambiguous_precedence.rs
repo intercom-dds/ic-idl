@@ -30,7 +30,7 @@ use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Binary, Expr, OpKind, util};
 use ic_vfs::Span;
 
-use crate::{Category, Lint, LintCtx, lint_impl};
+use crate::{Category, Lint, LintCtx};
 
 /// Lint that warns about potentially ambiguous operator precedence.
 ///
@@ -98,9 +98,12 @@ impl<'a> Visitor<'a> for AmbiguousPrecedence<'a> {
 }
 
 impl<'a> Lint<'a> for AmbiguousPrecedence<'a> {
-    lint_impl! {
-        name: "ambiguous_precedence",
-        category: Category::Pedantic,
+    fn name() -> &'static str {
+        "ambiguous_precedence"
+    }
+
+    fn category() -> Category {
+        Category::Pedantic
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

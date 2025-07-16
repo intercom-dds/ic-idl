@@ -121,33 +121,6 @@ mod iter;
 
 use std::collections::HashMap;
 
-/// Helper macro to simplify lint implementation.
-///
-/// Example:
-/// ```ignore
-/// lint_impl! {
-///     name: "lowercase_bool",
-///     category: Category::Pedantic,
-///     message: "lowercase boolean literals are an InterCOM extension",
-/// }
-/// ```
-#[macro_export]
-macro_rules! lint_impl {
-    (
-        name: $name:expr,
-        category: $cat:expr,
-        $(,)?
-    ) => {
-        fn name() -> &'static str {
-            $name
-        }
-
-        fn category() -> $crate::Category {
-            $cat
-        }
-    };
-}
-
 /// The supported lint categories.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Category {
@@ -176,6 +149,7 @@ pub enum Category {
 pub struct LintConfig {
     /// Maps categories to their configured level.
     pub category_levels: HashMap<Category, Level>,
+
     /// Maps specific lint names to their configured level.
     pub lint_levels: HashMap<&'static str, Level>,
 }
@@ -443,10 +417,4 @@ define_lints! {
         semantic::zero_bound::ZeroBound,
         // unsupported::proto::Proto, // Commented out - too restrictive for non-proto3 IDL
     ],
-}
-
-/// Normalize a lint name by replacing dashes with underscores.
-#[must_use]
-pub fn normalize_lint_name(name: &str) -> String {
-    name.replace('-', "_")
 }

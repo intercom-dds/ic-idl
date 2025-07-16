@@ -64,32 +64,29 @@ impl<'a> Lint<'a> for InvalidArraySize<'a> {
 
 impl<'a> Visitor<'a> for InvalidArraySize<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match &ty.kind {
-            TyKind::Array {
+        if let TyKind::Array {
                 ty: elem_ty,
                 len,
                 len_span,
-            } => {
-                // Calculate the total size of the array
-                if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
-                    let total_size = elem_size * len;
-                    if total_size > MAX_REASONABLE_SIZE_BYTES {
-                        if let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            format!(
-                                "array size {total_size} bytes exceeds reasonable limit of \
-                                 {MAX_REASONABLE_SIZE_BYTES} bytes ({len} elements × {elem_size} \
-                                 bytes each)"
-                            ),
-                            Label::new(*len_span).message("very large array"),
-                        ) {
-                            Self::report(self.ctx, diag);
-                        }
+            } = &ty.kind {
+            // Calculate the total size of the array
+            if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
+                let total_size = elem_size * len;
+                if total_size > MAX_REASONABLE_SIZE_BYTES {
+                    if let Some(diag) = self.ctx.diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!(
+                            "array size {total_size} bytes exceeds reasonable limit of \
+                             {MAX_REASONABLE_SIZE_BYTES} bytes ({len} elements × {elem_size} \
+                             bytes each)"
+                        ),
+                        Label::new(*len_span).message("very large array"),
+                    ) {
+                        Self::report(self.ctx, diag);
                     }
                 }
             }
-            _ => {}
         }
 
         // Continue visiting nested types

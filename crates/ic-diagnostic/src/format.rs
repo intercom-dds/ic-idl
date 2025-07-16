@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_truncation, clippy::too_many_arguments)]
 
 use std::fmt;
 use std::ops::Range;
@@ -371,7 +371,7 @@ impl Formatter<'_> {
                 let line_start = self.line_start_offset(line_num);
                 let range = line_span(self.source, line_start as u32);
                 let line_text = expand_tabs(self.source[range].trim_end());
-                writeln!(f, " {}", line_text)?;
+                writeln!(f, " {line_text}")?;
 
                 self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
             }
@@ -484,7 +484,7 @@ impl Formatter<'_> {
                 let line_start = self.line_start_offset(line_num);
                 let range = line_span(self.source, line_start as u32);
                 let line_text = expand_tabs(self.source[range].trim_end());
-                writeln!(f, " {}", line_text)?;
+                writeln!(f, " {line_text}")?;
 
                 self.emit_labels_for_line_with_subset(f, &indent, &file_labels, line_num)?;
             }

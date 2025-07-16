@@ -3,7 +3,7 @@ source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
 error: adjacent spans
-   ┌ test.idl:1:7
+   ┌ test.idl:1:9
    │
  1 │ int add(int a, int b) { return a + b; }
    ·         ^^^^^  ^^^^^ second parameter

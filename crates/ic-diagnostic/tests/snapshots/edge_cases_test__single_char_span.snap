@@ -3,7 +3,7 @@ source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
 error: single character span
-   ┌ test.idl:1:3
+   ┌ test.idl:1:5
    │
  1 │ int x = 5;
    ·     ^ variable name

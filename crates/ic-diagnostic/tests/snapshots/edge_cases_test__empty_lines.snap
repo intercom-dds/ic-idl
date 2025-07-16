@@ -3,7 +3,7 @@ source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
 error: span across empty lines
-   ┌ test.idl:1:15
+   ┌ test.idl:1:17
    │
  1 │ interface Test {
    ·  includes empty lines

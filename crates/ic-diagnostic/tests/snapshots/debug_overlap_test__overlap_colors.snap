@@ -3,7 +3,7 @@ source: crates/ic-diagnostic/tests/debug_overlap_test.rs
 expression: buf
 ---
 error: nested structures
-   ┌ test.idl:1:12
+   ┌ test.idl:1:14
    │
  1 │ void process(struct Data { int x; int y; } data);
    ·              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ struct (should be blue)

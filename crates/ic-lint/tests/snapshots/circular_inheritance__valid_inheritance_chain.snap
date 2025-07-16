@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/circular_inheritance.rs
-expression: test_lint_hir(source)
----
-

@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/duplicate_case_labels.rs
-expression: test_lint_hir(source)
----
-

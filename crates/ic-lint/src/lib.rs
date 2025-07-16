@@ -267,7 +267,7 @@ pub trait Lint<'a>: Sized {
     /// A lint should never fail in a way that prevents further traversal. Any
     /// potential errors should be gracefully ignored.
     fn check_hir(_ctx: &'a LintCtx<'_>, _hir: &ic_hir::ResolvedGraph) {}
-    
+
     /// Helper method to report a diagnostic using this lint's name and category.
     fn report(ctx: &LintCtx<'_>, diag: Diag) {
         ctx.report(Self::name(), Self::category(), diag);

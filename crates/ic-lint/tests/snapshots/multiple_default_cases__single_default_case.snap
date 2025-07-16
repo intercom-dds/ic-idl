@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/multiple_default_cases.rs
-expression: test_lint_hir(source)
----
-

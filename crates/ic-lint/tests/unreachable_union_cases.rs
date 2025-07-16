@@ -27,7 +27,7 @@
 
 mod common;
 
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 use insta::assert_snapshot;
 
 #[test]
@@ -39,7 +39,9 @@ union MyUnion switch (long) {
     default: boolean c;
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -52,7 +54,9 @@ union MyUnion switch (long) {
     case 2: boolean c;  // This is now valid
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -66,7 +70,9 @@ union MyUnion switch (long) {
     case 3: octet d;    // This is also valid
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -116,7 +122,9 @@ union MyUnion switch (long) {
     case 4: float e;
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -130,5 +138,7 @@ union MyUnion switch (long) {
     case 3: octet d;
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }

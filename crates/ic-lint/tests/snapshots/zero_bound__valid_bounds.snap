@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/zero_bound.rs
-expression: test_lint_hir(source)
----
-

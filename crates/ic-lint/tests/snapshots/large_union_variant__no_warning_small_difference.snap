@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/large_union_variant.rs
-expression: test_lint_hir(source)
----
-

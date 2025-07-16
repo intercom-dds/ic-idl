@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/circular_inheritance.rs
+expression: test_lint_hir(source)
+---
+error: interface 'A' has circular inheritance through 'A'
+   ┌ test.idl:2:11
+   │
+ 2 │ interface A : A {};
+   ·           ^ circular inheritance detected
+   └──
+
+error: circular dependency detected for type `A`
+   ┌ test.idl:2:1
+   │
+ 2 │ interface A : A {};
+   · ^^^^^^^^^^^^^^^^^^^ type is part of a circular dependency
+   └──

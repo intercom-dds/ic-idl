@@ -3,29 +3,29 @@ source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
 error: array size must be greater than zero
-   ┌ test.idl:3:5
+   ┌ test.idl:3:17
    │
  3 │     long field1[0];
-   ·     ^^^^ invalid array size
+   ·                 ^ invalid array size
    └──
 
 error: sequence bound must be greater than zero
-   ┌ test.idl:4:5
+   ┌ test.idl:4:22
    │
  4 │     sequence<string, 0> field2;
-   ·     ^^^^^^^^^^^^^^^^^^^ invalid sequence bound
+   ·                      ^ invalid sequence bound
    └──
 
 error: string bound must be greater than zero
-   ┌ test.idl:5:5
+   ┌ test.idl:5:12
    │
  5 │     string<0> field3;
-   ·     ^^^^^^^^^ invalid string bound
+   ·            ^ invalid string bound
    └──
 
 error: map bound must be greater than zero
-   ┌ test.idl:6:5
+   ┌ test.idl:6:23
    │
  6 │     map<long, string, 0> field4;
-   ·     ^^^^^^^^^^^^^^^^^^^^ invalid map bound
+   ·                       ^ invalid map bound
    └──

@@ -119,7 +119,7 @@ fn test_bounded_string() {
         .expect("ShortString not found");
 
     if let ic_hir::hir::DefKind::Alias(alias_ty) = &short_def.1.kind {
-        if let ic_hir::hir::TyKind::String { bound, wide } = &alias_ty.ty.kind {
+        if let ic_hir::hir::TyKind::String { bound, wide, .. } = &alias_ty.ty.kind {
             assert_eq!(*bound, Some(128), "Expected bound of 128");
             assert!(!wide, "Expected narrow string");
         } else {
@@ -138,7 +138,7 @@ fn test_bounded_string() {
         .expect("LongWideString not found");
 
     if let ic_hir::hir::DefKind::Alias(alias_ty) = &wide_def.1.kind {
-        if let ic_hir::hir::TyKind::String { bound, wide } = &alias_ty.ty.kind {
+        if let ic_hir::hir::TyKind::String { bound, wide, .. } = &alias_ty.ty.kind {
             assert_eq!(*bound, Some(1024), "Expected bound of 1024");
             assert!(wide, "Expected wide string");
         } else {
@@ -221,7 +221,7 @@ fn test_nested_bounded_types() {
         .expect("BoundedStringArray not found");
 
     if let ic_hir::hir::DefKind::Alias(alias_ty) = &seq_def.1.kind {
-        if let ic_hir::hir::TyKind::Sequence { ty, bound } = &alias_ty.ty.kind {
+        if let ic_hir::hir::TyKind::Sequence { ty, bound, .. } = &alias_ty.ty.kind {
             assert_eq!(*bound, Some(10), "Expected sequence bound of 10");
 
             // Check inner string bound

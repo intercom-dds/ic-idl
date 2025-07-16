@@ -126,6 +126,7 @@ impl<'a> TypeResolver<'a> {
                 kind: TyKind::Sequence {
                     ty: Box::new(self.resolve_type(&v.ty)),
                     bound: None, // Will be filled in evaluation phase
+                    bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
                 },
                 span: v.span,
             },
@@ -133,6 +134,7 @@ impl<'a> TypeResolver<'a> {
                 kind: TyKind::String {
                     wide: v.wide,
                     bound: None, // Will be filled in evaluation phase
+                    bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
                 },
                 span: v.span,
             },
@@ -141,6 +143,7 @@ impl<'a> TypeResolver<'a> {
                     key: Box::new(self.resolve_type(&v.key)),
                     elem: Box::new(self.resolve_type(&v.value)),
                     bound: None, // Will be filled in evaluation phase
+                    bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
                 },
                 span: v.span,
             },
@@ -189,12 +192,13 @@ impl<'a> TypeResolver<'a> {
             ic_syntax::Declarator::Array(arr) => {
                 // Build array type from innermost to outermost
                 let mut ty = base_ty;
-                for _ in &arr.bounds {
+                for bound_expr in &arr.bounds {
                     ty = Ty {
                         span: ty.span,
                         kind: TyKind::Array {
                             ty: Box::new(ty.clone()),
                             len: 0, // Will be filled in evaluation phase
+                            len_span: ic_syntax::util::expr_span(bound_expr),
                         },
                     };
                 }

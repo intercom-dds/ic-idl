@@ -3,15 +3,15 @@ source: crates/ic-lint/tests/invalid_array_size.rs
 expression: test_lint_hir(source)
 ---
 warning: string maximum size 20000 bytes exceeds reasonable limit of 16384 bytes (20000 characters × 1 bytes each)
-   ┌ test.idl:3:5
+   ┌ test.idl:3:12
    │
  3 │     string<20000> huge_str;  // 20000 chars × 1 byte = 20KB
-   ·     ^^^^^^^^^^^^^ very large string bound
+   ·            ^^^^^ very large string bound
    └──
 
 warning: string maximum size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 characters × 4 bytes each)
-   ┌ test.idl:4:5
+   ┌ test.idl:4:13
    │
  4 │     wstring<5000> wide_str;  // 5000 chars × 4 bytes = 20KB
-   ·     ^^^^^^^^^^^^^ very large string bound
+   ·             ^^^^ very large string bound
    └──

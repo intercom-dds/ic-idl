@@ -56,44 +56,62 @@ impl<'a> Lint<'a> for ZeroBound<'a> {
 impl<'a> Visitor<'a> for ZeroBound<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match &ty.kind {
-            TyKind::Array { len, .. } => {
+            TyKind::Array { len, len_span, .. } => {
                 if *len == 0 {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
                         "array size must be greater than zero",
-                        Label::new(ty.span).message("invalid array size"),
+                        Label::new(*len_span).message("invalid array size"),
                     ) {
                         Self::report(self.ctx, diag);
                     }
                 }
             }
-            TyKind::Sequence { bound: Some(b), .. } if *b == 0 => {
+            TyKind::Sequence {
+                bound: Some(b),
+                bound_span,
+                ..
+            } if *b == 0 => {
+                // Use bound_span if available, otherwise fall back to ty.span
+                let span = bound_span.unwrap_or(ty.span);
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     "sequence bound must be greater than zero",
-                    Label::new(ty.span).message("invalid sequence bound"),
+                    Label::new(span).message("invalid sequence bound"),
                 ) {
                     Self::report(self.ctx, diag);
                 }
             }
-            TyKind::String { bound: Some(b), .. } if *b == 0 => {
+            TyKind::String {
+                bound: Some(b),
+                bound_span,
+                ..
+            } if *b == 0 => {
+                // Use bound_span if available, otherwise fall back to ty.span
+                let span = bound_span.unwrap_or(ty.span);
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     "string bound must be greater than zero",
-                    Label::new(ty.span).message("invalid string bound"),
+                    Label::new(span).message("invalid string bound"),
                 ) {
                     Self::report(self.ctx, diag);
                 }
             }
-            TyKind::Map { bound: Some(b), .. } if *b == 0 => {
+            TyKind::Map {
+                bound: Some(b),
+                bound_span,
+                ..
+            } if *b == 0 => {
+                // Use bound_span if available, otherwise fall back to ty.span
+                let span = bound_span.unwrap_or(ty.span);
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     "map bound must be greater than zero",
-                    Label::new(ty.span).message("invalid map bound"),
+                    Label::new(span).message("invalid map bound"),
                 ) {
                     Self::report(self.ctx, diag);
                 }

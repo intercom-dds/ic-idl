@@ -85,18 +85,18 @@ impl<'a> TreeBuilder<'a> {
                 PrimitiveTy::Float64 => ptr::addr_of_mut!(sys::double_type),
                 PrimitiveTy::Float128 => ptr::addr_of_mut!(sys::ldouble_type),
             },
-            TyKind::Array { ty, len } => {
+            TyKind::Array { ty, len, .. } => {
                 let ty = self.lower_ty(ty);
                 let bound = sys::create_u64(self.state, (*len + 1) as u64, 10);
                 let decl = sys::append_array_size(self.state, ptr::null_mut(), bound);
                 sys::create_array_type(self.state, decl, ty)
             }
-            TyKind::Sequence { ty, bound } => {
+            TyKind::Sequence { ty, bound, .. } => {
                 let ty = self.lower_ty(ty);
                 let bound = self.lower_bound(*bound);
                 sys::create_sequence(self.state, ty, bound)
             }
-            TyKind::String { wide, bound } => {
+            TyKind::String { wide, bound, .. } => {
                 let bound = self.lower_bound(*bound);
                 if *wide {
                     sys::create_wstring(self.state, bound)
@@ -104,7 +104,9 @@ impl<'a> TreeBuilder<'a> {
                     sys::create_string(self.state, bound)
                 }
             }
-            TyKind::Map { key, elem, bound } => {
+            TyKind::Map {
+                key, elem, bound, ..
+            } => {
                 let key = self.lower_ty(key);
                 let elem = self.lower_ty(elem);
                 let bound = self.lower_bound(*bound);

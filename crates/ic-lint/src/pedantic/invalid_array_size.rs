@@ -63,7 +63,11 @@ impl<'a> Lint<'a> for InvalidArraySize<'a> {
 impl<'a> Visitor<'a> for InvalidArraySize<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match &ty.kind {
-            TyKind::Array { ty: elem_ty, len } => {
+            TyKind::Array {
+                ty: elem_ty,
+                len,
+                len_span,
+            } => {
                 // Calculate the total size of the array
                 if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
                     let total_size = elem_size * len;
@@ -74,7 +78,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             format!(
                                 "array size {total_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({len} elements × {elem_size} bytes each)"
                             ),
-                            Label::new(ty.span).message("very large array"),
+                            Label::new(*len_span).message("very large array"),
                         ) {
                             Self::report(self.ctx, diag);
                         }
@@ -84,6 +88,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
             TyKind::Sequence {
                 ty: elem_ty,
                 bound: Some(b),
+                bound_span,
             } => {
                 // For bounded sequences, check the maximum possible size
                 if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
@@ -95,7 +100,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             format!(
                                 "sequence maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} elements × {elem_size} bytes each)"
                             ),
-                            Label::new(ty.span).message("very large sequence bound"),
+                            Label::new(bound_span.unwrap_or(ty.span)).message("very large sequence bound"),
                         ) {
                             Self::report(self.ctx, diag);
                         }
@@ -105,6 +110,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
             TyKind::String {
                 bound: Some(b),
                 wide,
+                bound_span,
             } => {
                 // For bounded strings, check based on character size
                 let char_size = if *wide { 4 } else { 1 }; // wchar is 4 bytes, char is 1 byte
@@ -116,7 +122,7 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                         format!(
                             "string maximum size {max_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({b} characters × {char_size} bytes each)"
                         ),
-                        Label::new(ty.span).message("very large string bound"),
+                        Label::new(bound_span.unwrap_or(ty.span)).message("very large string bound"),
                     ) {
                         Self::report(self.ctx, diag);
                     }

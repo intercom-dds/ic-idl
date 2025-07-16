@@ -489,19 +489,38 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
-    /// Updates array bounds in a type, returning the evaluated bounds.
-    fn evaluate_array_bounds(&mut self, bounds: &[ic_syntax::Expr]) -> Vec<usize> {
-        bounds.iter().map(|expr| self.eval_bound(expr)).collect()
+    /// Evaluates a bound expression to a usize and returns its span.
+    fn eval_bound_with_span(&mut self, expr: &Expr) -> (usize, Span) {
+        let span = ic_syntax::util::expr_span(expr);
+        let value = self.eval_bound(expr);
+        (value, span)
     }
 
-    /// Updates array bounds in a type using pre-evaluated bounds.
-    fn update_type_bounds_with_values(ty: &mut Ty, evaluated_bounds: &[usize]) {
+    /// Evaluates array bounds and returns values with spans.
+    fn evaluate_array_bounds_with_spans(
+        &mut self,
+        bounds: &[ic_syntax::Expr],
+    ) -> Vec<(usize, Span)> {
+        bounds
+            .iter()
+            .map(|expr| self.eval_bound_with_span(expr))
+            .collect()
+    }
+
+    /// Updates array bounds in a type using pre-evaluated bounds with spans.
+    fn update_type_bounds_with_values_and_spans(ty: &mut Ty, evaluated_bounds: &[(usize, Span)]) {
         let mut current = ty;
         let mut bound_iter = evaluated_bounds.iter();
 
-        while let TyKind::Array { ty: inner_ty, len } = &mut current.kind {
-            if let Some(&bound_value) = bound_iter.next() {
+        while let TyKind::Array {
+            ty: inner_ty,
+            len,
+            len_span,
+        } = &mut current.kind
+        {
+            if let Some(&(bound_value, span)) = bound_iter.next() {
                 *len = bound_value;
+                *len_span = span;
             }
             current = inner_ty;
         }
@@ -522,11 +541,11 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         }
 
-        // Evaluate all bounds first
-        let evaluated_bounds: Vec<(usize, Vec<usize>)> = array_bounds
+        // Evaluate all bounds first with spans
+        let evaluated_bounds: Vec<(usize, Vec<(usize, Span)>)> = array_bounds
             .into_iter()
             .map(|(idx, bounds)| {
-                let evaluated = self.evaluate_array_bounds(&bounds);
+                let evaluated = self.evaluate_array_bounds_with_spans(&bounds);
                 (idx, evaluated)
             })
             .collect();
@@ -542,7 +561,7 @@ impl<'a> ExpressionEvaluator<'a> {
                 for (idx, bounds) in evaluated_bounds {
                     if let Some(member) = struct_ty.members.get(idx) {
                         let mut ty = member.ty.clone();
-                        Self::update_type_bounds_with_values(&mut ty, &bounds);
+                        Self::update_type_bounds_with_values_and_spans(&mut ty, &bounds);
                         updates.push((idx, ty));
                         processed_indices.insert(idx);
                     }
@@ -620,11 +639,11 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         }
 
-        // Evaluate all bounds first
-        let evaluated_bounds: Vec<(usize, Vec<usize>)> = array_bounds
+        // Evaluate all bounds first with spans
+        let evaluated_bounds: Vec<(usize, Vec<(usize, Span)>)> = array_bounds
             .into_iter()
             .map(|(idx, bounds)| {
-                let evaluated = self.evaluate_array_bounds(&bounds);
+                let evaluated = self.evaluate_array_bounds_with_spans(&bounds);
                 (idx, evaluated)
             })
             .collect();
@@ -637,7 +656,7 @@ impl<'a> ExpressionEvaluator<'a> {
                 for (idx, bounds) in evaluated_bounds {
                     if let Some(variant) = union_ty.variants.get(idx) {
                         let mut ty = variant.ty.clone();
-                        Self::update_type_bounds_with_values(&mut ty, &bounds);
+                        Self::update_type_bounds_with_values_and_spans(&mut ty, &bounds);
                         type_updates.push((idx, ty));
                     }
                 }
@@ -679,11 +698,11 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         }
 
-        // Evaluate all bounds first
-        let evaluated_bounds: Vec<(usize, Vec<usize>)> = array_bounds
+        // Evaluate all bounds first with spans
+        let evaluated_bounds: Vec<(usize, Vec<(usize, Span)>)> = array_bounds
             .into_iter()
             .map(|(idx, bounds)| {
-                let evaluated = self.evaluate_array_bounds(&bounds);
+                let evaluated = self.evaluate_array_bounds_with_spans(&bounds);
                 (idx, evaluated)
             })
             .collect();
@@ -696,7 +715,7 @@ impl<'a> ExpressionEvaluator<'a> {
                 for (idx, bounds) in evaluated_bounds {
                     if let Some(member) = except_ty.members.get(idx) {
                         let mut ty = member.ty.clone();
-                        Self::update_type_bounds_with_values(&mut ty, &bounds);
+                        Self::update_type_bounds_with_values_and_spans(&mut ty, &bounds);
                         updates.push((idx, ty));
                     }
                 }
@@ -837,14 +856,14 @@ impl<'a> ExpressionEvaluator<'a> {
     /// Evaluates an alias (typedef) definition.
     fn evaluate_alias(&mut self, id: DefId, decl: &ic_syntax::Declarator) {
         if let ic_syntax::Declarator::Array(arr) = decl {
-            // Evaluate the bounds
-            let evaluated_bounds = self.evaluate_array_bounds(&arr.bounds);
+            // Evaluate the bounds with spans
+            let evaluated_bounds = self.evaluate_array_bounds_with_spans(&arr.bounds);
 
             // Get the current type
             let hir_def = self.ctx.definitions.get(id);
             if let DefKind::Alias(alias_ty) = &hir_def.kind {
                 let mut ty = alias_ty.ty.clone();
-                Self::update_type_bounds_with_values(&mut ty, &evaluated_bounds);
+                Self::update_type_bounds_with_values_and_spans(&mut ty, &evaluated_bounds);
 
                 // Update the HIR with the evaluated type
                 let hir_def = self.ctx.definitions.get_mut(id);
@@ -889,7 +908,7 @@ impl<'a> ExpressionEvaluator<'a> {
         // Handle nested init lists
         if let Expr::InitList(init_list) = expr {
             match &expected_ty.kind {
-                TyKind::Array { ty, len } => {
+                TyKind::Array { ty, len, .. } => {
                     // Use the parent type ID for nested arrays
                     return self.eval_array_init(
                         init_list,
@@ -1151,9 +1170,9 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             if let Some(mut ty) = ty_to_update {
-                // Evaluate the bounds
-                let evaluated_bounds = self.evaluate_array_bounds(&bounds);
-                Self::update_type_bounds_with_values(&mut ty, &evaluated_bounds);
+                // Evaluate the bounds with spans
+                let evaluated_bounds = self.evaluate_array_bounds_with_spans(&bounds);
+                Self::update_type_bounds_with_values_and_spans(&mut ty, &evaluated_bounds);
 
                 // Update the type with evaluated bounds
                 let hir_def = self.ctx.definitions.get_mut(id);
@@ -1198,7 +1217,7 @@ impl<'a> ExpressionEvaluator<'a> {
                                     Numeric::Null
                                 }
                             }
-                            TyKind::Array { ty, len } => {
+                            TyKind::Array { ty, len, .. } => {
                                 self.eval_array_init(init_list, ty.as_ref().clone(), *len, id)
                             }
                             TyKind::Sequence { ty, .. } => {
@@ -1254,7 +1273,7 @@ impl<'a> ExpressionEvaluator<'a> {
         use ic_syntax::Type;
 
         match (ast_ty, &mut hir_ty.kind) {
-            (Type::Sequence(seq), TyKind::Sequence { ty, bound }) => {
+            (Type::Sequence(seq), TyKind::Sequence { ty, bound, .. }) => {
                 if let Some(ref bound_expr) = seq.bound {
                     *bound = Some(self.eval_bound(bound_expr));
                 }
@@ -1266,7 +1285,12 @@ impl<'a> ExpressionEvaluator<'a> {
                     *bound = Some(self.eval_bound(bound_expr));
                 }
             }
-            (Type::Map(map), TyKind::Map { key, elem, bound }) => {
+            (
+                Type::Map(map),
+                TyKind::Map {
+                    key, elem, bound, ..
+                },
+            ) => {
                 if let Some(ref bound_expr) = map.bound {
                     *bound = Some(self.eval_bound(bound_expr));
                 }

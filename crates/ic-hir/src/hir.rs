@@ -187,22 +187,30 @@ pub enum TyKind {
     Array {
         ty: Box<Ty>,
         len: usize,
+        /// Span of the array bound expression (e.g., the "0" in "long[0]")
+        len_span: Span,
     },
 
     Sequence {
         ty: Box<Ty>,
         bound: Option<usize>,
+        /// Span of the sequence bound expression (if bounded)
+        bound_span: Option<Span>,
     },
 
     String {
         wide: bool,
         bound: Option<usize>,
+        /// Span of the string bound expression (if bounded)
+        bound_span: Option<Span>,
     },
 
     Map {
         key: Box<Ty>,
         elem: Box<Ty>,
         bound: Option<usize>,
+        /// Span of the map bound expression (if bounded)
+        bound_span: Option<Span>,
     },
 
     /// An algebraic data type.

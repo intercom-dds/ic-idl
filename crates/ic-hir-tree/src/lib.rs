@@ -84,7 +84,7 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
         TyKind::Primitive(kind) => {
             return kind.to_string().to_ascii_lowercase().cyan();
         }
-        TyKind::String { wide, bound } => {
+        TyKind::String { wide, bound, .. } => {
             let prefix = if *wide { "w" } else { "" };
             let bound = if let Some(bound) = bound {
                 format!("<{bound}>")
@@ -93,16 +93,18 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
             };
             return format!("{prefix}string{bound}").cyan();
         }
-        TyKind::Array { ty, len } => {
+        TyKind::Array { ty, len, .. } => {
             let ty = emit_ty(context, ty);
             return format!("array<{ty}, {len}>").cyan();
         }
-        TyKind::Sequence { ty, bound } => {
+        TyKind::Sequence { ty, bound, .. } => {
             let ty = emit_ty(context, ty);
             let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
             return format!("sequence<{ty}{bound}>").cyan();
         }
-        TyKind::Map { key, elem, bound } => {
+        TyKind::Map {
+            key, elem, bound, ..
+        } => {
             let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
             return format!(
                 "map<{}, {}{bound}>",

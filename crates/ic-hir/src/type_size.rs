@@ -36,7 +36,9 @@ pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
         TyKind::Any | TyKind::Sequence { .. } | TyKind::String { .. } | TyKind::Map { .. } => None, // Dynamic or unknown size
         TyKind::Fixed => Some(8), // Fixed point, assume 64-bit
         TyKind::Primitive(prim) => primitive_size(*prim),
-        TyKind::Array { ty: elem_ty, len } => {
+        TyKind::Array {
+            ty: elem_ty, len, ..
+        } => {
             // Array size = element size * count
             type_size(elem_ty, ctx).map(|elem_size| elem_size * len)
         }
@@ -126,6 +128,7 @@ mod tests {
             kind: TyKind::Array {
                 ty: Box::new(elem_ty),
                 len,
+                len_span: Span::default(),
             },
         }
     }
@@ -133,7 +136,11 @@ mod tests {
     fn make_string_type(wide: bool, bound: Option<usize>) -> Ty {
         Ty {
             span: Span::default(),
-            kind: TyKind::String { wide, bound },
+            kind: TyKind::String {
+                wide,
+                bound,
+                bound_span: None,
+            },
         }
     }
 
@@ -143,6 +150,7 @@ mod tests {
             kind: TyKind::Sequence {
                 ty: Box::new(elem_ty),
                 bound,
+                bound_span: None,
             },
         }
     }

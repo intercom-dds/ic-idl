@@ -78,7 +78,9 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                             Self::name(),
                             Self::category(),
                             format!(
-                                "array size {total_size} bytes exceeds reasonable limit of {MAX_REASONABLE_SIZE_BYTES} bytes ({len} elements × {elem_size} bytes each)"
+                                "array size {total_size} bytes exceeds reasonable limit of \
+                                 {MAX_REASONABLE_SIZE_BYTES} bytes ({len} elements × {elem_size} \
+                                 bytes each)"
                             ),
                             Label::new(*len_span).message("very large array"),
                         ) {

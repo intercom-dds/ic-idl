@@ -108,13 +108,12 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                     Self::name(),
                     Self::category(),
                     format!(
-                        "union variant `{}` is {} bytes, which is significantly larger than the average of other variants ({} bytes)",
-                        largest.ident.name,
-                        largest_size,
-                        avg_except_largest
+                        "union variant `{}` is {} bytes, which is significantly larger than the \
+                         average of other variants ({} bytes)",
+                        largest.ident.name, largest_size, avg_except_largest
                     ),
                     Label::new(largest.ident.span)
-                        .message(format!("large variant ({largest_size} bytes)"))
+                        .message(format!("large variant ({largest_size} bytes)")),
                 );
 
                 if let Some(mut diag) = diag {

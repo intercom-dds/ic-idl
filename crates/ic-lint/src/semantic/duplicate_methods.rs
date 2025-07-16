@@ -143,7 +143,8 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
 
                         let diag = ic_diagnostic::error_span(
                             format!(
-                                "interface `{}` defines method `{}` which conflicts with inherited method",
+                                "interface `{}` defines method `{}` which conflicts with \
+                                 inherited method",
                                 def.ident.name, method_name
                             ),
                             Label::new(current_method.ident.span)

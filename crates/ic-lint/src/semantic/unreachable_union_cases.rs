@@ -63,10 +63,10 @@ impl UnreachableUnionCases<'_> {
                                 Self::name(),
                                 Self::category(),
                                 format!(
-                                    "case label {value} is outside the range [{min}, {max}] of the discriminator type"
+                                    "case label {value} is outside the range [{min}, {max}] of \
+                                     the discriminator type"
                                 ),
-                                Label::new(variant.ident.span)
-                                    .message("case label out of range"),
+                                Label::new(variant.ident.span).message("case label out of range"),
                             ) {
                                 Self::report(self.ctx, diag);
                             }

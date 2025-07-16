@@ -82,7 +82,8 @@ impl InvalidEnumValue<'_> {
                     Self::name(),
                     Self::category(),
                     format!(
-                        "enum value {value} is outside the range [{min}, {max}] for the underlying type"
+                        "enum value {value} is outside the range [{min}, {max}] for the \
+                         underlying type"
                     ),
                     Label::new(field.ident.span).message("value out of range"),
                 ) {

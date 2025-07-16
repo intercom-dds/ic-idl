@@ -440,7 +440,10 @@ impl<'a> ExpressionEvaluator<'a> {
                         if s.contains("undefined constant") {
                             diag = diag.note("check that the name is spelled correctly");
                         } else if s.contains("string literals cannot be used") {
-                            diag = diag.note("string literals can only be used in struct initialization or string constants");
+                            diag = diag.note(
+                                "string literals can only be used in struct initialization or \
+                                 string constants",
+                            );
                         }
 
                         self.errors.push(diag);
@@ -1231,7 +1234,8 @@ impl<'a> ExpressionEvaluator<'a> {
                             ),
                             _ => {
                                 self.errors.push(error_span(
-                                    "initializer lists can only be used with struct, array, sequence, or map types",
+                                    "initializer lists can only be used with struct, array, \
+                                     sequence, or map types",
                                     Label::new(def.span).message("incompatible type"),
                                 ));
                                 Numeric::Null

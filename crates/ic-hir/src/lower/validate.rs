@@ -542,14 +542,19 @@ impl<'a> Validator<'a> {
 
                         if decl_type_str != def_type {
                             let actual_def = self.get_def(def_id);
-                            self.errors.push(error_span(
-                                format!(
-                                    "forward declaration of `{name}` as {decl_type_str} conflicts with {def_type} definition"
+                            self.errors.push(
+                                error_span(
+                                    format!(
+                                        "forward declaration of `{name}` as {decl_type_str} \
+                                         conflicts with {def_type} definition"
+                                    ),
+                                    Label::new(decl_def.span).message("forward declared here"),
+                                )
+                                .label(
+                                    Label::new(actual_def.span)
+                                        .message(format!("defined as {def_type} here")),
                                 ),
-                                Label::new(decl_def.span).message("forward declared here"),
-                            ).label(
-                                Label::new(actual_def.span).message(format!("defined as {def_type} here"))
-                            ));
+                            );
                         }
                     }
                 }

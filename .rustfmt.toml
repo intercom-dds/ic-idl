@@ -30,3 +30,4 @@ imports_granularity = "module"
 group_imports = "StdExternalCrate"
 merge_derives = false
 format_generated_files = false
+format_strings = true

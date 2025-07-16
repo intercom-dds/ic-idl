@@ -1,0 +1,23 @@
+---
+source: crates/ic-lint/tests/large_union_variant.rs
+expression: test_lint_hir(source)
+---
+warning: union variant `large` is 512 bytes, which is significantly larger than the average of other variants (1 bytes)
+   ┌ test.idl:4:22
+   │
+ 4 │     case FALSE: char large[512];
+   ·                      ^^^^^ large variant (512 bytes)
+ 3 │     case TRUE: char small;
+   ·                     ^^^^^ 1 bytes
+   └──
+ note: consider annotating large variants with `@shared` to heap allocate them
+
+warning: union variant `nested` is 513 bytes, which is significantly larger than the average of other variants (1 bytes)
+   ┌ test.idl:8:24
+   │
+ 8 │     case 1: InnerUnion nested;  // Contains large variant
+   ·                        ^^^^^^ large variant (513 bytes)
+ 9 │     case 2: char tiny;
+   ·                  ^^^^ 1 bytes
+   └──
+ note: consider annotating large variants with `@shared` to heap allocate them

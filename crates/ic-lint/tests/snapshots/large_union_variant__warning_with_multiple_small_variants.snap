@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/large_union_variant.rs
+expression: test_lint_hir(source)
+---
+warning: union variant `huge_array` is 2048 bytes, which is significantly larger than the average of other variants (2 bytes)
+   ┌ test.idl:7:18
+   │
+ 7 │     case 5: char huge_array[2048];  // Much larger than all others
+   ·                  ^^^^^^^^^^ large variant (2048 bytes)
+ 3 │     case 1: char var1;
+   ·                  ^^^^ 1 bytes
+ 4 │     case 2: short var2;
+   ·                   ^^^^ 2 bytes
+ 5 │     case 3: long var3;
+   ·                  ^^^^ 4 bytes
+ 6 │     case 4: char var4;
+   ·                  ^^^^ 1 bytes
+   └──
+ note: consider annotating large variants with `@shared` to heap allocate them

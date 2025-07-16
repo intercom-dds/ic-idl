@@ -27,32 +27,27 @@
 
 #![allow(clippy::print_stderr)]
 
-mod common;
+use insta::assert_snapshot;
 
-use common::lint_hir;
+mod common;
+use common::test_lint_hir;
 
 #[test]
 fn large_variant_with_array() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (short) {
     case 1: char small_data;
     case 2: short another_small;
     case 3: char large_array[1024];  // This is 1KB, much larger than others
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 1);
-    let warning_output = format!("{:?}", report.warnings[0]);
-    assert!(warning_output.contains("significantly larger"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn large_variant_with_struct() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct LargeStruct {
     long array[128];  // 8 * 128 = 1024 bytes
     double values[32]; // 8 * 32 = 256 bytes
@@ -67,51 +62,40 @@ union MyUnion switch (long) {
     case 2: LargeStruct large;  // Much larger than SmallStruct
     case 3: char tiny;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 1);
-    let warning_output = format!("{:?}", report.warnings[0]);
-    assert!(warning_output.contains("significantly larger"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn no_warning_similar_sizes() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (short) {
     case 1: long data1[10];     // 80 bytes
     case 2: double data2[10];   // 80 bytes
     case 3: float data3[20];    // 80 bytes
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn no_warning_small_difference() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (short) {
     case 1: char small;          // 1 byte
     case 2: long medium;         // 8 bytes
     case 3: long array[2];       // 16 bytes - not large enough difference
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn warning_with_multiple_small_variants() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (octet) {
     case 1: char var1;
     case 2: short var2;
@@ -119,19 +103,14 @@ union MyUnion switch (octet) {
     case 4: char var4;
     case 5: char huge_array[2048];  // Much larger than all others
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 1);
-    let warning_output = format!("{:?}", report.warnings[0]);
-    assert!(warning_output.contains("huge_array"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn nested_unions() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union InnerUnion switch (boolean) {
     case TRUE: char small;
     case FALSE: char large[512];
@@ -141,43 +120,32 @@ union OuterUnion switch (long) {
     case 1: InnerUnion nested;  // Contains large variant
     case 2: char tiny;
 };
-",
-    );
+";
 
-    // Should warn about both unions
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 2);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn single_variant_no_warning() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (short) {
     case 1: char large_array[1024];  // Only one variant, no comparison possible
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
-    assert_eq!(report.warnings.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn dynamic_types_ignored() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (short) {
     case 1: string dynamic_str;      // Dynamic size, ignored
     case 2: sequence<long> dynamic_seq; // Dynamic size, ignored
     case 3: char small;
     case 4: char large[1024];        // Should still trigger warning
 };
-",
-    );
+";
 
-    // Should only warn about the fixed-size large variant
-    assert_eq!(report.errors.len(), 0);
-    // The warning might not trigger if too many variants have unknown size
-    // This depends on the implementation
+    assert_snapshot!(test_lint_hir(source));
 }

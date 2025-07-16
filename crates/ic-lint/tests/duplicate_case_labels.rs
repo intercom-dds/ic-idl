@@ -25,97 +25,106 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod common;
+use insta::assert_snapshot;
 
-use common::lint_hir;
+mod common;
+use common::test_lint_hir;
 
 #[test]
 fn valid_union_cases() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     case 2: string b;
     case 3: boolean c;
     default: octet d;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn duplicate_case_values() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     case 2: string b;
     case 1: boolean c;  // Duplicate of first case
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("duplicate case label"));
-    assert!(error_output.contains("'1'"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-fn multiple_defaults() {
-    let report = lint_hir(
-        r"
-union MyUnion switch (long) {
-    case 1: long a;
-    default: string b;
-    case 2: boolean c;
-    default: octet d;  // Second default
-};
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("multiple default cases"));
-}
-
-#[test]
-fn duplicate_enum_case() {
-    let report = lint_hir(
-        r"
+fn duplicate_enum_cases() {
+    let source = r"
 enum Color { RED, GREEN, BLUE };
 
-union ColorUnion switch (Color) {
-    case RED: long r;
-    case GREEN: long g;
-    case RED: long r2;  // Duplicate
+union ColorData switch (Color) {
+    case RED: long red_value;
+    case GREEN: long green_value;
+    case RED: long another_red;  // Duplicate
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("duplicate case label"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-fn multiple_labels_with_duplicate() {
-    let report = lint_hir(
-        r"
-union MyUnion switch (long) {
-    case 1:
-    case 2: long a;
-    case 3:
-    case 2: string b;  // 2 is duplicate
-    default: boolean c;
+fn multiple_duplicate_values() {
+    let source = r"
+union MyUnion switch (short) {
+    case 1: long a;
+    case 2: string b;
+    case 1: boolean c;  // First duplicate
+    case 3: float d;
+    case 2: double e;   // Second duplicate
+    case 1: char f;     // Third duplicate of case 1
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("duplicate case label"));
-    assert!(error_output.contains("'2'"));
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn duplicate_with_default() {
+    let source = r"
+union MyUnion switch (long) {
+    case 1: long a;
+    case 2: string b;
+    default: boolean c;
+    case 1: octet d;  // Duplicate, even with default present
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn boolean_switch_duplicates() {
+    let source = r"
+union BoolUnion switch (boolean) {
+    case TRUE: long true_val;
+    case FALSE: string false_val;
+    case TRUE: float another_true;  // Duplicate
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn char_switch_duplicates() {
+    let source = r"
+union CharUnion switch (char) {
+    case 'a': long a_val;
+    case 'b': string b_val;
+    case 'a': boolean dup_a;  // Duplicate
+    case 'c': float c_val;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
 }

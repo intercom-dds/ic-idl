@@ -41,7 +41,7 @@ interface Derived : Base {
     void method();  // Error: conflicts with inherited method
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -56,7 +56,7 @@ interface Derived : Base {
     long method();  // Error: conflicting return type
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -71,7 +71,7 @@ interface Derived : Base {
     void method(in string x);  // Error: conflicting parameter type
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -89,7 +89,7 @@ interface B {
 interface C : A, B {  // Error: inherits conflicting methods
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -107,7 +107,7 @@ interface Derived : Middle {
     long method();  // Error: conflicts with method from Base
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -127,7 +127,7 @@ interface B : Base {
 interface C : A, B {  // Should not error - same method from Base
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -144,7 +144,7 @@ interface Derived : Base {
     void method4();
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -161,7 +161,7 @@ interface Outer {
     };
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -173,7 +173,7 @@ interface Test {
     long method();  // Should be caught by validate.rs, not this lint
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -191,6 +191,6 @@ interface Derived : Base {
     long method();  // Error: conflicts with inherited method
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }

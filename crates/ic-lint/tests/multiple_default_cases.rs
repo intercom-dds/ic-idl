@@ -39,7 +39,7 @@ union MyUnion switch(long) {
     default: float f;
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -53,7 +53,7 @@ union MyUnion switch(long) {
     default: double d;  // Error: multiple default cases
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -67,7 +67,7 @@ union MyUnion switch(long) {
     default: double d;  // Error: 3 default cases
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -80,7 +80,7 @@ union MyUnion switch(long) {
     case 3: float f;
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -94,7 +94,7 @@ union MyUnion switch(long) {
     default: double d;  // Error: second default
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -109,7 +109,7 @@ union ColorData switch(Color) {
     default: long other_value;
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -127,7 +127,7 @@ union Inner switch(long) {
     default: double d2;  // Error in inner union
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -150,7 +150,7 @@ union Union3 switch(char) {
     default: string other;
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -170,7 +170,7 @@ union ComplexUnion switch(unsigned long) {
     default: double fallback2;  // Error
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -187,6 +187,6 @@ interface Service {
     Result doSomething();
 };
 ";
-    
+
     assert_snapshot!(test_lint_hir(source));
 }

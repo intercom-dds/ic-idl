@@ -27,13 +27,13 @@
 
 mod common;
 
-use common::lint_hir;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn valid_single_unnamed_args() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @min(0)
     @max(100)
@@ -41,17 +41,15 @@ struct Foo {
     @id(42)
     long field;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn valid_named_args() {
-    let report = lint_hir(
-        r#"
+    let source = r#"
 annotation MyAnn {
     long value;
     string description;
@@ -61,32 +59,28 @@ annotation MyAnn {
 struct Foo {
     long field;
 };
-"#,
-    );
+"#;
 
-    assert_eq!(report.errors.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn valid_range_unnamed() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @range(0, 100)
     long field;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0); // range allows 2 unnamed args
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn invalid_multiple_unnamed_args() {
-    let report = lint_hir(
-        r"
+    let source = r"
 annotation MyAnn {
     long value1;
     long value2;
@@ -96,19 +90,15 @@ annotation MyAnn {
 struct Foo {
     long field;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("should be named"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn invalid_mixed_args() {
-    let report = lint_hir(
-        r"
+    let source = r"
 annotation MyAnn {
     long value1;
     long value2;
@@ -119,23 +109,20 @@ annotation MyAnn {
 struct Foo {
     long field;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1); // Mixed named/unnamed with multiple params
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn builtin_annotation_extra_args() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @min(0, 10, 20)  // min only takes 1 argument
     long field;
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
+    assert_snapshot!(test_lint_hir(source));
 }

@@ -25,166 +25,156 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod common;
+use insta::assert_snapshot;
 
-use common::lint_hir;
+mod common;
+use common::test_lint_hir;
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
 fn valid_enum_default_type() {
-    let report = lint_hir(
-        r"
+    let source = r"
 enum Color {
     RED = 0,
     GREEN = 1,
     BLUE = 2
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
 fn valid_enum_implicit_values() {
-    let report = lint_hir(
-        r"
+    let source = r"
 enum Status {
     PENDING,    // 0
     ACTIVE,     // 1
     COMPLETED   // 2
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 0);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
 fn duplicate_explicit_values() {
-    let report = lint_hir(
-        r"
+    let source = r"
 enum Priority {
     LOW = 1,
     MEDIUM = 2,
     HIGH = 1    // Duplicate value
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("already used"));
-    assert!(error_output.contains("'LOW'"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
-fn duplicate_implicit_value() {
-    let report = lint_hir(
-        r"
+fn duplicate_implicit_values() {
+    let source = r"
 enum Mixed {
-    A = 0,
-    B = 2,
-    C,      // Implicit value 3
-    D = 3   // Duplicate of C's implicit value
+    A,          // 0
+    B = 0,      // Explicit 0, duplicate with A
+    C,          // 1
+    D = 2,      // 2
+    E           // 3
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("already used"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
-fn value_out_of_range_octet() {
-    let report = lint_hir(
-        r"
-enum SmallEnum : octet {
-    A = 100,
-    B = 200,
-    C = 300  // Out of range for octet (0-255)
+fn out_of_range_values() {
+    let source = r"
+enum LargeValues {
+    SMALL = 1,
+    MEDIUM = 100000,
+    LARGE = 4294967296  // Out of range for 32-bit
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("outside the range"));
-    assert!(error_output.contains("[0, 255]"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
-fn implicit_value_overflow() {
-    let report = lint_hir(
-        r"
-enum OverflowEnum : octet {
-    A = 254,
-    B,      // 255 - still valid
-    C       // 256 - overflows octet range
+fn negative_values() {
+    let source = r"
+enum Temperature {
+    FREEZING = -273,
+    COLD = -10,
+    NORMAL = 20,
+    HOT = 40
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("implicit"));
-    assert!(error_output.contains("outside the range"));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
-fn negative_value_unsigned_type() {
-    let report = lint_hir(
-        r"
-enum UnsignedEnum : unsigned short {
-    A = -1,  // Negative value for unsigned type
-    B = 0,
-    C = 1
+fn hex_and_octal_values() {
+    let source = r"
+enum Flags {
+    NONE = 0x0,
+    READ = 0x1,
+    WRITE = 0x2,
+    EXECUTE = 0x4,
+    ALL = 0x7
 };
-",
-    );
 
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("outside the range"));
+enum Permissions {
+    USER_READ = 0400,
+    USER_WRITE = 0200,
+    USER_EXEC = 0100,
+    GROUP_READ = 040,
+    GROUP_WRITE = 020,
+    GROUP_EXEC = 010
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
-fn multiple_duplicates() {
-    let report = lint_hir(
-        r"
-enum MultiDup {
-    A = 1,
-    B = 2,
-    C = 1,  // Duplicate of A
-    D = 2,  // Duplicate of B
-    E = 3
+fn enum_value_gaps() {
+    let source = r"
+enum Sparse {
+    FIRST = 1,
+    SECOND = 10,
+    THIRD = 100,
+    FOURTH = 1000
 };
-",
-    );
+";
 
-    assert_eq!(report.errors.len(), 2);
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR enum lowering not fully working"]
-fn large_values_int64() {
-    let report = lint_hir(
-        r"
-enum LargeEnum : long long {
-    MIN = -9223372036854775808,
-    MAX = 9223372036854775807,
-    ZERO = 0
+fn duplicate_names_different_scopes() {
+    let source = r"
+module A {
+    enum Status {
+        OK = 0,
+        ERROR = 1
+    };
 };
-",
-    );
 
-    assert_eq!(report.errors.len(), 0);
+module B {
+    enum Status {
+        OK = 0,      // Different enum, should be fine
+        ERROR = 1
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
 }

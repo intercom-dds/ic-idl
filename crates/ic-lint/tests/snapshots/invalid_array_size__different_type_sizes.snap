@@ -1,0 +1,38 @@
+---
+source: crates/ic-lint/tests/invalid_array_size.rs
+expression: test_lint_hir(source)
+---
+warning: array size 17000 bytes exceeds reasonable limit of 16384 bytes (17000 elements × 1 bytes each)
+   ┌ test.idl:3:5
+   │
+ 3 │     octet octets[17000];          // 17000 bytes - too big
+   ·     ^^^^^ very large array
+   └──
+
+warning: array size 17000 bytes exceeds reasonable limit of 16384 bytes (8500 elements × 2 bytes each)
+   ┌ test.idl:4:5
+   │
+ 4 │     short shorts[8500];           // 17000 bytes - too big
+   ·     ^^^^^ very large array
+   └──
+
+warning: array size 16800 bytes exceeds reasonable limit of 16384 bytes (4200 elements × 4 bytes each)
+   ┌ test.idl:5:5
+   │
+ 5 │     long longs[4200];             // 16800 bytes - too big
+   ·     ^^^^ very large array
+   └──
+
+warning: array size 16800 bytes exceeds reasonable limit of 16384 bytes (2100 elements × 8 bytes each)
+   ┌ test.idl:6:14
+   │
+ 6 │     unsigned long long llongs[2100]; // 16800 bytes - too big
+   ·              ^^^^^^^^^ very large array
+   └──
+
+warning: array size 16800 bytes exceeds reasonable limit of 16384 bytes (2100 elements × 8 bytes each)
+   ┌ test.idl:7:5
+   │
+ 7 │     double doubles[2100];         // 16800 bytes - too big
+   ·     ^^^^^^ very large array
+   └──

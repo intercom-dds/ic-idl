@@ -314,152 +314,139 @@ pub struct Report {
     pub warnings: Vec<Diag>,
 }
 
-/// Returns all known lint names for validation.
-#[must_use]
-pub fn all_lint_names() -> Vec<&'static str> {
-    vec![
-        // Annotation lints
-        "annotated_decl",
-        // Pedantic lints
-        "ambiguous_precedence",
-        "array_param",
-        "assign_expr",
-        "bitmask_ann",
-        "complex_lit",
-        "complex_key",
-        "empty_mod",
-        "invalid_array_size",
-        "large_union_variant",
-        "lowercase_bool",
-        "null",
-        "omitted_in",
-        "scoped_lit",
-        // Semantic lints
-        "bit_bound",
-        "circular_inheritance",
-        "deprecated",
-        "duplicate_annotations",
-        "duplicate_case_labels",
-        "duplicate_methods",
-        "invalid_enum_value",
-        "keywords",
-        "multiple_default_cases",
-        "oneway",
-        "range_bound",
-        "redundant_inheritance",
-        "unnamed_args",
-        "unreachable_union_cases",
-        "zero_bound",
-        // Syntax lints
-        "ann_members",
-        "ascii",
-        "empty",
-        "sanity",
-        // Unsupported lints
-        "items",
-        // "proto", // Commented out - too restrictive for non-proto3 IDL
-    ]
+/// Macro to generate the lint list and functions.
+macro_rules! define_lints {
+    (
+        syntax_lints: [
+            $($syntax_lint:path,)*
+        ],
+        hir_lints: [
+            $($hir_lint:path,)*
+        ],
+    ) => {
+        /// Returns all known lint names for validation.
+        #[must_use]
+        pub fn all_lint_names() -> Vec<&'static str> {
+            let mut names = vec![
+                $(<$syntax_lint>::name(),)*
+                $(<$hir_lint>::name(),)*
+            ];
+            names.sort_unstable();
+            names.dedup();
+            names
+        }
+
+        /// Traverses the AST and produces diagnostics for all enabled lints.
+        ///
+        /// Lints that operate on the AST are mostly syntactic. Other lints that
+        /// require more in-depth semantic analysis is typically done on the HIR with
+        /// [`lint_hir`].
+        pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
+            lint_syntax_with_config(tree, vfs, &LintConfig::new())
+        }
+
+        /// Traverses the AST with a custom lint configuration.
+        pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConfig) -> Report {
+            let ctx = LintCtx {
+                vfs,
+                warnings: RefCell::default(),
+                errors: RefCell::default(),
+                config,
+            };
+
+            let lints = &[
+                $(<$syntax_lint>::check,)*
+            ];
+
+            for check in lints {
+                check(&ctx, tree);
+            }
+
+            Report {
+                errors: ctx.errors.take(),
+                warnings: ctx.warnings.take(),
+            }
+        }
+
+        /// Set of lints that operates on the HIR.
+        pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
+            lint_hir_with_config(hir, vfs, &LintConfig::new())
+        }
+
+        /// Set of lints that operates on the HIR with a custom configuration.
+        pub fn lint_hir_with_config(
+            hir: &ic_hir::ResolvedGraph,
+            vfs: &SourceMap,
+            config: &LintConfig,
+        ) -> Report {
+            let ctx = LintCtx {
+                vfs,
+                warnings: RefCell::default(),
+                errors: RefCell::default(),
+                config,
+            };
+
+            let lints = &[
+                $(<$hir_lint>::check_hir,)*
+            ];
+
+            for check in lints {
+                check(&ctx, hir);
+            }
+
+            Report {
+                errors: ctx.errors.take(),
+                warnings: ctx.warnings.take(),
+            }
+        }
+    };
+}
+
+// Define all lints in a single place
+define_lints! {
+    syntax_lints: [
+        annotation::decl::AnnotatedDecl,
+        pedantic::ambiguous_precedence::AmbiguousPrecedence,
+        pedantic::array_param::ArrayParam,
+        pedantic::assign_expr::AssignExpr,
+        pedantic::bitmask_ann::BitmaskAnn,
+        pedantic::complex_lit::ComplexLit,
+        pedantic::empty_mod::EmptyMod,
+        pedantic::lowercase_bool::LowercaseBool,
+        pedantic::null::NullVariant,
+        pedantic::omitted_in::OmittedIn,
+        pedantic::scoped_lit::ScopedLit,
+        semantic::duplicate_annotations::DuplicateAnnotations,
+        semantic::keywords::KwIdent,
+        semantic::oneway::NonVoidOneway,
+        semantic::redundant_inheritance::RedundantInheritance,
+        syntax::ann_members::AnnMembers,
+        syntax::ascii::AsciiIdent,
+        syntax::empty::EmptyTypes,
+        syntax::sanity::Sanity,
+        unsupported::items::Unsupported,
+    ],
+    hir_lints: [
+        pedantic::complex_key::ComplexMapKey,
+        pedantic::invalid_array_size::InvalidArraySize,
+        pedantic::large_union_variant::LargeUnionVariant,
+        semantic::bit_bound::BitBound,
+        semantic::circular_inheritance::CircularInheritance,
+        semantic::deprecated::Deprecated,
+        semantic::duplicate_case_labels::DuplicateCaseLabels,
+        semantic::duplicate_methods::DuplicateMethods,
+        semantic::invalid_enum_value::InvalidEnumValue,
+        semantic::multiple_default_cases::MultipleDefaultCases,
+        semantic::range_bound::RangeBound,
+        semantic::unnamed_args::UnnamedArgs,
+        semantic::unreachable_union_cases::UnreachableUnionCases,
+        semantic::zero_bound::ZeroBound,
+        // unsupported::proto::Proto, // Commented out - too restrictive for non-proto3 IDL
+    ],
 }
 
 /// Normalize a lint name by replacing dashes with underscores.
 #[must_use]
 pub fn normalize_lint_name(name: &str) -> String {
     name.replace('-', "_")
-}
-
-/// Traverses the AST and produces diagnostics for all enabled lints.
-///
-/// Lints that operate on the AST are mostly syntactic. Other lints that
-/// require more in-depth semantic analysis is typically done on the HIR with
-/// [`lint_hir`].
-pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
-    lint_syntax_with_config(tree, vfs, &LintConfig::new())
-}
-
-/// Traverses the AST with a custom lint configuration.
-pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConfig) -> Report {
-    let ctx = LintCtx {
-        vfs,
-        warnings: RefCell::default(),
-        errors: RefCell::default(),
-        config,
-    };
-
-    let lints = &[
-        annotation::decl::AnnotatedDecl::check,
-        pedantic::ambiguous_precedence::AmbiguousPrecedence::check,
-        pedantic::array_param::ArrayParam::check,
-        pedantic::assign_expr::AssignExpr::check,
-        pedantic::bitmask_ann::BitmaskAnn::check,
-        pedantic::complex_lit::ComplexLit::check,
-        pedantic::empty_mod::EmptyMod::check,
-        pedantic::lowercase_bool::LowercaseBool::check,
-        pedantic::null::NullVariant::check,
-        pedantic::omitted_in::OmittedIn::check,
-        pedantic::scoped_lit::ScopedLit::check,
-        semantic::duplicate_annotations::DuplicateAnnotations::check,
-        semantic::keywords::KwIdent::check,
-        semantic::oneway::NonVoidOneway::check,
-        semantic::redundant_inheritance::RedundantInheritance::check,
-        syntax::ann_members::AnnMembers::check,
-        syntax::ascii::AsciiIdent::check,
-        syntax::empty::EmptyTypes::check,
-        syntax::sanity::Sanity::check,
-        unsupported::items::Unsupported::check,
-    ];
-
-    for check in lints {
-        check(&ctx, tree);
-    }
-
-    Report {
-        errors: ctx.errors.take(),
-        warnings: ctx.warnings.take(),
-    }
-}
-
-/// Set of lints that operates on the HIR.
-pub fn lint_hir(hir: &ic_hir::ResolvedGraph, vfs: &SourceMap) -> Report {
-    lint_hir_with_config(hir, vfs, &LintConfig::new())
-}
-
-/// Set of lints that operates on the HIR with a custom configuration.
-pub fn lint_hir_with_config(
-    hir: &ic_hir::ResolvedGraph,
-    vfs: &SourceMap,
-    config: &LintConfig,
-) -> Report {
-    let ctx = LintCtx {
-        vfs,
-        warnings: RefCell::default(),
-        errors: RefCell::default(),
-        config,
-    };
-
-    let lints = &[
-        pedantic::complex_key::ComplexMapKey::check_hir,
-        pedantic::invalid_array_size::InvalidArraySize::check_hir,
-        pedantic::large_union_variant::LargeUnionVariant::check_hir,
-        semantic::bit_bound::BitBound::check_hir,
-        semantic::circular_inheritance::CircularInheritance::check_hir,
-        semantic::deprecated::Deprecated::check_hir,
-        semantic::duplicate_case_labels::DuplicateCaseLabels::check_hir,
-        semantic::duplicate_methods::DuplicateMethods::check_hir,
-        semantic::invalid_enum_value::InvalidEnumValue::check_hir,
-        semantic::multiple_default_cases::MultipleDefaultCases::check_hir,
-        semantic::range_bound::RangeBound::check_hir,
-        semantic::unnamed_args::UnnamedArgs::check_hir,
-        semantic::unreachable_union_cases::UnreachableUnionCases::check_hir,
-        semantic::zero_bound::ZeroBound::check_hir,
-        // unsupported::proto::Proto::check_hir, // Commented out - too restrictive for non-proto3 IDL
-    ];
-
-    for check in lints {
-        check(&ctx, hir);
-    }
-
-    Report {
-        errors: ctx.errors.take(),
-        warnings: ctx.warnings.take(),
-    }
 }

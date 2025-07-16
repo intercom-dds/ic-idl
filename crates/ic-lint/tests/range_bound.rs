@@ -27,13 +27,13 @@
 
 mod common;
 
-use common::lint_hir;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn valid_range_bounds() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @range(0, 255)
     octet field1;
@@ -44,106 +44,80 @@ struct Foo {
     @range(-32768, 32767)
     short field3;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 0);
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn invalid_min_bound() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @min(-200)
     int8 field;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("less than type minimum"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn invalid_max_bound() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @max(300)
     octet field;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("greater than type maximum"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn invalid_range_order() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @range(100, 50)
     octet field;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("minimum 100 is greater than maximum 50"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn range_exceeds_type_bounds() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Foo {
     @range(-1000, 1000)
     int8 field;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 2); // Both min and max are out of bounds
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn const_with_range() {
-    let report = lint_hir(
-        r"
+    let source = r"
 @range(0, 100)
 const short MAX_VALUE = 50;
 
 @min(200)
 const octet MIN_VALUE = 250;
-",
-    );
-
-    assert_eq!(report.errors.len(), 0); // First is valid, second would overflow but that's a different check
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn typedef_with_range() {
-    let report = lint_hir(
-        r"
+    let source = r"
 @range(0, 1000)
 typedef short SmallInt;
 
 @range(-10000, 10000)
 typedef int8 TinyInt; // This should fail
-",
-    );
-
-    assert_eq!(report.errors.len(), 2); // Both min and max out of bounds for int8
+";
+    assert_snapshot!(test_lint_hir(source));
 }

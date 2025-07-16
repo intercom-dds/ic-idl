@@ -27,103 +27,77 @@
 
 mod common;
 
-use common::lint_hir;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 fn valid_union_with_default_last() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     case 2: string b;
     default: boolean c;
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 0);
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn case_after_default() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     default: string b;
     case 2: boolean c;  // Unreachable
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("unreachable"));
-    assert!(error_output.contains("after default"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn multiple_cases_after_default() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (long) {
     case 1: long a;
     default: string b;
     case 2: boolean c;  // Unreachable
     case 3: octet d;    // Also unreachable
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 2);
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn case_label_out_of_range_octet() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (octet) {
     case 100: long a;
     case 200: string b;
     case 300: boolean c;  // Out of range for octet (0-255)
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("outside the range"));
-    assert!(error_output.contains("300"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn case_label_negative_for_unsigned() {
-    let _report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (unsigned short) {
     case 100: long a;
     case -1: string b;  // Negative value for unsigned type
 };
-",
-    );
-
-    // This might not be caught if -1 is converted to a large unsigned value
-    // The test depends on how the HIR handles negative literals for unsigned types
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn boolean_out_of_range() {
-    let report = lint_hir(
-        r"
+    let source = r"
 union MyUnion switch (boolean) {
     case 0: long a;     // false
     case 1: string b;   // true
     case 2: boolean c;  // Out of range for boolean
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("outside the range"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }

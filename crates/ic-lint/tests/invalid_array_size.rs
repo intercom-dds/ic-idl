@@ -27,138 +27,104 @@
 
 mod common;
 
-use common::lint_hir;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 fn valid_array_size() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct Data {
     long small[10];        // 40 bytes
     long medium[1000];     // 4000 bytes
     octet large[16000];    // 16000 bytes (just under 16KB limit)
 };
-",
-    );
-
-    assert!(report.warnings.is_empty());
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn large_array_size() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct LargeArrays {
     long huge[5000];  // 5000 × 4 bytes = 20000 bytes > 16KB
 };
-",
-    );
-
-    assert_eq!(report.warnings.len(), 1);
-    let warning_output = format!("{:?}", report.warnings[0]);
-    assert!(warning_output.contains("20000 bytes exceeds reasonable limit"));
-    assert!(warning_output.contains("16384 bytes"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn multiple_large_arrays() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct MultipleArrays {
     long arr1[5000];      // 20000 bytes
     double arr2[3000];    // 24000 bytes
     boolean arr3[10000];  // 10000 bytes - OK
 };
-",
-    );
-
-    assert_eq!(report.warnings.len(), 2);
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR array bound evaluation not fully working"]
 fn negative_array_size() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct NegativeArray {
     long invalid[-10];
 };
-",
-    );
-
-    assert!(!report.errors.is_empty());
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("negative array size"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR array bound evaluation not fully working"]
 fn const_expression_array_size() {
-    let report = lint_hir(
-        r"
+    let source = r"
 const MILLION = 1000000;
 const TWO = 2;
 struct ConstArrays {
     long large[MILLION * TWO];  // 2 million
     long small[MILLION / 10];   // 100k, should be fine
 };
-",
-    );
-
-    assert_eq!(report.warnings.len(), 1);
-    let warning_output = format!("{:?}", report.warnings[0]);
-    assert!(warning_output.contains("exceeds reasonable limit"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn string_with_large_bound() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct LargeString {
     string<20000> huge_str;  // 20000 chars × 1 byte = 20KB
     wstring<5000> wide_str;  // 5000 chars × 4 bytes = 20KB
 };
-",
-    );
-
-    assert_eq!(report.warnings.len(), 2);
-    let warning_output = format!("{:?}", report.warnings[0]);
-    assert!(warning_output.contains("20000 bytes exceeds reasonable limit"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn typedef_array() {
-    let report = lint_hir(
-        r"
+    let source = r"
 typedef long BigArray[5000];  // 20000 bytes
 struct UsesBigArray {
     BigArray data;
 };
-",
-    );
-
-    assert_eq!(report.warnings.len(), 1);
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "HIR array bound evaluation not fully working"]
 fn multidimensional_array() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct MultiDim {
     long matrix[2000][1000];  // 2 million total elements
 };
-",
-    );
-
-    // Should warn about the outer dimension being large
-    assert!(!report.warnings.is_empty());
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 fn different_type_sizes() {
-    let report = lint_hir(
-        r"
+    let source = r"
 struct TypeSizes {
     octet octets[17000];          // 17000 bytes - too big
     short shorts[8500];           // 17000 bytes - too big  
@@ -170,8 +136,6 @@ struct TypeSizes {
     short ok_shorts[8000];        // 16000 bytes - OK
     long ok_longs[4000];          // 16000 bytes - OK
 };
-",
-    );
-
-    assert_eq!(report.warnings.len(), 5);
+";
+    assert_snapshot!(test_lint_hir(source));
 }

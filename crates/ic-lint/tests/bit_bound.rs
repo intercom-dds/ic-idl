@@ -27,13 +27,13 @@
 
 mod common;
 
-use common::lint_hir;
+use common::test_lint_hir;
+use insta::assert_snapshot;
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn valid_bit_positions() {
-    let report = lint_hir(
-        r"
+    let source = r"
 bitmask MyFlags {
     @bit(0) FLAG_A,
     @bit(7) FLAG_B
@@ -43,73 +43,53 @@ bitmask<unsigned short> LargeFlags {
     @bit(0) FLAG_X,
     @bit(15) FLAG_Y
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 0);
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn bit_exceeds_octet_width() {
-    let report = lint_hir(
-        r"
+    let source = r"
 bitmask MyFlags {
     @bit(8) FLAG_TOO_HIGH
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("exceeds type bit width"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn bit_exceeds_custom_type_width() {
-    let report = lint_hir(
-        r"
+    let source = r"
 bitmask<unsigned short> MyFlags {
     @bit(16) FLAG_OUT_OF_BOUNDS
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("@bit(16) exceeds type bit width of 16"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn explicit_value_exceeds_bounds() {
-    let report = lint_hir(
-        r"
+    let source = r"
 bitmask MyFlags {
     FLAG_A = 256  // Too large for octet (8-bit)
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 1);
-    let error_output = format!("{:?}", report.errors[0]);
-    assert!(error_output.contains("exceeds type bit width"));
+";
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
 #[ignore = "Annotation lowering not implemented"]
 fn mixed_valid_invalid_bits() {
-    let report = lint_hir(
-        r"
+    let source = r"
 bitmask<unsigned long> Flags {
     @bit(0) FLAG_VALID1,
     @bit(31) FLAG_VALID2,
     @bit(32) FLAG_INVALID,  // Out of bounds for 32-bit
     @bit(63) FLAG_INVALID2  // Way out of bounds
 };
-",
-    );
-
-    assert_eq!(report.errors.len(), 2);
+";
+    assert_snapshot!(test_lint_hir(source));
 }

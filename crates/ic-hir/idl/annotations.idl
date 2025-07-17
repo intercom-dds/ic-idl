@@ -30,10 +30,6 @@
 //! Definitions for these types will not be generated, as they are not intended
 //! to be used outside of the compiler.
 
-#pragma once
-
-#include "builtins.idl"
-
 module intercom {
 module annotations {
 
@@ -177,7 +173,7 @@ module annotations {
     string name;
 };
 
-@annotation _oneway {
+@annotation oneway {
     boolean value default TRUE;
 };
 

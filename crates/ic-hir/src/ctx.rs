@@ -134,5 +134,6 @@ impl Context {
 
 /// Inserts primitive types and built-in annotations into the context.
 fn init_ctx_state(_ctx: &mut Context) {
-    // Currently no built-in types are injected
+    // Built-in annotations are now handled differently to avoid circular dependencies
+    // They are recognized by name during annotation resolution
 }

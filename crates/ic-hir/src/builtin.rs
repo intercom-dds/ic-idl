@@ -27,6 +27,6 @@
 
 //! Built-in annotations for the HIR.
 
-// TODO: Implement built-in annotation injection at the parse level
-// The built-in annotations are defined in ic-ptree-lower/idl/annotations.idl
-// but need to be injected before the HIR is constructed.
+// TODO: Built-in annotation injection should be handled at a higher level
+// outside of the ic-hir crate to avoid circular dependencies and maintain
+// proper separation of concerns.

@@ -35,3 +35,4 @@
 
 // pub mod nested;
 pub mod rename;
+pub mod value_annotation;

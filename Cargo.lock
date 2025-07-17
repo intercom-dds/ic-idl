@@ -217,6 +217,10 @@ version = "0.1.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
+ "ic-idl",
+ "ic-parse",
+ "ic-preproc",
+ "ic-vfs",
 ]
 
 [[package]]

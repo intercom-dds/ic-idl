@@ -37,5 +37,11 @@ version.workspace = true
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
 
+[dev-dependencies]
+ic-idl = { path = "../ic-idl" }
+ic-parse = { path = "../ic-parse" }
+ic-preproc = { path = "../ic-preproc" }
+ic-vfs = { path = "../ic-vfs" }
+
 [lints]
 workspace = true

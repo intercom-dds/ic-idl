@@ -65,8 +65,12 @@ fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {
     };
 
     let span = emit_span(&ann.ident.span);
-    let resolved = format!(" [→0x{:02X?}]", ann.def_id);
-    leaf!("{} {span} {}{}", "ann".purple(), ann_str.cyan(), resolved.yellow())
+    leaf!(
+        "{} adt(def={}) {span} {}", 
+        "ann".purple(),
+        format!("0x{:#02?}", ann.def_id).blue(),
+        ann_str.cyan(), 
+    )
 }
 
 fn emit_param_kind(kind: ParamKind) -> &'static str {

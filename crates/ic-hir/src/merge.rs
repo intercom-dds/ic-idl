@@ -118,19 +118,19 @@ impl HirMerger {
         // First pass: copy scopes
         self.copy_scopes(graph_index, &graph.context);
 
-        // Second pass: copy all definitions and build DefId mapping
-        for &def_id in &graph.order {
-            let new_def_id = self.copy_definition(graph_index, &graph.context, def_id);
-            // Only add to order if it's a new definition (not deduplicated)
-            if !self.order.contains(&new_def_id) {
-                self.order.push(new_def_id);
-            }
+        // Second pass: copy all definitions from the arena
+        let all_def_ids: Vec<DefId> = graph.context.definitions.iter().map(|(id, _)| id).collect();
 
-            // For modules, also process their contents
-            let old_def = graph.context.definitions.get(def_id);
-            if let DefKind::Module(module) = &old_def.kind {
-                for &child_def_id in &module.definitions {
-                    let _ = self.copy_definition(graph_index, &graph.context, child_def_id);
+        for old_def_id in all_def_ids {
+            let _ = self.copy_definition(graph_index, &graph.context, old_def_id);
+        }
+
+        // Add top-level definitions to order
+        for &def_id in &graph.order {
+            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
+                // Only add if not already in order (due to deduplication)
+                if !self.order.contains(&new_def_id) {
+                    self.order.push(new_def_id);
                 }
             }
         }
@@ -148,12 +148,17 @@ impl HirMerger {
         old_context: &Context,
         old_def_id: DefId,
     ) -> DefId {
+        // Check if we've already copied this definition
+        if let Some(&existing_def_id) = self.def_id_maps[graph_index].get(&old_def_id) {
+            return existing_def_id;
+        }
+
         let old_def = old_context.definitions.get(old_def_id);
 
         // Get the qualified name for deduplication
         let qualified_name = self.get_qualified_name(old_context, old_def_id);
 
-        // Check if we've already copied this definition
+        // Check if we've already copied this definition from another graph
         if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
             // Special case: modules should NOT be deduplicated - each reopening is separate
             if !matches!(&old_def.kind, DefKind::Module(_)) {
@@ -176,7 +181,9 @@ impl HirMerger {
 
         // Record mapping
         self.def_id_maps[graph_index].insert(old_def_id, new_def_id);
-        self.dedup_map.insert(qualified_name, new_def_id);
+        if !matches!(&old_def.kind, DefKind::Module(_)) {
+            self.dedup_map.insert(qualified_name, new_def_id);
+        }
 
         new_def_id
     }

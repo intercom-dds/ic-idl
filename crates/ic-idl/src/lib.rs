@@ -348,7 +348,7 @@ impl Compiler {
 
         // First, compile built-in annotations to HIR
         let builtin_hir = self.compile_builtins()?;
-        
+
         // Compile each file to a separate HIR
         let mut hirs = vec![builtin_hir];
         let mut all_diagnostics = CompileDiagnostics {
@@ -395,26 +395,29 @@ impl Compiler {
             "<builtin-annotations>",
             include_str!("../idl/annotations.idl"),
         );
-        
-        let builtin_parsed = ic_parse::from_file(
-            builtin_file_id,
-            ProcArgs::default(),
-            &mut self.source_map,
-        );
-        
+
+        let builtin_parsed =
+            ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
+
         if !builtin_parsed.errors.is_empty() {
-            panic!("Failed to parse built-in annotations: {:?}", builtin_parsed.errors);
+            panic!(
+                "Failed to parse built-in annotations: {:?}",
+                builtin_parsed.errors
+            );
         }
-        
+
         let hir = hir::from_ast(builtin_parsed.tree);
-        
+
         if !hir.errors.is_empty() {
-            panic!("Failed to create HIR for built-in annotations: {:?}", hir.errors);
+            panic!(
+                "Failed to create HIR for built-in annotations: {:?}",
+                hir.errors
+            );
         }
-        
+
         Ok(hir)
     }
-    
+
     /// Compile a single file to HIR without built-in annotations.
     ///
     /// # Errors
@@ -441,34 +444,40 @@ impl Compiler {
 
         // Collect preprocessor warnings if enabled
         if self.options.warn.preprocessor_enabled() {
-            diagnostics.warnings.extend(ast.warnings.iter().map(pretty::to_warning));
+            diagnostics
+                .warnings
+                .extend(ast.warnings.iter().map(pretty::to_warning));
         }
 
         // Convert to HIR without built-in annotations
         let lint_config = self.options.warn.to_lint_config();
         let mut hir = hir::from_ast(ast.tree);
-        
+
         // Run linting
         if diagnostics.errors.is_empty() {
             let report = ic_lint::lint_hir_with_config(&hir, &self.source_map, &lint_config);
-            diagnostics.errors.extend(report.errors.into_iter().map(Into::into));
+            diagnostics
+                .errors
+                .extend(report.errors.into_iter().map(Into::into));
             diagnostics.warnings.extend(report.warnings);
         }
-        
+
         // Extract HIR errors and warnings
         let hir_errors = std::mem::take(&mut hir.errors);
-        diagnostics.errors.extend(hir_errors.into_iter().map(Into::into));
-        
+        diagnostics
+            .errors
+            .extend(hir_errors.into_iter().map(Into::into));
+
         let hir_warnings = std::mem::take(&mut hir.warnings);
         diagnostics.warnings.extend(hir_warnings);
-        
+
         if !diagnostics.errors.is_empty() {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
         Ok((hir, diagnostics))
     }
-    
+
     /// Compile a single file to HIR with built-in annotations.
     /// This is kept for backward compatibility.
     fn compile_file_to_hir(

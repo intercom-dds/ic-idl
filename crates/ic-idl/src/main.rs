@@ -31,10 +31,7 @@ use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
-use ic_idl::{
-    CompileDiagnostics, CompileError, Compiler, CompilerOptions,
-    hir, util,
-};
+use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, hir, util};
 
 mod info;
 mod unstable;
@@ -109,7 +106,7 @@ fn main() {
 fn try_compile(options: CompilerOptions) {
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
-    
+
     // Use the new compile_hir method which handles merging
     let (hir, diagnostics) = match compiler.compile_hir() {
         Ok((hir, diag)) => (hir, diag),
@@ -122,7 +119,7 @@ fn try_compile(options: CompilerOptions) {
             std::process::exit(1);
         }
     };
-    
+
     // Extract warnings from compile diagnostics
     let warnings = diagnostics.warnings;
 
@@ -145,6 +142,8 @@ fn try_compile(options: CompilerOptions) {
         ic_hir_tree::emit_tree(&hir);
     }
 
+    // TODO: Fix HIR to ptree conversion getting stuck with merged HIRs
+    // For now, skip ptree conversion and code generation
     // Convert HIR to ptree for code generation
     let ptree = ic_idl::hir_to_ptree(&hir, compiler.source_map());
 
@@ -313,4 +312,3 @@ fn dump_backtrace(info: &std::panic::PanicHookInfo) {
         "This is a compiler bug. Please report it to KONGSBERG <DDS-InterCOM@kda.kongsberg.com>.",
     );
 }
-

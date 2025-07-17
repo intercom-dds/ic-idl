@@ -36,7 +36,7 @@
 use std::collections::HashMap;
 
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
-use ic_syntax::{Item, Path};
+use ic_syntax::{Item, Path, Span};
 
 use super::collect::NameMap;
 use crate::Context;
@@ -44,6 +44,7 @@ use crate::hir::{
     Ann, BitFlag, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter,
     PrimitiveTy, ProtoTy, Ty, TyKind, Variant,
 };
+use crate::scope::ScopeId;
 
 /// Resolves type references in the HIR.
 pub struct TypeResolver<'a> {
@@ -202,6 +203,28 @@ impl<'a> TypeResolver<'a> {
         resolved_annotations
     }
 
+    /// Finds the span of the failing segment in a path by resolving incrementally.
+    fn find_failing_segment(&self, start_scope: ScopeId, path: &Path) -> Span {
+        // Try resolving prefixes of the path to find where it fails
+        for i in 1..=path.segments.len() {
+            let prefix_segments: Vec<&str> =
+                path.segments[..i].iter().map(|s| s.name.as_str()).collect();
+
+            if self
+                .ctx
+                .scopes
+                .resolve_path(start_scope, &prefix_segments)
+                .is_none()
+            {
+                // This segment failed - return its span
+                return path.segments[i - 1].span;
+            }
+        }
+
+        // Fallback to the whole path span
+        ic_syntax::util::path_span(path)
+    }
+
     /// Resolves a path to a `DefId`.
     fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
         // Convert path segments to string slice
@@ -224,11 +247,14 @@ impl<'a> TypeResolver<'a> {
             return None; // Primitive types are handled in resolve_type
         }
 
-        // Report error
+        // Try to find which segment failed by resolving incrementally
+        let failing_segment_span = self.find_failing_segment(start_scope, path);
+
+        // Report error with specific segment span
         let qualified = path_to_string(path);
         self.errors.push(error_span(
             format!("unresolved type `{qualified}`"),
-            Label::new(ic_syntax::util::path_span(path)).message("unknown type"),
+            Label::new(failing_segment_span).message("unknown type"),
         ));
         None
     }
@@ -283,22 +309,13 @@ impl<'a> TypeResolver<'a> {
                 }
 
                 // Otherwise resolve as user-defined type
-                let path_str = v
-                    .segments
-                    .iter()
-                    .map(|s| s.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join("::");
                 if let Some(id) = self.resolve_path(v) {
                     Ty {
                         kind: TyKind::Adt(id),
                         span: ic_syntax::util::path_span(v),
                     }
                 } else {
-                    self.errors.push(error_span(
-                        format!("undefined type `{path_str}`"),
-                        Label::new(ic_syntax::util::path_span(v)).message("type not found"),
-                    ));
+                    // Error already reported by resolve_path
                     // Return a placeholder type to continue processing
                     Ty {
                         kind: TyKind::Any,

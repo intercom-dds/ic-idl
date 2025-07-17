@@ -31,7 +31,7 @@ use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
-use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, util};
+use ic_idl::{CompileDiagnostics, CompileError, CompiledAst, Compiler, CompilerOptions, util};
 
 mod info;
 mod unstable;
@@ -106,12 +106,12 @@ fn main() {
 fn try_compile(options: CompilerOptions) {
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
-    let (ptree, _diagnostics) = match compiler.compile() {
-        Ok((ptree, diagnostics)) => {
-            if diagnostics.count() > 0 {
-                emit_diagnostics(&compiler, &diagnostics);
+    let CompiledAst { items, .. } = match compiler.compile() {
+        Ok(ast) => {
+            if ast.diagnostics.count() > 0 {
+                emit_diagnostics(&compiler, &ast.diagnostics);
             }
-            (ptree, diagnostics)
+            ast
         }
         Err(CompileError::Io(e)) => {
             error!("I/O error: {}", e);
@@ -122,6 +122,33 @@ fn try_compile(options: CompilerOptions) {
             std::process::exit(1);
         }
     };
+
+    // Dump AST if requested
+    if compiler.options().unstable.ast_dump {
+        println!("{items:#?}");
+    }
+
+    // Convert AST to HIR
+    let lint_config = compiler.options().warn.to_lint_config();
+    let hir = match ic_idl::ast_to_hir(items, compiler.source_map(), &lint_config) {
+        Ok(hir) => hir,
+        Err(CompileError::Diagnostics(diag)) => {
+            emit_diagnostics(&compiler, &diag);
+            std::process::exit(1);
+        }
+        Err(CompileError::Io(e)) => {
+            error!("I/O error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Dump HIR if requested
+    if compiler.options().unstable.hir_dump {
+        ic_hir_tree::emit_tree(&hir);
+    }
+
+    // Convert HIR to ptree for code generation
+    let ptree = ic_idl::hir_to_ptree(&hir, compiler.source_map());
 
     // Dump ptree if requested
     if compiler.options().unstable.ptree_dump {

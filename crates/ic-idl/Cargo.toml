@@ -55,6 +55,7 @@ ic-lint = { path = "../ic-lint" }
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree = { path = "../ic-ptree" }
+ic-syntax = { path = "../ic-syntax" }
 ic-ptree-dump = { path = "../ic-ptree-dump" }
 ic-ptree-lower = { path = "../ic-ptree-lower" }
 ic-vfs = { path = "../ic-vfs" }

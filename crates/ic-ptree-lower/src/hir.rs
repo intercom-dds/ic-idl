@@ -38,7 +38,6 @@ use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
 
-use crate::ast;
 use crate::common::{self, NUM_UNDEF, collect_with, create_ident, path_str};
 
 struct TreeBuilder<'a> {
@@ -360,7 +359,7 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
-unsafe fn _inject_builtin(state: *mut sys::parser_state) {
+unsafe fn inject_builtin(state: *mut sys::parser_state) {
     let builtin = common::parse_builtin();
     let hir = ic_hir::from_ast(builtin.tree);
     assert!(hir.errors.is_empty());
@@ -381,7 +380,7 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
 
     // Inject the built-in annotations. We use the AST version to preserve the
     // default values that are not yet included in the HIR.
-    ast::inject_builtin(state);
+    inject_builtin(state);
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);

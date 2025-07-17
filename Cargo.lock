@@ -242,6 +242,7 @@ dependencies = [
  "ic-ptree",
  "ic-ptree-dump",
  "ic-ptree-lower",
+ "ic-syntax",
  "ic-vfs",
  "intercom-cts",
 ]

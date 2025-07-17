@@ -121,6 +121,16 @@ pub struct CompileDiagnostics {
     pub expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
 }
 
+/// Result of AST compilation with all parsed items.
+#[derive(Debug)]
+pub struct CompiledAst {
+    /// All parsed AST items from all files
+    pub items: Vec<AstItem>,
+
+    /// Diagnostics collected during parsing
+    pub diagnostics: CompileDiagnostics,
+}
+
 impl std::fmt::Display for CompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -190,7 +200,68 @@ impl CompileDiagnostics {
 
 // Re-export core modules for the compilation pipeline
 pub use ic_parse::ParseResult as AstResult;
+pub use ic_syntax::Item as AstItem;
 pub use {ic_hir as hir, ic_ptree as ptree, ic_vfs as vfs};
+
+/// Convert AST to HIR.
+///
+/// # Errors
+///
+/// Returns an error if the AST contains semantic errors.
+pub fn ast_to_hir<I>(
+    ast: I,
+    source_map: &SourceMap,
+    lint_config: &LintConfig,
+) -> Result<hir::ResolvedGraph, CompileError>
+where
+    I: IntoIterator<Item = AstItem>,
+{
+    let ast_vec: Vec<_> = ast.into_iter().collect();
+    let mut all_errors = Vec::new();
+    let mut all_warnings = Vec::new();
+
+    // Lint the AST
+    let report = ic_lint::lint_syntax_with_config(&ast_vec, source_map, lint_config);
+    all_errors.extend(report.errors.into_iter().map(Into::into));
+    all_warnings.extend(report.warnings);
+
+    // Lower to HIR
+    let mut hir = hir::from_ast(ast_vec);
+
+    // Lint the HIR if no errors so far
+    if all_errors.is_empty() {
+        let report = ic_lint::lint_hir_with_config(&hir, source_map, lint_config);
+        all_errors.extend(report.errors.into_iter().map(Into::into));
+        all_warnings.extend(report.warnings);
+    }
+
+    let hir_errors = std::mem::take(&mut hir.errors);
+    all_errors.extend(hir_errors.into_iter().map(Into::into));
+
+    if !all_errors.is_empty() {
+        return Err(CompileError::Diagnostics(CompileDiagnostics {
+            errors: all_errors,
+            warnings: all_warnings,
+            expansion_info: std::collections::HashMap::new(),
+        }));
+    }
+
+    Ok(hir)
+}
+
+/// Convert HIR to ptree.
+pub fn hir_to_ptree(hir: &hir::ResolvedGraph, source_map: &SourceMap) -> ptree::ParseResult {
+    ic_ptree_lower::from_hir(hir, source_map)
+}
+
+/// Convert multiple HIRs to ptrees.
+#[must_use]
+pub fn hirs_to_ptrees(
+    hirs: &[hir::ResolvedGraph],
+    source_map: &SourceMap,
+) -> Vec<ptree::ParseResult> {
+    hirs.iter().map(|h| hir_to_ptree(h, source_map)).collect()
+}
 
 /// Main compiler interface.
 #[must_use]
@@ -224,57 +295,15 @@ impl Compiler {
         &self.source_map
     }
 
-    /// Parse a single IDL file.
+    /// Compile the configured IDL files to AST.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the file cannot be read or parsed.
-    pub fn parse_file(&mut self, path: &Path) -> Result<ptree::ParseResult, CompileError> {
-        let proc_args = self.proc_args();
-        let parsed = try_parse(&self.options, proc_args, path, &mut self.source_map);
-
-        if !parsed.errors.is_empty() {
-            return Err(CompileError::Diagnostics(CompileDiagnostics {
-                errors: parsed.errors,
-                warnings: parsed.warnings,
-                expansion_info: std::collections::HashMap::new(),
-            }));
-        }
-
-        parsed.result.ok_or_else(|| {
-            CompileError::Diagnostics(CompileDiagnostics {
-                errors: vec![InternalError::Custom("Failed to parse file".to_string())],
-                warnings: Vec::new(),
-                expansion_info: std::collections::HashMap::new(),
-            })
-        })
-    }
-
-    /// Parse multiple IDL files.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if any file cannot be read or parsed.
-    pub fn parse_files(
-        &mut self,
-        paths: &[PathBuf],
-    ) -> Result<Vec<ptree::ParseResult>, CompileError> {
-        let mut results = Vec::new();
-        for path in paths {
-            results.push(self.parse_file(path)?);
-        }
-        Ok(results)
-    }
-
-    /// Compile the configured IDL files to a merged ptree.
-    ///
-    /// Returns the compiled ptree and any diagnostics (warnings) that were generated.
+    /// Returns all parsed AST items and any diagnostics (warnings) that were generated.
     ///
     /// # Errors
     ///
     /// Returns an error if compilation fails. The error will contain all diagnostics
     /// including both errors and warnings.
-    pub fn compile(&mut self) -> Result<(ptree::ParseResult, CompileDiagnostics), CompileError> {
+    pub fn compile(&mut self) -> Result<CompiledAst, CompileError> {
         if self.options.files.is_empty() {
             return Err(CompileError::Diagnostics(CompileDiagnostics {
                 errors: vec![InternalError::Custom("no input files".to_string())],
@@ -283,22 +312,29 @@ impl Compiler {
             }));
         }
 
-        // Use try_main to get the result with all diagnostics
-        let (ptrees, diagnostics) = try_compile(&self.options, &mut self.source_map)?;
-        let merged_ptree = ptree::merge_trees(&ptrees);
+        // Parse all files to AST
+        let (items, diagnostics) = try_compile_to_ast(&self.options, &mut self.source_map)?;
 
-        Ok((merged_ptree, diagnostics))
+        Ok(CompiledAst { items, diagnostics })
     }
 
-    /// Compile the configured IDL files to individual ptrees.
+    /// Compile the configured IDL files directly to HIR.
+    ///
+    /// This is a shorthand for `compile()` followed by `ast_to_hir()`.
     ///
     /// # Errors
     ///
     /// Returns an error if compilation fails.
-    pub fn compile_to_ptrees(&mut self) -> Result<Vec<ptree::ParseResult>, CompileError> {
-        // Use try_compile but discard the diagnostics
-        let (ptrees, _diagnostics) = try_compile(&self.options, &mut self.source_map)?;
-        Ok(ptrees)
+    pub fn compile_hir(
+        &mut self,
+    ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
+        let CompiledAst { items, diagnostics } = self.compile()?;
+
+        // Convert AST to HIR with linting
+        let lint_config = self.options.warn.to_lint_config();
+        let hir = ast_to_hir(items, &self.source_map, &lint_config)?;
+
+        Ok((hir, diagnostics))
     }
 
     /// Parse files and get the AST.
@@ -321,41 +357,6 @@ impl Compiler {
         }
 
         Ok(ast)
-    }
-
-    /// Convert AST to HIR.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the AST contains semantic errors.
-    pub fn ast_to_hir(&self, ast: AstResult) -> Result<hir::ResolvedGraph, CompileError> {
-        let hir = hir::from_ast(ast.tree);
-
-        if !hir.errors.is_empty() {
-            return Err(CompileError::Diagnostics(CompileDiagnostics {
-                errors: hir.errors.into_iter().map(Into::into).collect(),
-                warnings: Vec::new(),
-                expansion_info: std::collections::HashMap::new(),
-            }));
-        }
-
-        Ok(hir)
-    }
-
-    /// Convert HIR to ptree.
-    pub fn hir_to_ptree(&self, hir: &hir::ResolvedGraph) -> ptree::ParseResult {
-        ic_ptree_lower::from_hir(hir, &self.source_map)
-    }
-
-    /// Parse files and convert through the full pipeline to ptree.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if any stage of the pipeline fails.
-    pub fn parse_to_ptree(&mut self, path: &Path) -> Result<ptree::ParseResult, CompileError> {
-        let ast = self.parse_to_ast(path)?;
-        let hir = self.ast_to_hir(ast)?;
-        Ok(self.hir_to_ptree(&hir))
     }
 
     /// Add a file to be compiled.
@@ -391,18 +392,10 @@ impl Compiler {
     }
 }
 
-struct Parsed {
-    result: Option<ic_ptree::ParseResult>,
-    errors: Vec<InternalError>,
-    warnings: Vec<Diag>,
-    #[allow(dead_code)]
-    expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
-}
-
-fn try_compile(
+fn try_compile_to_ast(
     options: &CompilerOptions,
     vfs: &mut SourceMap,
-) -> Result<(Vec<ptree::ParseResult>, CompileDiagnostics), CompileError> {
+) -> Result<(Vec<AstItem>, CompileDiagnostics), CompileError> {
     let defines = options.define.iter().map(|v| {
         v.split_once('=')
             .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
@@ -414,9 +407,10 @@ fn try_compile(
         .includes(options.include.clone())
         .skip_comments(options.ignore_comments);
 
-    let mut trees = vec![];
+    let mut all_asts = vec![];
     let mut all_errors = vec![];
     let mut all_warnings = vec![];
+    let mut all_expansion_info = std::collections::HashMap::new();
 
     let files = util::collect_files(&options.files).map_err(|e| {
         CompileError::Io(std::io::Error::other(format!(
@@ -424,20 +418,32 @@ fn try_compile(
         )))
     })?;
 
-    // Collect all expansion info across files
-    let mut all_expansion_info = std::collections::HashMap::new();
-
+    // Parse all files to AST
     for file in files {
-        let parsed = try_parse(options, args.clone(), &file, vfs);
-        all_errors.extend(parsed.errors);
-        all_warnings.extend(parsed.warnings);
-        all_expansion_info.extend(parsed.expansion_info);
-        if let Some(result) = parsed.result {
-            trees.push(result);
+        let ast = match ic_parse::from_path(&file, args.clone(), vfs) {
+            Ok(ast) => ast,
+            Err(e) => {
+                all_errors.push(InternalError::Custom(format!(
+                    "failed to open `{}`: {e}",
+                    file.display(),
+                )));
+                continue;
+            }
+        };
+
+        // Collect parse errors
+        all_errors.extend(ast.errors.iter().cloned().map(Into::into));
+
+        // Collect preprocessor warnings if enabled
+        if options.warn.preprocessor_enabled() {
+            all_warnings.extend(ast.warnings.iter().map(pretty::to_warning));
         }
+
+        all_expansion_info.extend(ast.expansion_info);
+        all_asts.extend(ast.tree);
     }
 
-    // If there were any errors, return them as diagnostics
+    // If there were parse errors, return early
     if !all_errors.is_empty() {
         return Err(CompileError::Diagnostics(CompileDiagnostics {
             errors: all_errors,
@@ -446,91 +452,13 @@ fn try_compile(
         }));
     }
 
-    // Return success with any warnings as diagnostics
+    // Return the AST with any warnings as diagnostics
     Ok((
-        trees,
+        all_asts,
         CompileDiagnostics {
             errors: Vec::new(),
             warnings: all_warnings,
             expansion_info: all_expansion_info,
         },
     ))
-}
-
-fn try_parse(
-    options: &CompilerOptions,
-    proc: ProcArgs,
-    path: &Path,
-    vfs: &mut SourceMap,
-) -> Parsed {
-    let mut errors = vec![];
-    let mut warnings = vec![];
-
-    // Try to parse the file
-    let ast = match ic_parse::from_path(path, proc, vfs) {
-        Ok(ast) => ast,
-        Err(e) => {
-            // File couldn't be opened - return early with just this error
-            errors.push(InternalError::Custom(format!(
-                "failed to open `{}`: {e}",
-                path.display(),
-            )));
-            return Parsed {
-                result: None,
-                errors,
-                warnings,
-                expansion_info: std::collections::HashMap::new(),
-            };
-        }
-    };
-
-    // Collect parse errors
-    errors.extend(ast.errors.iter().cloned().map(Into::into));
-
-    // Collect preprocessor warnings if enabled
-    if options.warn.preprocessor_enabled() {
-        warnings.extend(ast.warnings.iter().map(pretty::to_warning));
-    }
-
-    let mut hir = None;
-
-    // Only run linting if there are no parse errors
-    if errors.is_empty() {
-        // Create lint configuration from CLI flags
-        let lint_config = options.warn.to_lint_config();
-
-        // Lint the AST
-        let report = ic_lint::lint_syntax_with_config(&ast.tree, vfs, &lint_config);
-        errors.extend(report.errors.into_iter().map(Into::into));
-        warnings.extend(report.warnings);
-
-        // Lower the AST to a HIR
-        let mut hir_result = ic_hir::from_ast(ast.tree.clone());
-
-        // Only lint HIR if no errors so far
-        if errors.is_empty() {
-            // Lint the HIR
-            let report = ic_lint::lint_hir_with_config(&hir_result, vfs, &lint_config);
-            errors.extend(report.errors.into_iter().map(Into::into));
-            warnings.extend(report.warnings);
-        }
-
-        let hir_errors = std::mem::take(&mut hir_result.errors);
-        errors.extend(hir_errors.into_iter().map(Into::into));
-        hir = Some(hir_result);
-    }
-
-    // Only lower to ptree if no errors and we have a HIR
-    let result = if errors.is_empty() {
-        hir.map(|h| ic_ptree_lower::from_hir(&h, vfs))
-    } else {
-        None
-    };
-
-    Parsed {
-        result,
-        errors,
-        warnings,
-        expansion_info: ast.expansion_info,
-    }
 }

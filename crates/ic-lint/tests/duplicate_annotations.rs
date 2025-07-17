@@ -80,7 +80,6 @@ struct Foo {
     assert!(report.warnings.is_empty());
 }
 
-
 #[test]
 #[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
 fn duplicate_on_interface_method() {

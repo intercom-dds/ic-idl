@@ -52,11 +52,14 @@ use ic_syntax::Item;
 use crate::Context;
 use crate::hir::TypeId;
 
+mod builtin;
 mod collect;
 mod evaluate;
 mod resolve;
 mod typecheck;
 mod validate;
+
+pub use builtin::lower_with_builtins;
 
 /// Converts an annotation argument value (expression) to a Numeric value
 fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {

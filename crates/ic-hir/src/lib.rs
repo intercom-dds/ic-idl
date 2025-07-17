@@ -82,6 +82,29 @@ where
     }
 }
 
+/// Lowers AST to HIR with built-in definitions pre-injected.
+/// 
+/// This is useful when you need built-in types (like annotations) to be
+/// available during HIR construction. The built-in definitions will be
+/// present in the context but excluded from the output order.
+pub fn from_ast_with_builtins<I, B>(builtins: B, ast: I) -> ResolvedGraph
+where
+    I: IntoIterator<Item = ic_syntax::Item>,
+    B: IntoIterator<Item = ic_syntax::Item>,
+{
+    let result = lower::lower_with_builtins(builtins, ast);
+
+    // Check for non-type name collisions, like struct members, etc.
+    let mut errors = result.errors;
+    hygiene::check(&result.context, &result.order, &mut errors);
+
+    ResolvedGraph {
+        context: result.context,
+        order: result.order,
+        errors,
+    }
+}
+
 pub struct DefIter<'a> {
     ctx: &'a Context,
     iter: std::slice::Iter<'a, hir::DefId>,

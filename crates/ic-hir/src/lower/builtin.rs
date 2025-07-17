@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,22 +25,39 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod circular_inheritance;
-pub mod deprecated;
-pub mod duplicate_annotations;
-pub mod duplicate_bitmask_flags;
-pub mod duplicate_case_labels;
-pub mod duplicate_enum_values;
-pub mod duplicate_methods;
-pub mod duplicate_struct_members;
-pub mod duplicate_union_variants;
-pub mod invalid_enum_value;
-pub mod keywords;
-pub mod multiple_default_cases;
-pub mod oneway;
-pub mod range_bound;
-pub mod redundant_inheritance;
-pub mod unnamed_args;
-pub mod unreachable_union_cases;
-pub mod zero_bound;
+//! Built-in type injection for HIR lowering.
+
+use ic_syntax::Item;
+
+use super::LoweringResult;
+
+/// Lowers AST items to HIR with built-in types pre-injected.
+/// 
+/// This function first processes built-in definitions (like annotations)
+/// and then processes the user's AST in the same context, ensuring that
+/// built-in types are available for resolution.
+/// 
+/// The returned LoweringResult will only include user-defined types in the
+/// `order` vector, while built-in types remain in the context for resolution.
+pub fn lower_with_builtins<I, B>(builtins: B, user_ast: I) -> LoweringResult
+where
+    I: IntoIterator<Item = Item>,
+    B: IntoIterator<Item = Item>,
+{
+    // Combine built-ins and user AST
+    let mut all_items: Vec<Item> = builtins.into_iter().collect();
+    all_items.extend(user_ast);
+    
+    // Process everything together
+    let mut result = super::lower(all_items);
+    
+    // Filter the order to exclude built-in definitions
+    // Built-in annotations are in the intercom module
+    result.order.retain(|&def_id| {
+        let def = result.context.definitions.get(def_id);
+        // Keep only non-intercom definitions (user code)
+        !def.ident.name.starts_with("intercom")
+    });
+    
+    result
+}

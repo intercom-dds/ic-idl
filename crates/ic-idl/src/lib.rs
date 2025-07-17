@@ -86,6 +86,7 @@ use ic_preproc::{ExpansionInfo, ProcArgs};
 use ic_vfs::SourceMap;
 
 // Import modules
+mod builtin;
 pub(crate) mod config;
 pub mod pretty;
 pub mod util;
@@ -220,13 +221,16 @@ where
     let mut all_errors = Vec::new();
     let mut all_warnings = Vec::new();
 
-    // Lint the AST
+    // Lint the user's AST
     let report = ic_lint::lint_syntax_with_config(&ast_vec, source_map, lint_config);
     all_errors.extend(report.errors.into_iter().map(Into::into));
     all_warnings.extend(report.warnings);
 
-    // Lower to HIR
-    let mut hir = hir::from_ast(ast_vec);
+    // Get built-in annotations
+    let builtin_annotations = builtin::get_builtin_annotations();
+
+    // Lower to HIR with built-in annotations pre-injected
+    let mut hir = hir::from_ast_with_builtins(builtin_annotations, ast_vec);
 
     // Lint the HIR if no errors so far
     if all_errors.is_empty() {

@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,22 +25,28 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod circular_inheritance;
-pub mod deprecated;
-pub mod duplicate_annotations;
-pub mod duplicate_bitmask_flags;
-pub mod duplicate_case_labels;
-pub mod duplicate_enum_values;
-pub mod duplicate_methods;
-pub mod duplicate_struct_members;
-pub mod duplicate_union_variants;
-pub mod invalid_enum_value;
-pub mod keywords;
-pub mod multiple_default_cases;
-pub mod oneway;
-pub mod range_bound;
-pub mod redundant_inheritance;
-pub mod unnamed_args;
-pub mod unreachable_union_cases;
-pub mod zero_bound;
+//! Built-in annotation definitions for the IDL compiler.
+
+use ic_syntax::Item as AstItem;
+
+/// The built-in annotations IDL content.
+const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
+
+/// Parse and return built-in annotation definitions as AST items.
+///
+/// # Panics
+///
+/// Panics if the built-in annotations fail to parse. This should never happen
+/// as the built-in annotations are part of the compiler and should always be valid.
+pub fn get_builtin_annotations() -> Vec<AstItem> {
+    let parsed = ic_parse::from_str(BUILTIN_ANNOTATIONS);
+    
+    if !parsed.errors.is_empty() {
+        panic!(
+            "Failed to parse built-in annotations: {:?}",
+            parsed.errors
+        );
+    }
+    
+    parsed.tree
+}

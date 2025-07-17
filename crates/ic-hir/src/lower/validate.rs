@@ -41,7 +41,7 @@ use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
 use crate::hir::{
-    Decl, Def, DefFlags, DefId, DefKind, EnumTy, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind,
+    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind,
     UnionTy,
 };
 
@@ -127,18 +127,7 @@ impl<'a> Validator<'a> {
         }
 
         // Validate members
-        let mut member_names = HashSet::new();
         for member in &struct_ty.members {
-            if !member_names.insert(member.ident.name.as_str()) {
-                self.errors.push(error_span(
-                    format!(
-                        "duplicate member `{}` in struct `{}`",
-                        member.ident.name, def_name
-                    ),
-                    Label::new(member.ident.span).message("duplicate member"),
-                ));
-            }
-
             self.validate_type_ref(&member.ty);
         }
     }
@@ -197,35 +186,12 @@ impl<'a> Validator<'a> {
         }
 
         // Validate variants
-        let mut variant_names = HashSet::new();
-        let mut has_default = false;
-
         for variant in &union_ty.variants {
-            if !variant_names.insert(variant.ident.name.as_str()) {
-                self.errors.push(error_span(
-                    format!(
-                        "duplicate variant `{}` in union `{}`",
-                        variant.ident.name, def_name
-                    ),
-                    Label::new(variant.ident.span).message("duplicate variant"),
-                ));
-            }
-
             self.validate_type_ref(&variant.ty);
 
             // Check case labels
             // TODO: Implement duplicate case value checking that handles float values
             // For now, skip this validation since Numeric contains float types which don't implement Eq/Hash
-
-            if variant.is_default {
-                if has_default {
-                    self.errors.push(error_span(
-                        format!("multiple default cases in union `{def_name}`"),
-                        Label::new(variant.ident.span).message("default case already defined"),
-                    ));
-                }
-                has_default = true;
-            }
         }
     }
 
@@ -280,34 +246,6 @@ impl<'a> Validator<'a> {
         }
     }
 
-    /// Validates an enum definition.
-    fn validate_enum(&mut self, id: DefId, enum_ty: &EnumTy) {
-        let (def_name, _def_span) = {
-            let def = self.get_def(id);
-            (def.ident.name.clone(), def.span)
-        };
-        let mut field_names = HashSet::new();
-        let mut field_values = HashSet::new();
-
-        for field in &enum_ty.fields {
-            if !field_names.insert(field.ident.name.as_str()) {
-                self.errors.push(error_span(
-                    format!(
-                        "duplicate field `{}` in enum `{}`",
-                        field.ident.name, def_name
-                    ),
-                    Label::new(field.ident.span).message("duplicate field"),
-                ));
-            }
-
-            if !field_values.insert(field.value) {
-                self.errors.push(error_span(
-                    format!("duplicate value {} in enum `{def_name}`", field.value),
-                    Label::new(field.ident.span).message("value already used"),
-                ));
-            }
-        }
-    }
 
     /// Validates circular dependencies.
     fn check_circular(&mut self, id: DefId) {
@@ -349,7 +287,7 @@ impl<'a> Validator<'a> {
         self.check_circular(id);
 
         // Validate based on type
-        let (def_kind, def_name) = {
+        let (def_kind, _def_name) = {
             let def = self.get_def(id);
             (def.kind.clone(), def.ident.name.clone())
         };
@@ -357,7 +295,9 @@ impl<'a> Validator<'a> {
             DefKind::Struct(s) => self.validate_struct(id, s),
             DefKind::Union(u) => self.validate_union(id, u),
             DefKind::Interface(i) => self.validate_interface(id, i),
-            DefKind::Enum(e) => self.validate_enum(id, e),
+            DefKind::Enum(_) => {
+                // Duplicate checks moved to ic-lint
+            }
             DefKind::Except(e) => {
                 // Exceptions are like structs without inheritance
                 let struct_ty = StructTy {
@@ -388,33 +328,8 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref(&c.ty);
                 // TODO: Validate that constant value matches type
             }
-            DefKind::Bitmask(b) => {
-                // Validate bitmask flags
-                let mut flag_names = HashSet::new();
-                let mut flag_values = HashSet::new();
-                let bitmask_name = def_name.clone();
-
-                for flag in &b.flags {
-                    if !flag_names.insert(flag.ident.name.as_str()) {
-                        self.errors.push(error_span(
-                            format!(
-                                "duplicate flag `{}` in bitmask `{}`",
-                                flag.ident.name, bitmask_name
-                            ),
-                            Label::new(flag.ident.span).message("duplicate flag"),
-                        ));
-                    }
-
-                    if !flag_values.insert(flag.value) {
-                        self.errors.push(error_span(
-                            format!(
-                                "duplicate value {} in bitmask `{}`",
-                                flag.value, bitmask_name
-                            ),
-                            Label::new(flag.ident.span).message("value already used"),
-                        ));
-                    }
-                }
+            DefKind::Bitmask(_) => {
+                // Duplicate checks moved to ic-lint
             }
             _ => {
                 // Forward declarations are checked for completion elsewhere

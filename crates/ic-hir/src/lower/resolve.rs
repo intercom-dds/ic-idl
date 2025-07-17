@@ -272,7 +272,7 @@ impl<'a> TypeResolver<'a> {
                     let (ident, ty) = Self::resolve_declarator(&m.decl, base_ty);
 
                     Variant {
-                        annotations: Vec::new(), // TODO
+                        annotations: super::convert_annotations(&field.annotations),
                         ident,
                         ty,
                         labels: Vec::new(), // Will be filled in evaluation phase

@@ -53,7 +53,7 @@ impl<'a> Lint<'a> for BitBound<'a> {
 
 impl BitBound<'_> {
     fn check_bit_annotation(&mut self, ann: &Ann, type_bits: u32) {
-        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
+        let name = &ann.ident.name;
         if name != "bit" {
             return;
         }
@@ -64,8 +64,7 @@ impl BitBound<'_> {
                     Self::name(),
                     Self::category(),
                     format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
-                    Label::new(ic_syntax::util::path_span(&ann.path))
-                        .message("bit position out of bounds"),
+                    Label::new(ann.ident.span).message("bit position out of bounds"),
                 ) {
                     Self::report(self.ctx, diag);
                 }

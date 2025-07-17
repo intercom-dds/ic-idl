@@ -30,7 +30,6 @@
 use std::fmt::Debug;
 
 use ic_macros::{EnumIter, ToString};
-use ic_syntax::Path;
 pub use ic_syntax::{Ident, ParamKind, Span};
 
 pub type DefId = ic_alloc::arena::Id<Def>;
@@ -463,7 +462,7 @@ pub struct AliasTy {
 /// An applied annotation
 #[derive(Clone, Debug)]
 pub struct Ann {
-    pub path: Path,
+    pub ident: Ident,
     pub ty: Option<Ty>,
     pub args: Vec<AnnArg>,
 }

@@ -38,7 +38,8 @@ use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
 
-use crate::common::{self, NUM_UNDEF, collect_with, create_ident, path_str};
+use crate::ast;
+use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
 
 struct TreeBuilder<'a> {
     ctx: &'a Context,
@@ -179,7 +180,7 @@ impl<'a> TreeBuilder<'a> {
     }
 
     unsafe fn lower_annotation(&mut self, ann: &Ann) -> *mut sys::ptree {
-        let name = format!("@{}", path_str(&ann.path));
+        let name = format!("@{}", ann.ident.name);
         let ident = create_ident(&name);
 
         sys::create_annotation_start(self.state, ident.as_ptr());
@@ -359,7 +360,7 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
-unsafe fn inject_builtin(state: *mut sys::parser_state) {
+unsafe fn _inject_builtin(state: *mut sys::parser_state) {
     let builtin = common::parse_builtin();
     let hir = ic_hir::from_ast(builtin.tree);
     assert!(hir.errors.is_empty());
@@ -380,7 +381,7 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
 
     // Inject the built-in annotations. We use the AST version to preserve the
     // default values that are not yet included in the HIR.
-    inject_builtin(state);
+    ast::inject_builtin(state);
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);

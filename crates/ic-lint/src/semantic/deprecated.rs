@@ -70,10 +70,9 @@ impl<'a> Lint<'a> for Deprecated<'a> {
 }
 
 fn is_deprecated(def: &Def) -> bool {
-    def.annotations.iter().any(|ann| {
-        ann.path.segments.last().map(|s| s.name.as_str()) == Some("deprecated")
-            || ann.path.segments.last().map(|s| s.name.as_str()) == Some("obsolete")
-    })
+    def.annotations
+        .iter()
+        .any(|ann| ann.ident.name == "deprecated" || ann.ident.name == "obsolete")
 }
 
 impl Deprecated<'_> {
@@ -119,7 +118,7 @@ impl Deprecated<'_> {
     fn get_deprecation_message(def: &Def) -> String {
         // Try to find a deprecation message in the annotation
         for ann in &def.annotations {
-            let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
+            let name = &ann.ident.name;
             if name == "deprecated" || name == "obsolete" {
                 // Look for a "reason" or "message" argument, or the first string argument
                 for arg in &ann.args {

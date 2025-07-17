@@ -68,8 +68,8 @@ impl UnnamedArgs<'_> {
         }
 
         // Check if this is a known annotation that requires named args
-        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
-        match name {
+        let name = &ann.ident.name;
+        match name.as_str() {
             // These annotations accept single unnamed argument
             "min" | "max" | "bit" | "id" | "optional" | "key" => {
                 if ann.args.len() > 1 && ann.args.iter().any(|arg| arg.ident.is_none()) {
@@ -101,12 +101,12 @@ impl UnnamedArgs<'_> {
     }
 
     fn report_unnamed_args(&mut self, ann: &Ann) {
-        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
+        let name = &ann.ident.name;
         if let Some(mut diag) = self.ctx.diag_span(
             Self::name(),
             Self::category(),
             "annotation arguments should be named when multiple parameters exist",
-            Label::new(ic_syntax::util::path_span(&ann.path)).message("use named arguments"),
+            Label::new(ann.ident.span).message("use named arguments"),
         ) {
             diag = diag.help(format!(
                 "use named arguments like @{name}(param1=value1, param2=value2)"

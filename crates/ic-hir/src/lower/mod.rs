@@ -63,8 +63,21 @@ pub(crate) fn convert_annotations(ast_anns: &[ic_syntax::AnnotationAppl]) -> Vec
     ast_anns
         .iter()
         .map(|ann| {
+            // Convert the path to a single identifier
+            // For now, we'll use the full path as the identifier name
+            let name = ann
+                .ident
+                .segments
+                .iter()
+                .map(|s| s.name.as_str())
+                .collect::<Vec<_>>()
+                .join("::");
+
             crate::hir::Ann {
-                path: ann.ident.clone(),
+                ident: crate::hir::Ident {
+                    name,
+                    span: ic_syntax::util::path_span(&ann.ident),
+                },
                 ty: None, // Annotations don't have types in the AST
                 args: ann
                     .args

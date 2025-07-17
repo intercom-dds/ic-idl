@@ -53,8 +53,8 @@ impl<'a> Lint<'a> for RangeBound<'a> {
 
 impl RangeBound<'_> {
     fn check_annotation(&mut self, ann: &Ann, ty: &Ty) {
-        let name = ann.path.segments.last().map_or("", |s| s.name.as_str());
-        match name {
+        let name = &ann.ident.name;
+        match name.as_str() {
             "min" => {
                 if let Some(value) = Self::get_numeric_arg(ann, 0) {
                     self.check_min_bound(value, ty, ann);
@@ -90,8 +90,7 @@ impl RangeBound<'_> {
                         Self::name(),
                         Self::category(),
                         format!("@min value {val} is less than type minimum {min}"),
-                        Label::new(ic_syntax::util::path_span(&ann.path))
-                            .message("invalid minimum bound"),
+                        Label::new(ann.ident.span).message("invalid minimum bound"),
                     ) {
                         Self::report(self.ctx, diag);
                     }
@@ -108,8 +107,7 @@ impl RangeBound<'_> {
                         Self::name(),
                         Self::category(),
                         format!("@max value {val} is greater than type maximum {max}"),
-                        Label::new(ic_syntax::util::path_span(&ann.path))
-                            .message("invalid maximum bound"),
+                        Label::new(ann.ident.span).message("invalid maximum bound"),
                     ) {
                         Self::report(self.ctx, diag);
                     }
@@ -127,7 +125,7 @@ impl RangeBound<'_> {
                     Self::name(),
                     Self::category(),
                     format!("@range minimum {min_val} is greater than maximum {max_val}"),
-                    Label::new(ic_syntax::util::path_span(&ann.path)).message("invalid range"),
+                    Label::new(ann.ident.span).message("invalid range"),
                 ) {
                     Self::report(self.ctx, diag);
                 }

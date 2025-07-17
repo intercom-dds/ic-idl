@@ -43,6 +43,31 @@ fn emit_span(span: &Span) -> String {
     .yellow()
 }
 
+fn emit_ann_arg(arg: &ic_hir::hir::AnnArg) -> String {
+    if let Some(ident) = &arg.ident {
+        format!("{} = {:?}", ident.name, arg.value)
+    } else {
+        format!("{:?}", arg.value)
+    }
+}
+
+fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {
+    let ann_str = if ann.args.is_empty() {
+        format!("@{}", ann.ident.name)
+    } else {
+        let args = ann
+            .args
+            .iter()
+            .map(emit_ann_arg)
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("@{}({})", ann.ident.name, args)
+    };
+
+    let span = emit_span(&ann.ident.span);
+    leaf!("{} {span} {}", "ann".purple(), ann_str.cyan())
+}
+
 fn emit_param_kind(kind: ParamKind) -> &'static str {
     match kind {
         ParamKind::In => "in",
@@ -130,11 +155,18 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
 fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
     let span = emit_span(&mem.ident.span);
     let ty = emit_ty(context, &mem.ty);
+
     let mut member = leaf!(
         "{} {span} {} emit",
         "member".green().bold(),
         mem.ident.name.cyan(),
     );
+
+    // Add annotation nodes
+    for ann in &mem.annotations {
+        member.push(emit_ann_node(ann));
+    }
+
     member.push(leaf!("{} {ty}", "type".purple()));
     member
 }
@@ -148,6 +180,12 @@ fn emit_variant(context: &Context, var: &Variant) -> Leaf<String> {
         "variant".green().bold(),
         &var.ident.name.cyan(),
     );
+
+    // Add annotation nodes
+    for ann in &var.annotations {
+        node.push(emit_ann_node(ann));
+    }
+
     let ty = emit_ty(context, &var.ty);
     node.push(leaf!("{} {}", "type".purple(), ty));
 
@@ -177,6 +215,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
     };
 
     let span = emit_span(&def.span);
+
     let mut node = leaf!(
         "{} def={} {span} {} {}",
         kind.green().bold(),
@@ -184,6 +223,11 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         def.ident.name.cyan(),
         emit_flags(def.flags),
     );
+
+    // Add annotation nodes first
+    for ann in &def.annotations {
+        node.push(emit_ann_node(ann));
+    }
 
     match &def.kind {
         DefKind::Annotation(v) => {
@@ -222,12 +266,20 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
 
             for var in &v.fields {
                 let span = emit_span(&var.ident.span);
-                node.push(leaf!(
+
+                let mut enum_node = leaf!(
                     "{} {span} {} {}",
                     "enumerator".green().bold(),
                     &var.ident.name.cyan(),
                     format!("'= {}'", var.value).purple(),
-                ));
+                );
+
+                // Add annotation nodes
+                for ann in &var.annotations {
+                    enum_node.push(emit_ann_node(ann));
+                }
+
+                node.push(enum_node);
             }
         }
         DefKind::Const(v) => {
@@ -241,12 +293,20 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
 
             for flag in &v.flags {
                 let span = emit_span(&flag.ident.span);
-                node.push(leaf!(
+
+                let mut flag_node = leaf!(
                     "{} {span} {} {}",
                     "flag".green().bold(),
                     &flag.ident.name.cyan(),
                     format!("'= {}'", flag.value).purple(),
-                ));
+                );
+
+                // Add annotation nodes
+                for ann in &flag.annotations {
+                    flag_node.push(emit_ann_node(ann));
+                }
+
+                node.push(flag_node);
             }
         }
         DefKind::Alias(v) => {
@@ -294,12 +354,19 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
 
             for field in &v.fields {
                 let span = emit_span(&field.ident.span);
+
                 let mut field_node = leaf!(
                     "{} {span} {} size={}",
                     "bitfield".green().bold(),
                     &field.ident.name.cyan(),
                     field.size.to_string().purple(),
                 );
+
+                // Add annotation nodes
+                for ann in &field.annotations {
+                    field_node.push(emit_ann_node(ann));
+                }
+
                 field_node.push(leaf!("{} {}", "type".purple(), emit_ty(context, &field.ty)));
                 node.push(field_node);
             }

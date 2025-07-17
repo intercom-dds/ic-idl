@@ -204,3 +204,111 @@ fn test_merge_with_references() {
         panic!("Line should be a struct");
     }
 }
+
+#[test]
+fn test_merge_module_reopening() {
+    // Test that modules with the same name from different files get merged
+    let input1 = r"
+        module Shapes {
+            struct Circle {
+                float radius;
+            };
+        };
+    ";
+
+    let input2 = r"
+        module Shapes {
+            struct Rectangle {
+                float width;
+                float height;
+            };
+        };
+    ";
+
+    let parsed1 = ic_parse::from_str(input1);
+    let parsed2 = ic_parse::from_str(input2);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have 2 Shapes modules (module reopening creates separate modules)
+    let module_count = merged
+        .order
+        .iter()
+        .filter(|&&def_id| {
+            let def = merged.context.definitions.get(def_id);
+            matches!(def.kind, DefKind::Module(_)) && def.ident.name == "Shapes"
+        })
+        .count();
+    assert_eq!(module_count, 2, "Should have exactly two Shapes modules");
+
+    // Find both Shapes modules
+    let shapes_modules: Vec<_> = merged
+        .order
+        .iter()
+        .filter_map(|&def_id| {
+            let def = merged.context.definitions.get(def_id);
+            if matches!(def.kind, DefKind::Module(_)) && def.ident.name == "Shapes" {
+                Some((def_id, def))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    assert_eq!(
+        shapes_modules.len(),
+        2,
+        "Should find exactly 2 Shapes modules"
+    );
+
+    // Check that each module contains its respective struct
+    let mut found_circle = false;
+    let mut found_rectangle = false;
+
+    for (_, module_def) in &shapes_modules {
+        if let DefKind::Module(module_ty) = &module_def.kind {
+            for &def_id in &module_ty.definitions {
+                let def = merged.context.definitions.get(def_id);
+                match def.ident.name.as_str() {
+                    "Circle" => found_circle = true,
+                    "Rectangle" => found_rectangle = true,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    assert!(
+        found_circle,
+        "Circle struct should be in one of the Shapes modules"
+    );
+    assert!(
+        found_rectangle,
+        "Rectangle struct should be in one of the Shapes modules"
+    );
+
+    // Verify that structs with same name within modules are deduplicated
+    // Count all Circle structs across all modules
+    let mut all_circle_ids = std::collections::HashSet::new();
+    for (_, module_def) in &shapes_modules {
+        if let DefKind::Module(module_ty) = &module_def.kind {
+            for &def_id in &module_ty.definitions {
+                let def = merged.context.definitions.get(def_id);
+                if matches!(def.kind, DefKind::Struct(_)) && def.ident.name == "Circle" {
+                    all_circle_ids.insert(def_id);
+                }
+            }
+        }
+    }
+    assert_eq!(
+        all_circle_ids.len(),
+        1,
+        "Circle struct should be deduplicated across modules"
+    );
+}

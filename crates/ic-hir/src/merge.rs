@@ -125,6 +125,14 @@ impl HirMerger {
             if !self.order.contains(&new_def_id) {
                 self.order.push(new_def_id);
             }
+
+            // For modules, also process their contents
+            let old_def = graph.context.definitions.get(def_id);
+            if let DefKind::Module(module) = &old_def.kind {
+                for &child_def_id in &module.definitions {
+                    let _ = self.copy_definition(graph_index, &graph.context, child_def_id);
+                }
+            }
         }
 
         // Third pass: update scope def_ids now that definitions are copied
@@ -147,9 +155,12 @@ impl HirMerger {
 
         // Check if we've already copied this definition
         if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
-            // Map the old DefId to the existing one
-            self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-            return existing_def_id;
+            // Special case: modules should NOT be deduplicated - each reopening is separate
+            if !matches!(&old_def.kind, DefKind::Module(_)) {
+                // Map the old DefId to the existing one
+                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                return existing_def_id;
+            }
         }
 
         // Create a new definition
@@ -595,7 +606,6 @@ impl HirMerger {
                 .collect(),
         }
     }
-
     fn finish(self) -> MergedGraph {
         MergedGraph {
             context: self.new_context,

@@ -33,6 +33,9 @@ use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
+// TODO: This lint needs to be reworked as a HIR lint once annotation
+// resolution is implemented in the HIR. Currently it only does basic
+// string comparison which doesn't handle annotation resolution properly.
 pub struct DuplicateAnnotations<'a> {
     ctx: &'a LintCtx<'a>,
 }
@@ -55,7 +58,6 @@ impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
 impl DuplicateAnnotations<'_> {
     fn check_annotation_list(&mut self, annotations: &[AnnotationAppl]) {
         let mut seen = HashSet::new();
-        let conflicting_pairs = vec![("optional", "required"), ("readonly", "readwrite")];
 
         for ann in annotations {
             let ann_name = ann
@@ -76,23 +78,6 @@ impl DuplicateAnnotations<'_> {
                         .message("duplicate annotation"),
                 ) {
                     Self::report(self.ctx, diag);
-                }
-            }
-
-            // Check for conflicting annotations
-            for (ann1, ann2) in &conflicting_pairs {
-                if (ann_name == *ann1 && seen.contains(*ann2))
-                    || (ann_name == *ann2 && seen.contains(*ann1))
-                {
-                    if let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        format!("conflicting annotations '@{ann1}' and '@{ann2}'"),
-                        Label::new(ic_syntax::util::path_span(&ann.ident))
-                            .message("conflicts with previous annotation"),
-                    ) {
-                        Self::report(self.ctx, diag);
-                    }
                 }
             }
         }

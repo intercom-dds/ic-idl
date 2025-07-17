@@ -32,12 +32,12 @@ use ic_syntax::Item;
 use super::LoweringResult;
 
 /// Lowers AST items to HIR with built-in types pre-injected.
-/// 
+///
 /// This function first processes built-in definitions (like annotations)
 /// and then processes the user's AST in the same context, ensuring that
 /// built-in types are available for resolution.
-/// 
-/// The returned LoweringResult will only include user-defined types in the
+///
+/// The returned `LoweringResult` will only include user-defined types in the
 /// `order` vector, while built-in types remain in the context for resolution.
 pub fn lower_with_builtins<I, B>(builtins: B, user_ast: I) -> LoweringResult
 where
@@ -47,10 +47,10 @@ where
     // Combine built-ins and user AST
     let mut all_items: Vec<Item> = builtins.into_iter().collect();
     all_items.extend(user_ast);
-    
+
     // Process everything together
     let mut result = super::lower(all_items);
-    
+
     // Filter the order to exclude built-in definitions
     // Built-in annotations are in the intercom module
     result.order.retain(|&def_id| {
@@ -58,6 +58,6 @@ where
         // Keep only non-intercom definitions (user code)
         !def.ident.name.starts_with("intercom")
     });
-    
+
     result
 }

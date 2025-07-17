@@ -28,9 +28,9 @@
 use std::collections::{HashMap, HashSet};
 
 use ic_diagnostic::Label;
+use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, EnumTy};
 use ic_hir::visit::Visitor;
-use ic_hir::ResolvedGraph;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -92,7 +92,8 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
         for (value, names) in field_values {
             if names.len() > 1 {
                 // Find the span of the first occurrence
-                let first_field = enum_ty.fields
+                let first_field = enum_ty
+                    .fields
                     .iter()
                     .find(|f| f.ident.name == names[0])
                     .unwrap();
@@ -100,16 +101,14 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
                 let mut diag = ic_diagnostic::error_span(
                     format!("duplicate value {} in enum `{}`", value, def.ident.name),
                     Label::new(first_field.ident.span)
-                        .message(format!("first use of value {}", value)),
+                        .message(format!("first use of value {value}")),
                 );
-                
+
                 // Add labels for other occurrences
                 for name in &names[1..] {
                     if let Some(field) = enum_ty.fields.iter().find(|f| f.ident.name == *name) {
-                        diag = diag.label(
-                            Label::new(field.ident.span)
-                                .message("value already used"),
-                        );
+                        diag =
+                            diag.label(Label::new(field.ident.span).message("value already used"));
                     }
                 }
 

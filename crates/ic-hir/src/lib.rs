@@ -83,7 +83,7 @@ where
 }
 
 /// Lowers AST to HIR with built-in definitions pre-injected.
-/// 
+///
 /// This is useful when you need built-in types (like annotations) to be
 /// available during HIR construction. The built-in definitions will be
 /// present in the context but excluded from the output order.

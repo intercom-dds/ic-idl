@@ -80,9 +80,12 @@ impl<'a> TypeResolver<'a> {
 
     /// Resolves annotations from AST and returns only those that could be resolved.
     /// Unresolved annotations are filtered out with warnings.
-    fn resolve_ast_annotations(&mut self, ast_annotations: &[ic_syntax::AnnotationAppl]) -> Vec<Ann> {
+    fn resolve_ast_annotations(
+        &mut self,
+        ast_annotations: &[ic_syntax::AnnotationAppl],
+    ) -> Vec<Ann> {
         let mut resolved_annotations = Vec::new();
-        
+
         for ast_ann in ast_annotations {
             // Convert the path to a single identifier
             let name = ast_ann
@@ -97,29 +100,35 @@ impl<'a> TypeResolver<'a> {
                 name: name.clone(),
                 span: ic_syntax::util::path_span(&ast_ann.ident),
             };
-            
+
             // Try to resolve the annotation name
             // Get the path segments
-            let segments: Vec<&str> = ast_ann.ident.segments.iter()
+            let segments: Vec<&str> = ast_ann
+                .ident
+                .segments
+                .iter()
                 .map(|s| s.name.as_str())
                 .collect();
-            
+
             let mut def_id;
-            
+
             // If it's a qualified path (e.g., M::custom), resolve from root
             if segments.len() > 1 {
-                def_id = self.ctx.scopes.resolve_path(self.ctx.scopes.root(), &segments);
+                def_id = self
+                    .ctx
+                    .scopes
+                    .resolve_path(self.ctx.scopes.root(), &segments);
             } else {
                 // Single segment - try current scope and parent scopes
                 let mut scope_id = self.current_scope_id;
-                
+
                 // Walk up the scope chain looking for the annotation
                 loop {
                     def_id = self.ctx.scopes.resolve_path(scope_id, &segments);
                     if def_id.is_some() {
                         break;
                     }
-                    
+
                     // Move to parent scope
                     let scope_data = self.ctx.scopes.get_scope(scope_id);
                     if let Some(parent) = scope_data.parent {
@@ -130,19 +139,25 @@ impl<'a> TypeResolver<'a> {
                     }
                 }
             }
-            
+
             // If not found, try in intercom::annotations
             if def_id.is_none() {
                 let segments = vec!["intercom", "annotations", &name];
-                def_id = self.ctx.scopes.resolve_path(self.ctx.scopes.root(), &segments);
+                def_id = self
+                    .ctx
+                    .scopes
+                    .resolve_path(self.ctx.scopes.root(), &segments);
             }
-            
+
             // If still not found, try in intercom::annotations::ext
             if def_id.is_none() {
                 let segments = vec!["intercom", "annotations", "ext", &name];
-                def_id = self.ctx.scopes.resolve_path(self.ctx.scopes.root(), &segments);
+                def_id = self
+                    .ctx
+                    .scopes
+                    .resolve_path(self.ctx.scopes.root(), &segments);
             }
-            
+
             if let Some(id) = def_id {
                 // Verify it's an annotation definition
                 let def = self.ctx.definitions.get(id);
@@ -156,7 +171,7 @@ impl<'a> TypeResolver<'a> {
                             value: super::convert_annotation_value(&arg.value),
                         })
                         .collect();
-                    
+
                     let ann = Ann {
                         ident,
                         def_id: id,
@@ -179,7 +194,7 @@ impl<'a> TypeResolver<'a> {
                 // Don't include unresolved annotations
             }
         }
-        
+
         resolved_annotations
     }
 
@@ -351,7 +366,7 @@ impl<'a> TypeResolver<'a> {
 
         let parent = def.parent.as_ref().and_then(|p| self.resolve_path(p));
         let members = self.resolve_struct_members(def);
-        
+
         // Resolve annotations for the struct itself
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
@@ -382,7 +397,7 @@ impl<'a> TypeResolver<'a> {
                     let (ident, ty) = Self::resolve_declarator(&m.decl, base_ty);
 
                     let annotations = self.resolve_ast_annotations(&field.annotations);
-                    
+
                     Variant {
                         annotations,
                         ident,
@@ -440,7 +455,7 @@ impl<'a> TypeResolver<'a> {
             annotations: def.annotations.clone(),
             span: def.span,
         });
-        
+
         // Resolve annotations for the exception itself
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
@@ -482,7 +497,7 @@ impl<'a> TypeResolver<'a> {
         if let Some(interface_scope) = self.ctx.scopes.find_scope_for_def(id) {
             self.current_scope_id = interface_scope;
         }
-        
+
         // Resolve annotations for the interface itself
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
@@ -595,7 +610,6 @@ impl<'a> TypeResolver<'a> {
         // First pass: build item map
         self.build_item_map(items);
 
-        
         // Second pass: resolve each item
         for item in items {
             match item {
@@ -706,7 +720,7 @@ impl<'a> TypeResolver<'a> {
 
         // Apply declarator to get the actual type
         let (_, ty) = Self::resolve_declarator(&ast.decl, base_ty);
-        
+
         // Resolve annotations for the constant itself
         let annotations = self.resolve_ast_annotations(&ast.annotations);
 
@@ -783,19 +797,21 @@ impl<'a> TypeResolver<'a> {
         };
 
         // Resolve annotations for each enum field first
-        let field_annotations: Vec<Vec<Ann>> = def.fields.iter()
+        let field_annotations: Vec<Vec<Ann>> = def
+            .fields
+            .iter()
             .map(|field| self.resolve_ast_annotations(&field.annotations))
             .collect();
-            
+
         // Resolve annotations for the enum itself
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.annotations = annotations;
-        
+
         if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
             enum_ty.ty = underlying_ty;
-            
+
             // Apply resolved annotations to each enum field
             for (i, annotations) in field_annotations.into_iter().enumerate() {
                 if i < enum_ty.fields.len() {
@@ -815,14 +831,16 @@ impl<'a> TypeResolver<'a> {
         };
 
         // Resolve annotations for each bit flag first
-        let flag_annotations: Vec<Vec<Ann>> = def.bits.iter()
+        let flag_annotations: Vec<Vec<Ann>> = def
+            .bits
+            .iter()
             .map(|bit| self.resolve_ast_annotations(&bit.annotations))
             .collect();
 
         let hir_def = self.ctx.definitions.get_mut(id);
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
             bitmask_ty.ty = underlying_ty;
-            
+
             // Apply resolved annotations to each bit flag
             for (i, annotations) in flag_annotations.into_iter().enumerate() {
                 if i < bitmask_ty.flags.len() {
@@ -944,9 +962,9 @@ fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
 pub fn resolve_types(ctx: &mut Context, name_map: &NameMap, items: &[Item]) -> Vec<Diag> {
     let mut resolver = TypeResolver::new(ctx, name_map, items);
     resolver.resolve_all(items);
-    
+
     // Note: Annotations are now resolved directly in each resolve_* method
     // so we don't need a separate pass for annotations
-    
+
     resolver.errors
 }

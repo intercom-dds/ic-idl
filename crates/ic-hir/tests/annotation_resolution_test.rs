@@ -39,24 +39,30 @@ fn test_simple_annotation() {
             long field;
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
     assert_eq!(result.order.len(), 2);
-    
+
     // Find the struct
-    let struct_id = result.order.iter()
+    let struct_id = result
+        .order
+        .iter()
         .find(|&&id| matches!(result.context.definitions.get(id).kind, DefKind::Struct(_)))
         .unwrap();
-    
+
     let struct_def = result.context.definitions.get(*struct_id);
     assert_eq!(struct_def.annotations.len(), 1);
     assert_eq!(struct_def.annotations[0].ident.name, "custom");
-    
+
     // Verify the annotation resolves to the correct definition
     let ann_def_id = struct_def.annotations[0].def_id;
     let ann_def = result.context.definitions.get(ann_def_id);
@@ -75,20 +81,27 @@ fn test_annotation_in_module() {
             };
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
     // Find the struct (it's nested in module)
-    let struct_def = result.context.definitions.iter()
+    let struct_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S" && matches!(def.kind, DefKind::Struct(_)))
         .map(|(_, def)| def)
         .unwrap();
-    
+
     assert_eq!(struct_def.annotations.len(), 1);
     assert_eq!(struct_def.annotations[0].ident.name, "custom");
 }
@@ -105,23 +118,30 @@ fn test_qualified_annotation_path() {
             long field;
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
     // Find the struct
-    let struct_def = result.context.definitions.iter()
+    let struct_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S" && matches!(def.kind, DefKind::Struct(_)))
         .map(|(_, def)| def)
         .unwrap();
-    
+
     assert_eq!(struct_def.annotations.len(), 1);
     assert_eq!(struct_def.annotations[0].ident.name, "M::custom");
-    
+
     // Verify it resolves to the annotation inside module M
     let ann_def_id = struct_def.annotations[0].def_id;
     let ann_def = result.context.definitions.get(ann_def_id);
@@ -137,23 +157,26 @@ fn test_unknown_annotation_warning() {
             long field;
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
+
     // Should have a warning about unknown annotation
     assert_eq!(result.errors.len(), 1);
     let error_msg = format!("{}", result.errors[0]);
     assert!(error_msg.contains("unknown"));
-    
+
     // Struct should have no annotations (unknown ones are filtered out)
-    let struct_def = result.context.definitions.iter()
+    let struct_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S")
         .map(|(_, def)| def)
         .unwrap();
-    
+
     assert_eq!(struct_def.annotations.len(), 0);
 }
 
@@ -170,23 +193,30 @@ fn test_annotation_with_arguments() {
             long value;
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
-    let struct_def = result.context.definitions.iter()
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
+    let struct_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S")
         .map(|(_, def)| def)
         .unwrap();
-    
+
     assert_eq!(struct_def.annotations.len(), 1);
     assert_eq!(struct_def.annotations[0].ident.name, "range");
     assert_eq!(struct_def.annotations[0].args.len(), 2);
-    
+
     // Check arguments
     let args = &struct_def.annotations[0].args;
     assert_eq!(args[0].ident.as_ref().unwrap().name, "min");
@@ -205,27 +235,34 @@ fn test_member_annotations() {
             long new_field;
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
-    let struct_def = result.context.definitions.iter()
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
+    let struct_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S")
         .map(|(_, def)| def)
         .unwrap();
-    
+
     if let DefKind::Struct(s) = &struct_def.kind {
         assert_eq!(s.members.len(), 2);
-        
+
         // old_field should have annotation
         assert_eq!(s.members[0].ident.name, "old_field");
         assert_eq!(s.members[0].annotations.len(), 1);
         assert_eq!(s.members[0].annotations[0].ident.name, "deprecated");
-        
+
         // new_field should have no annotations
         assert_eq!(s.members[1].ident.name, "new_field");
         assert_eq!(s.members[1].annotations.len(), 0);
@@ -247,30 +284,37 @@ fn test_enum_field_annotations() {
             C
         };
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
-    let enum_def = result.context.definitions.iter()
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
+    let enum_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "E")
         .map(|(_, def)| def)
         .unwrap();
-    
+
     if let DefKind::Enum(e) = &enum_def.kind {
         assert_eq!(e.fields.len(), 3);
-        
+
         // A should have annotation
         assert_eq!(e.fields[0].ident.name, "A");
         assert_eq!(e.fields[0].annotations.len(), 1);
-        
+
         // B should have no annotation
         assert_eq!(e.fields[1].ident.name, "B");
         assert_eq!(e.fields[1].annotations.len(), 0);
-        
+
         // C should have annotation
         assert_eq!(e.fields[2].ident.name, "C");
         assert_eq!(e.fields[2].annotations.len(), 1);
@@ -291,19 +335,26 @@ fn test_nested_module_annotation_resolution() {
         @Outer::Inner::custom
         struct S {};
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
-    let struct_def = result.context.definitions.iter()
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
+    let struct_def = result
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S")
         .map(|(_, def)| def)
         .unwrap();
-    
+
     assert_eq!(struct_def.annotations.len(), 1);
     assert_eq!(struct_def.annotations[0].ident.name, "Outer::Inner::custom");
 }
@@ -336,19 +387,28 @@ fn test_annotation_on_all_definition_types() {
         @mark
         typedef long T;
     "#;
-    
+
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
     let result = ic_hir::from_ast(ast.tree);
-    
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
-    
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
+
     // Check that all types have the annotation
     for (_, def) in result.context.definitions.iter() {
-        if def.ident.name != "mark" { // Skip the annotation definition itself
-            assert_eq!(def.annotations.len(), 1, 
-                "Definition {} should have 1 annotation", def.ident.name);
+        if def.ident.name != "mark" {
+            // Skip the annotation definition itself
+            assert_eq!(
+                def.annotations.len(),
+                1,
+                "Definition {} should have 1 annotation",
+                def.ident.name
+            );
             assert_eq!(def.annotations[0].ident.name, "mark");
         }
     }

@@ -226,11 +226,8 @@ where
     all_errors.extend(report.errors.into_iter().map(Into::into));
     all_warnings.extend(report.warnings);
 
-    // Get built-in annotations
-    let builtin_annotations = builtin::get_builtin_annotations();
-
-    // Lower to HIR with built-in annotations pre-injected
-    let mut hir = hir::from_ast_with_builtins(builtin_annotations, ast_vec);
+    // Lower to HIR
+    let mut hir = hir::from_ast(ast_vec);
 
     // Lint the HIR if no errors so far
     if all_errors.is_empty() {
@@ -297,6 +294,12 @@ impl Compiler {
     #[must_use]
     pub fn source_map(&self) -> &SourceMap {
         &self.source_map
+    }
+
+    /// Get a mutable reference to the source map.
+    #[must_use]
+    pub fn source_map_mut(&mut self) -> &mut SourceMap {
+        &mut self.source_map
     }
 
     /// Compile the configured IDL files to AST.

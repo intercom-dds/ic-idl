@@ -26,27 +26,3 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Built-in annotation definitions for the IDL compiler.
-
-use ic_syntax::Item as AstItem;
-
-/// The built-in annotations IDL content.
-const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
-
-/// Parse and return built-in annotation definitions as AST items.
-///
-/// # Panics
-///
-/// Panics if the built-in annotations fail to parse. This should never happen
-/// as the built-in annotations are part of the compiler and should always be valid.
-pub fn get_builtin_annotations() -> Vec<AstItem> {
-    let parsed = ic_parse::from_str(BUILTIN_ANNOTATIONS);
-    
-    if !parsed.errors.is_empty() {
-        panic!(
-            "Failed to parse built-in annotations: {:?}",
-            parsed.errors
-        );
-    }
-    
-    parsed.tree
-}

@@ -28,9 +28,9 @@
 use std::collections::HashSet;
 
 use ic_diagnostic::Label;
+use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, UnionTy};
 use ic_hir::visit::Visitor;
-use ic_hir::ResolvedGraph;
 
 use crate::{Category, Lint, LintCtx};
 

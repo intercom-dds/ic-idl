@@ -41,8 +41,7 @@ use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
 use crate::hir::{
-    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind,
-    UnionTy,
+    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
 };
 
 /// Validates the HIR for semantic correctness.
@@ -245,7 +244,6 @@ impl<'a> Validator<'a> {
             self.validate_type(child_id);
         }
     }
-
 
     /// Validates circular dependencies.
     fn check_circular(&mut self, id: DefId) {

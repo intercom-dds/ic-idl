@@ -48,7 +48,12 @@ fn test_duplicate_enum_values_error() {
         eprintln!("Error: {}", error);
     }
     assert!(!report.errors.is_empty());
-    assert!(report.errors.iter().any(|e| e.to_string().contains("duplicate value")));
+    assert!(
+        report
+            .errors
+            .iter()
+            .any(|e| e.to_string().contains("duplicate value"))
+    );
 }
 
 #[test]

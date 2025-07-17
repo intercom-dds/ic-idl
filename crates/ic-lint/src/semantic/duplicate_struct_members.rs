@@ -28,9 +28,9 @@
 use std::collections::HashSet;
 
 use ic_diagnostic::Label;
+use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, StructTy};
 use ic_hir::visit::Visitor;
-use ic_hir::ResolvedGraph;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -77,7 +77,7 @@ impl<'a> Visitor<'a> for DuplicateStructMembers<'a> {
         // Continue visiting
         ic_hir::visit::walk_struct(self, struct_ty);
     }
-    
+
     fn visit_except(&mut self, def: &'a Def, except_ty: &'a ic_hir::hir::ExceptTy) {
         // Exceptions are like structs, check for duplicate members
         let mut member_names = HashSet::new();

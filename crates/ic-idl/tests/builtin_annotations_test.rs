@@ -25,10 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_hir::hir::DefKind;
 use ic_idl::ast_to_hir;
 use ic_lint::LintConfig;
 use ic_parse::SourceMap;
-use ic_hir::hir::DefKind;
 
 #[test]
 fn test_builtin_value_annotation() {
@@ -41,13 +41,13 @@ fn test_builtin_value_annotation() {
             C
         };
     "#;
-    
+
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
     let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
-    
+
     assert!(parsed.errors.is_empty());
-    
+
     // We expect the HIR conversion to succeed, though it may have warnings
     // about duplicate enum values in the built-in annotations
     let hir = match ast_to_hir(parsed.tree, &source_map, &LintConfig::default()) {
@@ -58,12 +58,15 @@ fn test_builtin_value_annotation() {
             panic!("HIR conversion failed: {:?}", e);
         }
     };
-    
+
     // Check that only user types are in the order (no intercom module)
     for def_id in &hir.order {
         let def = hir.context.definitions.get(*def_id);
-        assert!(!def.ident.name.starts_with("intercom"), 
-            "Built-in definition {} should not be in order", def.ident.name);
+        assert!(
+            !def.ident.name.starts_with("intercom"),
+            "Built-in definition {} should not be in order",
+            def.ident.name
+        );
     }
 }
 
@@ -77,27 +80,33 @@ fn test_builtin_key_annotation() {
             string name;
         };
     "#;
-    
+
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
     let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
-    
+
     assert!(parsed.errors.is_empty());
-    
+
     // We expect the HIR conversion to succeed (built-in annotations are available)
     let hir_result = ast_to_hir(parsed.tree, &source_map, &LintConfig::default());
-    
+
     // Check that it didn't fail completely
-    assert!(hir_result.is_ok(), "HIR conversion should succeed with built-in annotations");
-    
+    assert!(
+        hir_result.is_ok(),
+        "HIR conversion should succeed with built-in annotations"
+    );
+
     let hir = hir_result.unwrap();
-    
+
     // Verify the struct has the @key annotation resolved correctly
-    let struct_def = hir.context.definitions.iter()
+    let struct_def = hir
+        .context
+        .definitions
+        .iter()
         .find(|(_, def)| def.ident.name == "S" && matches!(def.kind, DefKind::Struct(_)))
         .map(|(_, def)| def)
         .expect("Should find struct S");
-    
+
     if let DefKind::Struct(s) = &struct_def.kind {
         assert_eq!(s.members.len(), 2);
         // The id field should have the @key annotation

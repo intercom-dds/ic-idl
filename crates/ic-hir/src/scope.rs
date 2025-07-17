@@ -250,7 +250,7 @@ impl ScopeTree {
         }
         None
     }
-    
+
     /// Finds the scope that contains a definition.
     #[must_use]
     pub fn find_scope_containing_def(&self, def_id: DefId) -> Option<ScopeId> {

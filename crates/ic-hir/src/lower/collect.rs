@@ -40,7 +40,8 @@ use ic_syntax::{Ident, Item, Span};
 use crate::Context;
 use crate::hir::{
     AliasTy, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
-    EnumLit, EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    EnumLit, EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, StructTy, Ty, TyKind, UnionTy,
+    ValueTy,
 };
 use crate::scope::ScopeId;
 
@@ -518,12 +519,16 @@ impl<'a> NameCollector<'a> {
             }
             Item::EnumValue(v) => {
                 // Create enum fields immediately so resolve phase can add annotations
-                let fields = v.fields.iter().map(|f| EnumLit {
-                    ident: f.ident.clone(),
-                    value: 0, // Will be filled in evaluation phase
-                    annotations: Vec::new(), // Will be filled in resolve phase
-                }).collect();
-                
+                let fields = v
+                    .fields
+                    .iter()
+                    .map(|f| EnumLit {
+                        ident: f.ident.clone(),
+                        value: 0,                // Will be filled in evaluation phase
+                        annotations: Vec::new(), // Will be filled in resolve phase
+                    })
+                    .collect();
+
                 vec![self.collect_simple_definition_with_annotations(
                     &v.ident,
                     DefKind::Enum(EnumTy {

@@ -66,10 +66,10 @@ fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {
 
     let span = emit_span(&ann.ident.span);
     leaf!(
-        "{} adt(def={}) {span} {}", 
+        "{} adt(def={}) {span} {}",
         "ann".purple(),
         format!("0x{:#02?}", ann.def_id).blue(),
-        ann_str.cyan(), 
+        ann_str.cyan(),
     )
 }
 

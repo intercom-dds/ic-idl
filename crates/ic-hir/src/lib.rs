@@ -37,6 +37,7 @@ mod lower;
 pub mod fold;
 pub mod hir;
 pub mod keywords;
+pub mod merge;
 pub mod scope;
 pub mod type_size;
 pub mod visit;

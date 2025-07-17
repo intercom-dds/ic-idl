@@ -200,6 +200,7 @@ dependencies = [
  "ic-preproc",
  "ic-syntax",
  "ic-vfs",
+ "insta",
  "intercom-cts",
 ]
 

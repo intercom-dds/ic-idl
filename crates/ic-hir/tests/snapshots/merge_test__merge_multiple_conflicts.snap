@@ -1,0 +1,27 @@
+---
+source: crates/ic-hir/tests/merge_test.rs
+expression: output
+---
+error: conflicting definitions for `Point`
+   ┌ shapes.idl:2:8
+   │
+ 2 │ struct Point { long x; };
+   ·        ^^^^^ first defined here
+   └──
+   ┌ graphics.idl:2:8
+   │
+ 2 │ struct Point { long x; long y; };
+   ·        ^^^^^ redefined here
+   └──
+
+error: conflicting definitions for `Color`
+   ┌ shapes.idl:3:6
+   │
+ 3 │ enum Color { RED, GREEN };
+   ·      ^^^^^ first defined here
+   └──
+   ┌ graphics.idl:3:6
+   │
+ 3 │ enum Color { RED, GREEN, BLUE };
+   ·      ^^^^^ redefined here
+   └──

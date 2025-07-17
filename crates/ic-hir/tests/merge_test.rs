@@ -29,6 +29,7 @@
 
 use ic_hir::hir::DefKind;
 use ic_hir::merge::merge_hir_trees;
+use ic_vfs::SourceMap;
 
 #[test]
 fn test_merge_empty_graphs() {
@@ -311,4 +312,149 @@ fn test_merge_module_reopening() {
         1,
         "Circle struct should be deduplicated across modules"
     );
+}
+
+#[test]
+fn test_merge_conflicting_definitions() {
+    // Test that conflicting definitions are detected and reported as errors
+    let mut source_map = SourceMap::default();
+    
+    let input1 = r"struct Foo {};";
+    let input2 = r"struct Foo {
+    string value;
+};";
+
+    let file1 = source_map.embed_with_name("file1.idl", input1);
+    let file2 = source_map.embed_with_name("file2.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, Default::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, Default::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have 1 error for the conflicting definition
+    assert_eq!(merged.errors.len(), 1);
+    
+    // Snapshot test the error message
+    let mut output = String::new();
+    ic_diagnostic::emit_diagnostic(&mut output, &source_map, &merged.errors[0]).unwrap();
+    insta::assert_snapshot!(output);
+    
+    // Despite the error, we should still have the definition (mapped to one of them)
+    assert_eq!(merged.order.len(), 1);
+}
+
+#[test]
+fn test_merge_same_definition_from_include() {
+    // Test that the same definition from an include is properly deduplicated
+    // This simulates the same span appearing multiple times
+    let input = r"
+        struct SharedType {
+            long id;
+        };
+    ";
+
+    // Parse the same input twice (simulating include)
+    let parsed1 = ic_parse::from_str(input);
+    let parsed2 = ic_parse::from_str(input);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no errors - same span means same definition
+    assert_eq!(merged.errors.len(), 0);
+    
+    // Should have only 1 definition due to deduplication
+    assert_eq!(merged.order.len(), 1);
+}
+
+#[test]
+fn test_merge_multiple_conflicts() {
+    // Test multiple conflicting definitions in a single merge
+    let mut source_map = SourceMap::default();
+    
+    let input1 = r"
+struct Point { long x; };
+enum Color { RED, GREEN };
+";
+
+    let input2 = r"
+struct Point { long x; long y; };
+enum Color { RED, GREEN, BLUE };
+";
+
+    let file1 = source_map.embed_with_name("shapes.idl", input1);
+    let file2 = source_map.embed_with_name("graphics.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, Default::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, Default::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have 2 errors for the conflicting definitions
+    assert_eq!(merged.errors.len(), 2);
+    
+    // Snapshot test all error messages
+    let mut output = String::new();
+    for error in &merged.errors {
+        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        output.push('\n');
+    }
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_merge_with_nested_definitions() {
+    // Test that definitions nested in modules are properly merged
+    let mut source_map = SourceMap::default();
+    
+    let input1 = r"
+module api {
+    struct Request {
+        string method;
+    };
+};
+";
+
+    let input2 = r"
+module api {
+    struct Response {
+        long status;
+    };
+};
+";
+
+    let file1 = source_map.embed_with_name("api_request.idl", input1);
+    let file2 = source_map.embed_with_name("api_response.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, Default::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, Default::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no errors
+    assert_eq!(merged.errors.len(), 0);
+    
+    // Should have 2 api modules (module reopening)
+    let module_count = merged.order.iter()
+        .filter(|&&def_id| {
+            let def = merged.context.definitions.get(def_id);
+            matches!(def.kind, DefKind::Module(_)) && def.ident.name == "api"
+        })
+        .count();
+    assert_eq!(module_count, 2);
 }

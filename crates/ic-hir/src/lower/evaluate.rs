@@ -1329,18 +1329,13 @@ impl<'a> ExpressionEvaluator<'a> {
         for item in items {
             match item {
                 Item::ModuleValue(v) => {
-                    // Find the child scope for this module
-                    let current_scope_data = self.ctx.scopes.get_scope(self.current_scope);
-                    if let Some(&module_scope) = current_scope_data.children.get(&v.ident.name) {
-                        // Save current scope
-                        let saved_scope = self.current_scope;
-                        self.current_scope = module_scope;
-
-                        // Recursively evaluate module contents
-                        self.evaluate_types(&v.definitions);
-
-                        // Restore scope
-                        self.current_scope = saved_scope;
+                    // Look up the definition and evaluate the module
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_module(def_id, v);
                     }
                 }
                 Item::StructValue(v) => {
@@ -1433,6 +1428,16 @@ impl<'a> ExpressionEvaluator<'a> {
                         self.evaluate_annotation(def_id, v);
                     }
                 }
+                Item::InterfaceValue(v) => {
+                    // Evaluate nested items in interfaces
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_interface(def_id, v);
+                    }
+                }
                 _ => {}
             }
         }
@@ -1440,7 +1445,28 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates default values in an annotation definition.
     fn evaluate_annotation(&mut self, def_id: DefId, ast: &ic_syntax::AnnotationDef) {
-        // Collect default values to evaluate
+        // Save current scope and enter annotation scope
+        let saved_scope = self.current_scope;
+        if let Some(annotation_scope) = self.ctx.scopes.find_scope_for_def(def_id) {
+            self.current_scope = annotation_scope;
+        }
+
+        // First, evaluate nested types (enums, etc.)
+        let nested_items: Vec<Item> = ast.params
+            .iter()
+            .filter_map(|field| {
+                if let ic_syntax::AnnotationField::Item(item) = field {
+                    Some((**item).clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !nested_items.is_empty() {
+            self.evaluate_types(&nested_items);
+        }
+
+        // Then collect default values to evaluate
         let mut default_values = Vec::new();
         let mut member_idx = 0;
         for field in &ast.params {
@@ -1478,6 +1504,53 @@ impl<'a> ExpressionEvaluator<'a> {
                 }
             }
         }
+
+        // Restore scope
+        self.current_scope = saved_scope;
+    }
+
+    /// Evaluates nested items in a module.
+    fn evaluate_module(&mut self, def_id: DefId, ast: &ic_syntax::ModuleDef) {
+        // Save current scope and enter module scope
+        let saved_scope = self.current_scope;
+        if let Some(module_scope) = self.ctx.scopes.find_scope_for_def(def_id) {
+            self.current_scope = module_scope;
+        }
+
+        // Evaluate all nested definitions
+        self.evaluate_types(&ast.definitions);
+
+        // Restore scope
+        self.current_scope = saved_scope;
+    }
+
+    /// Evaluates nested items in an interface.
+    fn evaluate_interface(&mut self, def_id: DefId, ast: &ic_syntax::InterfaceDef) {
+        // Save current scope and enter interface scope
+        let saved_scope = self.current_scope;
+        if let Some(interface_scope) = self.ctx.scopes.find_scope_for_def(def_id) {
+            self.current_scope = interface_scope;
+        }
+
+        // Extract nested type definitions from interface members
+        let nested_items: Vec<Item> = ast.members
+            .iter()
+            .filter_map(|member| {
+                if let ic_syntax::InterfaceMember::Item(item) = member {
+                    Some(item.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        // Evaluate all nested items
+        if !nested_items.is_empty() {
+            self.evaluate_types(&nested_items);
+        }
+
+        // Restore scope
+        self.current_scope = saved_scope;
     }
 }
 

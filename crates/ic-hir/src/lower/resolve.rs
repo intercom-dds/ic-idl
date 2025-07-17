@@ -944,8 +944,31 @@ impl<'a> TypeResolver<'a> {
 
     /// Resolves an annotation definition.
     fn resolve_annotation(&mut self, id: DefId, ast: &ic_syntax::AnnotationDef) {
+        // Save current scope
+        let saved_scope_id = self.current_scope_id;
+
+        // Enter annotation scope so nested types can be resolved
+        if let Some(annotation_scope) = self.ctx.scopes.find_scope_for_def(id) {
+            self.current_scope_id = annotation_scope;
+        }
+
         // Resolve annotations on the annotation itself
         let annotations = self.resolve_ast_annotations(&ast.annotations);
+
+        // Resolve nested type definitions first
+        let nested_items: Vec<Item> = ast.params
+            .iter()
+            .filter_map(|field| {
+                if let ic_syntax::AnnotationField::Item(item) = field {
+                    Some((**item).clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !nested_items.is_empty() {
+            self.resolve_all(&nested_items);
+        }
 
         let mut members = Vec::new();
         for field in &ast.params {
@@ -972,7 +995,6 @@ impl<'a> TypeResolver<'a> {
                     default_value,
                 });
             }
-            // Note: AnnotationField::Item is already handled in collect phase for nested types
         }
 
         // Update the annotation definition
@@ -983,6 +1005,9 @@ impl<'a> TypeResolver<'a> {
         if let DefKind::Annotation(ann) = &mut def.kind {
             ann.members = members;
         }
+
+        // Restore scope
+        self.current_scope_id = saved_scope_id;
     }
 }
 

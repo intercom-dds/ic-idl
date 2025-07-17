@@ -361,10 +361,9 @@ impl<'a> NameCollector<'a> {
         {
             interface.definitions = child_ids;
             interface.is_local = def.local.is_some();
-            // Interface with members is complete
-            if !def.members.is_empty() {
-                *flags &= !DefFlags::IS_INCOMPLETE;
-            }
+            // An InterfaceValue is always a complete definition (has {} body), not a forward declaration
+            // Forward declarations are represented by DeclValue items
+            *flags &= !DefFlags::IS_INCOMPLETE;
         }
 
         self.scope_stack.pop();
@@ -441,10 +440,9 @@ impl<'a> NameCollector<'a> {
         } = self.ctx.definitions.get_mut(id)
         {
             valuetype.definitions = child_ids;
-            // Valuetype with members or definitions is complete
-            if !def.members.is_empty() || !def.definitions.is_empty() {
-                *flags &= !DefFlags::IS_INCOMPLETE;
-            }
+            // A ValuetypeValue is always a complete definition (has {} body), not a forward declaration
+            // Forward declarations are represented by DeclValue items
+            *flags &= !DefFlags::IS_INCOMPLETE;
         }
 
         self.scope_stack.pop();
@@ -507,11 +505,10 @@ impl<'a> NameCollector<'a> {
                     &v.annotations,
                 );
 
-                // If the struct has members, it's a complete definition, not a forward declaration
-                if !v.members.is_empty() {
-                    let Def { flags, .. } = self.ctx.definitions.get_mut(id);
-                    *flags &= !DefFlags::IS_INCOMPLETE;
-                }
+                // A StructValue is always a complete definition (has {} body), not a forward declaration
+                // Forward declarations are represented by DeclValue items
+                let Def { flags, .. } = self.ctx.definitions.get_mut(id);
+                *flags &= !DefFlags::IS_INCOMPLETE;
 
                 // Already registered in scope by alloc_definition
                 vec![id]
@@ -527,11 +524,10 @@ impl<'a> NameCollector<'a> {
                     &v.annotations,
                 );
 
-                // If the union has fields, it's a complete definition
-                if !v.fields.is_empty() {
-                    let Def { flags, .. } = self.ctx.definitions.get_mut(id);
-                    *flags &= !DefFlags::IS_INCOMPLETE;
-                }
+                // A UnionValue is always a complete definition (has {} body), not a forward declaration
+                // Forward declarations are represented by DeclValue items
+                let Def { flags, .. } = self.ctx.definitions.get_mut(id);
+                *flags &= !DefFlags::IS_INCOMPLETE;
 
                 // Already registered in scope by alloc_definition
                 vec![id]
@@ -568,11 +564,9 @@ impl<'a> NameCollector<'a> {
                     &v.annotations,
                 );
 
-                // If the exception has members, it's a complete definition
-                if !v.members.is_empty() {
-                    let Def { flags, .. } = self.ctx.definitions.get_mut(id);
-                    *flags &= !DefFlags::IS_INCOMPLETE;
-                }
+                // An ExceptionValue is always a complete definition (has {} body)
+                let Def { flags, .. } = self.ctx.definitions.get_mut(id);
+                *flags &= !DefFlags::IS_INCOMPLETE;
 
                 // Already registered in scope by alloc_definition
                 vec![id]

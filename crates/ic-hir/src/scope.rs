@@ -153,6 +153,77 @@ impl ScopeTree {
         None
     }
 
+    /// Resolves a single name with interface visibility rules.
+    /// Types inside interfaces are only visible within the interface unless qualified.
+    #[must_use]
+    pub fn resolve_name_with_visibility(
+        &self,
+        scope: ScopeId,
+        name: &str,
+        definitions: &Arena<Def>,
+    ) -> Option<DefId> {
+        let mut current = Some(scope);
+        let starting_scope = scope;
+
+        while let Some(scope_id) = current {
+            let scope = &self.scopes[scope_id.0];
+
+            // Check local definitions
+            if let Some(&def_id) = scope.definitions.get(name) {
+                // Found the definition - but check if it's accessible
+                // If we found it in an interface scope and we started outside that interface,
+                // it's not accessible
+                if self.is_interface_scope(scope_id, definitions)
+                    && !self.is_inside_scope(starting_scope, scope_id)
+                {
+                    // This type is inside an interface but we're outside - not accessible
+                    return None;
+                }
+                return Some(def_id);
+            }
+
+            // Check child scopes (for module names and interfaces)
+            if let Some(&child_scope_id) = scope.children.get(name) {
+                if let Some(def_id) = self.scopes[child_scope_id.0].def_id {
+                    return Some(def_id);
+                }
+            }
+
+            // Before moving to parent, check if we would cross an interface boundary
+            if let Some(parent_scope_id) = scope.parent {
+                // If the parent is an interface scope and we started outside of it,
+                // don't enter the interface scope when resolving unqualified names
+                if self.is_interface_scope(parent_scope_id, definitions)
+                    && !self.is_inside_scope(starting_scope, parent_scope_id)
+                {
+                    // Don't cross into the interface when resolving unqualified names
+                    return None;
+                }
+            }
+
+            // Move to parent
+            current = scope.parent;
+        }
+
+        None
+    }
+
+    /// Checks if a scope is inside (or is) another scope.
+    fn is_inside_scope(&self, inner: ScopeId, outer: ScopeId) -> bool {
+        if inner == outer {
+            return true;
+        }
+
+        let mut current = Some(inner);
+        while let Some(scope_id) = current {
+            if scope_id == outer {
+                return true;
+            }
+            current = self.scopes[scope_id.0].parent;
+        }
+        false
+    }
+
     /// Resolves a path starting from a scope.
     #[must_use]
     pub fn resolve_path(&self, scope: ScopeId, path: &[&str]) -> Option<DefId> {
@@ -260,6 +331,17 @@ impl ScopeTree {
             }
         }
         None
+    }
+
+    /// Checks if a scope belongs to an interface definition.
+    #[must_use]
+    pub fn is_interface_scope(&self, scope_id: ScopeId, definitions: &Arena<Def>) -> bool {
+        if let Some(def_id) = self.scopes[scope_id.0].def_id {
+            let def = definitions.get(def_id);
+            matches!(def.kind, crate::hir::DefKind::Interface(_))
+        } else {
+            false
+        }
     }
 
     /// Gets all visible enums from a scope (including parent scopes).

@@ -237,14 +237,32 @@ impl<'a> TypeResolver<'a> {
             self.current_scope_id
         };
 
-        // Use the scope tree to resolve the path
-        if let Some(def_id) = self.ctx.scopes.resolve_path(start_scope, &segments) {
-            return Some(def_id);
+        // For single-segment paths, use visibility-aware resolution
+        if segments.len() == 1 && path.leading_colons.is_none() {
+            if let Some(def_id) = self.ctx.scopes.resolve_name_with_visibility(
+                start_scope,
+                segments[0],
+                &self.ctx.definitions,
+            ) {
+                return Some(def_id);
+            }
+
+            // Check if it's a primitive type before giving up
+            if resolve_primitive(segments[0]).is_some() {
+                return None; // Let resolve_type handle primitives
+            }
+
+            // Not a primitive and not found - report error
+            self.errors.push(error_span(
+                format!("unresolved type `{}`", segments[0]),
+                Label::new(path.segments[0].span).message("unknown type"),
+            ));
+            return None;
         }
 
-        // If not found and it's a single segment, might be a primitive
-        if path.segments.len() == 1 && path.leading_colons.is_none() {
-            return None; // Primitive types are handled in resolve_type
+        // For multi-segment paths, use regular resolution
+        if let Some(def_id) = self.ctx.scopes.resolve_path(start_scope, &segments) {
+            return Some(def_id);
         }
 
         // Try to find which segment failed by resolving incrementally

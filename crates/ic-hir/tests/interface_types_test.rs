@@ -97,8 +97,6 @@ fn test_interface_nested_type_in_typedef() {
 }
 
 #[test]
-#[ignore = "Interface visibility is not yet properly implemented - types inside interfaces are \
-            incorrectly visible outside"]
 fn test_interface_type_not_visible_outside() {
     let input = r"
         interface Service {

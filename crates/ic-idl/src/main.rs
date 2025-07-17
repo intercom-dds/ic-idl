@@ -30,13 +30,11 @@
 use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
-use ic_diagnostic::Diag;
 use ic_emit::File;
 use ic_idl::{
-    AstItem, CompileDiagnostics, CompileError, CompiledAst, Compiler, CompilerOptions, LintConfig,
+    CompileDiagnostics, CompileError, Compiler, CompilerOptions,
     hir, util,
 };
-use ic_preproc::ProcArgs;
 
 mod info;
 mod unstable;
@@ -111,13 +109,10 @@ fn main() {
 fn try_compile(options: CompilerOptions) {
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
-    let CompiledAst { items, .. } = match compiler.compile() {
-        Ok(ast) => {
-            if ast.diagnostics.count() > 0 {
-                emit_diagnostics(&compiler, &ast.diagnostics);
-            }
-            ast
-        }
+    
+    // Use the new compile_hir method which handles merging
+    let (hir, diagnostics) = match compiler.compile_hir() {
+        Ok((hir, diag)) => (hir, diag),
         Err(CompileError::Io(e)) => {
             error!("I/O error: {}", e);
             std::process::exit(1);
@@ -127,25 +122,9 @@ fn try_compile(options: CompilerOptions) {
             std::process::exit(1);
         }
     };
-
-    // Dump AST if requested
-    if compiler.options().unstable.ast_dump {
-        println!("{items:#?}");
-    }
-
-    // Convert AST to HIR with built-in annotations
-    let lint_config = compiler.options().warn.to_lint_config();
-    let (hir, warnings) = match ast_to_hir_with_builtins(&mut compiler, items, &lint_config) {
-        Ok((hir, warnings)) => (hir, warnings),
-        Err(CompileError::Diagnostics(diag)) => {
-            emit_diagnostics(&compiler, &diag);
-            std::process::exit(1);
-        }
-        Err(CompileError::Io(e)) => {
-            error!("I/O error: {}", e);
-            std::process::exit(1);
-        }
-    };
+    
+    // Extract warnings from compile diagnostics
+    let warnings = diagnostics.warnings;
 
     // Emit any warnings
     if !warnings.is_empty() {
@@ -335,56 +314,3 @@ fn dump_backtrace(info: &std::panic::PanicHookInfo) {
     );
 }
 
-/// Convert AST to HIR with built-in annotations, using the compiler's source map.
-fn ast_to_hir_with_builtins(
-    compiler: &mut Compiler,
-    ast: Vec<AstItem>,
-    lint_config: &LintConfig,
-) -> Result<(hir::ResolvedGraph, Vec<Diag>), CompileError> {
-    // First, add built-in annotations to the source map
-    let builtin_file_id = compiler.source_map_mut().embed_with_name(
-        "<builtin-annotations>",
-        include_str!("../../ic-idl/idl/annotations.idl"),
-    );
-
-    // Parse the built-in annotations
-    let builtin_parsed = ic_parse::from_file(
-        builtin_file_id,
-        ProcArgs::default(),
-        compiler.source_map_mut(),
-    );
-    assert!(
-        builtin_parsed.errors.is_empty(),
-        "Failed to parse built-in annotations: {:?}",
-        builtin_parsed.errors
-    );
-
-    // Use from_ast_with_builtins to properly handle built-in injection
-    let mut all_errors = Vec::new();
-    let mut all_warnings = Vec::new();
-
-    // Lower to HIR with built-in annotations pre-injected
-    let mut hir = hir::from_ast_with_builtins(builtin_parsed.tree, ast);
-
-    // Take warnings and errors from HIR
-    all_warnings.extend(std::mem::take(&mut hir.warnings));
-    let hir_errors = std::mem::take(&mut hir.errors);
-    all_errors.extend(hir_errors.into_iter().map(Into::into));
-
-    // Lint the HIR if no errors so far
-    if all_errors.is_empty() {
-        let report = ic_lint::lint_hir_with_config(&hir, compiler.source_map(), lint_config);
-        all_errors.extend(report.errors.into_iter().map(Into::into));
-        all_warnings.extend(report.warnings);
-    }
-
-    if !all_errors.is_empty() {
-        return Err(CompileError::Diagnostics(ic_idl::CompileDiagnostics {
-            errors: all_errors,
-            warnings: all_warnings,
-            expansion_info: std::collections::HashMap::new(),
-        }));
-    }
-
-    Ok((hir, all_warnings))
-}

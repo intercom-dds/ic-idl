@@ -183,15 +183,6 @@ module annotations {
     boolean value default TRUE;
 };
 
-@annotation data_representation {
-    bitmask DataRepresentationMask {
-        XCDR1,
-        XML,
-        XCDR2
-    };
-    DataRepresentationMask allowed_kinds;
-};
-
 @annotation jaus {
     string id default "";
     string name default "";

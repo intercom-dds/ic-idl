@@ -38,7 +38,6 @@ use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
 
-use crate::ast;
 use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
 
 struct TreeBuilder<'a> {
@@ -231,7 +230,12 @@ impl<'a> TreeBuilder<'a> {
                 let fields = collect_with(self.state, sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
-                    sys::create_annotation_member(self.state, decl, ty, NUM_UNDEF)
+                    let default = mem
+                        .default_value
+                        .as_ref()
+                        .map(|v| self.lower_numeric(v))
+                        .unwrap_or(NUM_UNDEF);
+                    sys::create_annotation_member(self.state, decl, ty, default)
                 });
                 let members = sys::append_node(self.state, types, fields);
                 sys::create_annotation_dcl_finish(self.state, members)

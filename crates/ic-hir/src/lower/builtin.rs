@@ -37,8 +37,8 @@ use super::LoweringResult;
 /// and then processes the user's AST in the same context, ensuring that
 /// built-in types are available for resolution.
 ///
-/// The returned `LoweringResult` will only include user-defined types in the
-/// `order` vector, while built-in types remain in the context for resolution.
+/// The returned `LoweringResult` includes both built-in and user-defined types
+/// in the `order` vector so they are available for ptree lowering.
 pub fn lower_with_builtins<I, B>(builtins: B, user_ast: I) -> LoweringResult
 where
     I: IntoIterator<Item = Item>,
@@ -49,15 +49,8 @@ where
     all_items.extend(user_ast);
 
     // Process everything together
-    let mut result = super::lower(all_items);
+    let result = super::lower(all_items);
 
-    // Filter the order to exclude built-in definitions
-    // Built-in annotations are in the intercom module
-    result.order.retain(|&def_id| {
-        let def = result.context.definitions.get(def_id);
-        // Keep only non-intercom definitions (user code)
-        !def.ident.name.starts_with("intercom")
-    });
-
+    // Don't filter out built-in definitions - they need to be available for ptree lowering
     result
 }

@@ -381,7 +381,7 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
 
     // Inject the built-in annotations. We use the AST version to preserve the
     // default values that are not yet included in the HIR.
-    ast::inject_builtin(state);
+    // ast::inject_builtin(state);
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);

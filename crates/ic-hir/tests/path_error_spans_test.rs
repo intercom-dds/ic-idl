@@ -62,7 +62,7 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
 
     // First error should be for foo::bar::Invalid
     let error1 = &result.errors[0];
-    let error1_msg = format!("{:?}", error1);
+    let error1_msg = format!("{error1:?}");
     assert!(
         error1_msg.contains("foo::bar::Invalid"),
         "First error should mention foo::bar::Invalid"
@@ -73,7 +73,7 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
 
     // Second error should be for foo::baz::Something
     let error2 = &result.errors[1];
-    let error2_msg = format!("{:?}", error2);
+    let error2_msg = format!("{error2:?}");
     assert!(
         error2_msg.contains("foo::baz::Something"),
         "Second error should mention foo::baz::Something"

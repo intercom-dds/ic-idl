@@ -30,7 +30,7 @@ use ic_parse::SourceMap;
 
 #[test]
 fn test_module_reopening_preserves_annotations() {
-    let input = r#"
+    let input = r"
         // First, reopen the intercom module (empty)
         module intercom {};
         
@@ -47,7 +47,7 @@ fn test_module_reopening_preserves_annotations() {
                 @id(123) unsigned long id;
             };
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -104,7 +104,7 @@ fn test_module_reopening_preserves_annotations() {
 
 #[test]
 fn test_nested_module_reopening() {
-    let input = r#"
+    let input = r"
         module A {
             module B {
                 struct First {};
@@ -120,7 +120,7 @@ fn test_nested_module_reopening() {
                 struct Second {};
             };
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);

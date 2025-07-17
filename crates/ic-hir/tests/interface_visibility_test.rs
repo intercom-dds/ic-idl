@@ -64,7 +64,7 @@ fn test_interface_types_require_qualification() {
     let error_msgs = result
         .errors
         .iter()
-        .map(|e| format!("{:?}", e))
+        .map(|e| format!("{e:?}"))
         .collect::<Vec<_>>()
         .join("\n");
 

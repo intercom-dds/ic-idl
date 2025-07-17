@@ -32,7 +32,7 @@ use ic_idl::{Compiler, CompilerOptions};
 
 #[test]
 fn test_value_annotation_transform_integration() {
-    let input = r#"
+    let input = r"
         // Built-in annotations
         @annotation value {
             int32 value;
@@ -54,12 +54,12 @@ fn test_value_annotation_transform_integration() {
             @deprecated
             SERVICE_UNAVAILABLE
         };
-    "#;
+    ";
 
     // Create a temporary directory and file
     let temp_dir = format!("/tmp/ic_hir_xform_test_{}", std::process::id());
     fs::create_dir_all(&temp_dir).unwrap();
-    let input_file = format!("{}/test.idl", temp_dir);
+    let input_file = format!("{temp_dir}/test.idl");
     fs::write(&input_file, input).unwrap();
 
     // Set up compiler options
@@ -72,7 +72,7 @@ fn test_value_annotation_transform_integration() {
 
     // Debug: print all definitions
     println!("\nAll definitions:");
-    for (id, def) in hir.context.definitions.iter() {
+    for (id, def) in &hir.context.definitions {
         println!(
             "  {:?}: {} ({})",
             id,
@@ -211,7 +211,7 @@ fn test_value_annotation_transform_integration() {
 
 #[test]
 fn test_value_annotation_with_auto_increment() {
-    let input = r#"
+    let input = r"
         // Built-in annotations
         @annotation value {
             int32 value;
@@ -228,12 +228,12 @@ fn test_value_annotation_with_auto_increment() {
             @value(20)
             TWENTY
         };
-    "#;
+    ";
 
     // Create a temporary directory and file
     let temp_dir = format!("/tmp/ic_hir_xform_test2_{}", std::process::id());
     fs::create_dir_all(&temp_dir).unwrap();
-    let input_file = format!("{}/test.idl", temp_dir);
+    let input_file = format!("{temp_dir}/test.idl");
     fs::write(&input_file, input).unwrap();
 
     // Set up compiler options

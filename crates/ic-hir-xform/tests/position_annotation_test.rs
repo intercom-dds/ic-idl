@@ -70,7 +70,7 @@ fn test_position_annotation_transform_integration() {
 
     // Debug: print all definitions
     println!("\nAll definitions:");
-    for (id, def) in hir.context.definitions.iter() {
+    for (id, def) in &hir.context.definitions {
         println!(
             "  {:?}: {} ({})",
             id,

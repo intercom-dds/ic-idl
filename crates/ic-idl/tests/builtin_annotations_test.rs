@@ -32,7 +32,7 @@ use ic_parse::SourceMap;
 
 #[test]
 fn test_builtin_value_annotation() {
-    let input = r#"
+    let input = r"
         enum E {
             @value(10)
             A,
@@ -40,7 +40,7 @@ fn test_builtin_value_annotation() {
             @value(20)  
             C
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -55,7 +55,7 @@ fn test_builtin_value_annotation() {
         Err(e) => {
             // If it's just warnings about built-in annotations, that's OK
             // The important thing is that user annotations like @value are resolved
-            panic!("HIR conversion failed: {:?}", e);
+            panic!("HIR conversion failed: {e:?}");
         }
     };
 
@@ -72,14 +72,14 @@ fn test_builtin_value_annotation() {
 
 #[test]
 fn test_builtin_key_annotation() {
-    let input = r#"
+    let input = r"
         struct S {
             @key
             long id;
             
             string name;
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -88,7 +88,7 @@ fn test_builtin_key_annotation() {
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
-    let builtin_annotations = r#"
+    let builtin_annotations = r"
         module intercom {
         module annotations {
             @annotation key {
@@ -96,14 +96,14 @@ fn test_builtin_key_annotation() {
             };
         }; // module annotations
         }; // module intercom
-    "#;
+    ";
 
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
     assert!(builtin_parsed.errors.is_empty());
 
     // We need to use from_ast_with_builtins to include built-in annotations
-    let mut hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
 
     // Check for errors
     assert!(

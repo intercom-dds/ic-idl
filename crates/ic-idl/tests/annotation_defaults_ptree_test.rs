@@ -23,7 +23,7 @@ fn test_annotation_defaults_in_generated_idl() {
     let temp_dir = format!("/tmp/ic_idl_test_{}", std::process::id());
     fs::create_dir_all(&temp_dir).unwrap();
 
-    let input_file = format!("{}/test.idl", temp_dir);
+    let input_file = format!("{temp_dir}/test.idl");
     fs::write(&input_file, test_content).unwrap();
 
     // Set up compiler options
@@ -43,7 +43,7 @@ fn test_annotation_defaults_in_generated_idl() {
                 "Compilation had errors"
             );
         }
-        Err(e) => panic!("Compilation failed: {:?}", e),
+        Err(e) => panic!("Compilation failed: {e:?}"),
     }
 
     // Now generate IDL output

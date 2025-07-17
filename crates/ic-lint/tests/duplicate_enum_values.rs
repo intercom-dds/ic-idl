@@ -45,7 +45,7 @@ fn test_duplicate_enum_values_error() {
 
     // Should have errors for duplicate value
     for error in &report.errors {
-        eprintln!("Error: {}", error);
+        eprintln!("Error: {error}");
     }
     assert!(!report.errors.is_empty());
     assert!(

@@ -49,8 +49,7 @@ where
     all_items.extend(user_ast);
 
     // Process everything together
-    let result = super::lower(all_items);
 
     // Don't filter out built-in definitions - they need to be available for ptree lowering
-    result
+    super::lower(all_items)
 }

@@ -4,11 +4,11 @@ use ic_parse::SourceMap;
 
 #[test]
 fn test_simple_key_annotation() {
-    let input = r#"
+    let input = r"
         struct S {
             @key string value;
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -24,6 +24,6 @@ fn test_simple_key_annotation() {
 
     match hir_result {
         Ok(_) => println!("SUCCESS: HIR conversion succeeded"),
-        Err(e) => panic!("HIR conversion failed: {}", e),
+        Err(e) => panic!("HIR conversion failed: {e}"),
     }
 }

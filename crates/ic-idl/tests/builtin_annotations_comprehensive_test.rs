@@ -154,7 +154,7 @@ fn test_multiple_builtin_annotations() {
 #[test]
 fn test_extensibility_annotation_aliases() {
     // Test that extensibility annotation works (aliases were removed)
-    let input = r#"
+    let input = r"
         @extensibility
         struct S1 {};
         
@@ -163,7 +163,7 @@ fn test_extensibility_annotation_aliases() {
         
         @final
         struct S3 {};
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -182,12 +182,12 @@ fn test_extensibility_annotation_aliases() {
 
 #[test]
 fn test_unknown_annotation_warning() {
-    let input = r#"
+    let input = r"
         @unknown_annotation
         struct S {
             long field;
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -200,10 +200,7 @@ fn test_unknown_annotation_warning() {
     // Should succeed with warnings
     let hir = match hir_result {
         Ok(hir) => hir,
-        Err(e) => panic!(
-            "HIR conversion should not fail for unknown annotations: {:?}",
-            e
-        ),
+        Err(e) => panic!("HIR conversion should not fail for unknown annotations: {e:?}"),
     };
 
     // Should have a warning about the unknown annotation

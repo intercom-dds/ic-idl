@@ -30,7 +30,7 @@ use ic_parse::SourceMap;
 
 #[test]
 fn test_ext_annotation_requires_qualification() {
-    let input = r#"
+    let input = r"
         struct TestStruct { 
             // This should produce a warning - no_serializer needs ext:: prefix
             @no_serializer string field1;
@@ -41,7 +41,7 @@ fn test_ext_annotation_requires_qualification() {
             // Regular annotations work without qualification
             @key string field3;
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);

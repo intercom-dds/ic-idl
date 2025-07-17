@@ -29,7 +29,7 @@
 
 #[test]
 fn test_empty_struct_in_interface() {
-    let input = r#"
+    let input = r"
         interface foo {
             struct abc {};
         };
@@ -37,7 +37,7 @@ fn test_empty_struct_in_interface() {
         struct bar {
             foo::abc value;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
@@ -52,7 +52,7 @@ fn test_empty_struct_in_interface() {
 
 #[test]
 fn test_non_empty_struct_in_interface() {
-    let input = r#"
+    let input = r"
         interface foo {
             struct abc {
                 long x;
@@ -62,7 +62,7 @@ fn test_non_empty_struct_in_interface() {
         struct bar {
             foo::abc value;
         };
-    "#;
+    ";
 
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());

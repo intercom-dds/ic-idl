@@ -32,12 +32,12 @@ use ic_vfs::SourceMap;
 
 #[test]
 fn test_annotation_boolean_default() {
-    let input = r#"
+    let input = r"
         @annotation sample {
             boolean enable default TRUE;
             boolean debug default FALSE;
         };
-    "#;
+    ";
 
     let mut src_map = SourceMap::default();
     let file_id = src_map.embed_with_name("test.idl", input);
@@ -47,7 +47,7 @@ fn test_annotation_boolean_default() {
     let hir = from_ast(parsed.tree);
     if !hir.errors.is_empty() {
         for err in &hir.errors {
-            eprintln!("Error: {:?}", err);
+            eprintln!("Error: {err:?}");
         }
     }
     assert!(hir.errors.is_empty());
@@ -77,13 +77,13 @@ fn test_annotation_boolean_default() {
 
 #[test]
 fn test_annotation_numeric_defaults() {
-    let input = r#"
+    let input = r"
         @annotation numeric_test {
             long value default 42;
             float ratio default 3.14;
             uint8 priority default 5;
         };
-    "#;
+    ";
 
     let mut src_map = SourceMap::default();
     let file_id = src_map.embed_with_name("test.idl", input);
@@ -93,7 +93,7 @@ fn test_annotation_numeric_defaults() {
     let hir = from_ast(parsed.tree);
     if !hir.errors.is_empty() {
         for err in &hir.errors {
-            eprintln!("Error: {:?}", err);
+            eprintln!("Error: {err:?}");
         }
     }
     assert!(hir.errors.is_empty());
@@ -142,7 +142,7 @@ fn test_annotation_string_default() {
     let hir = from_ast(parsed.tree);
     if !hir.errors.is_empty() {
         for err in &hir.errors {
-            eprintln!("Error: {:?}", err);
+            eprintln!("Error: {err:?}");
         }
     }
     assert!(hir.errors.is_empty());
@@ -169,12 +169,12 @@ fn test_annotation_string_default() {
 
 #[test]
 fn test_annotation_no_default() {
-    let input = r#"
+    let input = r"
         @annotation required {
             string name;
             boolean enabled default TRUE;
         };
-    "#;
+    ";
 
     let mut src_map = SourceMap::default();
     let file_id = src_map.embed_with_name("test.idl", input);
@@ -184,7 +184,7 @@ fn test_annotation_no_default() {
     let hir = from_ast(parsed.tree);
     if !hir.errors.is_empty() {
         for err in &hir.errors {
-            eprintln!("Error: {:?}", err);
+            eprintln!("Error: {err:?}");
         }
     }
     assert!(hir.errors.is_empty());

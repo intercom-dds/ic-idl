@@ -30,7 +30,7 @@ use ic_parse::SourceMap;
 
 #[test]
 fn test_nested_enum_in_annotation() {
-    let input = r#"
+    let input = r"
         @annotation TestAnnotation {
             enum NestedEnum {
                 FIRST,
@@ -39,7 +39,7 @@ fn test_nested_enum_in_annotation() {
             };
             NestedEnum value;
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -81,7 +81,7 @@ fn test_nested_enum_in_annotation() {
 
 #[test]
 fn test_nested_enum_in_interface() {
-    let input = r#"
+    let input = r"
         interface TestInterface {
             enum Status {
                 PENDING = 10,
@@ -91,7 +91,7 @@ fn test_nested_enum_in_interface() {
             
             Status getStatus();
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -123,7 +123,7 @@ fn test_nested_enum_in_interface() {
 
 #[test]
 fn test_nested_enum_in_module() {
-    let input = r#"
+    let input = r"
         module TestModule {
             enum Color {
                 RED,
@@ -136,7 +136,7 @@ fn test_nested_enum_in_module() {
                 string name;
             };
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
@@ -167,7 +167,7 @@ fn test_nested_enum_in_module() {
 
 #[test]
 fn test_type_resolution_in_annotation() {
-    let input = r#"
+    let input = r"
         @annotation ExtensibilityAnnotation {
             enum ExtensibilityKind {
                 FINAL = 0,
@@ -181,7 +181,7 @@ fn test_type_resolution_in_annotation() {
         struct TestStruct {
             string data;
         };
-    "#;
+    ";
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);

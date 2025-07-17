@@ -233,8 +233,7 @@ impl<'a> TreeBuilder<'a> {
                     let default = mem
                         .default_value
                         .as_ref()
-                        .map(|v| self.lower_numeric(v))
-                        .unwrap_or(NUM_UNDEF);
+                        .map_or(NUM_UNDEF, |v| self.lower_numeric(v));
                     sys::create_annotation_member(self.state, decl, ty, default)
                 });
                 let members = sys::append_node(self.state, types, fields);

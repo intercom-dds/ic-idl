@@ -31,14 +31,14 @@ use ic_preproc::ProcArgs;
 
 #[test]
 fn test_simple_annotation() {
-    let input = r#"
+    let input = r"
         @annotation custom {};
         
         @custom
         struct S {
             long field;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -71,7 +71,7 @@ fn test_simple_annotation() {
 
 #[test]
 fn test_annotation_in_module() {
-    let input = r#"
+    let input = r"
         @annotation custom {};
         
         module M {
@@ -80,7 +80,7 @@ fn test_annotation_in_module() {
                 long field;
             };
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -108,7 +108,7 @@ fn test_annotation_in_module() {
 
 #[test]
 fn test_qualified_annotation_path() {
-    let input = r#"
+    let input = r"
         module M {
             @annotation custom {};
         };
@@ -117,7 +117,7 @@ fn test_qualified_annotation_path() {
         struct S {
             long field;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -151,12 +151,12 @@ fn test_qualified_annotation_path() {
 
 #[test]
 fn test_unknown_annotation_warning() {
-    let input = r#"
+    let input = r"
         @unknown
         struct S {
             long field;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -182,7 +182,7 @@ fn test_unknown_annotation_warning() {
 
 #[test]
 fn test_annotation_with_arguments() {
-    let input = r#"
+    let input = r"
         @annotation range {
             long min;
             long max;
@@ -192,7 +192,7 @@ fn test_annotation_with_arguments() {
         struct S {
             long value;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -225,7 +225,7 @@ fn test_annotation_with_arguments() {
 
 #[test]
 fn test_member_annotations() {
-    let input = r#"
+    let input = r"
         @annotation deprecated {};
         
         struct S {
@@ -234,7 +234,7 @@ fn test_member_annotations() {
             
             long new_field;
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -273,7 +273,7 @@ fn test_member_annotations() {
 
 #[test]
 fn test_enum_field_annotations() {
-    let input = r#"
+    let input = r"
         @annotation enumval {};
         
         enum E {
@@ -283,7 +283,7 @@ fn test_enum_field_annotations() {
             @enumval
             C
         };
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -325,7 +325,7 @@ fn test_enum_field_annotations() {
 
 #[test]
 fn test_nested_module_annotation_resolution() {
-    let input = r#"
+    let input = r"
         module Outer {
             module Inner {
                 @annotation custom {};
@@ -334,7 +334,7 @@ fn test_nested_module_annotation_resolution() {
         
         @Outer::Inner::custom
         struct S {};
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -361,7 +361,7 @@ fn test_nested_module_annotation_resolution() {
 
 #[test]
 fn test_annotation_on_all_definition_types() {
-    let input = r#"
+    let input = r"
         @annotation mark {};
         
         @mark
@@ -386,7 +386,7 @@ fn test_annotation_on_all_definition_types() {
         
         @mark
         typedef long T;
-    "#;
+    ";
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
@@ -400,7 +400,7 @@ fn test_annotation_on_all_definition_types() {
     );
 
     // Check that all types have the annotation
-    for (_, def) in result.context.definitions.iter() {
+    for (_, def) in &result.context.definitions {
         if def.ident.name != "mark" {
             // Skip the annotation definition itself
             assert_eq!(

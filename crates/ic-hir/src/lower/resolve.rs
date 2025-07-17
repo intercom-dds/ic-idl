@@ -120,6 +120,17 @@ impl<'a> TypeResolver<'a> {
                     .ctx
                     .scopes
                     .resolve_path(self.ctx.scopes.root(), &segments);
+                
+                // Special handling for annotations in ext namespace (e.g., @ext::no_serializer)
+                // These should resolve to intercom::annotations::ext::no_serializer
+                if def_id.is_none() && segments[0] == "ext" {
+                    let mut full_path = vec!["intercom", "annotations"];
+                    full_path.extend(&segments);
+                    def_id = self
+                        .ctx
+                        .scopes
+                        .resolve_path(self.ctx.scopes.root(), &full_path);
+                }
             } else {
                 // Single segment - try current scope and parent scopes
                 let mut scope_id = self.current_scope_id;
@@ -142,18 +153,9 @@ impl<'a> TypeResolver<'a> {
                 }
             }
 
-            // If not found, try in intercom::annotations
-            if def_id.is_none() {
+            // If not found and it's unqualified, try in intercom::annotations
+            if def_id.is_none() && segments.len() == 1 {
                 let segments = vec!["intercom", "annotations", &name];
-                def_id = self
-                    .ctx
-                    .scopes
-                    .resolve_path(self.ctx.scopes.root(), &segments);
-            }
-
-            // If still not found, try in intercom::annotations::ext
-            if def_id.is_none() {
-                let segments = vec!["intercom", "annotations", "ext", &name];
                 def_id = self
                     .ctx
                     .scopes

@@ -28,6 +28,23 @@
 use std::fmt::Display;
 use std::sync::OnceLock;
 
+/// Controls when colors should be used
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ColorMode {
+    /// Always use colors
+    Always,
+    /// Never use colors
+    Never,
+    /// Automatically detect based on terminal capabilities
+    Auto,
+}
+
+impl Default for ColorMode {
+    fn default() -> Self {
+        ColorMode::Auto
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum Color {
     Black,
@@ -40,6 +57,142 @@ pub enum Color {
     White,
     Gray,
     Clear,
+}
+
+/// A colorized string that respects the color mode
+pub struct Colored<T> {
+    value: T,
+    style: Style,
+    mode: ColorMode,
+}
+
+#[derive(Clone, Debug, Default)]
+struct Style {
+    fg: Option<Color>,
+    bg: Option<Color>,
+    bold: bool,
+}
+
+impl<T: Display> Display for Colored<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let use_color = match self.mode {
+            ColorMode::Always => true,
+            ColorMode::Never => false,
+            ColorMode::Auto => has_colors(),
+        };
+
+        if !use_color {
+            return write!(f, "{}", self.value);
+        }
+
+        let mut codes = Vec::new();
+        
+        if let Some(color) = self.style.fg {
+            codes.push(match color {
+                Color::Black => "30",
+                Color::Red => "31",
+                Color::Green => "32",
+                Color::Yellow => "33",
+                Color::Blue => "34",
+                Color::Purple => "35",
+                Color::Cyan => "36",
+                Color::White => "37",
+                Color::Gray => "90",
+                Color::Clear => "0",
+            });
+        }
+        
+        if let Some(color) = self.style.bg {
+            codes.push(match color {
+                Color::Black => "40",
+                Color::Red => "41",
+                Color::Green => "42",
+                Color::Yellow => "43",
+                Color::Blue => "44",
+                Color::Purple => "45",
+                Color::Cyan => "46",
+                Color::White => "47",
+                Color::Gray => "100",
+                Color::Clear => "49",
+            });
+        }
+        
+        if self.style.bold {
+            codes.push("1");
+        }
+
+        if codes.is_empty() {
+            write!(f, "{}", self.value)
+        } else {
+            write!(f, "\x1b[{}m{}\x1b[0m", codes.join(";"), self.value)
+        }
+    }
+}
+
+/// Extension trait for colorizing values with explicit color mode
+pub trait ColorizeExt: Display + Sized {
+    fn colorize(self, mode: ColorMode) -> Colored<Self> {
+        Colored {
+            value: self,
+            style: Style::default(),
+            mode,
+        }
+    }
+}
+
+impl<T: Display> ColorizeExt for T {}
+
+impl<T> Colored<T> {
+    pub fn fg(mut self, color: Color) -> Self {
+        self.style.fg = Some(color);
+        self
+    }
+
+    pub fn bg(mut self, color: Color) -> Self {
+        self.style.bg = Some(color);
+        self
+    }
+
+    pub fn bold(mut self) -> Self {
+        self.style.bold = true;
+        self
+    }
+
+    pub fn red(self) -> Self {
+        self.fg(Color::Red)
+    }
+
+    pub fn green(self) -> Self {
+        self.fg(Color::Green)
+    }
+
+    pub fn yellow(self) -> Self {
+        self.fg(Color::Yellow)
+    }
+
+    pub fn blue(self) -> Self {
+        self.fg(Color::Blue)
+    }
+
+    pub fn purple(self) -> Self {
+        self.fg(Color::Purple)
+    }
+
+    pub fn cyan(self) -> Self {
+        self.fg(Color::Cyan)
+    }
+
+    pub fn white(self) -> Self {
+        self.fg(Color::White)
+    }
+
+    pub fn gray(self) -> Self {
+        self.fg(Color::Gray)
+    }
+
+    pub fn black(self) -> Self {
+        self.fg(Color::Black)
+    }
 }
 
 pub trait Colorize: Display {

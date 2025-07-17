@@ -27,14 +27,14 @@
 
 //! Tests for HIR tree merging functionality.
 
-use ic_hir::merge::merge_hir_trees;
 use ic_hir::hir::DefKind;
+use ic_hir::merge::merge_hir_trees;
 
 #[test]
 fn test_merge_empty_graphs() {
     let graphs = vec![];
     let merged = merge_hir_trees(&graphs);
-    
+
     assert_eq!(merged.order.len(), 0);
 }
 
@@ -46,15 +46,15 @@ fn test_merge_single_graph() {
             long y;
         };
     ";
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
-    
+
     let graph = ic_hir::from_ast(parsed.tree);
     assert!(graph.errors.is_empty());
-    
+
     let merged = merge_hir_trees(&[graph]);
-    
+
     // Should have one definition (Point struct)
     assert_eq!(merged.order.len(), 1);
 }
@@ -68,28 +68,28 @@ fn test_merge_duplicate_definitions() {
             long y;
         };
     ";
-    
+
     let input2 = r"
         struct Point {
             long x;
             long y;
         };
     ";
-    
+
     let parsed1 = ic_parse::from_str(input1);
     let parsed2 = ic_parse::from_str(input2);
-    
+
     let graph1 = ic_hir::from_ast(parsed1.tree);
     let graph2 = ic_hir::from_ast(parsed2.tree);
-    
+
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
-    
+
     let merged = merge_hir_trees(&[graph1, graph2]);
-    
+
     // With deduplication, we should have only 1 Point definition
     assert_eq!(merged.order.len(), 1);
-    
+
     // Verify it's the Point struct
     let def = merged.context.definitions.get(merged.order[0]);
     assert_eq!(def.ident.name, "Point");
@@ -105,7 +105,7 @@ fn test_merge_different_modules() {
             };
         };
     ";
-    
+
     let input2 = r"
         module B {
             struct Bar {
@@ -113,21 +113,21 @@ fn test_merge_different_modules() {
             };
         };
     ";
-    
+
     let parsed1 = ic_parse::from_str(input1);
     let parsed2 = ic_parse::from_str(input2);
-    
+
     let graph1 = ic_hir::from_ast(parsed1.tree);
     let graph2 = ic_hir::from_ast(parsed2.tree);
-    
+
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
-    
+
     let merged = merge_hir_trees(&[graph1, graph2]);
-    
+
     // Should have 2 module definitions (A and B)
     assert_eq!(merged.order.len(), 2);
-    
+
     // Verify we can access the definitions
     let mut module_names = Vec::new();
     for &def_id in &merged.order {
@@ -154,17 +154,53 @@ fn test_merge_with_references() {
             Point end;
         };
     ";
-    
+
     let parsed = ic_parse::from_str(input);
     assert!(parsed.errors.is_empty());
-    
+
     let graph = ic_hir::from_ast(parsed.tree);
     assert!(graph.errors.is_empty());
-    
+
     let merged = merge_hir_trees(&[graph]);
-    
+
     // Should have 2 definitions (Point and Line)
     assert_eq!(merged.order.len(), 2);
-    
-    // TODO: Verify that Line's references to Point are correctly updated
+
+    // Find Point and Line definitions
+    let mut point_id = None;
+    let mut line_id = None;
+
+    for &def_id in &merged.order {
+        let def = merged.context.definitions.get(def_id);
+        match def.ident.name.as_str() {
+            "Point" => point_id = Some(def_id),
+            "Line" => line_id = Some(def_id),
+            _ => {}
+        }
+    }
+
+    assert!(point_id.is_some(), "Point definition not found");
+    assert!(line_id.is_some(), "Line definition not found");
+
+    // Verify that Line's members reference the correct Point
+    let line_def = merged.context.definitions.get(line_id.unwrap());
+    if let DefKind::Struct(line_struct) = &line_def.kind {
+        assert_eq!(line_struct.members.len(), 2);
+
+        // Both start and end should reference Point
+        for member in &line_struct.members {
+            if let ic_hir::hir::TyKind::Adt(ref_id) = &member.ty.kind {
+                assert_eq!(
+                    *ref_id,
+                    point_id.unwrap(),
+                    "Member {} should reference Point",
+                    member.ident.name
+                );
+            } else {
+                panic!("Line member {} should be an ADT type", member.ident.name);
+            }
+        }
+    } else {
+        panic!("Line should be a struct");
+    }
 }

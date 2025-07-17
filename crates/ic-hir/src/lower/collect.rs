@@ -40,7 +40,7 @@ use ic_syntax::{Ident, Item, Span};
 use crate::Context;
 use crate::hir::{
     AliasTy, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
-    EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    EnumLit, EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
 use crate::scope::ScopeId;
 
@@ -122,12 +122,9 @@ impl<'a> NameCollector<'a> {
         span: Span,
         _annotations: &[ic_syntax::AnnotationAppl],
     ) -> DefId {
-        let id = self.alloc_definition(ident, kind, span);
-
         // Annotations will be resolved later in the resolve phase
         // For now, leave them empty
-
-        id
+        self.alloc_definition(ident, kind, span)
     }
 
     /// Allocates a placeholder definition with proper parent tracking.
@@ -519,15 +516,24 @@ impl<'a> NameCollector<'a> {
                 // Already registered in scope by alloc_definition
                 vec![id]
             }
-            Item::EnumValue(v) => vec![self.collect_simple_definition_with_annotations(
-                &v.ident,
-                DefKind::Enum(EnumTy {
-                    fields: Vec::new(),
-                    ty: placeholder_type(v.span),
-                }),
-                v.span,
-                &v.annotations,
-            )],
+            Item::EnumValue(v) => {
+                // Create enum fields immediately so resolve phase can add annotations
+                let fields = v.fields.iter().map(|f| EnumLit {
+                    ident: f.ident.clone(),
+                    value: 0, // Will be filled in evaluation phase
+                    annotations: Vec::new(), // Will be filled in resolve phase
+                }).collect();
+                
+                vec![self.collect_simple_definition_with_annotations(
+                    &v.ident,
+                    DefKind::Enum(EnumTy {
+                        fields,
+                        ty: placeholder_type(v.span),
+                    }),
+                    v.span,
+                    &v.annotations,
+                )]
+            }
             Item::ExceptionValue(v) => {
                 let id = self.alloc_definition_with_annotations(
                     &v.ident,

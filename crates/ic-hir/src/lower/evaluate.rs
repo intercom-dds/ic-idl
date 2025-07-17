@@ -41,7 +41,7 @@ use ic_syntax::{Expr, Item};
 
 use crate::Context;
 use crate::hir::{
-    BitFlag, DefId, DefKind, EnumLit, Numeric, PrimitiveTy, Span, StructTy, Ty, TyKind, TypeId,
+    BitFlag, DefId, DefKind, Numeric, PrimitiveTy, Span, StructTy, Ty, TyKind, TypeId,
 };
 use crate::scope::ScopeId;
 
@@ -738,8 +738,8 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates enum values.
     fn evaluate_enum(&mut self, id: DefId, def: &ic_syntax::EnumDef) {
-        // First, create the enum fields and evaluate their values
-        let mut fields = Vec::new();
+        // First evaluate all the values
+        let mut field_values = Vec::new();
         let mut last_value = -1isize;
 
         for field in &def.fields {
@@ -751,19 +751,18 @@ impl<'a> ExpressionEvaluator<'a> {
             };
 
             last_value = value;
-
-            fields.push(EnumLit {
-                ident: field.ident.clone(),
-                value,
-                annotations: Vec::new(), // Annotations will be resolved in resolve phase
-            });
+            field_values.push(value);
         }
 
-        // Then update the HIR
+        // Then update the existing enum fields with their evaluated values
         let hir_def = self.ctx.definitions.get_mut(id);
 
         if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
-            enum_ty.fields = fields;
+            for (i, value) in field_values.into_iter().enumerate() {
+                if i < enum_ty.fields.len() {
+                    enum_ty.fields[i].value = value;
+                }
+            }
         }
     }
 

@@ -165,7 +165,7 @@ impl<'a> TypeResolver<'a> {
                     resolved_annotations.push(ann);
                 } else {
                     self.errors.push(warn_span(
-                        format!("'{}' is not an annotation", name),
+                        format!("'{name}' is not an annotation"),
                         Label::new(ident.span).message("expected an @annotation definition"),
                     ));
                     // Don't include non-annotation types
@@ -173,7 +173,7 @@ impl<'a> TypeResolver<'a> {
             } else {
                 // Annotation not found - emit warning and exclude from HIR
                 self.errors.push(warn_span(
-                    format!("unknown annotation '{}'", name),
+                    format!("unknown annotation '{name}'"),
                     Label::new(ident.span).message("annotation not found"),
                 ));
                 // Don't include unresolved annotations
@@ -458,8 +458,12 @@ impl<'a> TypeResolver<'a> {
         let base_ty = self.resolve_type(&def.ty);
         let (_, ty) = Self::resolve_declarator(&def.decl[decl_idx], base_ty);
 
+        // Resolve annotations for the alias itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+        hir_def.annotations = annotations;
 
         if let DefKind::Alias(alias_ty) = &mut hir_def.kind {
             alias_ty.ty = ty;
@@ -478,6 +482,9 @@ impl<'a> TypeResolver<'a> {
         if let Some(interface_scope) = self.ctx.scopes.find_scope_for_def(id) {
             self.current_scope_id = interface_scope;
         }
+        
+        // Resolve annotations for the interface itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
         // Resolve nested type definitions first
         let mut nested_items = Vec::new();
@@ -524,6 +531,7 @@ impl<'a> TypeResolver<'a> {
 
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+        hir_def.annotations = annotations;
 
         if let DefKind::Interface(interface) = &mut hir_def.kind {
             interface.parents = parents;
@@ -698,9 +706,13 @@ impl<'a> TypeResolver<'a> {
 
         // Apply declarator to get the actual type
         let (_, ty) = Self::resolve_declarator(&ast.decl, base_ty);
+        
+        // Resolve annotations for the constant itself
+        let annotations = self.resolve_ast_annotations(&ast.annotations);
 
         // Update the constant's type
         let def = self.ctx.definitions.get_mut(id);
+        def.annotations = annotations;
         if let DefKind::Const(const_ty) = &mut def.kind {
             const_ty.ty = ty;
         }

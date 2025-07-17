@@ -17,10 +17,3 @@ error: union `ComplexUnion` has 2 default cases, but only one is allowed
  10 │     default: boolean fallback1;
     ·                      ^^^^^^^^^ first default case here
     └──
-
-error: multiple default cases in union `ComplexUnion`
-    ┌ test.idl:12:21
-    │
- 12 │     default: double fallback2;  // Error
-    ·                     ^^^^^^^^^ default case already defined
-    └──

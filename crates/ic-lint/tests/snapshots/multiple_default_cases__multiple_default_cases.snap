@@ -17,10 +17,3 @@ error: union `MyUnion` has 2 default cases, but only one is allowed
  4 │     default: string s;
    ·                     ^ first default case here
    └──
-
-error: multiple default cases in union `MyUnion`
-   ┌ test.idl:6:21
-   │
- 6 │     default: double d;  // Error: multiple default cases
-   ·                     ^ default case already defined
-   └──

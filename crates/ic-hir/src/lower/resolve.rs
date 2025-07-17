@@ -50,6 +50,7 @@ pub struct TypeResolver<'a> {
     ctx: &'a mut Context,
     name_map: &'a NameMap,
     errors: Vec<Diag>,
+    warnings: Vec<Diag>,
     /// Maps AST items to their `DefIds` for easy lookup.
     item_map: HashMap<ItemKey, DefId>,
     /// Current scope for resolving unqualified names.
@@ -72,6 +73,7 @@ impl<'a> TypeResolver<'a> {
             ctx,
             name_map,
             errors: Vec::new(),
+            warnings: Vec::new(),
             item_map: HashMap::new(),
             current_scope: Vec::new(),
             current_scope_id: root_scope,
@@ -179,7 +181,7 @@ impl<'a> TypeResolver<'a> {
                     };
                     resolved_annotations.push(ann);
                 } else {
-                    self.errors.push(warn_span(
+                    self.warnings.push(warn_span(
                         format!("'{name}' is not an annotation"),
                         Label::new(ident.span).message("expected an @annotation definition"),
                     ));
@@ -187,7 +189,7 @@ impl<'a> TypeResolver<'a> {
                 }
             } else {
                 // Annotation not found - emit warning and exclude from HIR
-                self.errors.push(warn_span(
+                self.warnings.push(warn_span(
                     format!("unknown annotation '{name}'"),
                     Label::new(ident.span).message("annotation not found"),
                 ));
@@ -959,12 +961,19 @@ fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
 }
 
 /// Resolves all type references in the HIR.
-pub fn resolve_types(ctx: &mut Context, name_map: &NameMap, items: &[Item]) -> Vec<Diag> {
+pub fn resolve_types(
+    ctx: &mut Context,
+    name_map: &NameMap,
+    items: &[Item],
+    errors: &mut Vec<Diag>,
+    warnings: &mut Vec<Diag>,
+) {
     let mut resolver = TypeResolver::new(ctx, name_map, items);
     resolver.resolve_all(items);
 
     // Note: Annotations are now resolved directly in each resolve_* method
     // so we don't need a separate pass for annotations
 
-    resolver.errors
+    errors.append(&mut resolver.errors);
+    warnings.append(&mut resolver.warnings);
 }

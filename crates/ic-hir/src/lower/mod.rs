@@ -91,6 +91,9 @@ pub struct LoweringResult {
 
     /// Errors collected during all phases.
     pub errors: Vec<Diag>,
+
+    /// Warnings collected during all phases.
+    pub warnings: Vec<Diag>,
 }
 
 /// Lowers AST items to HIR through multiple phases.
@@ -100,14 +103,20 @@ where
 {
     let ast_items: Vec<Item> = ast.into_iter().collect();
     let mut errors = Vec::new();
+    let mut warnings = Vec::new();
 
     // Phase 1: Collect all names and create placeholder definitions
     let (mut context, name_map, order, mut phase_errors) = collect::collect_definitions(&ast_items);
     errors.append(&mut phase_errors);
 
     // Phase 2: Resolve type references
-    let mut phase_errors = resolve::resolve_types(&mut context, &name_map, &ast_items);
-    errors.append(&mut phase_errors);
+    resolve::resolve_types(
+        &mut context,
+        &name_map,
+        &ast_items,
+        &mut errors,
+        &mut warnings,
+    );
 
     // Phase 3: Evaluate constant expressions
     let mut phase_errors = evaluate::evaluate_expressions(&mut context, &name_map, &ast_items);
@@ -125,5 +134,6 @@ where
         context,
         order,
         errors,
+        warnings,
     }
 }

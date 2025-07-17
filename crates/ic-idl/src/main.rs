@@ -30,6 +30,7 @@
 use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
+use ic_diagnostic::Diag;
 use ic_emit::File;
 use ic_idl::{
     AstItem, CompileDiagnostics, CompileError, CompiledAst, Compiler, CompilerOptions, LintConfig,
@@ -134,8 +135,8 @@ fn try_compile(options: CompilerOptions) {
 
     // Convert AST to HIR with built-in annotations
     let lint_config = compiler.options().warn.to_lint_config();
-    let hir = match ast_to_hir_with_builtins(&mut compiler, items, &lint_config) {
-        Ok(hir) => hir,
+    let (hir, warnings) = match ast_to_hir_with_builtins(&mut compiler, items, &lint_config) {
+        Ok((hir, warnings)) => (hir, warnings),
         Err(CompileError::Diagnostics(diag)) => {
             emit_diagnostics(&compiler, &diag);
             std::process::exit(1);
@@ -145,6 +146,16 @@ fn try_compile(options: CompilerOptions) {
             std::process::exit(1);
         }
     };
+
+    // Emit any warnings
+    if !warnings.is_empty() {
+        let diag = CompileDiagnostics {
+            errors: Vec::new(),
+            warnings,
+            expansion_info: std::collections::HashMap::new(),
+        };
+        emit_diagnostics(&compiler, &diag);
+    }
 
     // Dump HIR if requested
     if compiler.options().unstable.hir_dump {
@@ -325,7 +336,7 @@ fn ast_to_hir_with_builtins(
     compiler: &mut Compiler,
     ast: Vec<AstItem>,
     lint_config: &LintConfig,
-) -> Result<hir::ResolvedGraph, CompileError> {
+) -> Result<(hir::ResolvedGraph, Vec<Diag>), CompileError> {
     // First, add built-in annotations to the source map
     let builtin_file_id = compiler.source_map_mut().embed_with_name(
         "<builtin-annotations>",
@@ -351,15 +362,17 @@ fn ast_to_hir_with_builtins(
     // Lower to HIR with built-in annotations pre-injected
     let mut hir = hir::from_ast_with_builtins(builtin_parsed.tree, ast);
 
+    // Take warnings and errors from HIR
+    all_warnings.extend(std::mem::take(&mut hir.warnings));
+    let hir_errors = std::mem::take(&mut hir.errors);
+    all_errors.extend(hir_errors.into_iter().map(Into::into));
+
     // Lint the HIR if no errors so far
     if all_errors.is_empty() {
         let report = ic_lint::lint_hir_with_config(&hir, compiler.source_map(), lint_config);
         all_errors.extend(report.errors.into_iter().map(Into::into));
         all_warnings.extend(report.warnings);
     }
-
-    let hir_errors = std::mem::take(&mut hir.errors);
-    all_errors.extend(hir_errors.into_iter().map(Into::into));
 
     if !all_errors.is_empty() {
         return Err(CompileError::Diagnostics(ic_idl::CompileDiagnostics {
@@ -369,5 +382,5 @@ fn ast_to_hir_with_builtins(
         }));
     }
 
-    Ok(hir)
+    Ok((hir, all_warnings))
 }

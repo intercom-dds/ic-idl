@@ -164,9 +164,9 @@ fn test_unknown_annotation_warning() {
     let result = ic_hir::from_ast(ast.tree);
 
     // Should have a warning about unknown annotation
-    assert_eq!(result.errors.len(), 1);
-    let error_msg = format!("{}", result.errors[0]);
-    assert!(error_msg.contains("unknown"));
+    assert_eq!(result.warnings.len(), 1);
+    let warning_msg = format!("{}", result.warnings[0]);
+    assert!(warning_msg.contains("unknown"));
 
     // Struct should have no annotations (unknown ones are filtered out)
     let struct_def = result

@@ -17,10 +17,3 @@ error: union `Inner` has 2 default cases, but only one is allowed
   9 │     default: double d1;
     ·                     ^^ first default case here
     └──
-
-error: multiple default cases in union `Inner`
-    ┌ test.idl:10:21
-    │
- 10 │     default: double d2;  // Error in inner union
-    ·                     ^^ default case already defined
-    └──

@@ -53,6 +53,9 @@ pub struct ResolvedGraph {
 
     /// Errors accumulated during type resolution, type checking, etc.
     pub errors: Vec<ic_diagnostic::Diag>,
+
+    /// Warnings accumulated during type resolution, type checking, etc.
+    pub warnings: Vec<ic_diagnostic::Diag>,
 }
 
 impl ResolvedGraph {
@@ -73,12 +76,14 @@ where
 
     // Check for non-type name collisions, like struct members, etc.
     let mut errors = result.errors;
+    let warnings = result.warnings;
     hygiene::check(&result.context, &result.order, &mut errors);
 
     ResolvedGraph {
         context: result.context,
         order: result.order,
         errors,
+        warnings,
     }
 }
 
@@ -96,12 +101,14 @@ where
 
     // Check for non-type name collisions, like struct members, etc.
     let mut errors = result.errors;
+    let warnings = result.warnings;
     hygiene::check(&result.context, &result.order, &mut errors);
 
     ResolvedGraph {
         context: result.context,
         order: result.order,
         errors,
+        warnings,
     }
 }
 

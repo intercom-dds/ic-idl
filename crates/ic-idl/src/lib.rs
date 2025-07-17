@@ -239,6 +239,9 @@ where
     let hir_errors = std::mem::take(&mut hir.errors);
     all_errors.extend(hir_errors.into_iter().map(Into::into));
 
+    let hir_warnings = std::mem::take(&mut hir.warnings);
+    all_warnings.extend(hir_warnings);
+
     if !all_errors.is_empty() {
         return Err(CompileError::Diagnostics(CompileDiagnostics {
             errors: all_errors,

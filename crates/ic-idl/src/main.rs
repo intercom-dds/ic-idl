@@ -30,7 +30,7 @@
 use ic_cli::{Command, ParseError};
 use ic_cli::color::Colorize;
 use ic_emit::File;
-use ic_idl::{CompileError, Compiler, CompilerOptions, GeneratedFile, write_generated_files};
+use ic_idl::{CompileError, Compiler, CompilerOptions};
 
 macro_rules! error {
     ($($arg:tt)*) => {{
@@ -167,7 +167,7 @@ fn main() {
         for f in &generated {
             println!("{f}");
         }
-    } else if let Err(e) = write_generated_files(&generated) {
+    } else if let Err(e) = write_files(&generated) {
         error!("failed to write files: {}", e);
         std::process::exit(1);
     }
@@ -176,7 +176,7 @@ fn main() {
 fn generate_code(
     options: &CompilerOptions,
     ptree: &ic_idl::ptree::ParseResult,
-) -> Result<Vec<GeneratedFile>, String> {
+) -> Result<Vec<File>, String> {
     let backends: &[(_, fn(_) -> _)] = &[
         (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
         (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
@@ -217,4 +217,16 @@ fn generate_code(
         generated.extend(files);
     }
     Ok(generated)
+}
+
+fn write_files(files: &[File]) -> std::io::Result<()> {
+    for file in files {
+        if let File::Generated { path, source } = file {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(path, source)?;
+        }
+    }
+    Ok(())
 }

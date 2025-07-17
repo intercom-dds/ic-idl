@@ -27,8 +27,8 @@
 
 //! # ic-idl library
 //!
-//! This crate provides a library interface to the ic-idl compiler, allowing
-//! external users to parse IDL files and invoke code generation backends.
+//! This crate provides a library interface to the ic-idl compiler frontend,
+//! allowing external users to parse and analyze IDL files.
 //!
 //! ## Example
 //!
@@ -50,9 +50,8 @@
 //!             // User can print formatted warnings if desired
 //!         }
 //!         
-//!         // Now you can use the ptree with any backend
-//!         let files = ic_codegen_rust::codegen_rust(&ptree);
-//!         // User can print or handle files as needed
+//!         // Now you can use the ptree for further processing
+//!         // The ptree contains the fully analyzed IDL structure
 //!     }
 //!     Err(ic_idl::CompileError::Diagnostics(diagnostics)) => {
 //!         // Format errors and warnings using the pretty module
@@ -68,15 +67,16 @@
 //!     }
 //! }
 //!
-//! // Example 2: Parse to ptree and use a backend directly
+//! // Example 2: Parse a single file to ptree
 //! let mut compiler = Compiler::new(CompilerOptions::default());
 //! let ptree = compiler.parse_to_ptree(&PathBuf::from("example.idl")).unwrap();
-//! let files = ic_codegen_rust::codegen_rust(&ptree);
+//! // Use the ptree for analysis or code generation
 //!
 //! // Example 3: Access the compilation pipeline stages
 //! let ast = compiler.parse_to_ast(&PathBuf::from("example.idl")).unwrap();
 //! let hir = compiler.ast_to_hir(ast).unwrap();
-//! // You can now use ic_idl::hir, ic_idl::parse, etc. to work with these types
+//! let ptree = compiler.hir_to_ptree(&hir);
+//! 
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -96,7 +96,6 @@ pub use config::{
     Unstable, Warnings,
 };
 // Re-export useful types
-pub use ic_emit::File as GeneratedFile;
 pub use ic_lint::{Category as LintCategory, Level as LintLevel, LintConfig};
 pub use util::Error as DiagnosticError;
 use util::Error as InternalError;
@@ -140,6 +139,45 @@ impl From<std::io::Error> for CompileError {
     }
 }
 
+impl CompileDiagnostics {
+    /// Check if there are any errors.
+    #[must_use]
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
+    /// Check if there are any warnings.
+    #[must_use]
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
+    }
+
+    /// Get the total count of diagnostics.
+    #[must_use]
+    pub fn count(&self) -> usize {
+        self.errors.len() + self.warnings.len()
+    }
+
+    /// Format all diagnostics for display.
+    #[must_use]
+    pub fn format(&self, source_map: &SourceMap) -> String {
+        let mut result = String::new();
+        
+        if !self.warnings.is_empty() {
+            result.push_str(&pretty::fmt_warnings(&self.warnings, source_map));
+            if !self.errors.is_empty() {
+                result.push('\n');
+            }
+        }
+        
+        if !self.errors.is_empty() {
+            result.push_str(&pretty::fmt_errors(&self.errors, source_map, &self.expansion_info));
+        }
+        
+        result
+    }
+}
+
 // Re-export core modules for the compilation pipeline
 pub use ic_parse::ParseResult as AstResult;
 pub use {ic_hir as hir, ic_ptree as ptree, ic_vfs as vfs};
@@ -159,6 +197,11 @@ impl Compiler {
             options,
             source_map: SourceMap::default(),
         }
+    }
+
+    /// Create a new compiler with default options.
+    pub fn default() -> Self {
+        Self::new(CompilerOptions::default())
     }
 
     /// Get a reference to the options.
@@ -311,6 +354,25 @@ impl Compiler {
         Ok(self.hir_to_ptree(&hir))
     }
 
+
+    /// Add a file to be compiled.
+    pub fn add_file(&mut self, path: PathBuf) -> &mut Self {
+        self.options.files.push(path);
+        self
+    }
+
+    /// Add multiple files to be compiled.
+    pub fn add_files(&mut self, paths: impl IntoIterator<Item = PathBuf>) -> &mut Self {
+        self.options.files.extend(paths);
+        self
+    }
+
+    /// Clear all files.
+    pub fn clear_files(&mut self) -> &mut Self {
+        self.options.files.clear();
+        self
+    }
+
     /// Create preprocessor arguments from options.
     fn proc_args(&self) -> ProcArgs {
         let defines = self.options.define.iter().map(|v| {
@@ -326,19 +388,6 @@ impl Compiler {
     }
 }
 
-/// Write generated files to disk if they have changed.
-///
-/// # Errors
-///
-/// Returns an error if any file cannot be written.
-pub fn write_generated_files(files: &[GeneratedFile]) -> Result<(), CompileError> {
-    for file in files {
-        if let GeneratedFile::Generated { path, source } = file {
-            util::write_if_changed(path, source)?;
-        }
-    }
-    Ok(())
-}
 
 struct Parsed {
     result: Option<ic_ptree::ParseResult>,

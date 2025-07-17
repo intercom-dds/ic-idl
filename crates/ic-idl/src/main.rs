@@ -157,13 +157,13 @@ fn try_compile(options: CompilerOptions) {
         emit_diagnostics(&compiler, &diag);
     }
 
-    // Dump HIR if requested
+    // Apply HIR transformations
+    let hir = ic_hir_xform::value_annotation::transform(hir);
+
+    // Dump HIR if requested (after transformations)
     if compiler.options().unstable.hir_dump {
         ic_hir_tree::emit_tree(&hir);
     }
-
-    // Apply HIR transformations
-    let hir = ic_hir_xform::value_annotation::transform(hir);
 
     // Convert HIR to ptree for code generation
     let ptree = ic_idl::hir_to_ptree(&hir, compiler.source_map());

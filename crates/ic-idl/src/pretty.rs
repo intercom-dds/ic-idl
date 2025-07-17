@@ -62,11 +62,11 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
     }
 }
 
-fn parse_error_to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
-    parse_error_to_diag_with_expansion(error, is_warning, &HashMap::new())
+fn to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
+    to_diag_with_expansion(error, is_warning, &HashMap::new())
 }
 
-fn parse_error_to_diag_with_expansion(
+fn to_diag_with_expansion(
     error: &ic_parse::Error,
     is_warning: bool,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
@@ -168,13 +168,13 @@ fn parse_error_to_diag_with_expansion(
     }
 }
 
-fn emit_error_with_expansion(
+fn emit_with_expansion(
     error: &ic_parse::Error,
     vfs: &SourceMap,
     buf: &mut dyn fmt::Write,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
 ) -> fmt::Result {
-    let diag = parse_error_to_diag_with_expansion(error, false, expansion_info);
+    let diag = to_diag_with_expansion(error, false, expansion_info);
     let file = vfs.file_info(error.span.start.file_id);
     let relative = rel_path(&file.path).to_string_lossy().to_string();
     ic_diagnostic::emit_with_source(buf, &relative, &file.source, &diag)
@@ -182,7 +182,7 @@ fn emit_error_with_expansion(
 
 #[must_use]
 #[allow(clippy::implicit_hasher)]
-pub fn format_errors_with_expansion(
+pub fn fmt_errors(
     errors: &[Error],
     vfs: &SourceMap,
     expansion_info: &HashMap<Span, ic_preproc::ExpansionInfo>,
@@ -199,7 +199,7 @@ pub fn format_errors_with_expansion(
             Error::Preproc(e) => writeln!(&mut buf, "{prefix} {e}"),
             Error::Io(e) => writeln!(&mut buf, "{prefix} {e}"),
             Error::Custom(e) => writeln!(&mut buf, "{prefix} {e}"),
-            Error::Parse(e) => emit_error_with_expansion(e, vfs, &mut buf, expansion_info),
+            Error::Parse(e) => emit_with_expansion(e, vfs, &mut buf, expansion_info),
             Error::Diagnostic(diag) => ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag),
         };
     }
@@ -207,7 +207,7 @@ pub fn format_errors_with_expansion(
 }
 
 #[must_use]
-pub fn format_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
+pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     let mut buf = String::new();
     for diag in warnings {
         if !buf.is_empty() {
@@ -218,6 +218,6 @@ pub fn format_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     buf
 }
 
-pub fn parse_error_to_warning(error: &ic_parse::Error) -> Diag {
-    parse_error_to_diag(error, true)
+pub fn to_warning(error: &ic_parse::Error) -> Diag {
+    to_diag(error, true)
 }

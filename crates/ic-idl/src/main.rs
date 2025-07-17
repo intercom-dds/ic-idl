@@ -103,7 +103,7 @@ fn main() {
         Ok((ptree, diagnostics)) => {
             // Print warnings if any
             if !diagnostics.warnings.is_empty() {
-                let formatted_warnings = ic_idl::pretty::format_warnings(&diagnostics.warnings, compiler.source_map());
+                let formatted_warnings = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
                 eprintln!("{}", formatted_warnings);
                 
                 let warning_plural = if diagnostics.warnings.len() > 1 { "s" } else { "" };
@@ -118,12 +118,12 @@ fn main() {
         Err(CompileError::Diagnostics(diagnostics)) => {
             // Print warnings if any
             if !diagnostics.warnings.is_empty() {
-                let formatted_warnings = ic_idl::pretty::format_warnings(&diagnostics.warnings, compiler.source_map());
+                let formatted_warnings = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
                 eprintln!("{}", formatted_warnings);
             }
             
             // Print errors
-            let formatted_errors = ic_idl::pretty::format_errors_with_expansion(&diagnostics.errors, compiler.source_map(), &diagnostics.expansion_info);
+            let formatted_errors = ic_idl::pretty::fmt_errors(&diagnostics.errors, compiler.source_map(), &diagnostics.expansion_info);
             eprintln!("{}", formatted_errors);
             
             // Print error summary

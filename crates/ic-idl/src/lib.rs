@@ -46,7 +46,7 @@
 //!         // Check for warnings
 //!         if !diagnostics.warnings.is_empty() {
 //!             // Use the pretty module to format warnings
-//!             let formatted = ic_idl::pretty::format_warnings(&diagnostics.warnings, compiler.source_map());
+//!             let formatted = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
 //!             // User can print formatted warnings if desired
 //!         }
 //!         
@@ -56,7 +56,7 @@
 //!     }
 //!     Err(ic_idl::CompileError::Diagnostics(diagnostics)) => {
 //!         // Format errors and warnings using the pretty module
-//!         let formatted_errors = ic_idl::pretty::format_errors_with_expansion(
+//!         let formatted_errors = ic_idl::pretty::fmt_errors(
 //!             &diagnostics.errors,
 //!             compiler.source_map(),
 //!             &diagnostics.expansion_info
@@ -183,7 +183,7 @@ impl Compiler {
     ///
     /// Returns an error if the file cannot be read or parsed.
     pub fn parse_file(&mut self, path: &Path) -> Result<ptree::ParseResult, CompileError> {
-        let proc_args = self.create_proc_args();
+        let proc_args = self.proc_args();
         let parsed = try_parse(&self.options, proc_args, path, &mut self.source_map);
 
         if !parsed.errors.is_empty() {
@@ -237,7 +237,7 @@ impl Compiler {
         }
 
         // Use try_main to get the result with all diagnostics
-        let (ptrees, diagnostics) = try_main_with_diagnostics(&self.options, &mut self.source_map)?;
+        let (ptrees, diagnostics) = try_compile(&self.options, &mut self.source_map)?;
         let merged_ptree = ptree::merge_trees(&ptrees);
         
         Ok((merged_ptree, diagnostics))
@@ -249,8 +249,8 @@ impl Compiler {
     ///
     /// Returns an error if compilation fails.
     pub fn compile_to_ptrees(&mut self) -> Result<Vec<ptree::ParseResult>, CompileError> {
-        // Use try_main_with_diagnostics but discard the diagnostics
-        let (ptrees, _diagnostics) = try_main_with_diagnostics(&self.options, &mut self.source_map)?;
+        // Use try_compile but discard the diagnostics
+        let (ptrees, _diagnostics) = try_compile(&self.options, &mut self.source_map)?;
         Ok(ptrees)
     }
 
@@ -260,7 +260,7 @@ impl Compiler {
     ///
     /// Returns an error if the file cannot be parsed.
     pub fn parse_to_ast(&mut self, path: &Path) -> Result<AstResult, CompileError> {
-        let proc_args = self.create_proc_args();
+        let proc_args = self.proc_args();
         let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
             CompileError::Io(std::io::Error::other(format!("Failed to parse file: {e}")))
         })?;
@@ -312,7 +312,7 @@ impl Compiler {
     }
 
     /// Create preprocessor arguments from options.
-    fn create_proc_args(&self) -> ProcArgs {
+    fn proc_args(&self) -> ProcArgs {
         let defines = self.options.define.iter().map(|v| {
             v.split_once('=')
                 .map_or_else(|| (v.as_str(), None), |(k, v)| (k, Some(v)))
@@ -348,7 +348,7 @@ struct Parsed {
     expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
 }
 
-fn try_main_with_diagnostics(
+fn try_compile(
     options: &CompilerOptions,
     vfs: &mut SourceMap,
 ) -> Result<(Vec<ptree::ParseResult>, CompileDiagnostics), CompileError> {
@@ -435,7 +435,7 @@ fn try_parse(
 
     // Collect preprocessor warnings if enabled
     if options.warn.preprocessor_enabled() {
-        warnings.extend(ast.warnings.iter().map(pretty::parse_error_to_warning));
+        warnings.extend(ast.warnings.iter().map(pretty::to_warning));
     }
 
     let mut hir = None;

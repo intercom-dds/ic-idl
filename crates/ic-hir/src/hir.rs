@@ -462,20 +462,19 @@ pub struct AliasTy {
 /// An applied annotation
 #[derive(Clone, Debug)]
 pub struct Ann {
+    /// The annotation name
     pub ident: Ident,
-    pub ty: Option<Ty>,
+    /// Reference to the @annotation definition
+    pub def_id: DefId,
+    /// Arguments passed to the annotation
     pub args: Vec<AnnArg>,
 }
 
-// TODO: we should create a better representation that more cleanly maps from
-// an applied annotation to an annotation def.
 #[derive(Clone, Debug)]
 pub struct AnnArg {
-    // TODO: should never be none, we should insert the name
+    /// Argument name (None for positional arguments)
     pub ident: Option<Ident>,
-
-    // TODO: we should resolve these as well
-    // pub ty: Ty,
+    /// The argument value
     pub value: Numeric,
 }
 

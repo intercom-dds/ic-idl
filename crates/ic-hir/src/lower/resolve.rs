@@ -35,13 +35,13 @@
 
 use std::collections::HashMap;
 
-use ic_diagnostic::{Diag, Label, error_span};
+use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Item, Path};
 
-use super::collect::NameMap;
+use super::collect::{NameMap, extract_declarator_name};
 use crate::Context;
 use crate::hir::{
-    BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
+    Ann, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
     ProtoTy, Ty, TyKind, Variant,
 };
 
@@ -52,10 +52,14 @@ pub struct TypeResolver<'a> {
     errors: Vec<Diag>,
     /// Maps AST items to their `DefIds` for easy lookup.
     item_map: HashMap<ItemKey, DefId>,
+    /// Maps DefIds to their AST items for annotation resolution
+    def_to_ast: HashMap<DefId, usize>,
     /// Current scope for resolving unqualified names.
     current_scope: Vec<String>,
     /// Current scope ID in the scope tree.
     current_scope_id: crate::scope::ScopeId,
+    /// Stores AST items for annotation resolution
+    ast_items: &'a [Item],
 }
 
 /// Key for looking up items by their AST identity.
@@ -66,16 +70,113 @@ struct ItemKey {
 }
 
 impl<'a> TypeResolver<'a> {
-    fn new(ctx: &'a mut Context, name_map: &'a NameMap) -> Self {
+    fn new(ctx: &'a mut Context, name_map: &'a NameMap, ast_items: &'a [Item]) -> Self {
         let root_scope = ctx.scopes.root();
         Self {
             ctx,
             name_map,
             errors: Vec::new(),
             item_map: HashMap::new(),
+            def_to_ast: HashMap::new(),
             current_scope: Vec::new(),
             current_scope_id: root_scope,
+            ast_items,
         }
+    }
+
+    /// Resolves annotations from AST and returns only those that could be resolved.
+    /// Unresolved annotations are filtered out with warnings.
+    fn resolve_ast_annotations(&mut self, ast_annotations: &[ic_syntax::AnnotationAppl]) -> Vec<Ann> {
+        let mut resolved_annotations = Vec::new();
+        
+        for ast_ann in ast_annotations {
+            // Convert the path to a single identifier
+            let name = ast_ann
+                .ident
+                .segments
+                .iter()
+                .map(|s| s.name.as_str())
+                .collect::<Vec<_>>()
+                .join("::");
+
+            let ident = crate::hir::Ident {
+                name: name.clone(),
+                span: ic_syntax::util::path_span(&ast_ann.ident),
+            };
+            
+            // Try to resolve the annotation name
+            // First try current scope and parent scopes
+            let segments = vec![name.as_str()];
+            let mut def_id;
+            let mut scope_id = self.current_scope_id;
+            
+            // Walk up the scope chain looking for the annotation
+            loop {
+                def_id = self.ctx.scopes.resolve_path(scope_id, &segments);
+                if def_id.is_some() {
+                    break;
+                }
+                
+                // Move to parent scope
+                let scope_data = self.ctx.scopes.get_scope(scope_id);
+                if let Some(parent) = scope_data.parent {
+                    scope_id = parent;
+                } else {
+                    def_id = None;
+                    break; // Reached root scope
+                }
+            }
+            
+            // If not found, try in intercom::annotations
+            if def_id.is_none() {
+                let segments = vec!["intercom", "annotations", &name];
+                def_id = self.ctx.scopes.resolve_path(self.ctx.scopes.root(), &segments);
+            }
+            
+            // If still not found, try in intercom::annotations::ext
+            if def_id.is_none() {
+                let segments = vec!["intercom", "annotations", "ext", &name];
+                def_id = self.ctx.scopes.resolve_path(self.ctx.scopes.root(), &segments);
+            }
+            
+            if let Some(id) = def_id {
+                // Verify it's an annotation definition
+                let def = self.ctx.definitions.get(id);
+                if matches!(def.kind, DefKind::Annotation(_)) {
+                    // Convert arguments
+                    let args = ast_ann
+                        .args
+                        .iter()
+                        .map(|arg| crate::hir::AnnArg {
+                            ident: arg.ident.clone(),
+                            value: super::convert_annotation_value(&arg.value),
+                        })
+                        .collect();
+                    
+                    let ann = Ann {
+                        ident,
+                        def_id: id,
+                        args,
+                    };
+                    resolved_annotations.push(ann);
+                } else {
+                    self.errors.push(warn_span(
+                        format!("'{}' is not an annotation", name),
+                        Label::new(ident.span).message("expected an @annotation definition"),
+                    ));
+                    // Don't include non-annotation types
+                }
+            } else {
+                // Annotation not found - emit warning and exclude from HIR
+                self.errors.push(warn_span(
+                    format!("unknown annotation '{}'", name),
+                    Label::new(ident.span).message("annotation not found"),
+                ));
+                // Don't include unresolved annotations
+            }
+        }
+        
+        resolved_annotations
     }
 
     /// Resolves a path to a `DefId`.
@@ -216,10 +317,11 @@ impl<'a> TypeResolver<'a> {
 
             for decl in &field.names {
                 let (ident, ty) = Self::resolve_declarator(decl, base_ty.clone());
+                let annotations = self.resolve_ast_annotations(&field.annotations);
                 members.push(Member {
                     ident,
                     ty,
-                    annotations: super::convert_annotations(&field.annotations),
+                    annotations,
                 });
             }
         }
@@ -271,8 +373,10 @@ impl<'a> TypeResolver<'a> {
                     let base_ty = self.resolve_type(&m.ty);
                     let (ident, ty) = Self::resolve_declarator(&m.decl, base_ty);
 
+                    let annotations = self.resolve_ast_annotations(&field.annotations);
+                    
                     Variant {
-                        annotations: super::convert_annotations(&field.annotations),
+                        annotations,
                         ident,
                         ty,
                         labels: Vec::new(), // Will be filled in evaluation phase
@@ -467,6 +571,68 @@ impl<'a> TypeResolver<'a> {
         // First pass: build item map
         self.build_item_map(items);
 
+        // Build def_to_ast mapping
+        self.build_def_to_ast_mapping(items);
+    }
+    
+    /// Builds the def_to_ast mapping recursively to handle nested items.
+    fn build_def_to_ast_mapping(&mut self, items: &[Item]) {
+        for (idx, item) in items.iter().enumerate() {
+            // First handle the current item
+            let key = match item {
+                Item::StructValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "struct" }),
+                Item::UnionValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "union" }),
+                Item::EnumValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "enum" }),
+                Item::AliasValue(v) if !v.decl.is_empty() => {
+                    Some(ItemKey { name: extract_declarator_name(&v.decl[0]).name.clone(), kind: "alias" })
+                }
+                Item::ConstValue(v) => Some(ItemKey { name: extract_declarator_name(&v.decl).name.clone(), kind: "const" }),
+                Item::ExceptionValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "exception" }),
+                Item::InterfaceValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "interface" }),
+                Item::ModuleValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "module" }),
+                Item::AnnotationValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "annotation" }),
+                Item::BitmaskValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "bitmask" }),
+                Item::BitsetValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "bitset" }),
+                Item::ValuetypeValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "valuetype" }),
+                _ => None,
+            };
+            
+            if let Some(key) = key {
+                if let Some(&def_id) = self.item_map.get(&key) {
+                    self.def_to_ast.insert(def_id, idx);
+                }
+            }
+            
+            // Recursively handle nested items in modules
+            match item {
+                Item::ModuleValue(v) => {
+                    self.build_def_to_ast_mapping(&v.definitions);
+                }
+                Item::InterfaceValue(v) => {
+                    // Handle nested items in interfaces if needed
+                    let nested_items: Vec<Item> = v.members.iter()
+                        .filter_map(|m| match m {
+                            ic_syntax::InterfaceMember::Item(item) => Some(item.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    if !nested_items.is_empty() {
+                        self.build_def_to_ast_mapping(&nested_items);
+                    }
+                }
+                Item::ValuetypeValue(v) => {
+                    self.build_def_to_ast_mapping(&v.definitions);
+                }
+                _ => {}
+            }
+        }
+        
+        // Continue with resolving items
+        self.resolve_all_items(items);
+    }
+    
+    /// Continues resolving all items after building mappings.
+    fn resolve_all_items(&mut self, items: &[Item]) {
         // Second pass: resolve each item
         for item in items {
             match item {
@@ -649,9 +815,21 @@ impl<'a> TypeResolver<'a> {
             span: def.span,
         };
 
+        // Resolve annotations for each enum field first
+        let field_annotations: Vec<Vec<Ann>> = def.fields.iter()
+            .map(|field| self.resolve_ast_annotations(&field.annotations))
+            .collect();
+
         let hir_def = self.ctx.definitions.get_mut(id);
         if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
             enum_ty.ty = underlying_ty;
+            
+            // Apply resolved annotations to each enum field
+            for (i, annotations) in field_annotations.into_iter().enumerate() {
+                if i < enum_ty.fields.len() {
+                    enum_ty.fields[i].annotations = annotations;
+                }
+            }
         }
     }
 
@@ -664,9 +842,21 @@ impl<'a> TypeResolver<'a> {
             span: def.span,
         };
 
+        // Resolve annotations for each bit flag first
+        let flag_annotations: Vec<Vec<Ann>> = def.bits.iter()
+            .map(|bit| self.resolve_ast_annotations(&bit.annotations))
+            .collect();
+
         let hir_def = self.ctx.definitions.get_mut(id);
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
             bitmask_ty.ty = underlying_ty;
+            
+            // Apply resolved annotations to each bit flag
+            for (i, annotations) in flag_annotations.into_iter().enumerate() {
+                if i < bitmask_ty.flags.len() {
+                    bitmask_ty.flags[i].annotations = annotations;
+                }
+            }
         }
     }
 
@@ -697,7 +887,7 @@ impl<'a> TypeResolver<'a> {
                 ident: field.ident.clone(),
                 size: 0, // Will be filled in evaluation phase
                 ty,
-                annotations: super::convert_annotations(&field.annotations),
+                annotations: self.resolve_ast_annotations(&field.annotations),
             });
         }
 
@@ -736,6 +926,57 @@ impl<'a> TypeResolver<'a> {
 
         // Pop module name from current scope
         self.current_scope.pop();
+    }
+    
+    /// Resolves annotations on all definitions.
+    fn resolve_all_annotations(&mut self) {
+        // Collect all def IDs to avoid borrowing issues
+        let def_ids: Vec<DefId> = self.ctx.definitions.iter().map(|(id, _)| id).collect();
+        
+        for def_id in def_ids {
+            // Find the corresponding AST item
+            if let Some(&ast_idx) = self.def_to_ast.get(&def_id) {
+                if let Some(ast_item) = self.ast_items.get(ast_idx) {
+                    // Get AST annotations
+                    let ast_annotations = match ast_item {
+                        Item::StructValue(v) => &v.annotations,
+                        Item::UnionValue(v) => &v.annotations,
+                        Item::EnumValue(v) => &v.annotations,
+                        Item::ExceptionValue(v) => &v.annotations,
+                        Item::InterfaceValue(v) => &v.annotations,
+                        Item::ModuleValue(v) => &v.annotations,
+                        Item::AnnotationValue(v) => &v.annotations,
+                        Item::AliasValue(v) => &v.annotations,
+                        Item::ConstValue(v) => &v.annotations,
+                        Item::BitmaskValue(v) => &v.annotations,
+                        Item::BitsetValue(v) => &v.annotations,
+                        Item::ValuetypeValue(v) => &v.annotations,
+                        _ => continue,
+                    };
+                    
+                    
+                    // Find the scope where this definition was created
+                    let saved_scope = self.current_scope_id;
+                    // First try to find the scope created by this def (for modules, interfaces, etc)
+                    let def_scope = self.ctx.scopes.find_scope_for_def(def_id)
+                        // Otherwise find the scope containing this def (for structs, enums, etc)
+                        .or_else(|| self.ctx.scopes.find_scope_containing_def(def_id));
+                    
+                    if let Some(scope) = def_scope {
+                        self.current_scope_id = scope;
+                    }
+                    
+                    // Resolve annotations and update the definition
+                    let resolved_annotations = self.resolve_ast_annotations(ast_annotations);
+                    self.ctx.definitions.get_mut(def_id).annotations = resolved_annotations;
+                    
+                    // Restore the original scope
+                    self.current_scope_id = saved_scope;
+                }
+            }
+            
+            // Member/variant annotations are already resolved during their respective resolve methods
+        }
     }
 }
 
@@ -780,7 +1021,11 @@ fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
 
 /// Resolves all type references in the HIR.
 pub fn resolve_types(ctx: &mut Context, name_map: &NameMap, items: &[Item]) -> Vec<Diag> {
-    let mut resolver = TypeResolver::new(ctx, name_map);
+    let mut resolver = TypeResolver::new(ctx, name_map, items);
     resolver.resolve_all(items);
+    
+    // Final pass: resolve annotations on all definitions
+    resolver.resolve_all_annotations();
+    
     resolver.errors
 }

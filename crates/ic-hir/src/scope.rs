@@ -250,6 +250,16 @@ impl ScopeTree {
         }
         None
     }
+    
+    /// Finds the scope that contains a definition.
+    pub fn find_scope_containing_def(&self, def_id: DefId) -> Option<ScopeId> {
+        for (idx, scope) in self.scopes.iter().enumerate() {
+            if scope.definitions.values().any(|&id| id == def_id) {
+                return Some(ScopeId(idx));
+            }
+        }
+        None
+    }
 
     /// Gets all visible enums from a scope (including parent scopes).
     #[must_use]

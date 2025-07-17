@@ -755,7 +755,7 @@ impl<'a> ExpressionEvaluator<'a> {
             fields.push(EnumLit {
                 ident: field.ident.clone(),
                 value,
-                annotations: super::convert_annotations(&field.annotations),
+                annotations: Vec::new(), // Annotations will be resolved in resolve phase
             });
         }
 
@@ -787,7 +787,7 @@ impl<'a> ExpressionEvaluator<'a> {
             flags.push(BitFlag {
                 ident: bit.ident.clone(),
                 value,
-                annotations: super::convert_annotations(&bit.annotations),
+                annotations: Vec::new(), // Annotations will be resolved in resolve phase
             });
         }
 

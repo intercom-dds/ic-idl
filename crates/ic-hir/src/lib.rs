@@ -29,6 +29,7 @@ use std::fmt::Debug;
 
 pub use crate::ctx::Context;
 
+mod builtin;
 mod ctx;
 mod hygiene;
 mod lower;

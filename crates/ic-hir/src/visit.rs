@@ -378,9 +378,7 @@ pub fn walk_annotation<'a, V>(visitor: &mut V, ann: &'a Ann)
 where
     V: Visitor<'a> + ?Sized,
 {
-    if let Some(ty) = &ann.ty {
-        visitor.visit_ty(ty);
-    }
+    // Ann no longer has a ty field
     for arg in &ann.args {
         // Visit the argument's value directly
         visitor.visit_numeric(&arg.value);

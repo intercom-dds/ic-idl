@@ -120,14 +120,12 @@ impl<'a> NameCollector<'a> {
         ident: &Ident,
         kind: DefKind,
         span: Span,
-        annotations: &[ic_syntax::AnnotationAppl],
+        _annotations: &[ic_syntax::AnnotationAppl],
     ) -> DefId {
         let id = self.alloc_definition(ident, kind, span);
 
-        // Convert and set annotations
-        let hir_annotations = super::convert_annotations(annotations);
-        let def = self.ctx.definitions.get_mut(id);
-        def.annotations = hir_annotations;
+        // Annotations will be resolved later in the resolve phase
+        // For now, leave them empty
 
         id
     }
@@ -613,7 +611,7 @@ fn placeholder_type(span: Span) -> Ty {
 }
 
 /// Extracts the identifier from a declarator.
-fn extract_declarator_name(decl: &ic_syntax::Declarator) -> Ident {
+pub(super) fn extract_declarator_name(decl: &ic_syntax::Declarator) -> Ident {
     match decl {
         ic_syntax::Declarator::Simple(ident) => ident.clone(),
         ic_syntax::Declarator::Array(arr) => arr.ident.clone(),

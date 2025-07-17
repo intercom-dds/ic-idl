@@ -58,40 +58,6 @@ mod resolve;
 mod typecheck;
 mod validate;
 
-/// Converts AST annotations to HIR annotations
-pub(crate) fn convert_annotations(ast_anns: &[ic_syntax::AnnotationAppl]) -> Vec<crate::hir::Ann> {
-    ast_anns
-        .iter()
-        .map(|ann| {
-            // Convert the path to a single identifier
-            // For now, we'll use the full path as the identifier name
-            let name = ann
-                .ident
-                .segments
-                .iter()
-                .map(|s| s.name.as_str())
-                .collect::<Vec<_>>()
-                .join("::");
-
-            crate::hir::Ann {
-                ident: crate::hir::Ident {
-                    name,
-                    span: ic_syntax::util::path_span(&ann.ident),
-                },
-                ty: None, // Annotations don't have types in the AST
-                args: ann
-                    .args
-                    .iter()
-                    .map(|arg| crate::hir::AnnArg {
-                        ident: arg.ident.clone(),
-                        value: convert_annotation_value(&arg.value),
-                    })
-                    .collect(),
-            }
-        })
-        .collect()
-}
-
 /// Converts an annotation argument value (expression) to a Numeric value
 fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {
     // For now, only handle literal expressions

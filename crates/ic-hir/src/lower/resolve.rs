@@ -41,7 +41,7 @@ use ic_syntax::{Item, Path};
 use super::collect::NameMap;
 use crate::Context;
 use crate::hir::{
-    Ann, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
+    Ann, BitFlag, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
     ProtoTy, Ty, TyKind, Variant,
 };
 
@@ -851,6 +851,17 @@ impl<'a> TypeResolver<'a> {
         let hir_def = self.ctx.definitions.get_mut(id);
         if let DefKind::Bitmask(bitmask_ty) = &mut hir_def.kind {
             bitmask_ty.ty = underlying_ty;
+
+            // Create flags if they don't exist yet
+            if bitmask_ty.flags.is_empty() {
+                for bit in &def.bits {
+                    bitmask_ty.flags.push(BitFlag {
+                        ident: bit.ident.clone(),
+                        value: 0, // Will be filled in evaluate phase
+                        annotations: Vec::new(),
+                    });
+                }
+            }
 
             // Apply resolved annotations to each bit flag
             for (i, annotations) in flag_annotations.into_iter().enumerate() {

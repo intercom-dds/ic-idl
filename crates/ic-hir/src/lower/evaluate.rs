@@ -41,7 +41,7 @@ use ic_syntax::{Expr, Item};
 
 use crate::Context;
 use crate::hir::{
-    BitFlag, DefId, DefKind, Numeric, PrimitiveTy, Span, StructTy, Ty, TyKind, TypeId,
+    Ann, BitFlag, DefId, DefKind, Numeric, PrimitiveTy, Span, StructTy, Ty, TyKind, TypeId,
 };
 use crate::scope::ScopeId;
 
@@ -768,11 +768,21 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates bitmask values.
     fn evaluate_bitmask(&mut self, id: DefId, def: &ic_syntax::BitmaskDef) {
-        // First, create the bitmask flags and evaluate their values
+        // Get existing annotations if they were already resolved
+        let existing_annotations: Vec<Vec<Ann>> = {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Bitmask(bitmask_ty) = &hir_def.kind {
+                bitmask_ty.flags.iter().map(|f| f.annotations.clone()).collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Create the bitmask flags and evaluate their values
         let mut flags = Vec::new();
         let mut last_value = 0usize;
 
-        for bit in &def.bits {
+        for (i, bit) in def.bits.iter().enumerate() {
             let value = if let Some(expr) = &bit.value {
                 self.eval_bound(expr)
             } else if last_value == 0 {
@@ -783,10 +793,17 @@ impl<'a> ExpressionEvaluator<'a> {
 
             last_value = value;
 
+            // Preserve existing annotations if available
+            let annotations = if i < existing_annotations.len() {
+                existing_annotations[i].clone()
+            } else {
+                Vec::new()
+            };
+
             flags.push(BitFlag {
                 ident: bit.ident.clone(),
                 value,
-                annotations: Vec::new(), // Annotations will be resolved in resolve phase
+                annotations,
             });
         }
 

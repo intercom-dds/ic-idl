@@ -159,6 +159,7 @@ fn try_compile(options: CompilerOptions) {
 
     // Apply HIR transformations
     let hir = ic_hir_xform::value_annotation::transform(hir);
+    let hir = ic_hir_xform::position_annotation::transform(hir);
 
     // Dump HIR if requested (after transformations)
     if compiler.options().unstable.hir_dump {

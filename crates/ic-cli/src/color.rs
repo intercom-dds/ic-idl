@@ -298,7 +298,47 @@ fn fmt_ansi<T: Display>(code: &str, input: T) -> String {
 /// Checks if stdout and stderr are both capable of handling ANSI escape codes.
 pub fn has_colors() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
-    *ENABLED.get_or_init(is_terminal)
+    *ENABLED.get_or_init(|| is_terminal_impl(std::io::stdout()) && is_terminal_impl(std::io::stderr()))
+}
+
+/// Check if a specific stream supports colors.
+pub fn supports_color<W: std::io::IsTerminal>(stream: W) -> bool {
+    is_terminal_impl(stream)
+}
+
+/// Determine the appropriate color mode for a given stream.
+/// 
+/// This respects common environment variables:
+/// - `NO_COLOR`: If set (to any value), colors are disabled
+/// - `FORCE_COLOR`: If set to a non-zero value, colors are forced on
+pub fn detect_color_mode<W: std::io::IsTerminal>(stream: W) -> ColorMode {
+    // Check NO_COLOR first (it takes precedence)
+    if std::env::var("NO_COLOR").is_ok() {
+        return ColorMode::Never;
+    }
+    
+    // Check FORCE_COLOR
+    if let Ok(force) = std::env::var("FORCE_COLOR") {
+        if force != "0" && !force.is_empty() {
+            return ColorMode::Always;
+        }
+    }
+    
+    // Otherwise, auto-detect
+    if supports_color(stream) {
+        ColorMode::Auto
+    } else {
+        ColorMode::Never
+    }
+}
+
+/// Check if colors should be used based on the given mode and stream.
+pub fn should_colorize<W: std::io::IsTerminal>(mode: ColorMode, stream: W) -> bool {
+    match mode {
+        ColorMode::Always => true,
+        ColorMode::Never => false,
+        ColorMode::Auto => supports_color(stream),
+    }
 }
 
 #[cfg(windows)]
@@ -327,9 +367,7 @@ fn virtual_term() -> bool {
     enable_virt(STD_OUTPUT_HANDLE) && enable_virt(STD_ERROR_HANDLE)
 }
 
-fn is_terminal() -> bool {
-    use std::io::{self, IsTerminal};
-
+fn is_terminal_impl<W: std::io::IsTerminal>(stream: W) -> bool {
     let is_dumb = if let Ok(v) = std::env::var("TERM") {
         v == "dumb"
     } else {
@@ -341,5 +379,34 @@ fn is_terminal() -> bool {
         return false;
     }
 
-    !is_dumb && io::stdout().is_terminal() && io::stderr().is_terminal()
+    !is_dumb && stream.is_terminal()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_color_modes() {
+        // Test that we can create colored strings with different modes
+        let text = "Hello";
+        
+        // Never mode should not add escape codes
+        let never = text.colorize(ColorMode::Never).red().bold().to_string();
+        assert_eq!(never, "Hello");
+        
+        // Always mode should add escape codes
+        let always = text.colorize(ColorMode::Always).red().bold().to_string();
+        assert!(always.contains("\x1b["));
+        assert!(always.contains("31")); // red
+        assert!(always.contains("1"));  // bold
+    }
+
+    #[test]
+    fn test_should_colorize() {
+        // Test explicit modes
+        assert!(should_colorize(ColorMode::Always, std::io::stdout()));
+        assert!(!should_colorize(ColorMode::Never, std::io::stdout()));
+        // Auto mode result depends on terminal detection
+    }
 }

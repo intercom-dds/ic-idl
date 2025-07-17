@@ -29,8 +29,6 @@ use std::collections::HashSet;
 use std::io::{self, Result};
 use std::path::{Path, PathBuf};
 
-
-
 #[derive(Debug)]
 #[allow(unused)]
 pub enum Error {
@@ -56,6 +54,18 @@ impl From<ic_diagnostic::Diag> for Error {
 impl From<ic_parse::Error> for Error {
     fn from(value: ic_parse::Error) -> Self {
         Self::Parse(Box::new(value))
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Diagnostic(e) => e.fmt(f),
+            Error::Parse(e) => e.fmt(f),
+            Error::Preproc(e) => e.fmt(f),
+            Error::Io(e) => e.fmt(f),
+            Error::Custom(e) => e.fmt(f),
+        }
     }
 }
 
@@ -115,8 +125,7 @@ where
     Ok(())
 }
 
-#[allow(dead_code)]
-fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
+pub fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
 where
     P: AsRef<Path>,
 {

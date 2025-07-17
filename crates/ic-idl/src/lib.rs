@@ -49,7 +49,7 @@
 //!             let formatted = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
 //!             // User can print formatted warnings if desired
 //!         }
-//!         
+//!
 //!         // Now you can use the ptree for further processing
 //!         // The ptree contains the fully analyzed IDL structure
 //!     }
@@ -76,7 +76,7 @@
 //! let ast = compiler.parse_to_ast(&PathBuf::from("example.idl")).unwrap();
 //! let hir = compiler.ast_to_hir(ast).unwrap();
 //! let ptree = compiler.hir_to_ptree(&hir);
-//! 
+//!
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -88,14 +88,12 @@ use ic_vfs::SourceMap;
 // Import modules
 pub(crate) mod config;
 pub mod pretty;
-pub(crate) mod util;
+pub mod util;
 
-// Re-export configuration types
 pub use config::{
     CodegenOptions, CppOptions, IdlOptions, Options as CompilerOptions, PythonOptions, RustOptions,
     Unstable, Warnings,
 };
-// Re-export useful types
 pub use ic_lint::{Category as LintCategory, Level as LintLevel, LintConfig};
 pub use util::Error as DiagnosticError;
 use util::Error as InternalError;
@@ -105,6 +103,7 @@ use util::Error as InternalError;
 pub enum CompileError {
     /// I/O error (e.g., file not found).
     Io(std::io::Error),
+
     /// Parse or semantic analysis error with diagnostics.
     Diagnostics(CompileDiagnostics),
 }
@@ -114,8 +113,10 @@ pub enum CompileError {
 pub struct CompileDiagnostics {
     /// Raw errors
     pub errors: Vec<DiagnosticError>,
+
     /// Warning diagnostics
     pub warnings: Vec<Diag>,
+
     /// Expansion info for macro expansion contexts
     pub expansion_info: std::collections::HashMap<ic_vfs::Span, ExpansionInfo>,
 }
@@ -125,7 +126,12 @@ impl std::fmt::Display for CompileError {
         match self {
             CompileError::Io(e) => write!(f, "I/O error: {e}"),
             CompileError::Diagnostics(diag) => {
-                write!(f, "{} errors, {} warnings", diag.errors.len(), diag.warnings.len())
+                write!(
+                    f,
+                    "{} errors, {} warnings",
+                    diag.errors.len(),
+                    diag.warnings.len()
+                )
             }
         }
     }
@@ -162,18 +168,22 @@ impl CompileDiagnostics {
     #[must_use]
     pub fn format(&self, source_map: &SourceMap) -> String {
         let mut result = String::new();
-        
+
         if !self.warnings.is_empty() {
             result.push_str(&pretty::fmt_warnings(&self.warnings, source_map));
             if !self.errors.is_empty() {
                 result.push('\n');
             }
         }
-        
+
         if !self.errors.is_empty() {
-            result.push_str(&pretty::fmt_errors(&self.errors, source_map, &self.expansion_info));
+            result.push_str(&pretty::fmt_errors(
+                &self.errors,
+                source_map,
+                &self.expansion_info,
+            ));
         }
-        
+
         result
     }
 }
@@ -181,7 +191,6 @@ impl CompileDiagnostics {
 // Re-export core modules for the compilation pipeline
 pub use ic_parse::ParseResult as AstResult;
 pub use {ic_hir as hir, ic_ptree as ptree, ic_vfs as vfs};
-
 
 /// Main compiler interface.
 #[must_use]
@@ -197,11 +206,6 @@ impl Compiler {
             options,
             source_map: SourceMap::default(),
         }
-    }
-
-    /// Create a new compiler with default options.
-    pub fn default() -> Self {
-        Self::new(CompilerOptions::default())
     }
 
     /// Get a reference to the options.
@@ -237,13 +241,13 @@ impl Compiler {
             }));
         }
 
-        parsed
-            .result
-            .ok_or_else(|| CompileError::Diagnostics(CompileDiagnostics {
+        parsed.result.ok_or_else(|| {
+            CompileError::Diagnostics(CompileDiagnostics {
                 errors: vec![InternalError::Custom("Failed to parse file".to_string())],
                 warnings: Vec::new(),
                 expansion_info: std::collections::HashMap::new(),
-            }))
+            })
+        })
     }
 
     /// Parse multiple IDL files.
@@ -282,7 +286,7 @@ impl Compiler {
         // Use try_main to get the result with all diagnostics
         let (ptrees, diagnostics) = try_compile(&self.options, &mut self.source_map)?;
         let merged_ptree = ptree::merge_trees(&ptrees);
-        
+
         Ok((merged_ptree, diagnostics))
     }
 
@@ -354,7 +358,6 @@ impl Compiler {
         Ok(self.hir_to_ptree(&hir))
     }
 
-
     /// Add a file to be compiled.
     pub fn add_file(&mut self, path: PathBuf) -> &mut Self {
         self.options.files.push(path);
@@ -387,7 +390,6 @@ impl Compiler {
             .skip_comments(self.options.ignore_comments)
     }
 }
-
 
 struct Parsed {
     result: Option<ic_ptree::ParseResult>,
@@ -445,11 +447,14 @@ fn try_compile(
     }
 
     // Return success with any warnings as diagnostics
-    Ok((trees, CompileDiagnostics {
-        errors: Vec::new(),
-        warnings: all_warnings,
-        expansion_info: all_expansion_info,
-    }))
+    Ok((
+        trees,
+        CompileDiagnostics {
+            errors: Vec::new(),
+            warnings: all_warnings,
+            expansion_info: all_expansion_info,
+        },
+    ))
 }
 
 fn try_parse(

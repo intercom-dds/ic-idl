@@ -29,20 +29,17 @@ use std::fmt::Display;
 use std::sync::OnceLock;
 
 /// Controls when colors should be used
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum ColorMode {
     /// Always use colors
     Always,
+
     /// Never use colors
     Never,
-    /// Automatically detect based on terminal capabilities
-    Auto,
-}
 
-impl Default for ColorMode {
-    fn default() -> Self {
-        ColorMode::Auto
-    }
+    /// Automatically detect based on terminal capabilities
+    #[default]
+    Auto,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -86,7 +83,7 @@ impl<T: Display> Display for Colored<T> {
         }
 
         let mut codes = Vec::new();
-        
+
         if let Some(color) = self.style.fg {
             codes.push(match color {
                 Color::Black => "30",
@@ -101,7 +98,7 @@ impl<T: Display> Display for Colored<T> {
                 Color::Clear => "0",
             });
         }
-        
+
         if let Some(color) = self.style.bg {
             codes.push(match color {
                 Color::Black => "40",
@@ -116,7 +113,7 @@ impl<T: Display> Display for Colored<T> {
                 Color::Clear => "49",
             });
         }
-        
+
         if self.style.bold {
             codes.push("1");
         }
@@ -143,53 +140,65 @@ pub trait ColorizeExt: Display + Sized {
 impl<T: Display> ColorizeExt for T {}
 
 impl<T> Colored<T> {
+    #[must_use]
     pub fn fg(mut self, color: Color) -> Self {
         self.style.fg = Some(color);
         self
     }
 
+    #[must_use]
     pub fn bg(mut self, color: Color) -> Self {
         self.style.bg = Some(color);
         self
     }
 
+    #[must_use]
     pub fn bold(mut self) -> Self {
         self.style.bold = true;
         self
     }
 
+    #[must_use]
     pub fn red(self) -> Self {
         self.fg(Color::Red)
     }
 
+    #[must_use]
     pub fn green(self) -> Self {
         self.fg(Color::Green)
     }
 
+    #[must_use]
     pub fn yellow(self) -> Self {
         self.fg(Color::Yellow)
     }
 
+    #[must_use]
     pub fn blue(self) -> Self {
         self.fg(Color::Blue)
     }
 
+    #[must_use]
     pub fn purple(self) -> Self {
         self.fg(Color::Purple)
     }
 
+    #[must_use]
     pub fn cyan(self) -> Self {
         self.fg(Color::Cyan)
     }
 
+    #[must_use]
     pub fn white(self) -> Self {
         self.fg(Color::White)
     }
 
+    #[must_use]
     pub fn gray(self) -> Self {
         self.fg(Color::Gray)
     }
 
+    #[must_use]
     pub fn black(self) -> Self {
         self.fg(Color::Black)
     }
@@ -298,7 +307,8 @@ fn fmt_ansi<T: Display>(code: &str, input: T) -> String {
 /// Checks if stdout and stderr are both capable of handling ANSI escape codes.
 pub fn has_colors() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
-    *ENABLED.get_or_init(|| is_terminal_impl(std::io::stdout()) && is_terminal_impl(std::io::stderr()))
+    *ENABLED
+        .get_or_init(|| is_terminal_impl(std::io::stdout()) && is_terminal_impl(std::io::stderr()))
 }
 
 /// Check if a specific stream supports colors.
@@ -307,7 +317,7 @@ pub fn supports_color<W: std::io::IsTerminal>(stream: W) -> bool {
 }
 
 /// Determine the appropriate color mode for a given stream.
-/// 
+///
 /// This respects common environment variables:
 /// - `NO_COLOR`: If set (to any value), colors are disabled
 /// - `FORCE_COLOR`: If set to a non-zero value, colors are forced on
@@ -316,14 +326,14 @@ pub fn detect_color_mode<W: std::io::IsTerminal>(stream: W) -> ColorMode {
     if std::env::var("NO_COLOR").is_ok() {
         return ColorMode::Never;
     }
-    
+
     // Check FORCE_COLOR
     if let Ok(force) = std::env::var("FORCE_COLOR") {
         if force != "0" && !force.is_empty() {
             return ColorMode::Always;
         }
     }
-    
+
     // Otherwise, auto-detect
     if supports_color(stream) {
         ColorMode::Auto
@@ -367,6 +377,7 @@ fn virtual_term() -> bool {
     enable_virt(STD_OUTPUT_HANDLE) && enable_virt(STD_ERROR_HANDLE)
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn is_terminal_impl<W: std::io::IsTerminal>(stream: W) -> bool {
     let is_dumb = if let Ok(v) = std::env::var("TERM") {
         v == "dumb"
@@ -390,16 +401,16 @@ mod tests {
     fn test_color_modes() {
         // Test that we can create colored strings with different modes
         let text = "Hello";
-        
+
         // Never mode should not add escape codes
         let never = text.colorize(ColorMode::Never).red().bold().to_string();
         assert_eq!(never, "Hello");
-        
+
         // Always mode should add escape codes
         let always = text.colorize(ColorMode::Always).red().bold().to_string();
         assert!(always.contains("\x1b["));
         assert!(always.contains("31")); // red
-        assert!(always.contains("1"));  // bold
+        assert!(always.contains('1')); // bold
     }
 
     #[test]

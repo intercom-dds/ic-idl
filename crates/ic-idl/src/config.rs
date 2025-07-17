@@ -35,7 +35,6 @@ use ic_cli::color::Colorize;
 use ic_cli::convert::{self, ConvertError};
 use ic_lint::{Category, Level, LintConfig};
 
-
 #[derive(Command, Debug, Default)]
 pub struct Warnings {
     /// Enable all warnings
@@ -68,7 +67,7 @@ pub struct Warnings {
     // These fields don't have #[option] so they're not parsed by the derive macro
     specific_lints: HashMap<String, bool>,
     error_lints: HashMap<String, bool>,
-    
+
     /// Unknown warnings that were encountered during parsing
     pub unknown_warnings: Vec<String>,
 }
@@ -362,7 +361,9 @@ impl convert::Convert for Warnings {
                 if known_lints.contains(&normalized.as_str()) {
                     warnings.error_lints.insert(normalized, true);
                 } else {
-                    warnings.unknown_warnings.push(format!("-Werror={lint_name}"));
+                    warnings
+                        .unknown_warnings
+                        .push(format!("-Werror={lint_name}"));
                 }
                 continue;
             }

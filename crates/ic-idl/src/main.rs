@@ -27,10 +27,14 @@
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
+use std::{backtrace, panic};
+
 use ic_cli::{Command, ParseError};
-use ic_cli::color::Colorize;
 use ic_emit::File;
-use ic_idl::{CompileError, Compiler, CompilerOptions};
+use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, util};
+
+mod info;
+mod unstable;
 
 macro_rules! error {
     ($($arg:tt)*) => {{
@@ -45,10 +49,6 @@ macro_rules! warn {
         eprintln!("{} {}", "warning:".purple().bold(), format!($($arg)*));
     }}
 }
-
-mod info;
-mod panic;
-mod unstable;
 
 fn main() {
     let result = CompilerOptions::command()
@@ -95,19 +95,19 @@ fn main() {
     }
 
     // Install a panic handler to catch failed asserts.
-    panic::install_hook();
+    panic::set_hook(Box::new(dump_backtrace));
 
+    // Run the compilation pipeline
+    try_compile(options);
+}
+
+fn try_compile(options: CompilerOptions) {
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
     let (ptree, _diagnostics) = match compiler.compile() {
         Ok((ptree, diagnostics)) => {
-            // Print warnings if any
-            if !diagnostics.warnings.is_empty() {
-                let formatted_warnings = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
-                eprintln!("{}", formatted_warnings);
-                
-                let warning_plural = if diagnostics.warnings.len() > 1 { "s" } else { "" };
-                eprintln!("\n{} {} warning{} emitted", "warning:".purple().bold(), diagnostics.warnings.len(), warning_plural);
+            if diagnostics.count() > 0 {
+                emit_diagnostics(&compiler, &diagnostics);
             }
             (ptree, diagnostics)
         }
@@ -116,34 +116,7 @@ fn main() {
             std::process::exit(1);
         }
         Err(CompileError::Diagnostics(diagnostics)) => {
-            // Print warnings if any
-            if !diagnostics.warnings.is_empty() {
-                let formatted_warnings = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
-                eprintln!("{}", formatted_warnings);
-            }
-            
-            // Print errors
-            let formatted_errors = ic_idl::pretty::fmt_errors(&diagnostics.errors, compiler.source_map(), &diagnostics.expansion_info);
-            eprintln!("{}", formatted_errors);
-            
-            // Print error summary
-            let error_plural = if diagnostics.errors.len() > 1 { "s" } else { "" };
-            let warning_plural = if diagnostics.warnings.len() > 1 { "s" } else { "" };
-            if !diagnostics.warnings.is_empty() {
-                error!(
-                    "aborting due to {} previous error{}, {} warning{}",
-                    diagnostics.errors.len(),
-                    error_plural,
-                    diagnostics.warnings.len(),
-                    warning_plural,
-                );
-            } else {
-                error!(
-                    "aborting due to {} previous error{}",
-                    diagnostics.errors.len(),
-                    error_plural,
-                );
-            }
+            emit_diagnostics(&compiler, &diagnostics);
             std::process::exit(1);
         }
     };
@@ -157,7 +130,7 @@ fn main() {
     let generated = match generate_code(compiler.options(), &ptree) {
         Ok(files) => files,
         Err(e) => {
-            error!("code generation error: {}", e);
+            error!("code generation error: {e}");
             std::process::exit(1);
         }
     };
@@ -176,7 +149,7 @@ fn main() {
 fn generate_code(
     options: &CompilerOptions,
     ptree: &ic_idl::ptree::ParseResult,
-) -> Result<Vec<File>, String> {
+) -> Result<Vec<File>, util::Error> {
     let backends: &[(_, fn(_) -> _)] = &[
         (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
         (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
@@ -198,12 +171,11 @@ fn generate_code(
         .iter()
         .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
     {
-        let dir = std::path::absolute(dir).map_err(|e| format!("Failed to resolve path: {e}"))?;
+        let dir = std::path::absolute(dir)?;
 
         if options.purge_dirs {
-            std::fs::remove_dir_all(&dir).ok(); // Ignore if doesn't exist
-            std::fs::create_dir_all(&dir)
-                .map_err(|e| format!("Failed to create directory: {e}"))?;
+            util::safe_purge(&dir)?;
+            std::fs::create_dir_all(&dir)?;
         }
 
         // Invoke the backend and update the file paths
@@ -225,8 +197,92 @@ fn write_files(files: &[File]) -> std::io::Result<()> {
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            std::fs::write(path, source)?;
+            util::write_if_changed(path, source)?;
         }
     }
     Ok(())
+}
+
+#[allow(clippy::same_functions_in_if_condition)]
+fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics) {
+    if !diagnostics.warnings.is_empty() {
+        let warnings = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
+        eprintln!("{warnings}");
+    }
+
+    if !diagnostics.errors.is_empty() {
+        let formatted = ic_idl::pretty::fmt_errors(
+            &diagnostics.errors,
+            compiler.source_map(),
+            &diagnostics.expansion_info,
+        );
+        eprintln!("{formatted}");
+    }
+
+    let error_plural = if diagnostics.errors.len() > 1 {
+        "s"
+    } else {
+        ""
+    };
+    let warning_plural = if diagnostics.warnings.len() > 1 {
+        "s"
+    } else {
+        ""
+    };
+
+    if !diagnostics.warnings.is_empty() && !diagnostics.errors.is_empty() {
+        error!(
+            "aborting due to {} previous error{}, {} warning{}",
+            diagnostics.errors.len(),
+            error_plural,
+            diagnostics.warnings.len(),
+            warning_plural,
+        );
+    } else if diagnostics.warnings.is_empty() {
+        error!(
+            "aborting due to {} previous error{}",
+            diagnostics.errors.len(),
+            error_plural,
+        );
+    } else if diagnostics.warnings.is_empty() {
+        warn!(
+            "{} warning{} emitted",
+            diagnostics.warnings.len(),
+            warning_plural,
+        );
+    }
+}
+
+fn dump_backtrace(info: &std::panic::PanicHookInfo) {
+    let thread = std::thread::current();
+    let thread = thread.name().unwrap_or("unknown");
+    let trace = backtrace::Backtrace::force_capture();
+
+    let msg = match info.payload().downcast_ref::<&str>() {
+        Some(s) => *s,
+        None => info
+            .payload()
+            .downcast_ref::<String>()
+            .map_or("<null>", |s| &**s),
+    };
+
+    match info.location() {
+        Some(loc) => {
+            error!(
+                "thread '{thread}' panicked at '{msg}', {}:{}",
+                loc.file(),
+                loc.line(),
+            );
+        }
+        None => {
+            error!("thread '{thread}' panicked at '{msg}'");
+        }
+    }
+
+    if trace.status() == backtrace::BacktraceStatus::Captured {
+        eprintln!("{trace:#?}");
+    }
+    eprintln!(
+        "This is a compiler bug. Please report it to KONGSBERG <DDS-InterCOM@kda.kongsberg.com>.",
+    );
 }

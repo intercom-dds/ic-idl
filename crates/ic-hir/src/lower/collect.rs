@@ -220,13 +220,27 @@ impl<'a> NameCollector<'a> {
         span: Span,
         annotations: &[ic_syntax::AnnotationAppl],
     ) -> DefId {
+        // For modules, check if we should reuse an existing scope (module reopening)
+        let is_module = matches!(kind, DefKind::Module(_));
+        let should_reuse_scope = is_module && {
+            let parent_scope_data = self.ctx.scopes.get_scope(self.current_scope);
+            parent_scope_data.children.contains_key(&ident.name)
+        };
+        
         let id = self.alloc_definition_with_annotations(ident, kind, span, annotations);
         self.scope_stack.push(ident.name.clone(), id);
-        // Create a child scope in the scope tree
-        let new_scope =
+        
+        let new_scope = if should_reuse_scope {
+            // Get the existing child scope
+            let parent_scope_data = self.ctx.scopes.get_scope(self.current_scope);
+            parent_scope_data.children.get(&ident.name).copied().unwrap()
+        } else {
+            // Create a new child scope
             self.ctx
                 .scopes
-                .create_child_scope(self.current_scope, ident.name.clone(), Some(id));
+                .create_child_scope(self.current_scope, ident.name.clone(), Some(id))
+        };
+        
         self.current_scope = new_scope;
 
         id
@@ -250,6 +264,7 @@ impl<'a> NameCollector<'a> {
 
     fn collect_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
         // Check if this module already exists (for module reopening)
+        // IMPORTANT: Do this BEFORE creating the new module which updates name_map
         let qualified_name = self.scope_stack.qualified_name(&def.ident.name);
         let existing_modules: Vec<DefId> = self
             .name_map

@@ -87,16 +87,27 @@ fn test_builtin_key_annotation() {
 
     assert!(parsed.errors.is_empty());
 
-    // We expect the HIR conversion to succeed (built-in annotations are available)
-    let hir_result = ast_to_hir(parsed.tree, &source_map, &LintConfig::default());
+    // Parse built-in annotations
+    let builtin_annotations = r#"
+        module intercom {
+        module annotations {
+            @annotation key {
+                boolean value default TRUE;
+            };
+        }; // module annotations
+        }; // module intercom
+    "#;
+    
+    let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
+    assert!(builtin_parsed.errors.is_empty());
 
-    // Check that it didn't fail completely
-    assert!(
-        hir_result.is_ok(),
-        "HIR conversion should succeed with built-in annotations"
-    );
-
-    let hir = hir_result.unwrap();
+    // We need to use from_ast_with_builtins to include built-in annotations
+    let mut hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
+    
+    // Check for errors
+    assert!(hir.errors.is_empty(), "HIR conversion should succeed without errors");
+    assert!(hir.warnings.is_empty(), "HIR conversion should succeed without warnings");
 
     // Verify the struct has the @key annotation resolved correctly
     let struct_def = hir

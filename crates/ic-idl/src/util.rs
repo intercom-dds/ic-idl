@@ -70,6 +70,10 @@ impl std::fmt::Display for Error {
 }
 
 /// Recursively iterates a directory and collects and IDL files.
+///
+/// # Errors
+///
+/// Returns a vector of I/O errors if any files or directories cannot be read.
 pub fn collect_files<'a, I>(paths: I) -> std::result::Result<Vec<PathBuf>, Vec<io::Error>>
 where
     I: IntoIterator<Item = &'a PathBuf>,
@@ -110,6 +114,11 @@ where
     }
 }
 
+/// Write contents to a file only if it has changed.
+///
+/// # Errors
+///
+/// Returns an I/O error if the file cannot be read or written.
 pub fn write_if_changed<P>(path: P, contents: &str) -> Result<()>
 where
     P: AsRef<Path>,
@@ -125,6 +134,16 @@ where
     Ok(())
 }
 
+/// Safely remove a directory and all its contents.
+///
+/// This function refuses to delete directories containing version control
+/// files like `.git` or `.hg` to prevent accidental data loss.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The directory contains blacklisted files (`.git`, `.hg`)
+/// - An I/O error occurs while reading or removing the directory
 pub fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
 where
     P: AsRef<Path>,

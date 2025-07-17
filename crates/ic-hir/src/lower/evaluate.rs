@@ -784,7 +784,9 @@ impl<'a> ExpressionEvaluator<'a> {
 
         for (i, bit) in def.bits.iter().enumerate() {
             let value = if let Some(expr) = &bit.value {
-                self.eval_bound(expr)
+                // For bitmasks, the assignment operator specifies bit position, not value
+                let position = self.eval_bound(expr);
+                1 << position
             } else if last_value == 0 {
                 1
             } else {

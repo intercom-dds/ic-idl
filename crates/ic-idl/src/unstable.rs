@@ -29,7 +29,7 @@ use ic_cli::Command;
 use ic_cli::color::Colorize;
 use ic_idl::{Unstable, Warnings};
 
-pub fn unstable_help() -> ! {
+pub fn unstable_help() {
     let command = Unstable::command();
     let flags = command.format_args_prefix("-Z ", |_| true).join("\n");
 
@@ -40,10 +40,9 @@ pub fn unstable_help() -> ! {
         "{} unstable flags may change at any time in backward-incompatible ways",
         "warning:".yellow(),
     );
-    std::process::exit(0);
 }
 
-pub fn warning_help() -> ! {
+pub fn warning_help() {
     let command = Warnings::command();
     let flags = command.format_args_prefix("-W", |_| true).join("\n");
 
@@ -51,9 +50,8 @@ pub fn warning_help() -> ! {
     println!("{flags}");
     println!("\nRun with `{}`\n", "ic-idl -W [WARN] <files>...".green());
     println!(
-        "To disable a warning, add '{}' before the warning text (e.g. `{}`)",
+        "To disable a warning, add '{}' before the warning text (e.g. '{}')",
         "no-".yellow(),
         "-Wno-all".yellow(),
     );
-    std::process::exit(0);
 }

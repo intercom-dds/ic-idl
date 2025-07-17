@@ -78,15 +78,17 @@ fn main() {
 
     if options.unstable.help {
         unstable::unstable_help();
+        return;
     }
 
     if options.warn.help {
         unstable::warning_help();
+        return;
     }
 
     // Print unknown warnings
     for unknown in &options.warn.unknown_warnings {
-        warn!("unknown warning '{}'", unknown);
+        warn!("unknown warning '{}'", unknown.yellow());
     }
 
     if options.files.is_empty() {

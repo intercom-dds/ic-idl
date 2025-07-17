@@ -343,6 +343,7 @@ impl<'a> TypeResolver<'a> {
                     ident,
                     ty,
                     annotations,
+                    default_value: None,
                 });
             }
         }
@@ -709,6 +710,14 @@ impl<'a> TypeResolver<'a> {
                         self.resolve_module(id, v);
                     }
                 }
+                Item::AnnotationValue(v) => {
+                    if let Some(&id) = self.item_map.get(&ItemKey {
+                        name: v.ident.name.clone(),
+                        kind: "annotation",
+                    }) {
+                        self.resolve_annotation(id, v);
+                    }
+                }
                 // TODO: Handle other item types
                 _ => {}
             }
@@ -918,6 +927,49 @@ impl<'a> TypeResolver<'a> {
 
         // Pop module name from current scope
         self.current_scope.pop();
+    }
+
+    /// Resolves an annotation definition.
+    fn resolve_annotation(&mut self, id: DefId, ast: &ic_syntax::AnnotationDef) {
+        // Resolve annotations on the annotation itself
+        let annotations = self.resolve_ast_annotations(&ast.annotations);
+
+        let mut members = Vec::new();
+        for field in &ast.params {
+            if let ic_syntax::AnnotationField::Member(member) = field {
+                // Resolve the member type
+                let base_ty = self.resolve_type(&member.ty);
+                let (_name, ty) = Self::resolve_declarator(&member.decl, base_ty);
+
+                // Resolve member annotations
+                let member_annotations = self.resolve_ast_annotations(&member.annotations);
+
+                // Default values will be evaluated in the evaluate phase
+                let default_value = None;
+
+                let ident = match &member.decl {
+                    ic_syntax::Declarator::Simple(id) => id.clone(),
+                    ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
+                };
+
+                members.push(Member {
+                    ident: ident.clone(),
+                    ty,
+                    annotations: member_annotations,
+                    default_value,
+                });
+            }
+            // Note: AnnotationField::Item is already handled in collect phase for nested types
+        }
+
+        // Update the annotation definition
+        let def = self.ctx.definitions.get_mut(id);
+        def.annotations = annotations;
+        def.flags.unset(DefFlags::IS_INCOMPLETE);
+
+        if let DefKind::Annotation(ann) = &mut def.kind {
+            ann.members = members;
+        }
     }
 }
 

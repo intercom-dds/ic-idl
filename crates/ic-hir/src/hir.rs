@@ -318,6 +318,8 @@ pub struct Member {
     pub ident: Ident,
     pub ty: Ty,
     pub annotations: Vec<Ann>,
+    /// Default value for annotation members
+    pub default_value: Option<Numeric>,
 }
 
 #[derive(Debug, Clone)]

@@ -1404,7 +1404,59 @@ impl<'a> ExpressionEvaluator<'a> {
                         self.evaluate_exception(def_id, v);
                     }
                 }
+                Item::AnnotationValue(v) => {
+                    // Look up the definition in the current scope
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_annotation(def_id, v);
+                    }
+                }
                 _ => {}
+            }
+        }
+    }
+
+    /// Evaluates default values in an annotation definition.
+    fn evaluate_annotation(&mut self, def_id: DefId, ast: &ic_syntax::AnnotationDef) {
+        // Collect default values to evaluate
+        let mut default_values = Vec::new();
+        let mut member_idx = 0;
+        for field in &ast.params {
+            if let ic_syntax::AnnotationField::Member(ast_member) = field {
+                if let Some(default_expr) = &ast_member.default {
+                    // Handle string literals specially since they can't go through arithmetic evaluation
+                    let value = match default_expr {
+                        Expr::Literal(lit)
+                            if matches!(lit.value, ic_syntax::LiteralValue::String(_)) =>
+                        {
+                            // Extract string value directly
+                            if let ic_syntax::LiteralValue::String(s) = &lit.value {
+                                Numeric::String(s.clone())
+                            } else {
+                                Numeric::Null
+                            }
+                        }
+                        _ => {
+                            // Evaluate other expressions normally
+                            self.eval_expr(default_expr)
+                        }
+                    };
+                    default_values.push((member_idx, value));
+                }
+                member_idx += 1;
+            }
+        }
+
+        // Now update the annotation definition with evaluated values
+        let def = self.ctx.definitions.get_mut(def_id);
+        if let DefKind::Annotation(ann) = &mut def.kind {
+            for (idx, value) in default_values {
+                if idx < ann.members.len() {
+                    ann.members[idx].default_value = Some(value);
+                }
             }
         }
     }

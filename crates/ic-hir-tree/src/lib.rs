@@ -30,7 +30,9 @@ mod tree;
 use std::fmt::Write;
 
 use ic_cli::color::Colorize;
-use ic_hir::hir::{Decl, DefFlags, DefId, DefKind, Member, ParamKind, Span, Ty, TyKind, Variant};
+use ic_hir::hir::{
+    Decl, DefFlags, DefId, DefKind, Member, Numeric, ParamKind, Span, Ty, TyKind, Variant,
+};
 use ic_hir::{Context, ResolvedGraph};
 
 use crate::tree::Leaf;
@@ -45,9 +47,9 @@ fn emit_span(span: &Span) -> String {
 
 fn emit_ann_arg(arg: &ic_hir::hir::AnnArg) -> String {
     if let Some(ident) = &arg.ident {
-        format!("{} = {:?}", ident.name, arg.value)
+        format!("{} = {}", ident.name, emit_numeric(&arg.value))
     } else {
-        format!("{:?}", arg.value)
+        emit_numeric(&arg.value)
     }
 }
 
@@ -157,6 +159,31 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
     kind.cyan()
 }
 
+fn emit_numeric(val: &Numeric) -> String {
+    match val {
+        Numeric::Null => "null".to_string(),
+        Numeric::Bool(b) => b.to_string().to_uppercase(),
+        Numeric::Char(c) => format!("'{c}'"),
+        Numeric::Int8(i) => i.to_string(),
+        Numeric::Octet(o) => o.to_string(),
+        Numeric::Int16(i) => i.to_string(),
+        Numeric::UInt16(u) => u.to_string(),
+        Numeric::Int32(i) => i.to_string(),
+        Numeric::UInt32(u) => u.to_string(),
+        Numeric::Int64(i) => i.to_string(),
+        Numeric::UInt64(u) => u.to_string(),
+        Numeric::Float(f) => f.to_string(),
+        Numeric::Double(d) => d.to_string(),
+        Numeric::String(s) => format!("\"{}\"", s),
+        Numeric::Const(def_id) => format!("<const 0x{:#02?}>", def_id),
+        Numeric::Array { .. } => "<array>".to_string(),
+        Numeric::Sequence { .. } => "<sequence>".to_string(),
+        Numeric::Map { .. } => "<map>".to_string(),
+        Numeric::Struct { .. } => "<struct>".to_string(),
+        Numeric::Union { .. } => "<union>".to_string(),
+    }
+}
+
 fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
     let span = emit_span(&mem.ident.span);
     let ty = emit_ty(context, &mem.ty);
@@ -173,6 +200,13 @@ fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
     }
 
     member.push(leaf!("{} {ty}", "type".purple()));
+
+    // Show default value if present
+    if let Some(default) = &mem.default_value {
+        let default_str = emit_numeric(default);
+        member.push(leaf!("{} {}", "default".purple(), default_str.yellow()));
+    }
+
     member
 }
 

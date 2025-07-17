@@ -360,6 +360,8 @@ pub struct ExpressionEvaluator<'a> {
     ctx: &'a mut Context,
     errors: Vec<Diag>,
     current_scope: crate::scope::ScopeId,
+    /// Track which definitions have been evaluated to avoid duplicate evaluation
+    evaluated: std::collections::HashSet<DefId>,
 }
 
 impl<'a> ExpressionEvaluator<'a> {
@@ -369,6 +371,7 @@ impl<'a> ExpressionEvaluator<'a> {
             ctx,
             errors: Vec::new(),
             current_scope: root_scope,
+            evaluated: std::collections::HashSet::new(),
         }
     }
 
@@ -738,6 +741,12 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates enum values.
     fn evaluate_enum(&mut self, id: DefId, def: &ic_syntax::EnumDef) {
+        // Check if this enum has already been evaluated
+        if !self.evaluated.insert(id) {
+            // Already evaluated, skip
+            return;
+        }
+
         // First evaluate all the values
         let mut field_values = Vec::new();
         let mut last_value = -1isize;
@@ -768,11 +777,20 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates bitmask values.
     fn evaluate_bitmask(&mut self, id: DefId, def: &ic_syntax::BitmaskDef) {
+        // Check if this bitmask has already been evaluated
+        if !self.evaluated.insert(id) {
+            // Already evaluated, skip
+            return;
+        }
         // Get existing annotations if they were already resolved
         let existing_annotations: Vec<Vec<Ann>> = {
             let hir_def = self.ctx.definitions.get(id);
             if let DefKind::Bitmask(bitmask_ty) = &hir_def.kind {
-                bitmask_ty.flags.iter().map(|f| f.annotations.clone()).collect()
+                bitmask_ty
+                    .flags
+                    .iter()
+                    .map(|f| f.annotations.clone())
+                    .collect()
             } else {
                 Vec::new()
             }
@@ -819,6 +837,11 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates a bitset definition.
     fn evaluate_bitset(&mut self, id: DefId, def: &ic_syntax::BitsetDef) {
+        // Check if this bitset has already been evaluated
+        if !self.evaluated.insert(id) {
+            // Already evaluated, skip
+            return;
+        }
         // Get the current bitset definition
         let hir_def = self.ctx.definitions.get(id);
 
@@ -1359,11 +1382,15 @@ impl<'a> ExpressionEvaluator<'a> {
                     }
                 }
                 Item::EnumValue(v) => {
+                    // First check if we've already evaluated this enum
                     if let Some(def_id) = self
                         .ctx
                         .scopes
                         .resolve_name(self.current_scope, &v.ident.name)
                     {
+                        if self.evaluated.contains(&def_id) {
+                            continue;
+                        }
                         self.evaluate_enum(def_id, v);
                     }
                 }
@@ -1452,7 +1479,8 @@ impl<'a> ExpressionEvaluator<'a> {
         }
 
         // First, evaluate nested types (enums, etc.)
-        let nested_items: Vec<Item> = ast.params
+        let nested_items: Vec<Item> = ast
+            .params
             .iter()
             .filter_map(|field| {
                 if let ic_syntax::AnnotationField::Item(item) = field {
@@ -1513,7 +1541,17 @@ impl<'a> ExpressionEvaluator<'a> {
     fn evaluate_module(&mut self, def_id: DefId, ast: &ic_syntax::ModuleDef) {
         // Save current scope and enter module scope
         let saved_scope = self.current_scope;
-        if let Some(module_scope) = self.ctx.scopes.find_scope_for_def(def_id) {
+        // For modules, we need to find the scope differently because reopened modules
+        // share the same scope but have different DefIds
+        let module_scope = if let DefKind::Module(_) = &self.ctx.definitions.get(def_id).kind {
+            // For modules, look for a child scope with the module's name in the parent scope
+            let parent_scope = self.ctx.scopes.get_scope(self.current_scope);
+            parent_scope.children.get(&ast.ident.name).copied()
+        } else {
+            self.ctx.scopes.find_scope_for_def(def_id)
+        };
+
+        if let Some(module_scope) = module_scope {
             self.current_scope = module_scope;
         }
 
@@ -1533,7 +1571,8 @@ impl<'a> ExpressionEvaluator<'a> {
         }
 
         // Extract nested type definitions from interface members
-        let nested_items: Vec<Item> = ast.members
+        let nested_items: Vec<Item> = ast
+            .members
             .iter()
             .filter_map(|member| {
                 if let ic_syntax::InterfaceMember::Item(item) = member {
@@ -1543,7 +1582,7 @@ impl<'a> ExpressionEvaluator<'a> {
                 }
             })
             .collect();
-        
+
         // Evaluate all nested items
         if !nested_items.is_empty() {
             self.evaluate_types(&nested_items);
@@ -1561,6 +1600,7 @@ pub fn evaluate_expressions(
     items: &[Item],
 ) -> Vec<Diag> {
     let mut evaluator = ExpressionEvaluator::new(ctx);
+
     evaluator.evaluate_types(items);
     evaluator.errors
 }

@@ -47,11 +47,15 @@ fn test_nested_enum_in_annotation() {
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    assert!(hir.warnings.is_empty(), "Unexpected warnings: {:?}", hir.warnings);
-    
+    assert!(
+        hir.warnings.is_empty(),
+        "Unexpected warnings: {:?}",
+        hir.warnings
+    );
+
     // Find the nested enum
     let enum_def = hir
         .context
@@ -60,7 +64,7 @@ fn test_nested_enum_in_annotation() {
         .find(|(_, def)| def.ident.name == "NestedEnum" && matches!(def.kind, DefKind::Enum(_)))
         .map(|(_, def)| def)
         .expect("Should find nested enum");
-        
+
     // Verify enum values are evaluated correctly
     if let DefKind::Enum(enum_ty) = &enum_def.kind {
         assert_eq!(enum_ty.fields.len(), 3);
@@ -95,10 +99,10 @@ fn test_nested_enum_in_interface() {
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    
+
     // Find the nested enum
     let enum_def = hir
         .context
@@ -107,7 +111,7 @@ fn test_nested_enum_in_interface() {
         .find(|(_, def)| def.ident.name == "Status" && matches!(def.kind, DefKind::Enum(_)))
         .map(|(_, def)| def)
         .expect("Should find nested enum");
-        
+
     // Verify enum values are evaluated correctly
     if let DefKind::Enum(enum_ty) = &enum_def.kind {
         assert_eq!(enum_ty.fields.len(), 3);
@@ -140,10 +144,10 @@ fn test_nested_enum_in_module() {
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    
+
     // Find the nested enum
     let enum_def = hir
         .context
@@ -152,7 +156,7 @@ fn test_nested_enum_in_module() {
         .find(|(_, def)| def.ident.name == "Color" && matches!(def.kind, DefKind::Enum(_)))
         .map(|(_, def)| def)
         .expect("Should find nested enum");
-        
+
     // Verify enum values
     if let DefKind::Enum(enum_ty) = &enum_def.kind {
         assert_eq!(enum_ty.fields[0].value, 0);
@@ -185,20 +189,27 @@ fn test_type_resolution_in_annotation() {
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    assert!(hir.warnings.is_empty(), "Unexpected warnings: {:?}", hir.warnings);
-    
+    assert!(
+        hir.warnings.is_empty(),
+        "Unexpected warnings: {:?}",
+        hir.warnings
+    );
+
     // Verify the annotation definition has the correct member type
     let ann_def = hir
         .context
         .definitions
         .iter()
-        .find(|(_, def)| def.ident.name == "ExtensibilityAnnotation" && matches!(def.kind, DefKind::Annotation(_)))
+        .find(|(_, def)| {
+            def.ident.name == "ExtensibilityAnnotation"
+                && matches!(def.kind, DefKind::Annotation(_))
+        })
         .map(|(_, def)| def)
         .expect("Should find annotation");
-        
+
     if let DefKind::Annotation(ann) = &ann_def.kind {
         assert_eq!(ann.members.len(), 1);
         assert_eq!(ann.members[0].ident.name, "value");

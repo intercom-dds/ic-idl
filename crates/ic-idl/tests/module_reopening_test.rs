@@ -54,7 +54,7 @@ fn test_module_reopening_preserves_annotations() {
     let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    // Parse built-in annotations 
+    // Parse built-in annotations
     let builtin_annotations = include_str!("../idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
@@ -62,11 +62,15 @@ fn test_module_reopening_preserves_annotations() {
 
     // Convert to HIR with built-ins
     let hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
-    
+
     // Should have no errors or warnings
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    assert!(hir.warnings.is_empty(), "Unexpected warnings: {:?}", hir.warnings);
-    
+    assert!(
+        hir.warnings.is_empty(),
+        "Unexpected warnings: {:?}",
+        hir.warnings
+    );
+
     // Verify struct Foo has annotations resolved
     let foo_def = hir
         .context
@@ -75,20 +79,20 @@ fn test_module_reopening_preserves_annotations() {
         .find(|(_, def)| def.ident.name == "Foo" && matches!(def.kind, DefKind::Struct(_)))
         .map(|(_, def)| def)
         .expect("Should find struct Foo");
-        
+
     if let DefKind::Struct(s) = &foo_def.kind {
         assert_eq!(s.members.len(), 3);
-        
+
         // Check @key annotation on id field
         assert_eq!(s.members[0].ident.name, "id");
         assert_eq!(s.members[0].annotations.len(), 1);
         assert_eq!(s.members[0].annotations[0].ident.name, "key");
-        
+
         // Check @optional annotation on flag field
-        assert_eq!(s.members[1].ident.name, "flag"); 
+        assert_eq!(s.members[1].ident.name, "flag");
         assert_eq!(s.members[1].annotations.len(), 1);
         assert_eq!(s.members[1].annotations[0].ident.name, "optional");
-        
+
         // Check @range annotation on value field
         assert_eq!(s.members[2].ident.name, "value");
         assert_eq!(s.members[2].annotations.len(), 1);
@@ -124,10 +128,10 @@ fn test_nested_module_reopening() {
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(parsed.tree);
-    
+
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    
+
     // Find all module A definitions
     let module_a_defs: Vec<_> = hir
         .context
@@ -135,7 +139,7 @@ fn test_nested_module_reopening() {
         .iter()
         .filter(|(_, def)| def.ident.name == "A" && matches!(def.kind, DefKind::Module(_)))
         .collect();
-    
+
     // Should have created 3 separate module A definitions
     assert_eq!(module_a_defs.len(), 3, "Should have 3 module A definitions");
 }

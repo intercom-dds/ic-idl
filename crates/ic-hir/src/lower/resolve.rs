@@ -41,8 +41,8 @@ use ic_syntax::{Item, Path};
 use super::collect::NameMap;
 use crate::Context;
 use crate::hir::{
-    Ann, BitFlag, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
-    ProtoTy, Ty, TyKind, Variant,
+    Ann, BitFlag, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter,
+    PrimitiveTy, ProtoTy, Ty, TyKind, Variant,
 };
 
 /// Resolves type references in the HIR.
@@ -120,7 +120,7 @@ impl<'a> TypeResolver<'a> {
                     .ctx
                     .scopes
                     .resolve_path(self.ctx.scopes.root(), &segments);
-                
+
                 // Special handling for annotations in ext namespace (e.g., @ext::no_serializer)
                 // These should resolve to intercom::annotations::ext::no_serializer
                 if def_id.is_none() && segments[0] == "ext" {
@@ -956,7 +956,8 @@ impl<'a> TypeResolver<'a> {
         let annotations = self.resolve_ast_annotations(&ast.annotations);
 
         // Resolve nested type definitions first
-        let nested_items: Vec<Item> = ast.params
+        let nested_items: Vec<Item> = ast
+            .params
             .iter()
             .filter_map(|field| {
                 if let ic_syntax::AnnotationField::Item(item) = field {

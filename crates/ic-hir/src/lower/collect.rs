@@ -226,21 +226,25 @@ impl<'a> NameCollector<'a> {
             let parent_scope_data = self.ctx.scopes.get_scope(self.current_scope);
             parent_scope_data.children.contains_key(&ident.name)
         };
-        
+
         let id = self.alloc_definition_with_annotations(ident, kind, span, annotations);
         self.scope_stack.push(ident.name.clone(), id);
-        
+
         let new_scope = if should_reuse_scope {
             // Get the existing child scope
             let parent_scope_data = self.ctx.scopes.get_scope(self.current_scope);
-            parent_scope_data.children.get(&ident.name).copied().unwrap()
+            parent_scope_data
+                .children
+                .get(&ident.name)
+                .copied()
+                .unwrap()
         } else {
             // Create a new child scope
             self.ctx
                 .scopes
                 .create_child_scope(self.current_scope, ident.name.clone(), Some(id))
         };
-        
+
         self.current_scope = new_scope;
 
         id

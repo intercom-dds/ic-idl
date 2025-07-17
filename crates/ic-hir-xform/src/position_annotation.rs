@@ -34,7 +34,7 @@
 //! 4. Removes the `@position` annotation
 
 use ic_hir::fold::Fold;
-use ic_hir::hir::{Ann, Def, DefId, DefKind, BitFlag, BitmaskTy, Numeric};
+use ic_hir::hir::{Ann, BitFlag, BitmaskTy, Def, DefId, DefKind, Numeric};
 use ic_hir::{Context, ResolvedGraph};
 
 /// Transformer that converts @position annotations to direct bitmask values.
@@ -111,7 +111,7 @@ impl Fold for PositionAnnotationTransform {
 #[must_use]
 pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
     let mut transformer = PositionAnnotationTransform::new();
-    
+
     // Transform each definition in place
     for (id, def) in &mut graph.context.definitions {
         let original_def = std::mem::replace(
@@ -131,7 +131,7 @@ pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
         );
         *def = transformer.fold_def(original_def);
     }
-    
+
     graph
 }
 

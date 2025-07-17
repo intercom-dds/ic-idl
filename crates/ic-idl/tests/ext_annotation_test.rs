@@ -48,7 +48,7 @@ fn test_ext_annotation_requires_qualification() {
     let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    // Parse built-in annotations 
+    // Parse built-in annotations
     let builtin_annotations = include_str!("../idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
@@ -56,15 +56,21 @@ fn test_ext_annotation_requires_qualification() {
 
     // Convert to HIR with built-ins
     let hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
-    
+
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    
+
     // Should have exactly one warning for the unqualified no_serializer
-    assert_eq!(hir.warnings.len(), 1, "Expected exactly 1 warning, got {}: {:?}", hir.warnings.len(), hir.warnings);
+    assert_eq!(
+        hir.warnings.len(),
+        1,
+        "Expected exactly 1 warning, got {}: {:?}",
+        hir.warnings.len(),
+        hir.warnings
+    );
     assert!(hir.warnings[0].to_string().contains("no_serializer"));
     assert!(hir.warnings[0].to_string().contains("annotation not found"));
-    
+
     // Verify struct has correct annotations resolved
     let struct_def = hir
         .context
@@ -73,19 +79,19 @@ fn test_ext_annotation_requires_qualification() {
         .find(|(_, def)| def.ident.name == "TestStruct" && matches!(def.kind, DefKind::Struct(_)))
         .map(|(_, def)| def)
         .expect("Should find struct TestStruct");
-        
+
     if let DefKind::Struct(s) = &struct_def.kind {
         assert_eq!(s.members.len(), 3);
-        
+
         // field1 should have no annotations (unresolved)
         assert_eq!(s.members[0].ident.name, "field1");
         assert_eq!(s.members[0].annotations.len(), 0);
-        
+
         // field2 should have ext::no_serializer annotation
         assert_eq!(s.members[1].ident.name, "field2");
         assert_eq!(s.members[1].annotations.len(), 1);
         assert_eq!(s.members[1].annotations[0].ident.name, "ext::no_serializer");
-        
+
         // field3 should have key annotation
         assert_eq!(s.members[2].ident.name, "field3");
         assert_eq!(s.members[2].annotations.len(), 1);
@@ -111,7 +117,7 @@ fn test_other_qualified_annotations() {
     let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    // Parse built-in annotations 
+    // Parse built-in annotations
     let builtin_annotations = include_str!("../idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
@@ -119,11 +125,15 @@ fn test_other_qualified_annotations() {
 
     // Convert to HIR with built-ins
     let hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
-    
+
     // Should have no errors or warnings
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
-    assert!(hir.warnings.is_empty(), "Unexpected warnings: {:?}", hir.warnings);
-    
+    assert!(
+        hir.warnings.is_empty(),
+        "Unexpected warnings: {:?}",
+        hir.warnings
+    );
+
     // Verify all ext:: annotations were resolved
     let struct_def = hir
         .context
@@ -132,10 +142,10 @@ fn test_other_qualified_annotations() {
         .find(|(_, def)| def.ident.name == "TestStruct" && matches!(def.kind, DefKind::Struct(_)))
         .map(|(_, def)| def)
         .expect("Should find struct TestStruct");
-        
+
     if let DefKind::Struct(s) = &struct_def.kind {
         assert_eq!(s.members.len(), 3);
-        
+
         // All fields should have their ext:: annotations resolved
         assert_eq!(s.members[0].annotations[0].ident.name, "ext::doc");
         assert_eq!(s.members[1].annotations[0].ident.name, "ext::suppress");

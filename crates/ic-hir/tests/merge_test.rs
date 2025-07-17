@@ -27,7 +27,8 @@
 
 //! Tests for HIR tree merging functionality.
 
-use ic_hir::merge::{merge_hir_trees, MergedGraph};
+use ic_hir::merge::merge_hir_trees;
+use ic_hir::hir::DefKind;
 
 #[test]
 fn test_merge_empty_graphs() {
@@ -54,9 +55,8 @@ fn test_merge_single_graph() {
     
     let merged = merge_hir_trees(&[graph]);
     
-    // TODO: Once implementation is complete, verify the merged graph
-    // For now, just check it doesn't panic
-    assert_eq!(merged.order.len(), 0); // Will be 1 when implemented
+    // Should have one definition (Point struct)
+    assert_eq!(merged.order.len(), 1);
 }
 
 #[test]
@@ -87,9 +87,12 @@ fn test_merge_duplicate_definitions() {
     
     let merged = merge_hir_trees(&[graph1, graph2]);
     
-    // TODO: Once implementation is complete, verify deduplication
-    // Should have only one Point definition
-    assert_eq!(merged.order.len(), 0); // Will be 1 when implemented
+    // With deduplication, we should have only 1 Point definition
+    assert_eq!(merged.order.len(), 1);
+    
+    // Verify it's the Point struct
+    let def = merged.context.definitions.get(merged.order[0]);
+    assert_eq!(def.ident.name, "Point");
 }
 
 #[test]
@@ -122,7 +125,46 @@ fn test_merge_different_modules() {
     
     let merged = merge_hir_trees(&[graph1, graph2]);
     
-    // TODO: Once implementation is complete, verify both modules exist
-    // Should have 2 module definitions
-    assert_eq!(merged.order.len(), 0); // Will be 2 when implemented
+    // Should have 2 module definitions (A and B)
+    assert_eq!(merged.order.len(), 2);
+    
+    // Verify we can access the definitions
+    let mut module_names = Vec::new();
+    for &def_id in &merged.order {
+        let def = merged.context.definitions.get(def_id);
+        if let DefKind::Module(_) = &def.kind {
+            module_names.push(def.ident.name.clone());
+        }
+    }
+    module_names.sort();
+    assert_eq!(module_names, vec!["A", "B"]);
+}
+
+#[test]
+fn test_merge_with_references() {
+    // Test that references between types are properly updated
+    let input = r"
+        struct Point {
+            long x;
+            long y;
+        };
+        
+        struct Line {
+            Point start;
+            Point end;
+        };
+    ";
+    
+    let parsed = ic_parse::from_str(input);
+    assert!(parsed.errors.is_empty());
+    
+    let graph = ic_hir::from_ast(parsed.tree);
+    assert!(graph.errors.is_empty());
+    
+    let merged = merge_hir_trees(&[graph]);
+    
+    // Should have 2 definitions (Point and Line)
+    assert_eq!(merged.order.len(), 2);
+    
+    // TODO: Verify that Line's references to Point are correctly updated
 }

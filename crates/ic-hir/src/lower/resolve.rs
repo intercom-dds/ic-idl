@@ -38,7 +38,7 @@ use std::collections::HashMap;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Item, Path};
 
-use super::collect::{NameMap, extract_declarator_name};
+use super::collect::NameMap;
 use crate::Context;
 use crate::hir::{
     Ann, BitsetField, DefFlags, DefId, DefKind, Ident, Member, ParamKind, Parameter, PrimitiveTy,
@@ -52,14 +52,10 @@ pub struct TypeResolver<'a> {
     errors: Vec<Diag>,
     /// Maps AST items to their `DefIds` for easy lookup.
     item_map: HashMap<ItemKey, DefId>,
-    /// Maps DefIds to their AST items for annotation resolution
-    def_to_ast: HashMap<DefId, usize>,
     /// Current scope for resolving unqualified names.
     current_scope: Vec<String>,
     /// Current scope ID in the scope tree.
     current_scope_id: crate::scope::ScopeId,
-    /// Stores AST items for annotation resolution
-    ast_items: &'a [Item],
 }
 
 /// Key for looking up items by their AST identity.
@@ -70,17 +66,15 @@ struct ItemKey {
 }
 
 impl<'a> TypeResolver<'a> {
-    fn new(ctx: &'a mut Context, name_map: &'a NameMap, ast_items: &'a [Item]) -> Self {
+    fn new(ctx: &'a mut Context, name_map: &'a NameMap, _ast_items: &'a [Item]) -> Self {
         let root_scope = ctx.scopes.root();
         Self {
             ctx,
             name_map,
             errors: Vec::new(),
             item_map: HashMap::new(),
-            def_to_ast: HashMap::new(),
             current_scope: Vec::new(),
             current_scope_id: root_scope,
-            ast_items,
         }
     }
 
@@ -105,25 +99,35 @@ impl<'a> TypeResolver<'a> {
             };
             
             // Try to resolve the annotation name
-            // First try current scope and parent scopes
-            let segments = vec![name.as_str()];
-            let mut def_id;
-            let mut scope_id = self.current_scope_id;
+            // Get the path segments
+            let segments: Vec<&str> = ast_ann.ident.segments.iter()
+                .map(|s| s.name.as_str())
+                .collect();
             
-            // Walk up the scope chain looking for the annotation
-            loop {
-                def_id = self.ctx.scopes.resolve_path(scope_id, &segments);
-                if def_id.is_some() {
-                    break;
-                }
+            let mut def_id;
+            
+            // If it's a qualified path (e.g., M::custom), resolve from root
+            if segments.len() > 1 {
+                def_id = self.ctx.scopes.resolve_path(self.ctx.scopes.root(), &segments);
+            } else {
+                // Single segment - try current scope and parent scopes
+                let mut scope_id = self.current_scope_id;
                 
-                // Move to parent scope
-                let scope_data = self.ctx.scopes.get_scope(scope_id);
-                if let Some(parent) = scope_data.parent {
-                    scope_id = parent;
-                } else {
-                    def_id = None;
-                    break; // Reached root scope
+                // Walk up the scope chain looking for the annotation
+                loop {
+                    def_id = self.ctx.scopes.resolve_path(scope_id, &segments);
+                    if def_id.is_some() {
+                        break;
+                    }
+                    
+                    // Move to parent scope
+                    let scope_data = self.ctx.scopes.get_scope(scope_id);
+                    if let Some(parent) = scope_data.parent {
+                        scope_id = parent;
+                    } else {
+                        def_id = None;
+                        break; // Reached root scope
+                    }
                 }
             }
             
@@ -347,10 +351,14 @@ impl<'a> TypeResolver<'a> {
 
         let parent = def.parent.as_ref().and_then(|p| self.resolve_path(p));
         let members = self.resolve_struct_members(def);
+        
+        // Resolve annotations for the struct itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
         // Update the definition
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+        hir_def.annotations = annotations;
 
         if let DefKind::Struct(struct_ty) = &mut hir_def.kind {
             struct_ty.parent = parent;
@@ -409,9 +417,13 @@ impl<'a> TypeResolver<'a> {
             variants.push(variant);
         }
 
+        // Resolve annotations for the union itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
         // Update the definition
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+        hir_def.annotations = annotations;
 
         if let DefKind::Union(union_ty) = &mut hir_def.kind {
             union_ty.disc = disc;
@@ -428,9 +440,13 @@ impl<'a> TypeResolver<'a> {
             annotations: def.annotations.clone(),
             span: def.span,
         });
+        
+        // Resolve annotations for the exception itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
         let hir_def = self.ctx.definitions.get_mut(id);
         hir_def.flags.unset(DefFlags::IS_INCOMPLETE);
+        hir_def.annotations = annotations;
 
         if let DefKind::Except(except_ty) = &mut hir_def.kind {
             except_ty.members = members;
@@ -571,68 +587,7 @@ impl<'a> TypeResolver<'a> {
         // First pass: build item map
         self.build_item_map(items);
 
-        // Build def_to_ast mapping
-        self.build_def_to_ast_mapping(items);
-    }
-    
-    /// Builds the def_to_ast mapping recursively to handle nested items.
-    fn build_def_to_ast_mapping(&mut self, items: &[Item]) {
-        for (idx, item) in items.iter().enumerate() {
-            // First handle the current item
-            let key = match item {
-                Item::StructValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "struct" }),
-                Item::UnionValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "union" }),
-                Item::EnumValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "enum" }),
-                Item::AliasValue(v) if !v.decl.is_empty() => {
-                    Some(ItemKey { name: extract_declarator_name(&v.decl[0]).name.clone(), kind: "alias" })
-                }
-                Item::ConstValue(v) => Some(ItemKey { name: extract_declarator_name(&v.decl).name.clone(), kind: "const" }),
-                Item::ExceptionValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "exception" }),
-                Item::InterfaceValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "interface" }),
-                Item::ModuleValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "module" }),
-                Item::AnnotationValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "annotation" }),
-                Item::BitmaskValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "bitmask" }),
-                Item::BitsetValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "bitset" }),
-                Item::ValuetypeValue(v) => Some(ItemKey { name: v.ident.name.clone(), kind: "valuetype" }),
-                _ => None,
-            };
-            
-            if let Some(key) = key {
-                if let Some(&def_id) = self.item_map.get(&key) {
-                    self.def_to_ast.insert(def_id, idx);
-                }
-            }
-            
-            // Recursively handle nested items in modules
-            match item {
-                Item::ModuleValue(v) => {
-                    self.build_def_to_ast_mapping(&v.definitions);
-                }
-                Item::InterfaceValue(v) => {
-                    // Handle nested items in interfaces if needed
-                    let nested_items: Vec<Item> = v.members.iter()
-                        .filter_map(|m| match m {
-                            ic_syntax::InterfaceMember::Item(item) => Some(item.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    if !nested_items.is_empty() {
-                        self.build_def_to_ast_mapping(&nested_items);
-                    }
-                }
-                Item::ValuetypeValue(v) => {
-                    self.build_def_to_ast_mapping(&v.definitions);
-                }
-                _ => {}
-            }
-        }
         
-        // Continue with resolving items
-        self.resolve_all_items(items);
-    }
-    
-    /// Continues resolving all items after building mappings.
-    fn resolve_all_items(&mut self, items: &[Item]) {
         // Second pass: resolve each item
         for item in items {
             match item {
@@ -819,8 +774,13 @@ impl<'a> TypeResolver<'a> {
         let field_annotations: Vec<Vec<Ann>> = def.fields.iter()
             .map(|field| self.resolve_ast_annotations(&field.annotations))
             .collect();
+            
+        // Resolve annotations for the enum itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
         let hir_def = self.ctx.definitions.get_mut(id);
+        hir_def.annotations = annotations;
+        
         if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
             enum_ty.ty = underlying_ty;
             
@@ -927,57 +887,6 @@ impl<'a> TypeResolver<'a> {
         // Pop module name from current scope
         self.current_scope.pop();
     }
-    
-    /// Resolves annotations on all definitions.
-    fn resolve_all_annotations(&mut self) {
-        // Collect all def IDs to avoid borrowing issues
-        let def_ids: Vec<DefId> = self.ctx.definitions.iter().map(|(id, _)| id).collect();
-        
-        for def_id in def_ids {
-            // Find the corresponding AST item
-            if let Some(&ast_idx) = self.def_to_ast.get(&def_id) {
-                if let Some(ast_item) = self.ast_items.get(ast_idx) {
-                    // Get AST annotations
-                    let ast_annotations = match ast_item {
-                        Item::StructValue(v) => &v.annotations,
-                        Item::UnionValue(v) => &v.annotations,
-                        Item::EnumValue(v) => &v.annotations,
-                        Item::ExceptionValue(v) => &v.annotations,
-                        Item::InterfaceValue(v) => &v.annotations,
-                        Item::ModuleValue(v) => &v.annotations,
-                        Item::AnnotationValue(v) => &v.annotations,
-                        Item::AliasValue(v) => &v.annotations,
-                        Item::ConstValue(v) => &v.annotations,
-                        Item::BitmaskValue(v) => &v.annotations,
-                        Item::BitsetValue(v) => &v.annotations,
-                        Item::ValuetypeValue(v) => &v.annotations,
-                        _ => continue,
-                    };
-                    
-                    
-                    // Find the scope where this definition was created
-                    let saved_scope = self.current_scope_id;
-                    // First try to find the scope created by this def (for modules, interfaces, etc)
-                    let def_scope = self.ctx.scopes.find_scope_for_def(def_id)
-                        // Otherwise find the scope containing this def (for structs, enums, etc)
-                        .or_else(|| self.ctx.scopes.find_scope_containing_def(def_id));
-                    
-                    if let Some(scope) = def_scope {
-                        self.current_scope_id = scope;
-                    }
-                    
-                    // Resolve annotations and update the definition
-                    let resolved_annotations = self.resolve_ast_annotations(ast_annotations);
-                    self.ctx.definitions.get_mut(def_id).annotations = resolved_annotations;
-                    
-                    // Restore the original scope
-                    self.current_scope_id = saved_scope;
-                }
-            }
-            
-            // Member/variant annotations are already resolved during their respective resolve methods
-        }
-    }
 }
 
 /// Converts a path to its string representation.
@@ -1024,8 +933,8 @@ pub fn resolve_types(ctx: &mut Context, name_map: &NameMap, items: &[Item]) -> V
     let mut resolver = TypeResolver::new(ctx, name_map, items);
     resolver.resolve_all(items);
     
-    // Final pass: resolve annotations on all definitions
-    resolver.resolve_all_annotations();
+    // Note: Annotations are now resolved directly in each resolve_* method
+    // so we don't need a separate pass for annotations
     
     resolver.errors
 }

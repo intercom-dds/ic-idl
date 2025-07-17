@@ -33,6 +33,8 @@
 
 use std::collections::HashMap;
 
+use ic_diagnostic::{Color, Diag, Label};
+
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def,
     DefId, DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
@@ -45,6 +47,7 @@ use crate::{Context, ResolvedGraph};
 pub struct MergedGraph {
     pub context: Context,
     pub order: Vec<DefId>,
+    pub errors: Vec<Diag>,
 }
 
 /// A mapping from old DefIds to new DefIds after merging.
@@ -70,6 +73,7 @@ pub fn merge_hir_trees(graphs: &[ResolvedGraph]) -> MergedGraph {
         return MergedGraph {
             context: Context::new(),
             order: Vec::new(),
+            errors: Vec::new(),
         };
     }
 
@@ -97,6 +101,9 @@ struct HirMerger {
 
     /// The final order of definitions
     order: Vec<DefId>,
+
+    /// Errors collected during merging
+    errors: Vec<Diag>,
 }
 
 impl HirMerger {
@@ -107,6 +114,7 @@ impl HirMerger {
             scope_id_maps: Vec::new(),
             dedup_map: HashMap::new(),
             order: Vec::new(),
+            errors: Vec::new(),
         }
     }
 
@@ -162,6 +170,29 @@ impl HirMerger {
         if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
             // Special case: modules should NOT be deduplicated - each reopening is separate
             if !matches!(&old_def.kind, DefKind::Module(_)) {
+                // Check if they're the same definition by comparing spans
+                let existing_def = self.new_context.definitions.get(existing_def_id);
+
+                // If ident spans are different, we have different definitions with the same name
+                if old_def.ident.span != existing_def.ident.span {
+                    self.errors.push(
+                        Diag::error(format!(
+                            "conflicting definitions for `{}`",
+                            old_def.ident.name
+                        ))
+                        .label(
+                            Label::new(old_def.ident.span)
+                                .message("redefined here")
+                                .color(Color::Red),
+                        )
+                        .label(Label::new(existing_def.ident.span).message("first defined here")),
+                    );
+
+                    // Still need to map it to avoid breaking the rest of the merge
+                    self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                    return existing_def_id;
+                }
+
                 // Map the old DefId to the existing one
                 self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
                 return existing_def_id;
@@ -617,6 +648,7 @@ impl HirMerger {
         MergedGraph {
             context: self.new_context,
             order: self.order,
+            errors: self.errors,
         }
     }
 }

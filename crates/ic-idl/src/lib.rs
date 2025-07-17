@@ -379,6 +379,16 @@ impl Compiler {
 
         // Merge all HIRs
         let merged = hir::merge::merge_hir_trees(&hirs);
+
+        // Add merge errors to diagnostics
+        all_diagnostics
+            .errors
+            .extend(merged.errors.into_iter().map(Into::into));
+
+        if !all_diagnostics.errors.is_empty() {
+            return Err(CompileError::Diagnostics(all_diagnostics));
+        }
+
         let merged_hir = hir::ResolvedGraph {
             context: merged.context,
             order: merged.order,

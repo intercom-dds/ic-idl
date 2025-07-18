@@ -1,0 +1,17 @@
+---
+source: crates/ic-hir/tests/path_error_spans_test.rs
+expression: output
+---
+error: unresolved type `foo::bar::Invalid`
+    ┌ test.idl:10:23
+    │
+ 10 │             foo::bar::Invalid invalid;  // Should highlight Invalid
+    ·                       ^^^^^^^ unknown type
+    └──
+
+error: unresolved type `foo::baz::Something`
+    ┌ test.idl:11:18
+    │
+ 11 │             foo::baz::Something other;   // Should highlight baz
+    ·                  ^^^ unknown type
+    └──

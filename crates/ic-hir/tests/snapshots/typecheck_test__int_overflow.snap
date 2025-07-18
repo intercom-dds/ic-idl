@@ -1,0 +1,10 @@
+---
+source: crates/ic-hir/tests/typecheck_test.rs
+expression: output
+---
+error: constant `SMALL` value 256 does not fit in type int8
+   ┌ test.idl:2:15
+   │
+ 2 │         const int8 SMALL = 256;  // Too large for int8
+   ·               ^^^^ value out of range
+   └──

@@ -27,6 +27,8 @@
 
 // Test type checking phase
 
+mod common;
+
 #[test]
 fn test_string_assigned_to_int() {
     let input = r#"
@@ -34,23 +36,8 @@ fn test_string_assigned_to_int() {
         const int32 FOO = MY_STR;
     "#;
 
-    let parsed = ic_parse::from_str(input);
-
-    // Should parse successfully
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-
-    // Should have a type error
-    assert!(
-        !result.errors.is_empty(),
-        "Expected type error for string assigned to int, but got no errors"
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -59,21 +46,8 @@ fn test_int_overflow() {
         const int8 SMALL = 256;  // Too large for int8
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-
-    // Should have an overflow error
-    assert!(
-        !result.errors.is_empty(),
-        "Expected overflow error for int8 = 256, but got no errors"
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -84,22 +58,10 @@ fn test_valid_constants() {
         const double PI = 3.14;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-
-    // Should have no errors
-    assert!(
-        result.errors.is_empty(),
-        "Unexpected errors: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
+    
+    // Verify we have the expected constants
+    assert_eq!(result.order.len(), 3);
 }
 
 #[test]
@@ -140,19 +102,6 @@ fn test_union_case_type_mismatch() {
         };
     "#;
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-
-    // Should have a type error
-    assert!(
-        !result.errors.is_empty(),
-        "Expected type error for string case label with int32 discriminator, but got no errors"
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }

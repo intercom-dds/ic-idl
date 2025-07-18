@@ -27,6 +27,8 @@
 
 // Test constant references to enumerators
 
+use ic_vfs::SourceMap;
+
 #[test]
 fn test_const_enum_reference() {
     let input = r"
@@ -125,6 +127,7 @@ fn test_const_ref_to_const() {
 
 #[test]
 fn test_undefined_enum_field() {
+    let mut source_map = SourceMap::default();
     let input = r"
         enum MyEnum {
             ZERO,
@@ -134,7 +137,8 @@ fn test_undefined_enum_field() {
         const int32 BAD = MyEnum::UNDEFINED;
     ";
 
-    let parsed = ic_parse::from_str(input);
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
     assert!(
         parsed.errors.is_empty(),
@@ -149,15 +153,25 @@ fn test_undefined_enum_field() {
         !result.errors.is_empty(),
         "Expected error for undefined enum field"
     );
+
+    // Snapshot test the error message
+    let mut output = String::new();
+    for error in &result.errors {
+        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        output.push('\n');
+    }
+    insta::assert_snapshot!(output);
 }
 
 #[test]
 fn test_undefined_variable() {
+    let mut source_map = SourceMap::default();
     let input = r"
         const int32 BAD = UNDEFINED_VAR;
     ";
 
-    let parsed = ic_parse::from_str(input);
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
     assert!(
         parsed.errors.is_empty(),
@@ -172,4 +186,12 @@ fn test_undefined_variable() {
         !result.errors.is_empty(),
         "Expected error for undefined variable"
     );
+
+    // Snapshot test the error message
+    let mut output = String::new();
+    for error in &result.errors {
+        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        output.push('\n');
+    }
+    insta::assert_snapshot!(output);
 }

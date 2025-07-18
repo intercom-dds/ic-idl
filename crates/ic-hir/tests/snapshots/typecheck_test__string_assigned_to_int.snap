@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/typecheck_test.rs
+expression: output
+---
+error: undefined constant or enum value `MY_STR`
+   ┌ test.idl:3:27
+   │
+ 3 │         const int32 FOO = MY_STR;
+   ·                           ^^^^^^ evaluation error
+   └──
+ note: check that the name is spelled correctly

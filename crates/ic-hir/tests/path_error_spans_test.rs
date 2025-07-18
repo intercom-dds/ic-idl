@@ -27,8 +27,11 @@
 
 //! Tests for improved error spans that highlight the exact failing segment in qualified paths.
 
+use ic_vfs::SourceMap;
+
 #[test]
 fn test_unresolved_type_error_span_highlights_failing_segment() {
+    let mut source_map = SourceMap::default();
     let input = r"
         module foo {
             module bar {
@@ -43,7 +46,8 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -60,30 +64,18 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
         result.errors
     );
 
-    // First error should be for foo::bar::Invalid
-    let error1 = &result.errors[0];
-    let error1_msg = format!("{error1:?}");
-    assert!(
-        error1_msg.contains("foo::bar::Invalid"),
-        "First error should mention foo::bar::Invalid"
-    );
-
-    // The span should point to "Invalid" specifically
-    // We can't easily check the exact span here, but the error message should be clear
-
-    // Second error should be for foo::baz::Something
-    let error2 = &result.errors[1];
-    let error2_msg = format!("{error2:?}");
-    assert!(
-        error2_msg.contains("foo::baz::Something"),
-        "Second error should mention foo::baz::Something"
-    );
-
-    // The span should point to "baz" specifically
+    // Snapshot test the error messages
+    let mut output = String::new();
+    for error in &result.errors {
+        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        output.push('\n');
+    }
+    insta::assert_snapshot!(output);
 }
 
 #[test]
 fn test_deeply_nested_path_error() {
+    let mut source_map = SourceMap::default();
     let input = r"
         module a {
             module b {
@@ -100,7 +92,8 @@ fn test_deeply_nested_path_error() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -115,14 +108,18 @@ fn test_deeply_nested_path_error() {
         result.errors
     );
 
-    // Check that the right paths are reported as errors
-    let errors_str = format!("{:?}", result.errors);
-    assert!(errors_str.contains("a::b::c::d::Invalid"));
-    assert!(errors_str.contains("a::b::missing::c::Valid"));
+    // Snapshot test the error messages
+    let mut output = String::new();
+    for error in &result.errors {
+        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        output.push('\n');
+    }
+    insta::assert_snapshot!(output);
 }
 
 #[test]
 fn test_global_path_unresolved_segment() {
+    let mut source_map = SourceMap::default();
     let input = r"
         module foo {
             struct Bar {};
@@ -135,7 +132,8 @@ fn test_global_path_unresolved_segment() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -145,8 +143,11 @@ fn test_global_path_unresolved_segment() {
     let result = ic_hir::from_ast(parsed.tree);
     assert_eq!(result.errors.len(), 2);
 
-    // Check that errors mention the unresolved paths
-    let errors_str = format!("{:?}", result.errors);
-    assert!(errors_str.contains("::foo::Baz"));
-    assert!(errors_str.contains("::missing::Bar"));
+    // Snapshot test the error messages
+    let mut output = String::new();
+    for error in &result.errors {
+        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        output.push('\n');
+    }
+    insta::assert_snapshot!(output);
 }

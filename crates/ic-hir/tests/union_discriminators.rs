@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::{SourceMap, from_file};
-use ic_preproc::ProcArgs;
+mod common;
 
 #[test]
 fn test_union_with_octet_discriminator() {
@@ -39,13 +38,8 @@ fn test_union_with_octet_discriminator() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors - octet is a valid discriminator type
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -79,13 +73,8 @@ fn test_union_with_various_discriminators() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // All should be valid discriminator types
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -98,13 +87,9 @@ fn test_invalid_union_discriminator() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have an error about invalid discriminator type
-    assert!(!hir.errors.is_empty());
+    let diagnostics = common::parse_and_expect_errors(idl);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -123,13 +108,8 @@ fn test_union_discriminator_case_insensitive() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // All should work - case insensitive
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -148,11 +128,6 @@ fn test_nested_union_resolution() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should resolve correctly
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }

@@ -73,6 +73,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
 }
 
 /// Parse IDL input, expecting it to succeed without errors
+#[allow(dead_code)]
 pub fn parse_and_resolve_successfully(input: &str) -> ResolvedGraph {
     let (result, _, diagnostics) = parse_and_resolve(input);
 

@@ -1,0 +1,10 @@
+---
+source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
+expression: diagnostics
+---
+error: constant `value` has boolean value but type is not boolean
+   ┌ test.idl:2:15
+   │
+ 2 │         const string value = TRUE;
+   ·               ^^^^^^ expected boolean type
+   └──

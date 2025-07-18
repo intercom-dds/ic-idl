@@ -1,0 +1,10 @@
+---
+source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
+expression: diagnostics
+---
+error: constant `value` has floating-point value but type is not float/double
+   ┌ test.idl:2:15
+   │
+ 2 │         const string value = 3.14;
+   ·               ^^^^^^ expected floating-point type
+   └──

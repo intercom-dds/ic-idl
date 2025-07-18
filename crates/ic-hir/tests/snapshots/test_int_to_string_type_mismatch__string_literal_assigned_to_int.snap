@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
+expression: diagnostics
+---
+error: string literals cannot be used in arithmetic expressions
+   ┌ test.idl:2:29
+   │
+ 2 │         const int32 value = "hello";
+   ·                             ^^^^^^^ evaluation error
+   └──
+ note: string literals can only be used in struct initialization or string constants

@@ -1226,68 +1226,53 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         }
 
-        // Check if this is a string constant
-        let hir_def = self.ctx.definitions.get(id);
-        let is_string = if let DefKind::Const(const_ty) = &hir_def.kind {
-            matches!(const_ty.ty.kind, TyKind::String { .. })
-        } else {
-            false
-        };
-
         // Now evaluate the value with the updated type
-        let value = if is_string {
-            // For string constants, we don't evaluate them as expressions
-            // Just store an empty string as placeholder
-            Numeric::String(String::new())
-        } else {
-            // Check if the expression is an init list that needs type context
-            match &def.value {
-                ic_syntax::Expr::InitList(init_list) => {
-                    // Get the type information (now with evaluated bounds)
-                    let hir_def = self.ctx.definitions.get(id);
-                    if let DefKind::Const(const_ty) = &hir_def.kind {
-                        match &const_ty.ty.kind {
-                            TyKind::Adt(type_id) => {
-                                // Look up the ADT definition
-                                let adt_def = self.ctx.definitions.get(*type_id);
-                                if let DefKind::Struct(struct_ty) = &adt_def.kind {
-                                    let struct_ty = struct_ty.clone();
-                                    self.eval_struct_init(init_list, &struct_ty, *type_id)
-                                } else {
-                                    self.errors.push(error_span(
-                                        "initializer lists can only be used with struct types",
-                                        Label::new(def.span).message("not a struct type"),
-                                    ));
-                                    Numeric::Null
-                                }
-                            }
-                            TyKind::Array { ty, len, .. } => {
-                                self.eval_array_init(init_list, ty.as_ref().clone(), *len, id)
-                            }
-                            TyKind::Sequence { ty, .. } => {
-                                self.eval_sequence_init(init_list, ty.as_ref().clone(), id)
-                            }
-                            TyKind::Map { key, elem, .. } => self.eval_map_init(
-                                init_list,
-                                key.as_ref().clone(),
-                                elem.as_ref().clone(),
-                                id,
-                            ),
-                            _ => {
+        let value = match &def.value {
+            ic_syntax::Expr::InitList(init_list) => {
+                // Get the type information (now with evaluated bounds)
+                let hir_def = self.ctx.definitions.get(id);
+                if let DefKind::Const(const_ty) = &hir_def.kind {
+                    match &const_ty.ty.kind {
+                        TyKind::Adt(type_id) => {
+                            // Look up the ADT definition
+                            let adt_def = self.ctx.definitions.get(*type_id);
+                            if let DefKind::Struct(struct_ty) = &adt_def.kind {
+                                let struct_ty = struct_ty.clone();
+                                self.eval_struct_init(init_list, &struct_ty, *type_id)
+                            } else {
                                 self.errors.push(error_span(
-                                    "initializer lists can only be used with struct, array, \
-                                     sequence, or map types",
-                                    Label::new(def.span).message("incompatible type"),
+                                    "initializer lists can only be used with struct types",
+                                    Label::new(def.span).message("not a struct type"),
                                 ));
                                 Numeric::Null
                             }
                         }
-                    } else {
-                        Numeric::Null
+                        TyKind::Array { ty, len, .. } => {
+                            self.eval_array_init(init_list, ty.as_ref().clone(), *len, id)
+                        }
+                        TyKind::Sequence { ty, .. } => {
+                            self.eval_sequence_init(init_list, ty.as_ref().clone(), id)
+                        }
+                        TyKind::Map { key, elem, .. } => self.eval_map_init(
+                            init_list,
+                            key.as_ref().clone(),
+                            elem.as_ref().clone(),
+                            id,
+                        ),
+                        _ => {
+                            self.errors.push(error_span(
+                                "initializer lists can only be used with struct, array, sequence, \
+                                 or map types",
+                                Label::new(def.span).message("incompatible type"),
+                            ));
+                            Numeric::Null
+                        }
                     }
+                } else {
+                    Numeric::Null
                 }
-                _ => self.eval_expr(&def.value),
             }
+            _ => self.eval_expr(&def.value),
         };
 
         // Update the value

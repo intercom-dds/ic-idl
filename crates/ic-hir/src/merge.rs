@@ -34,6 +34,7 @@
 use std::collections::HashMap;
 
 use ic_diagnostic::{Color, Diag, Label};
+use ic_syntax::Span;
 
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def,
@@ -50,10 +51,10 @@ pub struct MergedGraph {
     pub errors: Vec<Diag>,
 }
 
-/// A mapping from old DefIds to new DefIds after merging.
+/// A mapping from old `DefIds` to new `DefIds` after merging.
 type DefIdMap = HashMap<DefId, DefId>;
 
-/// A mapping from old ScopeIds to new ScopeIds after merging.
+/// A mapping from old `ScopeIds` to new `ScopeIds` after merging.
 type ScopeIdMap = HashMap<ScopeId, ScopeId>;
 
 /// Merges multiple HIR trees into a single unified tree.
@@ -68,6 +69,7 @@ type ScopeIdMap = HashMap<ScopeId, ScopeId>;
 /// # Returns
 ///
 /// A new `MergedGraph` containing the unified HIR tree.
+#[must_use]
 pub fn merge_hir_trees(graphs: &[ResolvedGraph]) -> MergedGraph {
     if graphs.is_empty() {
         return MergedGraph {
@@ -89,15 +91,23 @@ struct HirMerger {
     /// The new context being built
     new_context: Context,
 
-    /// Maps from (graph_index, old_def_id) to new_def_id
+    /// Maps from (`graph_index`, `old_def_id`) to `new_def_id`
     def_id_maps: Vec<DefIdMap>,
 
-    /// Maps from (graph_index, old_scope_id) to new_scope_id
+    /// Maps from (`graph_index`, `old_scope_id`) to `new_scope_id`
     scope_id_maps: Vec<ScopeIdMap>,
 
     /// Tracks definitions by their qualified name for deduplication
-    /// Maps from qualified_name to new DefId
+    /// Maps from `qualified_name` to new `DefId`
     dedup_map: HashMap<String, DefId>,
+
+    /// Tracks all module definitions by qualified name to handle multiple reopenings
+    /// Maps from `qualified_name` to list of (`DefId`, `Span`) pairs
+    module_defs: HashMap<String, Vec<(DefId, Span)>>,
+
+    /// Maps from `DefId` to the `ScopeId` it belongs to
+    /// Used to properly register definitions in their correct scopes
+    def_to_scope_map: HashMap<DefId, ScopeId>,
 
     /// The final order of definitions
     order: Vec<DefId>,
@@ -113,24 +123,53 @@ impl HirMerger {
             def_id_maps: Vec::new(),
             scope_id_maps: Vec::new(),
             dedup_map: HashMap::new(),
+            module_defs: HashMap::new(),
+            def_to_scope_map: HashMap::new(),
             order: Vec::new(),
             errors: Vec::new(),
         }
     }
 
+    /// Maps an optional `DefId` from old to new using the graph's `DefId` map
+    fn map_def_id(&self, graph_index: usize, def_id: Option<DefId>) -> Option<DefId> {
+        def_id.and_then(|id| self.def_id_maps[graph_index].get(&id).copied())
+    }
+
+    /// Maps a vector of `DefIds` from old to new, filtering out any that don't exist
+    fn map_def_ids(&self, graph_index: usize, def_ids: &[DefId]) -> Vec<DefId> {
+        def_ids
+            .iter()
+            .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
+            .collect()
+    }
+
+    /// Adds a graph to the merge, handling deduplication and reference updating.
+    ///
+    /// The merge process follows these steps:
+    /// 1. Copy scope hierarchy - preserves the nested scope structure
+    /// 2. Copy all definitions - handles deduplication based on qualified name and span
+    /// 3. Update scope-definition relationships
+    /// 4. Update all internal references (`DefIds`, `TypeIds`) to point to merged definitions
     fn add_graph(&mut self, graph: &ResolvedGraph) {
         let graph_index = self.def_id_maps.len();
         self.def_id_maps.push(HashMap::new());
         self.scope_id_maps.push(HashMap::new());
 
-        // First pass: copy scopes
+        // First pass: copy scopes (just the structure, def_ids will be updated later)
         self.copy_scopes(graph_index, &graph.context);
 
         // Second pass: copy all definitions from the arena
         let all_def_ids: Vec<DefId> = graph.context.definitions.iter().map(|(id, _)| id).collect();
 
         for old_def_id in all_def_ids {
-            let _ = self.copy_definition(graph_index, &graph.context, old_def_id);
+            // Find which scope contains this definition
+            let old_scope = graph
+                .context
+                .scopes
+                .find_scope_containing_def(old_def_id)
+                .unwrap_or(graph.context.scopes.root());
+
+            let _ = self.copy_definition(graph_index, &graph.context, old_def_id, old_scope);
         }
 
         // Add top-level definitions to order
@@ -146,17 +185,30 @@ impl HirMerger {
         // Third pass: update scope def_ids now that definitions are copied
         self.update_scope_def_ids(graph_index);
 
-        // Fourth pass: update all references in the copied definitions
+        // Fourth pass: update scope def_id fields to point to new definitions
+        self.update_scope_def_id_fields(graph_index, &graph.context);
+
+        // Fifth pass: update all references in the copied definitions
         self.update_references(graph_index);
     }
 
+    /// Copies a definition from an old context to the new merged context.
+    ///
+    /// Handles deduplication based on:
+    /// - Qualified name (full path including parent modules)
+    /// - Identifier span (to distinguish between identical definitions vs conflicts)
+    ///
+    /// Special cases:
+    /// - Modules are never deduplicated (each reopening creates a separate module)
+    /// - Conflicting definitions (same name, different spans) generate errors
     fn copy_definition(
         &mut self,
         graph_index: usize,
         old_context: &Context,
         old_def_id: DefId,
+        old_scope: ScopeId,
     ) -> DefId {
-        // Check if we've already copied this definition
+        // Check if we've already processed this definition in this graph
         if let Some(&existing_def_id) = self.def_id_maps[graph_index].get(&old_def_id) {
             return existing_def_id;
         }
@@ -166,44 +218,80 @@ impl HirMerger {
         // Get the qualified name for deduplication
         let qualified_name = self.get_qualified_name(old_context, old_def_id);
 
-        // Check if we've already copied this definition from another graph
-        if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
-            // Special case: modules should NOT be deduplicated - each reopening is separate
-            if !matches!(&old_def.kind, DefKind::Module(_)) {
-                // Check if they're the same definition by comparing spans
-                let existing_def = self.new_context.definitions.get(existing_def_id);
+        // Special handling for modules - check all existing module definitions
+        if matches!(&old_def.kind, DefKind::Module(_)) {
+            if let Some(module_list) = self.module_defs.get(&qualified_name) {
+                // Check if we already have this exact module (same span)
+                for &(existing_def_id, existing_span) in module_list {
+                    if old_def.span == existing_span {
+                        // Same module definition (from include), deduplicate
+                        self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
 
-                // If ident spans are different, we have different definitions with the same name
-                if old_def.ident.span != existing_def.ident.span {
-                    self.errors.push(
-                        Diag::error(format!(
-                            "conflicting definitions for `{}`",
-                            old_def.ident.name
-                        ))
-                        .label(
-                            Label::new(old_def.ident.span)
-                                .message("redefined here")
-                                .color(Color::Red),
-                        )
-                        .label(Label::new(existing_def.ident.span).message("first defined here")),
-                    );
+                        // IMPORTANT: Even though we're deduplicating the module,
+                        // we still need to ensure its children are in the merged context
+                        // Some children may have already been copied in an earlier graph
+                        if let DefKind::Module(_) = &old_def.kind {
+                            // We don't need to process children here because:
+                            // 1. If this module was included in an earlier file, its children were already processed
+                            // 2. The children will be mapped correctly by update_def_kind
+                        }
 
-                    // Still need to map it to avoid breaking the rest of the merge
-                    self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-                    return existing_def_id;
+                        return existing_def_id;
+                    }
                 }
+            }
+        } else if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
+            // For non-modules, use the existing deduplication logic
+            let existing_def = self.new_context.definitions.get(existing_def_id);
 
-                // Map the old DefId to the existing one
+            // Different spans = different definitions = conflict
+            if old_def.ident.span != existing_def.ident.span {
+                self.errors.push(
+                    Diag::error(format!(
+                        "conflicting definitions for `{}`",
+                        old_def.ident.name
+                    ))
+                    .label(
+                        Label::new(old_def.ident.span)
+                            .message("redefined here")
+                            .color(Color::Red),
+                    )
+                    .label(Label::new(existing_def.ident.span).message("first defined here")),
+                );
+
+                // Map to existing to avoid cascading errors
                 self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
                 return existing_def_id;
             }
+
+            // Same span = same definition, deduplicate
+            self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+
+            // If this deduplicated definition has a parent, ensure it's in the parent's definitions list
+            // This handles the case where a module is deduplicated but its children need to be registered
+            if let Some(parent_def_id) = old_def.parent {
+                if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id) {
+                    if let Def {
+                        kind: DefKind::Module(module),
+                        ..
+                    } = self.new_context.definitions.get_mut(mapped_parent)
+                    {
+                        if !module.definitions.contains(&existing_def_id) {
+                            module.definitions.push(existing_def_id);
+                        }
+                    }
+                }
+            }
+
+            return existing_def_id;
         }
 
-        // Create a new definition
+        // Create a new definition with mapped parent
+        let mapped_parent = self.map_def_id(graph_index, old_def.parent);
         let new_def_id = self.new_context.definitions.alloc_with_id(|id| Def {
             id,
             ident: old_def.ident.clone(),
-            parent: None,                             // Will be updated later
+            parent: mapped_parent,                    // Map parent immediately
             annotations: old_def.annotations.clone(), // Will need updating
             span: old_def.span,
             kind: old_def.kind.clone(), // Will need updating
@@ -212,8 +300,33 @@ impl HirMerger {
 
         // Record mapping
         self.def_id_maps[graph_index].insert(old_def_id, new_def_id);
-        if !matches!(&old_def.kind, DefKind::Module(_)) {
+
+        // For modules, add to module list; for others, add to dedup_map
+        if matches!(&old_def.kind, DefKind::Module(_)) {
+            self.module_defs
+                .entry(qualified_name)
+                .or_default()
+                .push((new_def_id, old_def.span));
+        } else {
             self.dedup_map.insert(qualified_name, new_def_id);
+        }
+
+        // If this definition has a parent, add it to the parent's definitions list
+        if let Some(parent_id) = mapped_parent {
+            if let Def {
+                kind: DefKind::Module(module),
+                ..
+            } = self.new_context.definitions.get_mut(parent_id)
+            {
+                if !module.definitions.contains(&new_def_id) {
+                    module.definitions.push(new_def_id);
+                }
+            }
+        }
+
+        // Map the new definition to its scope
+        if let Some(&new_scope) = self.scope_id_maps[graph_index].get(&old_scope) {
+            self.def_to_scope_map.insert(new_def_id, new_scope);
         }
 
         new_def_id
@@ -260,15 +373,6 @@ impl HirMerger {
                 self.new_context.scopes.root()
             };
 
-            // Check if this scope has a definition
-            let new_def_id = if let Some(_old_def_id) = old_scope.def_id {
-                // The definition will be copied later, so we'll need to update this
-                // For now, just use None and update it after definitions are copied
-                None
-            } else {
-                None
-            };
-
             // Find the name of this scope in its parent
             let scope_name = if let Some(old_parent) = old_scope.parent {
                 old_context.scopes.scopes[old_parent.0]
@@ -281,11 +385,11 @@ impl HirMerger {
                 String::from("_unknown_")
             };
 
-            // Create new scope
+            // Create new scope (def_id will be set later)
             let new_scope_id = self
                 .new_context
                 .scopes
-                .create_child_scope(new_parent, scope_name, new_def_id);
+                .create_child_scope(new_parent, scope_name, None);
 
             // Map old scope to new scope
             scope_map.insert(old_scope_id, new_scope_id);
@@ -293,15 +397,17 @@ impl HirMerger {
     }
 
     fn update_scope_def_ids(&mut self, graph_index: usize) {
-        // Since we don't have access to the old context here, we need to track
-        // which scopes need their def_ids updated during scope copying.
-        // For now, this is a placeholder that ensures definitions are properly
-        // registered in their scopes.
-
+        // Register all definitions in their correct scopes
         let def_map = &self.def_id_maps[graph_index];
 
-        // Register all definitions in their appropriate scopes
         for (_, &new_def_id) in def_map.iter() {
+            // Get the scope this definition belongs to
+            let scope_id = self
+                .def_to_scope_map
+                .get(&new_def_id)
+                .copied()
+                .unwrap_or_else(|| self.new_context.scopes.root());
+
             let def_name = self
                 .new_context
                 .definitions
@@ -309,13 +415,24 @@ impl HirMerger {
                 .ident
                 .name
                 .clone();
-            // For now, add all definitions to root scope
-            // In a full implementation, we'd track the proper scope during copying
-            self.new_context.scopes.add_definition(
-                self.new_context.scopes.root(),
-                def_name,
-                new_def_id,
-            );
+
+            self.new_context
+                .scopes
+                .add_definition(scope_id, def_name, new_def_id);
+        }
+    }
+
+    fn update_scope_def_id_fields(&mut self, graph_index: usize, old_context: &Context) {
+        // Update the def_id field in scopes to point to new definitions
+        for (old_scope_id, &new_scope_id) in self.scope_id_maps[graph_index].iter() {
+            // Get the old scope's def_id
+            if let Some(old_def_id) = old_context.scopes.scopes[old_scope_id.0].def_id {
+                // Map it to the new def_id
+                if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&old_def_id) {
+                    // Update the new scope's def_id
+                    self.new_context.scopes.scopes[new_scope_id.0].def_id = Some(new_def_id);
+                }
+            }
         }
     }
 
@@ -328,30 +445,34 @@ impl HirMerger {
         }
     }
 
+    /// Updates all references within a definition to point to the new merged definitions
     fn update_def_references(&mut self, graph_index: usize, new_def_id: DefId) {
-        // We need to be careful about borrowing here
+        // Check if this definition was created in this graph (not deduplicated)
+        // A definition was created in this graph if it doesn't appear in any earlier graph's values
+        let was_created_in_this_graph = !self.def_id_maps[..graph_index]
+            .iter()
+            .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id));
+
+        // Only update if this definition was created in this graph
+        if !was_created_in_this_graph {
+            return;
+        }
+
+        // Collect updates first to avoid borrowing conflicts
         let updated_data = {
             let def = self.new_context.definitions.get(new_def_id);
 
-            // Update parent reference
-            let updated_parent = def
-                .parent
-                .and_then(|old_parent| self.def_id_maps[graph_index].get(&old_parent).copied());
-
-            // Update annotations
-            let updated_annotations = def
-                .annotations
-                .iter()
-                .map(|ann| self.update_annotation(graph_index, ann))
-                .collect::<Vec<_>>();
-
-            // Update DefKind
-            let updated_kind = self.update_def_kind(graph_index, &def.kind);
-
-            (updated_parent, updated_annotations, updated_kind)
+            (
+                self.map_def_id(graph_index, def.parent),
+                def.annotations
+                    .iter()
+                    .map(|ann| self.update_annotation(graph_index, ann))
+                    .collect::<Vec<_>>(),
+                self.update_def_kind(graph_index, &def.kind),
+            )
         };
 
-        // Now apply the updates
+        // Apply all updates at once
         let def_mut = self.new_context.definitions.get_mut(new_def_id);
         def_mut.parent = updated_data.0;
         def_mut.annotations = updated_data.1;
@@ -361,9 +482,7 @@ impl HirMerger {
     fn update_def_kind(&self, graph_index: usize, kind: &DefKind) -> DefKind {
         match kind {
             DefKind::Struct(s) => DefKind::Struct(StructTy {
-                parent: s
-                    .parent
-                    .and_then(|id| self.def_id_maps[graph_index].get(&id).copied()),
+                parent: self.map_def_id(graph_index, s.parent),
                 members: s
                     .members
                     .iter()
@@ -387,30 +506,18 @@ impl HirMerger {
                     .collect(),
             }),
             DefKind::Interface(i) => DefKind::Interface(InterfaceTy {
-                parents: i
-                    .parents
-                    .iter()
-                    .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
-                    .collect(),
+                parents: self.map_def_ids(graph_index, &i.parents),
                 prototypes: i
                     .prototypes
                     .iter()
                     .map(|p| self.update_proto(graph_index, p))
                     .collect(),
                 attributes: i.attributes.clone(),
-                definitions: i
-                    .definitions
-                    .iter()
-                    .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
-                    .collect(),
+                definitions: self.map_def_ids(graph_index, &i.definitions),
                 is_local: i.is_local,
             }),
             DefKind::Module(m) => DefKind::Module(ModuleTy {
-                definitions: m
-                    .definitions
-                    .iter()
-                    .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
-                    .collect(),
+                definitions: self.map_def_ids(graph_index, &m.definitions),
             }),
             DefKind::Annotation(a) => DefKind::Annotation(AnnotationTy {
                 members: a
@@ -418,11 +525,7 @@ impl HirMerger {
                     .iter()
                     .map(|m| self.update_member(graph_index, m))
                     .collect(),
-                types: a
-                    .types
-                    .iter()
-                    .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
-                    .collect(),
+                types: self.map_def_ids(graph_index, &a.types),
             }),
             DefKind::Alias(a) => DefKind::Alias(AliasTy {
                 ty: self.update_type(graph_index, &a.ty),
@@ -440,9 +543,7 @@ impl HirMerger {
                     .collect(),
             }),
             DefKind::Bitset(b) => DefKind::Bitset(BitsetTy {
-                parent: b
-                    .parent
-                    .and_then(|id| self.def_id_maps[graph_index].get(&id).copied()),
+                parent: self.map_def_id(graph_index, b.parent),
                 fields: b
                     .fields
                     .iter()
@@ -450,23 +551,15 @@ impl HirMerger {
                     .collect(),
             }),
             DefKind::Valuetype(v) => DefKind::Valuetype(ValueTy {
-                parent: v
-                    .parent
-                    .and_then(|id| self.def_id_maps[graph_index].get(&id).copied()),
-                extends: v
-                    .extends
-                    .and_then(|id| self.def_id_maps[graph_index].get(&id).copied()),
+                parent: self.map_def_id(graph_index, v.parent),
+                extends: self.map_def_id(graph_index, v.extends),
                 prototypes: v
                     .prototypes
                     .iter()
                     .map(|p| self.update_proto(graph_index, p))
                     .collect(),
                 members: v.members.clone(), // Vec<()> - nothing to update
-                definitions: v
-                    .definitions
-                    .iter()
-                    .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
-                    .collect(),
+                definitions: self.map_def_ids(graph_index, &v.definitions),
             }),
             DefKind::Except(e) => DefKind::Except(ExceptTy {
                 members: e

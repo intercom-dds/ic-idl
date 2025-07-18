@@ -1,1 +1,3 @@
-struct bar {};
+module abc {
+	struct bar {};
+};

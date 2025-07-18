@@ -318,7 +318,7 @@ fn test_merge_module_reopening() {
 fn test_merge_conflicting_definitions() {
     // Test that conflicting definitions are detected and reported as errors
     let mut source_map = SourceMap::default();
-    
+
     let input1 = r"struct Foo {};";
     let input2 = r"struct Foo {
     string value;
@@ -340,12 +340,12 @@ fn test_merge_conflicting_definitions() {
 
     // Should have 1 error for the conflicting definition
     assert_eq!(merged.errors.len(), 1);
-    
+
     // Snapshot test the error message
     let mut output = String::new();
     ic_diagnostic::emit_diagnostic(&mut output, &source_map, &merged.errors[0]).unwrap();
     insta::assert_snapshot!(output);
-    
+
     // Despite the error, we should still have the definition (mapped to one of them)
     assert_eq!(merged.order.len(), 1);
 }
@@ -371,7 +371,7 @@ fn test_merge_same_definition_from_include() {
 
     // Should have no errors - same span means same definition
     assert_eq!(merged.errors.len(), 0);
-    
+
     // Should have only 1 definition due to deduplication
     assert_eq!(merged.order.len(), 1);
 }
@@ -380,7 +380,7 @@ fn test_merge_same_definition_from_include() {
 fn test_merge_multiple_conflicts() {
     // Test multiple conflicting definitions in a single merge
     let mut source_map = SourceMap::default();
-    
+
     let input1 = r"
 struct Point { long x; };
 enum Color { RED, GREEN };
@@ -404,7 +404,7 @@ enum Color { RED, GREEN, BLUE };
 
     // Should have 2 errors for the conflicting definitions
     assert_eq!(merged.errors.len(), 2);
-    
+
     // Snapshot test all error messages
     let mut output = String::new();
     for error in &merged.errors {
@@ -418,7 +418,7 @@ enum Color { RED, GREEN, BLUE };
 fn test_merge_with_nested_definitions() {
     // Test that definitions nested in modules are properly merged
     let mut source_map = SourceMap::default();
-    
+
     let input1 = r"
 module api {
     struct Request {
@@ -448,13 +448,81 @@ module api {
 
     // Should have no errors
     assert_eq!(merged.errors.len(), 0);
-    
+
     // Should have 2 api modules (module reopening)
-    let module_count = merged.order.iter()
+    let module_count = merged
+        .order
+        .iter()
         .filter(|&&def_id| {
             let def = merged.context.definitions.get(def_id);
             matches!(def.kind, DefKind::Module(_)) && def.ident.name == "api"
         })
         .count();
     assert_eq!(module_count, 2);
+}
+
+#[test]
+fn test_merge_module_with_include_deduplication() {
+    // Test that module deduplication preserves children when the same module
+    // appears in multiple files (e.g., via includes)
+
+    // When the same module definition appears with the same span (from an include),
+    // it should be deduplicated but all children should be preserved
+    let input = r"
+module abc {
+    struct bar {};
+};
+";
+
+    // Parse the same input twice to simulate it appearing in two files
+    let parsed1 = ic_parse::from_str(input);
+    let parsed2 = ic_parse::from_str(input);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no errors - same module with same span is deduplicated
+    assert_eq!(merged.errors.len(), 0);
+
+    // Should have only 1 module due to deduplication
+    let module_count = merged
+        .order
+        .iter()
+        .filter(|&&def_id| {
+            let def = merged.context.definitions.get(def_id);
+            matches!(def.kind, DefKind::Module(_)) && def.ident.name == "abc"
+        })
+        .count();
+    assert_eq!(module_count, 1, "Module should be deduplicated");
+
+    // But the struct inside should still exist
+    let modules: Vec<_> = merged
+        .order
+        .iter()
+        .filter_map(|&def_id| {
+            let def = merged.context.definitions.get(def_id);
+            if matches!(def.kind, DefKind::Module(_)) && def.ident.name == "abc" {
+                Some(def_id)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let module_def = merged.context.definitions.get(modules[0]);
+    if let DefKind::Module(module_ty) = &module_def.kind {
+        // Should have the bar struct
+        let has_bar = module_ty.definitions.iter().any(|&def_id| {
+            let def = merged.context.definitions.get(def_id);
+            matches!(def.kind, DefKind::Struct(_)) && def.ident.name == "bar"
+        });
+        assert!(has_bar, "Module should contain struct bar");
+    } else {
+        panic!("Expected module");
+    }
 }

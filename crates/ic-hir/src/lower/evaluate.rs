@@ -1226,8 +1226,21 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         }
 
+        // Check if this is a string constant with a string literal
+        let hir_def = self.ctx.definitions.get(id);
+        let is_string_const = if let DefKind::Const(const_ty) = &hir_def.kind {
+            matches!(const_ty.ty.kind, TyKind::String { .. })
+        } else {
+            false
+        };
+
         // Now evaluate the value with the updated type
         let value = match &def.value {
+            // Handle string literals for string constants
+            ic_syntax::Expr::Literal(lit) if is_string_const => match &lit.value {
+                ic_syntax::LiteralValue::String(s) => Numeric::String(s.clone()),
+                _ => self.eval_expr(&def.value),
+            },
             ic_syntax::Expr::InitList(init_list) => {
                 // Get the type information (now with evaluated bounds)
                 let hir_def = self.ctx.definitions.get(id);

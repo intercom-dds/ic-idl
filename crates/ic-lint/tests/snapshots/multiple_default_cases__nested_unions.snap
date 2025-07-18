@@ -2,13 +2,6 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error: union 'Inner' has multiple default cases
-    ┌ test.idl:10:21
-    │
- 10 │     default: double d2;  // Error in inner union
-    ·                     ^^ duplicate default
-    └──
-
 error: union `Inner` has 2 default cases, but only one is allowed
     ┌ test.idl:10:21
     │

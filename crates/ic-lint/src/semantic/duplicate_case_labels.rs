@@ -40,7 +40,7 @@ pub struct DuplicateCaseLabels<'a> {
 
 impl<'a> Lint<'a> for DuplicateCaseLabels<'a> {
     fn name() -> &'static str {
-        "DuplicateCaseLabels"
+        "duplicate_case_labels"
     }
 
     fn category() -> Category {
@@ -56,24 +56,7 @@ impl<'a> Lint<'a> for DuplicateCaseLabels<'a> {
 impl DuplicateCaseLabels<'_> {
     fn check_union(&mut self, union_ty: &UnionTy, union_name: &str) {
         let mut seen_labels = HashSet::new();
-        let mut has_default = false;
-
         for variant in &union_ty.variants {
-            if variant.is_default {
-                if has_default {
-                    if let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        format!("union '{union_name}' has multiple default cases"),
-                        Label::new(variant.ident.span).message("duplicate default"),
-                    ) {
-                        Self::report(self.ctx, diag);
-                    }
-                } else {
-                    has_default = true;
-                }
-            }
-
             for label in &variant.labels {
                 let label_key = Self::numeric_to_string(label);
                 if !seen_labels.insert(label_key.clone()) {
@@ -87,13 +70,6 @@ impl DuplicateCaseLabels<'_> {
                     }
                 }
             }
-        }
-
-        // Check if we have both default and labels that cover all values
-        if has_default && !seen_labels.is_empty() {
-            // This is a more complex check - we'd need to know the discriminator type range
-            // For now, just warn if there's a default with any explicit cases
-            // TODO: Implement full coverage check
         }
     }
 

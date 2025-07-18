@@ -1,5 +1,5 @@
-#include "b.idl"
-
-module abc {
-struct foo {};
+union MyUnion switch(octet) {
+case 0:
+case 0:
+string value;
 };

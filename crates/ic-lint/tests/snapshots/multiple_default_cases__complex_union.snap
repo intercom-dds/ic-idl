@@ -2,13 +2,6 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error: union 'ComplexUnion' has multiple default cases
-    ┌ test.idl:12:21
-    │
- 12 │     default: double fallback2;  // Error
-    ·                     ^^^^^^^^^ duplicate default
-    └──
-
 error: union `ComplexUnion` has 2 default cases, but only one is allowed
     ┌ test.idl:12:21
     │

@@ -1,0 +1,5 @@
+---
+source: crates/ic-hir/tests/overflow_detection.rs
+expression: test_overflow(source)
+---
+

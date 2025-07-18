@@ -35,7 +35,7 @@
 //!
 //! At this point, all types are resolved, so we can properly evaluate expressions.
 
-use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_diagnostic::{Diag, Label, error_span};
 use ic_expr::{Error as ExprError, GenericNumeric, Result as ExprResult};
 use ic_syntax::{Expr, Item};
 
@@ -390,10 +390,13 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         };
 
-        // Create evaluation context
+        // Create evaluation context with overflow detection
         let mut eval_ctx = IdlEvalContext {
             ctx: self.ctx,
-            config: ic_expr::EvalConfig::default(),
+            config: ic_expr::EvalConfig {
+                overflow: ic_expr::OverflowBehavior::Error,
+                max_shift: 127,
+            },
             errors: &mut self.errors,
             current_scope: self.current_scope,
         };
@@ -409,14 +412,13 @@ impl<'a> ExpressionEvaluator<'a> {
                     ExprError::DivisionByZero => "division by zero in constant expression",
                     ExprError::ModuloByZero => "modulo by zero in constant expression",
                     ExprError::Overflow(op_str) => {
-                        self.errors.push(warn_span(
-                            format!("arithmetic overflow in {op_str} operation"),
+                        self.errors.push(error_span(
+                            format!("integer overflow in constant expression: {op_str}"),
                             Label::new(ic_syntax::util::expr_span(expr))
-                                .message("value wraps around"),
+                                .message("overflow detected"),
                         ));
-                        // For now, just return 0
-                        // TODO: Actually compute the wrapped value
-                        return Numeric::Int32(0);
+                        // Return Null to indicate error
+                        return Numeric::Null;
                     }
                     ExprError::InvalidShift(amount) => {
                         self.errors.push(error_span(
@@ -463,17 +465,30 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
-    /// Handles overflow by issuing a warning and returning a wrapped value.
-    #[allow(dead_code)]
-    fn handle_overflow(&mut self, expr: &Expr, op: ic_expr::Op) -> Numeric {
-        self.errors.push(warn_span(
-            format!("arithmetic overflow in {op:?} operation"),
-            Label::new(ic_syntax::util::expr_span(expr)).message("value wraps around"),
-        ));
+    /// Converts a numeric value to match the declared type.
+    /// This handles unsigned wrapping for negative values.
+    fn convert_to_type(&mut self, value: Numeric, ty: &Ty) -> Numeric {
+        match (&value, &ty.kind) {
+            // Convert signed to unsigned with wrapping
+            (Numeric::Int8(v), TyKind::Primitive(PrimitiveTy::UInt8)) => Numeric::Octet(*v as u8),
+            (Numeric::Int16(v), TyKind::Primitive(PrimitiveTy::UInt16)) => {
+                Numeric::UInt16(*v as u16)
+            }
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::UInt32)) => {
+                Numeric::UInt32(*v as u32)
+            }
+            (Numeric::Int64(v), TyKind::Primitive(PrimitiveTy::UInt64)) => {
+                Numeric::UInt64(*v as u64)
+            }
 
-        // For now, just return 0
-        // TODO: Actually compute the wrapped value
-        Numeric::Int32(0)
+            // Convert between signed integer types
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int8)) => Numeric::Int8(*v as i8),
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int16)) => Numeric::Int16(*v as i16),
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int64)) => Numeric::Int64(*v as i64),
+
+            // Keep the value as-is if types match or no conversion needed
+            _ => value,
+        }
     }
 
     /// Evaluates a bound expression to a usize.
@@ -1288,10 +1303,27 @@ impl<'a> ExpressionEvaluator<'a> {
             _ => self.eval_expr(&def.value),
         };
 
+        // Get the declared type for conversion
+        let declared_ty = {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Const(const_ty) = &hir_def.kind {
+                Some(const_ty.ty.clone())
+            } else {
+                None
+            }
+        };
+
+        // Convert value to match declared type (handles unsigned wrapping)
+        let final_value = if let Some(ty) = declared_ty {
+            self.convert_to_type(value, &ty)
+        } else {
+            value
+        };
+
         // Update the value
         let hir_def = self.ctx.definitions.get_mut(id);
         if let DefKind::Const(const_ty) = &mut hir_def.kind {
-            const_ty.value = value;
+            const_ty.value = final_value;
         }
     }
 

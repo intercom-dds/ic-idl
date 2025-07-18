@@ -236,13 +236,42 @@ impl<'a> TypeChecker<'a> {
         let fits = match prim {
             PrimitiveTy::Bool => value == 0 || value == 1,
             PrimitiveTy::Char => (0..=127).contains(&value),
-            PrimitiveTy::WChar | PrimitiveTy::UInt16 => (0..=0xFFFF).contains(&value),
+            PrimitiveTy::WChar | PrimitiveTy::UInt16 => {
+                // Allow negative values to wrap for unsigned types
+                if value < 0 {
+                    // Check if it would fit after wrapping
+                    let wrapped = (value as u64) & 0xFFFF;
+                    wrapped <= 0xFFFF
+                } else {
+                    (0..=0xFFFF).contains(&value)
+                }
+            }
             PrimitiveTy::Int8 => (-128..=127).contains(&value),
-            PrimitiveTy::UInt8 => (0..=255).contains(&value),
+            PrimitiveTy::UInt8 => {
+                // Allow negative values to wrap for unsigned types
+                if value < 0 {
+                    // Check if it would fit after wrapping
+                    let wrapped = (value as u64) & 0xFF;
+                    wrapped <= 0xFF
+                } else {
+                    (0..=255).contains(&value)
+                }
+            }
             PrimitiveTy::Int16 => (-32768..=32767).contains(&value),
             PrimitiveTy::Int32 => (-2_147_483_648..=2_147_483_647).contains(&value),
-            PrimitiveTy::UInt32 => (0..=4_294_967_295).contains(&value),
-            PrimitiveTy::UInt64 => value >= 0,
+            PrimitiveTy::UInt32 => {
+                // Allow negative values to wrap for unsigned types
+                if value < 0 {
+                    // All negative i64 values fit in uint32 after wrapping
+                    true
+                } else {
+                    (0..=4_294_967_295).contains(&value)
+                }
+            }
+            PrimitiveTy::UInt64 => {
+                // All i64 values fit in uint64 after wrapping
+                true
+            }
             PrimitiveTy::Float32
             | PrimitiveTy::Float64
             | PrimitiveTy::Float128

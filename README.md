@@ -66,7 +66,7 @@ cargo run
 Run all tests:
 
 ```sh
-cargo test --workspace
+cargo test --workspace --all-targets
 ```
 
 Development documentation can be generated with:
@@ -77,7 +77,7 @@ cargo doc --document-private-items --no-deps --workspace
 
 ## MSRV
 
-- MSRV for the compiler is 1.85.
+- MSRV for the compiler is 1.87.
 - MSRV for the serialization library is 1.83.
 
 The MSRV may change between minor version releases and is not considered a
@@ -85,10 +85,7 @@ semver-breaking change.
 
 ## Known bugs
 
-- IDL keywords cannot be used in preprocessor directives.
-- All diagnostics are treated as errors, even if they are warnings.
 - `valuetype`s are parsed but not resolved or emitted.
-- Preprocessor errors are not displayed.
 - Expressions are not type checked.
 - The Python backend has not been updated and will still generate code that
   targets InterCOM DDS.

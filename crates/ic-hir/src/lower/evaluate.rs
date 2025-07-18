@@ -486,6 +486,44 @@ impl<'a> ExpressionEvaluator<'a> {
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int16)) => Numeric::Int16(*v as i16),
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int64)) => Numeric::Int64(*v as i64),
 
+            // Convert float to integer types (truncating)
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Int8)) => Numeric::Int8(*v as i8),
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::UInt8)) => Numeric::Octet(*v as u8),
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Int16)) => Numeric::Int16(*v as i16),
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::UInt16)) => {
+                Numeric::UInt16(*v as u16)
+            }
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Int32)) => Numeric::Int32(*v as i32),
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::UInt32)) => {
+                Numeric::UInt32(*v as u32)
+            }
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Int64)) => Numeric::Int64(*v as i64),
+            (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::UInt64)) => {
+                Numeric::UInt64(*v as u64)
+            }
+
+            // Convert double to integer types (truncating)
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::Int8)) => Numeric::Int8(*v as i8),
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::UInt8)) => Numeric::Octet(*v as u8),
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::Int16)) => {
+                Numeric::Int16(*v as i16)
+            }
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::UInt16)) => {
+                Numeric::UInt16(*v as u16)
+            }
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::Int32)) => {
+                Numeric::Int32(*v as i32)
+            }
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::UInt32)) => {
+                Numeric::UInt32(*v as u32)
+            }
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::Int64)) => {
+                Numeric::Int64(*v as i64)
+            }
+            (Numeric::Double(v), TyKind::Primitive(PrimitiveTy::UInt64)) => {
+                Numeric::UInt64(*v as u64)
+            }
+
             // Keep the value as-is if types match or no conversion needed
             _ => value,
         }

@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cmp::Ordering;
+
 use crate::{Error, EvalConfig, NumericValue, OverflowBehavior, Result};
 
 /// Generic numeric type for expression evaluation.
@@ -43,6 +45,156 @@ pub enum GenericNumeric {
     UInt64(u64),
     Float(f32),
     Double(f64),
+}
+
+impl GenericNumeric {
+    /// Returns the type rank for arithmetic promotion.
+    /// Higher rank types are promoted to from lower rank types.
+    fn type_rank(&self) -> u8 {
+        match self {
+            Self::Bool(_) => 0,
+            Self::Char(_) => 1,
+            Self::Int8(_) => 2,
+            Self::UInt8(_) => 3,
+            Self::Int16(_) => 4,
+            Self::UInt16(_) => 5,
+            Self::Int32(_) => 6,
+            Self::UInt32(_) => 7,
+            Self::Int64(_) => 8,
+            Self::UInt64(_) => 9,
+            Self::Float(_) => 10,
+            Self::Double(_) => 11,
+        }
+    }
+
+    /// Promotes this value to the specified type.
+    fn promote_to(&self, target: &Self) -> Self {
+        match (self, target) {
+            // Already the same type
+            (Self::Bool(_), Self::Bool(_))
+            | (Self::Char(_), Self::Char(_))
+            | (Self::Int8(_), Self::Int8(_))
+            | (Self::UInt8(_), Self::UInt8(_))
+            | (Self::Int16(_), Self::Int16(_))
+            | (Self::UInt16(_), Self::UInt16(_))
+            | (Self::Int32(_), Self::Int32(_))
+            | (Self::UInt32(_), Self::UInt32(_))
+            | (Self::Int64(_), Self::Int64(_))
+            | (Self::UInt64(_), Self::UInt64(_))
+            | (Self::Float(_), Self::Float(_))
+            | (Self::Double(_), Self::Double(_)) => *self,
+
+            // Promote to Double
+            (_, Self::Double(_)) => match self {
+                Self::Bool(v) => Self::Double(if *v { 1.0 } else { 0.0 }),
+                Self::Char(v) => Self::Double(*v as u8 as f64),
+                Self::Int8(v) => Self::Double(*v as f64),
+                Self::UInt8(v) => Self::Double(*v as f64),
+                Self::Int16(v) => Self::Double(*v as f64),
+                Self::UInt16(v) => Self::Double(*v as f64),
+                Self::Int32(v) => Self::Double(*v as f64),
+                Self::UInt32(v) => Self::Double(*v as f64),
+                Self::Int64(v) => Self::Double(*v as f64),
+                Self::UInt64(v) => Self::Double(*v as f64),
+                Self::Float(v) => Self::Double(*v as f64),
+                Self::Double(v) => Self::Double(*v),
+            },
+
+            // Promote to Float
+            (_, Self::Float(_)) => match self {
+                Self::Bool(v) => Self::Float(if *v { 1.0 } else { 0.0 }),
+                Self::Char(v) => Self::Float(*v as u8 as f32),
+                Self::Int8(v) => Self::Float(*v as f32),
+                Self::UInt8(v) => Self::Float(*v as f32),
+                Self::Int16(v) => Self::Float(*v as f32),
+                Self::UInt16(v) => Self::Float(*v as f32),
+                Self::Int32(v) => Self::Float(*v as f32),
+                Self::UInt32(v) => Self::Float(*v as f32),
+                Self::Int64(v) => Self::Float(*v as f32),
+                Self::UInt64(v) => Self::Float(*v as f32),
+                Self::Float(v) => Self::Float(*v),
+                Self::Double(v) => Self::Float(*v as f32), // This would lose precision
+            },
+
+            // Integer promotions
+            (_, Self::UInt64(_)) => match self {
+                Self::Bool(v) => Self::UInt64(if *v { 1 } else { 0 }),
+                Self::Char(v) => Self::UInt64(*v as u8 as u64),
+                Self::Int8(v) => Self::UInt64(*v as u64),
+                Self::UInt8(v) => Self::UInt64(*v as u64),
+                Self::Int16(v) => Self::UInt64(*v as u64),
+                Self::UInt16(v) => Self::UInt64(*v as u64),
+                Self::Int32(v) => Self::UInt64(*v as u64),
+                Self::UInt32(v) => Self::UInt64(*v as u64),
+                Self::Int64(v) => Self::UInt64(*v as u64),
+                Self::UInt64(v) => Self::UInt64(*v),
+                _ => unreachable!("float to int conversion"),
+            },
+
+            (_, Self::Int64(_)) => match self {
+                Self::Bool(v) => Self::Int64(if *v { 1 } else { 0 }),
+                Self::Char(v) => Self::Int64(*v as u8 as i64),
+                Self::Int8(v) => Self::Int64(*v as i64),
+                Self::UInt8(v) => Self::Int64(*v as i64),
+                Self::Int16(v) => Self::Int64(*v as i64),
+                Self::UInt16(v) => Self::Int64(*v as i64),
+                Self::Int32(v) => Self::Int64(*v as i64),
+                Self::UInt32(v) => Self::Int64(*v as i64),
+                Self::Int64(v) => Self::Int64(*v),
+                _ => unreachable!("float/uint64 to int64 conversion"),
+            },
+
+            (_, Self::UInt32(_)) => match self {
+                Self::Bool(v) => Self::UInt32(if *v { 1 } else { 0 }),
+                Self::Char(v) => Self::UInt32(*v as u8 as u32),
+                Self::Int8(v) => Self::UInt32(*v as u32),
+                Self::UInt8(v) => Self::UInt32(*v as u32),
+                Self::Int16(v) => Self::UInt32(*v as u32),
+                Self::UInt16(v) => Self::UInt32(*v as u32),
+                Self::Int32(v) => Self::UInt32(*v as u32),
+                Self::UInt32(v) => Self::UInt32(*v),
+                _ => unreachable!("larger type to uint32 conversion"),
+            },
+
+            (_, Self::Int32(_)) => match self {
+                Self::Bool(v) => Self::Int32(if *v { 1 } else { 0 }),
+                Self::Char(v) => Self::Int32(*v as u8 as i32),
+                Self::Int8(v) => Self::Int32(*v as i32),
+                Self::UInt8(v) => Self::Int32(*v as i32),
+                Self::Int16(v) => Self::Int32(*v as i32),
+                Self::UInt16(v) => Self::Int32(*v as i32),
+                Self::Int32(v) => Self::Int32(*v),
+                _ => unreachable!("larger type to int32 conversion"),
+            },
+
+            _ => *self, // For other conversions, keep original
+        }
+    }
+
+    /// Determines the common type for arithmetic operations and promotes both values.
+    fn promote_for_arithmetic(a: Self, b: Self) -> (Self, Self) {
+        // If either is floating point, use floating point rules
+        if matches!(a, Self::Float(_) | Self::Double(_))
+            || matches!(b, Self::Float(_) | Self::Double(_))
+        {
+            // If either is double, both become double
+            if matches!(a, Self::Double(_)) || matches!(b, Self::Double(_)) {
+                let target = Self::Double(0.0);
+                (a.promote_to(&target), b.promote_to(&target))
+            } else {
+                // Otherwise both become float
+                let target = Self::Float(0.0);
+                (a.promote_to(&target), b.promote_to(&target))
+            }
+        } else {
+            // Integer promotion rules - promote to the higher ranked type
+            match a.type_rank().cmp(&b.type_rank()) {
+                Ordering::Less => (a.promote_to(&b), b),
+                Ordering::Greater => (a, b.promote_to(&a)),
+                Ordering::Equal => (a, b),
+            }
+        }
+    }
 }
 
 impl NumericValue for GenericNumeric {
@@ -133,70 +285,73 @@ impl NumericValue for GenericNumeric {
     }
 
     fn add(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match (self, rhs) {
+        // Promote operands to common type
+        let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
+
+        match (lhs, rhs) {
             (Self::Int8(a), Self::Int8(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::Int8)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_add(b))),
             },
             (Self::UInt8(a), Self::UInt8(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt8(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt8(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::UInt8)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::UInt8(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt8(a.saturating_add(b))),
             },
             (Self::Int16(a), Self::Int16(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::Int16)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_add(b))),
             },
             (Self::UInt16(a), Self::UInt16(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt16(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt16(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::UInt16)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::UInt16(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt16(a.saturating_add(b))),
             },
             (Self::Int32(a), Self::Int32(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::Int32)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_add(b))),
             },
             (Self::UInt32(a), Self::UInt32(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt32(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt32(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::UInt32)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::UInt32(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt32(a.saturating_add(b))),
             },
             (Self::Int64(a), Self::Int64(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::Int64)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_add(b))),
             },
             (Self::UInt64(a), Self::UInt64(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt64(a.wrapping_add(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt64(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
-                    .checked_add(*b)
+                    .checked_add(b)
                     .map(Self::UInt64)
                     .ok_or(Error::Overflow("addition")),
-                OverflowBehavior::Saturate => Ok(Self::UInt64(a.saturating_add(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt64(a.saturating_add(b))),
             },
             (Self::Float(a), Self::Float(b)) => Ok(Self::Float(a + b)),
             (Self::Double(a), Self::Double(b)) => Ok(Self::Double(a + b)),
@@ -205,70 +360,73 @@ impl NumericValue for GenericNumeric {
     }
 
     fn sub(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match (self, rhs) {
+        // Promote operands to common type
+        let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
+
+        match (lhs, rhs) {
             (Self::Int8(a), Self::Int8(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::Int8)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_sub(b))),
             },
             (Self::UInt8(a), Self::UInt8(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt8(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt8(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::UInt8)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::UInt8(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt8(a.saturating_sub(b))),
             },
             (Self::Int16(a), Self::Int16(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::Int16)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_sub(b))),
             },
             (Self::UInt16(a), Self::UInt16(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt16(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt16(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::UInt16)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::UInt16(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt16(a.saturating_sub(b))),
             },
             (Self::Int32(a), Self::Int32(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::Int32)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_sub(b))),
             },
             (Self::UInt32(a), Self::UInt32(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt32(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt32(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::UInt32)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::UInt32(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt32(a.saturating_sub(b))),
             },
             (Self::Int64(a), Self::Int64(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::Int64)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_sub(b))),
             },
             (Self::UInt64(a), Self::UInt64(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt64(a.wrapping_sub(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt64(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
-                    .checked_sub(*b)
+                    .checked_sub(b)
                     .map(Self::UInt64)
                     .ok_or(Error::Overflow("subtraction")),
-                OverflowBehavior::Saturate => Ok(Self::UInt64(a.saturating_sub(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt64(a.saturating_sub(b))),
             },
             (Self::Float(a), Self::Float(b)) => Ok(Self::Float(a - b)),
             (Self::Double(a), Self::Double(b)) => Ok(Self::Double(a - b)),
@@ -277,151 +435,157 @@ impl NumericValue for GenericNumeric {
     }
 
     fn mul(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match (self, rhs) {
+        // Promote operands to common type
+        let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
+
+        match (lhs, rhs) {
             (Self::Int8(a), Self::Int8(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::Int8)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_mul(b))),
             },
             (Self::UInt8(a), Self::UInt8(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt8(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt8(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::UInt8)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::UInt8(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt8(a.saturating_mul(b))),
             },
             (Self::Int16(a), Self::Int16(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::Int16)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_mul(b))),
             },
             (Self::UInt16(a), Self::UInt16(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt16(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt16(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::UInt16)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::UInt16(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt16(a.saturating_mul(b))),
             },
             (Self::Int32(a), Self::Int32(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::Int32)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_mul(b))),
             },
             (Self::UInt32(a), Self::UInt32(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt32(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt32(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::UInt32)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::UInt32(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt32(a.saturating_mul(b))),
             },
             (Self::Int64(a), Self::Int64(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::Int64)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_mul(b))),
             },
             (Self::UInt64(a), Self::UInt64(b)) => match config.overflow {
-                OverflowBehavior::Wrap => Ok(Self::UInt64(a.wrapping_mul(*b))),
+                OverflowBehavior::Wrap => Ok(Self::UInt64(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
-                    .checked_mul(*b)
+                    .checked_mul(b)
                     .map(Self::UInt64)
                     .ok_or(Error::Overflow("multiplication")),
-                OverflowBehavior::Saturate => Ok(Self::UInt64(a.saturating_mul(*b))),
+                OverflowBehavior::Saturate => Ok(Self::UInt64(a.saturating_mul(b))),
             },
             (Self::Float(a), Self::Float(b)) => Ok(Self::Float(a * b)),
             (Self::Double(a), Self::Double(b)) => Ok(Self::Double(a * b)),
-            _ => Err(Error::Custom("type mismatch in multiplication".to_string())),
+            _ => unreachable!("promotion should ensure matching types"),
         }
     }
 
     fn div(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match (self, rhs) {
+        // Promote operands to common type
+        let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
+
+        match (lhs, rhs) {
             (Self::Int8(a), Self::Int8(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_div(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_div(b))),
                     OverflowBehavior::Error => a
-                        .checked_div(*b)
+                        .checked_div(b)
                         .map(Self::Int8)
                         .ok_or(Error::Overflow("division")),
-                    OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_div(*b))),
+                    OverflowBehavior::Saturate => Ok(Self::Int8(a.saturating_div(b))),
                 }
             }
             (Self::UInt8(a), Self::UInt8(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 Ok(Self::UInt8(a / b))
             }
             (Self::Int16(a), Self::Int16(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_div(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_div(b))),
                     OverflowBehavior::Error => a
-                        .checked_div(*b)
+                        .checked_div(b)
                         .map(Self::Int16)
                         .ok_or(Error::Overflow("division")),
-                    OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_div(*b))),
+                    OverflowBehavior::Saturate => Ok(Self::Int16(a.saturating_div(b))),
                 }
             }
             (Self::UInt16(a), Self::UInt16(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 Ok(Self::UInt16(a / b))
             }
             (Self::Int32(a), Self::Int32(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_div(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_div(b))),
                     OverflowBehavior::Error => a
-                        .checked_div(*b)
+                        .checked_div(b)
                         .map(Self::Int32)
                         .ok_or(Error::Overflow("division")),
-                    OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_div(*b))),
+                    OverflowBehavior::Saturate => Ok(Self::Int32(a.saturating_div(b))),
                 }
             }
             (Self::UInt32(a), Self::UInt32(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 Ok(Self::UInt32(a / b))
             }
             (Self::Int64(a), Self::Int64(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_div(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_div(b))),
                     OverflowBehavior::Error => a
-                        .checked_div(*b)
+                        .checked_div(b)
                         .map(Self::Int64)
                         .ok_or(Error::Overflow("division")),
-                    OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_div(*b))),
+                    OverflowBehavior::Saturate => Ok(Self::Int64(a.saturating_div(b))),
                 }
             }
             (Self::UInt64(a), Self::UInt64(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::DivisionByZero);
                 }
                 Ok(Self::UInt64(a / b))
@@ -439,79 +603,82 @@ impl NumericValue for GenericNumeric {
     }
 
     fn modulo(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match (self, rhs) {
+        // Promote operands to common type
+        let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
+
+        match (lhs, rhs) {
             (Self::Int8(a), Self::Int8(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_rem(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_rem(b))),
                     OverflowBehavior::Error => a
-                        .checked_rem(*b)
+                        .checked_rem(b)
                         .map(Self::Int8)
                         .ok_or(Error::Overflow("modulo")),
                     OverflowBehavior::Saturate => Ok(Self::Int8(a % b)),
                 }
             }
             (Self::UInt8(a), Self::UInt8(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 Ok(Self::UInt8(a % b))
             }
             (Self::Int16(a), Self::Int16(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_rem(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_rem(b))),
                     OverflowBehavior::Error => a
-                        .checked_rem(*b)
+                        .checked_rem(b)
                         .map(Self::Int16)
                         .ok_or(Error::Overflow("modulo")),
                     OverflowBehavior::Saturate => Ok(Self::Int16(a % b)),
                 }
             }
             (Self::UInt16(a), Self::UInt16(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 Ok(Self::UInt16(a % b))
             }
             (Self::Int32(a), Self::Int32(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_rem(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_rem(b))),
                     OverflowBehavior::Error => a
-                        .checked_rem(*b)
+                        .checked_rem(b)
                         .map(Self::Int32)
                         .ok_or(Error::Overflow("modulo")),
                     OverflowBehavior::Saturate => Ok(Self::Int32(a % b)),
                 }
             }
             (Self::UInt32(a), Self::UInt32(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 Ok(Self::UInt32(a % b))
             }
             (Self::Int64(a), Self::Int64(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_rem(*b))),
+                    OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_rem(b))),
                     OverflowBehavior::Error => a
-                        .checked_rem(*b)
+                        .checked_rem(b)
                         .map(Self::Int64)
                         .ok_or(Error::Overflow("modulo")),
                     OverflowBehavior::Saturate => Ok(Self::Int64(a % b)),
                 }
             }
             (Self::UInt64(a), Self::UInt64(b)) => {
-                if *b == 0 {
+                if b == 0 {
                     return Err(Error::ModuloByZero);
                 }
                 Ok(Self::UInt64(a % b))

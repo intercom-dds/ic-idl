@@ -58,7 +58,15 @@ impl UnreachableUnionCases<'_> {
             for variant in &union_ty.variants {
                 for label in &variant.labels {
                     if let Some(value) = Self::numeric_to_i64(label) {
-                        if value < min || value > max {
+                        // For unsigned discriminators, negative values wrap around
+                        let effective_value = if Self::is_unsigned_discriminator(&union_ty.disc.kind) && value < 0 {
+                            // Apply wrapping conversion for negative values on unsigned types
+                            Self::wrap_to_unsigned(value, &union_ty.disc.kind)
+                        } else {
+                            value
+                        };
+                        
+                        if effective_value < min || effective_value > max {
                             if let Some(diag) = self.ctx.diag_span(
                                 Self::name(),
                                 Self::category(),
@@ -114,6 +122,37 @@ impl UnreachableUnionCases<'_> {
             Numeric::UInt32(v) => Some(i64::from(*v)),
             Numeric::UInt64(v) => i64::try_from(*v).ok(),
             _ => None,
+        }
+    }
+    
+    fn is_unsigned_discriminator(ty_kind: &TyKind) -> bool {
+        matches!(
+            ty_kind,
+            TyKind::Primitive(
+                PrimitiveTy::Bool
+                | PrimitiveTy::Char
+                | PrimitiveTy::WChar
+                | PrimitiveTy::UInt8
+                | PrimitiveTy::UInt16
+                | PrimitiveTy::UInt32
+                | PrimitiveTy::UInt64
+            )
+        )
+    }
+    
+    fn wrap_to_unsigned(value: i64, ty_kind: &TyKind) -> i64 {
+        match ty_kind {
+            TyKind::Primitive(prim) => match prim {
+                PrimitiveTy::Bool => ((value as u8) & 1) as i64,
+                PrimitiveTy::Char => (value as u8) as i64,
+                PrimitiveTy::WChar => (value as u16) as i64,
+                PrimitiveTy::UInt8 => (value as u8) as i64,
+                PrimitiveTy::UInt16 => (value as u16) as i64,
+                PrimitiveTy::UInt32 => (value as u32) as i64,
+                PrimitiveTy::UInt64 => value as u64 as i64,
+                _ => value, // For signed types, no wrapping
+            },
+            _ => value,
         }
     }
 }

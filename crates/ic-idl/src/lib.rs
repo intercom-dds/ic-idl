@@ -459,9 +459,20 @@ impl Compiler {
 
         // Convert to HIR without built-in annotations
         let lint_config = self.options.warn.to_lint_config();
+
+        // Run AST linting first
+        if diagnostics.errors.is_empty() {
+            let report =
+                ic_lint::lint_syntax_with_config(&ast.tree, &self.source_map, &lint_config);
+            diagnostics
+                .errors
+                .extend(report.errors.into_iter().map(Into::into));
+            diagnostics.warnings.extend(report.warnings);
+        }
+
         let mut hir = hir::from_ast(ast.tree);
 
-        // Run linting
+        // Run HIR linting
         if diagnostics.errors.is_empty() {
             let report = ic_lint::lint_hir_with_config(&hir, &self.source_map, &lint_config);
             diagnostics

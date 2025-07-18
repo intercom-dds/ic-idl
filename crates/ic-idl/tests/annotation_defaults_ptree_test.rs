@@ -37,9 +37,9 @@ fn test_annotation_defaults_in_generated_idl() {
 
     // Check compilation succeeded
     match &result {
-        Ok(compiled) => {
+        Ok(compilation_result) => {
             assert!(
-                compiled.diagnostics.errors.is_empty(),
+                compilation_result.diagnostics.errors.is_empty(),
                 "Compilation had errors"
             );
         }
@@ -47,9 +47,9 @@ fn test_annotation_defaults_in_generated_idl() {
     }
 
     // Now generate IDL output
-    let compiled = result.unwrap();
+    let compilation_output = result.unwrap();
     let hir = ic_idl::ast_to_hir(
-        compiled.items,
+        compilation_output.items,
         compiler.source_map(),
         &compiler.options().warn.to_lint_config(),
     )
@@ -60,9 +60,11 @@ fn test_annotation_defaults_in_generated_idl() {
 
     // Find the generated content
     assert!(!files.is_empty(), "No files generated");
-    let generated = match &files[0] {
-        ic_emit::File::Generated { source, .. } => source,
-        _ => panic!("Expected generated file"),
+    let ic_emit::File::Generated {
+        source: generated, ..
+    } = &files[0]
+    else {
+        panic!("Expected generated file")
     };
 
     // Check that the annotation definition includes default values

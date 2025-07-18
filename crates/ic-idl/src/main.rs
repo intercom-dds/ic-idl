@@ -31,7 +31,7 @@ use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
-use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, hir, util};
+use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, util};
 
 mod info;
 mod unstable;
@@ -142,7 +142,6 @@ fn try_compile(options: CompilerOptions) {
         ic_hir_tree::emit_tree(&hir);
     }
 
-    // TODO: Fix HIR to ptree conversion getting stuck with merged HIRs
     // For now, skip ptree conversion and code generation
     // Convert HIR to ptree for code generation
     let ptree = ic_idl::hir_to_ptree(&hir, compiler.source_map());

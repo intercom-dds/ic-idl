@@ -216,7 +216,7 @@ impl HirMerger {
         let old_def = old_context.definitions.get(old_def_id);
 
         // Get the qualified name for deduplication
-        let qualified_name = self.get_qualified_name(old_context, old_def_id);
+        let qualified_name = Self::get_qualified_name(old_context, old_def_id);
 
         // Special handling for modules - check all existing module definitions
         if matches!(&old_def.kind, DefKind::Module(_)) {
@@ -332,7 +332,7 @@ impl HirMerger {
         new_def_id
     }
 
-    fn get_qualified_name(&self, context: &Context, def_id: DefId) -> String {
+    fn get_qualified_name(context: &Context, def_id: DefId) -> String {
         let def = context.definitions.get(def_id);
         let mut parts = vec![def.ident.name.clone()];
 
@@ -379,8 +379,7 @@ impl HirMerger {
                     .children
                     .iter()
                     .find(|(_, id)| **id == old_scope_id)
-                    .map(|(name, _)| name.to_string())
-                    .unwrap_or_else(|| String::from("_unknown_"))
+                    .map_or_else(|| String::from("_unknown_"), |(name, _)| name.to_string())
             } else {
                 String::from("_unknown_")
             };
@@ -400,7 +399,7 @@ impl HirMerger {
         // Register all definitions in their correct scopes
         let def_map = &self.def_id_maps[graph_index];
 
-        for (_, &new_def_id) in def_map.iter() {
+        for &new_def_id in def_map.values() {
             // Get the scope this definition belongs to
             let scope_id = self
                 .def_to_scope_map
@@ -424,7 +423,7 @@ impl HirMerger {
 
     fn update_scope_def_id_fields(&mut self, graph_index: usize, old_context: &Context) {
         // Update the def_id field in scopes to point to new definitions
-        for (old_scope_id, &new_scope_id) in self.scope_id_maps[graph_index].iter() {
+        for (old_scope_id, &new_scope_id) in &self.scope_id_maps[graph_index] {
             // Get the old scope's def_id
             if let Some(old_def_id) = old_context.scopes.scopes[old_scope_id.0].def_id {
                 // Map it to the new def_id

@@ -25,10 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::from_ast;
 use ic_hir::hir::{DefKind, Numeric};
-use ic_preproc::ProcArgs;
-use ic_vfs::SourceMap;
+
+mod common;
 
 #[test]
 fn test_annotation_boolean_default() {
@@ -39,18 +38,7 @@ fn test_annotation_boolean_default() {
         };
     ";
 
-    let mut src_map = SourceMap::default();
-    let file_id = src_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut src_map);
-    assert!(parsed.errors.is_empty());
-
-    let hir = from_ast(parsed.tree);
-    if !hir.errors.is_empty() {
-        for err in &hir.errors {
-            eprintln!("Error: {err:?}");
-        }
-    }
-    assert!(hir.errors.is_empty());
+    let hir = common::parse_and_resolve_successfully(input);
 
     // Find the annotation definition
     let ann_def = hir
@@ -80,23 +68,12 @@ fn test_annotation_numeric_defaults() {
     let input = r"
         @annotation numeric_test {
             long value default 42;
-            float ratio default 3.14;
+            float ratio default 3.15;
             uint8 priority default 5;
         };
     ";
 
-    let mut src_map = SourceMap::default();
-    let file_id = src_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut src_map);
-    assert!(parsed.errors.is_empty());
-
-    let hir = from_ast(parsed.tree);
-    if !hir.errors.is_empty() {
-        for err in &hir.errors {
-            eprintln!("Error: {err:?}");
-        }
-    }
-    assert!(hir.errors.is_empty());
+    let hir = common::parse_and_resolve_successfully(input);
 
     // Find the annotation definition
     let ann_def = hir
@@ -115,7 +92,7 @@ fn test_annotation_numeric_defaults() {
 
         assert_eq!(ann.members[1].ident.name, "ratio");
         assert!(
-            matches!(ann.members[1].default_value, Some(Numeric::Float(f)) if (f - 3.14).abs() < 0.001)
+            matches!(ann.members[1].default_value, Some(Numeric::Float(f)) if (f - 3.15).abs() < 0.001)
         );
 
         assert_eq!(ann.members[2].ident.name, "priority");
@@ -134,18 +111,7 @@ fn test_annotation_string_default() {
         };
     "#;
 
-    let mut src_map = SourceMap::default();
-    let file_id = src_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut src_map);
-    assert!(parsed.errors.is_empty());
-
-    let hir = from_ast(parsed.tree);
-    if !hir.errors.is_empty() {
-        for err in &hir.errors {
-            eprintln!("Error: {err:?}");
-        }
-    }
-    assert!(hir.errors.is_empty());
+    let hir = common::parse_and_resolve_successfully(input);
 
     // Find the annotation definition
     let ann_def = hir
@@ -176,18 +142,7 @@ fn test_annotation_no_default() {
         };
     ";
 
-    let mut src_map = SourceMap::default();
-    let file_id = src_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut src_map);
-    assert!(parsed.errors.is_empty());
-
-    let hir = from_ast(parsed.tree);
-    if !hir.errors.is_empty() {
-        for err in &hir.errors {
-            eprintln!("Error: {err:?}");
-        }
-    }
-    assert!(hir.errors.is_empty());
+    let hir = common::parse_and_resolve_successfully(input);
 
     // Find the annotation definition
     let ann_def = hir

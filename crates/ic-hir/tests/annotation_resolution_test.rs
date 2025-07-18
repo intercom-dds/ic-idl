@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::hir::DefKind;
-use ic_parse::{SourceMap, from_file};
-use ic_preproc::ProcArgs;
+
+mod common;
 
 #[test]
 fn test_simple_annotation() {
@@ -40,16 +40,7 @@ fn test_simple_annotation() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
     assert_eq!(result.order.len(), 2);
 
     // Find the struct
@@ -82,16 +73,7 @@ fn test_annotation_in_module() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Find the struct (it's nested in module)
     let struct_def = result
@@ -119,16 +101,7 @@ fn test_qualified_annotation_path() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Find the struct
     let struct_def = result
@@ -158,14 +131,9 @@ fn test_unknown_annotation_warning() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
+    let (result, warning_msg) = common::parse_and_get_warnings(input);
 
     // Should have a warning about unknown annotation
-    assert_eq!(result.warnings.len(), 1);
-    let warning_msg = format!("{}", result.warnings[0]);
     assert!(warning_msg.contains("unknown"));
 
     // Struct should have no annotations (unknown ones are filtered out)
@@ -194,16 +162,7 @@ fn test_annotation_with_arguments() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     let struct_def = result
         .context
@@ -236,16 +195,7 @@ fn test_member_annotations() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     let struct_def = result
         .context
@@ -285,16 +235,7 @@ fn test_enum_field_annotations() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     let enum_def = result
         .context
@@ -336,16 +277,7 @@ fn test_nested_module_annotation_resolution() {
         struct S {};
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     let struct_def = result
         .context
@@ -388,16 +320,7 @@ fn test_annotation_on_all_definition_types() {
         typedef long T;
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", input);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let result = ic_hir::from_ast(ast.tree);
-
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Check that all types have the annotation
     for (_, def) in &result.context.definitions {

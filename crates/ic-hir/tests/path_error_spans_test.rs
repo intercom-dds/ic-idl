@@ -47,7 +47,7 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
     ";
 
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -93,7 +93,7 @@ fn test_deeply_nested_path_error() {
     ";
 
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -133,7 +133,7 @@ fn test_global_path_unresolved_segment() {
     ";
 
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",

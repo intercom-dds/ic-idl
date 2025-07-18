@@ -55,11 +55,11 @@ fn test_valid_constants() {
     let input = r"
         const int32 FOO = 42;
         const boolean FLAG = TRUE;
-        const double PI = 3.14;
+        const double PI = 3.15;
     ";
 
     let result = common::parse_and_resolve_successfully(input);
-    
+
     // Verify we have the expected constants
     assert_eq!(result.order.len(), 3);
 }

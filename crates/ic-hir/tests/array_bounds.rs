@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::hir::{DefKind, TyKind};
-use ic_parse::{SourceMap, from_file};
-use ic_preproc::ProcArgs;
+
+mod common;
 
 #[test]
 fn test_array_bounds_in_struct() {
@@ -39,17 +39,7 @@ fn test_array_bounds_in_struct() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-
-    // Check parse errors
-    assert_eq!(ast.errors.len(), 0, "Parse errors: {:?}", ast.errors);
-
-    let hir = ic_hir::from_ast(ast.tree);
-
-    // Should have no HIR errors
-    assert_eq!(hir.errors.len(), 0, "HIR errors: {:?}", hir.errors);
+    let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the struct and check array bounds
     for def in hir.iter() {
@@ -83,17 +73,7 @@ fn test_array_bounds_in_union() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-
-    // Check parse errors
-    assert_eq!(ast.errors.len(), 0, "Parse errors: {:?}", ast.errors);
-
-    let hir = ic_hir::from_ast(ast.tree);
-
-    // Should have no HIR errors
-    assert_eq!(hir.errors.len(), 0, "HIR errors: {:?}", hir.errors);
+    let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the union and check array bounds
     for def in hir.iter() {
@@ -121,17 +101,7 @@ fn test_array_bounds_in_exception() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-
-    // Check parse errors
-    assert_eq!(ast.errors.len(), 0, "Parse errors: {:?}", ast.errors);
-
-    let hir = ic_hir::from_ast(ast.tree);
-
-    // Should have no HIR errors
-    assert_eq!(hir.errors.len(), 0, "HIR errors: {:?}", hir.errors);
+    let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the exception and check array bounds
     for def in hir.iter() {
@@ -159,17 +129,7 @@ fn test_multidimensional_arrays() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-
-    // Check parse errors
-    assert_eq!(ast.errors.len(), 0, "Parse errors: {:?}", ast.errors);
-
-    let hir = ic_hir::from_ast(ast.tree);
-
-    // Should have no HIR errors
-    assert_eq!(hir.errors.len(), 0, "HIR errors: {:?}", hir.errors);
+    let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the struct and check nested array bounds
     for def in hir.iter() {
@@ -212,17 +172,7 @@ fn test_array_bounds_with_enum_values() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-
-    // Check parse errors
-    assert_eq!(ast.errors.len(), 0, "Parse errors: {:?}", ast.errors);
-
-    let hir = ic_hir::from_ast(ast.tree);
-
-    // Should have no HIR errors
-    assert_eq!(hir.errors.len(), 0, "HIR errors: {:?}", hir.errors);
+    let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the struct and check array bounds
     for def in hir.iter() {

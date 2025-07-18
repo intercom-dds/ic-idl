@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::{SourceMap, from_file};
-use ic_preproc::ProcArgs;
+mod common;
 
 #[test]
 fn test_module_reopening() {
@@ -44,13 +43,7 @@ fn test_module_reopening() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
-    // Should have no errors - module reopening is allowed
-    assert_eq!(hir.errors.len(), 0);
+    let hir = common::parse_and_resolve_successfully(idl);
 
     // Each module declaration gets its own DefId, so we should find 2 modules named Foo
     let mut module_count = 0;
@@ -89,13 +82,8 @@ fn test_module_reopening_with_references() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -118,13 +106,8 @@ fn test_nested_module_reopening() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -144,12 +127,7 @@ fn test_module_reopening_different_case() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors - TypeA is visible in the second module declaration
     // because module reopening copies type definitions for visibility
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }

@@ -293,9 +293,6 @@ impl<'a> Validator<'a> {
             DefKind::Struct(s) => self.validate_struct(id, s),
             DefKind::Union(u) => self.validate_union(id, u),
             DefKind::Interface(i) => self.validate_interface(id, i),
-            DefKind::Enum(_) => {
-                // Duplicate checks moved to ic-lint
-            }
             DefKind::Except(e) => {
                 // Exceptions are like structs without inheritance
                 let struct_ty = StructTy {
@@ -326,11 +323,14 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref(&c.ty);
                 // TODO: Validate that constant value matches type
             }
-            DefKind::Bitmask(_) => {
-                // Duplicate checks moved to ic-lint
-            }
-            _ => {
+            DefKind::Enum(_)
+            | DefKind::Bitmask(_)
+            | DefKind::Bitset(_)
+            | DefKind::Decl(_)
+            | DefKind::Valuetype(_) => {
+                // Duplicate checks moved to ic-lint for Enum and Bitmask
                 // Forward declarations are checked for completion elsewhere
+                // Valuetype validation handled elsewhere
             }
         }
 

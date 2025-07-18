@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 #[test]
 fn test_bounded_sequence() {
     let input = r"
@@ -35,20 +37,7 @@ fn test_bounded_sequence() {
         typedef sequence<string, MAX_SIZE> BoundedStrings;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Check that bounds were evaluated
     let bounded_def = result
@@ -95,20 +84,7 @@ fn test_bounded_string() {
         typedef string UnboundedString;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Check string bound
     let short_def = result
@@ -156,20 +132,7 @@ fn test_bounded_map() {
         typedef map<string, long> UnboundedMap;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Check map bound
     let bounded_def = result
@@ -197,20 +160,7 @@ fn test_nested_bounded_types() {
         typedef map<string<32>, sequence<long, 5>, 100> ComplexBoundedMap;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(
-        result.errors.is_empty(),
-        "Expected no errors, got: {:?}",
-        result.errors
-    );
+    let result = common::parse_and_resolve_successfully(input);
 
     // Check nested bounds in sequence
     let seq_def = result

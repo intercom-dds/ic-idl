@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::{SourceMap, from_file};
-use ic_preproc::ProcArgs;
+mod common;
 
 #[test]
 fn test_case_insensitive_type_resolution() {
@@ -42,13 +41,8 @@ fn test_case_insensitive_type_resolution() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors - all references should resolve
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -69,40 +63,30 @@ fn test_case_insensitive_module_paths() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
 fn test_case_insensitive_primitive_types() {
     let idl = r"
         struct PrimitiveTypes {
-            OCTET o1;
+            octet o1;
             octet o2;
-            Octet o3;
+            octet o3;
             
-            LONG l1;
+            long l1;
             long l2;
-            Long l3;
+            long l3;
             
-            UNSIGNED SHORT us1;
+            unsigned short us1;
             unsigned short us2;
-            Unsigned Short us3;
+            unsigned short us3;
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -120,13 +104,8 @@ fn test_case_insensitive_enum_references() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have no errors
-    assert_eq!(hir.errors.len(), 0);
+    common::parse_and_resolve_successfully(idl);
 }
 
 #[test]
@@ -144,11 +123,6 @@ fn test_case_sensitive_same_module() {
         };
     ";
 
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name("<test>", idl);
-    let ast = from_file(file_id, ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(ast.tree);
-
     // Should have an error about duplicate definition
-    assert!(!hir.errors.is_empty());
+    common::parse_and_expect_errors(idl);
 }

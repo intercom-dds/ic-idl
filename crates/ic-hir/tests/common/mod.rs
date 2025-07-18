@@ -34,20 +34,20 @@ use ic_vfs::SourceMap;
 pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
     let mut source_map = SourceMap::default();
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
-    
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
+
     // Check parse errors
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
         parsed.errors
     );
-    
+
     let result = ic_hir::from_ast(parsed.tree);
-    
+
     // Render all diagnostics (errors and warnings)
     let mut output = String::new();
-    
+
     // Render errors
     for error in &result.errors {
         ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
@@ -55,7 +55,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
             output.push('\n');
         }
     }
-    
+
     // Render warnings (if any)
     for warning in &result.warnings {
         ic_diagnostic::emit_diagnostic(&mut output, &source_map, warning).unwrap();
@@ -63,36 +63,51 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
             output.push('\n');
         }
     }
-    
+
     // Remove trailing newline if present
     if output.ends_with('\n') {
         output.pop();
     }
-    
+
     (result, source_map, output)
 }
 
 /// Parse IDL input, expecting it to succeed without errors
 pub fn parse_and_resolve_successfully(input: &str) -> ResolvedGraph {
     let (result, _, diagnostics) = parse_and_resolve(input);
-    
+
     assert!(
         result.errors.is_empty(),
-        "Expected no errors but got:\n{}",
-        diagnostics
+        "Expected no errors but got:\n{diagnostics}"
     );
-    
+
     result
 }
 
 /// Parse IDL input, expecting it to fail with errors
+#[allow(dead_code)]
 pub fn parse_and_expect_errors(input: &str) -> String {
     let (result, _, diagnostics) = parse_and_resolve(input);
-    
-    assert!(
-        !result.errors.is_empty(),
-        "Expected errors but got none"
-    );
-    
+
+    assert!(!result.errors.is_empty(), "Expected errors but got none");
+
     diagnostics
+}
+
+/// Parse IDL input and return the result with warnings (for testing warning cases)
+#[allow(dead_code)]
+pub fn parse_and_get_warnings(input: &str) -> (ResolvedGraph, String) {
+    let (result, _, diagnostics) = parse_and_resolve(input);
+
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors but got:\n{diagnostics}"
+    );
+
+    assert!(
+        !result.warnings.is_empty(),
+        "Expected warnings but got none"
+    );
+
+    (result, diagnostics)
 }

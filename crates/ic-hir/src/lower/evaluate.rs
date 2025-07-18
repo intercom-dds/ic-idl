@@ -1348,6 +1348,7 @@ impl<'a> ExpressionEvaluator<'a> {
     }
 
     /// Evaluates expressions in type definitions.
+    #[allow(clippy::too_many_lines)]
     fn evaluate_types(&mut self, items: &[Item]) {
         for item in items {
             match item {

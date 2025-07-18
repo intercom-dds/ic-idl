@@ -347,7 +347,7 @@ impl Compiler {
         }
 
         // First, compile built-in annotations to HIR
-        let builtin_hir = self.compile_builtins()?;
+        let builtin_hir = self.compile_builtins();
 
         // Compile each file to a separate HIR
         let mut hirs = vec![builtin_hir];
@@ -400,7 +400,7 @@ impl Compiler {
     }
 
     /// Compile built-in annotations to HIR.
-    fn compile_builtins(&mut self) -> Result<hir::ResolvedGraph, CompileError> {
+    fn compile_builtins(&mut self) -> hir::ResolvedGraph {
         let builtin_file_id = self.source_map.embed_with_name(
             "<builtin-annotations>",
             include_str!("../idl/annotations.idl"),
@@ -409,23 +409,21 @@ impl Compiler {
         let builtin_parsed =
             ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
 
-        if !builtin_parsed.errors.is_empty() {
-            panic!(
-                "Failed to parse built-in annotations: {:?}",
-                builtin_parsed.errors
-            );
-        }
+        assert!(
+            builtin_parsed.errors.is_empty(),
+            "Failed to parse built-in annotations: {:?}",
+            builtin_parsed.errors
+        );
 
         let hir = hir::from_ast(builtin_parsed.tree);
 
-        if !hir.errors.is_empty() {
-            panic!(
-                "Failed to create HIR for built-in annotations: {:?}",
-                hir.errors
-            );
-        }
+        assert!(
+            hir.errors.is_empty(),
+            "Failed to create HIR for built-in annotations: {:?}",
+            hir.errors
+        );
 
-        Ok(hir)
+        hir
     }
 
     /// Compile a single file to HIR without built-in annotations.
@@ -490,6 +488,7 @@ impl Compiler {
 
     /// Compile a single file to HIR with built-in annotations.
     /// This is kept for backward compatibility.
+    #[allow(dead_code)]
     fn compile_file_to_hir(
         &mut self,
         path: &Path,

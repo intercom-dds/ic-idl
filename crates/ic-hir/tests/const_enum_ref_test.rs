@@ -138,7 +138,7 @@ fn test_undefined_enum_field() {
     ";
 
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
     assert!(
         parsed.errors.is_empty(),
@@ -171,7 +171,7 @@ fn test_undefined_variable() {
     ";
 
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(!parsed.tree.is_empty(), "Failed to parse input");
     assert!(
         parsed.errors.is_empty(),

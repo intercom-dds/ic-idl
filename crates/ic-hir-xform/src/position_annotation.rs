@@ -60,6 +60,7 @@ impl Default for PositionAnnotationTransform {
 }
 
 impl Fold for PositionAnnotationTransform {
+    #[allow(clippy::cast_sign_loss)]
     fn fold_def(&mut self, mut def: Def) -> Def {
         // Only process bitmask definitions
         if let DefKind::Bitmask(ref mut bitmask_ty) = def.kind {

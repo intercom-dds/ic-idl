@@ -45,13 +45,17 @@ fn test_ext_annotation_requires_qualification() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
     let builtin_annotations = include_str!("../idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
-    let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
+    let builtin_parsed = ic_parse::from_file(
+        builtin_file_id,
+        ic_preproc::ProcArgs::default(),
+        &mut source_map,
+    );
     assert!(builtin_parsed.errors.is_empty());
 
     // Convert to HIR with built-ins
@@ -114,13 +118,17 @@ fn test_other_qualified_annotations() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
     let builtin_annotations = include_str!("../idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
-    let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
+    let builtin_parsed = ic_parse::from_file(
+        builtin_file_id,
+        ic_preproc::ProcArgs::default(),
+        &mut source_map,
+    );
     assert!(builtin_parsed.errors.is_empty());
 
     // Convert to HIR with built-ins

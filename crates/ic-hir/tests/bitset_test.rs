@@ -27,6 +27,8 @@
 
 use ic_hir::hir::{DefKind, PrimitiveTy, TyKind};
 
+mod common;
+
 #[test]
 fn test_bitset_basic() {
     let input = r"
@@ -37,11 +39,7 @@ fn test_bitset_basic() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty());
+    let result = common::parse_and_resolve_successfully(input);
 
     // Find the bitset
     let status = result
@@ -95,11 +93,7 @@ fn test_bitset_inheritance() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty());
+    let result = common::parse_and_resolve_successfully(input);
 
     // Find the extended bitset
     let extended = result
@@ -139,11 +133,7 @@ fn test_bitset_size_expressions() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
+    let result = common::parse_and_resolve_successfully(input);
 
     let dynamic = result
         .context
@@ -192,11 +182,7 @@ fn test_bitset_automatic_types() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
-    assert!(result.errors.is_empty());
+    let result = common::parse_and_resolve_successfully(input);
 
     let auto_types = result
         .context

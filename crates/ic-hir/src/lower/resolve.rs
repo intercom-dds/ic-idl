@@ -646,6 +646,7 @@ impl<'a> TypeResolver<'a> {
     }
 
     /// Resolves all type references in the HIR.
+    #[allow(clippy::too_many_lines)]
     fn resolve_all(&mut self, items: &[Item]) {
         // First pass: build item map
         self.build_item_map(items);
@@ -756,7 +757,7 @@ impl<'a> TypeResolver<'a> {
                     }
                 }
                 // TODO: Handle other item types
-                _ => {}
+                Item::DeclValue(_) => {}
             }
         }
     }

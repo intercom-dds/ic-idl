@@ -68,20 +68,21 @@ fn test_position_annotation_transform_integration() {
     let mut compiler = Compiler::new(options);
     let (hir, _diagnostics) = compiler.compile_hir().expect("Compilation failed");
 
-    // Debug: print all definitions
-    println!("\nAll definitions:");
-    for (id, def) in &hir.context.definitions {
-        println!(
-            "  {:?}: {} ({})",
-            id,
-            def.ident.name,
-            match &def.kind {
-                DefKind::Bitmask(_) => "bitmask",
-                DefKind::Annotation(_) => "annotation",
-                _ => "other",
-            }
-        );
-    }
+    // Verify expected definitions exist
+    assert!(
+        hir.context
+            .definitions
+            .iter()
+            .any(|(_, def)| def.ident.name == "Permissions"
+                && matches!(def.kind, DefKind::Bitmask(_)))
+    );
+    assert!(
+        hir.context
+            .definitions
+            .iter()
+            .any(|(_, def)| def.ident.name == "position"
+                && matches!(def.kind, DefKind::Annotation(_)))
+    );
 
     // Verify annotations are there before transformation
     let permissions_before = hir
@@ -92,19 +93,6 @@ fn test_position_annotation_transform_integration() {
         .expect("Permissions bitmask not found");
 
     if let DefKind::Bitmask(bitmask_ty) = &permissions_before.1.kind {
-        println!("\nBefore transformation:");
-        for flag in &bitmask_ty.flags {
-            println!(
-                "  {}: value={}, annotations={:?}",
-                flag.ident.name,
-                flag.value,
-                flag.annotations
-                    .iter()
-                    .map(|a| &a.ident.name)
-                    .collect::<Vec<_>>()
-            );
-        }
-
         // The @position annotations should be present in the HIR
         assert!(
             bitmask_ty.flags[2]
@@ -134,19 +122,6 @@ fn test_position_annotation_transform_integration() {
         .expect("Permissions bitmask not found");
 
     if let DefKind::Bitmask(bitmask_ty) = &permissions.1.kind {
-        println!("\nAfter transformation:");
-        for flag in &bitmask_ty.flags {
-            println!(
-                "  {}: value={}, annotations={:?}",
-                flag.ident.name,
-                flag.value,
-                flag.annotations
-                    .iter()
-                    .map(|a| &a.ident.name)
-                    .collect::<Vec<_>>()
-            );
-        }
-
         // Check READ: should have value 1 (default)
         assert_eq!(bitmask_ty.flags[0].ident.name, "READ");
         assert_eq!(bitmask_ty.flags[0].value, 1);

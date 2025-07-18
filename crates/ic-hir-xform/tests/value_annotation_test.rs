@@ -31,6 +31,7 @@ use ic_hir::hir::DefKind;
 use ic_idl::{Compiler, CompilerOptions};
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_value_annotation_transform_integration() {
     let input = r"
         // Built-in annotations
@@ -70,20 +71,14 @@ fn test_value_annotation_transform_integration() {
     let mut compiler = Compiler::new(options);
     let (hir, _diagnostics) = compiler.compile_hir().expect("Compilation failed");
 
-    // Debug: print all definitions
-    println!("\nAll definitions:");
-    for (id, def) in &hir.context.definitions {
-        println!(
-            "  {:?}: {} ({})",
-            id,
-            def.ident.name,
-            match &def.kind {
-                DefKind::Enum(_) => "enum",
-                DefKind::Annotation(_) => "annotation",
-                _ => "other",
-            }
-        );
-    }
+    // Verify we have the expected definitions
+    assert!(
+        hir.context
+            .definitions
+            .iter()
+            .any(|(_, def)| def.ident.name == "Status" && matches!(def.kind, DefKind::Enum(_)))
+    );
+    assert!(hir.context.definitions.iter().any(|(_, def)| def.ident.name == "value" && matches!(def.kind, DefKind::Annotation(_))));
 
     // The HIR construction already processes @value annotations and sets the enum values
     // Our transformation should remove the @value annotations that are still present
@@ -96,20 +91,6 @@ fn test_value_annotation_transform_integration() {
         .expect("Status enum not found");
 
     if let DefKind::Enum(enum_ty) = &status_enum_before.1.kind {
-        println!("\nBefore transformation:");
-        for field in &enum_ty.fields {
-            println!(
-                "  {}: value={}, annotations={:?}",
-                field.ident.name,
-                field.value,
-                field
-                    .annotations
-                    .iter()
-                    .map(|a| &a.ident.name)
-                    .collect::<Vec<_>>()
-            );
-        }
-
         // The @value annotations should be present in the HIR
         // even though the values have been applied during evaluation
         assert!(
@@ -148,20 +129,6 @@ fn test_value_annotation_transform_integration() {
         .expect("Status enum not found");
 
     if let DefKind::Enum(enum_ty) = &status_enum.1.kind {
-        println!("\nAfter transformation:");
-        for field in &enum_ty.fields {
-            println!(
-                "  {}: value={}, annotations={:?}",
-                field.ident.name,
-                field.value,
-                field
-                    .annotations
-                    .iter()
-                    .map(|a| &a.ident.name)
-                    .collect::<Vec<_>>()
-            );
-        }
-
         // Check OK: should have value 200 and no @value annotation
         assert_eq!(enum_ty.fields[0].ident.name, "OK");
         assert_eq!(enum_ty.fields[0].value, 200);
@@ -256,20 +223,6 @@ fn test_value_annotation_with_auto_increment() {
         .expect("Numbers enum not found");
 
     if let DefKind::Enum(enum_ty) = &numbers_enum.1.kind {
-        println!("\nAfter transformation:");
-        for field in &enum_ty.fields {
-            println!(
-                "  {}: value={}, annotations={:?}",
-                field.ident.name,
-                field.value,
-                field
-                    .annotations
-                    .iter()
-                    .map(|a| &a.ident.name)
-                    .collect::<Vec<_>>()
-            );
-        }
-
         // Check values
         // Note: ELEVEN gets value 2 because during initial HIR construction,
         // TEN had no explicit value (only @value annotation) so it got 1,

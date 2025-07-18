@@ -327,8 +327,8 @@ fn test_merge_conflicting_definitions() {
     let file1 = source_map.embed_with_name("file1.idl", input1);
     let file2 = source_map.embed_with_name("file2.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, Default::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, Default::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
     let graph1 = ic_hir::from_ast(parsed1.tree);
     let graph2 = ic_hir::from_ast(parsed2.tree);
@@ -394,8 +394,8 @@ enum Color { RED, GREEN, BLUE };
     let file1 = source_map.embed_with_name("shapes.idl", input1);
     let file2 = source_map.embed_with_name("graphics.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, Default::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, Default::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
     let graph1 = ic_hir::from_ast(parsed1.tree);
     let graph2 = ic_hir::from_ast(parsed2.tree);
@@ -438,8 +438,8 @@ module api {
     let file1 = source_map.embed_with_name("api_request.idl", input1);
     let file2 = source_map.embed_with_name("api_response.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, Default::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, Default::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
     let graph1 = ic_hir::from_ast(parsed1.tree);
     let graph2 = ic_hir::from_ast(parsed2.tree);

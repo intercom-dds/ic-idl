@@ -51,13 +51,17 @@ fn test_module_reopening_preserves_annotations() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
     let builtin_annotations = include_str!("../idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
-    let builtin_parsed = ic_parse::from_file(builtin_file_id, Default::default(), &mut source_map);
+    let builtin_parsed = ic_parse::from_file(
+        builtin_file_id,
+        ic_preproc::ProcArgs::default(),
+        &mut source_map,
+    );
     assert!(builtin_parsed.errors.is_empty());
 
     // Convert to HIR with built-ins
@@ -124,7 +128,7 @@ fn test_nested_module_reopening() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(parsed.tree);

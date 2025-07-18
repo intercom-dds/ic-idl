@@ -122,7 +122,7 @@ fn test_multiple_builtin_annotations() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
 
     assert!(parsed.errors.is_empty());
 
@@ -167,7 +167,7 @@ fn test_extensibility_annotation_aliases() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
 
     assert!(parsed.errors.is_empty());
 
@@ -191,7 +191,7 @@ fn test_unknown_annotation_warning() {
 
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, Default::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
 
     assert!(parsed.errors.is_empty());
 

@@ -1659,14 +1659,13 @@ where
     fn dir_pragma(&mut self, _span: Span) {
         let tokens = self.until_newline();
 
-        // Empty pragmas are allowed, so this is not guaranteed
-        if let Some(pragma) = tokens.first() {
-            // Skip newline tokens that may appear due to line continuation
-            if pragma.kind == Kind::Newline {
-                return;
-            }
-
+        // Find the first non-newline token, which should be the pragma name
+        // This handles line continuation where we might get newline tokens first
+        let pragma_token = tokens.iter().find(|t| t.kind != Kind::Newline);
+        
+        if let Some(pragma) = pragma_token {
             let name = self.source_of(pragma.span);
+            
             if name == "once" && self.enable_pragma_once {
                 // Handle #pragma once
                 let file_id = pragma.span.start.file_id;
@@ -1679,6 +1678,7 @@ where
                 });
             }
         }
+        // Empty pragmas are allowed, so no warning if no token found
     }
 
     fn dir_error(&mut self, span: Span) {

@@ -89,7 +89,7 @@ impl<'a> AnnDeserializer<'a> {
     fn from_annotation(ann: &'a Ann) -> Self {
         Self::Annotation(ann)
     }
-    
+
     fn from_numeric(value: &'a Numeric) -> Self {
         Self::Numeric(value)
     }
@@ -574,7 +574,8 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
-            }.to_string(),
+            }
+            .to_string(),
             expected: "union",
         })
     }
@@ -584,7 +585,8 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
-            }.to_string(),
+            }
+            .to_string(),
             expected: "array",
         })
     }
@@ -594,7 +596,8 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
-            }.to_string(),
+            }
+            .to_string(),
             expected: "sequence",
         })
     }
@@ -604,7 +607,8 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
-            }.to_string(),
+            }
+            .to_string(),
             expected: "map",
         })
     }
@@ -741,7 +745,7 @@ impl intercom_cts::decode::EnumVisitor for Mode {
     {
         Err(D::Error::custom("Mode enum does not support member IDs"))
     }
-    
+
     fn member_field<D>(self, name: &str) -> Result<Self, D::Error>
     where
         Self: Sized,
@@ -785,13 +789,16 @@ impl Unmarshal for ModeAnnotation {
             key_kind: TypeKind::None,
             element_kind: TypeKind::None,
         })?;
-        
-        state.decode_field(&MemberInfo {
-            name: "value",
-            member_id: 0,
-            flags: MemberFlag::nil(),
-        }, &mut self.value)?;
-        
+
+        state.decode_field(
+            &MemberInfo {
+                name: "value",
+                member_id: 0,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.value,
+        )?;
+
         state.end()?;
         Ok(())
     }
@@ -969,43 +976,50 @@ mod tests {
         assert_eq!(range.min, Some(5));
         assert_eq!(range.max, Some(15));
     }
-    
+
     #[test]
     fn test_mode_enum_unmarshal() {
-        let ann = make_ann("mode", vec![
-            make_arg(None, Numeric::String("read_only".to_string())),
-        ]);
-        
+        let ann = make_ann(
+            "mode",
+            vec![make_arg(None, Numeric::String("read_only".to_string()))],
+        );
+
         let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
         assert_eq!(mode.value, Mode::ReadOnly);
     }
-    
+
     #[test]
     fn test_mode_enum_with_name() {
-        let ann = make_ann("mode", vec![
-            make_arg(Some("value"), Numeric::String("write_only".to_string())),
-        ]);
-        
+        let ann = make_ann(
+            "mode",
+            vec![make_arg(
+                Some("value"),
+                Numeric::String("write_only".to_string()),
+            )],
+        );
+
         let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
         assert_eq!(mode.value, Mode::WriteOnly);
     }
-    
+
     #[test]
     fn test_mode_enum_default() {
-        let ann = make_ann("mode", vec![
-            make_arg(None, Numeric::String("read_write".to_string())),
-        ]);
-        
+        let ann = make_ann(
+            "mode",
+            vec![make_arg(None, Numeric::String("read_write".to_string()))],
+        );
+
         let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
         assert_eq!(mode.value, Mode::ReadWrite);
     }
-    
+
     #[test]
     fn test_mode_enum_invalid() {
-        let ann = make_ann("mode", vec![
-            make_arg(None, Numeric::String("invalid_mode".to_string())),
-        ]);
-        
+        let ann = make_ann(
+            "mode",
+            vec![make_arg(None, Numeric::String("invalid_mode".to_string()))],
+        );
+
         let result: Result<ModeAnnotation, _> = ann.unmarshal("mode");
         assert!(result.is_err());
     }

@@ -148,26 +148,37 @@ int x = 5;
 
 #[test]
 fn test_pragma_line_continuation() {
-    // After investigation, it appears that line continuation with pragmas
-    // works correctly - "#pragma \" followed by "once" is processed as
-    // "#pragma once". The issue we're seeing is that unknown pragmas
-    // with line continuation don't generate warnings.
-    //
-    // This might be because the whitespace handling after line continuation
-    // affects how the pragma name is extracted. Let's accept this behavior
-    // for now since the core functionality (pragma once with line continuation)
-    // works correctly.
+    // Test that line continuation works correctly with pragmas.
+    // When we have "#pragma \" followed by content on the next line,
+    // it should be treated as a single pragma directive.
 
-    // Test: verify known pragma with line continuation doesn't generate warning
-    let input = r#"#pragma \
+    // Test 1: Known pragma with line continuation (no warning)
+    let input1 = r#"#pragma \
 once
-#pragma unknown_test
 int x = 5;
 "#;
+    let (_, warnings1) = preprocess(input1);
+    assert_eq!(warnings1.len(), 0, "Known pragma with line continuation should not generate warning");
 
-    let (_, warnings) = preprocess(input);
-
-    // We should only get a warning for unknown_test
-    assert_eq!(warnings.len(), 1);
-    assert!(warnings[0].contains("unknown_test"));
+    // Test 2: Unknown pragma with line continuation (should generate warning)
+    let input2 = r#"#pragma \
+unknown_continued
+int x = 5;
+"#;
+    let (_, warnings2) = preprocess(input2);
+    assert_eq!(warnings2.len(), 1, "Unknown pragma with line continuation should generate warning");
+    assert!(warnings2[0].contains("unknown_continued"));
+    
+    // Test 3: Mixed known and unknown pragmas
+    let input3 = r#"#pragma \
+once
+#pragma unknown_test
+#pragma \
+unknown_continued
+int x = 5;
+"#;
+    let (_, warnings3) = preprocess(input3);
+    assert_eq!(warnings3.len(), 2, "Should get warnings for both unknown pragmas");
+    assert!(warnings3.iter().any(|w| w.contains("unknown_test")));
+    assert!(warnings3.iter().any(|w| w.contains("unknown_continued")));
 }

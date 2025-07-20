@@ -1,4 +1,0 @@
-union MyUnion switch(octet) {
-case 256:
-	string value;
-};

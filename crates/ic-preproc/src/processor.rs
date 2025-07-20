@@ -296,6 +296,23 @@ where
         result
     }
 
+    /// Check if a pragma directive is known/recognized
+    fn is_known_pragma(name: &str) -> bool {
+        matches!(
+            name,
+            "once"
+                | "warning"
+                | "pack"
+                | "message"
+                | "GCC"
+                | "clang"
+                | "region"
+                | "endregion"
+                | "mark"
+                | "comment"
+        )
+    }
+
     fn expr_and_eval(&mut self, context_span: Span) -> bool {
         match self.expr(context_span).and_then(|v| is_true(&v, self)) {
             Ok(v) => v,
@@ -1644,13 +1661,23 @@ where
 
         // Empty pragmas are allowed, so this is not guaranteed
         if let Some(pragma) = tokens.first() {
+            // Skip newline tokens that may appear due to line continuation
+            if pragma.kind == Kind::Newline {
+                return;
+            }
+
             let name = self.source_of(pragma.span);
             if name == "once" && self.enable_pragma_once {
                 // Handle #pragma once
                 let file_id = pragma.span.start.file_id;
                 self.mark_included(file_id);
+            } else if self.is_active() && !Self::is_known_pragma(name) {
+                // Warn about unknown pragmas only in active code
+                self.state().warnings.push(Error::Syntax {
+                    message: "unknown pragma directive",
+                    span: pragma.span,
+                });
             }
-            // Ignore other pragmas
         }
     }
 
@@ -2269,7 +2296,8 @@ mod tests {
             ",
         );
         assert!(state.errors().is_empty());
-        assert!(state.warnings().is_empty());
+        // Now we expect warnings for unknown pragmas
+        assert_eq!(state.warnings().len(), 4); // foo, 🤠, !, ^<[==]>
     }
 
     #[test]

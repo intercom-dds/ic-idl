@@ -65,7 +65,16 @@ impl<'a> Visitor<'a> for Hygiene<'_> {
 
         // Iterate over members of all parents first
         let mut parent_id = data.parent;
+        let mut visited_parents = std::collections::HashSet::new();
+        
         while let Some(parent) = parent_id {
+            // Check for circular inheritance
+            if !visited_parents.insert(parent) {
+                // We've already visited this parent, which means there's a cycle
+                // Stop traversing to avoid infinite loop
+                break;
+            }
+            
             let parent = self.ctx.type_of(parent);
 
             // TODO: move this to a separate function and re-use for

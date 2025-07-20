@@ -83,24 +83,36 @@
 //! 1. Create a new module in the appropriate category directory
 //! 2. Define a struct that implements the [`Lint`] trait
 //! 3. Implement `Visitor` for AST lints or `ic_hir::visit::Visitor` for HIR lints
-//! 4. Register the lint in `lint_syntax()` or `lint_hir()`
-//! 5. Add the lint name to `all_lint_names()`
+//! 4. Add the lint to the appropriate section in the `define_lints!` macro
 //!
 //! Example:
 //!
 //! ```ignore
 //! use ic_syntax::visit::{Visitor, walk_tree};
-//! use crate::{Lint, LintCtx, Category, lint_impl};
+//! use crate::{Lint, LintCtx, Category};
 //!
 //! pub struct MyLint<'a> {
 //!     ctx: &'a LintCtx<'a>,
 //! }
 //!
+//! impl<'a> Lint<'a> for MyLint<'a> {
+//!     fn name() -> &'static str {
+//!         "my_lint"
+//!     }
+//!
+//!     fn category() -> Category {
+//!         Category::Pedantic
+//!     }
+//!
+//!     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+//!         let visitor = MyLint { ctx };
+//!         walk_tree(&visitor, ast);
+//!     }
+//! }
+//!
 //! impl<'a> Visitor<'a> for MyLint<'a> {
 //!     // Implement visitor methods
 //! }
-//!
-//! lint_impl!(MyLint, "my_lint", Category::Pedantic);
 //! ```
 
 use std::cell::RefCell;
@@ -289,22 +301,6 @@ pub trait Lint<'a>: Sized {
     fn report(ctx: &LintCtx<'_>, diag: Diag) {
         ctx.report(Self::name(), Self::category(), diag);
     }
-}
-
-/// Helper macro to implement the Lint trait with standard behavior.
-#[macro_export]
-macro_rules! lint_impl {
-    ($name:ident, $str_name:literal, $category:expr) => {
-        impl<'a> crate::Lint<'a> for $name<'a> {
-            fn name() -> &'static str {
-                $str_name
-            }
-
-            fn category() -> crate::Category {
-                $category
-            }
-        }
-    };
 }
 
 #[must_use]

@@ -119,7 +119,7 @@ use std::cell::RefCell;
 
 // Re-export Level for external use
 pub use ic_diagnostic::Level;
-use ic_diagnostic::{Diag, Label, level_span};
+use ic_diagnostic::{Diag, Label};
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
 
@@ -132,6 +132,11 @@ mod unsupported;
 mod iter;
 
 use std::collections::HashMap;
+
+/// Create a diagnostic with a lint code.
+fn lint_diag<S: Into<String>>(level: Level, code: &str, msg: S, label: Label) -> Option<Diag> {
+    Diag::with_level(level, msg).map(|d| d.code(code).label(label))
+}
 
 /// The supported lint categories.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -226,7 +231,10 @@ pub struct LintCtx<'a> {
 
 impl LintCtx<'_> {
     /// Report a diagnostic with the appropriate level based on lint configuration.
-    pub fn report(&self, lint_name: &'static str, category: Category, diag: Diag) {
+    pub fn report(&self, lint_name: &'static str, category: Category, mut diag: Diag) {
+        // Add the lint code to the diagnostic
+        diag = diag.code(lint_name);
+
         // Semantic and Syntax lints are always errors
         let level = match category {
             Category::Semantic | Category::Syntax => Level::Error,
@@ -253,7 +261,15 @@ impl LintCtx<'_> {
             Category::Semantic | Category::Syntax => Level::Error,
             _ => self.config.get_level(lint_name, category),
         };
-        level_span(level, msg, label)
+
+        // Apply color based on level
+        let color = match level {
+            Level::Error => ic_diagnostic::Color::Red,
+            Level::Warning => ic_diagnostic::Color::Purple,
+            Level::Disabled => return None,
+        };
+
+        lint_diag(level, lint_name, msg, label.color(color))
     }
 
     /// Returns a slice of the given span.

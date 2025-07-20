@@ -71,6 +71,7 @@ pub enum Level {
 pub struct Diag {
     msg: String,
     title: Line,
+    code: Option<String>,
     help: Option<String>,
     warn: Option<String>,
     note: Option<String>,
@@ -103,6 +104,12 @@ impl Diag {
             Level::Warning => Some(Self::warning(message)),
             Level::Disabled => None,
         }
+    }
+
+    /// Sets a diagnostic code (e.g. lint name) that will be displayed with the diagnostic.
+    pub fn code<S: Into<String>>(mut self, code: S) -> Self {
+        self.code = Some(code.into());
+        self
     }
 
     /// The main diagnostic message that should give a fairly short, concise
@@ -147,6 +154,7 @@ impl Diag {
         Self {
             title,
             msg,
+            code: None,
             help: None,
             warn: None,
             note: None,

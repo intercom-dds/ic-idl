@@ -244,7 +244,11 @@ impl Formatter<'_> {
     fn report(self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
         // Only print title and message if message is not empty
         if !diag.msg.is_empty() {
-            let title = format!("{}:", diag.title.text);
+            let title = if let Some(code) = &diag.code {
+                format!("{}[{}]:", diag.title.text, code)
+            } else {
+                format!("{}:", diag.title.text)
+            };
             writeln!(
                 f,
                 "{} {}",
@@ -840,7 +844,11 @@ impl fmt::Display for Diag {
 
 pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
     // First, emit the main error message
-    let title = format!("{}:", diag.title.text);
+    let title = if let Some(code) = &diag.code {
+        format!("{}[{}]:", diag.title.text, code)
+    } else {
+        format!("{}:", diag.title.text)
+    };
     writeln!(
         f,
         "{} {}",
@@ -908,7 +916,11 @@ pub fn with_source(f: &mut dyn fmt::Write, name: &str, source: &str, diag: &Diag
 }
 
 pub fn compact(f: &mut dyn fmt::Write, filename: &str, diag: &Diag) -> fmt::Result {
-    let title = format!("{}:", diag.title.text);
+    let title = if let Some(code) = &diag.code {
+        format!("{}[{}]:", diag.title.text, code)
+    } else {
+        format!("{}:", diag.title.text)
+    };
     writeln!(
         f,
         "{} {filename}: {}",

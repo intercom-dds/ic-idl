@@ -294,6 +294,7 @@ pub trait Lint<'a>: Sized {
 
     /// Check if this lint should run based on configuration.
     /// Semantic and Syntax category lints always run as they represent validation errors.
+    #[must_use]
     fn should_run(config: &LintConfig) -> bool {
         match Self::category() {
             Category::Semantic | Category::Syntax => true,

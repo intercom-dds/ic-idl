@@ -25,17 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::error::Error;
-
 use ic_hir::hir::{DefKind, Numeric};
 
 mod common;
 
 #[test]
-fn test_mixed_int_float_multiplication() -> Result<(), Box<dyn Error>> {
-    let idl = r#"
+fn test_mixed_int_float_multiplication() {
+    let idl = r"
         const uint32 FOO = 3 * 1.5;
-    "#;
+    ";
 
     let (hir, _source_map, _diagnostics) = common::parse_and_resolve(idl);
 
@@ -52,15 +50,13 @@ fn test_mixed_int_float_multiplication() -> Result<(), Box<dyn Error>> {
     } else {
         panic!("FOO is not a constant");
     }
-
-    Ok(())
 }
 
 #[test]
-fn test_mixed_int_float_division() -> Result<(), Box<dyn Error>> {
-    let idl = r#"
+fn test_mixed_int_float_division() {
+    let idl = r"
         const uint32 BAR = 10 / 3.0;
-    "#;
+    ";
 
     let (hir, _source_map, _diagnostics) = common::parse_and_resolve(idl);
 
@@ -76,15 +72,13 @@ fn test_mixed_int_float_division() -> Result<(), Box<dyn Error>> {
     } else {
         panic!("BAR is not a constant");
     }
-
-    Ok(())
 }
 
 #[test]
-fn test_mixed_float_int_addition() -> Result<(), Box<dyn Error>> {
-    let idl = r#"
+fn test_mixed_float_int_addition() {
+    let idl = r"
         const int32 BAZ = 5.7 + 2;
-    "#;
+    ";
 
     let (hir, _source_map, _diagnostics) = common::parse_and_resolve(idl);
 
@@ -100,15 +94,13 @@ fn test_mixed_float_int_addition() -> Result<(), Box<dyn Error>> {
     } else {
         panic!("BAZ is not a constant");
     }
-
-    Ok(())
 }
 
 #[test]
-fn test_mixed_int_float_subtraction() -> Result<(), Box<dyn Error>> {
-    let idl = r#"
+fn test_mixed_int_float_subtraction() {
+    let idl = r"
         const uint16 QUX = 100 - 20.5;
-    "#;
+    ";
 
     let (hir, _source_map, _diagnostics) = common::parse_and_resolve(idl);
 
@@ -124,17 +116,15 @@ fn test_mixed_int_float_subtraction() -> Result<(), Box<dyn Error>> {
     } else {
         panic!("QUX is not a constant");
     }
-
-    Ok(())
 }
 
 #[test]
-fn test_float_to_integer_conversion() -> Result<(), Box<dyn Error>> {
-    let idl = r#"
+fn test_float_to_integer_conversion() {
+    let idl = r"
         const uint32 FLOAT_TO_UINT = 4.5;
         const int32 FLOAT_TO_INT = -3.7;
         const uint8 LARGE_FLOAT = 255.9;
-    "#;
+    ";
 
     let (hir, _source_map, _diagnostics) = common::parse_and_resolve(idl);
 
@@ -153,14 +143,14 @@ fn test_float_to_integer_conversion() -> Result<(), Box<dyn Error>> {
     }
 
     // Check FLOAT_TO_INT
-    let (_, float_to_int) = hir
+    let (_, float_conv) = hir
         .context
         .definitions
         .iter()
         .find(|(_, def)| def.ident.name == "FLOAT_TO_INT")
         .expect("FLOAT_TO_INT constant not found");
 
-    if let DefKind::Const(const_ty) = &float_to_int.kind {
+    if let DefKind::Const(const_ty) = &float_conv.kind {
         assert_eq!(const_ty.value, Numeric::Int32(-3));
     } else {
         panic!("FLOAT_TO_INT is not a constant");
@@ -179,6 +169,4 @@ fn test_float_to_integer_conversion() -> Result<(), Box<dyn Error>> {
     } else {
         panic!("LARGE_FLOAT is not a constant");
     }
-
-    Ok(())
 }

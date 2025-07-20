@@ -467,6 +467,11 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Converts a numeric value to match the declared type.
     /// This handles unsigned wrapping for negative values.
+    #[allow(
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation,
+        clippy::unused_self
+    )]
     fn convert_to_type(&mut self, value: Numeric, ty: &Ty) -> Numeric {
         match (&value, &ty.kind) {
             // Convert signed to unsigned with wrapping
@@ -484,7 +489,9 @@ impl<'a> ExpressionEvaluator<'a> {
             // Convert between signed integer types
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int8)) => Numeric::Int8(*v as i8),
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int16)) => Numeric::Int16(*v as i16),
-            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int64)) => Numeric::Int64(*v as i64),
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int64)) => {
+                Numeric::Int64(i64::from(*v))
+            }
 
             // Convert float to integer types (truncating)
             (Numeric::Float(v), TyKind::Primitive(PrimitiveTy::Int8)) => Numeric::Int8(*v as i8),

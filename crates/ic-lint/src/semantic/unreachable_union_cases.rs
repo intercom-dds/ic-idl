@@ -141,15 +141,18 @@ impl UnreachableUnionCases<'_> {
         )
     }
 
+    #[allow(
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap
+    )]
     fn wrap_to_unsigned(value: i64, ty_kind: &TyKind) -> i64 {
         match ty_kind {
             TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::Bool => ((value as u8) & 1) as i64,
-                PrimitiveTy::Char => (value as u8) as i64,
-                PrimitiveTy::WChar => (value as u16) as i64,
-                PrimitiveTy::UInt8 => (value as u8) as i64,
-                PrimitiveTy::UInt16 => (value as u16) as i64,
-                PrimitiveTy::UInt32 => (value as u32) as i64,
+                PrimitiveTy::Bool => i64::from((value as u8) & 1),
+                PrimitiveTy::Char | PrimitiveTy::UInt8 => i64::from(value as u8),
+                PrimitiveTy::WChar | PrimitiveTy::UInt16 => i64::from(value as u16),
+                PrimitiveTy::UInt32 => i64::from(value as u32),
                 PrimitiveTy::UInt64 => value as u64 as i64,
                 _ => value, // For signed types, no wrapping
             },

@@ -226,6 +226,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     /// Checks if an integer value fits in a primitive type.
+    #[allow(clippy::cast_sign_loss)]
     fn check_int_fits(
         &mut self,
         value: i64,
@@ -268,11 +269,8 @@ impl<'a> TypeChecker<'a> {
                     (0..=4_294_967_295).contains(&value)
                 }
             }
-            PrimitiveTy::UInt64 => {
-                // All i64 values fit in uint64 after wrapping
-                true
-            }
-            PrimitiveTy::Float32
+            PrimitiveTy::UInt64
+            | PrimitiveTy::Float32
             | PrimitiveTy::Float64
             | PrimitiveTy::Float128
             | PrimitiveTy::Int64 => true, // Always fits

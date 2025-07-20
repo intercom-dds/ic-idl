@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
-
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, EnumTy, PrimitiveTy, TyKind};
@@ -55,8 +53,6 @@ impl<'a> Lint<'a> for InvalidEnumValue<'a> {
 
 impl InvalidEnumValue<'_> {
     fn check_enum(&mut self, enum_ty: &EnumTy, _enum_name: &str) {
-        let mut seen_values = HashMap::new();
-
         // Get the underlying type's range
         let (min, max) = match &enum_ty.ty.kind {
             TyKind::Primitive(prim) => match prim {
@@ -89,20 +85,6 @@ impl InvalidEnumValue<'_> {
                 ) {
                     Self::report(self.ctx, diag);
                 }
-            }
-
-            // Check for duplicate values
-            if let Some(prev_name) = seen_values.get(&value) {
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("enum value {value} is already used by '{prev_name}'"),
-                    Label::new(field.ident.span).message("duplicate value"),
-                ) {
-                    Self::report(self.ctx, diag);
-                }
-            } else {
-                seen_values.insert(value, field.ident.name.clone());
             }
         }
     }

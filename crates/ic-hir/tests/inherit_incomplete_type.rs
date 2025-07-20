@@ -162,8 +162,12 @@ fn test_inherit_from_later_defined_type() {
     let hir = ic_hir::from_ast(parse_result.tree);
 
     // Should have errors about incomplete type
-    assert!(!hir.errors.is_empty(), "Expected errors but got none. Warnings: {:?}", hir.warnings);
-    
+    assert!(
+        !hir.errors.is_empty(),
+        "Expected errors but got none. Warnings: {:?}",
+        hir.warnings
+    );
+
     let error_found = hir.errors.iter().any(|e| {
         let error_str = format!("{:?}", e);
         error_str.contains("incomplete") || error_str.contains("not defined")

@@ -399,6 +399,17 @@ impl<'a> TypeResolver<'a> {
         }
     }
 
+    /// Finds the span of a forward declaration for the given type name.
+    fn find_forward_declaration_span(&self, name: &str) -> Option<Span> {
+        // Look for a forward declaration with this name
+        for (_, def) in &self.ctx.definitions {
+            if def.ident.name == name && matches!(def.kind, DefKind::Decl(_)) {
+                return Some(def.ident.span);
+            }
+        }
+        None
+    }
+
     /// Resolves a struct definition.
     fn resolve_struct(&mut self, id: DefId, def: &ic_syntax::StructDef) {
         // Mark any forward declarations as resolved
@@ -409,6 +420,11 @@ impl<'a> TypeResolver<'a> {
                 // Check if parent type is complete
                 let parent_def = self.ctx.definitions.get(parent_id);
                 if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    // Find the forward declaration to point to in the error
+                    let forward_decl_span = self
+                        .find_forward_declaration_span(&parent_def.ident.name)
+                        .unwrap_or(parent_def.ident.span);
+
                     self.errors.push(
                         error_span(
                             format!(
@@ -418,7 +434,7 @@ impl<'a> TypeResolver<'a> {
                             Label::new(def.ident.span).message("invalid inheritance"),
                         )
                         .label(
-                            Label::new(parent_def.ident.span)
+                            Label::new(forward_decl_span)
                                 .message("type is not yet defined at this point"),
                         ),
                     );
@@ -432,7 +448,7 @@ impl<'a> TypeResolver<'a> {
         } else {
             None
         };
-        
+
         let members = self.resolve_struct_members(def);
 
         // Resolve annotations for the struct itself
@@ -588,6 +604,11 @@ impl<'a> TypeResolver<'a> {
                     // Check if parent type is complete
                     let parent_def = self.ctx.definitions.get(parent_id);
                     if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                        // Find the forward declaration to point to in the error
+                        let forward_decl_span = self
+                            .find_forward_declaration_span(&parent_def.ident.name)
+                            .unwrap_or(parent_def.ident.span);
+
                         self.errors.push(
                             error_span(
                                 format!(
@@ -597,7 +618,7 @@ impl<'a> TypeResolver<'a> {
                                 Label::new(def.ident.span).message("invalid inheritance"),
                             )
                             .label(
-                                Label::new(parent_def.ident.span)
+                                Label::new(forward_decl_span)
                                     .message("type is not yet defined at this point"),
                             ),
                         );
@@ -667,20 +688,40 @@ impl<'a> TypeResolver<'a> {
                 Item::BitsetValue(v) => (v.ident.name.clone(), "bitset", None),
                 Item::InterfaceValue(v) => {
                     // Extract nested items from interface members
-                    let nested_items: Vec<Item> = v.members.iter()
+                    let nested_items: Vec<Item> = v
+                        .members
+                        .iter()
                         .filter_map(|m| match m {
                             ic_syntax::InterfaceMember::Item(item) => Some(item.clone()),
                             _ => None,
                         })
                         .collect();
-                    (v.ident.name.clone(), "interface", if nested_items.is_empty() { None } else { Some(nested_items) })
-                },
-                Item::ModuleValue(v) => (v.ident.name.clone(), "module", Some(v.definitions.clone())),
+                    (
+                        v.ident.name.clone(),
+                        "interface",
+                        if nested_items.is_empty() {
+                            None
+                        } else {
+                            Some(nested_items)
+                        },
+                    )
+                }
+                Item::ModuleValue(v) => {
+                    (v.ident.name.clone(), "module", Some(v.definitions.clone()))
+                }
                 Item::AnnotationValue(v) => (v.ident.name.clone(), "annotation", None),
                 Item::ValuetypeValue(v) => {
                     // Valuetypes can have nested definitions
-                    (v.ident.name.clone(), "valuetype", if v.definitions.is_empty() { None } else { Some(v.definitions.clone()) })
-                },
+                    (
+                        v.ident.name.clone(),
+                        "valuetype",
+                        if v.definitions.is_empty() {
+                            None
+                        } else {
+                            Some(v.definitions.clone())
+                        },
+                    )
+                }
                 _ => continue,
             };
 
@@ -880,7 +921,7 @@ impl<'a> TypeResolver<'a> {
         } else {
             None
         };
-        
+
         let extends_id = if let Some(extends_path) = &def.supports {
             if let Some(extends_id) = self.resolve_path(extends_path) {
                 // Check if extends type is complete

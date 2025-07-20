@@ -678,7 +678,7 @@ static void update_bitmask_values(ptree* node) {
         auto bit_value = integer_value(m->value);
         numeric v = num_undef;
         v.base = 16;
-        v.val.ull(1ULL << bit_value);
+        v.val.ull(bit_value);
         m->value = v;
         m->flags |= OPT_ENUMERATED;
     }

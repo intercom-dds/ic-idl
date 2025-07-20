@@ -79,10 +79,6 @@ impl<'a> Lint<'a> for KwIdent<'a> {
         Category::Syntax
     }
 
-    fn is_mandatory() -> bool {
-        true
-    }
-
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

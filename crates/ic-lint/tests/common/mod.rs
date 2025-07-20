@@ -106,9 +106,10 @@ pub fn test_lint_hir(source: &str) -> String {
     // Lower to HIR
     let hir = ic_hir::from_ast(ast.tree);
 
-    // Configure lint to enable semantic errors
+    // Configure lint to enable semantic errors and pedantic warnings
     let mut config = LintConfig::new();
     config.set_category_level(Category::Semantic, Level::Error);
+    config.set_category_level(Category::Pedantic, Level::Warning);
 
     // Run HIR lints
     let mut report = ic_lint::lint_hir_with_config(&hir, &vfs, &config);

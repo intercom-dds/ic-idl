@@ -215,7 +215,11 @@ pub struct LintCtx<'a> {
 impl LintCtx<'_> {
     /// Report a diagnostic with the appropriate level based on lint configuration.
     pub fn report(&self, lint_name: &'static str, category: Category, diag: Diag) {
-        let level = self.config.get_level(lint_name, category);
+        // Semantic and Syntax lints are always errors
+        let level = match category {
+            Category::Semantic | Category::Syntax => Level::Error,
+            _ => self.config.get_level(lint_name, category),
+        };
         match level {
             Level::Error => self.errors.borrow_mut().push(diag),
             Level::Warning => self.warnings.borrow_mut().push(diag),
@@ -232,7 +236,11 @@ impl LintCtx<'_> {
         msg: S,
         label: Label,
     ) -> Option<Diag> {
-        let level = self.config.get_level(lint_name, category);
+        // Semantic and Syntax lints are always errors
+        let level = match category {
+            Category::Semantic | Category::Syntax => Level::Error,
+            _ => self.config.get_level(lint_name, category),
+        };
         level_span(level, msg, label)
     }
 
@@ -256,6 +264,15 @@ pub trait Lint<'a>: Sized {
     /// Category of the lint.
     fn category() -> Category;
 
+    /// Check if this lint should run based on configuration.
+    /// Semantic and Syntax category lints always run as they represent validation errors.
+    fn should_run(config: &LintConfig) -> bool {
+        match Self::category() {
+            Category::Semantic | Category::Syntax => true,
+            _ => config.get_level(Self::name(), Self::category()) != Level::Disabled,
+        }
+    }
+
     /// Runs the lint on the given AST.
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
@@ -272,6 +289,22 @@ pub trait Lint<'a>: Sized {
     fn report(ctx: &LintCtx<'_>, diag: Diag) {
         ctx.report(Self::name(), Self::category(), diag);
     }
+}
+
+/// Helper macro to implement the Lint trait with standard behavior.
+#[macro_export]
+macro_rules! lint_impl {
+    ($name:ident, $str_name:literal, $category:expr) => {
+        impl<'a> crate::Lint<'a> for $name<'a> {
+            fn name() -> &'static str {
+                $str_name
+            }
+
+            fn category() -> crate::Category {
+                $category
+            }
+        }
+    };
 }
 
 #[must_use]
@@ -321,13 +354,11 @@ macro_rules! define_lints {
                 config,
             };
 
-            let lints = &[
-                $(<$syntax_lint>::check,)*
-            ];
-
-            for check in lints {
-                check(&ctx, tree);
-            }
+            $(
+                if <$syntax_lint>::should_run(config) {
+                    <$syntax_lint>::check(&ctx, tree);
+                }
+            )*
 
             Report {
                 errors: ctx.errors.into_inner(),
@@ -353,13 +384,11 @@ macro_rules! define_lints {
                 config,
             };
 
-            let lints = &[
-                $(<$hir_lint>::check_hir,)*
-            ];
-
-            for check in lints {
-                check(&ctx, hir);
-            }
+            $(
+                if <$hir_lint>::should_run(config) {
+                    <$hir_lint>::check_hir(&ctx, hir);
+                }
+            )*
 
             Report {
                 errors: ctx.errors.into_inner(),

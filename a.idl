@@ -1,5 +1,4 @@
-union MyUnion switch(octet) {
-case 0:
-case 0:
-string value;
+union MyUnion switch(unsigned short) {
+case -1:
+	string value;
 };

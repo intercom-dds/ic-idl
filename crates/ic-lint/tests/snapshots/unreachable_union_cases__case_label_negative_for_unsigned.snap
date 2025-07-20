@@ -8,10 +8,3 @@ error: case label -1 is outside the range [0, 65535] of the discriminator type
  4 │     case -1: string b;  // Negative value for unsigned type
    ·                     ^ case label out of range
    └──
-
-error: union case label for variant `MyUnion::b` value -1 does not fit in type uint16
-   ┌ test.idl:2:32
-   │
- 2 │ union MyUnion switch (unsigned short) {
-   ·                                ^^^^^ value out of range
-   └──

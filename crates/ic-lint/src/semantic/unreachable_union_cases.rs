@@ -59,13 +59,14 @@ impl UnreachableUnionCases<'_> {
                 for label in &variant.labels {
                     if let Some(value) = Self::numeric_to_i64(label) {
                         // For unsigned discriminators, negative values wrap around
-                        let effective_value = if Self::is_unsigned_discriminator(&union_ty.disc.kind) && value < 0 {
-                            // Apply wrapping conversion for negative values on unsigned types
-                            Self::wrap_to_unsigned(value, &union_ty.disc.kind)
-                        } else {
-                            value
-                        };
-                        
+                        let effective_value =
+                            if Self::is_unsigned_discriminator(&union_ty.disc.kind) && value < 0 {
+                                // Apply wrapping conversion for negative values on unsigned types
+                                Self::wrap_to_unsigned(value, &union_ty.disc.kind)
+                            } else {
+                                value
+                            };
+
                         if effective_value < min || effective_value > max {
                             if let Some(diag) = self.ctx.diag_span(
                                 Self::name(),
@@ -124,22 +125,22 @@ impl UnreachableUnionCases<'_> {
             _ => None,
         }
     }
-    
+
     fn is_unsigned_discriminator(ty_kind: &TyKind) -> bool {
         matches!(
             ty_kind,
             TyKind::Primitive(
                 PrimitiveTy::Bool
-                | PrimitiveTy::Char
-                | PrimitiveTy::WChar
-                | PrimitiveTy::UInt8
-                | PrimitiveTy::UInt16
-                | PrimitiveTy::UInt32
-                | PrimitiveTy::UInt64
+                    | PrimitiveTy::Char
+                    | PrimitiveTy::WChar
+                    | PrimitiveTy::UInt8
+                    | PrimitiveTy::UInt16
+                    | PrimitiveTy::UInt32
+                    | PrimitiveTy::UInt64
             )
         )
     }
-    
+
     fn wrap_to_unsigned(value: i64, ty_kind: &TyKind) -> i64 {
         match ty_kind {
             TyKind::Primitive(prim) => match prim {

@@ -47,10 +47,6 @@ impl<'a> Lint<'a> for DuplicateCaseLabels<'a> {
         Category::Semantic
     }
 
-    fn is_mandatory() -> bool {
-        true
-    }
-
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateCaseLabels { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

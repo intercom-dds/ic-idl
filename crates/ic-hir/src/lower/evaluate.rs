@@ -487,21 +487,39 @@ impl<'a> ExpressionEvaluator<'a> {
             }
 
             // Also handle cases where we have larger integer types converting to unsigned
-            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::UInt8)) => Numeric::Octet(*v as u8),
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::UInt8)) => {
+                if *v >= 0 && *v <= 255 {
+                    Numeric::Octet(*v as u8)
+                } else if *v < 0 {
+                    // Negative values wrap for unsigned types
+                    Numeric::Octet(*v as u8)
+                } else {
+                    // Positive values > 255 don't fit - keep original for type checker
+                    value
+                }
+            }
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::UInt16)) => {
-                Numeric::UInt16(*v as u16)
+                if *v >= 0 && *v <= 65535 {
+                    Numeric::UInt16(*v as u16)
+                } else if *v < 0 {
+                    // Negative values wrap for unsigned types
+                    Numeric::UInt16(*v as u16)
+                } else {
+                    // Positive values > 65535 don't fit - keep original for type checker
+                    value
+                }
             }
 
             // Convert between signed integer types - only if value fits
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int8)) => {
-                if *v >= i32::from(i8::MIN) && *v <= i32::from(i8::MAX) {
+                if i8::try_from(*v).is_ok() {
                     Numeric::Int8(*v as i8)
                 } else {
                     value // Keep original to let type checker catch overflow
                 }
             }
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int16)) => {
-                if *v >= i32::from(i16::MIN) && *v <= i32::from(i16::MAX) {
+                if i16::try_from(*v).is_ok() {
                     Numeric::Int16(*v as i16)
                 } else {
                     value // Keep original to let type checker catch overflow

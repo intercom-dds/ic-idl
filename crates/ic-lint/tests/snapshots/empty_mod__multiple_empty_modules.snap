@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/empty_mod.rs
 expression: test_lint(source)
 ---
-warning: empty module declarations are not standard
+warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:2:9
    │
  2 │         module Empty1 {
@@ -12,7 +12,7 @@ warning: empty module declarations are not standard
    └──
  help: either remove the declaration or add an item to it
 
-warning: empty module declarations are not standard
+warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:5:9
    │
  5 │         module Empty2 {
@@ -22,7 +22,7 @@ warning: empty module declarations are not standard
    └──
  help: either remove the declaration or add an item to it
 
-warning: empty module declarations are not standard
+warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:8:9
    │
  8 │         module Empty3 {

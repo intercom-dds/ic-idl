@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error: map bound must be greater than zero
+error[zero_bound]: map bound must be greater than zero
    ┌ test.idl:3:23
    │
  3 │     map<string, long, 0> field;

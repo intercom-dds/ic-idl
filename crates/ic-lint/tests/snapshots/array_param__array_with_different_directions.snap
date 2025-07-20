@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/array_param.rs
 expression: test_lint(source)
 ---
-warning: using arrays as parameters in prototypes is not standard
+warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:3:40
    │
  3 │             void fill_buffer(out octet buffer[1024]);
@@ -10,7 +10,7 @@ warning: using arrays as parameters in prototypes is not standard
    └──
  note: standard IDL does not permit arrays as parameters
 
-warning: using arrays as parameters in prototypes is not standard
+warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:4:45
    │
  4 │             void process_buffer(inout octet buffer[512]);

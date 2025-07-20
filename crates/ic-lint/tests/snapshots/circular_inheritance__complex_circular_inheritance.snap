@@ -2,21 +2,21 @@
 source: crates/ic-lint/tests/circular_inheritance.rs
 expression: test_lint_hir(source)
 ---
-error: interface 'A' has circular inheritance through 'B'
+error[CircularInheritance]: interface 'A' has circular inheritance through 'B'
    ┌ test.idl:2:11
    │
  2 │ interface A : B, C {};
    ·           ^ circular inheritance detected
    └──
 
-error: interface 'B' has circular inheritance through 'D'
+error[CircularInheritance]: interface 'B' has circular inheritance through 'D'
    ┌ test.idl:3:11
    │
  3 │ interface B : D {};
    ·           ^ circular inheritance detected
    └──
 
-error: interface 'D' has circular inheritance through 'A'
+error[CircularInheritance]: interface 'D' has circular inheritance through 'A'
    ┌ test.idl:5:11
    │
  5 │ interface D : A {};

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/null.rs
 expression: test_lint(source)
 ---
-warning: `null` variants are an InterCOM extension
+warning[null]: `null` variants are an InterCOM extension
    ┌ test.idl:3:21
    │
  3 │             case 0: null;
@@ -10,7 +10,7 @@ warning: `null` variants are an InterCOM extension
    └──
  note: all case labels must map to a value
 
-warning: `null` variants are an InterCOM extension
+warning[null]: `null` variants are an InterCOM extension
    ┌ test.idl:5:21
    │
  5 │             case 2: null;

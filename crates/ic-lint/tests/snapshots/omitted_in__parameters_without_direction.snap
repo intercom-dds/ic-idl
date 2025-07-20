@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:3:26
    │
  3 │             void process(string data);
@@ -10,7 +10,7 @@ warning: parameters must be declared with `in`, `out`, or `inout`
    └──
  help: prefix the parameter with `in`
 
-warning: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:4:28
    │
  4 │             long calculate(double x, double y);
@@ -18,7 +18,7 @@ warning: parameters must be declared with `in`, `out`, or `inout`
    └──
  help: prefix the parameter with `in`
 
-warning: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:4:38
    │
  4 │             long calculate(double x, double y);
@@ -26,7 +26,7 @@ warning: parameters must be declared with `in`, `out`, or `inout`
    └──
  help: prefix the parameter with `in`
 
-warning: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:5:27
    │
  5 │             string format(long value, boolean uppercase);
@@ -34,7 +34,7 @@ warning: parameters must be declared with `in`, `out`, or `inout`
    └──
  help: prefix the parameter with `in`
 
-warning: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:5:39
    │
  5 │             string format(long value, boolean uppercase);

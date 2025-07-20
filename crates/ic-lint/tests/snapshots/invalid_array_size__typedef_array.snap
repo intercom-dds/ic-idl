@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_array_size.rs
 expression: test_lint_hir(source)
 ---
-warning: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
+warning[invalid_array_size]: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
    ┌ test.idl:2:23
    │
  2 │ typedef long BigArray[5000];  // 20000 bytes

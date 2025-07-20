@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/large_union_variant.rs
 expression: test_lint_hir(source)
 ---
-warning: union variant `large_array` is 1024 bytes, which is significantly larger than the average of other variants (1 bytes)
+warning[large_union_variant]: union variant `large_array` is 1024 bytes, which is significantly larger than the average of other variants (1 bytes)
    ┌ test.idl:5:18
    │
  5 │     case 3: char large_array[1024];  // This is 1KB, much larger than others

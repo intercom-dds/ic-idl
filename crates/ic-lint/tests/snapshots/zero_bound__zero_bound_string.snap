@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error: string bound must be greater than zero
+error[zero_bound]: string bound must be greater than zero
    ┌ test.idl:3:12
    │
  3 │     string<0> field;

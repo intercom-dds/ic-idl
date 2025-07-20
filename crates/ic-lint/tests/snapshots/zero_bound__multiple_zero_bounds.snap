@@ -2,28 +2,28 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error: array size must be greater than zero
+error[zero_bound]: array size must be greater than zero
    ┌ test.idl:3:17
    │
  3 │     long field1[0];
    ·                 ^ invalid array size
    └──
 
-error: sequence bound must be greater than zero
+error[zero_bound]: sequence bound must be greater than zero
    ┌ test.idl:4:22
    │
  4 │     sequence<string, 0> field2;
    ·                      ^ invalid sequence bound
    └──
 
-error: string bound must be greater than zero
+error[zero_bound]: string bound must be greater than zero
    ┌ test.idl:5:12
    │
  5 │     string<0> field3;
    ·            ^ invalid string bound
    └──
 
-error: map bound must be greater than zero
+error[zero_bound]: map bound must be greater than zero
    ┌ test.idl:6:23
    │
  6 │     map<long, string, 0> field4;

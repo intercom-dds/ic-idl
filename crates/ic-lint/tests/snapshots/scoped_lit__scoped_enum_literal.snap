@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning: scoped enums are an InterCOM extension
+warning[scoped_lit]: scoped enums are an InterCOM extension
    ┌ test.idl:8:37
    │
  8 │         const Color DEFAULT_COLOR = Color::RED;
@@ -11,7 +11,7 @@ warning: scoped enums are an InterCOM extension
  help: use `RED` instead of `Color::RED`
  note: enumerators are registered in the parent scope
 
-warning: scoped enums are an InterCOM extension
+warning[scoped_lit]: scoped enums are an InterCOM extension
    ┌ test.idl:9:33
    │
  9 │         const Color SECONDARY = Color::GREEN;

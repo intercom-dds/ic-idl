@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error: array size must be greater than zero
+error[zero_bound]: array size must be greater than zero
    ┌ test.idl:3:16
    │
  3 │     long field[0];

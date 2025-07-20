@@ -2,14 +2,14 @@
 source: crates/ic-lint/tests/circular_inheritance.rs
 expression: test_lint_hir(source)
 ---
-error: valuetype 'A' has circular inheritance through 'B'
+error[CircularInheritance]: valuetype 'A' has circular inheritance through 'B'
    ┌ test.idl:2:11
    │
  2 │ valuetype A : B {};
    ·           ^ circular inheritance detected
    └──
 
-error: valuetype 'B' has circular inheritance through 'A'
+error[CircularInheritance]: valuetype 'B' has circular inheritance through 'A'
    ┌ test.idl:3:11
    │
  3 │ valuetype B : A {};

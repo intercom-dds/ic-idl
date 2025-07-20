@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error: sequence bound must be greater than zero
+error[zero_bound]: sequence bound must be greater than zero
    ┌ test.idl:3:20
    │
  3 │     sequence<long, 0> field;

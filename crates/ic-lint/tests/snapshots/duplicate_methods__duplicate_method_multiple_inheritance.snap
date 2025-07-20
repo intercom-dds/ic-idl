@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_methods.rs
 expression: test_lint_hir(source)
 ---
-error: interface `C` inherits conflicting definitions of method `method`
+error[duplicate_methods]: interface `C` inherits conflicting definitions of method `method`
     ┌ test.idl:10:11
     │
  10 │ interface C : A, B {  // Error: inherits conflicting methods

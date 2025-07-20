@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error: union `Union2` has 2 default cases, but only one is allowed
+error[multiple_default_cases]: union `Union2` has 2 default cases, but only one is allowed
     ┌ test.idl:10:19
     │
  10 │     default: long f2;  // Error

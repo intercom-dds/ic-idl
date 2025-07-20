@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/null.rs
 expression: test_lint(source)
 ---
-warning: `null` variants are an InterCOM extension
+warning[null]: `null` variants are an InterCOM extension
    ┌ test.idl:5:22
    │
  5 │             default: null;

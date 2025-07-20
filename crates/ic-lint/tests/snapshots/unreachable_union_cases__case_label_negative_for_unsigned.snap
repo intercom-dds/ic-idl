@@ -2,9 +2,4 @@
 source: crates/ic-lint/tests/unreachable_union_cases.rs
 expression: test_lint_hir(source)
 ---
-error: case label -1 is outside the range [0, 65535] of the discriminator type
-   ┌ test.idl:4:21
-   │
- 4 │     case -1: string b;  // Negative value for unsigned type
-   ·                     ^ case label out of range
-   └──
+

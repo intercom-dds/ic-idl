@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/empty_mod.rs
 expression: test_lint(source)
 ---
-warning: empty module declarations are not standard
+warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:2:9
    │
  2 │         module DocumentedButEmpty {

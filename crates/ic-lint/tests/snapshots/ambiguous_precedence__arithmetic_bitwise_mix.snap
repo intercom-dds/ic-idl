@@ -1,9 +1,8 @@
 ---
 source: crates/ic-lint/tests/ambiguous_precedence.rs
-assertion_line: 110
 expression: check_ambiguous_precedence(idl)
 ---
-warning: operator `&` has lower precedence than `+`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:3:22
    │
  3 │ const long test1 = 1 & 2 + 3;      // + binds tighter than &
@@ -12,7 +11,7 @@ warning: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `*`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `*`
    ┌ test.idl:4:22
    │
  4 │ const long test2 = 1 | 2 * 3;      // * binds tighter than |
@@ -21,7 +20,7 @@ warning: operator `|` has lower precedence than `*`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `^` has lower precedence than `-`
+warning[ambiguous_precedence]: operator `^` has lower precedence than `-`
    ┌ test.idl:5:22
    │
  5 │ const long test3 = 1 ^ 2 - 3;      // - binds tighter than ^
@@ -30,7 +29,7 @@ warning: operator `^` has lower precedence than `-`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `&` has lower precedence than `+`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:26
    │
  6 │ const long test4 = 1 + 2 & 3;      // + binds tighter than &
@@ -39,7 +38,7 @@ warning: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `*`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `*`
    ┌ test.idl:7:26
    │
  7 │ const long test5 = 1 * 2 | 3;      // * binds tighter than |
@@ -48,7 +47,7 @@ warning: operator `|` has lower precedence than `*`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `+`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `+`
     ┌ test.idl:10:22
     │
  10 │ const long test6 = 1 | 2 + 3 * 4;  // Both + and * bind tighter than |
@@ -57,7 +56,7 @@ warning: operator `|` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `&` has lower precedence than `+`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:22
     │
  11 │ const long test7 = 1 & 2 * 3 + 4;  // Both * and + bind tighter than &

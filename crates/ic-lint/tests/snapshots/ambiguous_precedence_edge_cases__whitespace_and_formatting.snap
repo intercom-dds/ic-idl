@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_edge_cases.rs
 expression: check_ambiguous_precedence(idl)
 ---
-warning: operator `|` has lower precedence than `&`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:2:21
    │
  2 │ const long test1 = 1|2&3;
@@ -11,7 +11,7 @@ warning: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `&`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:3:22
    │
  3 │ const long test2 = 1 | 2 & 3;
@@ -20,7 +20,7 @@ warning: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `&`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:4:23
    │
  4 │ const long test3 = 1  |  2  &  3;
@@ -29,7 +29,7 @@ warning: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `&`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:6:5
    │
  6 │     | 2
@@ -40,7 +40,7 @@ warning: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `&`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:9:36
    │
  9 │ const long test5 = 1 /* comment */ | 2 /* another */ & 3;
@@ -49,7 +49,7 @@ warning: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `&`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:10:22
     │
  10 │ const long test6 = 1 | /* bitwise or */ 2 & /* bitwise and */ 3;

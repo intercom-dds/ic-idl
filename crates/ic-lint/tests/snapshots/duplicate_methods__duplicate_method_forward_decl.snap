@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_methods.rs
 expression: test_lint_hir(source)
 ---
-error: interface `Derived` defines method `method` which conflicts with inherited method
+error[duplicate_methods]: interface `Derived` defines method `method` which conflicts with inherited method
     ┌ test.idl:10:10
     │
  10 │     long method();  // Error: conflicts with inherited method

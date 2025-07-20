@@ -1,5 +1,1 @@
-union MyUnion switch (octet) {
-    case 100: long a;
-    case 200: string b;
-    case 300: boolean c;  // Out of range for octet (0-255)
-};
+const octet foo = 1 << 2;

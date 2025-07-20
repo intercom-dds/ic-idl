@@ -30,9 +30,9 @@
 //! This module provides an implementation of the annotation system
 //! that leverages the intercom-cts Marshal/Unmarshal traits for serialization.
 
-use intercom_cts::{Unmarshal, TypeInfo, TypeKind, TypeFlag, MemberInfo, MemberFlag};
-use intercom_cts::decode::{Deserializer, StructDeserializer};
+use intercom_cts::decode::{Deserializer, EnumDeserializer as _, StructDeserializer};
 use intercom_cts::error::Error as CtsError;
+use intercom_cts::{MemberFlag, MemberInfo, TypeFlag, TypeInfo, TypeKind, Unmarshal};
 
 use crate::hir::{Ann, Numeric};
 
@@ -40,13 +40,19 @@ use crate::hir::{Ann, Numeric};
 #[derive(Debug, Clone)]
 pub enum CtsAnnotationError {
     /// Annotation name mismatch
-    WrongAnnotationType { expected: &'static str, actual: String },
+    WrongAnnotationType {
+        expected: &'static str,
+        actual: String,
+    },
     /// Deserialization error  
     DeserializationError(String),
     /// Field not found
     FieldNotFound(String),
     /// Type conversion error
-    TypeConversionError { field: String, expected: &'static str },
+    TypeConversionError {
+        field: String,
+        expected: &'static str,
+    },
 }
 
 impl std::fmt::Display for CtsAnnotationError {
@@ -92,33 +98,36 @@ struct AnnStructDeserializer<'a> {
 impl StructDeserializer for AnnStructDeserializer<'_> {
     type Ok = ();
     type Error = CtsAnnotationError;
-    
+
     fn decode_field<T>(&mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
         // Find the argument by name or by position
-        let arg = self.ann.args.iter().find(|arg| {
-            arg.ident.as_ref().is_some_and(|id| id.name == info.name)
-        }).or_else(|| {
-            // If not found by name and this is the first field, try positional
-            if info.name == "value" && self.field_index == 0 {
-                self.ann.args.first()
-            } else {
-                None
-            }
-        });
-        
+        let arg = self
+            .ann
+            .args
+            .iter()
+            .find(|arg| arg.ident.as_ref().is_some_and(|id| id.name == info.name))
+            .or_else(|| {
+                // If not found by name and this is the first field, try positional
+                if info.name == "value" && self.field_index == 0 {
+                    self.ann.args.first()
+                } else {
+                    None
+                }
+            });
+
         if let Some(arg) = arg {
             let deserializer = OptionDeserializer::new(&arg.value);
             value.unmarshal_mut(deserializer)?;
         }
         // If field not found, leave default value
-        
+
         self.field_index += 1;
         Ok(())
     }
-    
+
     fn end(self) -> Result<Self::Ok, Self::Error> {
         Ok(())
     }
@@ -152,14 +161,14 @@ struct Never;
 impl StructDeserializer for Never {
     type Ok = ();
     type Error = CtsAnnotationError;
-    
+
     fn decode_field<T>(&mut self, _info: &MemberInfo<'_>, _value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
         unreachable!()
     }
-    
+
     fn end(self) -> Result<Self::Ok, Self::Error> {
         unreachable!()
     }
@@ -168,15 +177,19 @@ impl StructDeserializer for Never {
 impl intercom_cts::decode::UnionDeserializer for Never {
     type Ok = ();
     type Error = CtsAnnotationError;
-    
+
     fn decode_discriminant<T>(&mut self, _value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
         unreachable!()
     }
-    
-    fn decode_variant<T>(self, _info: &MemberInfo<'_>, _value: &mut T) -> Result<Self::Ok, Self::Error>
+
+    fn decode_variant<T>(
+        self,
+        _info: &MemberInfo<'_>,
+        _value: &mut T,
+    ) -> Result<Self::Ok, Self::Error>
     where
         T: Unmarshal,
     {
@@ -186,7 +199,7 @@ impl intercom_cts::decode::UnionDeserializer for Never {
 
 impl intercom_cts::decode::EnumDeserializer for Never {
     type Error = CtsAnnotationError;
-    
+
     fn decode_enumerator<T>(self, _visitor: T) -> Result<T, Self::Error>
     where
         T: Unmarshal + intercom_cts::decode::EnumVisitor,
@@ -195,16 +208,40 @@ impl intercom_cts::decode::EnumDeserializer for Never {
     }
 }
 
+/// Enum deserializer for string-based enum values
+struct StringEnumDeserializer {
+    value: String,
+}
+
+impl StringEnumDeserializer {
+    fn new(value: &str) -> Self {
+        Self {
+            value: value.to_string(),
+        }
+    }
+}
+
+impl intercom_cts::decode::EnumDeserializer for StringEnumDeserializer {
+    type Error = CtsAnnotationError;
+
+    fn decode_enumerator<T>(self, visitor: T) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + intercom_cts::decode::EnumVisitor,
+    {
+        visitor.member_field::<AnnDeserializer>(&self.value)
+    }
+}
+
 impl intercom_cts::decode::SeqDeserializer for Never {
     type Error = CtsAnnotationError;
-    
+
     fn decode_next<T>(&mut self, _value: &mut T) -> Result<bool, Self::Error>
     where
         T: Unmarshal,
     {
         unreachable!()
     }
-    
+
     fn size_hint(&self) -> Option<usize> {
         unreachable!()
     }
@@ -212,7 +249,7 @@ impl intercom_cts::decode::SeqDeserializer for Never {
 
 impl intercom_cts::decode::ArrayDeserializer for Never {
     type Error = CtsAnnotationError;
-    
+
     fn decode_next<T>(&mut self, _value: &mut T) -> Result<bool, Self::Error>
     where
         T: Unmarshal,
@@ -223,7 +260,7 @@ impl intercom_cts::decode::ArrayDeserializer for Never {
 
 impl intercom_cts::decode::MapDeserializer for Never {
     type Error = CtsAnnotationError;
-    
+
     fn decode_pair<K, V>(&mut self, _key: &mut K, _value: &mut V) -> Result<bool, Self::Error>
     where
         K: Unmarshal,
@@ -231,7 +268,7 @@ impl intercom_cts::decode::MapDeserializer for Never {
     {
         unreachable!()
     }
-    
+
     fn size_hint(&self) -> Option<usize> {
         unreachable!()
     }
@@ -240,12 +277,12 @@ impl intercom_cts::decode::MapDeserializer for Never {
 impl Deserializer for NumericDeserializer<'_> {
     type Error = CtsAnnotationError;
     type Struct = Never;
-    type Enum = Never;
+    type Enum = StringEnumDeserializer;
     type Union = Never;
     type Array = Never;
     type Sequence = Never;
     type Map = Never;
-    
+
     fn decode_bool(self) -> Result<bool, Self::Error> {
         match self.value {
             Numeric::Bool(b) => Ok(*b),
@@ -255,7 +292,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_i8(self) -> Result<i8, Self::Error> {
         match self.value {
             Numeric::Int8(v) => Ok(*v),
@@ -265,7 +302,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_i16(self) -> Result<i16, Self::Error> {
         match self.value {
             Numeric::Int8(v) => Ok(i16::from(*v)),
@@ -276,7 +313,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_i32(self) -> Result<i32, Self::Error> {
         match self.value {
             Numeric::Int8(v) => Ok(i32::from(*v)),
@@ -288,7 +325,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_i64(self) -> Result<i64, Self::Error> {
         match self.value {
             Numeric::Int8(v) => Ok(i64::from(*v)),
@@ -298,18 +335,19 @@ impl Deserializer for NumericDeserializer<'_> {
             Numeric::Octet(v) => Ok(i64::from(*v)),
             Numeric::UInt16(v) => Ok(i64::from(*v)),
             Numeric::UInt32(v) => Ok(i64::from(*v)),
-            Numeric::UInt64(v) => i64::try_from(*v)
-                .map_err(|_| CtsAnnotationError::TypeConversionError {
+            Numeric::UInt64(v) => {
+                i64::try_from(*v).map_err(|_| CtsAnnotationError::TypeConversionError {
                     field: "value".to_string(),
                     expected: "i64 (value too large)",
-                }),
+                })
+            }
             _ => Err(CtsAnnotationError::TypeConversionError {
                 field: "value".to_string(),
                 expected: "i64",
             }),
         }
     }
-    
+
     fn decode_u8(self) -> Result<u8, Self::Error> {
         match self.value {
             Numeric::Octet(v) => Ok(*v),
@@ -319,7 +357,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_u16(self) -> Result<u16, Self::Error> {
         match self.value {
             Numeric::Octet(v) => Ok(u16::from(*v)),
@@ -330,7 +368,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_u32(self) -> Result<u32, Self::Error> {
         match self.value {
             Numeric::Octet(v) => Ok(u32::from(*v)),
@@ -342,7 +380,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_u64(self) -> Result<u64, Self::Error> {
         match self.value {
             Numeric::Octet(v) => Ok(u64::from(*v)),
@@ -355,7 +393,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_f32(self) -> Result<f32, Self::Error> {
         match self.value {
             Numeric::Float(v) => Ok(*v),
@@ -365,7 +403,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_f64(self) -> Result<f64, Self::Error> {
         match self.value {
             Numeric::Float(v) => Ok(f64::from(*v)),
@@ -376,7 +414,7 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_char(self) -> Result<char, Self::Error> {
         match self.value {
             Numeric::Char(c) => Ok(*c),
@@ -386,11 +424,11 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_wchar(self) -> Result<char, Self::Error> {
         self.decode_char()
     }
-    
+
     fn decode_string(self) -> Result<String, Self::Error> {
         match self.value {
             Numeric::String(s) => Ok(s.clone()),
@@ -400,11 +438,11 @@ impl Deserializer for NumericDeserializer<'_> {
             }),
         }
     }
-    
+
     fn decode_wstring(self) -> Result<String, Self::Error> {
         self.decode_string()
     }
-    
+
     fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
     where
         T: Unmarshal + Default,
@@ -414,7 +452,7 @@ impl Deserializer for NumericDeserializer<'_> {
             expected: "primitive type",
         })
     }
-    
+
     fn decode_option_mut<T>(self, _value: &mut T) -> Result<bool, Self::Error>
     where
         T: Unmarshal,
@@ -424,42 +462,46 @@ impl Deserializer for NumericDeserializer<'_> {
             expected: "primitive type",
         })
     }
-    
+
     fn decode_struct(self, _info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
-        Err(CtsAnnotationError::TypeConversionError {
-            field: "value".to_string(),
-            expected: "primitive type",
-        })
+        // If the value is a string, we can use it as an enum value
+        match self.value {
+            Numeric::String(s) => Ok(StringEnumDeserializer::new(s)),
+            _ => Err(CtsAnnotationError::TypeConversionError {
+                field: "value".to_string(),
+                expected: "string (for enum)",
+            }),
+        }
     }
-    
+
     fn decode_union(self, _info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_array(self, _len: usize) -> Result<Self::Array, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_sequence(self) -> Result<Self::Sequence, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
@@ -471,73 +513,73 @@ impl Deserializer for NumericDeserializer<'_> {
 impl Deserializer for OptionDeserializer<'_> {
     type Error = CtsAnnotationError;
     type Struct = Never;
-    type Enum = Never;
+    type Enum = StringEnumDeserializer;
     type Union = Never;
     type Array = Never;
     type Sequence = Never;
     type Map = Never;
-    
+
     // Delegate all primitive type decoding to NumericDeserializer
     fn decode_bool(self) -> Result<bool, Self::Error> {
         NumericDeserializer::new(self.value).decode_bool()
     }
-    
+
     fn decode_i8(self) -> Result<i8, Self::Error> {
         NumericDeserializer::new(self.value).decode_i8()
     }
-    
+
     fn decode_i16(self) -> Result<i16, Self::Error> {
         NumericDeserializer::new(self.value).decode_i16()
     }
-    
+
     fn decode_i32(self) -> Result<i32, Self::Error> {
         NumericDeserializer::new(self.value).decode_i32()
     }
-    
+
     fn decode_i64(self) -> Result<i64, Self::Error> {
         NumericDeserializer::new(self.value).decode_i64()
     }
-    
+
     fn decode_u8(self) -> Result<u8, Self::Error> {
         NumericDeserializer::new(self.value).decode_u8()
     }
-    
+
     fn decode_u16(self) -> Result<u16, Self::Error> {
         NumericDeserializer::new(self.value).decode_u16()
     }
-    
+
     fn decode_u32(self) -> Result<u32, Self::Error> {
         NumericDeserializer::new(self.value).decode_u32()
     }
-    
+
     fn decode_u64(self) -> Result<u64, Self::Error> {
         NumericDeserializer::new(self.value).decode_u64()
     }
-    
+
     fn decode_f32(self) -> Result<f32, Self::Error> {
         NumericDeserializer::new(self.value).decode_f32()
     }
-    
+
     fn decode_f64(self) -> Result<f64, Self::Error> {
         NumericDeserializer::new(self.value).decode_f64()
     }
-    
+
     fn decode_char(self) -> Result<char, Self::Error> {
         NumericDeserializer::new(self.value).decode_char()
     }
-    
+
     fn decode_wchar(self) -> Result<char, Self::Error> {
         NumericDeserializer::new(self.value).decode_wchar()
     }
-    
+
     fn decode_string(self) -> Result<String, Self::Error> {
         NumericDeserializer::new(self.value).decode_string()
     }
-    
+
     fn decode_wstring(self) -> Result<String, Self::Error> {
         NumericDeserializer::new(self.value).decode_wstring()
     }
-    
+
     // Handle Option<T> by always returning Some(value) since we have a value
     fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
     where
@@ -547,7 +589,7 @@ impl Deserializer for OptionDeserializer<'_> {
         value.unmarshal_mut(NumericDeserializer::new(self.value))?;
         Ok(Some(value))
     }
-    
+
     fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
     where
         T: Unmarshal,
@@ -555,42 +597,46 @@ impl Deserializer for OptionDeserializer<'_> {
         value.unmarshal_mut(NumericDeserializer::new(self.value))?;
         Ok(true)
     }
-    
+
     fn decode_struct(self, _info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
-        Err(CtsAnnotationError::TypeConversionError {
-            field: "value".to_string(),
-            expected: "primitive type",
-        })
+        // If the value is a string, we can use it as an enum value
+        match self.value {
+            Numeric::String(s) => Ok(StringEnumDeserializer::new(s)),
+            _ => Err(CtsAnnotationError::TypeConversionError {
+                field: "value".to_string(),
+                expected: "string (for enum)",
+            }),
+        }
     }
-    
+
     fn decode_union(self, _info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_array(self, _len: usize) -> Result<Self::Array, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_sequence(self) -> Result<Self::Sequence, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
             expected: "primitive type",
         })
     }
-    
+
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "value".to_string(),
@@ -607,109 +653,109 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
     type Array = Never;
     type Sequence = Never;
     type Map = Never;
-    
+
     fn decode_bool(self) -> Result<bool, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_i8(self) -> Result<i8, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_i16(self) -> Result<i16, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_i32(self) -> Result<i32, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_i64(self) -> Result<i64, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_u8(self) -> Result<u8, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_u16(self) -> Result<u16, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_u32(self) -> Result<u32, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_u64(self) -> Result<u64, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_f32(self) -> Result<f32, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_f64(self) -> Result<f64, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_char(self) -> Result<char, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_wchar(self) -> Result<char, Self::Error> {
         self.decode_char()
     }
-    
+
     fn decode_string(self) -> Result<String, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_wstring(self) -> Result<String, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
     where
         T: Unmarshal + Default,
@@ -719,7 +765,7 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
             expected: "struct",
         })
     }
-    
+
     fn decode_option_mut<T>(self, _value: &mut T) -> Result<bool, Self::Error>
     where
         T: Unmarshal,
@@ -729,42 +775,42 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
             expected: "struct",
         })
     }
-    
+
     fn decode_struct(self, _info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         Ok(AnnStructDeserializer {
             ann: self.ann,
             field_index: 0,
         })
     }
-    
+
     fn decode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_union(self, _info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_array(self, _len: usize) -> Result<Self::Array, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_sequence(self) -> Result<Self::Sequence, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
             expected: "struct",
         })
     }
-    
+
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
         Err(CtsAnnotationError::TypeConversionError {
             field: "annotation".to_string(),
@@ -788,7 +834,7 @@ impl Unmarshal for Optional {
     {
         // Set default
         self.value = true;
-        
+
         let mut state = archive.decode_struct(&TypeInfo {
             name: "Optional",
             flags: TypeFlag::nil(),
@@ -796,13 +842,16 @@ impl Unmarshal for Optional {
             key_kind: TypeKind::None,
             element_kind: TypeKind::None,
         })?;
-        
-        state.decode_field(&MemberInfo {
-            name: "value",
-            member_id: 0,
-            flags: MemberFlag::nil(),
-        }, &mut self.value)?;
-        
+
+        state.decode_field(
+            &MemberInfo {
+                name: "value",
+                member_id: 0,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.value,
+        )?;
+
         state.end()?;
         Ok(())
     }
@@ -827,19 +876,25 @@ impl Unmarshal for Range {
             key_kind: TypeKind::None,
             element_kind: TypeKind::None,
         })?;
-        
-        state.decode_field(&MemberInfo {
-            name: "min",
-            member_id: 0,
-            flags: MemberFlag::nil(),
-        }, &mut self.min)?;
-        
-        state.decode_field(&MemberInfo {
-            name: "max",
-            member_id: 1,
-            flags: MemberFlag::nil(),
-        }, &mut self.max)?;
-        
+
+        state.decode_field(
+            &MemberInfo {
+                name: "min",
+                member_id: 0,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.min,
+        )?;
+
+        state.decode_field(
+            &MemberInfo {
+                name: "max",
+                member_id: 1,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.max,
+        )?;
+
         state.end()?;
         Ok(())
     }
@@ -863,24 +918,30 @@ impl Unmarshal for DefaultValue {
             key_kind: TypeKind::None,
             element_kind: TypeKind::None,
         })?;
-        
-        state.decode_field(&MemberInfo {
-            name: "value",
-            member_id: 0,
-            flags: MemberFlag::nil(),
-        }, &mut self.value)?;
-        
+
+        state.decode_field(
+            &MemberInfo {
+                name: "value",
+                member_id: 0,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.value,
+        )?;
+
         state.end()?;
         Ok(())
     }
 }
 
 /// Helper to deserialize an annotation with a specific expected name
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns error if annotation name doesn't match or deserialization fails
-pub fn unmarshal_annotation<T>(ann: &Ann, expected_name: &'static str) -> Result<T, CtsAnnotationError>
+pub fn unmarshal_annotation<T>(
+    ann: &Ann,
+    expected_name: &'static str,
+) -> Result<T, CtsAnnotationError>
 where
     T: Unmarshal + Default,
 {
@@ -890,7 +951,7 @@ where
             actual: ann.ident.name.clone(),
         });
     }
-    
+
     let deserializer = AnnDeserializer::new(ann);
     let mut value = T::default();
     value.unmarshal_mut(deserializer)?;
@@ -900,26 +961,36 @@ where
 /// Extension trait for Ann to provide CTS-based deserialization
 pub trait AnnCtsExt {
     /// Try to deserialize this annotation to a specific type
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns error if deserialization fails
-    fn unmarshal<T: Unmarshal + Default>(&self, expected_name: &'static str) -> Result<T, CtsAnnotationError>;
+    fn unmarshal<T: Unmarshal + Default>(
+        &self,
+        expected_name: &'static str,
+    ) -> Result<T, CtsAnnotationError>;
 }
 
 impl AnnCtsExt for Ann {
-    fn unmarshal<T: Unmarshal + Default>(&self, expected_name: &'static str) -> Result<T, CtsAnnotationError> {
+    fn unmarshal<T: Unmarshal + Default>(
+        &self,
+        expected_name: &'static str,
+    ) -> Result<T, CtsAnnotationError> {
         unmarshal_annotation(self, expected_name)
     }
 }
 
 /// Find and unmarshal an annotation from a list
 #[must_use]
-pub fn find_annotation<T>(annotations: &[Ann], name: &'static str) -> Option<Result<T, CtsAnnotationError>>
+pub fn find_annotation<T>(
+    annotations: &[Ann],
+    name: &'static str,
+) -> Option<Result<T, CtsAnnotationError>>
 where
     T: Unmarshal + Default,
 {
-    annotations.iter()
+    annotations
+        .iter()
         .find(|ann| ann.ident.name == name)
         .map(|ann| ann.unmarshal(name))
 }
@@ -928,7 +999,7 @@ where
 mod tests {
     use super::*;
     use crate::hir::{AnnArg, DefId, Ident};
-    
+
     fn make_ann(name: &str, args: Vec<AnnArg>) -> Ann {
         Ann {
             ident: Ident {
@@ -939,7 +1010,7 @@ mod tests {
             args,
         }
     }
-    
+
     fn make_arg(name: Option<&str>, value: Numeric) -> AnnArg {
         AnnArg {
             ident: name.map(|n| Ident {
@@ -949,75 +1020,87 @@ mod tests {
             value,
         }
     }
-    
+
     #[test]
     fn test_optional_unmarshal() {
-        let ann = make_ann("optional", vec![
-            make_arg(Some("value"), Numeric::Bool(false)),
-        ]);
-        
+        let ann = make_ann(
+            "optional",
+            vec![make_arg(Some("value"), Numeric::Bool(false))],
+        );
+
         let optional: Optional = ann.unmarshal("optional").unwrap();
         assert!(!optional.value);
     }
-    
+
     #[test]
     fn test_optional_default() {
         let ann = make_ann("optional", vec![]);
-        
+
         let optional: Optional = ann.unmarshal("optional").unwrap();
-        assert!(optional.value);  // Default for optional is true
+        assert!(optional.value); // Default for optional is true
     }
-    
+
     #[test]
     fn test_range_unmarshal() {
-        let ann = make_ann("range", vec![
-            make_arg(Some("min"), Numeric::Int32(0)),
-            make_arg(Some("max"), Numeric::Int32(100)),
-        ]);
-        
+        let ann = make_ann(
+            "range",
+            vec![
+                make_arg(Some("min"), Numeric::Int32(0)),
+                make_arg(Some("max"), Numeric::Int32(100)),
+            ],
+        );
+
         let range: Range = ann.unmarshal("range").unwrap();
         assert_eq!(range.min, Some(0));
         assert_eq!(range.max, Some(100));
     }
-    
+
     #[test]
     fn test_range_partial() {
-        let ann = make_ann("range", vec![
-            make_arg(Some("min"), Numeric::Int32(5)),
-        ]);
-        
+        let ann = make_ann("range", vec![make_arg(Some("min"), Numeric::Int32(5))]);
+
         let range: Range = ann.unmarshal("range").unwrap();
         assert_eq!(range.min, Some(5));
         assert_eq!(range.max, None);
     }
-    
+
     #[test]
     fn test_default_unmarshal() {
-        let ann = make_ann("default", vec![
-            make_arg(None, Numeric::String("hello".to_string())),
-        ]);
-        
+        let ann = make_ann(
+            "default",
+            vec![make_arg(None, Numeric::String("hello".to_string()))],
+        );
+
         let default: DefaultValue = ann.unmarshal("default").unwrap();
         assert_eq!(default.value, "hello");
     }
-    
+
     #[test]
     fn test_wrong_type() {
         let ann = make_ann("optional", vec![]);
         let err = ann.unmarshal::<Range>("range").unwrap_err();
-        assert!(matches!(err, CtsAnnotationError::WrongAnnotationType { .. }));
+        assert!(matches!(
+            err,
+            CtsAnnotationError::WrongAnnotationType { .. }
+        ));
     }
-    
+
     #[test]
     fn test_find_annotation() {
         let annotations = vec![
-            make_ann("optional", vec![make_arg(Some("value"), Numeric::Bool(true))]),
-            make_ann("range", vec![
-                make_arg(Some("min"), Numeric::Int32(5)),
-                make_arg(Some("max"), Numeric::Int32(15)),
-            ]),
+            make_ann(
+                "optional",
+                vec![make_arg(Some("value"), Numeric::Bool(true))],
+            ),
+            make_ann(
+                "range",
+                vec![
+                    make_arg(Some("min"), Numeric::Int32(5)),
+                    make_arg(Some("max"), Numeric::Int32(15)),
+                ],
+            ),
         ];
-        
+
         let range: Range = find_annotation(&annotations, "range").unwrap().unwrap();
         assert_eq!(range.min, Some(5));
         assert_eq!(range.max, Some(15));

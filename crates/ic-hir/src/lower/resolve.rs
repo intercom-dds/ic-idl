@@ -401,13 +401,11 @@ impl<'a> TypeResolver<'a> {
 
     /// Finds the span of a forward declaration for the given type name.
     fn find_forward_declaration_span(&self, name: &str) -> Option<Span> {
-        // Look for a forward declaration with this name
-        for (_, def) in &self.ctx.definitions {
-            if def.ident.name == name && matches!(def.kind, DefKind::Decl(_)) {
-                return Some(def.ident.span);
-            }
-        }
-        None
+        // Check the forward declarations map
+        self.ctx
+            .forward_declarations
+            .get(name)
+            .map(|(_, span)| *span)
     }
 
     /// Resolves a struct definition.

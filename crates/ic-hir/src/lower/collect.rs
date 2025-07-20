@@ -198,6 +198,16 @@ impl<'a> NameCollector<'a> {
             // For multiple forward declarations, always allowed
         }
 
+        // Track forward declarations in the dedicated map
+        if new_is_decl {
+            // Only insert if this is the first forward declaration we've seen
+            if !self.ctx.forward_declarations.contains_key(&qualified_name) {
+                self.ctx
+                    .forward_declarations
+                    .insert(qualified_name.clone(), (id, span));
+            }
+        }
+
         // Always insert into name_map - for forward declarations, we want the last one
         // For definitions, we want the actual definition, not the forward declaration
         if !new_is_decl || !self.name_map.contains_key(&qualified_name) {

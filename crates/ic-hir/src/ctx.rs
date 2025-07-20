@@ -27,6 +27,7 @@
 
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
+use ic_syntax::Span;
 
 use crate::hir::{self, Def, DefId, DefKind, Ty, TyKind};
 use crate::scope::ScopeTree;
@@ -44,6 +45,10 @@ pub struct Context {
 
     // Scope hierarchy for name resolution
     pub scopes: ScopeTree,
+
+    // Forward declarations: type name => (DefId, Span)
+    // This map tracks all forward declarations and is never modified after insertion
+    pub forward_declarations: CaseMap<(DefId, Span)>,
 }
 
 impl Default for Context {
@@ -70,6 +75,7 @@ impl Context {
             definitions: Arena::default(),
             registered: CaseMap::new(),
             scopes: ScopeTree::new(),
+            forward_declarations: CaseMap::new(),
         }
     }
 

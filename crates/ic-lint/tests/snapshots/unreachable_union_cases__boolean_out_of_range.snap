@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/unreachable_union_cases.rs
 expression: test_lint_hir(source)
 ---
-error[UnreachableUnionCases]: case label 2 is outside the range [0, 1] of the discriminator type
+error[unreachable_case]: case label 2 is outside the range [0, 1] of the discriminator type
    ┌ test.idl:5:21
    │
  5 │     case 2: boolean c;  // Out of range for boolean

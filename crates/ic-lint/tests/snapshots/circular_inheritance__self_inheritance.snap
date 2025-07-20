@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/circular_inheritance.rs
 expression: test_lint_hir(source)
 ---
-error[CircularInheritance]: interface 'A' has circular inheritance through 'A'
+error[circular_inheritance]: interface 'A' has circular inheritance through 'A'
    ┌ test.idl:2:11
    │
  2 │ interface A : A {};

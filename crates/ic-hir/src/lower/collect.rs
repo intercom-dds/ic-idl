@@ -355,15 +355,15 @@ impl<'a> NameCollector<'a> {
         // Update interface with children
         if let Def {
             kind: DefKind::Interface(interface),
-            flags,
+            flags: _,
             ..
         } = self.ctx.definitions.get_mut(id)
         {
             interface.definitions = child_ids;
             interface.is_local = def.local.is_some();
-            // An InterfaceValue is always a complete definition (has {} body), not a forward declaration
-            // Forward declarations are represented by DeclValue items
-            *flags &= !DefFlags::IS_INCOMPLETE;
+            // Note: We don't clear IS_INCOMPLETE here. Even though this is a full definition
+            // (not a forward declaration), it's not semantically complete until the resolve phase
+            // processes it and validates parent types, resolves members, etc.
         }
 
         self.scope_stack.pop();
@@ -435,14 +435,14 @@ impl<'a> NameCollector<'a> {
         // Update valuetype with children
         if let Def {
             kind: DefKind::Valuetype(valuetype),
-            flags,
+            flags: _,
             ..
         } = self.ctx.definitions.get_mut(id)
         {
             valuetype.definitions = child_ids;
-            // A ValuetypeValue is always a complete definition (has {} body), not a forward declaration
-            // Forward declarations are represented by DeclValue items
-            *flags &= !DefFlags::IS_INCOMPLETE;
+            // Note: We don't clear IS_INCOMPLETE here. Even though this is a full definition
+            // (not a forward declaration), it's not semantically complete until the resolve phase
+            // processes it and validates parent types, resolves members, etc.
         }
 
         self.scope_stack.pop();
@@ -505,10 +505,9 @@ impl<'a> NameCollector<'a> {
                     &v.annotations,
                 );
 
-                // A StructValue is always a complete definition (has {} body), not a forward declaration
-                // Forward declarations are represented by DeclValue items
-                let Def { flags, .. } = self.ctx.definitions.get_mut(id);
-                *flags &= !DefFlags::IS_INCOMPLETE;
+                // Note: We don't clear IS_INCOMPLETE here. Even though this is a full definition
+                // (not a forward declaration), it's not semantically complete until the resolve phase
+                // processes it and validates parent types, resolves members, etc.
 
                 // Already registered in scope by alloc_definition
                 vec![id]
@@ -524,10 +523,9 @@ impl<'a> NameCollector<'a> {
                     &v.annotations,
                 );
 
-                // A UnionValue is always a complete definition (has {} body), not a forward declaration
-                // Forward declarations are represented by DeclValue items
-                let Def { flags, .. } = self.ctx.definitions.get_mut(id);
-                *flags &= !DefFlags::IS_INCOMPLETE;
+                // Note: We don't clear IS_INCOMPLETE here. Even though this is a full definition
+                // (not a forward declaration), it's not semantically complete until the resolve phase
+                // processes it and validates discriminator, resolves variants, etc.
 
                 // Already registered in scope by alloc_definition
                 vec![id]
@@ -564,9 +562,9 @@ impl<'a> NameCollector<'a> {
                     &v.annotations,
                 );
 
-                // An ExceptionValue is always a complete definition (has {} body)
-                let Def { flags, .. } = self.ctx.definitions.get_mut(id);
-                *flags &= !DefFlags::IS_INCOMPLETE;
+                // Note: We don't clear IS_INCOMPLETE here. Even though this is a full definition
+                // (not a forward declaration), it's not semantically complete until the resolve phase
+                // processes it and resolves members, etc.
 
                 // Already registered in scope by alloc_definition
                 vec![id]

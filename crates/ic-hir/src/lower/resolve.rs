@@ -404,7 +404,35 @@ impl<'a> TypeResolver<'a> {
         // Mark any forward declarations as resolved
         self.mark_forward_declarations_resolved(&def.ident.name);
 
-        let parent = def.parent.as_ref().and_then(|p| self.resolve_path(p));
+        let parent = if let Some(parent_path) = &def.parent {
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                // Check if parent type is complete
+                let parent_def = self.ctx.definitions.get(parent_id);
+                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "struct `{}` cannot inherit from incomplete type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.ident.span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent_def.ident.span)
+                                .message("type is not yet defined at this point"),
+                        ),
+                    );
+                    None
+                } else {
+                    Some(parent_id)
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
         let members = self.resolve_struct_members(def);
 
         // Resolve annotations for the struct itself
@@ -555,7 +583,32 @@ impl<'a> TypeResolver<'a> {
         let parents = def
             .inherits
             .iter()
-            .filter_map(|p| self.resolve_path(p))
+            .filter_map(|p| {
+                if let Some(parent_id) = self.resolve_path(p) {
+                    // Check if parent type is complete
+                    let parent_def = self.ctx.definitions.get(parent_id);
+                    if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                        self.errors.push(
+                            error_span(
+                                format!(
+                                    "interface `{}` cannot inherit from incomplete type `{}`",
+                                    def.ident.name, parent_def.ident.name
+                                ),
+                                Label::new(def.ident.span).message("invalid inheritance"),
+                            )
+                            .label(
+                                Label::new(parent_def.ident.span)
+                                    .message("type is not yet defined at this point"),
+                            ),
+                        );
+                        None
+                    } else {
+                        Some(parent_id)
+                    }
+                } else {
+                    None
+                }
+            })
             .collect();
 
         let mut prototypes = Vec::new();
@@ -605,17 +658,29 @@ impl<'a> TypeResolver<'a> {
     /// Builds a mapping from AST items to their `DefIds` with a given scope.
     fn build_item_map_with_scope(&mut self, items: &[Item], scope: &[String]) {
         for item in items {
-            let (name, kind, nested_items) = match item {
+            let (name, kind, nested_items): (String, &str, Option<Vec<Item>>) = match item {
                 Item::StructValue(v) => (v.ident.name.clone(), "struct", None),
                 Item::UnionValue(v) => (v.ident.name.clone(), "union", None),
                 Item::EnumValue(v) => (v.ident.name.clone(), "enum", None),
                 Item::ExceptionValue(v) => (v.ident.name.clone(), "exception", None),
                 Item::BitmaskValue(v) => (v.ident.name.clone(), "bitmask", None),
                 Item::BitsetValue(v) => (v.ident.name.clone(), "bitset", None),
-                Item::InterfaceValue(v) => (v.ident.name.clone(), "interface", None),
-                Item::ModuleValue(v) => (v.ident.name.clone(), "module", Some(&v.definitions)),
+                Item::InterfaceValue(v) => {
+                    // Extract nested items from interface members
+                    let nested_items: Vec<Item> = v.members.iter()
+                        .filter_map(|m| match m {
+                            ic_syntax::InterfaceMember::Item(item) => Some(item.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    (v.ident.name.clone(), "interface", if nested_items.is_empty() { None } else { Some(nested_items) })
+                },
+                Item::ModuleValue(v) => (v.ident.name.clone(), "module", Some(v.definitions.clone())),
                 Item::AnnotationValue(v) => (v.ident.name.clone(), "annotation", None),
-                Item::ValuetypeValue(v) => (v.ident.name.clone(), "valuetype", None),
+                Item::ValuetypeValue(v) => {
+                    // Valuetypes can have nested definitions
+                    (v.ident.name.clone(), "valuetype", if v.definitions.is_empty() { None } else { Some(v.definitions.clone()) })
+                },
                 _ => continue,
             };
 
@@ -636,11 +701,11 @@ impl<'a> TypeResolver<'a> {
                 self.item_map.insert(key, id);
             }
 
-            // Process nested items if this is a module
+            // Process nested items if this is a module or interface
             if let Some(nested) = nested_items {
                 let mut new_scope = scope.to_vec();
                 new_scope.push(name.clone());
-                self.build_item_map_with_scope(nested, &new_scope);
+                self.build_item_map_with_scope(&nested, &new_scope);
             }
         }
     }
@@ -787,14 +852,63 @@ impl<'a> TypeResolver<'a> {
         self.mark_forward_declarations_resolved(&def.ident.name);
 
         // Resolve parent/extends types
-        let parent_id = def
-            .inherits
-            .as_ref()
-            .and_then(|path| self.resolve_path(path));
-        let extends_id = def
-            .supports
-            .as_ref()
-            .and_then(|path| self.resolve_path(path));
+        let parent_id = if let Some(parent_path) = &def.inherits {
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                // Check if parent type is complete
+                let parent_def = self.ctx.definitions.get(parent_id);
+                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "valuetype `{}` cannot inherit from incomplete type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.ident.span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent_def.ident.span)
+                                .message("type is not yet defined at this point"),
+                        ),
+                    );
+                    None
+                } else {
+                    Some(parent_id)
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        let extends_id = if let Some(extends_path) = &def.supports {
+            if let Some(extends_id) = self.resolve_path(extends_path) {
+                // Check if extends type is complete
+                let extends_def = self.ctx.definitions.get(extends_id);
+                if extends_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "valuetype `{}` cannot extend incomplete type `{}`",
+                                def.ident.name, extends_def.ident.name
+                            ),
+                            Label::new(def.ident.span).message("invalid extends"),
+                        )
+                        .label(
+                            Label::new(extends_def.ident.span)
+                                .message("type is not yet defined at this point"),
+                        ),
+                    );
+                    None
+                } else {
+                    Some(extends_id)
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         // Resolve prototypes
         let mut prototypes = Vec::new();
@@ -914,7 +1028,30 @@ impl<'a> TypeResolver<'a> {
     fn resolve_bitset(&mut self, id: DefId, def: &ic_syntax::BitsetDef) {
         // Resolve parent if present
         let parent_id = if let Some(parent_path) = &def.parent {
-            self.resolve_path(parent_path)
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                // Check if parent type is complete
+                let parent_def = self.ctx.definitions.get(parent_id);
+                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "bitset `{}` cannot inherit from incomplete type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.ident.span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent_def.ident.span)
+                                .message("type is not yet defined at this point"),
+                        ),
+                    );
+                    None
+                } else {
+                    Some(parent_id)
+                }
+            } else {
+                None
+            }
         } else {
             None
         };

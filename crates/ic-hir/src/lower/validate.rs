@@ -113,6 +113,22 @@ impl<'a> Validator<'a> {
                 DefKind::Struct(_) => {
                     // Valid inheritance - parent will be validated separately
                 }
+                DefKind::Decl(Decl::Struct) => {
+                    // Parent is forward-declared but not yet defined
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "struct `{}` cannot inherit from incomplete type `{}`",
+                                def_name, parent.ident.name
+                            ),
+                            Label::new(def_span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent.ident.span)
+                                .message("forward declaration here, but no definition found"),
+                        ),
+                    );
+                }
                 _ => {
                     self.errors.push(error_span(
                         format!(
@@ -206,6 +222,22 @@ impl<'a> Validator<'a> {
             match &parent.kind {
                 DefKind::Interface(_) => {
                     // Valid inheritance - parent will be validated separately
+                }
+                DefKind::Decl(Decl::Interface) => {
+                    // Parent is forward-declared but not yet defined
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "interface `{}` cannot inherit from incomplete type `{}`",
+                                def_name, parent.ident.name
+                            ),
+                            Label::new(def_span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent.ident.span)
+                                .message("forward declaration here, but no definition found"),
+                        ),
+                    );
                 }
                 _ => {
                     self.errors.push(error_span(

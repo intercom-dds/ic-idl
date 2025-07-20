@@ -1,0 +1,45 @@
+---
+source: crates/ic-lint/tests/circular_inheritance.rs
+expression: test_lint_hir(source)
+---
+error[circular_inheritance]: struct 'A' has circular inheritance through 'B'
+   ┌ test.idl:2:8
+   │
+ 2 │ struct A : B {};
+   ·        ^ circular inheritance detected
+   └──
+
+error[circular_inheritance]: struct 'B' has circular inheritance through 'C'
+   ┌ test.idl:3:8
+   │
+ 3 │ struct B : C {};
+   ·        ^ circular inheritance detected
+   └──
+
+error[circular_inheritance]: struct 'C' has circular inheritance through 'A'
+   ┌ test.idl:4:8
+   │
+ 4 │ struct C : A {};
+   ·        ^ circular inheritance detected
+   └──
+
+error: circular dependency detected for type `A`
+   ┌ test.idl:2:1
+   │
+ 2 │ struct A : B {};
+   · ^^^^^^^^^^^^^^^^ type is part of a circular dependency
+   └──
+
+error: circular dependency detected for type `B`
+   ┌ test.idl:3:1
+   │
+ 3 │ struct B : C {};
+   · ^^^^^^^^^^^^^^^^ type is part of a circular dependency
+   └──
+
+error: circular dependency detected for type `C`
+   ┌ test.idl:4:1
+   │
+ 4 │ struct C : A {};
+   · ^^^^^^^^^^^^^^^^ type is part of a circular dependency
+   └──

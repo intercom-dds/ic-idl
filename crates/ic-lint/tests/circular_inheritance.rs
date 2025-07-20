@@ -63,13 +63,7 @@ interface B : A {};
     assert_snapshot!(test_lint_hir(source));
 }
 
-// TODO: This test causes an infinite loop during HIR construction when processing
-// circular struct inheritance. The issue is not in the lint itself but in the HIR
-// lowering phase. See commit b5e210d which partially addressed this issue but noted
-// that "there may still be issues with infinite loops in other parts of the code
-// when dealing with circular structures."
 #[test]
-#[ignore = "Hangs due to infinite loop in HIR construction with circular struct inheritance"]
 fn circular_struct_inheritance() {
     let source = r"
 struct A : B {};

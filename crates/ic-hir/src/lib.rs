@@ -35,6 +35,7 @@ mod hygiene;
 mod lower;
 
 pub mod annotations;
+pub mod annotations_cts;
 pub mod fold;
 pub mod hir;
 pub mod keywords;

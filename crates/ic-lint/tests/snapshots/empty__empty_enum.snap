@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/empty.rs
+expression: test_lint(source)
+---
+error[empty]: empty enums are not allowed
+   ┌ test.idl:2:6
+   │
+ 2 │ enum EmptyEnum {
+   ·      ^^^^^^^^^ defined here
+   └──
+ note: all enums must have at least one enumerator

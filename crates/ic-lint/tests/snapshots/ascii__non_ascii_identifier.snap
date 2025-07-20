@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/ascii.rs
+expression: test_lint(source)
+---
+error[ascii]: identifiers can only consist of alphanumeric ASCII characters
+   ┌ test.idl:2:8
+   │
+ 2 │ module MóduloEspañol {
+   ·        ^^^^^^^^^^^^^ non-ASCII identifier
+   └──

@@ -1,0 +1,21 @@
+---
+source: crates/ic-lint/tests/oneway.rs
+expression: test_lint(source)
+---
+error[oneway]: oneway operations must have a `void` return type
+   ┌ test.idl:3:12
+   │
+ 3 │     oneway string getMessage();  // oneway cannot return a value
+   ·     ^^^^^^ ^^^^^^ non-void return type
+   ·     └─ declared as oneway here
+   └──
+ help: change the return type to `void`
+
+error[oneway]: oneway operations must have a `void` return type
+   ┌ test.idl:4:12
+   │
+ 4 │     oneway long calculate(in long x, in long y);
+   ·     ^^^^^^ ^^^^ non-void return type
+   ·     └─ declared as oneway here
+   └──
+ help: change the return type to `void`

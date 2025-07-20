@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_struct_members.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_member]: duplicate member `message` in exception `MyError`
+   ┌ test.idl:5:12
+   │
+ 5 │     string message;  // Duplicate member in exception
+   ·            ^^^^^^^ duplicate member
+   └──
+
+error: duplicate registration of name `message`
+   ┌ test.idl:5:12
+   │
+ 5 │     string message;  // Duplicate member in exception
+   ·            ^^^^^^^ redefined here
+   └──

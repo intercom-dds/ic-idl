@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/ascii.rs
+expression: test_lint(source)
+---
+error[ascii]: identifiers can only consist of alphanumeric ASCII characters
+   ┌ test.idl:5:9
+   │
+ 5 │         ACTÍVE,     // Non-ASCII in enum value
+   ·         ^^^^^^ non-ASCII identifier
+   └──
+
+error[ascii]: identifiers can only consist of alphanumeric ASCII characters
+   ┌ test.idl:9:15
+   │
+ 9 │     interface Sërvice {  // Non-ASCII in interface name
+   ·               ^^^^^^^ non-ASCII identifier
+   └──

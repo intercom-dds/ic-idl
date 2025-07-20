@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_struct_members.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_member]: duplicate member `values` in struct `Arrays`
+   ┌ test.idl:5:10
+   │
+ 5 │     long values[20];  // Duplicate member name, different array size
+   ·          ^^^^^^ duplicate member
+   └──
+
+error: duplicate registration of name `values`
+   ┌ test.idl:5:10
+   │
+ 5 │     long values[20];  // Duplicate member name, different array size
+   ·          ^^^^^^ redefined here
+   └──

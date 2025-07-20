@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/ascii.rs
+expression: test_lint(source)
+---
+

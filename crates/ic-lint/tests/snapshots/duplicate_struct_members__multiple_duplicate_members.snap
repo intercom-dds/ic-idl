@@ -1,0 +1,45 @@
+---
+source: crates/ic-lint/tests/duplicate_struct_members.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_member]: duplicate member `name` in struct `Data`
+   ┌ test.idl:5:12
+   │
+ 5 │     string name;   // First duplicate
+   ·            ^^^^ duplicate member
+   └──
+
+error[duplicate_member]: duplicate member `value` in struct `Data`
+   ┌ test.idl:7:10
+   │
+ 7 │     long value;    // Second duplicate
+   ·          ^^^^^ duplicate member
+   └──
+
+error[duplicate_member]: duplicate member `name` in struct `Data`
+   ┌ test.idl:8:12
+   │
+ 8 │     string name;   // Third occurrence
+   ·            ^^^^ duplicate member
+   └──
+
+error: duplicate registration of name `name`
+   ┌ test.idl:5:12
+   │
+ 5 │     string name;   // First duplicate
+   ·            ^^^^ redefined here
+   └──
+
+error: duplicate registration of name `value`
+   ┌ test.idl:7:10
+   │
+ 7 │     long value;    // Second duplicate
+   ·          ^^^^^ redefined here
+   └──
+
+error: duplicate registration of name `name`
+   ┌ test.idl:8:12
+   │
+ 8 │     string name;   // Third occurrence
+   ·            ^^^^ redefined here
+   └──

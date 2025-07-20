@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/ann_members.rs
+expression: test_lint(source)
+---
+

@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/oneway.rs
+expression: test_lint(source)
+---
+error[oneway]: oneway operations cannot have `out` parameters
+   ┌ test.idl:3:53
+   │
+ 3 │     oneway void process(in string input, out string result);  // oneway cannot have out parameters
+   ·     ^^^^^^                                          ^^^^^^ `out` parameter
+   ·     └─ declared as oneway here
+   └──

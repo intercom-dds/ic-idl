@@ -37,9 +37,9 @@ use ic_diagnostic::{Color, Diag, Label};
 use ic_syntax::Span;
 
 use crate::hir::{
-    AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def,
-    DefId, DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
-    ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
+    Def, DefId, DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric,
+    Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};
@@ -244,20 +244,37 @@ impl HirMerger {
             // For non-modules, use the existing deduplication logic
             let existing_def = self.new_context.definitions.get(existing_def_id);
 
-            // Different spans = different definitions = conflict
+            // Different spans = different definitions = potential conflict
             if old_def.ident.span != existing_def.ident.span {
-                self.errors.push(
-                    Diag::error(format!(
-                        "conflicting definitions for `{}`",
-                        old_def.ident.name
-                    ))
-                    .label(
-                        Label::new(old_def.ident.span)
-                            .message("redefined here")
-                            .color(Color::Red),
-                    )
-                    .label(Label::new(existing_def.ident.span).message("first defined here")),
-                );
+                // Check if they are compatible (forward declaration + full definition)
+                let compatible = match (&old_def.kind, &existing_def.kind) {
+                    (DefKind::Decl(Decl::Struct), DefKind::Struct(_))
+                    | (DefKind::Struct(_), DefKind::Decl(Decl::Struct))
+                    | (DefKind::Decl(Decl::Union), DefKind::Union(_))
+                    | (DefKind::Union(_), DefKind::Decl(Decl::Union))
+                    | (DefKind::Decl(Decl::Interface), DefKind::Interface(_))
+                    | (DefKind::Interface(_), DefKind::Decl(Decl::Interface))
+                    | (DefKind::Decl(Decl::Valuetype), DefKind::Valuetype(_))
+                    | (DefKind::Valuetype(_), DefKind::Decl(Decl::Valuetype)) => true,
+                    // Multiple forward declarations are allowed
+                    (DefKind::Decl(a), DefKind::Decl(b)) if a == b => true,
+                    _ => false,
+                };
+
+                if !compatible {
+                    self.errors.push(
+                        Diag::error(format!(
+                            "conflicting definitions for `{}`",
+                            old_def.ident.name
+                        ))
+                        .label(
+                            Label::new(old_def.ident.span)
+                                .message("redefined here")
+                                .color(Color::Red),
+                        )
+                        .label(Label::new(existing_def.ident.span).message("first defined here")),
+                    );
+                }
 
                 // Map to existing to avoid cascading errors
                 self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);

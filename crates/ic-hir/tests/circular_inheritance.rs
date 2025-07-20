@@ -25,8 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir;
-use ic_parse;
+use {ic_hir, ic_parse};
 
 #[test]
 fn test_circular_struct_inheritance_no_infinite_loop() {
@@ -44,14 +43,14 @@ fn test_circular_struct_inheritance_no_infinite_loop() {
 
     // Parse
     let parse_result = ic_parse::from_str(input);
-    
+
     // Lower to HIR
     let hir = ic_hir::from_ast(parse_result.tree);
-    
+
     // The hygiene check should complete without hanging
     // If there's an infinite loop, this test will timeout
     assert!(!hir.order.is_empty());
-    
+
     // We expect errors about circular inheritance, but the important thing
     // is that the hygiene check completes
 }
@@ -75,10 +74,10 @@ fn test_indirect_circular_inheritance_no_infinite_loop() {
 
     // Parse
     let parse_result = ic_parse::from_str(input);
-    
+
     // Lower to HIR
     let hir = ic_hir::from_ast(parse_result.tree);
-    
+
     // The hygiene check should complete without hanging
     assert!(!hir.order.is_empty());
 }
@@ -94,10 +93,10 @@ fn test_self_inheritance_no_infinite_loop() {
 
     // Parse
     let parse_result = ic_parse::from_str(input);
-    
+
     // Lower to HIR
     let hir = ic_hir::from_ast(parse_result.tree);
-    
+
     // The hygiene check should complete without hanging
     assert!(!hir.order.is_empty());
 }

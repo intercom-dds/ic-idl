@@ -47,6 +47,10 @@ impl<'a> Lint<'a> for InvalidEnumValue<'a> {
         Category::Semantic
     }
 
+    fn is_mandatory() -> bool {
+        true
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = InvalidEnumValue { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

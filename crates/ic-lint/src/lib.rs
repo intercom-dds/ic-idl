@@ -440,7 +440,6 @@ define_lints! {
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,
         semantic::bit_bound::BitBound,
-        semantic::circular_inheritance::CircularInheritance,
         semantic::deprecated::Deprecated,
         semantic::duplicate_bitmask_flags::DuplicateBitmaskFlags,
         semantic::duplicate_case_labels::DuplicateCaseLabels,

@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod bit_bound;
-pub mod circular_inheritance;
 pub mod deprecated;
 pub mod duplicate_annotations;
 pub mod duplicate_bitmask_flags;

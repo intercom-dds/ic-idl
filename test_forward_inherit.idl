@@ -1,0 +1,30 @@
+// Test case for struct inheritance with forward declarations
+
+// Forward declaration
+struct Child;
+
+// Parent tries to inherit from forward declaration - should fail
+struct Parent : Child {
+    int32 x;
+};
+
+// Another test case
+struct Base {
+    int32 a;
+};
+
+struct Forward;  // Forward declaration
+
+struct Derived : Forward {  // Should fail - inheriting from incomplete type
+    int32 b;
+};
+
+// Definition comes after inheritance attempt
+struct Forward {
+    int32 c;
+};
+
+// Child definition comes after Parent tried to inherit
+struct Child {
+    int32 y;
+};

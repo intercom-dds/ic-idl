@@ -42,7 +42,7 @@ pub struct DuplicateUnionVariants<'a> {
 
 impl<'a> Lint<'a> for DuplicateUnionVariants<'a> {
     fn name() -> &'static str {
-        "duplicate_union_variants"
+        "duplicate_variant"
     }
 
     fn category() -> Category {

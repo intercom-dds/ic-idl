@@ -42,7 +42,7 @@ pub struct DuplicateStructMembers<'a> {
 
 impl<'a> Lint<'a> for DuplicateStructMembers<'a> {
     fn name() -> &'static str {
-        "duplicate_struct_members"
+        "duplicate_member"
     }
 
     fn category() -> Category {

@@ -38,7 +38,7 @@ pub struct UnreachableUnionCases<'a> {
 
 impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
     fn name() -> &'static str {
-        "UnreachableUnionCases"
+        "unreachable_case"
     }
 
     fn category() -> Category {

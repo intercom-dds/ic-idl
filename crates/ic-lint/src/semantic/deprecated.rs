@@ -42,7 +42,7 @@ pub struct Deprecated<'a> {
 
 impl<'a> Lint<'a> for Deprecated<'a> {
     fn name() -> &'static str {
-        "Deprecated"
+        "deprecated"
     }
 
     fn category() -> Category {

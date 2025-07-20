@@ -42,7 +42,7 @@ pub struct DuplicateBitmaskFlags<'a> {
 
 impl<'a> Lint<'a> for DuplicateBitmaskFlags<'a> {
     fn name() -> &'static str {
-        "duplicate_bitmask_flags"
+        "duplicate_flag"
     }
 
     fn category() -> Category {

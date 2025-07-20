@@ -39,7 +39,7 @@ pub struct RedundantInheritance<'a> {
 
 impl<'a> Lint<'a> for RedundantInheritance<'a> {
     fn name() -> &'static str {
-        "RedundantInheritance"
+        "redundant_inheritance"
     }
 
     fn category() -> Category {

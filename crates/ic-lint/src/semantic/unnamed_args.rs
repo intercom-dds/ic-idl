@@ -39,7 +39,7 @@ pub struct UnnamedArgs<'a> {
 
 impl<'a> Lint<'a> for UnnamedArgs<'a> {
     fn name() -> &'static str {
-        "UnnamedArgs"
+        "unnamed_args"
     }
 
     fn category() -> Category {

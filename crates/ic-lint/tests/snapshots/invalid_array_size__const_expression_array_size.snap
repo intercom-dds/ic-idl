@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/invalid_array_size.rs
+expression: test_lint_hir(source)
+---
+

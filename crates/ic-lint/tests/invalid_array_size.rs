@@ -67,7 +67,6 @@ struct MultipleArrays {
 }
 
 #[test]
-#[ignore = "HIR array bound evaluation not fully working"]
 fn negative_array_size() {
     let source = r"
 struct NegativeArray {
@@ -78,7 +77,6 @@ struct NegativeArray {
 }
 
 #[test]
-#[ignore = "HIR array bound evaluation not fully working"]
 fn const_expression_array_size() {
     let source = r"
 const MILLION = 1000000;
@@ -117,7 +115,6 @@ struct UsesBigArray {
 }
 
 #[test]
-#[ignore = "HIR array bound evaluation not fully working"]
 fn multidimensional_array() {
     let source = r"
 struct MultiDim {

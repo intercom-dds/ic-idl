@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/invalid_enum_value.rs
+expression: test_lint_hir(source)
+---
+

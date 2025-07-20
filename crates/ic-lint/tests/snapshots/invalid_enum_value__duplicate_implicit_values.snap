@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/invalid_enum_value.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_enum_values]: duplicate value 0 in enum `Mixed`
+   ┌ test.idl:3:5
+   │
+ 3 │     A,          // 0
+   ·     ^ first use of value 0
+ 4 │     B = 0,      // Explicit 0, duplicate with A
+   ·     ^ value already used
+   └──

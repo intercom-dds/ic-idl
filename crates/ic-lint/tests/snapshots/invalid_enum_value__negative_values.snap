@@ -1,0 +1,26 @@
+---
+source: crates/ic-lint/tests/invalid_enum_value.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_enum_values]: duplicate value 0 in enum `Temperature`
+   ┌ test.idl:3:5
+   │
+ 3 │     FREEZING = -273,
+   ·     ^^^^^^^^ first use of value 0
+ 4 │     COLD = -10,
+   ·     ^^^^ value already used
+   └──
+
+error: invalid bound expression
+   ┌ test.idl:3:16
+   │
+ 3 │     FREEZING = -273,
+   ·                ^^^^ bound must be a positive integer
+   └──
+
+error: invalid bound expression
+   ┌ test.idl:4:12
+   │
+ 4 │     COLD = -10,
+   ·            ^^^ bound must be a positive integer
+   └──

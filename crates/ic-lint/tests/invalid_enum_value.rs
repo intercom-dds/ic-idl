@@ -31,7 +31,6 @@ mod common;
 use common::test_lint_hir;
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn valid_enum_default_type() {
     let source = r"
 enum Color {
@@ -45,7 +44,6 @@ enum Color {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn valid_enum_implicit_values() {
     let source = r"
 enum Status {
@@ -59,7 +57,6 @@ enum Status {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn duplicate_explicit_values() {
     let source = r"
 enum Priority {
@@ -73,7 +70,6 @@ enum Priority {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn duplicate_implicit_values() {
     let source = r"
 enum Mixed {
@@ -89,7 +85,6 @@ enum Mixed {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn out_of_range_values() {
     let source = r"
 enum LargeValues {
@@ -103,7 +98,6 @@ enum LargeValues {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn negative_values() {
     let source = r"
 enum Temperature {
@@ -118,7 +112,6 @@ enum Temperature {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn hex_and_octal_values() {
     let source = r"
 enum Flags {
@@ -143,7 +136,6 @@ enum Permissions {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn enum_value_gaps() {
     let source = r"
 enum Sparse {
@@ -158,7 +150,6 @@ enum Sparse {
 }
 
 #[test]
-#[ignore = "HIR enum lowering not fully working"]
 fn duplicate_names_different_scopes() {
     let source = r"
 module A {

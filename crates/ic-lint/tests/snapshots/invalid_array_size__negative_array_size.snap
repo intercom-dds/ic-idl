@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/invalid_array_size.rs
+expression: test_lint_hir(source)
+---
+error[zero_bound]: array size must be greater than zero
+   ┌ test.idl:3:18
+   │
+ 3 │     long invalid[-10];
+   ·                  ^^^ invalid array size
+   └──
+
+error: invalid bound expression
+   ┌ test.idl:3:18
+   │
+ 3 │     long invalid[-10];
+   ·                  ^^^ bound must be a positive integer
+   └──

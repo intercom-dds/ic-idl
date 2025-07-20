@@ -486,9 +486,21 @@ impl<'a> ExpressionEvaluator<'a> {
                 Numeric::UInt64(*v as u64)
             }
 
-            // Convert between signed integer types
-            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int8)) => Numeric::Int8(*v as i8),
-            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int16)) => Numeric::Int16(*v as i16),
+            // Convert between signed integer types - only if value fits
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int8)) => {
+                if *v >= i32::from(i8::MIN) && *v <= i32::from(i8::MAX) {
+                    Numeric::Int8(*v as i8)
+                } else {
+                    value // Keep original to let type checker catch overflow
+                }
+            }
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int16)) => {
+                if *v >= i32::from(i16::MIN) && *v <= i32::from(i16::MAX) {
+                    Numeric::Int16(*v as i16)
+                } else {
+                    value // Keep original to let type checker catch overflow
+                }
+            }
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int64)) => {
                 Numeric::Int64(i64::from(*v))
             }

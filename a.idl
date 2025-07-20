@@ -1,4 +1,1 @@
-union MyUnion switch(unsigned short) {
-case -1:
-	string value;
-};
+const octet FOO = 256;

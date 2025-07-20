@@ -300,16 +300,7 @@ where
     fn is_known_pragma(name: &str) -> bool {
         matches!(
             name,
-            "once"
-                | "warning"
-                | "pack"
-                | "message"
-                | "GCC"
-                | "clang"
-                | "region"
-                | "endregion"
-                | "mark"
-                | "comment"
+            "once" | "warning" | "message" | "region" | "endregion"
         )
     }
 
@@ -1662,10 +1653,10 @@ where
         // Find the first non-newline token, which should be the pragma name
         // This handles line continuation where we might get newline tokens first
         let pragma_token = tokens.iter().find(|t| t.kind != Kind::Newline);
-        
+
         if let Some(pragma) = pragma_token {
             let name = self.source_of(pragma.span);
-            
+
             if name == "once" && self.enable_pragma_once {
                 // Handle #pragma once
                 let file_id = pragma.span.start.file_id;

@@ -77,14 +77,8 @@ fn test_known_pragma_no_warning() {
     let input = r#"
 #pragma once
 #pragma warning(push)
-#pragma pack(1)
-#pragma message("Hello")
-#pragma GCC optimize
-#pragma clang diagnostic
 #pragma region MyRegion
 #pragma endregion
-#pragma mark - Section
-#pragma comment(lib, "user32.lib")
 int x = 5;
 "#;
 
@@ -158,7 +152,7 @@ once
 int x = 5;
 "#;
     let (_, warnings1) = preprocess(input1);
-    assert_eq!(warnings1.len(), 0, "Known pragma with line continuation should not generate warning");
+    assert_eq!(warnings1.len(), 0);
 
     // Test 2: Unknown pragma with line continuation (should generate warning)
     let input2 = r#"#pragma \
@@ -166,9 +160,9 @@ unknown_continued
 int x = 5;
 "#;
     let (_, warnings2) = preprocess(input2);
-    assert_eq!(warnings2.len(), 1, "Unknown pragma with line continuation should generate warning");
+    assert_eq!(warnings2.len(), 1);
     assert!(warnings2[0].contains("unknown_continued"));
-    
+
     // Test 3: Mixed known and unknown pragmas
     let input3 = r#"#pragma \
 once
@@ -178,7 +172,7 @@ unknown_continued
 int x = 5;
 "#;
     let (_, warnings3) = preprocess(input3);
-    assert_eq!(warnings3.len(), 2, "Should get warnings for both unknown pragmas");
+    assert_eq!(warnings3.len(), 2);
     assert!(warnings3.iter().any(|w| w.contains("unknown_test")));
     assert!(warnings3.iter().any(|w| w.contains("unknown_continued")));
 }

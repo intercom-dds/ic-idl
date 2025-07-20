@@ -401,11 +401,20 @@ impl<'a> TypeResolver<'a> {
 
     /// Finds the span of a forward declaration for the given type name.
     fn find_forward_declaration_span(&self, name: &str) -> Option<Span> {
-        // Check the forward declarations map
-        self.ctx
-            .forward_declarations
-            .get(name)
-            .map(|(_, span)| *span)
+        // First try with the simple name
+        if let Some((_, span)) = self.ctx.forward_declarations.get(name) {
+            return Some(*span);
+        }
+        
+        // If not found, try to find by searching all entries
+        // This handles cases where we have the simple name but the map has qualified names
+        for (key, (_, span)) in self.ctx.forward_declarations.iter() {
+            if key.ends_with(name) && (key == name || key.ends_with(&format!("::{}", name))) {
+                return Some(*span);
+            }
+        }
+        
+        None
     }
 
     /// Resolves a struct definition.

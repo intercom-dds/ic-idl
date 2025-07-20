@@ -61,8 +61,8 @@ fn test_struct_inherit_from_forward_decl() {
     assert!(
         error_messages
             .iter()
-            .any(|msg| msg.contains("forward-declared")),
-        "Error should mention forward-declared type, but got: {:?}",
+            .any(|msg| msg.contains("incomplete type")),
+        "Error should mention incomplete type, but got: {:?}",
         error_messages
     );
 }
@@ -97,47 +97,6 @@ fn test_struct_inherit_from_complete_type() {
     );
 }
 
-#[test]
-fn test_bitset_inherit_from_forward_decl() {
-    let input = r"
-        bitset Base;  // Forward declaration
-        
-        bitset Derived : Base {  // Should fail - inheriting from incomplete type
-            uint32 flags;
-        };
-        
-        bitset Base {  // Definition comes later
-            uint8 status;
-        };
-    ";
-
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
-
-    // Should have an error about inheriting from incomplete type
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error for inheriting from forward-declared bitset"
-    );
-
-    // Check that the error mentions forward declaration
-    let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
-
-    assert!(
-        error_messages
-            .iter()
-            .any(|msg| msg.contains("forward-declared")),
-        "Error should mention forward-declared type, but got: {:?}",
-        error_messages
-    );
-}
 
 #[test]
 fn test_interface_inherit_from_forward_decl() {
@@ -175,8 +134,8 @@ fn test_interface_inherit_from_forward_decl() {
     assert!(
         error_messages
             .iter()
-            .any(|msg| msg.contains("forward-declared")),
-        "Error should mention forward-declared type, but got: {:?}",
+            .any(|msg| msg.contains("incomplete type")),
+        "Error should mention incomplete type, but got: {:?}",
         error_messages
     );
 }

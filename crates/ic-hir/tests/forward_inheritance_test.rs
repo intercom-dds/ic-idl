@@ -97,7 +97,6 @@ fn test_struct_inherit_from_complete_type() {
     );
 }
 
-
 #[test]
 fn test_interface_inherit_from_forward_decl() {
     let input = r"

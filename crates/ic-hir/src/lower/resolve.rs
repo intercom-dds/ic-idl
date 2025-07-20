@@ -405,7 +405,7 @@ impl<'a> TypeResolver<'a> {
         if let Some((_, span)) = self.ctx.forward_declarations.get(name) {
             return Some(*span);
         }
-        
+
         // If not found, try to find by searching all entries
         // This handles cases where we have the simple name but the map has qualified names
         for (key, (_, span)) in self.ctx.forward_declarations.iter() {
@@ -413,7 +413,7 @@ impl<'a> TypeResolver<'a> {
                 return Some(*span);
             }
         }
-        
+
         None
     }
 

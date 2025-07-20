@@ -2,17 +2,11 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error: invalid discriminator type for union `Result`
-   ┌ test.idl:3:5
+error[multiple_default_cases]: union `Result` has 2 default cases, but only one is allowed
+   ┌ test.idl:5:23
    │
- 3 │     union Result switch(long) {
-   ·     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ discriminator must be an integral type
- 4 │         case 0: string success;
-   · 
  5 │         default: long error1;
-   · 
+   ·                       ^^^^^^ first default case here
  6 │         default: long error2;  // Error
-   · 
- 7 │     };
-   · ^^^^^^
+   ·                       ^^^^^^ additional default case here
    └──

@@ -78,9 +78,11 @@ impl<'a> Visitor<'a> for MultipleDefaultCases<'a> {
                     "union `{}` has {} default cases, but only one is allowed",
                     def.ident.name, default_count
                 ),
-                Label::new(second_default_span.unwrap()).message("additional default case here"),
+                Label::new(first_default_span.unwrap()).message("first default case here"),
             )
-            .label(Label::new(first_default_span.unwrap()).message("first default case here"));
+            .label(
+                Label::new(second_default_span.unwrap()).message("additional default case here"),
+            );
 
             Self::report(self.ctx, diag);
         }

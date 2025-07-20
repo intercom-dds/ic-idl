@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
 error[multiple_default_cases]: union `MyUnion` has 3 default cases, but only one is allowed
-   ┌ test.idl:5:20
+   ┌ test.idl:4:21
    │
- 5 │     default: float f;
-   ·                    ^ additional default case here
  4 │     default: string s;
    ·                     ^ first default case here
+ 5 │     default: float f;
+   ·                    ^ additional default case here
    └──

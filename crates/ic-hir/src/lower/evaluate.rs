@@ -486,6 +486,12 @@ impl<'a> ExpressionEvaluator<'a> {
                 Numeric::UInt64(*v as u64)
             }
 
+            // Also handle cases where we have larger integer types converting to unsigned
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::UInt8)) => Numeric::Octet(*v as u8),
+            (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::UInt16)) => {
+                Numeric::UInt16(*v as u16)
+            }
+
             // Convert between signed integer types - only if value fits
             (Numeric::Int32(v), TyKind::Primitive(PrimitiveTy::Int8)) => {
                 if *v >= i32::from(i8::MIN) && *v <= i32::from(i8::MAX) {
@@ -741,12 +747,37 @@ impl<'a> ExpressionEvaluator<'a> {
             }
         }
 
+        // Get discriminator type before mutable borrow
+        let disc_ty = {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Union(union_ty) = &hir_def.kind {
+                Some(union_ty.disc.clone())
+            } else {
+                None
+            }
+        };
+
+        // Convert labels to match discriminator type
+        let converted_labels: Vec<Vec<Numeric>> = if let Some(disc_ty) = disc_ty {
+            all_labels
+                .into_iter()
+                .map(|labels| {
+                    labels
+                        .into_iter()
+                        .map(|label| self.convert_to_type(label, &disc_ty))
+                        .collect()
+                })
+                .collect()
+        } else {
+            all_labels
+        };
+
         // Then update the HIR
         let hir_def = self.ctx.definitions.get_mut(id);
 
         if let DefKind::Union(union_ty) = &mut hir_def.kind {
             // Update labels
-            for (idx, labels) in all_labels.into_iter().enumerate() {
+            for (idx, labels) in converted_labels.into_iter().enumerate() {
                 if let Some(variant) = union_ty.variants.get_mut(idx) {
                     variant.labels = labels;
                 }

@@ -39,11 +39,11 @@ fn negative_values_wrap_for_unsigned_discriminator() {
             long b;
         };
     ";
-    // This should produce a warning about duplicate case labels, not about out-of-range
+    // This should produce an error about duplicate case labels (Semantic lints are errors)
     let report = lint_hir(idl);
-    assert_eq!(report.warnings.len(), 1);
-    let warning_str = report.warnings[0].to_string();
-    assert!(warning_str.contains("duplicate"));
+    assert_eq!(report.errors.len(), 1);
+    let error_str = report.errors[0].to_string();
+    assert!(error_str.contains("duplicate"));
 }
 
 #[test]
@@ -58,9 +58,11 @@ fn negative_values_wrap_uint8() {
             float c;
         };
     ";
-    // No out-of-range warnings expected
+    // Should produce a duplicate error: -1 wraps to 255, which conflicts with case 255
     let report = lint_hir(idl);
-    assert!(report.warnings.is_empty());
+    assert_eq!(report.errors.len(), 1);
+    let error_str = report.errors[0].to_string();
+    assert!(error_str.contains("duplicate"));
 }
 
 #[test]
@@ -73,9 +75,9 @@ fn negative_values_wrap_uint32() {
             long b;
         };
     ";
-    // No out-of-range warnings expected
+    // No errors expected (wrapping is valid)
     let report = lint_hir(idl);
-    assert!(report.warnings.is_empty());
+    assert!(report.errors.is_empty());
 }
 
 #[test]
@@ -88,9 +90,20 @@ fn actual_out_of_range_for_signed() {
             long b;
         };
     ";
-    // Should produce 2 warnings
+    // Should produce 4 errors: 2 from unreachable_case lint + 2 from type checking
     let report = lint_hir(idl);
-    assert_eq!(report.warnings.len(), 2);
+    assert_eq!(report.errors.len(), 4);
+    // Verify we have both unreachable_case and type checking errors
+    let has_unreachable = report
+        .errors
+        .iter()
+        .any(|e| e.to_string().contains("outside the range"));
+    let has_typecheck = report
+        .errors
+        .iter()
+        .any(|e| e.to_string().contains("does not fit in type"));
+    assert!(has_unreachable);
+    assert!(has_typecheck);
 }
 
 #[test]
@@ -103,9 +116,9 @@ fn wrapping_produces_duplicate() {
             long b;
         };
     ";
-    // Should produce a duplicate case label warning
+    // Should produce a duplicate case label error (Semantic lints are errors)
     let report = lint_hir(idl);
-    assert_eq!(report.warnings.len(), 1);
-    let warning_str = report.warnings[0].to_string();
-    assert!(warning_str.contains("duplicate"));
+    assert_eq!(report.errors.len(), 1);
+    let error_str = report.errors[0].to_string();
+    assert!(error_str.contains("duplicate"));
 }

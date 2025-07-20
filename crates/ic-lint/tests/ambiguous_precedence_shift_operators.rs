@@ -62,7 +62,6 @@ fn check_ambiguous_precedence(idl_code: &str) -> String {
 }
 
 #[test]
-#[ignore = "ic-parse doesn't support shift operators yet"]
 fn test_shift_operator_precedence() {
     let idl = r"
 const long test1 = 1 << 2 + 3;
@@ -85,7 +84,6 @@ const long test12 = 1 / 2 >> 3;
 }
 
 #[test]
-#[ignore = "ic-parse doesn't support shift operators yet"]
 fn test_shift_with_bitwise() {
     let idl = r"
 const long test1 = 1 & 2 << 3;
@@ -107,7 +105,6 @@ const long test10 = 1 & (2 << 3);
 }
 
 #[test]
-#[ignore = "ic-parse doesn't support shift operators yet"]
 fn test_complex_shift_expressions() {
     let idl = r"
 const long BITS_PER_WORD = 32;

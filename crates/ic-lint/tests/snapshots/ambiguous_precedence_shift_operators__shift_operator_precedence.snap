@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_shift_operators.rs
 expression: check_ambiguous_precedence(idl)
 ---
-warning: operator `<<` has lower precedence than `+`
+warning[ambiguous_precedence]: operator `<<` has lower precedence than `+`
    ┌ test.idl:2:22
    │
  2 │ const long test1 = 1 << 2 + 3;
@@ -11,7 +11,7 @@ warning: operator `<<` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `>>` has lower precedence than `-`
+warning[ambiguous_precedence]: operator `>>` has lower precedence than `-`
    ┌ test.idl:4:22
    │
  4 │ const long test3 = 1 >> 2 - 3;

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_shift_operators.rs
 expression: check_ambiguous_precedence(idl)
 ---
-warning: operator `&` has lower precedence than `>>`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `>>`
    ┌ test.idl:5:36
    │
  5 │ const long test1 = value >> offset & mask;
@@ -11,7 +11,7 @@ warning: operator `&` has lower precedence than `>>`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `&` has lower precedence than `<<`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
    ┌ test.idl:7:26
    │
  7 │ const long test3 = value & mask << offset;
@@ -20,7 +20,7 @@ warning: operator `&` has lower precedence than `<<`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `|` has lower precedence than `<<`
+warning[ambiguous_precedence]: operator `|` has lower precedence than `<<`
     ┌ test.idl:10:26
     │
  10 │ const long test5 = flags | 1 << bit;
@@ -29,7 +29,7 @@ warning: operator `|` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `&` has lower precedence than `<<`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
     ┌ test.idl:13:26
     │
  13 │ const long test8 = flags & ~1 << bit;
@@ -38,7 +38,7 @@ warning: operator `&` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `&` has lower precedence than `>>`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `>>`
     ┌ test.idl:15:34
     │
  15 │ const long test9 = data >> start & (1 << length) - 1;
@@ -47,7 +47,7 @@ warning: operator `&` has lower precedence than `>>`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning: operator `&` has lower precedence than `-`
+warning[ambiguous_precedence]: operator `&` has lower precedence than `-`
     ┌ test.idl:15:34
     │
  15 │ const long test9 = data >> start & (1 << length) - 1;

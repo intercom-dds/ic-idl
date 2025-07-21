@@ -451,7 +451,6 @@ define_lints! {
         semantic::invalid_annotation_target::InvalidAnnotationTarget,
         semantic::invalid_enum_value::InvalidEnumValue,
         semantic::multiple_default_cases::MultipleDefaultCases,
-        semantic::unnamed_args::UnnamedArgs,
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::zero_bound::ZeroBound,
         // unsupported::proto::Proto, // Commented out - too restrictive for non-proto3 IDL

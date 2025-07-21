@@ -220,7 +220,11 @@ impl<'a> TypeResolver<'a> {
                 // Check if it's a built-in annotation
                 if BUILTIN_ANNOTATIONS.contains(&name.as_str()) {
                     // Built-in annotation - check for multi-parameter annotations
-                    let args = self.process_builtin_annotation_args(&ast_ann.args, &name, ic_syntax::util::path_span(&ast_ann.ident));
+                    let args = self.process_builtin_annotation_args(
+                        &ast_ann.args,
+                        &name,
+                        ic_syntax::util::path_span(&ast_ann.ident),
+                    );
                     let ann = Ann {
                         ident,
                         def_id: DefId::_do_not_use(), // Built-in annotations don't have DefIds
@@ -1315,8 +1319,12 @@ impl<'a> TypeResolver<'a> {
         // Check if annotation has multiple parameters and positional args are used
         if members.len() > 1 && !positional_args.is_empty() {
             self.warnings.push(warn_span(
-                format!("@{ann_name} has {} parameters and requires named arguments", members.len()),
-                Label::new(ann_span).message("annotations with multiple parameters must use named arguments"),
+                format!(
+                    "@{ann_name} has {} parameters and requires named arguments",
+                    members.len()
+                ),
+                Label::new(ann_span)
+                    .message("annotations with multiple parameters must use named arguments"),
             ));
             // Don't process the positional arguments
         } else if positional_args.len() == 1 {
@@ -1356,7 +1364,7 @@ impl<'a> TypeResolver<'a> {
     ) -> Vec<crate::hir::AnnArg> {
         // Define which built-in annotations have multiple parameters
         const MULTI_PARAM_BUILTINS: &[&str] = &["range"];
-        
+
         // Check if this is a multi-parameter built-in annotation with positional args
         if MULTI_PARAM_BUILTINS.contains(&ann_name) {
             let positional_args: Vec<_> = args.iter().filter(|a| a.ident.is_none()).collect();
@@ -1364,8 +1372,11 @@ impl<'a> TypeResolver<'a> {
                 // For range, we know it has 2 parameters
                 let param_count = if ann_name == "range" { 2 } else { 0 };
                 self.warnings.push(warn_span(
-                    format!("@{ann_name} has {param_count} parameters and requires named arguments"),
-                    Label::new(ann_span).message("annotations with multiple parameters must use named arguments"),
+                    format!(
+                        "@{ann_name} has {param_count} parameters and requires named arguments"
+                    ),
+                    Label::new(ann_span)
+                        .message("annotations with multiple parameters must use named arguments"),
                 ));
             }
         }

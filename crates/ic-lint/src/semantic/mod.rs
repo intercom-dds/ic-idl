@@ -40,6 +40,5 @@ pub mod keywords;
 pub mod multiple_default_cases;
 pub mod oneway;
 pub mod redundant_inheritance;
-pub mod unnamed_args;
 pub mod unreachable_union_cases;
 pub mod zero_bound;

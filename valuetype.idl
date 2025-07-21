@@ -1,2 +1,9 @@
-valuetype MyValue {
+struct MyException {};
+
+valuetype MyValue : foo, bar supports foo, bar {
+    string foobar(in string value) raises (MyException);
+
+    readonly attribute string my_string1, my_string2;
+    attribute string my_string3, my_string4;
 };
+

@@ -178,8 +178,8 @@ fn test_annotation_with_arguments() {
 
     // Check arguments
     let args = &struct_def.annotations[0].args;
-    assert_eq!(args[0].ident.as_ref().unwrap().name, "min");
-    assert_eq!(args[1].ident.as_ref().unwrap().name, "max");
+    assert_eq!(args[0].ident.name, "min");
+    assert_eq!(args[1].ident.name, "max");
 }
 
 #[test]

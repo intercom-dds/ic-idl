@@ -950,10 +950,16 @@ mod tests {
 
     fn make_arg(name: Option<&str>, value: Numeric) -> AnnArg {
         AnnArg {
-            ident: name.map(|n| Ident {
-                name: n.to_string(),
-                span: ic_syntax::Span::default(),
-            }),
+            ident: name.map_or_else(
+                || Ident {
+                    name: "value".to_string(),
+                    span: ic_syntax::Span::default(),
+                },
+                |n| Ident {
+                    name: n.to_string(),
+                    span: ic_syntax::Span::default(),
+                },
+            ),
             value,
         }
     }

@@ -172,6 +172,46 @@ impl GenericNumeric {
                 _ => unreachable!("larger type to int32 conversion"),
             },
 
+            (_, Self::UInt16(_)) => match self {
+                Self::Bool(v) => Self::UInt16(u16::from(*v)),
+                Self::Char(v) => Self::UInt16(u16::from(*v as u8)),
+                Self::Int8(v) => Self::UInt16(*v as u16),
+                Self::UInt8(v) => Self::UInt16(u16::from(*v)),
+                Self::Int16(v) => Self::UInt16(*v as u16),
+                Self::UInt16(v) => Self::UInt16(*v),
+                _ => unreachable!("larger type to uint16 conversion"),
+            },
+
+            (_, Self::Int16(_)) => match self {
+                Self::Bool(v) => Self::Int16(i16::from(*v)),
+                Self::Char(v) => Self::Int16(i16::from(*v as u8)),
+                Self::Int8(v) => Self::Int16(i16::from(*v)),
+                Self::UInt8(v) => Self::Int16(i16::from(*v)),
+                Self::Int16(v) => Self::Int16(*v),
+                _ => unreachable!("larger type to int16 conversion"),
+            },
+
+            (_, Self::UInt8(_)) => match self {
+                Self::Bool(v) => Self::UInt8(u8::from(*v)),
+                Self::Char(v) => Self::UInt8(*v as u8),
+                Self::Int8(v) => Self::UInt8(*v as u8),
+                Self::UInt8(v) => Self::UInt8(*v),
+                _ => unreachable!("larger type to uint8 conversion"),
+            },
+
+            (_, Self::Int8(_)) => match self {
+                Self::Bool(v) => Self::Int8(i8::from(*v)),
+                Self::Char(v) => Self::Int8(*v as i8),
+                Self::Int8(v) => Self::Int8(*v),
+                _ => unreachable!("larger type to int8 conversion"),
+            },
+
+            (_, Self::Char(_)) => match self {
+                Self::Bool(v) => Self::Char(if *v { '\u{0001}' } else { '\0' }),
+                Self::Char(v) => Self::Char(*v),
+                _ => unreachable!("non-bool/char to char conversion"),
+            },
+
             _ => *self, // For other conversions, keep original
         }
     }

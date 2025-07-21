@@ -66,7 +66,7 @@ fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {
     leaf!(
         "{} adt(def={}) {span} {}",
         "ann".purple(),
-        format!("0x{:#02?}", ann.def_id).blue(),
+        format!("{:#02X?}", ann.def_id).blue(),
         ann_str.cyan(),
     )
 }
@@ -147,7 +147,7 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
                 "{}({}{}, {name})",
                 "adt".cyan(),
                 "def=".clear(),
-                format!("0x{id:#02?}").blue(),
+                format!("{id:#02X?}").blue(),
             );
         }
     };
@@ -171,7 +171,7 @@ fn emit_numeric(val: &Numeric) -> String {
         Numeric::Float(f) => f.to_string(),
         Numeric::Double(d) => d.to_string(),
         Numeric::String(s) => format!("\"{s}\""),
-        Numeric::Const(def_id) => format!("<const 0x{def_id:#02?}>"),
+        Numeric::Const(def_id) => format!("<const {def_id:#02X?}>"),
         Numeric::Array { .. } => "<array>".to_string(),
         Numeric::Sequence { .. } => "<sequence>".to_string(),
         Numeric::Map { .. } => "<map>".to_string(),
@@ -254,7 +254,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
     let mut node = leaf!(
         "{} def={} {span} {} {}",
         kind.green().bold(),
-        format!("0x{id:02X?}").blue(),
+        format!("{id:#02X?}").blue(),
         def.ident.name.cyan(),
         emit_flags(def.flags),
     );

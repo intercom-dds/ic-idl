@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+warning[range_bound]: @min value (100) is greater than @max value (50)
+   ┌ test.idl:4:10
+   │
+ 4 │         @min(100) @max(50) long value;
+   ·          ^^^       ^^^ max value here
+   ·          └─ min value here
+   └──
+ help: ensure @min is less than or equal to @max

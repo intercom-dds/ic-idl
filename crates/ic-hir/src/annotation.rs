@@ -695,6 +695,72 @@ impl Unmarshal for Range {
     }
 }
 
+/// The @min annotation
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Min {
+    pub value: i64,
+}
+
+impl Unmarshal for Min {
+    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    where
+        D: Deserializer,
+    {
+        let mut state = archive.decode_struct(&TypeInfo {
+            name: "Min",
+            flags: TypeFlag::nil(),
+            kind: TypeKind::Struct,
+            key_kind: TypeKind::None,
+            element_kind: TypeKind::None,
+        })?;
+
+        state.decode_field(
+            &MemberInfo {
+                name: "value",
+                member_id: 0,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.value,
+        )?;
+
+        state.end()?;
+        Ok(())
+    }
+}
+
+/// The @max annotation
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Max {
+    pub value: i64,
+}
+
+impl Unmarshal for Max {
+    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    where
+        D: Deserializer,
+    {
+        let mut state = archive.decode_struct(&TypeInfo {
+            name: "Max",
+            flags: TypeFlag::nil(),
+            kind: TypeKind::Struct,
+            key_kind: TypeKind::None,
+            element_kind: TypeKind::None,
+        })?;
+
+        state.decode_field(
+            &MemberInfo {
+                name: "value",
+                member_id: 0,
+                flags: MemberFlag::nil(),
+            },
+            &mut self.value,
+        )?;
+
+        state.end()?;
+        Ok(())
+    }
+}
+
 /// The @default annotation
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct DefaultValue {
@@ -1022,5 +1088,49 @@ mod tests {
 
         let result: Result<ModeAnnotation, _> = ann.unmarshal("mode");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_min_unmarshal() {
+        let ann = make_ann("min", vec![make_arg(None, Numeric::Int32(-100))]);
+
+        let min: Min = ann.unmarshal("min").unwrap();
+        assert_eq!(min.value, -100);
+    }
+
+    #[test]
+    fn test_min_with_name() {
+        let ann = make_ann("min", vec![make_arg(Some("value"), Numeric::Int64(-1000))]);
+
+        let min: Min = ann.unmarshal("min").unwrap();
+        assert_eq!(min.value, -1000);
+    }
+
+    #[test]
+    fn test_max_unmarshal() {
+        let ann = make_ann("max", vec![make_arg(None, Numeric::Int32(100))]);
+
+        let max: Max = ann.unmarshal("max").unwrap();
+        assert_eq!(max.value, 100);
+    }
+
+    #[test]
+    fn test_max_with_name() {
+        let ann = make_ann("max", vec![make_arg(Some("value"), Numeric::Int64(1000))]);
+
+        let max: Max = ann.unmarshal("max").unwrap();
+        assert_eq!(max.value, 1000);
+    }
+
+    #[test]
+    fn test_min_max_conversion() {
+        // Test various numeric types convert properly to i64
+        let ann = make_ann("min", vec![make_arg(None, Numeric::Int8(-128))]);
+        let min: Min = ann.unmarshal("min").unwrap();
+        assert_eq!(min.value, -128);
+
+        let ann = make_ann("max", vec![make_arg(None, Numeric::UInt32(4_294_967_295))]);
+        let max: Max = ann.unmarshal("max").unwrap();
+        assert_eq!(max.value, 4_294_967_295);
     }
 }

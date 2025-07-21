@@ -27,18 +27,18 @@
 
 pub mod bit_bound;
 pub mod deprecated;
-pub mod duplicate_annotations;
+pub mod duplicate_annotations_hir;
 pub mod duplicate_bitmask_flags;
 pub mod duplicate_case_labels;
 pub mod duplicate_enum_values;
 pub mod duplicate_methods;
 pub mod duplicate_struct_members;
 pub mod duplicate_union_variants;
+pub mod invalid_annotation_target;
 pub mod invalid_enum_value;
 pub mod keywords;
 pub mod multiple_default_cases;
 pub mod oneway;
-pub mod range_bound;
 pub mod redundant_inheritance;
 pub mod unnamed_args;
 pub mod unreachable_union_cases;

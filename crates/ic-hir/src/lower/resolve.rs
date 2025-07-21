@@ -46,6 +46,25 @@ use crate::hir::{
 };
 use crate::scope::ScopeId;
 
+/// List of built-in annotations that don't need to be resolved
+const BUILTIN_ANNOTATIONS: &[&str] = &[
+    "key",
+    "optional",
+    "deprecated",
+    "obsolete",
+    "oneway",
+    "range",
+    "min",
+    "max",
+    "bit",
+    "id",
+    "default",
+    "unit",
+    "final",
+    "annotation",
+    "doc",
+];
+
 /// Resolves type references in the HIR.
 pub struct TypeResolver<'a> {
     ctx: &'a mut Context,
@@ -83,6 +102,7 @@ impl<'a> TypeResolver<'a> {
 
     /// Resolves annotations from AST and returns only those that could be resolved.
     /// Unresolved annotations are filtered out with warnings.
+    #[allow(clippy::too_many_lines)]
     fn resolve_ast_annotations(
         &mut self,
         ast_annotations: &[ic_syntax::AnnotationAppl],
@@ -191,12 +211,31 @@ impl<'a> TypeResolver<'a> {
                     // Don't include non-annotation types
                 }
             } else {
-                // Annotation not found - emit warning and exclude from HIR
-                self.warnings.push(warn_span(
-                    format!("unknown annotation '{name}'"),
-                    Label::new(ident.span).message("annotation not found"),
-                ));
-                // Don't include unresolved annotations
+                // Check if it's a built-in annotation
+                if BUILTIN_ANNOTATIONS.contains(&name.as_str()) {
+                    // Built-in annotation - create it without a DefId
+                    let args = ast_ann
+                        .args
+                        .iter()
+                        .map(|arg| crate::hir::AnnArg {
+                            ident: arg.ident.clone(),
+                            value: super::convert_annotation_value(&arg.value),
+                        })
+                        .collect();
+                    let ann = Ann {
+                        ident,
+                        def_id: DefId::_do_not_use(), // Built-in annotations don't have DefIds
+                        args,
+                    };
+                    resolved_annotations.push(ann);
+                } else {
+                    // Annotation not found - emit warning and exclude from HIR
+                    self.warnings.push(warn_span(
+                        format!("unknown annotation '{name}'"),
+                        Label::new(ident.span).message("annotation not found"),
+                    ));
+                    // Don't include unresolved annotations
+                }
             }
         }
 

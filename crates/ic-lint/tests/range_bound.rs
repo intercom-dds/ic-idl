@@ -25,99 +25,176 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod common;
-
-use common::test_lint_hir;
 use insta::assert_snapshot;
 
+mod common;
+use common::test_lint_hir;
+
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn valid_range_bounds() {
+fn valid_range() {
     let source = r"
-struct Foo {
-    @range(0, 255)
-    octet field1;
-    
-    @min(-128) @max(127)
-    int8 field2;
-    
-    @range(-32768, 32767)
-    short field3;
+module MyModule {
+    struct Temperature {
+        @range(min=-273, max=1000) long celsius;
+    };
 };
 ";
+
     assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn invalid_min_bound() {
+fn valid_min_max() {
     let source = r"
-struct Foo {
-    @min(-200)
-    int8 field;
+module MyModule {
+    struct Age {
+        @min(0) @max(150) short years;
+    };
 };
 ";
+
     assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn invalid_max_bound() {
+fn inverted_range() {
     let source = r"
-struct Foo {
-    @max(300)
-    octet field;
+module MyModule {
+    struct BadRange {
+        @range(min=100, max=0) long value;
+    };
 };
 ";
+
     assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn invalid_range_order() {
+fn inverted_min_max() {
     let source = r"
-struct Foo {
-    @range(100, 50)
-    octet field;
+module MyModule {
+    struct BadMinMax {
+        @min(100) @max(50) long value;
+    };
 };
 ";
+
     assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn range_exceeds_type_bounds() {
+fn empty_range() {
     let source = r"
-struct Foo {
-    @range(-1000, 1000)
-    int8 field;
+module MyModule {
+    struct EmptyRange {
+        @range() long value;
+    };
 };
 ";
+
     assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn const_with_range() {
-    let source = r"
-@range(0, 100)
-const short MAX_VALUE = 50;
+fn malformed_range() {
+    let source = r#"
+module MyModule {
+    struct MalformedRange {
+        @range(min="not a number") long value;
+    };
+};
+"#;
 
-@min(200)
-const octet MIN_VALUE = 250;
-";
     assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "Annotation lowering not implemented"]
-fn typedef_with_range() {
-    let source = r"
-@range(0, 1000)
-typedef short SmallInt;
+fn malformed_min() {
+    let source = r#"
+module MyModule {
+    struct MalformedMin {
+        @min("not a number") long value;
+    };
+};
+"#;
 
-@range(-10000, 10000)
-typedef int8 TinyInt; // This should fail
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_with_only_min() {
+    let source = r"
+module MyModule {
+    struct RangeOnlyMin {
+        @range(min=0) unsigned long count;
+    };
+};
 ";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_with_only_max() {
+    let source = r"
+module MyModule {
+    struct RangeOnlyMax {
+        @range(max=100) long percentage;
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn multiple_ranges() {
+    let source = r"
+module MyModule {
+    struct MultipleRanges {
+        @range(min=0, max=100) @range(min=10, max=90) long value;
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_on_struct() {
+    let source = r"
+module MyModule {
+    @range(min=0, max=100)
+    struct Percentage {
+        long value;
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_on_const() {
+    let source = r"
+module MyModule {
+    @range(min=0, max=100)
+    const long MAX_PERCENTAGE = 100;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn positional_range_args() {
+    let source = r"
+module MyModule {
+    struct PositionalRange {
+        @range(0, 100) long value;
+    };
+};
+";
+
     assert_snapshot!(test_lint_hir(source));
 }

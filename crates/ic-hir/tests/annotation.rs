@@ -109,6 +109,7 @@ fn test_optional_with_all_numeric_types() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_range_with_all_numeric_types() {
     // Test with i8
     let ann = make_ann(
@@ -143,8 +144,8 @@ fn test_range_with_all_numeric_types() {
         ],
     );
     let range: Range = ann.unmarshal("range").unwrap();
-    assert_eq!(range.min, Some(i32::MIN as i64));
-    assert_eq!(range.max, Some(i32::MAX as i64));
+    assert_eq!(range.min, Some(i64::from(i32::MIN)));
+    assert_eq!(range.max, Some(i64::from(i32::MAX)));
 
     // Test with i64
     let ann = make_ann(
@@ -190,7 +191,7 @@ fn test_range_with_all_numeric_types() {
     );
     let range: Range = ann.unmarshal("range").unwrap();
     assert_eq!(range.min, Some(0));
-    assert_eq!(range.max, Some(u32::MAX as i64));
+    assert_eq!(range.max, Some(i64::from(u32::MAX)));
 
     // Test with UInt64 that fits in i64
     let ann = make_ann(
@@ -256,7 +257,7 @@ fn test_default_value_with_wrong_types() {
     let result: Result<DefaultValue, _> = ann.unmarshal("default");
     assert!(result.is_err());
 
-    let ann = make_ann("default", vec![make_arg(None, Numeric::Float(3.14))]);
+    let ann = make_ann("default", vec![make_arg(None, Numeric::Float(1.234))]);
     let result: Result<DefaultValue, _> = ann.unmarshal("default");
     assert!(result.is_err());
 }
@@ -469,7 +470,7 @@ fn test_special_string_values() {
     // Test with empty string
     let ann = make_ann(
         "default",
-        vec![make_arg(None, Numeric::String("".to_string()))],
+        vec![make_arg(None, Numeric::String(String::new()))],
     );
     let default: DefaultValue = ann.unmarshal("default").unwrap();
     assert_eq!(default.value, "");

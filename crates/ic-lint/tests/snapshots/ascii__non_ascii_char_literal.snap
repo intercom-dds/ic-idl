@@ -2,4 +2,16 @@
 source: crates/ic-lint/tests/ascii.rs
 expression: test_lint(source)
 ---
+error[ascii]: character literals can only consist of alphanumeric ASCII characters
+   ┌ test.idl:3:28
+   │
+ 3 │     const char EURO_SIGN = '€';  // Non-ASCII character literal
+   ·                            ^^^ non-ASCII character
+   └──
 
+error[ascii]: character literals can only consist of alphanumeric ASCII characters
+   ┌ test.idl:4:31
+   │
+ 4 │     const char UNICODE_CHAR = 'ñ';
+   ·                               ^^^ non-ASCII character
+   └──

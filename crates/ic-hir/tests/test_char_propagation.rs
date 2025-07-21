@@ -66,4 +66,3 @@ fn test_character_literal_propagation() {
     assert_eq!(found_chars.get("C4"), Some(&'\0'));
     assert_eq!(found_chars.get("C5"), Some(&'\\'));
 }
-

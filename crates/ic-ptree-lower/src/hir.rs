@@ -184,10 +184,9 @@ impl<'a> TreeBuilder<'a> {
 
         sys::create_annotation_start(self.state, ident.as_ptr());
         let params = collect_with(self.state, sys::append_node, &ann.args, |arg| {
-            let decl = arg.ident.as_ref().map(|v| create_ident(&v.name));
-            let decl = decl.map_or(ptr::null(), |v| v.as_ptr());
+            let decl = create_ident(&arg.ident.name);
             let val = self.lower_numeric(&arg.value);
-            sys::create_annotation_param(self.state, decl, val)
+            sys::create_annotation_param(self.state, decl.as_ptr(), val)
         });
         sys::create_annotation_finish(self.state, params)
     }

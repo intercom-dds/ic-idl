@@ -114,7 +114,7 @@ impl StructDeserializer for AnnStructDeserializer<'_> {
             .ann
             .args
             .iter()
-            .find(|arg| arg.ident.as_ref().is_some_and(|id| id.name == info.name))
+            .find(|arg| arg.ident.name == info.name)
             .or_else(|| {
                 // If not found by name and this is the first field, try positional
                 if info.name == "value" && self.field_index == 0 {

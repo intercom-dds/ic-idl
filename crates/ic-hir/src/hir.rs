@@ -474,8 +474,8 @@ pub struct Ann {
 
 #[derive(Clone, Debug)]
 pub struct AnnArg {
-    /// Argument name (None for positional arguments)
-    pub ident: Option<Ident>,
+    /// Argument name
+    pub ident: Ident,
     /// The argument value
     pub value: Numeric,
 }

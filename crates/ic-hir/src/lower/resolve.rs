@@ -184,18 +184,24 @@ impl<'a> TypeResolver<'a> {
             }
 
             if let Some(id) = def_id {
-                // Verify it's an annotation definition
-                let def = self.ctx.definitions.get(id);
-                if matches!(def.kind, DefKind::Annotation(_)) {
-                    // Convert arguments
-                    let args = ast_ann
-                        .args
-                        .iter()
-                        .map(|arg| crate::hir::AnnArg {
-                            ident: arg.ident.clone(),
-                            value: super::convert_annotation_value(&arg.value),
-                        })
-                        .collect();
+                // Verify it's an annotation definition and get members
+                let members = {
+                    let def = self.ctx.definitions.get(id);
+                    if let DefKind::Annotation(ann_ty) = &def.kind {
+                        Some(ann_ty.members.clone())
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(members) = members {
+                    // Process and validate arguments
+                    let args = self.process_annotation_args(
+                        &ast_ann.args,
+                        &members,
+                        &name,
+                        ic_syntax::util::path_span(&ast_ann.ident),
+                    );
 
                     let ann = Ann {
                         ident,
@@ -213,15 +219,8 @@ impl<'a> TypeResolver<'a> {
             } else {
                 // Check if it's a built-in annotation
                 if BUILTIN_ANNOTATIONS.contains(&name.as_str()) {
-                    // Built-in annotation - create it without a DefId
-                    let args = ast_ann
-                        .args
-                        .iter()
-                        .map(|arg| crate::hir::AnnArg {
-                            ident: arg.ident.clone(),
-                            value: super::convert_annotation_value(&arg.value),
-                        })
-                        .collect();
+                    // Built-in annotation - process args but without validation
+                    let args = self.process_builtin_annotation_args(&ast_ann.args);
                     let ann = Ann {
                         ident,
                         def_id: DefId::_do_not_use(), // Built-in annotations don't have DefIds
@@ -1269,6 +1268,99 @@ impl<'a> TypeResolver<'a> {
 
         // Restore scope
         self.current_scope_id = saved_scope_id;
+    }
+
+    /// Process annotation arguments, ensuring all are named and validated against the definition
+    fn process_annotation_args(
+        &mut self,
+        args: &[ic_syntax::AnnotationArg],
+        members: &[crate::hir::Member],
+        ann_name: &str,
+        ann_span: Span,
+    ) -> Vec<crate::hir::AnnArg> {
+        let mut result = Vec::new();
+        let mut used_params = std::collections::HashSet::new();
+
+        // Process named arguments first
+        for arg in args.iter().filter(|a| a.ident.is_some()) {
+            let param_name = arg.ident.as_ref().unwrap().name.clone();
+
+            // Check if this parameter exists in the annotation definition
+            if let Some(member) = members.iter().find(|m| m.ident.name == param_name) {
+                if used_params.contains(&param_name) {
+                    self.warnings.push(warn_span(
+                        format!("duplicate parameter '{param_name}' in @{ann_name}"),
+                        Label::new(arg.ident.as_ref().unwrap().span)
+                            .message("parameter already specified"),
+                    ));
+                } else {
+                    used_params.insert(param_name.clone());
+                    result.push(crate::hir::AnnArg {
+                        ident: member.ident.clone(),
+                        value: super::convert_annotation_value(&arg.value),
+                    });
+                }
+            } else {
+                self.warnings.push(warn_span(
+                    format!("unknown parameter '{param_name}' in @{ann_name}"),
+                    Label::new(arg.ident.as_ref().unwrap().span)
+                        .message("parameter not found in annotation definition"),
+                ));
+            }
+        }
+
+        // Process positional arguments
+        let positional_args: Vec<_> = args.iter().filter(|a| a.ident.is_none()).collect();
+
+        if positional_args.len() == 1 {
+            // Single positional argument - assign to first parameter without default
+            if let Some(member) = members
+                .iter()
+                .find(|m| !used_params.contains(&m.ident.name) && m.default_value.is_none())
+            {
+                used_params.insert(member.ident.name.clone());
+                result.push(crate::hir::AnnArg {
+                    ident: member.ident.clone(),
+                    value: super::convert_annotation_value(&positional_args[0].value),
+                });
+            } else {
+                self.warnings.push(warn_span(
+                    format!("no available parameter for positional argument in @{ann_name}"),
+                    Label::new(ann_span)
+                        .message("all parameters have defaults or are already specified"),
+                ));
+            }
+        } else if positional_args.len() > 1 {
+            self.warnings.push(warn_span(
+                format!("multiple positional arguments in @{ann_name}"),
+                Label::new(ann_span).message("only one positional argument is allowed"),
+            ));
+        }
+
+        result
+    }
+
+    /// Process built-in annotation arguments (no validation, just ensure names)
+    fn process_builtin_annotation_args(
+        &mut self,
+        args: &[ic_syntax::AnnotationArg],
+    ) -> Vec<crate::hir::AnnArg> {
+        args.iter()
+            .enumerate()
+            .map(|(idx, arg)| {
+                let ident = arg.ident.clone().unwrap_or_else(|| {
+                    // For built-in annotations, generate a placeholder name for positional args
+                    crate::hir::Ident {
+                        name: format!("arg{}", idx),
+                        span: arg.value.span(),
+                    }
+                });
+                crate::hir::AnnArg {
+                    ident,
+                    value: super::convert_annotation_value(&arg.value),
+                }
+            })
+            .collect()
     }
 }
 

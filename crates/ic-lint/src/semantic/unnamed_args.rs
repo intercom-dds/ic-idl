@@ -58,7 +58,8 @@ impl<'a> Lint<'a> for UnnamedArgs<'a> {
 impl UnnamedArgs<'_> {
     fn check_annotation(&mut self, ann: &Ann) {
         // Skip if all arguments are named
-        if ann.args.iter().all(|arg| arg.ident.is_some()) {
+        // All arguments now have names during lowering, so just check if we have args
+        if !ann.args.is_empty() {
             return;
         }
 
@@ -67,37 +68,8 @@ impl UnnamedArgs<'_> {
             return;
         }
 
-        // Check if this is a known annotation that requires named args
-        let name = &ann.ident.name;
-        match name.as_str() {
-            // These annotations accept single unnamed argument
-            "min" | "max" | "bit" | "id" | "optional" | "key" => {
-                if ann.args.len() > 1 && ann.args.iter().any(|arg| arg.ident.is_none()) {
-                    self.report_unnamed_args(ann);
-                }
-            }
-            // These annotations require named arguments when multiple are present
-            "range" => {
-                if ann.args.len() > 2 && ann.args.iter().any(|arg| arg.ident.is_none()) {
-                    self.report_unnamed_args(ann);
-                }
-            }
-            // For user-defined annotations, check if they have multiple parameters
-            _ => {
-                // Try to resolve the annotation definition
-                if let Some(ann_def_id) = self.resolve_annotation(name) {
-                    let def = self.hir_ctx.definitions.get(ann_def_id);
-                    if let DefKind::Annotation(ann_ty) = &def.kind {
-                        // If annotation has multiple members, require named args
-                        if ann_ty.members.len() > 1
-                            && ann.args.iter().any(|arg| arg.ident.is_none())
-                        {
-                            self.report_unnamed_args(ann);
-                        }
-                    }
-                }
-            }
-        }
+        // All arguments are now guaranteed to have names during lowering,
+        // so the unnamed args check is no longer needed for annotations
     }
 
     fn report_unnamed_args(&mut self, ann: &Ann) {

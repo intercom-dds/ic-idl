@@ -122,11 +122,9 @@ impl Deprecated<'_> {
             if name == "deprecated" || name == "obsolete" {
                 // Look for a "reason" or "message" argument, or the first string argument
                 for arg in &ann.args {
-                    if let Some(ident) = &arg.ident {
-                        if ident.name == "reason" || ident.name == "message" {
-                            if let Numeric::String(msg) = &arg.value {
-                                return msg.clone();
-                            }
+                    if arg.ident.name == "reason" || arg.ident.name == "message" {
+                        if let Numeric::String(msg) = &arg.value {
+                            return msg.clone();
                         }
                     } else if let Numeric::String(msg) = &arg.value {
                         return msg.clone();

@@ -46,11 +46,7 @@ fn emit_span(span: &Span) -> String {
 }
 
 fn emit_ann_arg(arg: &ic_hir::hir::AnnArg) -> String {
-    if let Some(ident) = &arg.ident {
-        format!("{} = {}", ident.name, emit_numeric(&arg.value))
-    } else {
-        emit_numeric(&arg.value)
-    }
+    format!("{} = {}", arg.ident.name, emit_numeric(&arg.value))
 }
 
 fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {

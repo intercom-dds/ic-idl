@@ -42,6 +42,7 @@ ic-lexer = { path = "../ic-lexer" }
 ic-syntax = { path = "../ic-syntax" }
 ic-vfs = { path = "../ic-vfs" }
 ic-preproc = { path = "../ic-preproc" }
+ic-expr = { path = "../ic-expr" }
 
 chumsky.workspace = true
 

@@ -84,8 +84,11 @@ pub fn parse_integer(str: &str, base: Base) -> std::result::Result<i128, &'stati
 ///
 /// Panics if the content is empty after stripping quotes and processing escapes
 pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
-    // Remove surrounding quotes
-    let content = lit.trim_start_matches('\'').trim_end_matches('\'');
+    // Remove surrounding quotes more carefully
+    if !lit.starts_with('\'') || !lit.ends_with('\'') {
+        return Err("character literal must be surrounded by single quotes");
+    }
+    let content = &lit[1..lit.len() - 1];
 
     if content.is_empty() {
         return Err("empty character literal");
@@ -93,7 +96,8 @@ pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
 
     // Handle escape sequences
     let ch = if content.starts_with('\\') && content.len() > 1 {
-        match content.chars().nth(1) {
+        let escape_char = content.chars().nth(1);
+        match escape_char {
             Some('n') => '\n',
             Some('t') => '\t',
             Some('r') => '\r',
@@ -101,6 +105,22 @@ pub fn parse_character(lit: &str) -> std::result::Result<char, &'static str> {
             Some('\\') => '\\',
             Some('\'') => '\'',
             Some('"') => '"',
+            Some('b') => '\u{0008}',
+            Some('f') => '\u{000C}',
+            Some('v') => '\u{000B}',
+            Some('x') => {
+                // Handle hex escape sequences like \x41
+                if content.len() >= 4 {
+                    let hex_str = &content[2..4];
+                    if let Ok(value) = u8::from_str_radix(hex_str, 16) {
+                        value as char
+                    } else {
+                        return Err("invalid hex escape sequence in character literal");
+                    }
+                } else {
+                    return Err("incomplete hex escape sequence in character literal");
+                }
+            }
             Some(c) => c,
             None => {
                 return Err("invalid escape sequence in character literal");

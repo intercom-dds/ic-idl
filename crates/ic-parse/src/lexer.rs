@@ -391,6 +391,21 @@ where
                         span: next.span,
                     });
                 }
+                ic_preproc::Kind::Char => {
+                    let source = iter.source_of(next.span);
+                    let ch = ic_expr::c_adapter::parse_character(source)
+                        .ok()
+                        .or_else(|| {
+                            // If parsing fails, try to extract a single character
+                            let content = source.trim_start_matches('\'').trim_end_matches('\'');
+                            content.chars().next()
+                        });
+
+                    break Some(Token {
+                        kind: Kind::Char(ch),
+                        span: next.span,
+                    });
+                }
                 _ => break Some(Token::from(next)),
             }
         }

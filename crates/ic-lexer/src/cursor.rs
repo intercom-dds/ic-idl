@@ -237,11 +237,34 @@ impl Cursor {
     fn char_lit(&mut self) -> Kind {
         if let Some(v) = self.chars.next() {
             if v == '\'' {
-                return Kind::Char;
+                return Kind::Char; // Empty char literal ''
             }
-            if v == '\\' && self.chars.peek() == '\'' {
-                self.chars.next();
+
+            // Handle escape sequences
+            if v == '\\' {
+                if let Some(escaped) = self.chars.next() {
+                    match escaped {
+                        '\'' | '\\' | 'n' | 't' | 'r' | '0' | 'b' | 'f' | 'v' | '"' => {
+                            // Valid simple escape sequences
+                        }
+                        'x' => {
+                            // Hex escape sequence \xHH
+                            if self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
+                                && self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
+                            {
+                                // Valid hex escape
+                            } else {
+                                return Kind::Unknown;
+                            }
+                        }
+                        _ => return Kind::Unknown, // Invalid escape sequence
+                    }
+                } else {
+                    return Kind::Unknown; // Unterminated escape
+                }
             }
+
+            // Expect closing quote
             if self.chars.peek() == '\'' {
                 self.chars.next();
                 return Kind::Char;
@@ -658,6 +681,7 @@ mod tests {
 
     #[test]
     fn test_char_lit() {
+        // Basic character literals
         assert_eq!(single("'a'"), Kind::Char);
         assert_eq!(single("'0'"), Kind::Char);
         assert_eq!(single("';'"), Kind::Char);
@@ -665,9 +689,28 @@ mod tests {
         assert_eq!(single("a"), Kind::Ident);
         assert_eq!(single("''"), Kind::Char);
 
-        let escaped = scan(r"'\''");
-        assert_eq!(escaped.len(), 1);
-        assert_eq!(escaped[0].kind, Kind::Char);
+        // Escape sequences
+        assert_eq!(single(r"'\''"), Kind::Char);
+        assert_eq!(single(r"'\\'"), Kind::Char);
+        assert_eq!(single(r"'\n'"), Kind::Char);
+        assert_eq!(single(r"'\t'"), Kind::Char);
+        assert_eq!(single(r"'\r'"), Kind::Char);
+        assert_eq!(single(r"'\0'"), Kind::Char);
+        assert_eq!(single(r"'\b'"), Kind::Char);
+        assert_eq!(single(r"'\f'"), Kind::Char);
+        assert_eq!(single(r"'\v'"), Kind::Char);
+        assert_eq!(single(r#"'\"'"#), Kind::Char); // \" is now valid
+
+        // Hex escape sequences
+        assert_eq!(single(r"'\x41'"), Kind::Char);
+        assert_eq!(single(r"'\xFF'"), Kind::Char);
+        assert_eq!(single(r"'\x00'"), Kind::Char);
+
+        // Invalid escape sequences
+        assert_eq!(single(r"'\q'"), Kind::Unknown);
+        assert_eq!(single(r"'\x'"), Kind::Unknown);
+        assert_eq!(single(r"'\x4'"), Kind::Unknown);
+        assert_eq!(single(r"'\x4G'"), Kind::Unknown);
 
         let tokens = scan("a'");
         assert_eq!(tokens.len(), 2);

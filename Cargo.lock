@@ -290,6 +290,7 @@ name = "ic-parse"
 version = "0.1.0"
 dependencies = [
  "chumsky",
+ "ic-expr",
  "ic-lexer",
  "ic-macros",
  "ic-preproc",
@@ -330,6 +331,7 @@ version = "0.1.0"
 dependencies = [
  "ic-hir",
  "ic-parse",
+ "ic-preproc",
  "ic-ptree",
  "ic-syntax",
  "ic-vfs",

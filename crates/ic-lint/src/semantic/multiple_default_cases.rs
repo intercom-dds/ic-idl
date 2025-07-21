@@ -55,39 +55,30 @@ impl<'a> Lint<'a> for MultipleDefaultCases<'a> {
 
 impl<'a> Visitor<'a> for MultipleDefaultCases<'a> {
     fn visit_union(&mut self, def: &'a Def, union_ty: &'a UnionTy) {
-        let mut default_count = 0;
-        let mut first_default_span = None;
-        let mut second_default_span = None;
+        let defaults: Vec<_> = union_ty
+            .variants
+            .iter()
+            .filter(|v| v.is_default)
+            .map(|v| v.ident.span)
+            .collect();
 
-        // Count default cases
-        for variant in &union_ty.variants {
-            if variant.is_default {
-                default_count += 1;
-                if default_count == 1 {
-                    first_default_span = Some(variant.ident.span);
-                } else if default_count == 2 {
-                    second_default_span = Some(variant.ident.span);
-                }
+        match defaults.as_slice() {
+            [] | [_] => {}
+            [first, rest @ ..] => {
+                let diag = ic_diagnostic::error_span(
+                    format!(
+                        "union `{}` has {} default cases, but only one is allowed",
+                        def.ident.name,
+                        defaults.len(),
+                    ),
+                    Label::new(*first).message("first default case here"),
+                )
+                .labels(
+                    rest.iter()
+                        .map(|&case| Label::new(case).message("additional default case here")),
+                );
+                Self::report(self.ctx, diag);
             }
         }
-
-        // Report error if multiple defaults found
-        if default_count > 1 {
-            let diag = ic_diagnostic::error_span(
-                format!(
-                    "union `{}` has {} default cases, but only one is allowed",
-                    def.ident.name, default_count
-                ),
-                Label::new(first_default_span.unwrap()).message("first default case here"),
-            )
-            .label(
-                Label::new(second_default_span.unwrap()).message("additional default case here"),
-            );
-
-            Self::report(self.ctx, diag);
-        }
-
-        // Continue visiting
-        ic_hir::visit::walk_union(self, union_ty);
     }
 }

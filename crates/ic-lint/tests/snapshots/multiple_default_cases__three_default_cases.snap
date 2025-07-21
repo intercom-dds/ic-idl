@@ -9,4 +9,6 @@ error[multiple_default_cases]: union `MyUnion` has 3 default cases, but only one
    ·                     ^ first default case here
  5 │     default: float f;
    ·                    ^ additional default case here
+ 6 │     default: double d;  // Error: 3 default cases
+   ·                     ^ additional default case here
    └──

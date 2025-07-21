@@ -142,6 +142,16 @@ impl Diag {
         self
     }
 
+    pub fn labels<I>(mut self, labels: I) -> Self
+    where
+        I: IntoIterator<Item = Label>,
+    {
+        for label in labels {
+            self = self.label(label);
+        }
+        self
+    }
+
     /// An optional description that will be displayed below the diagnostic.
     /// This can be used to give a longer, more descriptive reason of what
     /// triggered the diagnostic.

@@ -51,23 +51,23 @@ fn test_minimal_struct() {
     let parsed = from_str(idl);
 
     if !parsed.errors.is_empty() {
-        eprintln!("Parse errors: {:?}", parsed.errors);
+        // Parse errors encountered
         return;
     }
 
     // Try AST lowering
     let ptree_ast = from_ast(&parsed, &vfs);
-    eprintln!("AST lowering result: {:?}", ptree_ast.diagnostics());
+    let _ = ptree_ast.diagnostics();
 
     // Try HIR lowering
     let hir = ic_hir::from_ast(parsed.tree);
     if !hir.errors.is_empty() {
-        eprintln!("HIR errors: {:?}", hir.errors);
+        // HIR errors encountered
         return;
     }
 
     let ptree_hir = from_hir(&hir, &vfs);
-    eprintln!("HIR lowering result: {:?}", ptree_hir.diagnostics());
+    let _ = ptree_hir.diagnostics();
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_from_file() {
     let parsed = from_str(builtin_idl);
 
     if !parsed.errors.is_empty() {
-        eprintln!("Parse errors: {:?}", parsed.errors);
+        // Parse errors in builtin annotations file
         return;
     }
 

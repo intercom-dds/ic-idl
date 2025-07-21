@@ -48,7 +48,7 @@ fn parse_and_lower_hir(idl: &str) -> (ic_ptree::ParseResult, ResolvedGraph) {
 
 #[test]
 fn test_primitive_types() {
-    let idl = r#"
+    let idl = r"
         struct PrimitiveTypes {
             boolean b;
             char c;
@@ -64,7 +64,7 @@ fn test_primitive_types() {
             double d;
             long double ld;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -72,14 +72,14 @@ fn test_primitive_types() {
 
 #[test]
 fn test_string_types() {
-    let idl = r#"
+    let idl = r"
         struct StringTypes {
             string s1;
             string<100> s2;
             wstring ws1;
             wstring<200> ws2;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -87,14 +87,14 @@ fn test_string_types() {
 
 #[test]
 fn test_sequence_types() {
-    let idl = r#"
+    let idl = r"
         struct SequenceTypes {
             sequence<long> s1;
             sequence<long, 10> s2;
             sequence<string> s3;
             sequence<sequence<double>> nested;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -102,13 +102,13 @@ fn test_sequence_types() {
 
 #[test]
 fn test_array_types() {
-    let idl = r#"
+    let idl = r"
         struct ArrayTypes {
             long a1[10];
             double a2[5][3];
             string a3[100];
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -116,13 +116,13 @@ fn test_array_types() {
 
 #[test]
 fn test_map_types() {
-    let idl = r#"
+    let idl = r"
         struct MapTypes {
             map<string, long> m1;
             map<long, string, 100> m2;
             map<string, sequence<double>> m3;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -130,7 +130,7 @@ fn test_map_types() {
 
 #[test]
 fn test_enum_lowering() {
-    let idl = r#"
+    let idl = r"
         enum Color {
             RED,
             GREEN = 5,
@@ -143,7 +143,7 @@ fn test_enum_lowering() {
             @value(200)
             FAILURE
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -151,14 +151,14 @@ fn test_enum_lowering() {
 
 #[test]
 fn test_bitmask_lowering() {
-    let idl = r#"
+    let idl = r"
         bitmask Flags {
             FLAG_A,
             FLAG_B,
             @value(8)
             FLAG_C
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -166,7 +166,7 @@ fn test_bitmask_lowering() {
 
 #[test]
 fn test_struct_inheritance() {
-    let idl = r#"
+    let idl = r"
         struct Base {
             long id;
         };
@@ -174,7 +174,7 @@ fn test_struct_inheritance() {
         struct Derived : Base {
             string name;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -182,7 +182,7 @@ fn test_struct_inheritance() {
 
 #[test]
 fn test_union_lowering() {
-    let idl = r#"
+    let idl = r"
         union MyUnion switch (long) {
             case 1:
                 long l;
@@ -203,7 +203,7 @@ fn test_union_lowering() {
         enum Color {
             RED, GREEN, BLUE
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -211,12 +211,12 @@ fn test_union_lowering() {
 
 #[test]
 fn test_exception_lowering() {
-    let idl = r#"
+    let idl = r"
         exception MyError {
             string message;
             long code;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -224,7 +224,7 @@ fn test_exception_lowering() {
 
 #[test]
 fn test_interface_lowering() {
-    let idl = r#"
+    let idl = r"
         interface Calculator {
             long add(in long a, in long b);
             void divide(in double a, in double b, out double result);
@@ -234,7 +234,7 @@ fn test_interface_lowering() {
         local interface LocalService {
             void process();
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -256,11 +256,11 @@ fn test_const_lowering() {
 
 #[test]
 fn test_typedef_lowering() {
-    let idl = r#"
+    let idl = r"
         typedef long Id;
         typedef sequence<string> StringList;
         typedef string Name[50];
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -268,7 +268,7 @@ fn test_typedef_lowering() {
 
 #[test]
 fn test_module_lowering() {
-    let idl = r#"
+    let idl = r"
         module Outer {
             struct Point {
                 double x;
@@ -281,7 +281,7 @@ fn test_module_lowering() {
                 };
             };
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -289,7 +289,7 @@ fn test_module_lowering() {
 
 #[test]
 fn test_forward_declarations() {
-    let idl = r#"
+    let idl = r"
         struct Forward;
         
         struct Container {
@@ -299,7 +299,7 @@ fn test_forward_declarations() {
         struct Forward {
             long value;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -345,12 +345,12 @@ fn test_annotation_declarations() {
 
 #[test]
 fn test_valuetype_lowering() {
-    let idl = r#"
+    let idl = r"
         valuetype Money {
             public double amount;
             public string currency;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -358,13 +358,13 @@ fn test_valuetype_lowering() {
 
 #[test]
 fn test_native_type() {
-    let idl = r#"
+    let idl = r"
         native Handle;
         
         struct Container {
             Handle h;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -372,12 +372,12 @@ fn test_native_type() {
 
 #[test]
 fn test_self_referential_struct() {
-    let idl = r#"
+    let idl = r"
         struct Node {
             long value;
             Node next;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -385,14 +385,14 @@ fn test_self_referential_struct() {
 
 #[test]
 fn test_const_references() {
-    let idl = r#"
+    let idl = r"
         const long SIZE = 10;
         const long DOUBLE_SIZE = SIZE * 2;
         
         struct Buffer {
             octet data[SIZE];
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -400,7 +400,7 @@ fn test_const_references() {
 
 #[test]
 fn test_complex_nested_types() {
-    let idl = r#"
+    let idl = r"
         typedef sequence<string> StringSeq;
         typedef map<string, StringSeq> StringMap;
         
@@ -408,7 +408,7 @@ fn test_complex_nested_types() {
             StringMap data;
             sequence<map<long, sequence<double>>> nested;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -416,12 +416,12 @@ fn test_complex_nested_types() {
 
 #[test]
 fn test_any_and_fixed_types() {
-    let idl = r#"
+    let idl = r"
         struct SpecialTypes {
             any a;
             fixed<10, 2> price;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());

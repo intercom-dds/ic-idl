@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_sign_loss)]
+
 #[path = "../src/common.rs"]
 mod common;
 
@@ -127,6 +129,8 @@ fn test_parse_builtin() {
 fn test_collect_with() {
     use ic_ptree::sys;
 
+    // SAFETY: This test only verifies function behavior with mock data,
+    // no actual FFI calls are made
     unsafe {
         // This test is tricky because it involves FFI
         // We'll create a mock scenario to test the logic
@@ -146,7 +150,7 @@ fn test_collect_with() {
 
         let result = common::collect_with(state, mock_appender, items, |_item| {
             // Return a mock pointer
-            1 as *mut sys::ptree
+            std::ptr::dangling_mut::<sys::ptree>()
         });
 
         // The result should be non-null (our mock returns the first node)
@@ -156,11 +160,12 @@ fn test_collect_with() {
 
 #[test]
 fn test_num_undef() {
+    // SAFETY: Reading the value of static pointers for comparison is safe
     unsafe {
         // NUM_UNDEF should point to sys::num_undef
         assert_eq!(
-            common::NUM_UNDEF as *const _ as usize,
-            std::ptr::addr_of!(ic_ptree::sys::num_undef) as *const _ as usize
+            common::NUM_UNDEF.cast::<()>() as usize,
+            std::ptr::addr_of!(ic_ptree::sys::num_undef).cast::<()>() as usize
         );
     }
 }

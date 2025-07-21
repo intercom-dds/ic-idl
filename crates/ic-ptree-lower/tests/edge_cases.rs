@@ -48,7 +48,7 @@ fn test_empty_idl() {
 
 #[test]
 fn test_deeply_nested_types() {
-    let idl = r#"
+    let idl = r"
         typedef sequence<sequence<sequence<sequence<long>>>> Deep4;
         typedef map<string, map<string, map<string, long>>> DeepMap;
         
@@ -57,7 +57,7 @@ fn test_deeply_nested_types() {
             DeepMap nested_maps;
             sequence<map<string, sequence<array<long, 5>>>> mixed;
         };
-    "#;
+    ";
 
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
@@ -72,7 +72,7 @@ fn test_deeply_nested_types() {
 
 #[test]
 fn test_mutually_recursive_structs() {
-    let idl = r#"
+    let idl = r"
         struct A;
         struct B;
         
@@ -83,7 +83,7 @@ fn test_mutually_recursive_structs() {
         struct B {
             @shared A a;
         };
-    "#;
+    ";
 
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
@@ -98,7 +98,7 @@ fn test_mutually_recursive_structs() {
 
 #[test]
 fn test_empty_containers() {
-    let idl = r#"
+    let idl = r"
         struct EmptyStruct {
         };
         
@@ -110,7 +110,7 @@ fn test_empty_containers() {
         
         module EmptyModule {
         };
-    "#;
+    ";
 
     let _vfs = SourceMap::default();
     let parsed = from_str(idl);
@@ -154,7 +154,7 @@ fn test_numeric_literals() {
 
 #[test]
 fn test_union_edge_cases() {
-    let idl = r#"
+    let idl = r"
         // Union with single case
         union SingleCase switch (long) {
             case 1:
@@ -189,7 +189,7 @@ fn test_union_edge_cases() {
             case BLUE:
                 long b;
         };
-    "#;
+    ";
 
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
@@ -204,7 +204,7 @@ fn test_union_edge_cases() {
 
 #[test]
 fn test_interface_edge_cases() {
-    let idl = r#"
+    let idl = r"
         // Interface with no return value
         interface VoidMethods {
             void method1();
@@ -222,7 +222,7 @@ fn test_interface_edge_cases() {
         interface ParamDirections {
             void allTypes(in long input, out long output, inout long both);
         };
-    "#;
+    ";
 
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
@@ -275,7 +275,7 @@ fn test_annotation_edge_cases() {
 
 #[test]
 fn test_type_bounds() {
-    let idl = r#"
+    let idl = r"
         struct Bounded {
             string<0> empty_string;
             string<1> single_char;
@@ -286,7 +286,7 @@ fn test_type_bounds() {
             map<string, long, 0> empty_map;
             map<string, long, 1> single_map;
         };
-    "#;
+    ";
 
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
@@ -301,7 +301,7 @@ fn test_type_bounds() {
 
 #[test]
 fn test_scoped_references() {
-    let idl = r#"
+    let idl = r"
         module A {
             struct S1 { long x; };
             
@@ -325,7 +325,7 @@ fn test_scoped_references() {
             A::B::S2 s2;
             A::B::C::S3 s3;
         };
-    "#;
+    ";
 
     let vfs = SourceMap::default();
     let parsed = from_str(idl);

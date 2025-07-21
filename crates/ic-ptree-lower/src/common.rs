@@ -33,6 +33,7 @@ use ic_syntax::{ParamKind, Path};
 const BUILTIN_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 
 #[allow(unused_unsafe)]
+// SAFETY: Taking the address of a static variable is safe
 pub static mut NUM_UNDEF: *const sys::numeric = unsafe { std::ptr::addr_of!(sys::num_undef) };
 
 #[must_use]
@@ -84,6 +85,8 @@ where
     C: FnMut(T) -> *mut sys::ptree,
 {
     let mut list = std::ptr::null_mut();
+    // SAFETY: The appender function is expected to handle the pointers correctly
+    // and the callback is responsible for returning valid pointers
     unsafe {
         for elem in iter {
             let node = cb(elem);

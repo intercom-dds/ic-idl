@@ -132,7 +132,7 @@ pub enum Kind {
     StringLit(String),
 
     /// Any single UTF-8 character surrounded by single quotes.
-    Char(Option<char>),
+    Char(char),
 
     // Preserve documentation comments
     // The bool indicates if this is a trailing comment (on same line as code)
@@ -174,7 +174,7 @@ impl fmt::Display for Kind {
             Kind::Star => write!(f, "`*`"),
             Kind::Slash => write!(f, "`/`"),
             Kind::Modulo => write!(f, "`%`"),
-            Kind::Char(v) => write!(f, "'{}'", v.unwrap_or_default()),
+            Kind::Char(v) => write!(f, "'{v}'"),
             Kind::Octal(_) | Kind::Decimal(_) | Kind::Hex(_) => write!(f, "number"),
             Kind::Comment(_, _) => write!(f, "comment"),
             Kind::Invalid => write!(f, "invalid identifier"),
@@ -237,7 +237,7 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
             ic_preproc::Kind::Comment { trailing } => Kind::Comment(String::new(), trailing),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),
-            ic_preproc::Kind::Char => Kind::Char(None),
+            ic_preproc::Kind::Char => Kind::Char('\0'),
             ic_preproc::Kind::At => Kind::At,
             ic_preproc::Kind::Comma => Kind::Comma,
             ic_preproc::Kind::Period => Kind::Period,
@@ -399,7 +399,8 @@ where
                             // If parsing fails, try to extract a single character
                             let content = source.trim_start_matches('\'').trim_end_matches('\'');
                             content.chars().next()
-                        });
+                        })
+                        .unwrap_or_default();
 
                     break Some(Token {
                         kind: Kind::Char(ch),

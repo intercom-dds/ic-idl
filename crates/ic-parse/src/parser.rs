@@ -110,7 +110,7 @@ fn character_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::Char(v) => v };
     lit.map_with_span(|v, span| Literal {
         span,
-        value: LiteralValue::Char(v.unwrap_or_default()),
+        value: LiteralValue::Char(v),
     })
 }
 

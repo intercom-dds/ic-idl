@@ -25,15 +25,17 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::from_str;
+use ic_parse::from_file;
+use ic_preproc::ProcArgs;
 use ic_ptree_lower::{from_ast, from_hir};
 use ic_vfs::SourceMap;
 
 #[test]
 fn test_empty_input() {
     // Test with truly empty input
-    let vfs = SourceMap::default();
-    let parsed = from_str("");
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed("");
+    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
     assert!(parsed.errors.is_empty());
 
     // HIR lowering should also work
@@ -47,8 +49,9 @@ fn test_minimal_struct() {
     // Try the simplest possible valid IDL
     let idl = "struct S { };";
 
-    let vfs = SourceMap::default();
-    let parsed = from_str(idl);
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(idl);
+    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
 
     if !parsed.errors.is_empty() {
         // Parse errors encountered
@@ -73,11 +76,12 @@ fn test_minimal_struct() {
 #[test]
 fn test_from_file() {
     // Test using actual IDL files that should work
-    let vfs = SourceMap::default();
+    let mut vfs = SourceMap::default();
 
     // Test with builtin annotations which we know should parse
     let builtin_idl = include_str!("../idl/annotations.idl");
-    let parsed = from_str(builtin_idl);
+    let file_id = vfs.embed(builtin_idl);
+    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
 
     if !parsed.errors.is_empty() {
         // Parse errors in builtin annotations file

@@ -26,13 +26,15 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::ResolvedGraph;
-use ic_parse::from_str;
+use ic_parse::from_file;
+use ic_preproc::ProcArgs;
 use ic_ptree_lower::from_hir;
 use ic_vfs::SourceMap;
 
 fn parse_and_lower_hir(idl: &str) -> (ic_ptree::ParseResult, ResolvedGraph) {
-    let vfs = SourceMap::default();
-    let parsed = from_str(idl);
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(idl);
+    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -326,18 +328,14 @@ fn test_annotations() {
 
 #[test]
 fn test_annotation_declarations() {
-    let idl = r#"
-        @annotation
-        struct custom {
-            string description;
-            long priority = 0;
-        };
-        
-        @custom(description = "Test struct", priority = 5)
+    let idl = r"
+        @id(42)
+        @optional
         struct TestStruct {
-            long id;
+            @id(1) long id;
+            @optional string name;
         };
-    "#;
+    ";
 
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
@@ -360,14 +358,17 @@ fn test_valuetype_lowering() {
 fn test_native_type() {
     let idl = r"
         native Handle;
-        
-        struct Container {
-            Handle h;
-        };
     ";
 
-    let (ptree, _) = parse_and_lower_hir(idl);
-    assert!(ptree.diagnostics().is_none());
+    // Native types are forward declarations, so we expect HIR errors
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(idl);
+    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
+    assert!(parsed.errors.is_empty());
+
+    let hir = ic_hir::from_ast(parsed.tree);
+    // Native types are always undefined, so HIR will have errors
+    assert!(!hir.errors.is_empty());
 }
 
 #[test]

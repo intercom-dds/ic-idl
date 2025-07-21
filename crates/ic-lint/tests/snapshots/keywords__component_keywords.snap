@@ -1,0 +1,83 @@
+---
+source: crates/ic-lint/tests/keywords.rs
+expression: test_lint(source)
+---
+error[keywords]: `component` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:10
+   │
+ 3 │     void component();       // 'component' is a keyword
+   ·          ^^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_component`
+
+error[keywords]: `connector` is a keyword and may not be used as an identifier
+   ┌ test.idl:4:10
+   │
+ 4 │     void connector();       // 'connector' is a keyword
+   ·          ^^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_connector`
+
+error[keywords]: `port` is a keyword and may not be used as an identifier
+   ┌ test.idl:5:10
+   │
+ 5 │     void port();            // 'port' is a keyword
+   ·          ^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_port`
+
+error[keywords]: `porttype` is a keyword and may not be used as an identifier
+   ┌ test.idl:6:10
+   │
+ 6 │     void porttype();        // 'porttype' is a keyword
+   ·          ^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_porttype`
+
+error[keywords]: `mirrorport` is a keyword and may not be used as an identifier
+   ┌ test.idl:7:10
+   │
+ 7 │     void mirrorport();      // 'mirrorport' is a keyword
+   ·          ^^^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_mirrorport`
+
+error[keywords]: `provides` is a keyword and may not be used as an identifier
+   ┌ test.idl:8:10
+   │
+ 8 │     void provides();        // 'provides' is a keyword
+   ·          ^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_provides`
+
+error[keywords]: `uses` is a keyword and may not be used as an identifier
+   ┌ test.idl:9:10
+   │
+ 9 │     void uses();            // 'uses' is a keyword
+   ·          ^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_uses`
+
+error[keywords]: `publishes` is a keyword and may not be used as an identifier
+    ┌ test.idl:10:10
+    │
+ 10 │     void publishes();       // 'publishes' is a keyword
+    ·          ^^^^^^^^^ this is an IDL keyword
+    └──
+ help: the keyword can be escaped by changing to `_publishes`
+
+error[keywords]: `emits` is a keyword and may not be used as an identifier
+    ┌ test.idl:11:10
+    │
+ 11 │     void emits();           // 'emits' is a keyword
+    ·          ^^^^^ this is an IDL keyword
+    └──
+ help: the keyword can be escaped by changing to `_emits`
+
+error[keywords]: `consumes` is a keyword and may not be used as an identifier
+    ┌ test.idl:12:10
+    │
+ 12 │     void consumes();        // 'consumes' is a keyword
+    ·          ^^^^^^^^ this is an IDL keyword
+    └──
+ help: the keyword can be escaped by changing to `_consumes`

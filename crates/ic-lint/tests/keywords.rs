@@ -110,3 +110,249 @@ module interface {  // 'interface' is a keyword
 
     assert_snapshot!(test_lint(source));
 }
+
+#[test]
+fn keyword_as_union_member() {
+    let source = r"
+union Data switch (long) {
+    case 0: string default;    // 'default' is a keyword
+    case 1: long case;         // 'case' is a keyword
+    case 2: boolean switch;    // 'switch' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_typedef_name() {
+    let source = r"
+typedef long typedef;       // 'typedef' is a keyword
+typedef string sequence;    // 'sequence' is a keyword
+typedef boolean fixed;      // 'fixed' is a keyword
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_const_name() {
+    let source = r#"
+const long const = 42;      // 'const' is a keyword
+const string native = "test"; // 'native' is a keyword
+const boolean abstract = true; // 'abstract' is a keyword
+"#;
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_exception_name() {
+    let source = r"
+exception exception {       // 'exception' is a keyword
+    string message;
+};
+
+exception raises {          // 'raises' is a keyword
+    long code;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_interface_name() {
+    let source = r"
+interface oneway {          // 'oneway' is a keyword
+    void process();
+};
+
+interface inout {           // 'inout' is a keyword
+    string getName();
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_bitmask_name() {
+    let source = r"
+bitmask bitmask {           // 'bitmask' is a keyword
+    FLAG1,
+    FLAG2
+};
+
+bitmask bitfield {          // 'bitfield' is a keyword
+    BIT0,
+    BIT1
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_bitset_name() {
+    let source = r"
+bitset<16> bitset {         // 'bitset' is a keyword
+    bit0,
+    bit1
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_interface_method() {
+    let source = r"
+interface Service {
+    void attribute();       // 'attribute' is a keyword
+    string context();       // 'context' is a keyword
+    long factory();         // 'factory' is a keyword
+    boolean readonly();     // 'readonly' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_native_type() {
+    let source = r"
+native Object;              // 'Object' is a keyword
+native ValueBase;           // 'ValueBase' is a keyword
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn data_type_keywords() {
+    let source = r"
+struct DataTypes {
+    long boolean;           // 'boolean' is a keyword
+    string char;            // 'char' is a keyword
+    float double;           // 'double' is a keyword
+    double float;           // 'float' is a keyword
+    octet octet;            // 'octet' is a keyword
+    short short;            // 'short' is a keyword
+    long long;              // 'long' is a keyword
+    wchar wchar;            // 'wchar' is a keyword
+    wstring wstring;        // 'wstring' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn integer_type_keywords() {
+    let source = r"
+struct IntTypes {
+    long int8;              // 'int8' is a keyword
+    long int16;             // 'int16' is a keyword
+    long int32;             // 'int32' is a keyword
+    long int64;             // 'int64' is a keyword
+    unsigned long uint8;    // 'uint8' is a keyword
+    unsigned long uint16;   // 'uint16' is a keyword
+    unsigned long uint32;   // 'uint32' is a keyword
+    unsigned long uint64;   // 'uint64' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn boolean_literal_keywords() {
+    let source = r"
+struct BoolLiterals {
+    boolean true;           // 'true' is a keyword
+    boolean TRUE;           // 'TRUE' is a keyword
+    boolean false;          // 'false' is a keyword
+    boolean FALSE;          // 'FALSE' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn component_keywords() {
+    let source = r"
+interface ComponentTest {
+    void component();       // 'component' is a keyword
+    void connector();       // 'connector' is a keyword
+    void port();            // 'port' is a keyword
+    void porttype();        // 'porttype' is a keyword
+    void mirrorport();      // 'mirrorport' is a keyword
+    void provides();        // 'provides' is a keyword
+    void uses();            // 'uses' is a keyword
+    void publishes();       // 'publishes' is a keyword
+    void emits();           // 'emits' is a keyword
+    void consumes();        // 'consumes' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn other_keywords() {
+    let source = r"
+struct OtherKeywords {
+    long home;              // 'home' is a keyword
+    string import;          // 'import' is a keyword
+    boolean local;          // 'local' is a keyword
+    float multiple;         // 'multiple' is a keyword
+    double private;         // 'private' is a keyword
+    octet public;           // 'public' is a keyword
+    short supports;         // 'supports' is a keyword
+    long truncatable;       // 'truncatable' is a keyword
+    wchar typeid;           // 'typeid' is a keyword
+    wstring typename;       // 'typename' is a keyword
+    any typeprefix;         // 'typeprefix' is a keyword
+    void eventtype;         // 'eventtype' is a keyword
+    long finder;            // 'finder' is a keyword
+    string manages;         // 'manages' is a keyword
+    boolean primarykey;     // 'primarykey' is a keyword
+    float getraises;        // 'getraises' is a keyword
+    double setraises;       // 'setraises' is a keyword
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_alias() {
+    let source = r"
+alias string alias;         // 'alias' is a keyword
+alias long custom;          // 'custom' is a keyword
+alias boolean valuetype;    // 'valuetype' is a keyword
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_as_map_type() {
+    let source = r"
+typedef map<string, long> map;  // 'map' is a keyword
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_in_const_expression() {
+    let source = r"
+const long SIZE = 10;
+const long any = SIZE + 5;      // 'any' is a keyword
+";
+
+    assert_snapshot!(test_lint(source));
+}

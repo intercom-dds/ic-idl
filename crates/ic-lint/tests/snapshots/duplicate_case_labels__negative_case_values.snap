@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/duplicate_case_labels.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_case]: union 'NegativeUnion' has duplicate case label '-1'
+   ┌ test.idl:6:20
+   │
+ 6 │     case -1: float dup_neg;  // Duplicate
+   ·                    ^^^^^^^ duplicate case label
+   └──

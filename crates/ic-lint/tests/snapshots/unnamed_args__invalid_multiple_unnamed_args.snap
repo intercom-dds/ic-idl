@@ -1,0 +1,5 @@
+---
+source: crates/ic-lint/tests/unnamed_args.rs
+expression: test_lint_hir(source)
+---
+

@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_flag]: duplicate flag `FLAG_1` in bitmask `OctalFlags`
+   ┌ test.idl:5:5
+   │
+ 5 │     FLAG_1 = 04,  // Duplicate name
+   ·     ^^^^^^ duplicate flag
+   └──
+
+error: duplicate registration of name `FLAG_1`
+   ┌ test.idl:5:5
+   │
+ 5 │     FLAG_1 = 04,  // Duplicate name
+   ·     ^^^^^^ redefined here
+   └──

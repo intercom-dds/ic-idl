@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_flag]: duplicate flag `FLAG` in bitmask `OuterFlags`
+   ┌ test.idl:5:9
+   │
+ 5 │         FLAG    // Duplicate
+   ·         ^^^^ duplicate flag
+   └──

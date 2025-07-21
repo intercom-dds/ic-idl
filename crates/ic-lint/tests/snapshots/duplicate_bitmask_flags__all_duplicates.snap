@@ -1,0 +1,45 @@
+---
+source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_flag]: duplicate flag `SAME` in bitmask `AllDuplicates`
+   ┌ test.idl:4:5
+   │
+ 4 │     SAME,
+   ·     ^^^^ duplicate flag
+   └──
+
+error[duplicate_flag]: duplicate flag `SAME` in bitmask `AllDuplicates`
+   ┌ test.idl:5:5
+   │
+ 5 │     SAME,
+   ·     ^^^^ duplicate flag
+   └──
+
+error[duplicate_flag]: duplicate flag `SAME` in bitmask `AllDuplicates`
+   ┌ test.idl:6:5
+   │
+ 6 │     SAME
+   ·     ^^^^ duplicate flag
+   └──
+
+error: duplicate registration of name `SAME`
+   ┌ test.idl:4:5
+   │
+ 4 │     SAME,
+   ·     ^^^^ redefined here
+   └──
+
+error: duplicate registration of name `SAME`
+   ┌ test.idl:5:5
+   │
+ 5 │     SAME,
+   ·     ^^^^ redefined here
+   └──
+
+error: duplicate registration of name `SAME`
+   ┌ test.idl:6:5
+   │
+ 6 │     SAME
+   ·     ^^^^ redefined here
+   └──

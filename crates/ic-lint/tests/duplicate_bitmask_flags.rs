@@ -87,3 +87,134 @@ bitmask Status {
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn same_value_different_names() {
+    let source = r"
+bitmask Aliases {
+    FLAG_A = 1,
+    FLAG_B = 2,
+    FLAG_A_ALIAS = 1,  // Same value as FLAG_A, allowed
+    FLAG_C = 4
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn empty_bitmask() {
+    let source = r"
+bitmask EmptyFlags {
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn single_flag_bitmask() {
+    let source = r"
+bitmask SingleFlag {
+    ONLY_FLAG
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn case_sensitive_duplicates() {
+    let source = r"
+bitmask CaseSensitive {
+    flag,
+    FLAG,     // Different case, not a duplicate
+    Flag,     // Another different case
+    flag      // Duplicate of first one
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn multiple_bitmasks() {
+    let source = r"
+bitmask FirstFlags {
+    FLAG_A,
+    FLAG_B,
+    FLAG_A    // Duplicate in first bitmask
+};
+
+bitmask SecondFlags {
+    FLAG_A,   // Same name as in FirstFlags, but different bitmask
+    FLAG_B,
+    FLAG_C
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn nested_module_bitmasks() {
+    let source = r"
+module Outer {
+    bitmask OuterFlags {
+        FLAG,
+        FLAG    // Duplicate
+    };
+    
+    module Inner {
+        bitmask InnerFlags {
+            FLAG,    // Same name as outer, but different scope
+            OTHER
+        };
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn all_duplicates() {
+    let source = r"
+bitmask AllDuplicates {
+    SAME,
+    SAME,
+    SAME,
+    SAME
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn hex_value_duplicates() {
+    let source = r"
+bitmask HexFlags {
+    FLAG_A = 0x01,
+    FLAG_B = 0x02,
+    FLAG_A = 0x04,  // Duplicate name
+    FLAG_C = 0x08
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn octal_value_duplicates() {
+    let source = r"
+bitmask OctalFlags {
+    FLAG_1 = 01,
+    FLAG_2 = 02,
+    FLAG_1 = 04,  // Duplicate name
+    FLAG_3 = 010
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}

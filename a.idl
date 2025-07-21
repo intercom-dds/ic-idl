@@ -1,3 +1,0 @@
-struct Foo {
-	@range(min=0, max=299) octet value;
-};

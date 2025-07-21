@@ -34,11 +34,11 @@ fn test_empty_idl() {
     let vfs = SourceMap::default();
     let parsed = from_str("");
     assert!(parsed.errors.is_empty());
-    
+
     // Test AST lowering
     let ptree_ast = from_ast(&parsed, &vfs);
     assert!(ptree_ast.diagnostics().is_none());
-    
+
     // Test HIR lowering
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
@@ -58,14 +58,14 @@ fn test_deeply_nested_types() {
             sequence<map<string, sequence<array<long, 5>>>> mixed;
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -84,14 +84,14 @@ fn test_mutually_recursive_structs() {
             @shared A a;
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -111,11 +111,11 @@ fn test_empty_containers() {
         module EmptyModule {
         };
     "#;
-    
+
     let _vfs = SourceMap::default();
     let parsed = from_str(idl);
     // Empty enum/bitmask might have parse errors, but struct/interface should work
-    
+
     let _hir = ic_hir::from_ast(parsed.tree);
     // Check if we can at least create the HIR
 }
@@ -140,14 +140,14 @@ fn test_numeric_literals() {
         const boolean B1 = TRUE;
         const boolean B2 = FALSE;
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -190,14 +190,14 @@ fn test_union_edge_cases() {
                 long b;
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -223,14 +223,14 @@ fn test_interface_edge_cases() {
             void allTypes(in long input, out long output, inout long both);
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -261,14 +261,14 @@ fn test_annotation_edge_cases() {
             long field;
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -287,14 +287,14 @@ fn test_type_bounds() {
             map<string, long, 1> single_map;
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -326,14 +326,14 @@ fn test_scoped_references() {
             A::B::C::S3 s3;
         };
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty());
-    
+
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -356,14 +356,14 @@ fn test_const_expression_references() {
         const string PREFIX = "ID_";
         const long VERSION = 1;
     "#;
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
     assert!(parsed.errors.is_empty());
-    
+
     let hir = ic_hir::from_ast(parsed.tree);
     // Const expressions might have limitations
-    
+
     if hir.errors.is_empty() {
         let ptree = from_hir(&hir, &vfs);
         assert!(ptree.diagnostics().is_none());

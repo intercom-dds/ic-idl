@@ -33,11 +33,15 @@ use ic_vfs::SourceMap;
 fn parse_and_lower_hir(idl: &str) -> (ic_ptree::ParseResult, ResolvedGraph) {
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
-    assert!(parsed.errors.is_empty(), "Parse errors: {:?}", parsed.errors);
-    
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
-    
+
     let ptree = from_hir(&hir, &vfs);
     (ptree, hir)
 }
@@ -61,7 +65,7 @@ fn test_primitive_types() {
             long double ld;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -76,7 +80,7 @@ fn test_string_types() {
             wstring<200> ws2;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -91,7 +95,7 @@ fn test_sequence_types() {
             sequence<sequence<double>> nested;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -105,7 +109,7 @@ fn test_array_types() {
             string a3[100];
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -119,7 +123,7 @@ fn test_map_types() {
             map<string, sequence<double>> m3;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -140,7 +144,7 @@ fn test_enum_lowering() {
             FAILURE
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -155,7 +159,7 @@ fn test_bitmask_lowering() {
             FLAG_C
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -171,7 +175,7 @@ fn test_struct_inheritance() {
             string name;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -200,7 +204,7 @@ fn test_union_lowering() {
             RED, GREEN, BLUE
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -213,7 +217,7 @@ fn test_exception_lowering() {
             long code;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -231,7 +235,7 @@ fn test_interface_lowering() {
             void process();
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -245,7 +249,7 @@ fn test_const_lowering() {
         const boolean ENABLED = TRUE;
         const char DELIMITER = ',';
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -257,7 +261,7 @@ fn test_typedef_lowering() {
         typedef sequence<string> StringList;
         typedef string Name[50];
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -278,7 +282,7 @@ fn test_module_lowering() {
             };
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -296,7 +300,7 @@ fn test_forward_declarations() {
             long value;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -315,7 +319,7 @@ fn test_annotations() {
             void oldMethod();
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -334,7 +338,7 @@ fn test_annotation_declarations() {
             long id;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -347,7 +351,7 @@ fn test_valuetype_lowering() {
             public string currency;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -361,7 +365,7 @@ fn test_native_type() {
             Handle h;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -374,7 +378,7 @@ fn test_self_referential_struct() {
             Node next;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -389,7 +393,7 @@ fn test_const_references() {
             octet data[SIZE];
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -405,7 +409,7 @@ fn test_complex_nested_types() {
             sequence<map<long, sequence<double>>> nested;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }
@@ -418,7 +422,7 @@ fn test_any_and_fixed_types() {
             fixed<10, 2> price;
         };
     "#;
-    
+
     let (ptree, _) = parse_and_lower_hir(idl);
     assert!(ptree.diagnostics().is_none());
 }

@@ -334,6 +334,10 @@ impl NumericValue for GenericNumeric {
         let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
 
         match (lhs, rhs) {
+            (Self::Char(a), Self::Char(b)) => {
+                let result = (a as u32).wrapping_add(b as u32);
+                Ok(Self::Char(char::from_u32(result).unwrap_or('\0')))
+            }
             (Self::Int8(a), Self::Int8(b)) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_add(b))),
                 OverflowBehavior::Error => a
@@ -409,6 +413,10 @@ impl NumericValue for GenericNumeric {
         let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
 
         match (lhs, rhs) {
+            (Self::Char(a), Self::Char(b)) => {
+                let result = (a as u32).wrapping_sub(b as u32);
+                Ok(Self::Char(char::from_u32(result).unwrap_or('\0')))
+            }
             (Self::Int8(a), Self::Int8(b)) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_sub(b))),
                 OverflowBehavior::Error => a
@@ -484,6 +492,10 @@ impl NumericValue for GenericNumeric {
         let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
 
         match (lhs, rhs) {
+            (Self::Char(a), Self::Char(b)) => {
+                let result = (a as u32).wrapping_mul(b as u32);
+                Ok(Self::Char(char::from_u32(result).unwrap_or('\0')))
+            }
             (Self::Int8(a), Self::Int8(b)) => match config.overflow {
                 OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_mul(b))),
                 OverflowBehavior::Error => a
@@ -559,6 +571,13 @@ impl NumericValue for GenericNumeric {
         let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
 
         match (lhs, rhs) {
+            (Self::Char(a), Self::Char(b)) => {
+                if b == '\0' {
+                    return Err(Error::DivisionByZero);
+                }
+                let result = (a as u32) / (b as u32);
+                Ok(Self::Char(char::from_u32(result).unwrap_or('\0')))
+            }
             (Self::Int8(a), Self::Int8(b)) => {
                 if b == 0 {
                     return Err(Error::DivisionByZero);
@@ -652,6 +671,13 @@ impl NumericValue for GenericNumeric {
         let (lhs, rhs) = Self::promote_for_arithmetic(*self, *rhs);
 
         match (lhs, rhs) {
+            (Self::Char(a), Self::Char(b)) => {
+                if b == '\0' {
+                    return Err(Error::ModuloByZero);
+                }
+                let result = (a as u32) % (b as u32);
+                Ok(Self::Char(char::from_u32(result).unwrap_or('\0')))
+            }
             (Self::Int8(a), Self::Int8(b)) => {
                 if b == 0 {
                     return Err(Error::ModuloByZero);
@@ -662,7 +688,7 @@ impl NumericValue for GenericNumeric {
                         .checked_rem(b)
                         .map(Self::Int8)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int8(a % b)),
+                    OverflowBehavior::Saturate => Ok(Self::Int8(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt8(a), Self::UInt8(b)) => {
@@ -681,7 +707,7 @@ impl NumericValue for GenericNumeric {
                         .checked_rem(b)
                         .map(Self::Int16)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int16(a % b)),
+                    OverflowBehavior::Saturate => Ok(Self::Int16(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt16(a), Self::UInt16(b)) => {
@@ -700,7 +726,7 @@ impl NumericValue for GenericNumeric {
                         .checked_rem(b)
                         .map(Self::Int32)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int32(a % b)),
+                    OverflowBehavior::Saturate => Ok(Self::Int32(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt32(a), Self::UInt32(b)) => {
@@ -719,7 +745,7 @@ impl NumericValue for GenericNumeric {
                         .checked_rem(b)
                         .map(Self::Int64)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int64(a % b)),
+                    OverflowBehavior::Saturate => Ok(Self::Int64(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt64(a), Self::UInt64(b)) => {

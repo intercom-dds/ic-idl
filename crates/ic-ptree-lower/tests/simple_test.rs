@@ -35,41 +35,41 @@ fn test_empty_input() {
     let vfs = SourceMap::default();
     let parsed = from_str("");
     assert!(parsed.errors.is_empty());
-    
+
     // AST lowering should work with empty input
     let ptree_ast = from_ast(&parsed, &vfs);
     // Just check it doesn't panic - the result might have diagnostics
-    
+
     // HIR lowering should also work
     let hir = ic_hir::from_ast(parsed.tree);
     let ptree_hir = from_hir(&hir, &vfs);
     // Just check it doesn't panic
 }
 
-#[test] 
+#[test]
 fn test_minimal_struct() {
     // Try the simplest possible valid IDL
     let idl = "struct S { };";
-    
+
     let vfs = SourceMap::default();
     let parsed = from_str(idl);
-    
+
     if !parsed.errors.is_empty() {
         eprintln!("Parse errors: {:?}", parsed.errors);
         return;
     }
-    
+
     // Try AST lowering
     let ptree_ast = from_ast(&parsed, &vfs);
     eprintln!("AST lowering result: {:?}", ptree_ast.diagnostics());
-    
+
     // Try HIR lowering
     let hir = ic_hir::from_ast(parsed.tree);
     if !hir.errors.is_empty() {
         eprintln!("HIR errors: {:?}", hir.errors);
         return;
     }
-    
+
     let ptree_hir = from_hir(&hir, &vfs);
     eprintln!("HIR lowering result: {:?}", ptree_hir.diagnostics());
 }
@@ -78,20 +78,20 @@ fn test_minimal_struct() {
 fn test_from_file() {
     // Test using actual IDL files that should work
     let vfs = SourceMap::default();
-    
+
     // Test with builtin annotations which we know should parse
     let builtin_idl = include_str!("../idl/annotations.idl");
     let parsed = from_str(builtin_idl);
-    
+
     if !parsed.errors.is_empty() {
         eprintln!("Parse errors: {:?}", parsed.errors);
         return;
     }
-    
+
     // This should definitely work since it's used internally
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
-    
+
     let ptree = from_hir(&hir, &vfs);
     // The builtin annotations should lower successfully
 }

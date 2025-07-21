@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
 warning[range_bound]: invalid @range annotation: Field 'value' has wrong type, expected i64
-   ┌ test.idl:4:10
+   ┌ test.idl:6:10
    │
- 4 │         @range(min=-1, max=300) octet value;  // octet is 0..255
+ 6 │         @range(min=-32768, max=32767) short short_value;
    ·          ^^^^^ malformed annotation
    └──

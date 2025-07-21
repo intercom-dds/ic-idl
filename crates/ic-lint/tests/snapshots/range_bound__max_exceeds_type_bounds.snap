@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+warning[range_bound]: @max value 299 exceeds type maximum 255
+   ┌ test.idl:4:10
+   │
+ 4 │         @max(299) octet value;  // octet max is 255
+   ·          ^^^ value out of bounds
+   └──
+ help: valid range is 0..255

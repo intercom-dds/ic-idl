@@ -28,7 +28,7 @@
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::annotation::{AnnCtsExt, Max, Min, Range};
-use ic_hir::hir::{Ann, Def};
+use ic_hir::hir::{Ann, Def, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -54,7 +54,63 @@ impl<'a> Lint<'a> for RangeBound<'a> {
 }
 
 impl RangeBound<'_> {
-    fn check_range_annotation(&mut self, ann: &Ann) {
+    /// Get the valid range for a type
+    fn get_type_bounds(ty: &Ty) -> Option<(i64, i64)> {
+        match &ty.kind {
+            TyKind::Primitive(prim) => match prim {
+                PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),
+                PrimitiveTy::Int16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
+                PrimitiveTy::Int32 => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
+                PrimitiveTy::Int64 => Some((i64::MIN, i64::MAX)),
+                PrimitiveTy::UInt8 => Some((0, i64::from(u8::MAX))),
+                PrimitiveTy::UInt16 => Some((0, i64::from(u16::MAX))),
+                PrimitiveTy::UInt32 => Some((0, i64::from(u32::MAX))),
+                PrimitiveTy::UInt64 => Some((0, 9_223_372_036_854_775_807)), // i64::MAX
+                PrimitiveTy::Char => Some((0, 127)),                         // ASCII range
+                PrimitiveTy::WChar => Some((0, 65535)),                      // Unicode BMP
+                _ => None,
+            },
+            TyKind::Adt(_) => {
+                // TODO: Follow typedef/alias to get underlying type
+                None
+            }
+            _ => None,
+        }
+    }
+
+    fn check_value_in_bounds(&mut self, value: i64, ty: &Ty, ann: &Ann, annotation_type: &str) {
+        if let Some((min_bound, max_bound)) = Self::get_type_bounds(ty) {
+            if value < min_bound {
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    format!(
+                        "@{annotation_type} value {value} is less than type minimum {min_bound}"
+                    ),
+                    Label::new(ann.ident.span).message("value out of bounds"),
+                ) {
+                    Self::report(
+                        self.ctx,
+                        diag.help(format!("valid range is {min_bound}..{max_bound}")),
+                    );
+                }
+            } else if value > max_bound {
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    format!("@{annotation_type} value {value} exceeds type maximum {max_bound}"),
+                    Label::new(ann.ident.span).message("value out of bounds"),
+                ) {
+                    Self::report(
+                        self.ctx,
+                        diag.help(format!("valid range is {min_bound}..{max_bound}")),
+                    );
+                }
+            }
+        }
+    }
+
+    fn check_range_annotation(&mut self, ann: &Ann, ty: &Ty) {
         if ann.ident.name != "range" {
             return;
         }
@@ -62,6 +118,16 @@ impl RangeBound<'_> {
         // Use the CTS annotation system to deserialize the range
         match ann.unmarshal::<Range>("range") {
             Ok(range) => {
+                // Check bounds for min value
+                if let Some(min) = range.min {
+                    self.check_value_in_bounds(min, ty, ann, "range min");
+                }
+
+                // Check bounds for max value
+                if let Some(max) = range.max {
+                    self.check_value_in_bounds(max, ty, ann, "range max");
+                }
+
                 // Validate the range values
                 if let (Some(min), Some(max)) = (range.min, range.max) {
                     if min > max {
@@ -102,11 +168,13 @@ impl RangeBound<'_> {
         }
     }
 
-    fn check_min_max_annotations(&mut self, annotations: &[Ann]) {
+    fn check_min_max_annotations(&mut self, annotations: &[Ann], ty: &Ty) {
         let mut min_value: Option<i64> = None;
         let mut max_value: Option<i64> = None;
         let mut min_span = None;
         let mut max_span = None;
+        let mut min_ann = None;
+        let mut max_ann = None;
 
         for ann in annotations {
             match ann.ident.name.as_str() {
@@ -114,6 +182,7 @@ impl RangeBound<'_> {
                     Ok(min) => {
                         min_value = Some(min.value);
                         min_span = Some(ann.ident.span);
+                        min_ann = Some(ann);
                     }
                     Err(err) => {
                         if let Some(diag) = self.ctx.diag_span(
@@ -130,6 +199,7 @@ impl RangeBound<'_> {
                     Ok(max) => {
                         max_value = Some(max.value);
                         max_span = Some(ann.ident.span);
+                        max_ann = Some(ann);
                     }
                     Err(err) => {
                         if let Some(diag) = self.ctx.diag_span(
@@ -144,6 +214,16 @@ impl RangeBound<'_> {
                 },
                 _ => {}
             }
+        }
+
+        // Check type bounds for min value
+        if let (Some(value), Some(ann)) = (min_value, min_ann) {
+            self.check_value_in_bounds(value, ty, ann, "min");
+        }
+
+        // Check type bounds for max value
+        if let (Some(value), Some(ann)) = (max_value, max_ann) {
+            self.check_value_in_bounds(value, ty, ann, "max");
         }
 
         // Check if min > max when both are present
@@ -167,34 +247,51 @@ impl RangeBound<'_> {
         }
     }
 
-    fn check_annotations(&mut self, annotations: &[Ann]) {
+    fn check_annotations(&mut self, annotations: &[Ann], ty: &Ty) {
         // Check individual @range annotations
         for ann in annotations {
-            self.check_range_annotation(ann);
+            self.check_range_annotation(ann, ty);
         }
 
         // Check @min/@max combinations
-        self.check_min_max_annotations(annotations);
+        self.check_min_max_annotations(annotations, ty);
     }
 }
 
 impl<'a> Visitor<'a> for RangeBound<'a> {
     fn visit_def(&mut self, def: &'a Def) {
-        self.check_annotations(&def.annotations);
+        // Check annotations on const and alias definitions
+        use ic_hir::hir::DefKind;
+        match &def.kind {
+            DefKind::Const(const_ty) => {
+                self.check_annotations(&def.annotations, &const_ty.ty);
+            }
+            DefKind::Alias(alias_ty) => {
+                self.check_annotations(&def.annotations, &alias_ty.ty);
+            }
+            _ => {}
+        }
         ic_hir::visit::walk_def(self, def);
     }
 
     fn visit_struct(&mut self, _def: &'a Def, data: &'a ic_hir::hir::StructTy) {
         for member in &data.members {
-            self.check_annotations(&member.annotations);
+            self.check_annotations(&member.annotations, &member.ty);
         }
         ic_hir::visit::walk_struct(self, data);
     }
 
     fn visit_union(&mut self, _def: &'a Def, data: &'a ic_hir::hir::UnionTy) {
         for variant in &data.variants {
-            self.check_annotations(&variant.annotations);
+            self.check_annotations(&variant.annotations, &variant.ty);
         }
         ic_hir::visit::walk_union(self, data);
+    }
+
+    fn visit_except(&mut self, _def: &'a Def, data: &'a ic_hir::hir::ExceptTy) {
+        for member in &data.members {
+            self.check_annotations(&member.annotations, &member.ty);
+        }
+        ic_hir::visit::walk_except(self, data);
     }
 }

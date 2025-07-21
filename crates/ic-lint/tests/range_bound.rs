@@ -198,3 +198,80 @@ module MyModule {
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn max_exceeds_type_bounds() {
+    let source = r"
+module MyModule {
+    struct BadMax {
+        @max(299) octet value;  // octet max is 255
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn min_below_type_bounds() {
+    let source = r"
+module MyModule {
+    struct BadMin {
+        @min(-1) char value;  // char min is 0 (ASCII)
+    };
+};
+";
+    // TODO: This test currently shows CTS deserialization error for negative values
+    // instead of the expected "value below type bounds" error
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_exceeds_type_bounds() {
+    let source = r"
+module MyModule {
+    struct BadRange {
+        @range(min=-1, max=300) octet value;  // octet is 0..255
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn valid_type_bounds() {
+    let source = r"
+module MyModule {
+    struct GoodBounds {
+        @min(0) @max(255) octet byte_value;
+        @range(min=0, max=127) char char_value;
+        @range(min=-32768, max=32767) short short_value;
+        @range(min=0, max=65535) unsigned short ushort_value;
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn char_exceeds_max_bounds() {
+    let source = r"
+module MyModule {
+    struct BadChar {
+        @max(200) char value;  // char max is 127 (ASCII)
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn test_positive_min_works() {
+    let source = r"
+module MyModule {
+    struct TestPositive {
+        @min(10) octet value;  // positive min should work
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}

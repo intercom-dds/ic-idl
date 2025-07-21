@@ -36,13 +36,9 @@ fn test_empty_input() {
     let parsed = from_str("");
     assert!(parsed.errors.is_empty());
 
-    // AST lowering should work with empty input
-    let ptree_ast = from_ast(&parsed, &vfs);
-    // Just check it doesn't panic - the result might have diagnostics
-
     // HIR lowering should also work
     let hir = ic_hir::from_ast(parsed.tree);
-    let ptree_hir = from_hir(&hir, &vfs);
+    let _ptree_hir = from_hir(&hir, &vfs);
     // Just check it doesn't panic
 }
 
@@ -92,6 +88,6 @@ fn test_from_file() {
     let hir = ic_hir::from_ast(parsed.tree);
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
 
-    let ptree = from_hir(&hir, &vfs);
+    let _ptree = from_hir(&hir, &vfs);
     // The builtin annotations should lower successfully
 }

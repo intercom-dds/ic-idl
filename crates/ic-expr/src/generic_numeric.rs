@@ -73,6 +73,7 @@ impl GenericNumeric {
         clippy::cast_sign_loss,
         clippy::cast_possible_truncation
     )]
+    #[allow(clippy::too_many_lines)]
     fn promote_to(&self, target: &Self) -> Self {
         match (self, target) {
             // Already the same type
@@ -562,7 +563,7 @@ impl NumericValue for GenericNumeric {
             },
             (Self::Float(a), Self::Float(b)) => Ok(Self::Float(a * b)),
             (Self::Double(a), Self::Double(b)) => Ok(Self::Double(a * b)),
-            _ => unreachable!("promotion should ensure matching types"),
+            _ => Err(Error::Custom("type mismatch in multiplication".to_string())),
         }
     }
 
@@ -683,12 +684,13 @@ impl NumericValue for GenericNumeric {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int8(a.wrapping_rem(b))),
+                    OverflowBehavior::Wrap | OverflowBehavior::Saturate => {
+                        Ok(Self::Int8(a.wrapping_rem(b)))
+                    }
                     OverflowBehavior::Error => a
                         .checked_rem(b)
                         .map(Self::Int8)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int8(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt8(a), Self::UInt8(b)) => {
@@ -702,12 +704,13 @@ impl NumericValue for GenericNumeric {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int16(a.wrapping_rem(b))),
+                    OverflowBehavior::Wrap | OverflowBehavior::Saturate => {
+                        Ok(Self::Int16(a.wrapping_rem(b)))
+                    }
                     OverflowBehavior::Error => a
                         .checked_rem(b)
                         .map(Self::Int16)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int16(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt16(a), Self::UInt16(b)) => {
@@ -721,12 +724,13 @@ impl NumericValue for GenericNumeric {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int32(a.wrapping_rem(b))),
+                    OverflowBehavior::Wrap | OverflowBehavior::Saturate => {
+                        Ok(Self::Int32(a.wrapping_rem(b)))
+                    }
                     OverflowBehavior::Error => a
                         .checked_rem(b)
                         .map(Self::Int32)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int32(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt32(a), Self::UInt32(b)) => {
@@ -740,12 +744,13 @@ impl NumericValue for GenericNumeric {
                     return Err(Error::ModuloByZero);
                 }
                 match config.overflow {
-                    OverflowBehavior::Wrap => Ok(Self::Int64(a.wrapping_rem(b))),
+                    OverflowBehavior::Wrap | OverflowBehavior::Saturate => {
+                        Ok(Self::Int64(a.wrapping_rem(b)))
+                    }
                     OverflowBehavior::Error => a
                         .checked_rem(b)
                         .map(Self::Int64)
                         .ok_or(Error::Overflow("modulo")),
-                    OverflowBehavior::Saturate => Ok(Self::Int64(a.wrapping_rem(b))),
                 }
             }
             (Self::UInt64(a), Self::UInt64(b)) => {

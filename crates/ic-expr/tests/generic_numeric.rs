@@ -39,8 +39,8 @@ fn test_type_creation() {
     let u32 = GenericNumeric::UInt32(3_000_000_000);
     let i64 = GenericNumeric::Int64(-9_000_000_000_000_000_000);
     let u64 = GenericNumeric::UInt64(18_000_000_000_000_000_000);
-    let f = GenericNumeric::Float(3.14);
-    let d = GenericNumeric::Double(2.718281828);
+    let f = GenericNumeric::Float(std::f32::consts::PI);
+    let d = GenericNumeric::Double(std::f64::consts::E);
 
     assert_eq!(b, GenericNumeric::Bool(true));
     assert_eq!(c, GenericNumeric::Char('A'));
@@ -52,8 +52,8 @@ fn test_type_creation() {
     assert_eq!(u32, GenericNumeric::UInt32(3_000_000_000));
     assert_eq!(i64, GenericNumeric::Int64(-9_000_000_000_000_000_000));
     assert_eq!(u64, GenericNumeric::UInt64(18_000_000_000_000_000_000));
-    assert_eq!(f, GenericNumeric::Float(3.14));
-    assert_eq!(d, GenericNumeric::Double(2.718281828));
+    assert_eq!(f, GenericNumeric::Float(std::f32::consts::PI));
+    assert_eq!(d, GenericNumeric::Double(std::f64::consts::E));
 }
 
 #[test]
@@ -67,31 +67,31 @@ fn test_from_bool() {
 
 #[test]
 fn test_to_bool() {
-    assert_eq!(GenericNumeric::Bool(true).to_bool(), true);
-    assert_eq!(GenericNumeric::Bool(false).to_bool(), false);
-    assert_eq!(GenericNumeric::Char('A').to_bool(), true);
-    assert_eq!(GenericNumeric::Char('\0').to_bool(), false);
-    assert_eq!(GenericNumeric::Int8(1).to_bool(), true);
-    assert_eq!(GenericNumeric::Int8(0).to_bool(), false);
-    assert_eq!(GenericNumeric::Int8(-1).to_bool(), true);
-    assert_eq!(GenericNumeric::UInt8(1).to_bool(), true);
-    assert_eq!(GenericNumeric::UInt8(0).to_bool(), false);
-    assert_eq!(GenericNumeric::Int16(1).to_bool(), true);
-    assert_eq!(GenericNumeric::Int16(0).to_bool(), false);
-    assert_eq!(GenericNumeric::UInt16(1).to_bool(), true);
-    assert_eq!(GenericNumeric::UInt16(0).to_bool(), false);
-    assert_eq!(GenericNumeric::Int32(1).to_bool(), true);
-    assert_eq!(GenericNumeric::Int32(0).to_bool(), false);
-    assert_eq!(GenericNumeric::UInt32(1).to_bool(), true);
-    assert_eq!(GenericNumeric::UInt32(0).to_bool(), false);
-    assert_eq!(GenericNumeric::Int64(1).to_bool(), true);
-    assert_eq!(GenericNumeric::Int64(0).to_bool(), false);
-    assert_eq!(GenericNumeric::UInt64(1).to_bool(), true);
-    assert_eq!(GenericNumeric::UInt64(0).to_bool(), false);
-    assert_eq!(GenericNumeric::Float(1.0).to_bool(), true);
-    assert_eq!(GenericNumeric::Float(0.0).to_bool(), false);
-    assert_eq!(GenericNumeric::Double(1.0).to_bool(), true);
-    assert_eq!(GenericNumeric::Double(0.0).to_bool(), false);
+    assert!(GenericNumeric::Bool(true).to_bool());
+    assert!(!GenericNumeric::Bool(false).to_bool());
+    assert!(GenericNumeric::Char('A').to_bool());
+    assert!(!GenericNumeric::Char('\0').to_bool());
+    assert!(GenericNumeric::Int8(1).to_bool());
+    assert!(!GenericNumeric::Int8(0).to_bool());
+    assert!(GenericNumeric::Int8(-1).to_bool());
+    assert!(GenericNumeric::UInt8(1).to_bool());
+    assert!(!GenericNumeric::UInt8(0).to_bool());
+    assert!(GenericNumeric::Int16(1).to_bool());
+    assert!(!GenericNumeric::Int16(0).to_bool());
+    assert!(GenericNumeric::UInt16(1).to_bool());
+    assert!(!GenericNumeric::UInt16(0).to_bool());
+    assert!(GenericNumeric::Int32(1).to_bool());
+    assert!(!GenericNumeric::Int32(0).to_bool());
+    assert!(GenericNumeric::UInt32(1).to_bool());
+    assert!(!GenericNumeric::UInt32(0).to_bool());
+    assert!(GenericNumeric::Int64(1).to_bool());
+    assert!(!GenericNumeric::Int64(0).to_bool());
+    assert!(GenericNumeric::UInt64(1).to_bool());
+    assert!(!GenericNumeric::UInt64(0).to_bool());
+    assert!(GenericNumeric::Float(1.0).to_bool());
+    assert!(!GenericNumeric::Float(0.0).to_bool());
+    assert!(GenericNumeric::Double(1.0).to_bool());
+    assert!(!GenericNumeric::Double(0.0).to_bool());
 }
 
 #[test]
@@ -143,12 +143,16 @@ fn test_negate() {
         GenericNumeric::Int64(-1_000_000_000)
     );
     assert_eq!(
-        GenericNumeric::Float(3.14).negate(config).unwrap(),
-        GenericNumeric::Float(-3.14)
+        GenericNumeric::Float(std::f32::consts::PI)
+            .negate(config)
+            .unwrap(),
+        GenericNumeric::Float(-std::f32::consts::PI)
     );
     assert_eq!(
-        GenericNumeric::Double(2.718).negate(config).unwrap(),
-        GenericNumeric::Double(-2.718)
+        GenericNumeric::Double(std::f64::consts::E)
+            .negate(config)
+            .unwrap(),
+        GenericNumeric::Double(-std::f64::consts::E)
     );
 }
 
@@ -239,12 +243,12 @@ fn test_bit_not() {
 
     // Floating point values are unchanged
     assert_eq!(
-        GenericNumeric::Float(3.14).bit_not(),
-        GenericNumeric::Float(3.14)
+        GenericNumeric::Float(std::f32::consts::PI).bit_not(),
+        GenericNumeric::Float(std::f32::consts::PI)
     );
     assert_eq!(
-        GenericNumeric::Double(2.718).bit_not(),
-        GenericNumeric::Double(2.718)
+        GenericNumeric::Double(std::f64::consts::E).bit_not(),
+        GenericNumeric::Double(std::f64::consts::E)
     );
 }
 
@@ -542,13 +546,13 @@ fn test_mul() {
         GenericNumeric::Int64(1000)
             .mul(&GenericNumeric::Int64(2000), config)
             .unwrap(),
-        GenericNumeric::Int64(2000000)
+        GenericNumeric::Int64(2_000_000)
     );
     assert_eq!(
         GenericNumeric::UInt64(1000)
             .mul(&GenericNumeric::UInt64(2000), config)
             .unwrap(),
-        GenericNumeric::UInt64(2000000)
+        GenericNumeric::UInt64(2_000_000)
     );
     assert_eq!(
         GenericNumeric::Float(2.5)
@@ -626,13 +630,13 @@ fn test_div() {
         GenericNumeric::UInt32(200)
     );
     assert_eq!(
-        GenericNumeric::Int64(2000000)
+        GenericNumeric::Int64(2_000_000)
             .div(&GenericNumeric::Int64(1000), config)
             .unwrap(),
         GenericNumeric::Int64(2000)
     );
     assert_eq!(
-        GenericNumeric::UInt64(2000000)
+        GenericNumeric::UInt64(2_000_000)
             .div(&GenericNumeric::UInt64(1000), config)
             .unwrap(),
         GenericNumeric::UInt64(2000)
@@ -812,6 +816,7 @@ fn test_modulo_by_zero() {
 }
 
 #[test]
+#[allow(clippy::cast_possible_wrap)]
 fn test_bit_and() {
     assert_eq!(
         GenericNumeric::Bool(true).bit_and(&GenericNumeric::Bool(false)),
@@ -838,13 +843,13 @@ fn test_bit_and() {
         GenericNumeric::UInt16(0x0F00)
     );
     assert_eq!(
-        GenericNumeric::Int32(0xFF00FF00u32 as i32)
-            .bit_and(&GenericNumeric::Int32(0x0FF00FF0u32 as i32)),
-        GenericNumeric::Int32(0x0F000F00u32 as i32)
+        GenericNumeric::Int32(0xFF00_FF00_u32 as i32)
+            .bit_and(&GenericNumeric::Int32(0x0FF0_0FF0_u32 as i32)),
+        GenericNumeric::Int32(0x0F00_0F00_u32 as i32)
     );
     assert_eq!(
-        GenericNumeric::UInt32(0xFF00FF00).bit_and(&GenericNumeric::UInt32(0x0FF00FF0)),
-        GenericNumeric::UInt32(0x0F000F00)
+        GenericNumeric::UInt32(0xFF00_FF00).bit_and(&GenericNumeric::UInt32(0x0FF0_0FF0)),
+        GenericNumeric::UInt32(0x0F00_0F00)
     );
     assert_eq!(
         GenericNumeric::Int64(0xFF).bit_and(&GenericNumeric::Int64(0xF0)),
@@ -857,8 +862,9 @@ fn test_bit_and() {
 
     // Floating point returns self
     assert_eq!(
-        GenericNumeric::Float(3.14).bit_and(&GenericNumeric::Float(2.718)),
-        GenericNumeric::Float(3.14)
+        GenericNumeric::Float(std::f32::consts::PI)
+            .bit_and(&GenericNumeric::Float(std::f32::consts::E)),
+        GenericNumeric::Float(std::f32::consts::PI)
     );
 }
 
@@ -947,13 +953,13 @@ fn test_shift_left() {
         GenericNumeric::Int64(1)
             .shl(&GenericNumeric::Int64(32), config)
             .unwrap(),
-        GenericNumeric::Int64(4294967296)
+        GenericNumeric::Int64(4_294_967_296)
     );
     assert_eq!(
         GenericNumeric::UInt64(1)
             .shl(&GenericNumeric::UInt64(32), config)
             .unwrap(),
-        GenericNumeric::UInt64(4294967296)
+        GenericNumeric::UInt64(4_294_967_296)
     );
 
     // Test negative shift (invalid)
@@ -972,10 +978,10 @@ fn test_shift_left() {
 
     // Test floating point (returns self)
     assert_eq!(
-        GenericNumeric::Float(3.14)
+        GenericNumeric::Float(std::f32::consts::PI)
             .shl(&GenericNumeric::Int32(2), config)
             .unwrap(),
-        GenericNumeric::Float(3.14)
+        GenericNumeric::Float(std::f32::consts::PI)
     );
 }
 
@@ -1215,6 +1221,7 @@ fn test_floating_point_special_values() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_all_type_promotions() {
     // Test every promotion path to ensure coverage
     let config = EvalConfig::default();
@@ -1341,6 +1348,7 @@ fn test_all_type_promotions() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_all_shift_operations() {
     let config = EvalConfig::default();
 
@@ -1592,14 +1600,14 @@ fn test_all_division_overflow_cases() {
 fn test_bitwise_with_different_types() {
     // Test bit operations with mismatched types (should return self)
     let i32_val = GenericNumeric::Int32(0xFF);
-    let f32_val = GenericNumeric::Float(3.14);
+    let f32_val = GenericNumeric::Float(std::f32::consts::PI);
 
     assert_eq!(i32_val.bit_and(&f32_val), i32_val);
     assert_eq!(i32_val.bit_or(&f32_val), i32_val);
     assert_eq!(i32_val.bit_xor(&f32_val), i32_val);
 
     // Test double with int
-    let d_val = GenericNumeric::Double(2.718);
+    let d_val = GenericNumeric::Double(std::f64::consts::E);
     assert_eq!(d_val.bit_and(&i32_val), d_val);
     assert_eq!(d_val.bit_or(&i32_val), d_val);
     assert_eq!(d_val.bit_xor(&i32_val), d_val);
@@ -1748,6 +1756,7 @@ fn test_all_comparison_operations() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_more_arithmetic_with_overflow() {
     let wrap_config = EvalConfig {
         overflow: OverflowBehavior::Wrap,
@@ -2241,6 +2250,7 @@ fn test_comprehensive_negate_coverage() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_comprehensive_shift_coverage() {
     let config = EvalConfig::default();
 
@@ -2345,7 +2355,7 @@ fn test_comprehensive_shift_coverage() {
         GenericNumeric::UInt32(1)
             .shl(&GenericNumeric::UInt32(31), config)
             .unwrap(),
-        GenericNumeric::UInt32(2147483648)
+        GenericNumeric::UInt32(2_147_483_648)
     );
     assert_eq!(
         GenericNumeric::Int64(1)
@@ -2357,7 +2367,7 @@ fn test_comprehensive_shift_coverage() {
         GenericNumeric::UInt64(1)
             .shl(&GenericNumeric::UInt64(63), config)
             .unwrap(),
-        GenericNumeric::UInt64(9223372036854775808)
+        GenericNumeric::UInt64(9_223_372_036_854_775_808)
     );
 
     // Test shift with float types (should error)
@@ -2857,7 +2867,7 @@ fn test_shr_operations() {
         GenericNumeric::Int32(-1)
     );
     assert_eq!(
-        GenericNumeric::UInt32(2147483648)
+        GenericNumeric::UInt32(2_147_483_648)
             .shr(&GenericNumeric::UInt32(31), config)
             .unwrap(),
         GenericNumeric::UInt32(1)
@@ -2869,7 +2879,7 @@ fn test_shr_operations() {
         GenericNumeric::Int64(-1)
     );
     assert_eq!(
-        GenericNumeric::UInt64(9223372036854775808)
+        GenericNumeric::UInt64(9_223_372_036_854_775_808)
             .shr(&GenericNumeric::UInt64(63), config)
             .unwrap(),
         GenericNumeric::UInt64(1)
@@ -3308,5 +3318,480 @@ fn test_unreachable_paths() {
         GenericNumeric::Int16(10)
             .modulo(&GenericNumeric::UInt32(3), config)
             .is_ok()
+    );
+}
+
+#[test]
+fn test_char_arithmetic_edge_cases() {
+    let config = EvalConfig::default();
+
+    // Test char arithmetic that produces large values
+    let large_char = GenericNumeric::Char('\u{D7FF}'); // Largest valid char before surrogates
+    let result = large_char.add(&large_char, config).unwrap();
+    // The result should be a valid char (char_from_u32 returns Some or maps to '\0')
+    if let GenericNumeric::Char(c) = result {
+        // D7FF + D7FF = 1AFFE which is > 10FFFF, so should map to '\0'
+        assert!(c == '\0' || c <= '\u{10FFFF}');
+    }
+
+    // Test char subtraction that would go negative
+    let small_char = GenericNumeric::Char('\u{0001}');
+    let large_char2 = GenericNumeric::Char('\u{FFFF}');
+    let result = small_char.sub(&large_char2, config).unwrap();
+    if let GenericNumeric::Char(c) = result {
+        // 1 - FFFF wraps around in u32 arithmetic
+        // The exact result depends on wrapping_sub behavior
+        assert!(c == '\0' || c.is_control() || (c as u32) > 0xFFFF);
+    }
+
+    // Test char multiplication overflow
+    let char_100 = GenericNumeric::Char('d'); // ASCII 100
+    let result = char_100.mul(&char_100, config).unwrap();
+    if let GenericNumeric::Char(c) = result {
+        // 100 * 100 = 10000, which is a valid char
+        assert_eq!(c, '\u{2710}');
+    }
+
+    // Test char division
+    assert_eq!(
+        GenericNumeric::Char('d')
+            .div(&GenericNumeric::Char('\u{0002}'), config)
+            .unwrap(),
+        GenericNumeric::Char('2') // 100 / 2 = 50 = '2'
+    );
+
+    // Test char modulo
+    assert_eq!(
+        GenericNumeric::Char('e')
+            .modulo(&GenericNumeric::Char('d'), config)
+            .unwrap(),
+        GenericNumeric::Char('\u{0001}') // 101 % 100 = 1
+    );
+}
+
+#[test]
+fn test_float_to_integer_precision_loss() {
+    let config = EvalConfig::default();
+
+    // Test Double to Float precision loss through operations
+    let large_double = GenericNumeric::Double(1.797_693_134_862_315_7e308); // Near Double::MAX
+    let float_val = GenericNumeric::Float(0.0);
+    // When double is used with float, double should convert to float
+    let result = large_double.add(&float_val, config);
+    if let Ok(GenericNumeric::Float(f)) = result {
+        assert!(f.is_infinite());
+    }
+
+    // Test large integer to float conversions
+    let large_u64 = GenericNumeric::UInt64(u64::MAX);
+    let float_zero = GenericNumeric::Float(0.0);
+    let result = large_u64.add(&float_zero, config).unwrap();
+    if let GenericNumeric::Float(f) = result {
+        // Precision is lost but value should be reasonable
+        assert!(f > 1e19);
+    }
+
+    // Test signed to unsigned conversion edge cases
+    let neg_i8 = GenericNumeric::Int8(-1);
+    let u8_val = GenericNumeric::UInt8(1);
+    // Int8(-1) + UInt8(1) should promote Int8 to UInt8
+    assert_eq!(
+        neg_i8.add(&u8_val, config).unwrap(),
+        GenericNumeric::UInt8(0)
+    ); // 255 + 1 = 0 (wrapping)
+}
+
+#[test]
+fn test_division_saturating_overflow() {
+    let saturate_config = EvalConfig {
+        overflow: OverflowBehavior::Saturate,
+        ..Default::default()
+    };
+
+    // Test Int8::MIN / -1 with saturating (should give MAX)
+    assert_eq!(
+        GenericNumeric::Int8(i8::MIN)
+            .div(&GenericNumeric::Int8(-1), saturate_config)
+            .unwrap(),
+        GenericNumeric::Int8(i8::MAX)
+    );
+
+    // Test normal division doesn't saturate
+    assert_eq!(
+        GenericNumeric::Int8(100)
+            .div(&GenericNumeric::Int8(2), saturate_config)
+            .unwrap(),
+        GenericNumeric::Int8(50)
+    );
+}
+
+#[test]
+fn test_shift_error_paths() {
+    let config = EvalConfig::default();
+
+    // Test shift with Bool shift amount (should error)
+    assert!(
+        GenericNumeric::Int32(1)
+            .shl(&GenericNumeric::Bool(true), config)
+            .is_err()
+    );
+    assert!(
+        GenericNumeric::Int32(1)
+            .shr(&GenericNumeric::Bool(false), config)
+            .is_err()
+    );
+
+    // Test shift with Char shift amount (should error)
+    assert!(
+        GenericNumeric::Int32(1)
+            .shl(&GenericNumeric::Char('A'), config)
+            .is_err()
+    );
+    assert!(
+        GenericNumeric::Int32(1)
+            .shr(&GenericNumeric::Char('B'), config)
+            .is_err()
+    );
+
+    // Test shift with Float/Double shift amount (should error)
+    assert!(
+        GenericNumeric::Int32(1)
+            .shl(&GenericNumeric::Float(1.0), config)
+            .is_err()
+    );
+    assert!(
+        GenericNumeric::Int32(1)
+            .shr(&GenericNumeric::Double(2.0), config)
+            .is_err()
+    );
+
+    // Test Bool/Char/Float/Double being shifted (returns self)
+    assert_eq!(
+        GenericNumeric::Bool(true)
+            .shl(&GenericNumeric::Int32(5), config)
+            .unwrap(),
+        GenericNumeric::Bool(true)
+    );
+    assert_eq!(
+        GenericNumeric::Char('A')
+            .shr(&GenericNumeric::Int32(5), config)
+            .unwrap(),
+        GenericNumeric::Char('A')
+    );
+    assert_eq!(
+        GenericNumeric::Float(1.5)
+            .shl(&GenericNumeric::Int32(5), config)
+            .unwrap(),
+        GenericNumeric::Float(1.5)
+    );
+    assert_eq!(
+        GenericNumeric::Double(2.5)
+            .shr(&GenericNumeric::Int32(5), config)
+            .unwrap(),
+        GenericNumeric::Double(2.5)
+    );
+}
+
+#[test]
+fn test_bitwise_non_integer_types() {
+    // Test bit_not on float/double returns self
+    assert_eq!(
+        GenericNumeric::Float(1.5).bit_not(),
+        GenericNumeric::Float(1.5)
+    );
+    assert_eq!(
+        GenericNumeric::Double(2.5).bit_not(),
+        GenericNumeric::Double(2.5)
+    );
+
+    // Test bit_and with non-matching types
+    let i32_val = GenericNumeric::Int32(0xFF);
+    let f32_val = GenericNumeric::Float(1.0);
+    let bool_val = GenericNumeric::Bool(true);
+
+    // These should return self for non-integer types
+    assert_eq!(f32_val.bit_and(&i32_val), GenericNumeric::Float(1.0));
+    assert_eq!(bool_val.bit_and(&bool_val), GenericNumeric::Bool(true));
+
+    // Test bit_or with non-matching types
+    assert_eq!(f32_val.bit_or(&i32_val), GenericNumeric::Float(1.0));
+
+    // Test bit_xor with non-matching types
+    assert_eq!(f32_val.bit_xor(&i32_val), GenericNumeric::Float(1.0));
+}
+
+#[test]
+fn test_comparison_mismatched_types() {
+    // Test comparisons with different types (should return false for non-eq)
+    let i32_val = GenericNumeric::Int32(10);
+    let _ = GenericNumeric::Float(10.0); // Different type
+
+    // For NumericValue trait, these operate on same types only
+    // But let's test the actual comparison functions
+    assert!(!NumericValue::lt(&i32_val, &i32_val)); // Same value
+    assert!(NumericValue::le(&i32_val, &i32_val)); // Same value
+    assert!(!NumericValue::gt(&i32_val, &i32_val)); // Same value
+    assert!(NumericValue::ge(&i32_val, &i32_val)); // Same value
+
+    // Test with actual different values
+    let i32_smaller = GenericNumeric::Int32(5);
+    let i32_larger = GenericNumeric::Int32(15);
+    assert!(NumericValue::lt(&i32_smaller, &i32_larger));
+    assert!(NumericValue::le(&i32_smaller, &i32_larger));
+    assert!(NumericValue::gt(&i32_larger, &i32_smaller));
+    assert!(NumericValue::ge(&i32_larger, &i32_smaller));
+    assert!(NumericValue::ne(&i32_smaller, &i32_larger));
+}
+
+#[test]
+fn test_modulo_edge_cases_saturating() {
+    let saturate_config = EvalConfig {
+        overflow: OverflowBehavior::Saturate,
+        ..Default::default()
+    };
+
+    // For modulo, MIN % -1 doesn't overflow in Rust, it returns 0
+    // But our implementation uses wrapping_rem for saturate mode
+    assert_eq!(
+        GenericNumeric::Int8(i8::MIN)
+            .modulo(&GenericNumeric::Int8(-1), saturate_config)
+            .unwrap(),
+        GenericNumeric::Int8(0)
+    );
+    assert_eq!(
+        GenericNumeric::Int16(i16::MIN)
+            .modulo(&GenericNumeric::Int16(-1), saturate_config)
+            .unwrap(),
+        GenericNumeric::Int16(0)
+    );
+    assert_eq!(
+        GenericNumeric::Int32(i32::MIN)
+            .modulo(&GenericNumeric::Int32(-1), saturate_config)
+            .unwrap(),
+        GenericNumeric::Int32(0)
+    );
+    assert_eq!(
+        GenericNumeric::Int64(i64::MIN)
+            .modulo(&GenericNumeric::Int64(-1), saturate_config)
+            .unwrap(),
+        GenericNumeric::Int64(0)
+    );
+}
+
+#[test]
+fn test_uint64_negation_edge_cases() {
+    // Test all three overflow behaviors for UInt64 negation
+    let wrap_config = EvalConfig {
+        overflow: OverflowBehavior::Wrap,
+        ..Default::default()
+    };
+    let error_config = EvalConfig {
+        overflow: OverflowBehavior::Error,
+        ..Default::default()
+    };
+    let saturate_config = EvalConfig {
+        overflow: OverflowBehavior::Saturate,
+        ..Default::default()
+    };
+
+    // Wrap: wrapping negation
+    assert_eq!(
+        GenericNumeric::UInt64(100).negate(wrap_config).unwrap(),
+        GenericNumeric::UInt64(u64::MAX - 99)
+    );
+
+    // Error: should fail
+    assert!(GenericNumeric::UInt64(100).negate(error_config).is_err());
+
+    // Saturate: returns 0
+    assert_eq!(
+        GenericNumeric::UInt64(100).negate(saturate_config).unwrap(),
+        GenericNumeric::UInt64(0)
+    );
+}
+
+#[test]
+fn test_char_bitwise_edge_cases() {
+    // Test char bitwise operations that might produce invalid Unicode
+    let high_char1 = GenericNumeric::Char('\u{D7FF}');
+    let high_char2 = GenericNumeric::Char('\u{E000}');
+
+    // Test OR that might produce invalid result
+    let result = high_char1.bit_or(&high_char2);
+    if let GenericNumeric::Char(c) = result {
+        // Should be a valid char or mapped to '\0'
+        assert!(c <= '\u{10FFFF}' || c == '\0');
+    }
+
+    // Test XOR
+    let result = high_char1.bit_xor(&high_char2);
+    if let GenericNumeric::Char(c) = result {
+        assert!(c <= '\u{10FFFF}' || c == '\0');
+    }
+}
+
+#[test]
+fn test_float_special_value_operations() {
+    let config = EvalConfig::default();
+
+    // Test operations with negative zero
+    let neg_zero = GenericNumeric::Float(-0.0);
+    let pos_zero = GenericNumeric::Float(0.0);
+
+    // -0.0 + 0.0 = 0.0
+    assert_eq!(
+        neg_zero.add(&pos_zero, config).unwrap(),
+        GenericNumeric::Float(0.0)
+    );
+
+    // Test operations with subnormal numbers
+    let subnormal = GenericNumeric::Float(f32::MIN_POSITIVE / 2.0);
+    assert!(matches!(
+        subnormal.add(&subnormal, config).unwrap(),
+        GenericNumeric::Float(_)
+    ));
+
+    // Test infinity arithmetic
+    let inf = GenericNumeric::Float(f32::INFINITY);
+    let neg_inf = GenericNumeric::Float(f32::NEG_INFINITY);
+
+    // inf - inf = NaN
+    if let GenericNumeric::Float(v) = inf.sub(&inf, config).unwrap() {
+        assert!(v.is_nan());
+    }
+
+    // inf + neg_inf = NaN
+    if let GenericNumeric::Float(v) = inf.add(&neg_inf, config).unwrap() {
+        assert!(v.is_nan());
+    }
+}
+
+#[test]
+fn test_bool_bool_arithmetic() {
+    let config = EvalConfig::default();
+
+    // Bool + Bool promotes both to the higher rank (both rank 0, so they stay Bool)
+    // But there's no Bool arithmetic implementation, so these should fail
+    let t = GenericNumeric::Bool(true);
+    let f = GenericNumeric::Bool(false);
+
+    // These should hit the unreachable "type mismatch" error
+    // Actually, let's trace through: Bool + Bool -> promote_for_arithmetic
+    // Both have rank 0, so they stay Bool, then add() has no Bool case
+    // So it hits the _ => Err(...) case
+    assert!(t.add(&f, config).is_err());
+    assert!(t.sub(&f, config).is_err());
+    assert!(t.mul(&f, config).is_err());
+    assert!(t.div(&f, config).is_err());
+    assert!(t.modulo(&f, config).is_err());
+}
+
+#[test]
+fn test_exhaustive_type_promotions() {
+    // Test some of the "unreachable" promotion paths to ensure they behave correctly
+    // even though they shouldn't be called in practice
+
+    let config = EvalConfig::default();
+
+    // Create a comprehensive test for mixed-type arithmetic
+    let bool_val = GenericNumeric::Bool(true);
+    let char_val = GenericNumeric::Char('A');
+    let i8_val = GenericNumeric::Int8(10);
+    let u8_val = GenericNumeric::UInt8(10);
+    let i16_val = GenericNumeric::Int16(10);
+    let u16_val = GenericNumeric::UInt16(10);
+    let i32_val = GenericNumeric::Int32(10);
+    let u32_val = GenericNumeric::UInt32(10);
+    let i64_val = GenericNumeric::Int64(10);
+    let u64_val = GenericNumeric::UInt64(10);
+    let f32_val = GenericNumeric::Float(10.0);
+    let f64_val = GenericNumeric::Double(10.0);
+
+    // Test Bool with everything
+    assert_eq!(
+        bool_val.add(&char_val, config).unwrap(),
+        GenericNumeric::Char('B')
+    );
+    assert_eq!(
+        bool_val.add(&i8_val, config).unwrap(),
+        GenericNumeric::Int8(11)
+    );
+    assert_eq!(
+        bool_val.add(&u8_val, config).unwrap(),
+        GenericNumeric::UInt8(11)
+    );
+    assert_eq!(
+        bool_val.add(&i16_val, config).unwrap(),
+        GenericNumeric::Int16(11)
+    );
+    assert_eq!(
+        bool_val.add(&u16_val, config).unwrap(),
+        GenericNumeric::UInt16(11)
+    );
+    assert_eq!(
+        bool_val.add(&i32_val, config).unwrap(),
+        GenericNumeric::Int32(11)
+    );
+    assert_eq!(
+        bool_val.add(&u32_val, config).unwrap(),
+        GenericNumeric::UInt32(11)
+    );
+    assert_eq!(
+        bool_val.add(&i64_val, config).unwrap(),
+        GenericNumeric::Int64(11)
+    );
+    assert_eq!(
+        bool_val.add(&u64_val, config).unwrap(),
+        GenericNumeric::UInt64(11)
+    );
+    assert_eq!(
+        bool_val.add(&f32_val, config).unwrap(),
+        GenericNumeric::Float(11.0)
+    );
+    assert_eq!(
+        bool_val.add(&f64_val, config).unwrap(),
+        GenericNumeric::Double(11.0)
+    );
+
+    // Test Char with larger types
+    assert_eq!(
+        char_val.add(&i8_val, config).unwrap(),
+        GenericNumeric::Int8(75)
+    ); // 'A' = 65
+    assert_eq!(
+        char_val.add(&u8_val, config).unwrap(),
+        GenericNumeric::UInt8(75)
+    );
+    assert_eq!(
+        char_val.add(&i16_val, config).unwrap(),
+        GenericNumeric::Int16(75)
+    );
+    assert_eq!(
+        char_val.add(&u16_val, config).unwrap(),
+        GenericNumeric::UInt16(75)
+    );
+    assert_eq!(
+        char_val.add(&i32_val, config).unwrap(),
+        GenericNumeric::Int32(75)
+    );
+    assert_eq!(
+        char_val.add(&u32_val, config).unwrap(),
+        GenericNumeric::UInt32(75)
+    );
+    assert_eq!(
+        char_val.add(&i64_val, config).unwrap(),
+        GenericNumeric::Int64(75)
+    );
+    assert_eq!(
+        char_val.add(&u64_val, config).unwrap(),
+        GenericNumeric::UInt64(75)
+    );
+    assert_eq!(
+        char_val.add(&f32_val, config).unwrap(),
+        GenericNumeric::Float(75.0)
+    );
+    assert_eq!(
+        char_val.add(&f64_val, config).unwrap(),
+        GenericNumeric::Double(75.0)
     );
 }

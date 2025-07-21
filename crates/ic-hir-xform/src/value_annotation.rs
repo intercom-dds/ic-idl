@@ -164,7 +164,10 @@ mod tests {
                             },
                             def_id: DefId::from(1),
                             args: vec![AnnArg {
-                                ident: None,
+                                ident: Ident {
+                                    name: "value".to_string(),
+                                    span: Span::default(),
+                                },
                                 value: Numeric::Int32(42),
                             }],
                         }],

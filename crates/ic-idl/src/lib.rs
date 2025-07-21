@@ -95,6 +95,7 @@ pub use config::{
     CodegenOptions, CppOptions, IdlOptions, Options as CompilerOptions, PythonOptions, RustOptions,
     Unstable, Warnings,
 };
+use ic_cli::color::Colorize;
 pub use ic_lint::{Category as LintCategory, Level as LintLevel, LintConfig};
 pub use util::Error as DiagnosticError;
 use util::Error as InternalError;
@@ -437,7 +438,7 @@ impl Compiler {
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
         let proc_args = self.proc_args();
         let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
-            CompileError::Io(std::io::Error::other(format!("Failed to parse file: {e}")))
+            CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
         })?;
 
         let mut diagnostics = CompileDiagnostics {
@@ -515,7 +516,7 @@ impl Compiler {
     pub fn parse_to_ast(&mut self, path: &Path) -> Result<AstResult, CompileError> {
         let proc_args = self.proc_args();
         let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
-            CompileError::Io(std::io::Error::other(format!("Failed to parse file: {e}")))
+            CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
         })?;
 
         if !ast.errors.is_empty() {
@@ -631,4 +632,16 @@ fn try_compile_to_ast(
             expansion_info: all_expansion_info,
         },
     ))
+}
+
+/// Format an I/O error with a filename for user-friendly output.
+fn format_io_error(error: &std::io::Error, path: &Path) -> String {
+    let message = match error.kind() {
+        std::io::ErrorKind::NotFound => "no such file or directory",
+        std::io::ErrorKind::PermissionDenied => "permission denied",
+        std::io::ErrorKind::InvalidData => "invalid file contents",
+        std::io::ErrorKind::UnexpectedEof => "unexpected end of file",
+        _ => return format!("{}: '{}'", error, path.display().to_string().yellow()),
+    };
+    format!("{}: '{}'", message, path.display().to_string().yellow())
 }

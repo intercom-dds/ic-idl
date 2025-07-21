@@ -64,49 +64,63 @@ bitmask EmptyBitmask {
 }
 
 #[test]
-fn empty_exception() {
+fn empty_exception_allowed() {
     let source = r"
 exception EmptyException {
     // No members
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    let result = test_lint(source);
+    assert!(result.is_empty());
 }
 
 #[test]
-fn empty_valuetype() {
+fn empty_valuetype_allowed() {
     let source = r"
 valuetype EmptyValue {
     // No members
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    let result = test_lint(source);
+    assert!(result.is_empty());
 }
 
 #[test]
-fn non_empty_types() {
+fn empty_struct_allowed() {
     let source = r"
-enum Status { ACTIVE, INACTIVE };
-
-union Result switch (boolean) {
-    case TRUE: string success;
-    case FALSE: long error;
+struct EmptyStruct {
+    // No members
 };
+";
 
-bitmask Flags { READ, WRITE };
+    let result = test_lint(source);
+    assert!(result.is_empty());
+}
 
-exception Error { string message; };
+#[test]
+fn empty_interface_allowed() {
+    let source = r"
+interface EmptyInterface {
+    // No methods
+};
+";
 
-valuetype Point { public long x; public long y; };
+    let result = test_lint(source);
+    assert!(result.is_empty());
+}
 
-// Empty struct is allowed
+#[test]
+fn multiple_allowed_empty_types() {
+    let source = r"
+// All of these should be allowed without warnings
+exception EmptyException {};
+valuetype EmptyValue {};
 struct EmptyStruct {};
-
-// Empty interface is allowed
 interface EmptyService {};
 ";
 
-    assert_snapshot!(test_lint(source));
+    let result = test_lint(source);
+    assert!(result.is_empty());
 }

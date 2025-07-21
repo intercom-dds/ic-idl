@@ -32,8 +32,7 @@ use ic_syntax::{Item, Span};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Verifies that enums, unions, bitmasks, and exceptions have at least one
-/// member.
+/// Verifies that enums, unions, and bitmasks have at least one member.
 ///
 /// Support for empty structs is allowed in the extended data-types building
 /// block.
@@ -77,12 +76,6 @@ impl<'a> Visitor<'a> for EmptyTypes<'a> {
     fn visit_bitset(&mut self, def: &'a ic_syntax::BitsetDef) {
         if def.fields.is_empty() {
             self.diagnose(def.ident.span, def, "bitfield");
-        }
-    }
-
-    fn visit_exception(&mut self, def: &'a ic_syntax::ExceptDef) {
-        if def.members.is_empty() {
-            self.diagnose(def.ident.span, def, "member");
         }
     }
 }

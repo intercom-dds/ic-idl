@@ -136,7 +136,7 @@ pub struct CompiledAst {
 impl std::fmt::Display for CompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompileError::Io(e) => write!(f, "I/O error: {e}"),
+            CompileError::Io(e) => write!(f, "{e}"),
             CompileError::Diagnostics(diag) => {
                 write!(
                     f,

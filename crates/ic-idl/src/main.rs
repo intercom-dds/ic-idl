@@ -111,7 +111,7 @@ fn try_compile(options: CompilerOptions) {
     let (hir, diagnostics) = match compiler.compile_hir() {
         Ok((hir, diag)) => (hir, diag),
         Err(CompileError::Io(e)) => {
-            error!("I/O error: {}", e);
+            error!("{e}");
             std::process::exit(1);
         }
         Err(CompileError::Diagnostics(diagnostics)) => {

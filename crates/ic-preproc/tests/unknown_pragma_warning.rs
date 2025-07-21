@@ -52,7 +52,7 @@ fn preprocess(input: &str) -> (Vec<String>, Vec<String>) {
                     message
                 )
             }
-            _ => format!("{:?}", err),
+            _ => format!("{err:?}"),
         })
         .collect();
 
@@ -61,10 +61,10 @@ fn preprocess(input: &str) -> (Vec<String>, Vec<String>) {
 
 #[test]
 fn test_unknown_pragma_warning() {
-    let input = r#"
+    let input = r"
 #pragma unknown_directive
 int x = 5;
-"#;
+";
 
     let (_, warnings) = preprocess(input);
     assert_eq!(warnings.len(), 1);
@@ -74,13 +74,13 @@ int x = 5;
 
 #[test]
 fn test_known_pragma_no_warning() {
-    let input = r#"
+    let input = r"
 #pragma once
 #pragma warning(push)
 #pragma region MyRegion
 #pragma endregion
 int x = 5;
-"#;
+";
 
     let (_, warnings) = preprocess(input);
     assert_eq!(warnings.len(), 0);
@@ -88,12 +88,12 @@ int x = 5;
 
 #[test]
 fn test_multiple_unknown_pragmas() {
-    let input = r#"
+    let input = r"
 #pragma foo
 #pragma bar
 #pragma baz
 int x = 5;
-"#;
+";
 
     let (_, warnings) = preprocess(input);
     assert_eq!(warnings.len(), 3);
@@ -104,12 +104,12 @@ int x = 5;
 
 #[test]
 fn test_unknown_pragma_in_inactive_code() {
-    let input = r#"
+    let input = r"
 #if 0
 #pragma unknown_directive
 #endif
 int x = 5;
-"#;
+";
 
     let (_, warnings) = preprocess(input);
     // Should not warn about pragmas in inactive code
@@ -118,10 +118,10 @@ int x = 5;
 
 #[test]
 fn test_empty_pragma() {
-    let input = r#"
+    let input = r"
 #pragma
 int x = 5;
-"#;
+";
 
     let (_, warnings) = preprocess(input);
     // Empty pragmas are allowed and shouldn't generate warnings
@@ -130,10 +130,10 @@ int x = 5;
 
 #[test]
 fn test_pragma_with_complex_tokens() {
-    let input = r#"
+    let input = r"
 #pragma unknown_with_args(1, 2, 3)
 int x = 5;
-"#;
+";
 
     let (_, warnings) = preprocess(input);
     assert_eq!(warnings.len(), 1);
@@ -147,30 +147,30 @@ fn test_pragma_line_continuation() {
     // it should be treated as a single pragma directive.
 
     // Test 1: Known pragma with line continuation (no warning)
-    let input1 = r#"#pragma \
+    let input1 = r"#pragma \
 once
 int x = 5;
-"#;
+";
     let (_, warnings1) = preprocess(input1);
     assert_eq!(warnings1.len(), 0);
 
     // Test 2: Unknown pragma with line continuation (should generate warning)
-    let input2 = r#"#pragma \
+    let input2 = r"#pragma \
 unknown_continued
 int x = 5;
-"#;
+";
     let (_, warnings2) = preprocess(input2);
     assert_eq!(warnings2.len(), 1);
     assert!(warnings2[0].contains("unknown_continued"));
 
     // Test 3: Mixed known and unknown pragmas
-    let input3 = r#"#pragma \
+    let input3 = r"#pragma \
 once
 #pragma unknown_test
 #pragma \
 unknown_continued
 int x = 5;
-"#;
+";
     let (_, warnings3) = preprocess(input3);
     assert_eq!(warnings3.len(), 2);
     assert!(warnings3.iter().any(|w| w.contains("unknown_test")));

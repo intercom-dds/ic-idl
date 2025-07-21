@@ -65,19 +65,19 @@ module MóduloEspañol {
 
 #[test]
 fn non_ascii_char_literal() {
-    let source = r#"
+    let source = r"
 module TestModule {
     const char EURO_SIGN = '€';  // Non-ASCII character literal
     const char UNICODE_CHAR = 'ñ';
 };
-"#;
+";
 
     assert_snapshot!(test_lint(source));
 }
 
 #[test]
 fn mixed_ascii_non_ascii() {
-    let source = r#"
+    let source = r"
 module TestModule {
     enum Status {
         PENDING,
@@ -89,7 +89,7 @@ module TestModule {
         void doSomething();
     };
 };
-"#;
+";
 
     assert_snapshot!(test_lint(source));
 }

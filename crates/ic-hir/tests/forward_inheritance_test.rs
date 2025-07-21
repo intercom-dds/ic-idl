@@ -56,14 +56,17 @@ fn test_struct_inherit_from_forward_decl() {
     );
 
     // Check that the error mentions forward declaration
-    let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
+    let error_messages: Vec<String> = result
+        .errors
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
     assert!(
         error_messages
             .iter()
             .any(|msg| msg.contains("incomplete type")),
-        "Error should mention incomplete type, but got: {:?}",
-        error_messages
+        "Error should mention incomplete type, but got: {error_messages:?}"
     );
 }
 
@@ -128,13 +131,16 @@ fn test_interface_inherit_from_forward_decl() {
     );
 
     // Check that the error mentions forward declaration
-    let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
+    let error_messages: Vec<String> = result
+        .errors
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
     assert!(
         error_messages
             .iter()
             .any(|msg| msg.contains("incomplete type")),
-        "Error should mention incomplete type, but got: {:?}",
-        error_messages
+        "Error should mention incomplete type, but got: {error_messages:?}"
     );
 }

@@ -25,17 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use {ic_hir, ic_parse};
-
 #[test]
 fn test_forward_declaration_followed_by_definition() {
     // Test that a forward declaration followed by a full definition works correctly
-    let input = r#"
+    let input = r"
         struct A;
         struct A {
             long field;
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -60,13 +58,13 @@ fn test_forward_declaration_followed_by_definition() {
 #[test]
 fn test_multiple_forward_declarations() {
     // Test that multiple forward declarations are allowed
-    let input = r#"
+    let input = r"
         struct A;
         struct A;
         struct A {
             long field;
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -78,12 +76,12 @@ fn test_multiple_forward_declarations() {
 #[test]
 fn test_forward_declaration_after_definition() {
     // Test that a forward declaration after a full definition works
-    let input = r#"
+    let input = r"
         struct A {
             long field;
         };
         struct A;
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -95,31 +93,31 @@ fn test_forward_declaration_after_definition() {
 #[test]
 fn test_conflicting_struct_definitions() {
     // Test that two full struct definitions conflict
-    let input = r#"
+    let input = r"
         struct A {
             long field1;
         };
         struct A {
             long field2;
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
 
     // Should have a conflicting definitions error
-    assert!(hir.errors.len() > 0);
+    assert!(!hir.errors.is_empty());
 }
 
 #[test]
 fn test_union_forward_declaration() {
     // Test union forward declaration
-    let input = r#"
+    let input = r"
         union U;
         union U switch (long) {
             case 1: long x;
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -131,12 +129,12 @@ fn test_union_forward_declaration() {
 #[test]
 fn test_interface_forward_declaration() {
     // Test interface forward declaration
-    let input = r#"
+    let input = r"
         interface I;
         interface I {
             void method();
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -148,10 +146,10 @@ fn test_interface_forward_declaration() {
 #[test]
 fn test_valuetype_forward_declaration() {
     // Test valuetype forward declaration
-    let input = r#"
+    let input = r"
         valuetype V;
         valuetype V long;
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -163,24 +161,24 @@ fn test_valuetype_forward_declaration() {
 #[test]
 fn test_mismatched_forward_declaration_types() {
     // Test that forward declaring as one type and defining as another is an error
-    let input = r#"
+    let input = r"
         struct A;
         union A switch (long) {
             case 1: long x;
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
 
     // Should have a conflicting definitions error
-    assert!(hir.errors.len() > 0);
+    assert!(!hir.errors.is_empty());
 }
 
 #[test]
 fn test_forward_declaration_with_usage() {
     // Test that forward declarations can be used before being fully defined
-    let input = r#"
+    let input = r"
         struct B;
         
         struct A {
@@ -190,7 +188,7 @@ fn test_forward_declaration_with_usage() {
         struct B {
             long value;
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);
@@ -202,14 +200,14 @@ fn test_forward_declaration_with_usage() {
 #[test]
 fn test_nested_forward_declarations() {
     // Test forward declarations inside modules
-    let input = r#"
+    let input = r"
         module M {
             struct S;
             struct S {
                 long field;
             };
         };
-    "#;
+    ";
 
     let parse_result = ic_parse::from_str(input);
     let hir = ic_hir::from_ast(parse_result.tree);

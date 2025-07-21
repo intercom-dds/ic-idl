@@ -44,7 +44,7 @@ fn test_inherit_from_forward_decl_points_to_decl() {
 
     // The error should exist
     let has_incomplete_error = hir.errors.iter().any(|e| {
-        let error_str = format!("{:?}", e);
+        let error_str = format!("{e:?}");
         error_str.contains("cannot inherit from incomplete type")
     });
     assert!(has_incomplete_error);
@@ -72,7 +72,7 @@ fn test_interface_inherit_from_forward_decl_points_to_decl() {
 
     // The error should exist
     let has_incomplete_error = hir.errors.iter().any(|e| {
-        let error_str = format!("{:?}", e);
+        let error_str = format!("{e:?}");
         error_str.contains("cannot inherit from incomplete type")
     });
     assert!(has_incomplete_error);

@@ -43,7 +43,7 @@ fn test_struct_inherit_from_incomplete_type() {
 
     // Should have an error mentioning incomplete type
     let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{:?}", e);
+        let error_str = format!("{e:?}");
         error_str.contains("cannot inherit from incomplete type")
     });
     assert!(
@@ -70,7 +70,7 @@ fn test_interface_inherit_from_incomplete_type() {
 
     // Should have an error mentioning incomplete type
     let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{:?}", e);
+        let error_str = format!("{e:?}");
         error_str.contains("cannot inherit from incomplete type")
     });
     assert!(
@@ -116,7 +116,7 @@ fn test_inherit_from_wrong_type() {
 
     // Should have an error mentioning non-struct type
     let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{:?}", e);
+        let error_str = format!("{e:?}");
         error_str.contains("cannot inherit from non-struct type")
     });
     assert!(
@@ -169,7 +169,7 @@ fn test_inherit_from_later_defined_type() {
     );
 
     let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{:?}", e);
+        let error_str = format!("{e:?}");
         error_str.contains("incomplete") || error_str.contains("not defined")
     });
     assert!(

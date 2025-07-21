@@ -409,7 +409,7 @@ impl<'a> TypeResolver<'a> {
         // If not found, try to find by searching all entries
         // This handles cases where we have the simple name but the map has qualified names
         for (key, (_, span)) in self.ctx.forward_declarations.iter() {
-            if key.ends_with(name) && (key == name || key.ends_with(&format!("::{}", name))) {
+            if key.ends_with(name) && (key == name || key.ends_with(&format!("::{name}"))) {
                 return Some(*span);
             }
         }

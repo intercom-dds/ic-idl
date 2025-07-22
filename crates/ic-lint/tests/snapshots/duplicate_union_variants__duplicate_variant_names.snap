@@ -2,10 +2,10 @@
 source: crates/ic-lint/tests/duplicate_union_variants.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_variant]: duplicate variant `text` in union `Value`
+error[duplicate_name]: duplicate variant `text` in variant `Value`
    ┌ test.idl:5:20
    │
  5 │     case 2: string text;  // Duplicate variant name
    ·                    ^^^^ redefined here
    └──
- note: variant names are case-insensitive
+ note: names are case-insensitive

@@ -2,26 +2,26 @@
 source: crates/ic-lint/tests/duplicate_union_variants.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_variant]: duplicate variant `name` in union `Data`
+error[duplicate_name]: duplicate variant `name` in variant `Data`
    ┌ test.idl:5:20
    │
  5 │     case 2: string name;    // First duplicate
    ·                    ^^^^ redefined here
    └──
- note: variant names are case-insensitive
+ note: names are case-insensitive
 
-error[duplicate_variant]: duplicate variant `value` in union `Data`
+error[duplicate_name]: duplicate variant `value` in variant `Data`
    ┌ test.idl:7:18
    │
  7 │     case 4: long value;     // Second duplicate
    ·                  ^^^^^ redefined here
    └──
- note: variant names are case-insensitive
+ note: names are case-insensitive
 
-error[duplicate_variant]: duplicate variant `name` in union `Data`
+error[duplicate_name]: duplicate variant `name` in variant `Data`
    ┌ test.idl:8:20
    │
  8 │     case 5: string name;    // Third occurrence
    ·                    ^^^^ redefined here
    └──
- note: variant names are case-insensitive
+ note: names are case-insensitive

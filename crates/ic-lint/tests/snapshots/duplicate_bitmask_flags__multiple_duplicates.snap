@@ -2,26 +2,26 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_flag]: duplicate flag `ENABLE_A` in bitmask `Options`
+error[duplicate_name]: duplicate flag `ENABLE_A` in flag `Options`
    ┌ test.idl:5:5
    │
  5 │     ENABLE_A,  // First duplicate
    ·     ^^^^^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive
 
-error[duplicate_flag]: duplicate flag `ENABLE_B` in bitmask `Options`
+error[duplicate_name]: duplicate flag `ENABLE_B` in flag `Options`
    ┌ test.idl:7:5
    │
  7 │     ENABLE_B,  // Second duplicate
    ·     ^^^^^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive
 
-error[duplicate_flag]: duplicate flag `ENABLE_A` in bitmask `Options`
+error[duplicate_name]: duplicate flag `ENABLE_A` in flag `Options`
    ┌ test.idl:8:5
    │
  8 │     ENABLE_A   // Third occurrence
    ·     ^^^^^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive

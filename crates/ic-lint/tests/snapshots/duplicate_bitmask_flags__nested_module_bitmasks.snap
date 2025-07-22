@@ -2,10 +2,10 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_flag]: duplicate flag `FLAG` in bitmask `OuterFlags`
+error[duplicate_name]: duplicate flag `FLAG` in flag `OuterFlags`
    ┌ test.idl:5:9
    │
  5 │         FLAG    // Duplicate
    ·         ^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive

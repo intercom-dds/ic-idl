@@ -2,26 +2,26 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_flag]: duplicate flag `FLAG` in bitmask `CaseSensitive`
+error[duplicate_name]: duplicate flag `FLAG` in flag `CaseSensitive`
    ┌ test.idl:4:5
    │
  4 │     FLAG,     // Different case, not a duplicate
    ·     ^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive
 
-error[duplicate_flag]: duplicate flag `Flag` in bitmask `CaseSensitive`
+error[duplicate_name]: duplicate flag `Flag` in flag `CaseSensitive`
    ┌ test.idl:5:5
    │
  5 │     Flag,     // Another different case
    ·     ^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive
 
-error[duplicate_flag]: duplicate flag `flag` in bitmask `CaseSensitive`
+error[duplicate_name]: duplicate flag `flag` in flag `CaseSensitive`
    ┌ test.idl:6:5
    │
  6 │     flag      // Duplicate of first one
    ·     ^^^^ redefined here
    └──
- note: flag names are case-insensitive
+ note: names are case-insensitive

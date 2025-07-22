@@ -115,7 +115,7 @@ impl<'a> TypeResolver<'a> {
                 .map(|s| s.name.as_str())
                 .collect();
 
-            let mut def_id;
+            let mut def_id = None;
 
             // If it's a qualified path (e.g., M::custom), resolve from root
             if segments.len() > 1 {
@@ -135,34 +135,36 @@ impl<'a> TypeResolver<'a> {
                         .resolve_path(self.ctx.scopes.root(), &full_path);
                 }
             } else {
-                // Single segment - try current scope and parent scopes
-                let mut scope_id = self.current_scope_id;
+                // Single segment - first try intercom::annotations for built-in annotations
+                if segments.len() == 1 {
+                    let intercom_path = vec!["intercom", "annotations", &name];
+                    def_id = self
+                        .ctx
+                        .scopes
+                        .resolve_path(self.ctx.scopes.root(), &intercom_path);
+                }
+                
+                // If not found in intercom::annotations, try current scope and parent scopes
+                if def_id.is_none() {
+                    let mut scope_id = self.current_scope_id;
 
-                // Walk up the scope chain looking for the annotation
-                loop {
-                    def_id = self.ctx.scopes.resolve_path(scope_id, &segments);
-                    if def_id.is_some() {
-                        break;
-                    }
+                    // Walk up the scope chain looking for the annotation
+                    loop {
+                        def_id = self.ctx.scopes.resolve_path(scope_id, &segments);
+                        if def_id.is_some() {
+                            break;
+                        }
 
-                    // Move to parent scope
-                    let scope_data = self.ctx.scopes.get_scope(scope_id);
-                    if let Some(parent) = scope_data.parent {
-                        scope_id = parent;
-                    } else {
-                        def_id = None;
-                        break; // Reached root scope
+                        // Move to parent scope
+                        let scope_data = self.ctx.scopes.get_scope(scope_id);
+                        if let Some(parent) = scope_data.parent {
+                            scope_id = parent;
+                        } else {
+                            def_id = None;
+                            break; // Reached root scope
+                        }
                     }
                 }
-            }
-
-            // If not found and it's unqualified, try in intercom::annotations
-            if def_id.is_none() && segments.len() == 1 {
-                let intercom_path = vec!["intercom", "annotations", &name];
-                def_id = self
-                    .ctx
-                    .scopes
-                    .resolve_path(self.ctx.scopes.root(), &intercom_path);
             }
 
             if let Some(id) = def_id {
@@ -501,6 +503,7 @@ impl<'a> TypeResolver<'a> {
     fn resolve_struct(&mut self, id: DefId, def: &ic_syntax::StructDef) {
         // Mark any forward declarations as resolved
         self.mark_forward_declarations_resolved(&def.ident.name);
+        
 
         let parent = if let Some(parent_path) = &def.parent {
             if let Some(parent_id) = self.resolve_path(parent_path) {
@@ -838,15 +841,64 @@ impl<'a> TypeResolver<'a> {
         }
     }
 
+    /// Recursively collects and resolves all annotation definitions.
+    fn resolve_annotations_recursively(&mut self, items: &[Item], scope: &[String]) {
+        for item in items {
+            match item {
+                Item::AnnotationValue(v) => {
+                    // Build qualified name for lookup
+                    let qualified_name = if scope.is_empty() {
+                        v.ident.name.clone()
+                    } else {
+                        format!("{}::{}", scope.join("::"), v.ident.name)
+                    };
+                    
+                    // Look up by qualified name instead of using item_map
+                    if let Some(&id) = self.name_map.get(&qualified_name) {
+                        self.resolve_annotation(id, v);
+                    }
+                }
+                Item::ModuleValue(v) => {
+                    // Recursively process annotations in modules with updated scope
+                    let mut new_scope = scope.to_vec();
+                    new_scope.push(v.ident.name.clone());
+                    self.resolve_annotations_recursively(&v.definitions, &new_scope);
+                }
+                Item::InterfaceValue(v) => {
+                    // Process annotations in interfaces
+                    let nested_items: Vec<Item> = v.members.iter()
+                        .filter_map(|m| {
+                            if let ic_syntax::InterfaceMember::Item(item) = m {
+                                Some(item.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    self.resolve_annotations_recursively(&nested_items, scope);
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Resolves all type references in the HIR.
     #[allow(clippy::too_many_lines)]
     fn resolve_all(&mut self, items: &[Item]) {
         // First pass: build item map
         self.build_item_map(items);
 
-        // Second pass: resolve each item
+        // Second pass: resolve ALL annotation definitions recursively
+        // This ensures that annotation definitions are fully resolved before
+        // they are used in other items
+        self.resolve_annotations_recursively(items, &[]);
+
+        // Third pass: resolve all other items
         for item in items {
             match item {
+                Item::AnnotationValue(_) => {
+                    // Already processed in second pass
+                }
                 Item::StructValue(v) => {
                     if let Some(&id) = self.item_map.get(&ItemKey {
                         name: v.ident.name.clone(),
@@ -939,14 +991,6 @@ impl<'a> TypeResolver<'a> {
                         kind: "module",
                     }) {
                         self.resolve_module(id, v);
-                    }
-                }
-                Item::AnnotationValue(v) => {
-                    if let Some(&id) = self.item_map.get(&ItemKey {
-                        name: v.ident.name.clone(),
-                        kind: "annotation",
-                    }) {
-                        self.resolve_annotation(id, v);
                     }
                 }
                 // TODO: Handle other item types

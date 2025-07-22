@@ -1,9 +1,2 @@
-module foo {
-	struct Bar {};
-};
-
-struct Baz {
-	foo::bar value1;
-	FOO::bar value2;
-	FOO::Bar value3;
-};
+@doc("foobar")
+struct foo {};

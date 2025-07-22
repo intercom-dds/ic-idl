@@ -322,17 +322,23 @@ fn test_annotation_on_all_definition_types() {
 
     let result = common::parse_and_resolve_successfully(input);
 
-    // Check that all types have the annotation
-    for (_, def) in &result.context.definitions {
-        if def.ident.name != "mark" {
-            // Skip the annotation definition itself
-            assert_eq!(
-                def.annotations.len(),
-                1,
-                "Definition {} should have 1 annotation",
-                def.ident.name
-            );
-            assert_eq!(def.annotations[0].ident.name, "mark");
-        }
+    // Check that all user-defined types have the annotation
+    let expected_defs = ["S", "U", "E", "Ex", "I", "C", "T"];
+    for expected in &expected_defs {
+        let def = result
+            .context
+            .definitions
+            .iter()
+            .find(|(_, def)| def.ident.name == *expected)
+            .map(|(_, def)| def)
+            .expect(&format!("Definition {} not found", expected));
+            
+        assert_eq!(
+            def.annotations.len(),
+            1,
+            "Definition {} should have 1 annotation",
+            def.ident.name
+        );
+        assert_eq!(def.annotations[0].ident.name, "mark");
     }
 }

@@ -43,7 +43,14 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
         parsed.errors
     );
 
-    let result = ic_hir::from_ast(parsed.tree);
+    // Parse built-in annotations (same as ic-idl does)
+    let builtin_file_id = source_map.embed_with_name(
+        "<builtin-annotations>",
+        include_str!("../../../ic-idl/idl/annotations.idl"),
+    );
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut source_map);
+    
+    let result = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
 
     // Render all diagnostics (errors and warnings)
     let mut output = String::new();

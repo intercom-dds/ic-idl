@@ -139,7 +139,8 @@ fn try_compile(options: CompilerOptions) {
 
     // Dump HIR if requested (after transformations)
     if compiler.options().unstable.hir_dump {
-        ic_hir_tree::emit_tree(&hir);
+        let tree = ic_hir_tree::emit_tree(&hir);
+        println!("{tree}");
     }
 
     // For now, skip ptree conversion and code generation

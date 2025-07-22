@@ -340,6 +340,7 @@ impl HirMerger {
     /// Special cases:
     /// - Modules are never deduplicated (each reopening creates a separate module)
     /// - Conflicting definitions (same name, different spans) generate errors
+    #[allow(clippy::too_many_lines)]
     fn copy_definition(
         &mut self,
         graph_index: usize,

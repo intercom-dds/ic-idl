@@ -425,18 +425,14 @@ fn plural(word: &str, count: usize) -> String {
     format!("{} {word}{s}", count.green())
 }
 
-#[allow(clippy::print_stdout)]
-pub fn emit_tree(result: &ResolvedGraph) {
+#[must_use]
+pub fn emit_tree(result: &ResolvedGraph) -> String {
     let leaves = result.order.iter().map(|id| emit_def(&result.context, *id));
     let mut root = leaf!("{}", ".".gray());
     root.extend(leaves);
 
     let mut buf = String::new();
     _ = writeln!(&mut buf, "{root}");
-    _ = write!(
-        &mut buf,
-        "{}",
-        plural("definition", result.context.definitions.len()),
-    );
-    println!("{buf}");
+    _ = write!(&mut buf, "{}", plural("definition", result.order.len()));
+    buf
 }

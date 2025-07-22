@@ -46,8 +46,55 @@ pub fn warning_help() {
     let command = Warnings::command();
     let flags = command.format_args_prefix("-W", |_| true).join("\n");
 
-    println!("{}", "warnings:".yellow());
+    println!("{}", "warning groups:".yellow());
     println!("{flags}");
+
+    println!("\n{}", "available lints:".yellow());
+    let mut lints = ic_lint::all_lints();
+    // Filter out semantic and syntax lints since they can't be disabled
+    lints.retain(|lint| {
+        !matches!(
+            lint.category,
+            ic_lint::Category::Semantic | ic_lint::Category::Syntax
+        )
+    });
+    lints.sort_by(|a, b| {
+        let cat_cmp = format!("{:?}", a.category).cmp(&format!("{:?}", b.category));
+        if cat_cmp == std::cmp::Ordering::Equal {
+            a.name.cmp(b.name)
+        } else {
+            cat_cmp
+        }
+    });
+
+    let max_name_len = lints.iter().map(|l| l.name.len() + 2).max().unwrap_or(0);
+    let mut current_category = None;
+
+    for lint in lints {
+        if current_category != Some(lint.category) {
+            let category_name = match lint.category {
+                ic_lint::Category::Annotation => "annotation",
+                ic_lint::Category::Deprecated => "deprecated",
+                ic_lint::Category::Pedantic => "pedantic",
+                ic_lint::Category::Semantic => "semantic",
+                ic_lint::Category::Syntax => "syntax",
+                ic_lint::Category::Unsupported => "unsupported",
+            };
+            if current_category.is_some() {
+                println!();
+            }
+            println!("  {}:", category_name.cyan());
+            current_category = Some(lint.category);
+        }
+
+        println!(
+            "    {:<width$}  {}",
+            lint.name,
+            lint.description,
+            width = max_name_len
+        );
+    }
+
     println!("\nRun with `{}`\n", "ic-idl -W [WARN] <files>...".green());
     println!(
         "To disable a warning, add '{}' before the warning text (e.g. '{}')",

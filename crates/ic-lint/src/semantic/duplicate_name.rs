@@ -80,7 +80,7 @@ impl<'a> DuplicateName<'a> {
                     "duplicate {} `{}` in {} `{}`",
                     construct_type,
                     name.yellow(),
-                    construct_type.replace("_", " "),
+                    construct_type.replace('_', " "),
                     parent_name
                 ),
                 Label::new(span).message("redefined here"),
@@ -122,25 +122,22 @@ impl<'a> DuplicateName<'a> {
         visited.insert(interface_id);
 
         let def = self.hir.context.definitions.get(interface_id);
-        match &def.kind {
-            DefKind::Interface(interface) => {
-                // Add methods from this interface
-                for proto in &interface.prototypes {
-                    methods
-                        .entry(CaseString::new(proto.ident.name.as_str()))
-                        .or_insert_with(Vec::new)
-                        .push((interface_id, proto));
-                }
+        if let DefKind::Interface(interface) = &def.kind {
+            // Add methods from this interface
+            for proto in &interface.prototypes {
+                methods
+                    .entry(CaseString::new(proto.ident.name.as_str()))
+                    .or_insert_with(Vec::new)
+                    .push((interface_id, proto));
+            }
 
-                // Recursively collect from parent interfaces
-                for &parent_id in &interface.parents {
-                    let parent_methods = self.collect_methods_with_sources(parent_id, visited);
-                    for (name, sources) in parent_methods {
-                        methods.entry(name).or_insert_with(Vec::new).extend(sources);
-                    }
+            // Recursively collect from parent interfaces
+            for &parent_id in &interface.parents {
+                let parent_methods = self.collect_methods_with_sources(parent_id, visited);
+                for (name, sources) in parent_methods {
+                    methods.entry(name).or_insert_with(Vec::new).extend(sources);
                 }
             }
-            _ => {}
         }
 
         methods
@@ -207,44 +204,6 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         // Check for duplicate field names
         self.check_names(&enum_ty.fields, |f| &f.ident, "field", &def.ident.name);
 
-        // Check for duplicate values
-        let mut field_values: HashMap<isize, Vec<&str>> = HashMap::new();
-        for field in &enum_ty.fields {
-            field_values
-                .entry(field.value)
-                .or_default()
-                .push(&field.ident.name);
-        }
-
-        for (value, names) in field_values {
-            if names.len() > 1 {
-                let first_field = enum_ty
-                    .fields
-                    .iter()
-                    .find(|f| f.ident.name == names[0])
-                    .unwrap();
-
-                let mut diag = ic_diagnostic::error_span(
-                    format!("duplicate value {} in enum `{}`", value, def.ident.name),
-                    Label::new(first_field.ident.span)
-                        .message(format!("first occurrence of value {}", value)),
-                );
-
-                for &name in &names[1..] {
-                    let field = enum_ty
-                        .fields
-                        .iter()
-                        .find(|f| f.ident.name == name)
-                        .unwrap();
-                    diag = diag.label(
-                        Label::new(field.ident.span).message(format!("duplicate value {}", value)),
-                    );
-                }
-
-                Self::report(self.ctx, diag);
-            }
-        }
-
         ic_hir::visit::walk_enum(self, enum_ty);
     }
 
@@ -255,52 +214,6 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
 
     fn visit_union(&mut self, def: &'a Def, union_ty: &'a UnionTy) {
         self.check_names(&union_ty.variants, |v| &v.ident, "variant", &def.ident.name);
-
-        // Also check for duplicate case labels
-        let mut case_labels: HashMap<isize, Vec<&str>> = HashMap::new();
-        for variant in &union_ty.variants {
-            for label in &variant.labels {
-                if let ic_hir::hir::Numeric::Int32(v) = label {
-                    case_labels
-                        .entry(*v as isize)
-                        .or_default()
-                        .push(&variant.ident.name);
-                }
-            }
-        }
-
-        for (label, variants) in case_labels {
-            if variants.len() > 1 {
-                let first_variant = union_ty
-                    .variants
-                    .iter()
-                    .find(|v| v.ident.name == variants[0])
-                    .unwrap();
-
-                let mut diag = ic_diagnostic::error_span(
-                    format!(
-                        "duplicate case label {} in union `{}`",
-                        label, def.ident.name
-                    ),
-                    Label::new(first_variant.ident.span)
-                        .message(format!("first occurrence of case {}", label)),
-                );
-
-                for &variant_name in &variants[1..] {
-                    let variant = union_ty
-                        .variants
-                        .iter()
-                        .find(|v| v.ident.name == variant_name)
-                        .unwrap();
-                    diag = diag.label(
-                        Label::new(variant.ident.span).message(format!("duplicate case {}", label)),
-                    );
-                }
-
-                Self::report(self.ctx, diag);
-            }
-        }
-
         ic_hir::visit::walk_union(self, union_ty);
     }
 
@@ -312,7 +225,7 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         let mut visited = HashSet::new();
         let methods = self.collect_methods_with_sources(def.id, &mut visited);
 
-        for (_method_name, sources) in &methods {
+        for sources in methods.values() {
             if sources.len() > 1 {
                 let first_method = sources[0].1;
                 let all_compatible = sources[1..]

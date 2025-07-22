@@ -67,7 +67,7 @@ impl<'a> Lint<'a> for AnnotatedDecl<'_> {
     }
 
     fn description() -> &'static str {
-        "Warns when annotations are placed on forward declarations"
+        "Annotations placed on forward declarations"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

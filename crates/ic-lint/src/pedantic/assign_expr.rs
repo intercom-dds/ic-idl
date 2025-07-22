@@ -72,7 +72,7 @@ impl<'a> Lint<'a> for AssignExpr<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when assignment operators are used in enums/bitmasks"
+        "Assignment operators used in enums/bitmasks"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

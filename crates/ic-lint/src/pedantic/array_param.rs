@@ -58,7 +58,7 @@ impl<'a> Lint<'a> for ArrayParam<'_> {
     }
 
     fn description() -> &'static str {
-        "Warns when arrays are used as function parameters"
+        "Arrays used as function parameters"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

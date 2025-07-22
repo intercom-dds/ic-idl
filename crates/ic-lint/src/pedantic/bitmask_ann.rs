@@ -58,7 +58,7 @@ impl<'a> Lint<'a> for BitmaskAnn<'_> {
     }
 
     fn description() -> &'static str {
-        "Warns when bitmasks are defined inside annotations"
+        "Bitmasks defined inside annotations"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

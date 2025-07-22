@@ -58,7 +58,7 @@ impl<'a> Lint<'a> for NullVariant<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when 'null' is used as a union member"
+        "'null' used as a union member"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

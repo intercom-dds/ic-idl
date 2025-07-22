@@ -112,7 +112,7 @@ impl<'a> Lint<'a> for ScopedLit<'_> {
     }
 
     fn description() -> &'static str {
-        "Warns when enum/bitmask values use scoped notation"
+        "Enum/bitmask values using scoped notation"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[Item]) {

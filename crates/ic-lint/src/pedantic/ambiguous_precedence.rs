@@ -107,7 +107,7 @@ impl<'a> Lint<'a> for AmbiguousPrecedence<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns about potentially confusing operator precedence"
+        "Potentially confusing operator precedence"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

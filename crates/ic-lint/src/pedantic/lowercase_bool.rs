@@ -48,7 +48,7 @@ impl<'a> Lint<'a> for LowercaseBool<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when lowercase 'true' or 'false' are used"
+        "Lowercase 'true' or 'false' used"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

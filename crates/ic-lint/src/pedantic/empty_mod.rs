@@ -60,7 +60,7 @@ impl<'a> Lint<'a> for EmptyMod<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when module declarations are empty"
+        "Module declarations that are empty"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

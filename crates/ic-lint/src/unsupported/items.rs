@@ -73,7 +73,7 @@ impl<'a> Lint<'a> for Unsupported<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when unsupported IDL features are used"
+        "Unsupported IDL features"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

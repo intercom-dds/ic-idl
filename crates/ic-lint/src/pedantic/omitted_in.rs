@@ -62,7 +62,7 @@ impl<'a> Lint<'a> for OmittedIn<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when parameter direction is omitted in prototypes"
+        "Parameter direction omitted in prototypes"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

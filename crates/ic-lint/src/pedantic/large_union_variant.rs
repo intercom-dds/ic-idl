@@ -55,7 +55,7 @@ impl<'a> Lint<'a> for LargeUnionVariant<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when union variants vary significantly in size"
+        "Union variants varying significantly in size"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {

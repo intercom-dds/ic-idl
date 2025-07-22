@@ -54,7 +54,7 @@ impl<'a> Lint<'a> for InvalidArraySize<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when array sizes exceed reasonable memory limits"
+        "Array sizes exceeding reasonable memory limits"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {

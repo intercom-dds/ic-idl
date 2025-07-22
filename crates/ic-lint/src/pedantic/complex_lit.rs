@@ -98,7 +98,7 @@ impl<'a> Lint<'a> for ComplexLit<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when complex literals are used in constants/annotations"
+        "Complex literals used in constants/annotations"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

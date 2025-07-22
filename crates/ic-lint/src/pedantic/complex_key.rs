@@ -49,7 +49,7 @@ impl<'a> Lint<'a> for ComplexMapKey<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when non-primitive types are used as map keys"
+        "Non-primitive types used as map keys"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {

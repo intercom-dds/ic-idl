@@ -34,9 +34,6 @@ Based on analysis of the codebase, here are the incomplete features and missing 
 
 ## 3. Expression Evaluation Limitations
 - In `ic-hir/src/lower/evaluate.rs`:
-  - TODO comments for handling integer suffixes (line 113)
-  - TODO comments for handling float vs double suffixes (line 118)
-  - String literals are not supported in constant expressions
   - Null literals are not supported in constant expressions
 
 ## 4. Missing Type System Features
@@ -52,5 +49,5 @@ While annotations are implemented, default values in annotations are only preser
 1. ~~**Bitset types**~~ - ✅ COMPLETED
 2. **Valuetype members** - Collected but not lowered
 3. **Complex numeric expressions** - Array/Sequence initializers not supported
-4. **Expression evaluation** - Limited type suffix handling, no string/null support in constants
+4. **Expression evaluation** - Null literals not supported in constants
 5. **Void type** - Implemented as a hack

@@ -112,20 +112,16 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
             )),
             ic_syntax::LiteralValue::Bool(b) => Ok(GenericNumeric::Bool(*b)),
             ic_syntax::LiteralValue::Char(c) => Ok(GenericNumeric::Char(*c)),
-            ic_syntax::LiteralValue::Int(i) => {
-                // TODO: Handle different integer types based on suffix
-                // For now, assume Int32
-                match i32::try_from(*i) {
-                    Ok(v) => Ok(GenericNumeric::Int32(v)),
-                    Err(_) =>
-                    {
-                        #[allow(clippy::cast_possible_wrap)]
-                        Ok(GenericNumeric::Int64(*i as i64))
-                    }
+            ic_syntax::LiteralValue::Int(i) => match i32::try_from(*i) {
+                Ok(v) => Ok(GenericNumeric::Int32(v)),
+                Err(_) =>
+                {
+                    #[allow(clippy::cast_possible_wrap)]
+                    Ok(GenericNumeric::Int64(*i as i64))
                 }
-            }
-            ic_syntax::LiteralValue::Float(f) => {
-                // TODO: Handle float vs double based on suffix
+            },
+            ic_syntax::LiteralValue::Float(f) =>
+            {
                 #[allow(clippy::cast_possible_truncation)]
                 Ok(GenericNumeric::Float(*f as f32))
             }

@@ -1080,6 +1080,7 @@ impl<'a> ExpressionEvaluator<'a> {
                         ty.as_ref().clone(),
                         *len,
                         parent_type_id,
+                        ic_syntax::util::expr_span(expr),
                     );
                 }
                 TyKind::Sequence { ty, .. } => {
@@ -1198,6 +1199,7 @@ impl<'a> ExpressionEvaluator<'a> {
         elem_ty: Ty,
         expected_len: usize,
         array_type_id: DefId,
+        span: Span,
     ) -> Numeric {
         let mut values = Vec::new();
 
@@ -1223,7 +1225,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     expected_len,
                     values.len()
                 ),
-                Label::new(Span::default()).message("in this initializer"),
+                Label::new(span).message("in this initializer"),
             ));
         }
 
@@ -1382,7 +1384,7 @@ impl<'a> ExpressionEvaluator<'a> {
                             }
                         }
                         TyKind::Array { ty, len, .. } => {
-                            self.eval_array_init(init_list, ty.as_ref().clone(), *len, id)
+                            self.eval_array_init(init_list, ty.as_ref().clone(), *len, id, ic_syntax::util::expr_span(&def.value))
                         }
                         TyKind::Sequence { ty, .. } => {
                             self.eval_sequence_init(init_list, ty.as_ref().clone(), id)

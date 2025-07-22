@@ -292,6 +292,9 @@ pub trait Lint<'a>: Sized {
     /// Category of the lint.
     fn category() -> Category;
 
+    /// A short description of what this lint checks for (40-60 chars).
+    fn description() -> &'static str;
+
     /// Check if this lint should run based on configuration.
     /// Semantic and Syntax category lints always run as they represent validation errors.
     #[must_use]
@@ -347,6 +350,33 @@ macro_rules! define_lints {
             names.sort_unstable();
             names.dedup();
             names
+        }
+
+        /// Information about a lint.
+        #[derive(Debug, Clone)]
+        pub struct LintInfo {
+            pub name: &'static str,
+            pub category: Category,
+            pub description: &'static str,
+        }
+
+        /// Returns information about all available lints.
+        #[must_use]
+        pub fn all_lints() -> Vec<LintInfo> {
+            let mut lints = vec![
+                $(LintInfo {
+                    name: <$syntax_lint>::name(),
+                    category: <$syntax_lint>::category(),
+                    description: <$syntax_lint>::description(),
+                },)*
+                $(LintInfo {
+                    name: <$hir_lint>::name(),
+                    category: <$hir_lint>::category(),
+                    description: <$hir_lint>::description(),
+                },)*
+            ];
+            lints.sort_by(|a, b| a.name.cmp(b.name));
+            lints
         }
 
         /// Traverses the AST and produces diagnostics for all enabled lints.

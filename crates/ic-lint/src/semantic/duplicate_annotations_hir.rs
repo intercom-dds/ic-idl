@@ -48,6 +48,10 @@ impl<'a> Lint<'a> for DuplicateAnnotationsHir<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when annotations are duplicated on the same item"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateAnnotationsHir { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

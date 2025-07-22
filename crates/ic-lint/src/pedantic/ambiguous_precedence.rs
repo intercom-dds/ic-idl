@@ -106,6 +106,10 @@ impl<'a> Lint<'a> for AmbiguousPrecedence<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns about potentially confusing operator precedence"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, tree);

@@ -46,6 +46,10 @@ impl<'a> Lint<'a> for RedundantInheritance<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when interfaces inherit from same parent multiple times"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[ic_syntax::Item]) {
         let mut visitor = RedundantInheritance { ctx };
         walk_tree(&mut visitor, ast);

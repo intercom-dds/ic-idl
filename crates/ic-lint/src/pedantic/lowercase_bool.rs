@@ -47,6 +47,10 @@ impl<'a> Lint<'a> for LowercaseBool<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when lowercase 'true' or 'false' are used"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

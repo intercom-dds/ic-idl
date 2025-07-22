@@ -54,6 +54,10 @@ impl<'a> Lint<'a> for LargeUnionVariant<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when union variants vary significantly in size"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = LargeUnionVariant {
             ctx,

@@ -89,6 +89,10 @@ impl<'a> Lint<'a> for EmptyTypes<'a> {
         Category::Syntax
     }
 
+    fn description() -> &'static str {
+        "Errors when enums, unions, or bitmasks have no members"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

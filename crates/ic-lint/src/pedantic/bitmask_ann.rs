@@ -57,6 +57,10 @@ impl<'a> Lint<'a> for BitmaskAnn<'_> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when bitmasks are defined inside annotations"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = BitmaskAnn { ctx };
         walk_tree(&mut lint, tree);

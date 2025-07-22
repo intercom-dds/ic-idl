@@ -47,6 +47,10 @@ impl<'a> Lint<'a> for MultipleDefaultCases<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when unions have multiple default cases"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = MultipleDefaultCases { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

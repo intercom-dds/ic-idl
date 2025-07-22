@@ -49,6 +49,10 @@ impl<'a> Lint<'a> for Deprecated<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Warns when deprecated items are used"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut deprecated_items = HashSet::new();
 

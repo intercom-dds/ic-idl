@@ -60,6 +60,10 @@ impl<'a> Lint<'a> for Proto<'_> {
         Category::Unsupported
     }
 
+    fn description() -> &'static str {
+        "Errors when proto3 constraints are violated"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
         let mut res = Proto { ctx };
         ic_hir::visit::walk_tree(&mut res, &hir.context.definitions);

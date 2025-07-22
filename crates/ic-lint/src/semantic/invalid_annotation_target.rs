@@ -46,6 +46,10 @@ impl<'a> Lint<'a> for InvalidAnnotationTarget<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when annotations are used on invalid targets"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = InvalidAnnotationTarget { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

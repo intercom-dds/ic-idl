@@ -71,6 +71,10 @@ impl<'a> Lint<'a> for AssignExpr<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when assignment operators are used in enums/bitmasks"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, tree);

@@ -47,6 +47,10 @@ impl<'a> Lint<'a> for ZeroBound<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when arrays or sequences have zero size/bounds"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = ZeroBound { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

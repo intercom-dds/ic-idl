@@ -45,6 +45,10 @@ impl<'a> Lint<'a> for BitBound<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when @bit position exceeds type bit width"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = BitBound { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

@@ -53,6 +53,10 @@ impl<'a> Lint<'a> for InvalidArraySize<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when array sizes exceed reasonable memory limits"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = InvalidArraySize {
             ctx,

@@ -47,6 +47,10 @@ impl<'a> Lint<'a> for RangeBound<'a> {
         Category::Annotation
     }
 
+    fn description() -> &'static str {
+        "Validates @range, @min, and @max annotation values"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = RangeBound { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

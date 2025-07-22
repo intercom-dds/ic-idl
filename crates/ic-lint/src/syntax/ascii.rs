@@ -75,6 +75,10 @@ impl<'a> Lint<'a> for AsciiIdent<'a> {
         Category::Syntax
     }
 
+    fn description() -> &'static str {
+        "Errors when identifiers contain non-ASCII characters"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = AsciiIdent { ctx };
         walk_tree(&mut lint, ast);

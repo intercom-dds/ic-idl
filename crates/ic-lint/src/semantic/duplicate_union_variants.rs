@@ -49,6 +49,10 @@ impl<'a> Lint<'a> for DuplicateUnionVariants<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when union variants have duplicate names"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateUnionVariants { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

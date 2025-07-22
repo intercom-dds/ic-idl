@@ -57,6 +57,10 @@ impl<'a> Lint<'a> for ArrayParam<'_> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when arrays are used as function parameters"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = ArrayParam { ctx };
         walk_tree(&mut lint, tree);

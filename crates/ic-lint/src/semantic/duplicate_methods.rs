@@ -50,6 +50,10 @@ impl<'a> Lint<'a> for DuplicateMethods<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when interface methods have duplicate names"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateMethods {
             ctx,

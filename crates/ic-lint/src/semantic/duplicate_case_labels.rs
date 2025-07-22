@@ -47,6 +47,10 @@ impl<'a> Lint<'a> for DuplicateCaseLabels<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when union case labels are duplicated"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateCaseLabels { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

@@ -71,6 +71,10 @@ impl<'a> Lint<'a> for AnnMembers<'a> {
         Category::Syntax
     }
 
+    fn description() -> &'static str {
+        "Errors when invalid items are defined inside annotations"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = AnnMembers { ctx };
         walk_tree(&mut lint, ast);

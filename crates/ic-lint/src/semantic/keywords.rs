@@ -79,6 +79,10 @@ impl<'a> Lint<'a> for KwIdent<'a> {
         Category::Syntax
     }
 
+    fn description() -> &'static str {
+        "Errors when IDL keywords are used as identifiers"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

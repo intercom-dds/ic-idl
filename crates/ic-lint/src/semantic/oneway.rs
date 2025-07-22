@@ -117,6 +117,10 @@ impl<'a> Lint<'a> for NonVoidOneway<'a> {
         Category::Syntax
     }
 
+    fn description() -> &'static str {
+        "Errors when oneway operations violate constraints"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

@@ -111,6 +111,10 @@ impl<'a> Lint<'a> for ScopedLit<'_> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when enum/bitmask values use scoped notation"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, tree: &[Item]) {
         let mut lint = ScopedLit {
             ctx,

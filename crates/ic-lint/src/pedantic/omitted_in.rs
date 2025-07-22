@@ -61,6 +61,10 @@ impl<'a> Lint<'a> for OmittedIn<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when parameter direction is omitted in prototypes"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

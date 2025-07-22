@@ -48,6 +48,10 @@ impl<'a> Lint<'a> for Sanity {
         Category::Syntax
     }
 
+    fn description() -> &'static str {
+        "Internal checks for AST structural validity"
+    }
+
     fn check(_ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self;
         walk_tree(&mut lint, ast);

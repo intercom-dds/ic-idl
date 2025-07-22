@@ -45,6 +45,10 @@ impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when union case labels are out of discriminator range"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = UnreachableUnionCases { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

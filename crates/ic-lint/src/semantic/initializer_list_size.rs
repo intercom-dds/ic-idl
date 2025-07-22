@@ -45,6 +45,10 @@ impl<'a> Lint<'a> for InitializerListSize<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when initializer list size doesn't match type"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         for (_, def) in &hir.context.definitions {
             if let DefKind::Const(const_ty) = &def.kind {

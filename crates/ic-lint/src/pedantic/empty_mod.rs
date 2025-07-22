@@ -59,6 +59,10 @@ impl<'a> Lint<'a> for EmptyMod<'a> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when module declarations are empty"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

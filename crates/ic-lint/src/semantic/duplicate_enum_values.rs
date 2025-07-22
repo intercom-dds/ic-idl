@@ -49,6 +49,10 @@ impl<'a> Lint<'a> for DuplicateEnumValues<'a> {
         Category::Semantic
     }
 
+    fn description() -> &'static str {
+        "Errors when enum values are duplicated"
+    }
+
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateEnumValues { ctx };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);

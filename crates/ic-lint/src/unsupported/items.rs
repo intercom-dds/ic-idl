@@ -72,6 +72,10 @@ impl<'a> Lint<'a> for Unsupported<'a> {
         Category::Unsupported
     }
 
+    fn description() -> &'static str {
+        "Warns when unsupported IDL features are used"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);

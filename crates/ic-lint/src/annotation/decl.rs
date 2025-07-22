@@ -66,6 +66,10 @@ impl<'a> Lint<'a> for AnnotatedDecl<'_> {
         Category::Pedantic
     }
 
+    fn description() -> &'static str {
+        "Warns when annotations are placed on forward declarations"
+    }
+
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
         let mut lint = AnnotatedDecl { ctx };
         walk_tree(&mut lint, tree);

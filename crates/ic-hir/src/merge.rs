@@ -744,6 +744,85 @@ impl HirMerger {
                     num.clone()
                 }
             }
+            Numeric::Array { ty, values } => {
+                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
+                    new_id
+                } else {
+                    *ty
+                };
+                Numeric::Array {
+                    ty: new_ty,
+                    values: values
+                        .iter()
+                        .map(|v| self.update_numeric(graph_index, v))
+                        .collect(),
+                }
+            }
+            Numeric::Sequence { ty, values } => {
+                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
+                    new_id
+                } else {
+                    *ty
+                };
+                Numeric::Sequence {
+                    ty: new_ty,
+                    values: values
+                        .iter()
+                        .map(|v| self.update_numeric(graph_index, v))
+                        .collect(),
+                }
+            }
+            Numeric::Map { ty, values } => {
+                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
+                    new_id
+                } else {
+                    *ty
+                };
+                Numeric::Map {
+                    ty: new_ty,
+                    values: values
+                        .iter()
+                        .map(|(k, v)| {
+                            (
+                                self.update_numeric(graph_index, k),
+                                self.update_numeric(graph_index, v),
+                            )
+                        })
+                        .collect(),
+                }
+            }
+            Numeric::Struct { ty, fields } => {
+                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
+                    new_id
+                } else {
+                    *ty
+                };
+                Numeric::Struct {
+                    ty: new_ty,
+                    fields: fields
+                        .iter()
+                        .map(|(ident, v)| (ident.clone(), self.update_numeric(graph_index, v)))
+                        .collect(),
+                }
+            }
+            Numeric::Union {
+                ty,
+                discriminant,
+                field,
+                value,
+            } => {
+                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
+                    new_id
+                } else {
+                    *ty
+                };
+                Numeric::Union {
+                    ty: new_ty,
+                    discriminant: Box::new(self.update_numeric(graph_index, discriminant)),
+                    field: field.clone(),
+                    value: Box::new(self.update_numeric(graph_index, value)),
+                }
+            }
             other => other.clone(),
         }
     }

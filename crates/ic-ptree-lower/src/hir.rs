@@ -86,7 +86,7 @@ impl<'a> TreeBuilder<'a> {
             },
             TyKind::Array { ty, len, .. } => {
                 let ty = self.lower_ty(ty);
-                let bound = sys::create_u64(self.state, (*len + 1) as u64, 10);
+                let bound = sys::create_u64(self.state, *len as u64, 10);
                 let decl = sys::append_array_size(self.state, ptr::null_mut(), bound);
                 sys::create_array_type(self.state, decl, ty)
             }
@@ -169,12 +169,27 @@ impl<'a> TreeBuilder<'a> {
                 let numeric = sys::create_numeric_node(self.state, node);
                 sys::create_value_node(self.state, numeric, ptr::null_mut())
             }
-            Numeric::Null
-            | Numeric::Array { .. }
-            | Numeric::Sequence { .. }
-            | Numeric::Map { .. }
-            | Numeric::Struct { .. }
-            | Numeric::Union { .. } => NUM_UNDEF,
+            Numeric::Struct { fields, .. } => {
+                let values = collect_with(self.state, sys::append_node, fields, |(ident, num)| {
+                    let num = self.lower_numeric(num);
+                    let decl = self.lower_decl(ident);
+                    sys::create_const_node(self.state, decl, std::ptr::null_mut(), num)
+                });
+                sys::create_value_node(self.state, NUM_UNDEF, values)
+            }
+            Numeric::Sequence { values, .. } | Numeric::Array { values, .. } => {
+                let values = collect_with(self.state, sys::append_node, values, |num| {
+                    let num = self.lower_numeric(num);
+                    sys::create_const_node(
+                        self.state,
+                        std::ptr::null_mut(),
+                        std::ptr::null_mut(),
+                        num,
+                    )
+                });
+                sys::create_value_node(self.state, NUM_UNDEF, values)
+            }
+            Numeric::Null | Numeric::Map { .. } | Numeric::Union { .. } => NUM_UNDEF,
         }
     }
 
@@ -362,28 +377,8 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
-unsafe fn _inject_builtin(state: *mut sys::parser_state) {
-    let builtin = common::parse_builtin();
-    let hir = ic_hir::from_ast(builtin.tree);
-    assert!(hir.errors.is_empty());
-
-    // Discard the generated nodes -- we don't want to include the built-in
-    // types in the tree. They just need to be registered in the symbol map with
-    // their respective definitions.
-    let mut builder = TreeBuilder::new(state, &hir);
-    let tree = collect_with(state, sys::append_node, &hir.order, |id| {
-        builder.lower_def(*id)
-    });
-
-    assert!(!tree.is_null());
-}
-
 pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     let state = unsafe { sys::ic_parser_create() };
-
-    // Inject the built-in annotations. We use the AST version to preserve the
-    // default values that are not yet included in the HIR.
-    // ast::inject_builtin(state);
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);

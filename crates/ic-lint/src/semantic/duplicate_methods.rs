@@ -27,6 +27,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use ic_alloc::insensitive::CaseString;
+use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::hir::{Def, DefId, DefKind, InterfaceTy, ProtoTy};
 use ic_hir::visit::Visitor;
@@ -69,7 +71,7 @@ impl<'a> DuplicateMethods<'a> {
         &self,
         interface_id: DefId,
         visited: &mut HashSet<DefId>,
-    ) -> HashMap<String, Vec<(DefId, &'a ProtoTy)>> {
+    ) -> HashMap<CaseString, Vec<(DefId, &'a ProtoTy)>> {
         let mut methods = HashMap::new();
 
         // Check if we've already visited this interface to prevent infinite loops
@@ -86,7 +88,7 @@ impl<'a> DuplicateMethods<'a> {
                 // Add methods from this interface
                 for proto in &interface.prototypes {
                     methods
-                        .entry(proto.ident.name.clone())
+                        .entry(CaseString::new(proto.ident.name.as_str()))
                         .or_insert_with(Vec::new)
                         .push((interface_id, proto));
                 }
@@ -128,7 +130,7 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
         let methods = self.collect_methods_with_sources(def.id, &mut visited);
 
         // Check for duplicates
-        for (method_name, sources) in &methods {
+        for (_method_name, sources) in &methods {
             if sources.len() > 1 {
                 // We have duplicate method names - check if they're compatible
                 let first_method = sources[0].1;
@@ -149,7 +151,8 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                             format!(
                                 "interface `{}` defines method `{}` which conflicts with \
                                  inherited method",
-                                def.ident.name, method_name
+                                def.ident.name,
+                                current_method.ident.name.yellow()
                             ),
                             Label::new(current_method.ident.span)
                                 .message("conflicting method definition"),
@@ -166,13 +169,15 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                             }
                         }
 
-                        Self::report(self.ctx, diag);
+                        Self::report(self.ctx, diag.note("method names are case-insensitive"));
                     } else {
                         // This interface inherits conflicting methods from multiple parents
+                        let first_method = sources[0].1;
                         let diag = ic_diagnostic::error_span(
                             format!(
                                 "interface `{}` inherits conflicting definitions of method `{}`",
-                                def.ident.name, method_name
+                                def.ident.name,
+                                first_method.ident.name.yellow()
                             ),
                             Label::new(def.ident.span)
                                 .message("interface with conflicting inherited methods"),
@@ -188,7 +193,7 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                             );
                         }
 
-                        Self::report(self.ctx, diag);
+                        Self::report(self.ctx, diag.note("method names are case-insensitive"));
                     }
                 } else if sources.len() > 1 {
                     // Compatible duplicate methods - still worth a warning
@@ -204,7 +209,8 @@ impl<'a> Visitor<'a> for DuplicateMethods<'a> {
                             Self::category(),
                             format!(
                                 "interface `{}` redefines inherited method `{}`",
-                                def.ident.name, method_name
+                                def.ident.name,
+                                current_method.ident.name.yellow()
                             ),
                             Label::new(current_method.ident.span).message("method redefinition"),
                         ) {

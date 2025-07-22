@@ -25,8 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
+use ic_alloc::insensitive::CaseSet;
+use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, EnumTy};
@@ -66,22 +68,23 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
             return;
         }
 
-        let mut field_names = HashSet::new();
+        let mut field_names = CaseSet::default();
         let mut field_values: HashMap<isize, Vec<&str>> = HashMap::new();
 
         for field in &enum_ty.fields {
-            // Check for duplicate names
+            // Check for duplicate names (case-insensitive)
             if !field_names.insert(field.ident.name.as_str()) {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!(
                         "duplicate field `{}` in enum `{}`",
-                        field.ident.name, def.ident.name
+                        field.ident.name.yellow(),
+                        def.ident.name
                     ),
-                    Label::new(field.ident.span).message("duplicate field"),
+                    Label::new(field.ident.span).message("redefined here"),
                 ) {
-                    Self::report(self.ctx, diag);
+                    Self::report(self.ctx, diag.note("field names are case-insensitive"));
                 }
             }
 

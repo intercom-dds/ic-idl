@@ -546,7 +546,7 @@ impl<'a> TypeChecker<'a> {
             for field in &enum_ty.fields {
                 let value_desc = format!("enum field `{}::{}`", def.ident.name, field.ident.name);
                 self.check_int_fits(
-                    i64::try_from(field.value).unwrap(),
+                    field.value as i64,
                     *underlying_prim,
                     &value_desc,
                     field.ident.span,
@@ -568,8 +568,10 @@ impl<'a> TypeChecker<'a> {
 
             for flag in &bitmask_ty.flags {
                 let value_desc = format!("bitmask flag `{}::{}`", def.ident.name, flag.ident.name);
+                // Safe cast: bitmask values are always small enough to fit in i64
+                #[allow(clippy::cast_possible_wrap)]
                 self.check_int_fits(
-                    i64::try_from(flag.value).unwrap(),
+                    flag.value as i64,
                     *underlying_prim,
                     &value_desc,
                     flag.ident.span,

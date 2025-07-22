@@ -86,8 +86,6 @@ pub fn path_span(path: &Path) -> Span {
     Span { start, end }
 }
 
-// TODO: start and end do not necessarily come from the same file, so merging
-// them like this is dangerous.
 #[must_use]
 pub fn expr_span(expr: &Expr) -> Span {
     match expr {

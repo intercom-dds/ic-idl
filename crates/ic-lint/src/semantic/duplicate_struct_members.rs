@@ -25,19 +25,21 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashSet;
-
+use ic_alloc::insensitive::CaseSet;
+use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, StructTy};
+use ic_hir::hir::{Def, DefKind, StructTy};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
 
 /// Lint that checks for duplicate member names in struct definitions.
 /// This is an error because duplicate member names are not allowed.
+/// Uses case-insensitive comparison and checks inherited members.
 pub struct DuplicateStructMembers<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for DuplicateStructMembers<'a> {
@@ -54,26 +56,51 @@ impl<'a> Lint<'a> for DuplicateStructMembers<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = DuplicateStructMembers { ctx };
+        let mut visitor = DuplicateStructMembers { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
 
 impl<'a> Visitor<'a> for DuplicateStructMembers<'a> {
     fn visit_struct(&mut self, def: &'a Def, struct_ty: &'a StructTy) {
-        let mut member_names = HashSet::new();
+        let mut seen = CaseSet::default();
 
+        // Check members from all parent structs first
+        let mut parent_id = struct_ty.parent;
+        let mut visited_parents = std::collections::HashSet::new();
+
+        while let Some(parent) = parent_id {
+            // Prevent infinite loops in case of circular inheritance
+            if !visited_parents.insert(parent) {
+                break;
+            }
+
+            let parent_def = self.hir.context.definitions.get(parent);
+            if let DefKind::Struct(parent_struct) = &parent_def.kind {
+                // Add parent members to our seen set (but don't report duplicates in parents)
+                for member in &parent_struct.members {
+                    seen.insert(member.ident.name.as_str());
+                }
+                parent_id = parent_struct.parent;
+            } else {
+                break;
+            }
+        }
+
+        // Now check this struct's own members
         for member in &struct_ty.members {
-            if !member_names.insert(member.ident.name.as_str()) {
+            if !seen.insert(member.ident.name.as_str()) {
                 Self::report(
                     self.ctx,
                     ic_diagnostic::error_span(
                         format!(
                             "duplicate member `{}` in struct `{}`",
-                            member.ident.name, def.ident.name
+                            member.ident.name.yellow(),
+                            def.ident.name
                         ),
-                        Label::new(member.ident.span).message("duplicate member"),
-                    ),
+                        Label::new(member.ident.span).message("redefined here"),
+                    )
+                    .note("member names are case-insensitive"),
                 );
             }
         }
@@ -84,19 +111,21 @@ impl<'a> Visitor<'a> for DuplicateStructMembers<'a> {
 
     fn visit_except(&mut self, def: &'a Def, except_ty: &'a ic_hir::hir::ExceptTy) {
         // Exceptions are like structs, check for duplicate members
-        let mut member_names = HashSet::new();
+        let mut seen = CaseSet::default();
 
         for member in &except_ty.members {
-            if !member_names.insert(member.ident.name.as_str()) {
+            if !seen.insert(member.ident.name.as_str()) {
                 Self::report(
                     self.ctx,
                     ic_diagnostic::error_span(
                         format!(
                             "duplicate member `{}` in exception `{}`",
-                            member.ident.name, def.ident.name
+                            member.ident.name.yellow(),
+                            def.ident.name
                         ),
-                        Label::new(member.ident.span).message("duplicate member"),
-                    ),
+                        Label::new(member.ident.span).message("redefined here"),
+                    )
+                    .note("member names are case-insensitive"),
                 );
             }
         }

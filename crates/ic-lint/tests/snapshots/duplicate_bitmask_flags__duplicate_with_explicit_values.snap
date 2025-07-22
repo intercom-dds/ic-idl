@@ -6,12 +6,6 @@ error[duplicate_flag]: duplicate flag `ACTIVE` in bitmask `Status`
    ┌ test.idl:5:5
    │
  5 │     ACTIVE = 2,  // Duplicate name, different value
-   ·     ^^^^^^ duplicate flag
-   └──
-
-error: duplicate registration of name `ACTIVE`
-   ┌ test.idl:5:5
-   │
- 5 │     ACTIVE = 2,  // Duplicate name, different value
    ·     ^^^^^^ redefined here
    └──
+ note: flag names are case-insensitive

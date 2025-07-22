@@ -6,12 +6,6 @@ error[duplicate_variant]: duplicate variant `text` in union `Value`
    ┌ test.idl:5:20
    │
  5 │     case 2: string text;  // Duplicate variant name
-   ·                    ^^^^ duplicate variant
-   └──
-
-error: duplicate registration of name `text`
-   ┌ test.idl:5:20
-   │
- 5 │     case 2: string text;  // Duplicate variant name
    ·                    ^^^^ redefined here
    └──
+ note: variant names are case-insensitive

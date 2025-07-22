@@ -25,8 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashSet;
-
+use ic_alloc::insensitive::CaseSet;
+use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{BitmaskTy, Def};
@@ -61,20 +61,22 @@ impl<'a> Lint<'a> for DuplicateBitmaskFlags<'a> {
 
 impl<'a> Visitor<'a> for DuplicateBitmaskFlags<'a> {
     fn visit_bitmask(&mut self, def: &'a Def, bitmask_ty: &'a BitmaskTy) {
-        let mut flag_names = HashSet::new();
+        let mut flag_names = CaseSet::default();
 
         for flag in &bitmask_ty.flags {
-            // Check for duplicate names (error)
+            // Check for duplicate names (error) - case-insensitive
             if !flag_names.insert(flag.ident.name.as_str()) {
                 Self::report(
                     self.ctx,
                     ic_diagnostic::error_span(
                         format!(
                             "duplicate flag `{}` in bitmask `{}`",
-                            flag.ident.name, def.ident.name
+                            flag.ident.name.yellow(),
+                            def.ident.name
                         ),
-                        Label::new(flag.ident.span).message("duplicate flag"),
-                    ),
+                        Label::new(flag.ident.span).message("redefined here"),
+                    )
+                    .note("flag names are case-insensitive"),
                 );
             }
         }

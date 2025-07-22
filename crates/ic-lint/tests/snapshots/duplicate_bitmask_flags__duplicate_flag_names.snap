@@ -6,12 +6,6 @@ error[duplicate_flag]: duplicate flag `READONLY` in bitmask `FileFlags`
    ┌ test.idl:6:5
    │
  6 │     READONLY  // Duplicate flag
-   ·     ^^^^^^^^ duplicate flag
-   └──
-
-error: duplicate registration of name `READONLY`
-   ┌ test.idl:6:5
-   │
- 6 │     READONLY  // Duplicate flag
    ·     ^^^^^^^^ redefined here
    └──
+ note: flag names are case-insensitive

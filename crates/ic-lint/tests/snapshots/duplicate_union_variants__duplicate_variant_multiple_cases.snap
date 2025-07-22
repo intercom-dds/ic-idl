@@ -6,12 +6,6 @@ error[duplicate_variant]: duplicate variant `active` in union `Status`
    ┌ test.idl:8:20
    │
  8 │     case 6: string active;  // Duplicate variant name
-   ·                    ^^^^^^ duplicate variant
-   └──
-
-error: duplicate registration of name `active`
-   ┌ test.idl:8:20
-   │
- 8 │     case 6: string active;  // Duplicate variant name
    ·                    ^^^^^^ redefined here
    └──
+ note: variant names are case-insensitive

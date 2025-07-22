@@ -247,7 +247,7 @@ impl<'a> NameCollector<'a> {
                 .children
                 .get(&ident.name)
                 .copied()
-                .unwrap()
+                .expect("scope should exist as we just checked it")
         } else {
             // Create a new child scope
             self.ctx

@@ -25,8 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashSet;
-
+use ic_alloc::insensitive::CaseSet;
+use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, UnionTy};
@@ -61,7 +61,7 @@ impl<'a> Lint<'a> for DuplicateUnionVariants<'a> {
 
 impl<'a> Visitor<'a> for DuplicateUnionVariants<'a> {
     fn visit_union(&mut self, def: &'a Def, union_ty: &'a UnionTy) {
-        let mut variant_names = HashSet::new();
+        let mut variant_names = CaseSet::default();
 
         for variant in &union_ty.variants {
             if !variant_names.insert(variant.ident.name.as_str()) {
@@ -70,10 +70,12 @@ impl<'a> Visitor<'a> for DuplicateUnionVariants<'a> {
                     ic_diagnostic::error_span(
                         format!(
                             "duplicate variant `{}` in union `{}`",
-                            variant.ident.name, def.ident.name
+                            variant.ident.name.yellow(),
+                            def.ident.name
                         ),
-                        Label::new(variant.ident.span).message("duplicate variant"),
-                    ),
+                        Label::new(variant.ident.span).message("redefined here"),
+                    )
+                    .note("variant names are case-insensitive"),
                 );
             }
         }

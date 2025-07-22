@@ -6,5 +6,6 @@ error[duplicate_flag]: duplicate flag `FLAG` in bitmask `OuterFlags`
    ┌ test.idl:5:9
    │
  5 │         FLAG    // Duplicate
-   ·         ^^^^ duplicate flag
+   ·         ^^^^ redefined here
    └──
+ note: flag names are case-insensitive

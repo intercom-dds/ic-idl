@@ -6,12 +6,6 @@ error[duplicate_flag]: duplicate flag `FLAG_A` in bitmask `HexFlags`
    ┌ test.idl:5:5
    │
  5 │     FLAG_A = 0x04,  // Duplicate name
-   ·     ^^^^^^ duplicate flag
-   └──
-
-error: duplicate registration of name `FLAG_A`
-   ┌ test.idl:5:5
-   │
- 5 │     FLAG_A = 0x04,  // Duplicate name
    ·     ^^^^^^ redefined here
    └──
+ note: flag names are case-insensitive

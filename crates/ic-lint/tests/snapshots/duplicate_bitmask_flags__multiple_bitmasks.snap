@@ -6,12 +6,6 @@ error[duplicate_flag]: duplicate flag `FLAG_A` in bitmask `FirstFlags`
    ┌ test.idl:5:5
    │
  5 │     FLAG_A    // Duplicate in first bitmask
-   ·     ^^^^^^ duplicate flag
-   └──
-
-error: duplicate registration of name `FLAG_A`
-   ┌ test.idl:5:5
-   │
- 5 │     FLAG_A    // Duplicate in first bitmask
    ·     ^^^^^^ redefined here
    └──
+ note: flag names are case-insensitive

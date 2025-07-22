@@ -6,12 +6,6 @@ error[duplicate_member]: duplicate member `values` in struct `Arrays`
    ┌ test.idl:5:10
    │
  5 │     long values[20];  // Duplicate member name, different array size
-   ·          ^^^^^^ duplicate member
-   └──
-
-error: duplicate registration of name `values`
-   ┌ test.idl:5:10
-   │
- 5 │     long values[20];  // Duplicate member name, different array size
    ·          ^^^^^^ redefined here
    └──
+ note: member names are case-insensitive

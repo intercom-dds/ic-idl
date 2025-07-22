@@ -6,40 +6,22 @@ error[duplicate_variant]: duplicate variant `name` in union `Data`
    ┌ test.idl:5:20
    │
  5 │     case 2: string name;    // First duplicate
-   ·                    ^^^^ duplicate variant
+   ·                    ^^^^ redefined here
    └──
+ note: variant names are case-insensitive
 
 error[duplicate_variant]: duplicate variant `value` in union `Data`
    ┌ test.idl:7:18
    │
  7 │     case 4: long value;     // Second duplicate
-   ·                  ^^^^^ duplicate variant
+   ·                  ^^^^^ redefined here
    └──
+ note: variant names are case-insensitive
 
 error[duplicate_variant]: duplicate variant `name` in union `Data`
    ┌ test.idl:8:20
    │
  8 │     case 5: string name;    // Third occurrence
-   ·                    ^^^^ duplicate variant
-   └──
-
-error: duplicate registration of name `name`
-   ┌ test.idl:5:20
-   │
- 5 │     case 2: string name;    // First duplicate
    ·                    ^^^^ redefined here
    └──
-
-error: duplicate registration of name `value`
-   ┌ test.idl:7:18
-   │
- 7 │     case 4: long value;     // Second duplicate
-   ·                  ^^^^^ redefined here
-   └──
-
-error: duplicate registration of name `name`
-   ┌ test.idl:8:20
-   │
- 8 │     case 5: string name;    // Third occurrence
-   ·                    ^^^^ redefined here
-   └──
+ note: variant names are case-insensitive

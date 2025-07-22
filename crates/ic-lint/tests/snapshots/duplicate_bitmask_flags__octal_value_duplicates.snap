@@ -6,12 +6,6 @@ error[duplicate_flag]: duplicate flag `FLAG_1` in bitmask `OctalFlags`
    ┌ test.idl:5:5
    │
  5 │     FLAG_1 = 04,  // Duplicate name
-   ·     ^^^^^^ duplicate flag
-   └──
-
-error: duplicate registration of name `FLAG_1`
-   ┌ test.idl:5:5
-   │
- 5 │     FLAG_1 = 04,  // Duplicate name
    ·     ^^^^^^ redefined here
    └──
+ note: flag names are case-insensitive

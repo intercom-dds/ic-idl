@@ -10,3 +10,4 @@ error[duplicate_methods]: interface `Derived` defines method `method` which conf
   6 │     void method();
     ·          ^^^^^^ inherited from `Base`
     └──
+ note: method names are case-insensitive

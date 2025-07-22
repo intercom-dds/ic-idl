@@ -31,7 +31,6 @@ pub use crate::ctx::Context;
 
 mod builtin;
 mod ctx;
-mod hygiene;
 mod lower;
 
 pub mod annotation;
@@ -76,16 +75,11 @@ where
 {
     let result = lower::lower(ast);
 
-    // Check for non-type name collisions, like struct members, etc.
-    let mut errors = result.errors;
-    let warnings = result.warnings;
-    hygiene::check(&result.context, &result.order, &mut errors);
-
     ResolvedGraph {
         context: result.context,
         order: result.order,
-        errors,
-        warnings,
+        errors: result.errors,
+        warnings: result.warnings,
     }
 }
 
@@ -101,16 +95,11 @@ where
 {
     let result = lower::lower_with_builtins(builtins, ast);
 
-    // Check for non-type name collisions, like struct members, etc.
-    let mut errors = result.errors;
-    let warnings = result.warnings;
-    hygiene::check(&result.context, &result.order, &mut errors);
-
     ResolvedGraph {
         context: result.context,
         order: result.order,
-        errors,
-        warnings,
+        errors: result.errors,
+        warnings: result.warnings,
     }
 }
 
@@ -127,16 +116,11 @@ where
 {
     let result = lower::lower_with_builtin_context(builtins, ast);
 
-    // Check for non-type name collisions, like struct members, etc.
-    let mut errors = result.errors;
-    let warnings = result.warnings;
-    hygiene::check(&result.context, &result.order, &mut errors);
-
     ResolvedGraph {
         context: result.context,
         order: result.order,
-        errors,
-        warnings,
+        errors: result.errors,
+        warnings: result.warnings,
     }
 }
 

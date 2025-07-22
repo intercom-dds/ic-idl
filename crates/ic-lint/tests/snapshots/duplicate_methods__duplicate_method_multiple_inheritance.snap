@@ -12,3 +12,4 @@ error[duplicate_methods]: interface `C` inherits conflicting definitions of meth
   7 │     long method();  // Different return type
     ·          ^^^^^^ defined in `B`
     └──
+ note: method names are case-insensitive

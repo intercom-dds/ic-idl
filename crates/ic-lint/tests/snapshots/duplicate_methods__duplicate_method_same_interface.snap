@@ -8,17 +8,11 @@ error[duplicate_methods]: interface `Test` defines method `method` which conflic
  3 │     void method();
    ·          ^^^^^^ conflicting method definition
    └──
+ note: method names are case-insensitive
 
 error: duplicate method `method` in interface `Test`
    ┌ test.idl:4:10
    │
  4 │     long method();  // Should be caught by validate.rs, not this lint
    ·          ^^^^^^ duplicate method
-   └──
-
-error: duplicate registration of name `method`
-   ┌ test.idl:4:10
-   │
- 4 │     long method();  // Should be caught by validate.rs, not this lint
-   ·          ^^^^^^ redefined here
    └──

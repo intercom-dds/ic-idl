@@ -265,6 +265,7 @@ dependencies = [
 name = "ic-lint"
 version = "0.1.0"
 dependencies = [
+ "ic-alloc",
  "ic-cli",
  "ic-diagnostic",
  "ic-hir",

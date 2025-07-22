@@ -347,11 +347,8 @@ impl Compiler {
             }));
         }
 
-        // First, compile built-in annotations to HIR
-        let builtin_hir = self.compile_builtins();
-
-        // Compile each file to a separate HIR
-        let mut hirs = vec![builtin_hir];
+        // Compile each file to a separate HIR (each with built-in annotations)
+        let mut hirs = Vec::new();
         let mut all_diagnostics = CompileDiagnostics {
             errors: Vec::new(),
             warnings: Vec::new(),
@@ -359,7 +356,7 @@ impl Compiler {
         };
 
         for file in &self.options.files.clone() {
-            match self.compile_file_to_hir_without_builtins(file) {
+            match self.compile_file_to_hir_with_builtins(file) {
                 Ok((hir, diag)) => {
                     hirs.push(hir);
                     all_diagnostics.warnings.extend(diag.warnings);
@@ -400,42 +397,28 @@ impl Compiler {
         Ok((merged_hir, all_diagnostics))
     }
 
-    /// Compile built-in annotations to HIR.
-    fn compile_builtins(&mut self) -> hir::ResolvedGraph {
+
+
+    /// Compile a single file to HIR with built-in annotations.
+    fn compile_file_to_hir_with_builtins(
+        &mut self,
+        path: &Path,
+    ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
+        // First parse built-in annotations
         let builtin_file_id = self.source_map.embed_with_name(
             "<builtin-annotations>",
             include_str!("../idl/annotations.idl"),
         );
-
         let builtin_parsed =
             ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
-
+        
         assert!(
             builtin_parsed.errors.is_empty(),
             "Failed to parse built-in annotations: {:?}",
             builtin_parsed.errors
         );
 
-        let hir = hir::from_ast(builtin_parsed.tree);
-
-        assert!(
-            hir.errors.is_empty(),
-            "Failed to create HIR for built-in annotations: {:?}",
-            hir.errors
-        );
-
-        hir
-    }
-
-    /// Compile a single file to HIR without built-in annotations.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if compilation fails.
-    fn compile_file_to_hir_without_builtins(
-        &mut self,
-        path: &Path,
-    ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
+        // Parse the user file
         let proc_args = self.proc_args();
         let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
             CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
@@ -458,7 +441,7 @@ impl Compiler {
                 .extend(ast.warnings.iter().map(pretty::to_warning));
         }
 
-        // Convert to HIR without built-in annotations
+        // Convert to HIR with built-in annotations
         let lint_config = self.options.warn.to_lint_config();
 
         // Run AST linting first
@@ -471,7 +454,7 @@ impl Compiler {
             diagnostics.warnings.extend(report.warnings);
         }
 
-        let mut hir = hir::from_ast(ast.tree);
+        let mut hir = hir::from_ast_with_builtins(builtin_parsed.tree, ast.tree);
 
         // Run HIR linting
         if diagnostics.errors.is_empty() {
@@ -496,16 +479,6 @@ impl Compiler {
         }
 
         Ok((hir, diagnostics))
-    }
-
-    /// Compile a single file to HIR with built-in annotations.
-    /// This is kept for backward compatibility.
-    #[allow(dead_code)]
-    fn compile_file_to_hir(
-        &mut self,
-        path: &Path,
-    ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
-        self.compile_file_to_hir_without_builtins(path)
     }
 
     /// Parse files and get the AST.

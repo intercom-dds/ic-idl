@@ -1,0 +1,11 @@
+// Test if we can manually resolve built-in annotations
+
+@key
+struct Foo {
+    int32 x;
+};
+
+@intercom::annotations::key
+struct Bar {
+    int32 y;
+};

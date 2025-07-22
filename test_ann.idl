@@ -1,0 +1,8 @@
+@annotation custom {
+  string value;
+};
+
+@custom(value = "test")
+struct Foo {
+  int32 x;
+};

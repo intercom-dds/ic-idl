@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/initializer_list_size.rs
+expression: "test_lint_hir(r\"const int32 MY_CONST[3] = {1, 2, 3, 4};\")"
+---
+error[initializer_list_size]: array initializer has 4 elements but array type expects 3
+   ┌ test.idl:1:1
+   │
+ 1 │ const int32 MY_CONST[3] = {1, 2, 3, 4};
+   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 3 elements
+   └──
+
+error: array size mismatch: expected 3 elements, found 4
+   ┌ test.idl:1:1
+   │
+ 1 │ const int32 MY_CONST[3] = {1, 2, 3, 4};
+   ·  in this initializer
+   └──

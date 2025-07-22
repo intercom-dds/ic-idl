@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/initializer_list_size.rs
+expression: "test_lint_hir(r\"\n        struct Container {\n            int32 data[5];\n        };\n        const Container c = {{1, 2, 3}};\n    \",)"
+---
+error: initializer lists need type context for evaluation
+   ┌ test.idl:5:31
+   │
+ 5 │         const Container c = {{1, 2, 3}};
+   ·                               ^^^^^^^ cannot evaluate this expression
+   └──

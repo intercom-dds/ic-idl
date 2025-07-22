@@ -34,6 +34,7 @@ pub mod duplicate_enum_values;
 pub mod duplicate_methods;
 pub mod duplicate_struct_members;
 pub mod duplicate_union_variants;
+pub mod initializer_list_size;
 pub mod invalid_annotation_target;
 pub mod invalid_enum_value;
 pub mod keywords;

@@ -448,6 +448,7 @@ define_lints! {
         semantic::duplicate_methods::DuplicateMethods,
         semantic::duplicate_struct_members::DuplicateStructMembers,
         semantic::duplicate_union_variants::DuplicateUnionVariants,
+        semantic::initializer_list_size::InitializerListSize,
         semantic::invalid_annotation_target::InvalidAnnotationTarget,
         semantic::invalid_enum_value::InvalidEnumValue,
         semantic::multiple_default_cases::MultipleDefaultCases,

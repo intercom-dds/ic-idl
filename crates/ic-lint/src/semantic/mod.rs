@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod bit_bound;
-pub mod case_consistency;
 pub mod deprecated;
 pub mod duplicate_annotations_hir;
 pub mod duplicate_case_labels;

@@ -123,3 +123,10 @@ pub fn parse_and_get_warnings(input: &str) -> (ResolvedGraph, String) {
 
     (result, diagnostics)
 }
+
+/// Parse IDL input and return only the diagnostics output (for snapshot testing)
+#[allow(dead_code)]
+pub fn compile_idl_with_warnings(input: &str) -> String {
+    let (_, _, diagnostics) = parse_and_resolve(input);
+    diagnostics
+}

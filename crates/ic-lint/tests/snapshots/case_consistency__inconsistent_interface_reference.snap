@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/case_consistency.rs
-expression: test_lint_hir(source)
----
-

@@ -1,0 +1,32 @@
+---
+source: crates/ic-hir/tests/case_consistency_warnings.rs
+expression: compile_idl_with_warnings(idl)
+---
+warning: inconsistent capitalization: `bar` should be `Bar`
+   ┌ test.idl:9:18
+   │
+ 9 │             foo::bar field1;   // Type name wrong
+   ·                  ^^^ used here
+   └──
+ note: the canonical name is `Bar`
+warning: inconsistent capitalization: `FOO` should be `foo`
+    ┌ test.idl:10:13
+    │
+ 10 │             FOO::Bar field2;   // Module name wrong
+    ·             ^^^ module name used here
+    └──
+ note: the canonical module name is `foo`
+warning: inconsistent capitalization: `FOO` should be `foo`
+    ┌ test.idl:11:13
+    │
+ 11 │             FOO::bar field3;   // Both wrong
+    ·             ^^^ module name used here
+    └──
+ note: the canonical module name is `foo`
+warning: inconsistent capitalization: `bar` should be `Bar`
+    ┌ test.idl:11:18
+    │
+ 11 │             FOO::bar field3;   // Both wrong
+    ·                  ^^^ used here
+    └──
+ note: the canonical name is `Bar`

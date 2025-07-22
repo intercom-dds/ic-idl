@@ -35,6 +35,7 @@
 
 use std::collections::HashMap;
 
+use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Item, Path, Span};
 
@@ -211,6 +212,75 @@ impl<'a> TypeResolver<'a> {
     }
 
     /// Finds the span of the failing segment in a path by resolving incrementally.
+    /// Check if a path reference has consistent capitalization with the definition
+    fn check_case_consistency(&mut self, path: &Path, def_id: DefId) {
+        // For multi-segment paths like foo::Bar, we need to check each segment
+        if path.segments.len() > 1 {
+            // Check module segments
+            let start_scope = if path.leading_colons.is_some() {
+                self.ctx.scopes.root()
+            } else {
+                self.current_scope_id
+            };
+
+            // Check each segment except the last one (which is the type name)
+            for (i, segment) in path.segments[..path.segments.len() - 1].iter().enumerate() {
+                let segments_so_far: Vec<&str> = path.segments[..=i]
+                    .iter()
+                    .map(|s| s.name.as_str())
+                    .collect();
+
+                // Try to resolve this prefix
+                if let Some(module_id) = self.ctx.scopes.resolve_path(start_scope, &segments_so_far)
+                {
+                    let module_def = self.ctx.definitions.get(module_id);
+                    let reference_name = &segment.name;
+                    let canonical_name = &module_def.ident.name;
+
+                    if reference_name != canonical_name
+                        && reference_name.eq_ignore_ascii_case(canonical_name)
+                    {
+                        self.warnings.push(
+                            warn_span(
+                                format!(
+                                    "inconsistent capitalization: `{}` should be `{}`",
+                                    reference_name.yellow(),
+                                    canonical_name.yellow()
+                                ),
+                                Label::new(segment.span).message("module name used here"),
+                            )
+                            .note(format!("the canonical module name is `{canonical_name}`")),
+                        );
+                    }
+                }
+            }
+        }
+
+        // Check the final type name
+        let def = self.ctx.definitions.get(def_id);
+        if let Some(last_segment) = path.segments.last() {
+            let reference_name = &last_segment.name;
+            let canonical_name = &def.ident.name;
+
+            // Check if they differ in case
+            if reference_name != canonical_name
+                && reference_name.eq_ignore_ascii_case(canonical_name)
+            {
+                self.warnings.push(
+                    warn_span(
+                        format!(
+                            "inconsistent capitalization: `{}` should be `{}`",
+                            reference_name.yellow(),
+                            canonical_name.yellow()
+                        ),
+                        Label::new(last_segment.span).message("used here"),
+                    )
+                    .note(format!("the canonical name is `{canonical_name}`")),
+                );
+            }
+        }
+    }
+
     fn find_failing_segment(&self, start_scope: ScopeId, path: &Path) -> Span {
         // Try resolving prefixes of the path to find where it fails
         for i in 1..=path.segments.len() {
@@ -335,6 +405,9 @@ impl<'a> TypeResolver<'a> {
 
                 // Otherwise resolve as user-defined type
                 if let Some(id) = self.resolve_path(v) {
+                    // Check for case consistency
+                    self.check_case_consistency(v, id);
+
                     Ty {
                         kind: TyKind::Adt(id),
                         span: ic_syntax::util::path_span(v),

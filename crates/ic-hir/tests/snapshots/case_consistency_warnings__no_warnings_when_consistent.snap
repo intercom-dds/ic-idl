@@ -1,0 +1,5 @@
+---
+source: crates/ic-hir/tests/case_consistency_warnings.rs
+expression: compile_idl_with_warnings(idl)
+---
+

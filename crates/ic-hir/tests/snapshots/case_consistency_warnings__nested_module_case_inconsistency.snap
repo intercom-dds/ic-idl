@@ -1,0 +1,46 @@
+---
+source: crates/ic-hir/tests/case_consistency_warnings.rs
+expression: compile_idl_with_warnings(idl)
+---
+warning: inconsistent capitalization: `outer` should be `Outer`
+    ┌ test.idl:11:13
+    │
+ 11 │             outer::inner::type field1;  // All wrong
+    ·             ^^^^^ module name used here
+    └──
+ note: the canonical module name is `Outer`
+warning: inconsistent capitalization: `inner` should be `Inner`
+    ┌ test.idl:11:20
+    │
+ 11 │             outer::inner::type field1;  // All wrong
+    ·                    ^^^^^ module name used here
+    └──
+ note: the canonical module name is `Inner`
+warning: inconsistent capitalization: `type` should be `Type`
+    ┌ test.idl:11:27
+    │
+ 11 │             outer::inner::type field1;  // All wrong
+    ·                           ^^^^ used here
+    └──
+ note: the canonical name is `Type`
+warning: inconsistent capitalization: `INNER` should be `Inner`
+    ┌ test.idl:12:20
+    │
+ 12 │             Outer::INNER::Type field2;  // Middle wrong
+    ·                    ^^^^^ module name used here
+    └──
+ note: the canonical module name is `Inner`
+warning: inconsistent capitalization: `OUTER` should be `Outer`
+    ┌ test.idl:13:13
+    │
+ 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
+    ·             ^^^^^ module name used here
+    └──
+ note: the canonical module name is `Outer`
+warning: inconsistent capitalization: `TYPE` should be `Type`
+    ┌ test.idl:13:27
+    │
+ 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
+    ·                           ^^^^ used here
+    └──
+ note: the canonical name is `Type`

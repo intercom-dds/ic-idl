@@ -78,8 +78,15 @@ pub fn lint_hir(source: &str) -> Report {
     let args = ic_preproc::ProcArgs::default();
     let ast = ic_parse::from_file(file_id, args, &mut vfs);
 
-    // Lower to HIR
-    let hir = ic_hir::from_ast(ast.tree);
+    // Parse built-in annotations (same as ic-idl does)
+    let builtin_file_id = vfs.embed_with_name(
+        "<builtin-annotations>",
+        include_str!("../../../ic-idl/idl/annotations.idl"),
+    );
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    
+    // Lower to HIR with built-ins
+    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
 
     // Configure lint to enable semantic errors
     let mut config = LintConfig::new();
@@ -103,8 +110,15 @@ pub fn test_lint_hir(source: &str) -> String {
     let args = ic_preproc::ProcArgs::default();
     let ast = ic_parse::from_file(file_id, args, &mut vfs);
 
-    // Lower to HIR
-    let hir = ic_hir::from_ast(ast.tree);
+    // Parse built-in annotations (same as ic-idl does)
+    let builtin_file_id = vfs.embed_with_name(
+        "<builtin-annotations>",
+        include_str!("../../../ic-idl/idl/annotations.idl"),
+    );
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    
+    // Lower to HIR with built-ins
+    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
 
     // Configure lint to enable semantic errors, pedantic warnings, and annotation warnings
     let mut config = LintConfig::new();

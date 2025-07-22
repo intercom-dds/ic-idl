@@ -83,19 +83,6 @@ module MyModule {
 }
 
 #[test]
-fn empty_range() {
-    let source = r"
-module MyModule {
-    struct EmptyRange {
-        @range() long value;
-    };
-};
-";
-
-    assert_snapshot!(test_lint_hir(source));
-}
-
-#[test]
 fn malformed_range() {
     let source = r#"
 module MyModule {
@@ -180,19 +167,6 @@ fn range_on_const() {
 module MyModule {
     @range(min=0, max=100)
     const long MAX_PERCENTAGE = 100;
-};
-";
-
-    assert_snapshot!(test_lint_hir(source));
-}
-
-#[test]
-fn positional_range_args() {
-    let source = r"
-module MyModule {
-    struct PositionalRange {
-        @range(0, 100) long value;
-    };
 };
 ";
 

@@ -53,3 +53,35 @@ where
     // Don't filter out built-in definitions - they need to be available for ptree lowering
     super::lower(all_items)
 }
+
+/// Lowers user AST with built-in definitions available for resolution,
+/// but only includes user definitions in the output order.
+///
+/// This avoids duplicate built-in definitions when merging multiple HIRs.
+pub fn lower_with_builtin_context<I, B>(builtins: B, user_ast: I) -> LoweringResult
+where
+    I: IntoIterator<Item = Item>,
+    B: IntoIterator<Item = Item>,
+{
+    let builtin_items: Vec<Item> = builtins.into_iter().collect();
+    let user_items: Vec<Item> = user_ast.into_iter().collect();
+
+    // First, lower built-ins alone to get their DefIds
+    let builtin_result = super::lower(builtin_items.clone());
+    let builtin_def_ids: std::collections::HashSet<_> = builtin_result.order.into_iter().collect();
+
+    // Combine built-ins and user AST
+    let mut all_items = builtin_items;
+    all_items.extend(user_items);
+
+    // Process everything together
+    let mut result = super::lower(all_items);
+
+    // Filter the order vector to only include user definitions
+    // Built-in definitions are still in the context but not in the output order
+    result
+        .order
+        .retain(|def_id| !builtin_def_ids.contains(def_id));
+
+    result
+}

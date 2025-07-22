@@ -114,6 +114,32 @@ where
     }
 }
 
+/// Lowers AST to HIR with built-in definitions available for resolution,
+/// but only includes user definitions in the output.
+///
+/// This is useful when compiling multiple files that each need access to
+/// built-in definitions (like annotations) but you want to avoid duplicates
+/// when merging the HIRs.
+pub fn from_ast_with_builtin_context<I, B>(builtins: B, ast: I) -> ResolvedGraph
+where
+    I: IntoIterator<Item = ic_syntax::Item>,
+    B: IntoIterator<Item = ic_syntax::Item>,
+{
+    let result = lower::lower_with_builtin_context(builtins, ast);
+
+    // Check for non-type name collisions, like struct members, etc.
+    let mut errors = result.errors;
+    let warnings = result.warnings;
+    hygiene::check(&result.context, &result.order, &mut errors);
+
+    ResolvedGraph {
+        context: result.context,
+        order: result.order,
+        errors,
+        warnings,
+    }
+}
+
 pub struct DefIter<'a> {
     ctx: &'a Context,
     iter: std::slice::Iter<'a, hir::DefId>,

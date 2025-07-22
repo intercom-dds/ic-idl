@@ -143,6 +143,132 @@ impl HirMerger {
             .collect()
     }
 
+    /// Checks if two annotation definitions are identical.
+    /// Two annotations are considered identical if they have the same members with
+    /// the same types in the same order.
+    fn annotations_are_identical(ann1: &AnnotationTy, ann2: &AnnotationTy) -> bool {
+        // Check if they have the same number of members
+        if ann1.members.len() != ann2.members.len() {
+            return false;
+        }
+
+        // Check if all members match in order
+        for (m1, m2) in ann1.members.iter().zip(ann2.members.iter()) {
+            // Member names must match
+            if m1.ident.name != m2.ident.name {
+                return false;
+            }
+
+            // Member types must match
+            if !Self::types_are_identical(&m1.ty, &m2.ty) {
+                return false;
+            }
+
+            // Default values must match
+            match (&m1.default_value, &m2.default_value) {
+                (None, None) => {}
+                (Some(v1), Some(v2)) => {
+                    if !Self::numerics_are_identical(v1, v2) {
+                        return false;
+                    }
+                }
+                _ => return false,
+            }
+        }
+
+        // Check if types arrays match
+        if ann1.types.len() != ann2.types.len() {
+            return false;
+        }
+
+        true
+    }
+
+    /// Checks if two types are identical.
+    fn types_are_identical(ty1: &Ty, ty2: &Ty) -> bool {
+        match (&ty1.kind, &ty2.kind) {
+            (TyKind::Any, TyKind::Any) | (TyKind::Fixed, TyKind::Fixed) => true,
+
+            (TyKind::Primitive(p1), TyKind::Primitive(p2)) => p1 == p2,
+
+            (
+                TyKind::Array {
+                    ty: ty1, len: len1, ..
+                },
+                TyKind::Array {
+                    ty: ty2, len: len2, ..
+                },
+            ) => len1 == len2 && Self::types_are_identical(ty1, ty2),
+
+            (
+                TyKind::Sequence {
+                    ty: ty1,
+                    bound: bound1,
+                    ..
+                },
+                TyKind::Sequence {
+                    ty: ty2,
+                    bound: bound2,
+                    ..
+                },
+            ) => bound1 == bound2 && Self::types_are_identical(ty1, ty2),
+
+            (
+                TyKind::String {
+                    wide: w1,
+                    bound: b1,
+                    ..
+                },
+                TyKind::String {
+                    wide: w2,
+                    bound: b2,
+                    ..
+                },
+            ) => w1 == w2 && b1 == b2,
+
+            (
+                TyKind::Map {
+                    key: k1,
+                    elem: e1,
+                    bound: b1,
+                    ..
+                },
+                TyKind::Map {
+                    key: k2,
+                    elem: e2,
+                    bound: b2,
+                    ..
+                },
+            ) => b1 == b2 && Self::types_are_identical(k1, k2) && Self::types_are_identical(e1, e2),
+
+            // For ADT types, we can't easily check identity without the DefId mapping
+            // This is a limitation but shouldn't matter for built-in annotations
+            _ => false,
+        }
+    }
+
+    /// Checks if two numeric values are identical.
+    fn numerics_are_identical(n1: &Numeric, n2: &Numeric) -> bool {
+        match (n1, n2) {
+            (Numeric::Null, Numeric::Null) => true,
+            (Numeric::Bool(b1), Numeric::Bool(b2)) => b1 == b2,
+            (Numeric::Int8(v1), Numeric::Int8(v2)) => v1 == v2,
+            (Numeric::Int16(v1), Numeric::Int16(v2)) => v1 == v2,
+            (Numeric::Int32(v1), Numeric::Int32(v2)) => v1 == v2,
+            (Numeric::Int64(v1), Numeric::Int64(v2)) => v1 == v2,
+            (Numeric::Octet(v1), Numeric::Octet(v2)) => v1 == v2,
+            (Numeric::UInt16(v1), Numeric::UInt16(v2)) => v1 == v2,
+            (Numeric::UInt32(v1), Numeric::UInt32(v2)) => v1 == v2,
+            (Numeric::UInt64(v1), Numeric::UInt64(v2)) => v1 == v2,
+            (Numeric::Float(v1), Numeric::Float(v2)) => v1.to_bits() == v2.to_bits(),
+            (Numeric::Double(v1), Numeric::Double(v2)) => v1.to_bits() == v2.to_bits(),
+            (Numeric::Char(c1), Numeric::Char(c2)) => c1 == c2,
+            (Numeric::String(s1), Numeric::String(s2)) => s1 == s2,
+            // For complex types, we need more sophisticated comparison
+            _ => false,
+        }
+    }
+
     /// Adds a graph to the merge, handling deduplication and reference updating.
     ///
     /// The merge process follows these steps:
@@ -271,6 +397,10 @@ impl HirMerger {
                     | (DefKind::Valuetype(_), DefKind::Decl(Decl::Valuetype)) => true,
                     // Multiple forward declarations are allowed
                     (DefKind::Decl(a), DefKind::Decl(b)) if a == b => true,
+                    // Identical annotation definitions are allowed (per IDL spec)
+                    (DefKind::Annotation(ann1), DefKind::Annotation(ann2)) => {
+                        Self::annotations_are_identical(ann1, ann2)
+                    }
                     _ => false,
                 };
 

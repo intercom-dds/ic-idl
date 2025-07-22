@@ -46,7 +46,6 @@ use crate::hir::{
 };
 use crate::scope::ScopeId;
 
-
 /// Resolves type references in the HIR.
 pub struct TypeResolver<'a> {
     ctx: &'a mut Context,
@@ -1320,7 +1319,6 @@ impl<'a> TypeResolver<'a> {
 
         result
     }
-
 }
 
 /// Converts a path to its string representation.

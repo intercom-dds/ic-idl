@@ -331,8 +331,8 @@ fn test_annotation_on_all_definition_types() {
             .iter()
             .find(|(_, def)| def.ident.name == *expected)
             .map(|(_, def)| def)
-            .expect(&format!("Definition {} not found", expected));
-            
+            .unwrap();
+
         assert_eq!(
             def.annotations.len(),
             1,

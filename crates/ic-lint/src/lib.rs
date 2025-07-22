@@ -470,6 +470,7 @@ define_lints! {
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,
         semantic::bit_bound::BitBound,
+        semantic::case_consistency::CaseConsistency,
         semantic::deprecated::Deprecated,
         semantic::duplicate_annotations_hir::DuplicateAnnotationsHir,
         semantic::duplicate_case_labels::DuplicateCaseLabels,

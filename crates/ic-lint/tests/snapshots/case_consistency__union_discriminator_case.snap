@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/case_consistency.rs
+expression: test_lint_hir(source)
+---
+warning[case_consistency]: inconsistent capitalization: `discriminatortype` should be `DiscriminatorType`
+   ┌ test.idl:8:27
+   │
+ 8 │     union MyUnion switch (discriminatortype) {  // Inconsistent capitalization
+   ·                           ^^^^^^^^^^^^^^^^^ used here
+   └──
+ note: the canonical name is `DiscriminatorType`

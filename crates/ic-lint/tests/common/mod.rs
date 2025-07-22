@@ -83,8 +83,9 @@ pub fn lint_hir(source: &str) -> Report {
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed = ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
-    
+    let builtin_parsed =
+        ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+
     // Lower to HIR with built-ins
     let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
 
@@ -115,8 +116,9 @@ pub fn test_lint_hir(source: &str) -> String {
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed = ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
-    
+    let builtin_parsed =
+        ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+
     // Lower to HIR with built-ins
     let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
 

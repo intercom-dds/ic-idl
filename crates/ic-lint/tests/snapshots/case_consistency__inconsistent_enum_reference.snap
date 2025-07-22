@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/case_consistency.rs
+expression: test_lint_hir(source)
+---
+warning[case_consistency]: inconsistent capitalization: `color` should be `Color`
+    ┌ test.idl:10:9
+    │
+ 10 │         color myColor;  // Inconsistent capitalization
+    ·         ^^^^^ used here
+    └──
+ note: the canonical name is `Color`

@@ -1,2 +1,1 @@
-@doc("foobar")
-struct foo {};
+struct Foo {};

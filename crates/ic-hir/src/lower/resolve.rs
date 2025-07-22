@@ -143,7 +143,7 @@ impl<'a> TypeResolver<'a> {
                         .scopes
                         .resolve_path(self.ctx.scopes.root(), &intercom_path);
                 }
-                
+
                 // If not found in intercom::annotations, try current scope and parent scopes
                 if def_id.is_none() {
                     let mut scope_id = self.current_scope_id;
@@ -503,7 +503,6 @@ impl<'a> TypeResolver<'a> {
     fn resolve_struct(&mut self, id: DefId, def: &ic_syntax::StructDef) {
         // Mark any forward declarations as resolved
         self.mark_forward_declarations_resolved(&def.ident.name);
-        
 
         let parent = if let Some(parent_path) = &def.parent {
             if let Some(parent_id) = self.resolve_path(parent_path) {
@@ -852,7 +851,7 @@ impl<'a> TypeResolver<'a> {
                     } else {
                         format!("{}::{}", scope.join("::"), v.ident.name)
                     };
-                    
+
                     // Look up by qualified name instead of using item_map
                     if let Some(&id) = self.name_map.get(&qualified_name) {
                         self.resolve_annotation(id, v);
@@ -866,7 +865,9 @@ impl<'a> TypeResolver<'a> {
                 }
                 Item::InterfaceValue(v) => {
                     // Process annotations in interfaces
-                    let nested_items: Vec<Item> = v.members.iter()
+                    let nested_items: Vec<Item> = v
+                        .members
+                        .iter()
                         .filter_map(|m| {
                             if let ic_syntax::InterfaceMember::Item(item) = m {
                                 Some(item.clone())

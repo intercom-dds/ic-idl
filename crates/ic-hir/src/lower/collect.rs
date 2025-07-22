@@ -658,6 +658,13 @@ pub fn collect_definitions(items: &[Item]) -> (Context, NameMap, Vec<DefId>, Vec
     // Collect all top-level items
     for item in items {
         let ids = collector.collect_item(item);
+        // Debug: Check for duplicates
+        for id in &ids {
+            if collector.order.contains(id) {
+                // This should not happen - indicates a bug in collection
+                debug_assert!(false, "DefId {id:?} already in order!");
+            }
+        }
         collector.order.extend(ids);
     }
 

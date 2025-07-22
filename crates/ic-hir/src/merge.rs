@@ -405,7 +405,34 @@ impl HirMerger {
                     _ => false,
                 };
 
-                if !compatible {
+                if compatible {
+                    // For forward declaration + full definition pairs, we need to keep BOTH
+                    // Don't deduplicate them - create a new definition
+                    let is_decl_and_def = matches!(
+                        (&old_def.kind, &existing_def.kind),
+                        (
+                            DefKind::Decl(_),
+                            DefKind::Struct(_)
+                                | DefKind::Union(_)
+                                | DefKind::Interface(_)
+                                | DefKind::Valuetype(_)
+                        ) | (
+                            DefKind::Struct(_)
+                                | DefKind::Union(_)
+                                | DefKind::Interface(_)
+                                | DefKind::Valuetype(_),
+                            DefKind::Decl(_)
+                        )
+                    );
+
+                    if !is_decl_and_def {
+                        // For other compatible cases (multiple forward decls, identical annotations),
+                        // deduplicate as before
+                        self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                        return existing_def_id;
+                    }
+                    // Fall through to create a new definition for forward decl + full def pairs
+                } else {
                     self.errors.push(
                         Diag::error(format!(
                             "conflicting definitions for `{}`",
@@ -418,33 +445,36 @@ impl HirMerger {
                         )
                         .label(Label::new(existing_def.ident.span).message("first defined here")),
                     );
+                    // Map to existing to avoid cascading errors
+                    self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                    return existing_def_id;
                 }
-
-                // Map to existing to avoid cascading errors
-                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-                return existing_def_id;
             }
 
-            // Same span = same definition, deduplicate
-            self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+            // Check if this is the same span case (exact same definition from include)
+            if old_def.ident.span == existing_def.ident.span {
+                // Same span = same definition, deduplicate
+                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
 
-            // If this deduplicated definition has a parent, ensure it's in the parent's definitions list
-            // This handles the case where a module is deduplicated but its children need to be registered
-            if let Some(parent_def_id) = old_def.parent {
-                if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id) {
-                    if let Def {
-                        kind: DefKind::Module(module),
-                        ..
-                    } = self.new_context.definitions.get_mut(mapped_parent)
+                // If this deduplicated definition has a parent, ensure it's in the parent's definitions list
+                // This handles the case where a module is deduplicated but its children need to be registered
+                if let Some(parent_def_id) = old_def.parent {
+                    if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
                     {
-                        if !module.definitions.contains(&existing_def_id) {
-                            module.definitions.push(existing_def_id);
+                        if let Def {
+                            kind: DefKind::Module(module),
+                            ..
+                        } = self.new_context.definitions.get_mut(mapped_parent)
+                        {
+                            if !module.definitions.contains(&existing_def_id) {
+                                module.definitions.push(existing_def_id);
+                            }
                         }
                     }
                 }
-            }
 
-            return existing_def_id;
+                return existing_def_id;
+            }
         }
 
         // Create a new definition with mapped parent
@@ -469,7 +499,26 @@ impl HirMerger {
                 .or_default()
                 .push((new_def_id, old_def.span));
         } else {
-            self.dedup_map.insert(qualified_name, new_def_id);
+            // Only add to dedup_map if it's not already there or if this is a full definition
+            // replacing a forward declaration
+            if let Some(&existing_id) = self.dedup_map.get(&qualified_name) {
+                let existing_def = self.new_context.definitions.get(existing_id);
+                let should_replace = matches!(
+                    (&existing_def.kind, &old_def.kind),
+                    (
+                        DefKind::Decl(_),
+                        DefKind::Struct(_)
+                            | DefKind::Union(_)
+                            | DefKind::Interface(_)
+                            | DefKind::Valuetype(_)
+                    )
+                );
+                if should_replace {
+                    self.dedup_map.insert(qualified_name, new_def_id);
+                }
+            } else {
+                self.dedup_map.insert(qualified_name, new_def_id);
+            }
         }
 
         // If this definition has a parent, add it to the parent's definitions list

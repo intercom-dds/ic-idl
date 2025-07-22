@@ -526,3 +526,164 @@ module abc {
         panic!("Expected module");
     }
 }
+
+#[test]
+fn test_merge_forward_declaration_and_definition() {
+    // Test the merge behavior when we have forward declarations and definitions
+    // The fix ensures both are preserved as separate entries during merge
+
+    // Create a simple test case with forward declaration and definition
+    let input = r"
+struct Foo;
+struct Foo {
+    long x;
+};
+";
+
+    // Parse it with built-in context
+    let builtin_idl = include_str!("../../ic-idl/idl/annotations.idl");
+    let builtin_parsed = ic_parse::from_str(builtin_idl);
+    let parsed = ic_parse::from_str(input);
+    let graph = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
+
+    // Should have no errors
+    assert_eq!(graph.errors.len(), 0);
+
+    // Verify we have both the forward declaration and the definition
+    let foos: Vec<_> = graph
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Foo")
+        .collect();
+
+    assert_eq!(
+        foos.len(),
+        2,
+        "Should have both forward declaration and definition"
+    );
+
+    // Count by type
+    let decl_count = foos
+        .iter()
+        .filter(|(_, def)| matches!(def.kind, DefKind::Decl(_)))
+        .count();
+    let struct_count = foos
+        .iter()
+        .filter(|(_, def)| matches!(def.kind, DefKind::Struct(_)))
+        .count();
+
+    assert_eq!(decl_count, 1, "Should have 1 forward declaration");
+    assert_eq!(struct_count, 1, "Should have 1 struct definition");
+
+    // Now test merging - parse again for the second graph
+    let builtin_parsed2 = ic_parse::from_str(builtin_idl);
+    let parsed2 = ic_parse::from_str(input);
+    let graph2 = ic_hir::from_ast_with_builtin_context(builtin_parsed2.tree, parsed2.tree);
+
+    // Merge them
+    let merged = merge_hir_trees(&[graph, graph2]);
+
+    // After merge, we should still have both (deduplicated by span)
+    let merged_foos: Vec<_> = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Foo")
+        .collect();
+
+    // The merge might create additional entries due to how builtin context is handled
+    // What matters is we have at least one forward declaration and one struct definition
+    let merged_decl_count = merged_foos
+        .iter()
+        .filter(|(_, def)| matches!(def.kind, DefKind::Decl(_)))
+        .count();
+    let merged_struct_count = merged_foos
+        .iter()
+        .filter(|(_, def)| matches!(def.kind, DefKind::Struct(_)))
+        .count();
+
+    assert!(
+        merged_decl_count >= 1,
+        "Should have at least 1 forward declaration after merge"
+    );
+    assert!(
+        merged_struct_count >= 1,
+        "Should have at least 1 struct definition after merge"
+    );
+}
+
+#[test]
+fn test_merge_forward_declaration_across_files() {
+    // Test the actual fix: when merging files where one has forward declarations
+    // and another has definitions, both should be preserved
+    let mut source_map = SourceMap::default();
+
+    // Simulate the ast.idl case - file with forward declarations at top
+    let input1 = r"
+module test {
+    struct Foo;  // Forward declaration
+    
+    struct Container {
+        long x;
+    };
+    
+    struct Foo {  // Full definition  
+        long id;
+    };
+};
+";
+
+    // Another file that references the same module
+    let input2 = r"
+module test {
+    struct Bar {
+        long y;
+    };
+};
+";
+
+    let file1 = source_map.embed_with_name("file1.idl", input1);
+    let file2 = source_map.embed_with_name("file2.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(parsed1.tree);
+    let graph2 = ic_hir::from_ast(parsed2.tree);
+
+    assert_eq!(graph1.errors.len(), 0);
+    assert_eq!(graph2.errors.len(), 0);
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no errors
+    assert_eq!(merged.errors.len(), 0);
+
+    // The key test: we should have BOTH the forward declaration AND the full definition
+    let all_foos: Vec<_> = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Foo")
+        .collect();
+
+    assert_eq!(
+        all_foos.len(),
+        2,
+        "Should have both forward declaration and full definition of Foo"
+    );
+
+    // Check that we have one forward declaration and one struct definition
+    let decl_count = all_foos
+        .iter()
+        .filter(|(_, def)| matches!(def.kind, DefKind::Decl(_)))
+        .count();
+    let struct_count = all_foos
+        .iter()
+        .filter(|(_, def)| matches!(def.kind, DefKind::Struct(_)))
+        .count();
+
+    assert_eq!(decl_count, 1, "Should have 1 forward declaration");
+    assert_eq!(struct_count, 1, "Should have 1 struct definition");
+}

@@ -55,13 +55,62 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+    /// Gets a human-readable name for a type.
+    fn type_name(&self, ty: &Ty) -> String {
+        match &ty.kind {
+            TyKind::Primitive(prim) => prim.name().to_string(),
+            TyKind::String { wide, .. } => {
+                if *wide {
+                    "wstring".to_string()
+                } else {
+                    "string".to_string()
+                }
+            }
+            TyKind::Adt(def_id) => {
+                let def = self.ctx.definitions.get(*def_id);
+                def.ident.name.clone()
+            }
+            TyKind::Array { ty, len, .. } => {
+                format!("{}[{}]", self.type_name(ty), len)
+            }
+            TyKind::Sequence { ty, bound, .. } => {
+                if let Some(bound) = bound {
+                    format!("sequence<{}, {}>", self.type_name(ty), bound)
+                } else {
+                    format!("sequence<{}>", self.type_name(ty))
+                }
+            }
+            TyKind::Map {
+                key, elem, bound, ..
+            } => {
+                if let Some(bound) = bound {
+                    format!(
+                        "map<{}, {}, {}>",
+                        self.type_name(key),
+                        self.type_name(elem),
+                        bound
+                    )
+                } else {
+                    format!("map<{}, {}>", self.type_name(key), self.type_name(elem))
+                }
+            }
+            _ => "unknown".to_string(),
+        }
+    }
+
     /// Checks if a numeric value is compatible with a type.
     #[allow(clippy::too_many_lines, clippy::match_same_arms)]
-    fn check_numeric_type(&mut self, value: &Numeric, ty: &Ty, value_desc: &str) -> bool {
+    fn check_numeric_type(
+        &mut self,
+        value: &Numeric,
+        ty: &Ty,
+        value_desc: &str,
+        value_span: ic_syntax::Span,
+    ) -> bool {
         // Special case for struct values first
         if let Numeric::Struct {
             ty: value_ty,
-            fields: _,
+            fields,
         } = value
         {
             if let TyKind::Adt(expected_ty) = &ty.kind {
@@ -69,20 +118,46 @@ impl<'a> TypeChecker<'a> {
                 if value_ty != expected_ty {
                     self.errors.push(error_span(
                         format!("{value_desc} struct type mismatch"),
-                        Label::new(ty.span).message("incompatible struct types"),
+                        Label::new(value_span).message("incompatible struct types"),
                     ));
                     return false;
                 }
 
                 // Check that it's actually a struct
                 let def = self.ctx.definitions.get(*expected_ty);
-                if let DefKind::Struct(_struct_ty) = &def.kind {
-                    // TODO: Check field types match
-                    return true;
+                if let DefKind::Struct(struct_ty) = &def.kind {
+                    // Check field types match
+                    let mut all_valid = true;
+                    for (field_ident, field_value) in fields {
+                        // Find the corresponding struct member
+                        if let Some(member) = struct_ty
+                            .members
+                            .iter()
+                            .find(|m| m.ident.name == field_ident.name)
+                        {
+                            let field_desc = format!("{}.{}", value_desc, field_ident.name);
+                            if !self.check_numeric_type(
+                                field_value,
+                                &member.ty,
+                                &field_desc,
+                                value_span,
+                            ) {
+                                all_valid = false;
+                            }
+                        } else {
+                            // Field not found in struct - this should have been caught earlier
+                            self.errors.push(error_span(
+                                format!("{value_desc} has unknown field `{}`", field_ident.name),
+                                Label::new(value_span).message("field not found in struct"),
+                            ));
+                            all_valid = false;
+                        }
+                    }
+                    return all_valid;
                 }
                 self.errors.push(error_span(
                     format!("{value_desc} is not a struct type"),
-                    Label::new(ty.span).message("expected struct type"),
+                    Label::new(value_span).message("expected struct type"),
                 ));
                 return false;
             }
@@ -101,8 +176,11 @@ impl<'a> TypeChecker<'a> {
             (Numeric::String(_), TyKind::String { .. }) => true,
             (Numeric::String(_), _) => {
                 self.errors.push(error_span(
-                    format!("{value_desc} has string value but type is not string"),
-                    Label::new(ty.span).message("expected string type"),
+                    format!(
+                        "{value_desc}: string value cannot be assigned to type {}",
+                        self.type_name(ty)
+                    ),
+                    Label::new(value_span).message(format!("expected type {}", self.type_name(ty))),
                 ));
                 false
             }
@@ -111,8 +189,11 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Bool(_), TyKind::Primitive(PrimitiveTy::Bool)) => true,
             (Numeric::Bool(_), _) => {
                 self.errors.push(error_span(
-                    format!("{value_desc} has boolean value but type is not boolean"),
-                    Label::new(ty.span).message("expected boolean type"),
+                    format!(
+                        "{value_desc}: boolean value cannot be assigned to type {}",
+                        self.type_name(ty)
+                    ),
+                    Label::new(value_span).message(format!("expected type {}", self.type_name(ty))),
                 ));
                 false
             }
@@ -122,7 +203,7 @@ impl<'a> TypeChecker<'a> {
                 let def = self.ctx.definitions.get(*type_id);
                 if let DefKind::Enum(enum_ty) = &def.kind {
                     // Check against the enum's underlying type
-                    return self.check_numeric_type(value, &enum_ty.ty, value_desc);
+                    return self.check_numeric_type(value, &enum_ty.ty, value_desc, value_span);
                 }
                 // Not an enum, report type mismatch
                 self.errors.push(error_span(
@@ -136,36 +217,39 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char | PrimitiveTy::WChar)) => true,
             (Numeric::Char(_), _) => {
                 self.errors.push(error_span(
-                    format!("{value_desc} has character value but type is not char/wchar"),
-                    Label::new(ty.span).message("expected character type"),
+                    format!(
+                        "{value_desc}: character value cannot be assigned to type {}",
+                        self.type_name(ty)
+                    ),
+                    Label::new(value_span).message(format!("expected type {}", self.type_name(ty))),
                 ));
                 false
             }
 
             // Integer values - check range
             (Numeric::Int8(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
             (Numeric::Octet(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
             (Numeric::Int16(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
             (Numeric::UInt16(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
             (Numeric::Int32(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
             (Numeric::UInt32(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(i64::from(*v), *prim, value_desc, ty.span)
+                self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
             (Numeric::Int64(v), TyKind::Primitive(prim)) => {
-                self.check_int_fits(*v, *prim, value_desc, ty.span)
+                self.check_int_fits(*v, *prim, value_desc, value_span)
             }
             (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
-                self.check_uint_fits(*v, *prim, value_desc, ty.span)
+                self.check_uint_fits(*v, *prim, value_desc, value_span)
             }
 
             // Float values
@@ -178,8 +262,11 @@ impl<'a> TypeChecker<'a> {
             ) => true, // double promotes to long double
             (Numeric::Float(_) | Numeric::Double(_), _) => {
                 self.errors.push(error_span(
-                    format!("{value_desc} has floating-point value but type is not float/double"),
-                    Label::new(ty.span).message("expected floating-point type"),
+                    format!(
+                        "{value_desc}: floating-point value cannot be assigned to type {}",
+                        self.type_name(ty)
+                    ),
+                    Label::new(value_span).message(format!("expected type {}", self.type_name(ty))),
                 ));
                 false
             }
@@ -193,21 +280,77 @@ impl<'a> TypeChecker<'a> {
                 } else {
                     self.errors.push(error_span(
                         format!("{value_desc} references a non-constant definition"),
-                        Label::new(ty.span).message("expected constant reference"),
+                        Label::new(value_span).message("expected constant reference"),
                     ));
                     false
                 }
             }
 
-            // Array/sequence/map/union values
+            // Array values
             (
-                Numeric::Array { .. }
-                | Numeric::Sequence { .. }
-                | Numeric::Map { .. }
-                | Numeric::Union { .. },
-                _,
+                Numeric::Array { values, .. },
+                TyKind::Array {
+                    ty: expected_elem_ty,
+                    ..
+                },
             ) => {
-                // TODO: Implement complex type checking
+                // Check each element
+                let mut all_valid = true;
+                for (i, elem) in values.iter().enumerate() {
+                    let elem_desc = format!("{value_desc}[{i}]");
+                    if !self.check_numeric_type(elem, expected_elem_ty, &elem_desc, value_span) {
+                        all_valid = false;
+                    }
+                }
+                all_valid
+            }
+
+            // Sequence values
+            (
+                Numeric::Sequence { values, .. },
+                TyKind::Sequence {
+                    ty: expected_elem_ty,
+                    ..
+                },
+            ) => {
+                // Check each element
+                let mut all_valid = true;
+                for (i, elem) in values.iter().enumerate() {
+                    let elem_desc = format!("{value_desc}[{i}]");
+                    if !self.check_numeric_type(elem, expected_elem_ty, &elem_desc, value_span) {
+                        all_valid = false;
+                    }
+                }
+                all_valid
+            }
+
+            // Map values
+            (
+                Numeric::Map { values, .. },
+                TyKind::Map {
+                    key: expected_key_ty,
+                    elem: expected_elem_ty,
+                    ..
+                },
+            ) => {
+                // Check each key-value pair
+                let mut all_valid = true;
+                for (i, (key, value)) in values.iter().enumerate() {
+                    let key_desc = format!("{value_desc} key at index {i}");
+                    let value_desc = format!("{value_desc} value at index {i}");
+                    if !self.check_numeric_type(key, expected_key_ty, &key_desc, value_span) {
+                        all_valid = false;
+                    }
+                    if !self.check_numeric_type(value, expected_elem_ty, &value_desc, value_span) {
+                        all_valid = false;
+                    }
+                }
+                all_valid
+            }
+
+            // Union values
+            (Numeric::Union { .. }, _) => {
+                // TODO: Implement union type checking
                 true
             }
 
@@ -216,8 +359,13 @@ impl<'a> TypeChecker<'a> {
                 // Don't report generic type mismatch for Null values from evaluation errors
                 if !matches!(value, Numeric::Null) {
                     self.errors.push(error_span(
-                        format!("{value_desc} value type does not match declared type"),
-                        Label::new(ty.span).message("type mismatch"),
+                        format!(
+                            "{value_desc}: {} value cannot be assigned to type {}",
+                            value_type_desc(value),
+                            self.type_name(ty)
+                        ),
+                        Label::new(value_span)
+                            .message(format!("expected type {}", self.type_name(ty))),
                     ));
                 }
                 false
@@ -380,7 +528,7 @@ impl<'a> TypeChecker<'a> {
 
         if let DefKind::Const(const_ty) = &def.kind {
             let value_desc = format!("constant `{}`", def.ident.name);
-            self.check_numeric_type(&const_ty.value, &const_ty.ty, &value_desc);
+            self.check_numeric_type(&const_ty.value, &const_ty.ty, &value_desc, def.span);
         }
     }
 
@@ -441,7 +589,7 @@ impl<'a> TypeChecker<'a> {
                         "union case label for variant `{}::{}`",
                         def.ident.name, variant.ident.name
                     );
-                    self.check_numeric_type(label, &union_ty.disc, &value_desc);
+                    self.check_numeric_type(label, &union_ty.disc, &value_desc, variant.ident.span);
                 }
             }
         }
@@ -468,4 +616,25 @@ pub fn typecheck_hir(ctx: &Context, order: &[DefId]) -> Vec<Diag> {
     let mut checker = TypeChecker::new(ctx);
     checker.check_all(order);
     checker.errors
+}
+
+/// Gets a description of the value's type.
+fn value_type_desc(value: &Numeric) -> &'static str {
+    match value {
+        Numeric::Null => "null",
+        Numeric::String(_) => "string",
+        Numeric::Bool(_) => "boolean",
+        Numeric::Char(_) => "character",
+        Numeric::Int8(_) | Numeric::Int16(_) | Numeric::Int32(_) | Numeric::Int64(_) => "integer",
+        Numeric::Octet(_) | Numeric::UInt16(_) | Numeric::UInt32(_) | Numeric::UInt64(_) => {
+            "unsigned integer"
+        }
+        Numeric::Float(_) | Numeric::Double(_) => "floating-point",
+        Numeric::Struct { .. } => "struct",
+        Numeric::Array { .. } => "array",
+        Numeric::Sequence { .. } => "sequence",
+        Numeric::Map { .. } => "map",
+        Numeric::Union { .. } => "union",
+        Numeric::Const(_) => "constant reference",
+    }
 }

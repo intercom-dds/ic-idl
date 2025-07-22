@@ -2,9 +2,9 @@
 source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
 expression: diagnostics
 ---
-error: constant `value` value type does not match declared type
-   ┌ test.idl:2:15
+error: constant `value`: integer value cannot be assigned to type string
+   ┌ test.idl:2:9
    │
  2 │         const string value = 123;
-   ·               ^^^^^^ type mismatch
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected type string
    └──

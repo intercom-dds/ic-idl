@@ -128,15 +128,12 @@ fn test_array_in_struct() {
     insta::assert_snapshot!(test_lint_hir(input));
 }
 
-
-
 #[test]
 fn test_single_element_array() {
     let input = r"const float VALUE[1] = {3.14};";
     let report = lint_hir(input);
     assert!(report.errors.is_empty());
 }
-
 
 #[test]
 fn test_multiple_constants_correct_sizes() {
@@ -200,11 +197,5 @@ fn test_struct_with_all_primitive_types() {
         };
     "#;
     let report = lint_hir(input);
-    if !report.errors.is_empty() {
-        eprintln!("Unexpected errors in test_struct_with_all_primitive_types:");
-        for err in &report.errors {
-            eprintln!("{:?}", err);
-        }
-    }
     assert!(report.errors.is_empty());
 }

@@ -1,10 +1,10 @@
 ---
 source: crates/ic-lint/tests/initializer_list_size.rs
-expression: "test_lint_hir(r\"\n        struct MyStruct {\n            int32 values[2];\n        };\n        const MyStruct s = {{1, 2, 3}};\n    \",)"
+expression: test_lint_hir(input)
 ---
-error: initializer lists need type context for evaluation
+error: array size mismatch: expected 2 elements, found 3
    ┌ test.idl:5:30
    │
  5 │         const MyStruct s = {{1, 2, 3}};
-   ·                              ^^^^^^^ cannot evaluate this expression
+   ·                              ^^^^^^^ in this initializer
    └──

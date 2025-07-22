@@ -1133,7 +1133,7 @@ impl<'a> ExpressionEvaluator<'a> {
                             .as_ref()
                             .is_some_and(|i| i.name == member.ident.name)
                     })
-                    .map(|v| self.eval_init_expr(&v.value));
+                    .map(|v| self.eval_init_expr_with_type(&v.value, &member.ty, type_id));
 
                 if let Some(value) = init_value {
                     fields.push((member.ident.clone(), value));
@@ -1157,7 +1157,8 @@ impl<'a> ExpressionEvaluator<'a> {
             // Positional initialization - match with struct member order
             for (i, named_expr) in init_list.values.iter().enumerate() {
                 if let Some(member) = struct_ty.members.get(i) {
-                    let value = self.eval_init_expr(&named_expr.value);
+                    let value =
+                        self.eval_init_expr_with_type(&named_expr.value, &member.ty, type_id);
                     fields.push((member.ident.clone(), value));
                 } else {
                     self.errors.push(error_span(
@@ -1383,9 +1384,13 @@ impl<'a> ExpressionEvaluator<'a> {
                                 Numeric::Null
                             }
                         }
-                        TyKind::Array { ty, len, .. } => {
-                            self.eval_array_init(init_list, ty.as_ref().clone(), *len, id, ic_syntax::util::expr_span(&def.value))
-                        }
+                        TyKind::Array { ty, len, .. } => self.eval_array_init(
+                            init_list,
+                            ty.as_ref().clone(),
+                            *len,
+                            id,
+                            ic_syntax::util::expr_span(&def.value),
+                        ),
                         TyKind::Sequence { ty, .. } => {
                             self.eval_sequence_init(init_list, ty.as_ref().clone(), id)
                         }

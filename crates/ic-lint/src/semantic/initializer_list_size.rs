@@ -46,7 +46,7 @@ impl<'a> Lint<'a> for InitializerListSize<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        for (_, def) in hir.context.definitions.iter() {
+        for (_, def) in &hir.context.definitions {
             if let DefKind::Const(const_ty) = &def.kind {
                 validate_numeric_initializer(ctx, &hir.context, &const_ty.value, def.span);
             }
@@ -74,13 +74,13 @@ fn validate_numeric_initializer(
                         ))
                         .label(
                             Label::new(span)
-                                .message(format!("expected {} elements", expected_len))
+                                .message(format!("expected {expected_len} elements"))
                                 .color(Color::Red),
                         ),
                     );
                 }
             }
-            for value in values.iter() {
+            for value in values {
                 validate_numeric_initializer(ctx, context, value, span);
             }
         }
@@ -100,23 +100,23 @@ fn validate_numeric_initializer(
                         ))
                         .label(
                             Label::new(span)
-                                .message(format!("expected {} fields", expected_count))
+                                .message(format!("expected {expected_count} fields"))
                                 .color(Color::Red),
                         ),
                     );
                 }
             }
-            for (_, value) in fields.iter() {
+            for (_, value) in fields {
                 validate_numeric_initializer(ctx, context, value, span);
             }
         }
         Numeric::Sequence { values, .. } => {
-            for value in values.iter() {
+            for value in values {
                 validate_numeric_initializer(ctx, context, value, span);
             }
         }
         Numeric::Map { values, .. } => {
-            for (key, value) in values.iter() {
+            for (key, value) in values {
                 validate_numeric_initializer(ctx, context, key, span);
                 validate_numeric_initializer(ctx, context, value, span);
             }
@@ -130,7 +130,7 @@ fn validate_numeric_initializer(
 
 fn get_array_length(context: &Context, type_id: DefId) -> Option<usize> {
     let def = context.definitions.get(type_id);
-    
+
     match &def.kind {
         DefKind::Const(const_ty) => {
             if let TyKind::Array { len, .. } = &const_ty.ty.kind {
@@ -142,4 +142,3 @@ fn get_array_length(context: &Context, type_id: DefId) -> Option<usize> {
         _ => None,
     }
 }
-

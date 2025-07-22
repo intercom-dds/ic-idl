@@ -347,114 +347,45 @@ impl Compiler {
             }));
         }
 
-        // Compile each file to a separate HIR (each with built-in annotations)
-        let mut hirs = Vec::new();
-        let mut all_diagnostics = CompileDiagnostics {
-            errors: Vec::new(),
-            warnings: Vec::new(),
-            expansion_info: std::collections::HashMap::new(),
-        };
-
-        for file in &self.options.files.clone() {
-            match self.compile_file_to_hir_with_builtins(file) {
-                Ok((hir, diag)) => {
-                    hirs.push(hir);
-                    all_diagnostics.warnings.extend(diag.warnings);
-                    all_diagnostics.expansion_info.extend(diag.expansion_info);
-                }
-                Err(CompileError::Diagnostics(diag)) => {
-                    all_diagnostics.errors.extend(diag.errors);
-                    all_diagnostics.warnings.extend(diag.warnings);
-                    all_diagnostics.expansion_info.extend(diag.expansion_info);
-                }
-                Err(e) => return Err(e),
-            }
-        }
-
-        if !all_diagnostics.errors.is_empty() {
-            return Err(CompileError::Diagnostics(all_diagnostics));
-        }
-
-        // Merge all HIRs
-        let merged = hir::merge::merge_hir_trees(&hirs);
-
-        // Add merge errors to diagnostics
-        all_diagnostics
-            .errors
-            .extend(merged.errors.into_iter().map(Into::into));
-
-        if !all_diagnostics.errors.is_empty() {
-            return Err(CompileError::Diagnostics(all_diagnostics));
-        }
-
-        let merged_hir = hir::ResolvedGraph {
-            context: merged.context,
-            order: merged.order,
-            errors: Vec::new(),
-            warnings: Vec::new(),
-        };
-
-        Ok((merged_hir, all_diagnostics))
-    }
-
-
-
-    /// Compile a single file to HIR with built-in annotations.
-    fn compile_file_to_hir_with_builtins(
-        &mut self,
-        path: &Path,
-    ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
-        // First parse built-in annotations
+        // First, parse built-in annotations to AST
         let builtin_file_id = self.source_map.embed_with_name(
             "<builtin-annotations>",
             include_str!("../idl/annotations.idl"),
         );
         let builtin_parsed =
             ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
-        
+
         assert!(
             builtin_parsed.errors.is_empty(),
             "Failed to parse built-in annotations: {:?}",
             builtin_parsed.errors
         );
 
-        // Parse the user file
-        let proc_args = self.proc_args();
-        let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
-            CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
-        })?;
+        // Parse all user files to AST
+        let (user_items, mut diagnostics) = try_compile_to_ast(&self.options, &mut self.source_map)?;
 
-        let mut diagnostics = CompileDiagnostics {
-            errors: ast.errors.into_iter().map(Into::into).collect(),
-            warnings: Vec::new(),
-            expansion_info: ast.expansion_info,
-        };
+        // Combine built-in AST with user AST
+        let mut all_items = builtin_parsed.tree;
+        all_items.extend(user_items);
 
-        if !diagnostics.errors.is_empty() {
-            return Err(CompileError::Diagnostics(diagnostics));
-        }
-
-        // Collect preprocessor warnings if enabled
-        if self.options.warn.preprocessor_enabled() {
-            diagnostics
-                .warnings
-                .extend(ast.warnings.iter().map(pretty::to_warning));
-        }
-
-        // Convert to HIR with built-in annotations
+        // Convert combined AST to HIR
         let lint_config = self.options.warn.to_lint_config();
-
-        // Run AST linting first
+        
+        // Run AST linting
         if diagnostics.errors.is_empty() {
-            let report =
-                ic_lint::lint_syntax_with_config(&ast.tree, &self.source_map, &lint_config);
+            let report = ic_lint::lint_syntax_with_config(&all_items, &self.source_map, &lint_config);
             diagnostics
                 .errors
                 .extend(report.errors.into_iter().map(Into::into));
             diagnostics.warnings.extend(report.warnings);
         }
 
-        let mut hir = hir::from_ast_with_builtins(builtin_parsed.tree, ast.tree);
+        if !diagnostics.errors.is_empty() {
+            return Err(CompileError::Diagnostics(diagnostics));
+        }
+
+        // Convert to HIR
+        let mut hir = hir::from_ast(all_items);
 
         // Run HIR linting
         if diagnostics.errors.is_empty() {
@@ -480,6 +411,7 @@ impl Compiler {
 
         Ok((hir, diagnostics))
     }
+
 
     /// Parse files and get the AST.
     ///

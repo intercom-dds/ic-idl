@@ -1,6 +1,0 @@
-/// foo
-/// bar
-/// baz
-struct Point {
-@key string value;
-};

@@ -29,7 +29,6 @@
 //!
 //! This phase performs semantic validation on the fully-constructed HIR:
 //! - Type consistency checks
-//! - Circular dependency detection
 //! - Inheritance validation
 //! - Declaration/definition matching
 //! - Member name uniqueness
@@ -48,8 +47,6 @@ use crate::hir::{
 pub struct Validator<'a> {
     ctx: &'a Context,
     errors: Vec<Diag>,
-    /// Tracks visited types for cycle detection.
-    visiting: HashSet<DefId>,
     /// Tracks completed types to avoid re-validation.
     validated: HashSet<DefId>,
 }
@@ -59,7 +56,6 @@ impl<'a> Validator<'a> {
         Self {
             ctx,
             errors: Vec::new(),
-            visiting: HashSet::new(),
             validated: HashSet::new(),
         }
     }
@@ -257,44 +253,12 @@ impl<'a> Validator<'a> {
         }
     }
 
-    /// Validates circular dependencies.
-    fn check_circular(&mut self, id: DefId) {
-        if self.visiting.contains(&id) {
-            let def = self.get_def(id);
-            self.errors.push(error_span(
-                format!("circular dependency detected for type `{}`", def.ident.name),
-                Label::new(def.span).message("type is part of a circular dependency"),
-            ));
-            return;
-        }
-
-        self.visiting.insert(id);
-
-        // Check dependencies based on type
-        let parents_to_check = {
-            let def = self.get_def(id);
-            match &def.kind {
-                DefKind::Struct(s) => s.parent.into_iter().collect::<Vec<_>>(),
-                DefKind::Interface(i) => i.parents.clone(),
-                _ => Vec::new(),
-            }
-        };
-
-        for parent in parents_to_check {
-            self.check_circular(parent);
-        }
-
-        self.visiting.remove(&id);
-    }
 
     /// Main validation entry point for a type.
     fn validate_type(&mut self, id: DefId) {
         if self.validated.contains(&id) {
             return;
         }
-
-        // Check for circular dependencies
-        self.check_circular(id);
 
         // Validate based on type
         let (def_kind, _def_name) = {

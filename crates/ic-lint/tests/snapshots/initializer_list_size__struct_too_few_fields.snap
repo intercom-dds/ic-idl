@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/initializer_list_size.rs
 expression: test_lint_hir(input)
 ---
 error[initializer_list_size]: struct initializer has 2 fields but struct 'Point' has 3 members
-   ┌ test.idl:7:9
+   ┌ test.idl:7:21
    │
  7 │         const Point MY_POINT = {1, 2};
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 3 fields
+   ·                     ^^^^^^^^ expected 3 fields
    └──

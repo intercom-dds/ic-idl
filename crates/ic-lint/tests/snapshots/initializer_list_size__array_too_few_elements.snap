@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/initializer_list_size.rs
 expression: test_lint_hir(input)
 ---
 error[initializer_list_size]: array initializer has 2 elements but array type expects 3
-   ┌ test.idl:1:1
+   ┌ test.idl:1:13
    │
  1 │ const int32 MY_CONST[3] = {1, 2};
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 3 elements
+   ·             ^^^^^^^^ expected 3 elements
    └──
 
 error: array size mismatch: expected 3 elements, found 2

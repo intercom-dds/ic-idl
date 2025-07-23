@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/initializer_list_size.rs
 expression: test_lint_hir(input)
 ---
 error[initializer_list_size]: array initializer has 3 elements but array type expects 2
-   ┌ test.idl:1:1
+   ┌ test.idl:1:13
    │
  1 │ const int32 matrix[2][3] = {{1, 2}, {3, 4, 5}};
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 elements
+   ·             ^^^^^^ expected 2 elements
    └──
 
 error: array size mismatch: expected 3 elements, found 2

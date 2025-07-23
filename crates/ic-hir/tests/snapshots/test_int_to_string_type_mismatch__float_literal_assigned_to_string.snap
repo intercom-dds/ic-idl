@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
 expression: diagnostics
 ---
-error: constant `value`: floating-point value cannot be assigned to type string
+error: constant `value`: floating-point value cannot be assigned to non-numeric type string
    ┌ test.idl:2:9
    │
  2 │         const string value = 3.14;

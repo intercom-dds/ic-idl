@@ -352,7 +352,7 @@ fn convert_expr(expr: &ic_syntax::Expr) -> Result<ic_expr::Expr<IdlLiteral>, Str
 }
 
 /// Evaluates expressions in the HIR.
-pub struct ExpressionEvaluator<'a> {
+pub(super) struct ExpressionEvaluator<'a> {
     ctx: &'a mut Context,
     errors: Vec<Diag>,
     current_scope: crate::scope::ScopeId,

@@ -211,7 +211,7 @@ impl<'a> TypeChecker<'a> {
                 false
             }
 
-            // Integer values - check range
+            // Integer values - check range (literals can be assigned to any type if they fit)
             (Numeric::Int8(v), TyKind::Primitive(prim)) => {
                 self.check_int_fits(i64::from(*v), *prim, value_desc, value_span)
             }
@@ -237,6 +237,63 @@ impl<'a> TypeChecker<'a> {
                 self.check_uint_fits(*v, *prim, value_desc, value_span)
             }
 
+            // Union values must be handled before generic Adt pattern
+            (
+                Numeric::Union {
+                    ty: union_ty_id,
+                    discriminant,
+                    field,
+                    value,
+                },
+                TyKind::Adt(expected_ty_id),
+            ) => {
+                // Check that the union types match
+                if union_ty_id != expected_ty_id {
+                    self.errors.push(error_span(
+                        format!("{value_desc}: union type mismatch"),
+                        Label::new(value_span).message("incompatible union types"),
+                    ));
+                    return false;
+                }
+
+                // Get the union definition
+                let def = self.ctx.definitions.get(*expected_ty_id);
+                if let DefKind::Union(union_ty) = &def.kind {
+                    // Check discriminant type
+                    if !self.check_numeric_type(discriminant, &union_ty.disc, 
+                        &format!("{value_desc} discriminant"), value_span) {
+                        return false;
+                    }
+
+                    // Find the variant by field name
+                    if let Some(variant) = union_ty.variants.iter()
+                        .find(|v| v.ident.name == field.name) {
+                        // Check the variant value type
+                        self.check_numeric_type(value, &variant.ty, 
+                            &format!("{value_desc}.{}", field.name), value_span)
+                    } else {
+                        self.errors.push(error_span(
+                            format!("{value_desc}: unknown union field `{}`", field.name),
+                            Label::new(value_span).message("field not found in union"),
+                        ));
+                        false
+                    }
+                } else {
+                    self.errors.push(error_span(
+                        format!("{value_desc}: expected union type"),
+                        Label::new(value_span).message("not a union"),
+                    ));
+                    false
+                }
+            }
+            (Numeric::Union { .. }, _) => {
+                self.errors.push(error_span(
+                    format!("{value_desc}: union value cannot be assigned to non-union type"),
+                    Label::new(value_span).message("type mismatch"),
+                ));
+                false
+            }
+            
             // Enum values and integer values assigned to enum types
             (value, TyKind::Adt(type_id)) => {
                 let def = self.ctx.definitions.get(*type_id);
@@ -252,18 +309,27 @@ impl<'a> TypeChecker<'a> {
                 false
             }
 
-            // Float values
-            (Numeric::Float(_), TyKind::Primitive(PrimitiveTy::Float32 | PrimitiveTy::Float64)) => {
-                true
-            } // float promotes to double
-            (
-                Numeric::Double(_),
-                TyKind::Primitive(PrimitiveTy::Float64 | PrimitiveTy::Float128),
-            ) => true, // double promotes to long double
+            // Float values with promotion checking
+            (Numeric::Float(_), TyKind::Primitive(prim)) => {
+                if self.check_numeric_promotion(PrimitiveTy::Float32, *prim) {
+                    true
+                } else {
+                    self.report_promotion_error(PrimitiveTy::Float32, *prim, value_desc, value_span);
+                    false
+                }
+            }
+            (Numeric::Double(_), TyKind::Primitive(prim)) => {
+                if self.check_numeric_promotion(PrimitiveTy::Float64, *prim) {
+                    true
+                } else {
+                    self.report_promotion_error(PrimitiveTy::Float64, *prim, value_desc, value_span);
+                    false
+                }
+            }
             (Numeric::Float(_) | Numeric::Double(_), _) => {
                 self.errors.push(error_span(
                     format!(
-                        "{value_desc}: floating-point value cannot be assigned to type {}",
+                        "{value_desc}: floating-point value cannot be assigned to non-numeric type {}",
                         self.type_name(ty)
                     ),
                     Label::new(value_span).message(format!("expected type {}", self.type_name(ty))),
@@ -348,11 +414,6 @@ impl<'a> TypeChecker<'a> {
                 all_valid
             }
 
-            // Union values
-            (Numeric::Union { .. }, _) => {
-                // TODO: Implement union type checking
-                true
-            }
 
             // Type mismatch
             _ => {
@@ -475,6 +536,94 @@ impl<'a> TypeChecker<'a> {
         fits
     }
 
+    /// Reports a numeric promotion error.
+    fn report_promotion_error(
+        &mut self,
+        from: PrimitiveTy,
+        to: PrimitiveTy,
+        value_desc: &str,
+        span: ic_syntax::Span,
+    ) {
+        self.errors.push(error_span(
+            format!(
+                "{}: {} value cannot be promoted to type {}",
+                value_desc,
+                from.name(),
+                to.name()
+            ),
+            Label::new(span).message("invalid type promotion"),
+        ));
+    }
+
+    /// Checks if a numeric type can be promoted to another.
+    /// Based on IDL promotion rules similar to C++/CORBA.
+    fn check_numeric_promotion(&self, from: PrimitiveTy, to: PrimitiveTy) -> bool {
+        use PrimitiveTy::*;
+        
+        match (from, to) {
+            // Boolean can only be promoted to itself
+            (Bool, Bool) => true,
+            
+            // Character promotions
+            (Char, Char) => true,
+            (Char, WChar) => true, // char promotes to wchar
+            (WChar, WChar) => true,
+            
+            // Integer promotions follow a hierarchy:
+            // int8/octet -> int16 -> int32 -> int64
+            // uint8 -> uint16 -> uint32 -> uint64
+            
+            // From Int8/Octet
+            (Int8, Int8) => true,
+            (Int8, Int16) => true,
+            (Int8, Int32) => true,
+            (Int8, Int64) => true,
+            (UInt8, UInt8) => true,
+            (UInt8, UInt16) => true,
+            (UInt8, UInt32) => true,
+            (UInt8, UInt64) => true,
+            (UInt8, Int16) => true, // uint8 can promote to int16 (fits)
+            (UInt8, Int32) => true, // uint8 can promote to int32 (fits)
+            (UInt8, Int64) => true, // uint8 can promote to int64 (fits)
+            
+            // From Int16
+            (Int16, Int16) => true,
+            (Int16, Int32) => true,
+            (Int16, Int64) => true,
+            (UInt16, UInt16) => true,
+            (UInt16, UInt32) => true,
+            (UInt16, UInt64) => true,
+            (UInt16, Int32) => true, // uint16 can promote to int32 (fits)
+            (UInt16, Int64) => true, // uint16 can promote to int64 (fits)
+            
+            // From Int32
+            (Int32, Int32) => true,
+            (Int32, Int64) => true,
+            (UInt32, UInt32) => true,
+            (UInt32, UInt64) => true,
+            (UInt32, Int64) => true, // uint32 can promote to int64 (fits)
+            
+            // From Int64
+            (Int64, Int64) => true,
+            (UInt64, UInt64) => true,
+            
+            // Floating point promotions
+            (Float32, Float32) => true,
+            (Float32, Float64) => true,
+            (Float32, Float128) => true,
+            (Float64, Float64) => true,
+            (Float64, Float128) => true,
+            (Float128, Float128) => true,
+            
+            // Integer to floating point promotions
+            (Int8 | UInt8 | Int16 | UInt16 | Int32 | UInt32, Float32 | Float64 | Float128) => true,
+            (Int64 | UInt64, Float64 | Float128) => true, // Large ints need at least double
+            
+            // No other promotions are allowed
+            _ => false,
+        }
+    }
+
     /// Checks if two types are compatible (for constant references).
     fn check_type_compatible(&mut self, from_ty: &Ty, to_ty: &Ty, value_desc: &str) -> bool {
         match (&from_ty.kind, &to_ty.kind) {
@@ -482,9 +631,8 @@ impl<'a> TypeChecker<'a> {
             (TyKind::Primitive(p1), TyKind::Primitive(p2)) if p1 == p2 => true,
 
             // Numeric promotions (e.g., int32 to int64)
-            (TyKind::Primitive(_from), TyKind::Primitive(_to)) => {
-                // TODO: Implement proper numeric promotion rules
-                false
+            (TyKind::Primitive(from), TyKind::Primitive(to)) => {
+                self.check_numeric_promotion(*from, *to)
             }
 
             // Same ADT

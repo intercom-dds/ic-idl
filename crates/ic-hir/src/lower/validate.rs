@@ -242,18 +242,8 @@ impl<'a> Validator<'a> {
         }
 
         // Validate prototypes
-        let mut method_names = HashSet::new();
+        // Note: Duplicate method checking is now done in resolve.rs with case-insensitive comparison
         for proto in &interface.prototypes {
-            if !method_names.insert(proto.ident.name.as_str()) {
-                self.errors.push(error_span(
-                    format!(
-                        "duplicate method `{}` in interface `{}`",
-                        proto.ident.name, def_name
-                    ),
-                    Label::new(proto.ident.span).message("duplicate method"),
-                ));
-            }
-
             self.validate_type_ref(&proto.ty);
 
             for param in &proto.params {

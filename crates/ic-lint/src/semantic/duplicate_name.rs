@@ -222,10 +222,53 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
             return;
         }
 
+        // First, collect inherited methods only (exclude methods from current interface)
         let mut visited = HashSet::new();
-        let methods = self.collect_methods_with_sources(def.id, &mut visited);
+        visited.insert(def.id); // Mark current interface as visited to exclude its methods
 
-        for sources in methods.values() {
+        let mut inherited_methods = HashMap::new();
+
+        // Collect methods from parent interfaces only
+        for &parent_id in &interface.parents {
+            let parent_methods = self.collect_methods_with_sources(parent_id, &mut visited);
+            for (name, sources) in parent_methods {
+                inherited_methods
+                    .entry(name)
+                    .or_insert_with(Vec::new)
+                    .extend(sources);
+            }
+        }
+
+        // Now check current interface's methods against inherited ones
+        for proto in &interface.prototypes {
+            let method_name = CaseString::new(proto.ident.name.as_str());
+
+            if let Some(inherited_sources) = inherited_methods.get(&method_name) {
+                // This method conflicts with an inherited method
+                let diag = ic_diagnostic::error_span(
+                    format!(
+                        "interface `{}` defines method `{}` which conflicts with inherited method",
+                        def.ident.name,
+                        proto.ident.name.yellow()
+                    ),
+                    Label::new(proto.ident.span).message("conflicting method definition"),
+                );
+
+                let mut diag = diag;
+                for (source_id, source_method) in inherited_sources {
+                    let source_def = self.hir.context.definitions.get(source_id);
+                    diag = diag.label(
+                        Label::new(source_method.ident.span)
+                            .message(format!("inherited from `{}`", source_def.ident.name)),
+                    );
+                }
+
+                Self::report(self.ctx, diag.note("method names are case-insensitive"));
+            }
+        }
+
+        // Also check for conflicting inherited methods from multiple parents
+        for (_, sources) in inherited_methods {
             if sources.len() > 1 {
                 let first_method = sources[0].1;
                 let all_compatible = sources[1..]
@@ -233,57 +276,26 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
                     .all(|(_, method)| Self::methods_compatible(first_method, method));
 
                 if !all_compatible {
-                    let current_interface_has_method = sources.iter().any(|(id, _)| *id == def.id);
+                    let diag = ic_diagnostic::error_span(
+                        format!(
+                            "interface `{}` inherits conflicting definitions of method `{}`",
+                            def.ident.name,
+                            first_method.ident.name.yellow()
+                        ),
+                        Label::new(def.ident.span)
+                            .message("interface with conflicting inherited methods"),
+                    );
 
-                    if current_interface_has_method {
-                        let (_, current_method) =
-                            sources.iter().find(|(id, _)| *id == def.id).unwrap();
-
-                        let diag = ic_diagnostic::error_span(
-                            format!(
-                                "interface `{}` defines method `{}` which conflicts with \
-                                 inherited method",
-                                def.ident.name,
-                                current_method.ident.name.yellow()
-                            ),
-                            Label::new(current_method.ident.span)
-                                .message("conflicting method definition"),
+                    let mut diag = diag;
+                    for (source_id, source_method) in sources {
+                        let source_def = self.hir.context.definitions.get(source_id);
+                        diag = diag.label(
+                            Label::new(source_method.ident.span)
+                                .message(format!("defined in `{}`", source_def.ident.name)),
                         );
-
-                        let mut diag = diag;
-                        for (source_id, source_method) in sources {
-                            if *source_id != def.id {
-                                let source_def = self.hir.context.definitions.get(*source_id);
-                                diag = diag.label(Label::new(source_method.ident.span).message(
-                                    format!("inherited from `{}`", source_def.ident.name),
-                                ));
-                            }
-                        }
-
-                        Self::report(self.ctx, diag.note("method names are case-insensitive"));
-                    } else {
-                        let first_method = sources[0].1;
-                        let diag = ic_diagnostic::error_span(
-                            format!(
-                                "interface `{}` inherits conflicting definitions of method `{}`",
-                                def.ident.name,
-                                first_method.ident.name.yellow()
-                            ),
-                            Label::new(def.ident.span)
-                                .message("interface with conflicting inherited methods"),
-                        );
-
-                        let mut diag = diag;
-                        for (source_id, source_method) in sources {
-                            let source_def = self.hir.context.definitions.get(*source_id);
-                            diag = diag.label(
-                                Label::new(source_method.ident.span)
-                                    .message(format!("defined in `{}`", source_def.ident.name)),
-                            );
-                        }
-
-                        Self::report(self.ctx, diag.note("method names are case-insensitive"));
                     }
+
+                    Self::report(self.ctx, diag.note("method names are case-insensitive"));
                 }
             }
         }

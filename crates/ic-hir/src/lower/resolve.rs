@@ -654,12 +654,16 @@ impl<'a> Resolver<'a> {
     /// Processes interface members and returns child IDs, prototypes, and attributes.
     fn process_interface_members(
         &mut self,
+        interface: &ic_syntax::InterfaceDef,
         members: &[ic_syntax::InterfaceMember],
     ) -> (Vec<DefId>, Vec<ProtoTy>, Vec<()>) {
         // TODO: Replace () with AttributeTy when implemented
         let mut child_ids = Vec::new();
         let mut prototypes = Vec::new();
         let attributes = Vec::new();
+
+        // Track method names for duplicate detection (case-insensitive)
+        let mut seen_methods = CaseMap::<ic_syntax::Span>::new();
 
         for member in members {
             match member {
@@ -668,6 +672,23 @@ impl<'a> Resolver<'a> {
                     child_ids.extend(ids);
                 }
                 ic_syntax::InterfaceMember::Proto(proto) => {
+                    // Check for duplicate method names (case-insensitive)
+                    if let Some(&first_span) = seen_methods.get(&proto.ident.name) {
+                        self.errors.push(
+                            error_span(
+                                format!(
+                                    "duplicate method `{}` in interface '{}'",
+                                    proto.ident.name, interface.ident.name,
+                                ),
+                                Label::new(proto.ident.span).message("duplicate method"),
+                            )
+                            .label(Label::new(first_span).message("first defined here"))
+                            .note("method names are case-insensitive"),
+                        );
+                    } else {
+                        seen_methods.insert(proto.ident.name.clone(), proto.ident.span);
+                    }
+
                     let proto_ty = self.process_prototype(proto);
                     prototypes.push(proto_ty);
                 }
@@ -1411,7 +1432,7 @@ impl<'a> Resolver<'a> {
         self.current_scope = new_scope;
 
         // Process members
-        let (child_ids, prototypes, attributes) = self.process_interface_members(&def.members);
+        let (child_ids, prototypes, attributes) = self.process_interface_members(def, &def.members);
 
         // Update interface with processed members
         if let DefKind::Interface(iface) = &mut self.ctx.definitions.get_mut(id).kind {

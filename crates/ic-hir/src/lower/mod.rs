@@ -56,6 +56,7 @@ mod builtin;
 mod collect;
 mod evaluate;
 mod resolve;
+mod single_pass;
 mod typecheck;
 mod validate;
 
@@ -105,28 +106,22 @@ where
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    // Phase 1: Collect all names and create placeholder definitions
-    let (mut context, name_map, order, mut phase_errors) = collect::collect_definitions(&ast_items);
+    // Phase 1: Single-pass collection and resolution
+    let mut context = Context::new();
+    let lowerer = single_pass::SinglePassLowerer::new(&mut context);
+    let (name_map, order, mut phase_errors, mut phase_warnings) = lowerer.process(&ast_items);
     errors.append(&mut phase_errors);
+    warnings.append(&mut phase_warnings);
 
-    // Phase 2: Resolve type references
-    resolve::resolve_types(
-        &mut context,
-        &name_map,
-        &ast_items,
-        &mut errors,
-        &mut warnings,
-    );
-
-    // Phase 3: Evaluate constant expressions
+    // Phase 2: Evaluate constant expressions
     let mut phase_errors = evaluate::evaluate_expressions(&mut context, &name_map, &ast_items);
     errors.append(&mut phase_errors);
 
-    // Phase 4: Type check values against their declared types
+    // Phase 3: Type check values against their declared types
     let mut phase_errors = typecheck::typecheck_hir(&context, &order);
     errors.append(&mut phase_errors);
 
-    // Phase 5: Validate the HIR
+    // Phase 4: Validate the HIR
     let mut phase_errors = validate::validate_hir(&context, &order);
     errors.append(&mut phase_errors);
 

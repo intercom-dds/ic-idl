@@ -108,8 +108,13 @@ fn test_union_discriminator_case_insensitive() {
         };
     ";
 
-    // All should work - case insensitive
-    common::parse_and_resolve_successfully(idl);
+    // Only Union3 should work - primitive types are case-sensitive
+    let diagnostics = common::parse_and_expect_errors(idl);
+
+    // Should have errors for Union1 and Union2
+    assert!(diagnostics.contains("invalid discriminator type for union `Union1`"));
+    assert!(diagnostics.contains("invalid discriminator type for union `Union2`"));
+    assert!(!diagnostics.contains("Union3")); // Union3 should be fine
 }
 
 #[test]

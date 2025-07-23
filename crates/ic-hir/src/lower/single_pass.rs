@@ -31,6 +31,7 @@
 //! ensuring that types can only be used after they have been declared.
 
 use ic_alloc::insensitive::CaseMap;
+use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Ident, Item, Path};
 
@@ -192,12 +193,99 @@ impl<'a> SinglePassLowerer<'a> {
                 segments[0],
                 &self.ctx.definitions,
             ) {
+                // Check case consistency for single-segment paths
+                self.check_case_consistency(path, def_id);
                 return Some(def_id);
             }
         }
 
         // For multi-segment paths or if local resolution failed, use regular path resolution
-        self.ctx.scopes.resolve_path(start_scope, &segments)
+        if let Some(def_id) = self.ctx.scopes.resolve_path(start_scope, &segments) {
+            // Check case consistency for multi-segment paths
+            self.check_case_consistency(path, def_id);
+            Some(def_id)
+        } else {
+            None
+        }
+    }
+
+    /// Check if a path reference has consistent capitalization with the definition
+    fn check_case_consistency(&mut self, path: &Path, def_id: DefId) {
+        // For multi-segment paths like foo::Bar, we need to check each segment
+        if path.segments.len() > 1 {
+            // Since everything must be defined in order, we know that all the module
+            // segments in the path have been defined. We can use the scope tree
+            // to walk through and verify case consistency.
+
+            let start_scope = if path.leading_colons.is_some() {
+                self.ctx.scopes.root()
+            } else {
+                self.current_scope
+            };
+
+            // Start from the beginning and resolve each prefix to check module names
+            let mut current_scope = start_scope;
+
+            for (_i, segment) in path.segments[..path.segments.len() - 1].iter().enumerate() {
+                // Get the scope for this segment name
+                if let Some(&ScopeId(scope_idx)) = self.ctx.scopes.scopes[current_scope.0]
+                    .children
+                    .get(&segment.name)
+                {
+                    current_scope = ScopeId(scope_idx);
+
+                    // Get the actual definition for this scope to check its canonical name
+                    if let Some(module_def_id) = self.ctx.scopes.scopes[scope_idx].def_id {
+                        let module_def = self.ctx.definitions.get(module_def_id);
+                        let reference_name = &segment.name;
+                        let canonical_name = &module_def.ident.name;
+
+                        if reference_name != canonical_name
+                            && reference_name.eq_ignore_ascii_case(canonical_name)
+                        {
+                            self.warnings.push(
+                                warn_span(
+                                    format!(
+                                        "inconsistent capitalization: `{}` should be `{}`",
+                                        reference_name.yellow(),
+                                        canonical_name.yellow()
+                                    ),
+                                    Label::new(segment.span).message("module name used here"),
+                                )
+                                .note(format!("the canonical module name is `{canonical_name}`")),
+                            );
+                        }
+                    }
+                } else {
+                    // This shouldn't happen if resolve_path succeeded
+                    break;
+                }
+            }
+        }
+
+        // Check the final type name
+        let def = self.ctx.definitions.get(def_id);
+        if let Some(last_segment) = path.segments.last() {
+            let reference_name = &last_segment.name;
+            let canonical_name = &def.ident.name;
+
+            // Check if they differ in case
+            if reference_name != canonical_name
+                && reference_name.eq_ignore_ascii_case(canonical_name)
+            {
+                self.warnings.push(
+                    warn_span(
+                        format!(
+                            "inconsistent capitalization: `{}` should be `{}`",
+                            reference_name.yellow(),
+                            canonical_name.yellow()
+                        ),
+                        Label::new(last_segment.span).message("used here"),
+                    )
+                    .note(format!("the canonical name is `{canonical_name}`")),
+                );
+            }
+        }
     }
 
     /// Converts AST type to HIR type.
@@ -342,8 +430,51 @@ impl<'a> SinglePassLowerer<'a> {
 
         // Resolve parent if any
         let parent_id = if let Some(parent_path) = &def.parent {
-            self.resolve_type(&ic_syntax::Type::Path(parent_path.clone()))
-                .as_adt()
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                let parent_def = self.ctx.definitions.get(parent_id);
+
+                // Check if parent is a forward declaration (incomplete)
+                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "struct `{}` cannot inherit from incomplete type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent_def.ident.span)
+                                .message("forward declaration here, but no definition found"),
+                        ),
+                    );
+                    None
+                } else {
+                    // Check that parent is actually a struct
+                    match &parent_def.kind {
+                        DefKind::Struct(_) => Some(parent_id),
+                        _ => {
+                            self.errors.push(error_span(
+                                format!(
+                                    "struct `{}` cannot inherit from non-struct type `{}`",
+                                    def.ident.name, parent_def.ident.name
+                                ),
+                                Label::new(def.span).message("invalid inheritance"),
+                            ));
+                            None
+                        }
+                    }
+                }
+            } else {
+                self.errors.push(error_span(
+                    format!(
+                        "struct `{}` inherits from type that is not defined",
+                        def.ident.name
+                    ),
+                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+                ));
+                None
+            }
         } else {
             None
         };
@@ -427,17 +558,25 @@ impl<'a> SinglePassLowerer<'a> {
         // Register in name map and scope
         self.name_map.insert(qualified_name, id);
 
-        // Create new scope for module
-        let new_scope = self.ctx.scopes.create_child_scope(
-            self.current_scope,
-            def.ident.name.clone(),
-            Some(id),
-        );
+        // Check if we're reopening an existing module
+        let module_scope = if let Some(&existing_scope_id) = self.ctx.scopes.scopes
+            [self.current_scope.0]
+            .children
+            .get(&def.ident.name)
+        {
+            // Module already exists in this scope - reuse its scope
+            existing_scope_id
+        } else {
+            // Create new scope for module
+            self.ctx
+                .scopes
+                .create_child_scope(self.current_scope, def.ident.name.clone(), Some(id))
+        };
 
         // Push to scope stack
         self.scope_path.push(def.ident.name.clone());
         let old_scope = self.current_scope;
-        self.current_scope = new_scope;
+        self.current_scope = module_scope;
 
         // Process nested items
         let mut child_ids = Vec::new();
@@ -796,10 +935,53 @@ impl<'a> SinglePassLowerer<'a> {
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // TODO: Handle inheritance
+        // Handle inheritance
         let parent_ty = if let Some(parent_path) = &def.inherits {
-            self.resolve_type(&ic_syntax::Type::Path(parent_path.clone()))
-                .as_adt()
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                let parent_def = self.ctx.definitions.get(parent_id);
+
+                // Check if parent is a forward declaration (incomplete)
+                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "valuetype `{}` cannot inherit from incomplete type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent_def.ident.span)
+                                .message("forward declaration here, but no definition found"),
+                        ),
+                    );
+                    None
+                } else {
+                    // Check that parent is actually a valuetype
+                    match &parent_def.kind {
+                        DefKind::Valuetype(_) => Some(parent_id),
+                        _ => {
+                            self.errors.push(error_span(
+                                format!(
+                                    "valuetype `{}` cannot inherit from non-valuetype type `{}`",
+                                    def.ident.name, parent_def.ident.name
+                                ),
+                                Label::new(def.span).message("invalid inheritance"),
+                            ));
+                            None
+                        }
+                    }
+                }
+            } else {
+                self.errors.push(error_span(
+                    format!(
+                        "valuetype `{}` inherits from type that is not defined",
+                        def.ident.name
+                    ),
+                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+                ));
+                None
+            }
         } else {
             None
         };
@@ -1009,8 +1191,54 @@ impl<'a> SinglePassLowerer<'a> {
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // TODO: Handle inheritance
-        let parents = Vec::new();
+        // Handle inheritance
+        let mut parents = Vec::new();
+        for parent_path in &def.inherits {
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                let parent_def = self.ctx.definitions.get(parent_id);
+
+                // Check if parent is a forward declaration (incomplete)
+                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "interface `{}` cannot inherit from incomplete type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.span).message("invalid inheritance"),
+                        )
+                        .label(
+                            Label::new(parent_def.ident.span)
+                                .message("forward declaration here, but no definition found"),
+                        ),
+                    );
+                } else {
+                    // Check that parent is actually an interface
+                    match &parent_def.kind {
+                        DefKind::Interface(_) => {
+                            parents.push(parent_id);
+                        }
+                        _ => {
+                            self.errors.push(error_span(
+                                format!(
+                                    "interface `{}` cannot inherit from non-interface type `{}`",
+                                    def.ident.name, parent_def.ident.name
+                                ),
+                                Label::new(def.span).message("invalid inheritance"),
+                            ));
+                        }
+                    }
+                }
+            } else {
+                self.errors.push(error_span(
+                    format!(
+                        "interface `{}` inherits from type that is not defined",
+                        def.ident.name
+                    ),
+                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+                ));
+            }
+        }
 
         let parent = if self.scope_path.is_empty() {
             None

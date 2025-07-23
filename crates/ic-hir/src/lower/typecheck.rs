@@ -198,7 +198,6 @@ impl<'a> TypeChecker<'a> {
                 false
             }
 
-
             // Character values
             (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char | PrimitiveTy::WChar)) => true,
             (Numeric::Char(_), _) => {

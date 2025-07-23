@@ -301,8 +301,15 @@ impl HirMerger {
         // Add top-level definitions to order
         for &def_id in &graph.order {
             if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
-                // Always add to order - we want to preserve all forward declarations
-                self.order.push(new_def_id);
+                // Only add to order if this definition wasn't deduplicated
+                // Check if this new_def_id was created in this graph or was mapped to an existing one
+                let was_deduplicated = self.def_id_maps[..graph_index]
+                    .iter()
+                    .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id));
+
+                if !was_deduplicated && !self.order.contains(&new_def_id) {
+                    self.order.push(new_def_id);
+                }
             }
         }
 

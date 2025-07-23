@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Phase 3: Expression evaluation.
+//! Expression evaluation phase.
 //!
 //! This phase:
 //! - Evaluates constant expressions using ic-expr
@@ -1734,11 +1734,7 @@ impl<'a> ExpressionEvaluator<'a> {
 }
 
 /// Evaluates all expressions in the HIR.
-pub fn evaluate_expressions(
-    ctx: &mut Context,
-    _name_map: &super::single_pass::NameMap,
-    items: &[Item],
-) -> Vec<Diag> {
+pub fn evaluate_expressions(ctx: &mut Context, items: &[Item]) -> Vec<Diag> {
     let mut evaluator = ExpressionEvaluator::new(ctx);
 
     evaluator.evaluate_types(items);

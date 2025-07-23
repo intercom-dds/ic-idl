@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Phase 4: Validation.
+//! Validation phase.
 //!
 //! This phase performs semantic validation on the fully-constructed HIR:
 //! - Type consistency checks

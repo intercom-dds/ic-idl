@@ -25,26 +25,25 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Multi-phase lowering from AST to HIR.
+//! Lowering from AST to HIR.
 //!
-//! The lowering process is split into distinct phases to improve maintainability,
-//! testability, and clarity. Each phase has a single responsibility and produces
-//! well-defined outputs.
+//! The lowering process uses a single-pass approach for resolution,
+//! followed by separate phases for evaluation, type checking, and validation.
 //!
 //! ## Phases
 //!
-//! 1. **Collection**: Discovers all definitions and creates placeholder HIR nodes
-//! 2. **Resolution**: Resolves type references and builds the type graph
-//! 3. **Evaluation**: Evaluates constant expressions and enum values
-//! 4. **Type Checking**: Validates that values match their declared types
-//! 5. **Validation**: Performs semantic validation and consistency checks
+//! 1. **Resolution**: Processes items in order, creating HIR nodes and
+//!    resolving type references as they appear
+//! 2. **Evaluation**: Evaluates constant expressions and enum values
+//! 3. **Type Checking**: Validates that values match their declared types
+//! 4. **Validation**: Performs semantic validation and consistency checks
 //!
 //! ## Design Principles
 //!
-//! - Each phase is independent and can be tested in isolation
+//! - The resolver processes definitions in order, allowing forward references
 //! - Errors are collected, not thrown, to provide comprehensive diagnostics
-//! - The HIR is incrementally built and refined through each phase
-//! - Parent relationships and cross-references are explicitly maintained
+//! - Each phase after collection/resolution can be tested independently
+//! - Parent relationships and cross-references are maintained during resolution
 
 use ic_diagnostic::Diag;
 use ic_syntax::Item;
@@ -54,7 +53,7 @@ use crate::hir::TypeId;
 
 mod builtin;
 mod evaluate;
-mod single_pass;
+mod resolve;
 mod typecheck;
 mod validate;
 
@@ -104,22 +103,22 @@ where
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    // Phase 1: Single-pass collection and resolution
+    // Resolution phase
     let mut context = Context::new();
-    let lowerer = single_pass::SinglePassLowerer::new(&mut context);
-    let (name_map, order, mut phase_errors, mut phase_warnings) = lowerer.process(&ast_items);
+    let lowerer = resolve::Resolver::new(&mut context);
+    let (order, mut phase_errors, mut phase_warnings) = lowerer.process(&ast_items);
     errors.append(&mut phase_errors);
     warnings.append(&mut phase_warnings);
 
-    // Phase 2: Evaluate constant expressions
-    let mut phase_errors = evaluate::evaluate_expressions(&mut context, &name_map, &ast_items);
+    // Evaluate constant expressions
+    let mut phase_errors = evaluate::evaluate_expressions(&mut context, &ast_items);
     errors.append(&mut phase_errors);
 
-    // Phase 3: Type check values against their declared types
+    // Type check values against their declared types
     let mut phase_errors = typecheck::typecheck_hir(&context, &order);
     errors.append(&mut phase_errors);
 
-    // Phase 4: Validate the HIR
+    // Validate the HIR
     let mut phase_errors = validate::validate_hir(&context, &order);
     errors.append(&mut phase_errors);
 

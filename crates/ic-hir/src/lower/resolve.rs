@@ -25,9 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Single-pass lowering from AST to HIR.
+//! Resolution phase of lowering from AST to HIR.
 //!
-//! This module combines collection and resolution into a single pass,
+//! This module processes items in declaration order,
 //! ensuring that types can only be used after they have been declared.
 
 use ic_alloc::insensitive::CaseMap;
@@ -45,10 +45,10 @@ use crate::hir::{
 use crate::scope::ScopeId;
 
 /// Maps fully-qualified names to their `DefIds`.
-pub type NameMap = CaseMap<DefId>;
+type NameMap = CaseMap<DefId>;
 
-/// Single-pass lowerer that processes items in order.
-pub struct SinglePassLowerer<'a> {
+/// HIR resolver that processes items in order.
+pub struct Resolver<'a> {
     ctx: &'a mut Context,
     /// Maps names to `DefIds` for already-processed definitions
     name_map: NameMap,
@@ -64,7 +64,7 @@ pub struct SinglePassLowerer<'a> {
     warnings: Vec<Diag>,
 }
 
-impl<'a> SinglePassLowerer<'a> {
+impl<'a> Resolver<'a> {
     pub fn new(ctx: &'a mut Context) -> Self {
         let root_scope = ctx.scopes.root();
         Self {
@@ -1435,13 +1435,13 @@ impl<'a> SinglePassLowerer<'a> {
     }
 
     /// Processes all items in order.
-    pub fn process(mut self, items: &[Item]) -> (NameMap, Vec<DefId>, Vec<Diag>, Vec<Diag>) {
+    pub fn process(mut self, items: &[Item]) -> (Vec<DefId>, Vec<Diag>, Vec<Diag>) {
         for item in items {
             let ids = self.process_item(item);
             self.order.extend(ids);
         }
 
-        (self.name_map, self.order, self.errors, self.warnings)
+        (self.order, self.errors, self.warnings)
     }
 }
 

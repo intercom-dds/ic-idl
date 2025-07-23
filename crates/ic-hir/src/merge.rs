@@ -429,7 +429,7 @@ impl HirMerger {
                             (&old_def.kind, &existing_def.kind),
                             (DefKind::Decl(_), DefKind::Decl(_))
                         );
-                        
+
                         if both_are_decls {
                             // For forward declarations, only deduplicate if spans are identical
                             if old_def.ident.span == existing_def.ident.span {

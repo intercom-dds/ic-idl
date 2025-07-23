@@ -31,13 +31,13 @@
 //! ensuring that types can only be used after they have been declared.
 
 use ic_alloc::insensitive::CaseMap;
-use ic_diagnostic::{Diag, Label, error_span};
+use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Ident, Item, Path};
 
 use crate::Context;
 use crate::hir::{
-    AliasTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit, EnumTy, Member, ModuleTy, 
-    PrimitiveTy, StructTy, Ty, TyKind, UnionTy, Variant,
+    AliasTy, Ann, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit,
+    EnumTy, ExceptTy, InterfaceTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -47,7 +47,7 @@ pub type NameMap = CaseMap<DefId>;
 /// Single-pass lowerer that processes items in order.
 pub struct SinglePassLowerer<'a> {
     ctx: &'a mut Context,
-    /// Maps names to DefIds for already-processed definitions
+    /// Maps names to `DefIds` for already-processed definitions
     name_map: NameMap,
     /// Current scope path for qualified name generation
     scope_path: Vec<String>,
@@ -86,10 +86,98 @@ impl<'a> SinglePassLowerer<'a> {
         }
     }
 
-    /// Resolves a path to a DefId if it has been defined.
+    /// Resolves annotations from AST and returns only those that could be resolved.
+    fn resolve_ast_annotations(
+        &mut self,
+        ast_annotations: &[ic_syntax::AnnotationAppl],
+    ) -> Vec<Ann> {
+        let mut resolved_annotations = Vec::new();
+
+        for ann in ast_annotations {
+            // Try to resolve annotation name
+            let def_id = if let Some(id) = self.resolve_path(&ann.ident) {
+                id
+            } else {
+                // Annotation not found - skip with warning
+                let name = path_to_string(&ann.ident);
+                self.warnings.push(warn_span(
+                    format!("annotation `@{name}` not found"),
+                    Label::new(ic_syntax::util::path_span(&ann.ident))
+                        .message("unknown annotation"),
+                ));
+                continue;
+            };
+
+            // Get annotation definition
+            let members = {
+                let def = self.ctx.definitions.get(def_id);
+                if let DefKind::Annotation(ann_ty) = &def.kind {
+                    ann_ty.members.clone()
+                } else {
+                    // Not an annotation type
+                    continue;
+                }
+            };
+
+            // Check for multi-parameter annotations with positional arguments
+            if members.len() > 1 && ann.args.iter().any(|arg| arg.ident.is_none()) {
+                let ann_name = path_to_string(&ann.ident);
+                self.warnings.push(warn_span(
+                    format!(
+                        "@{ann_name} has {} parameters and requires named arguments",
+                        members.len()
+                    ),
+                    Label::new(ic_syntax::util::path_span(&ann.ident))
+                        .message("use named arguments for annotations with multiple parameters"),
+                ));
+            }
+
+            // Get the annotation identifier - use the full path
+            let ann_ident = Ident {
+                name: path_to_string(&ann.ident),
+                span: ic_syntax::util::path_span(&ann.ident),
+            };
+
+            // Resolve annotation arguments
+            let mut args = Vec::new();
+
+            // If all arguments are positional and there's exactly one member, assign to that member
+            if members.len() == 1 && ann.args.iter().all(|arg| arg.ident.is_none()) {
+                if let Some(_arg) = ann.args.first() {
+                    args.push(crate::hir::AnnArg {
+                        ident: members[0].ident.clone(),
+                        value: Numeric::Int32(0), // TODO: Evaluate expression properly
+                    });
+                }
+            } else {
+                // For named arguments or multiple members, match by name
+                for arg in &ann.args {
+                    if let Some(name) = &arg.ident {
+                        // Find matching member
+                        if let Some(member) = members.iter().find(|m| m.ident.name == name.name) {
+                            args.push(crate::hir::AnnArg {
+                                ident: member.ident.clone(),
+                                value: Numeric::Int32(0), // TODO: Evaluate expression properly
+                            });
+                        }
+                    }
+                }
+            }
+
+            resolved_annotations.push(Ann {
+                ident: ann_ident,
+                def_id,
+                args,
+            });
+        }
+
+        resolved_annotations
+    }
+
+    /// Resolves a path to a `DefId` if it has been defined.
     fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
-        
+
         // If path has leading colons (::), resolve from global scope
         let start_scope = if path.leading_colons.is_some() {
             self.ctx.scopes.root()
@@ -115,7 +203,7 @@ impl<'a> SinglePassLowerer<'a> {
     /// Converts AST type to HIR type.
     fn resolve_type(&mut self, ty: &ic_syntax::Type) -> Ty {
         use ic_syntax::Type;
-        
+
         match ty {
             Type::Any(v) => Ty {
                 kind: TyKind::Any,
@@ -174,7 +262,7 @@ impl<'a> SinglePassLowerer<'a> {
                         format!("unresolved type `{qualified}`"),
                         Label::new(ic_syntax::util::path_span(v)).message("unknown type"),
                     ));
-                    
+
                     // Return placeholder type
                     Ty {
                         kind: TyKind::Any,
@@ -188,7 +276,7 @@ impl<'a> SinglePassLowerer<'a> {
     /// Processes a forward declaration.
     fn process_forward_declaration(&mut self, decl: &ic_syntax::Decl) -> DefId {
         let qualified_name = self.qualified_name(&decl.ident.name);
-        
+
         // Always create a new forward declaration DefId
         // (even if one already exists - we keep all declarations)
 
@@ -223,7 +311,9 @@ impl<'a> SinglePassLowerer<'a> {
         if !self.name_map.contains_key(&qualified_name) {
             self.name_map.insert(qualified_name, id);
         }
-        self.ctx.scopes.add_definition(self.current_scope, decl.ident.name.clone(), id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, decl.ident.name.clone(), id);
 
         id
     }
@@ -231,10 +321,10 @@ impl<'a> SinglePassLowerer<'a> {
     /// Processes a struct definition.
     fn process_struct(&mut self, def: &ic_syntax::StructDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
-        
+
         // Check if there's already a definition (forward declaration or full)
         let existing_def = self.name_map.get(&qualified_name).copied();
-        
+
         // Check if it's a duplicate full definition
         if let Some(existing_id) = existing_def {
             let existing = self.ctx.definitions.get(existing_id);
@@ -249,10 +339,11 @@ impl<'a> SinglePassLowerer<'a> {
                 );
             }
         }
-        
+
         // Resolve parent if any
         let parent_id = if let Some(parent_path) = &def.parent {
-            self.resolve_type(&ic_syntax::Type::Path(parent_path.clone())).as_adt()
+            self.resolve_type(&ic_syntax::Type::Path(parent_path.clone()))
+                .as_adt()
         } else {
             None
         };
@@ -261,12 +352,13 @@ impl<'a> SinglePassLowerer<'a> {
         let mut members = Vec::new();
         for field in &def.members {
             let base_ty = self.resolve_type(&field.ty);
+            let field_annotations = self.resolve_ast_annotations(&field.annotations);
             for decl in &field.names {
                 let (ident, ty) = resolve_declarator(decl, base_ty.clone());
                 members.push(Member {
                     ident,
                     ty,
-                    annotations: Vec::new(), // Will be resolved later
+                    annotations: field_annotations.clone(),
                     default_value: None, // Will be resolved later
                 });
             }
@@ -280,19 +372,27 @@ impl<'a> SinglePassLowerer<'a> {
             self.name_map.get(&parent_name).copied()
         };
 
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
             parent,
-            annotations: Vec::new(), // Will be resolved later
+            annotations,
             span: def.span,
-            kind: DefKind::Struct(StructTy { parent: parent_id, members }),
+            kind: DefKind::Struct(StructTy {
+                parent: parent_id,
+                members,
+            }),
             flags: DefFlags::default(),
         });
 
         // Update name map to point to the full definition
         self.name_map.insert(qualified_name, id);
-        self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
 
         id
     }
@@ -300,7 +400,10 @@ impl<'a> SinglePassLowerer<'a> {
     /// Processes a module definition.
     fn process_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
-        
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
         // Create module definition
         let parent = if self.scope_path.is_empty() {
             None
@@ -313,7 +416,7 @@ impl<'a> SinglePassLowerer<'a> {
             id,
             ident: def.ident.clone(),
             parent,
-            annotations: Vec::new(),
+            annotations,
             span: def.span,
             kind: DefKind::Module(crate::hir::ModuleTy {
                 definitions: Vec::new(),
@@ -323,61 +426,75 @@ impl<'a> SinglePassLowerer<'a> {
 
         // Register in name map and scope
         self.name_map.insert(qualified_name, id);
-        
+
         // Create new scope for module
         let new_scope = self.ctx.scopes.create_child_scope(
-            self.current_scope, 
-            def.ident.name.clone(), 
-            Some(id)
+            self.current_scope,
+            def.ident.name.clone(),
+            Some(id),
         );
-        
+
         // Push to scope stack
         self.scope_path.push(def.ident.name.clone());
         let old_scope = self.current_scope;
         self.current_scope = new_scope;
-        
+
         // Process nested items
         let mut child_ids = Vec::new();
         for item in &def.definitions {
             let ids = self.process_item(item);
             child_ids.extend(ids);
         }
-        
+
         // Update module with children
-        if let Def { kind: DefKind::Module(module), .. } = self.ctx.definitions.get_mut(id) {
+        if let Def {
+            kind: DefKind::Module(module),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
             module.definitions = child_ids;
         }
-        
+
         // Pop scope
         self.scope_path.pop();
         self.current_scope = old_scope;
-        
+
         id
     }
 
     /// Processes an enum definition.
     fn process_enum(&mut self, def: &ic_syntax::EnumDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
-        
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
         // Create enum literals
-        let fields = def.fields.iter().map(|f| EnumLit {
-            ident: f.ident.clone(),
-            value: 0, // Will be filled in evaluation phase
-            annotations: Vec::new(), // Will be filled in resolve phase
-        }).collect();
-        
+        let fields = def
+            .fields
+            .iter()
+            .map(|f| {
+                let field_annotations = self.resolve_ast_annotations(&f.annotations);
+                EnumLit {
+                    ident: f.ident.clone(),
+                    value: 0, // Will be filled in evaluation phase
+                    annotations: field_annotations,
+                }
+            })
+            .collect();
+
         let parent = if self.scope_path.is_empty() {
             None
         } else {
             let parent_name = self.scope_path.join("::");
             self.name_map.get(&parent_name).copied()
         };
-        
+
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
             parent,
-            annotations: Vec::new(),
+            annotations,
             span: def.span,
             kind: DefKind::Enum(EnumTy {
                 fields,
@@ -388,70 +505,102 @@ impl<'a> SinglePassLowerer<'a> {
             }),
             flags: DefFlags::default(),
         });
-        
+
         self.name_map.insert(qualified_name, id);
-        self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
-        
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
         id
     }
-    
+
     /// Processes a type alias definition.
     fn process_alias(&mut self, def: &ic_syntax::AliasDef) -> Vec<DefId> {
         let mut ids = Vec::new();
-        
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
         // Resolve the base type
         let base_ty = self.resolve_type(&def.ty);
-        
+
         // Process each declarator
         for decl in &def.decl {
             let (ident, ty) = resolve_declarator(decl, base_ty.clone());
             let qualified_name = self.qualified_name(&ident.name);
-            
+
             let parent = if self.scope_path.is_empty() {
                 None
             } else {
                 let parent_name = self.scope_path.join("::");
                 self.name_map.get(&parent_name).copied()
             };
-            
+
             let id = self.ctx.definitions.alloc_with_id(|id| Def {
                 id,
                 ident: ident.clone(),
                 parent,
-                annotations: Vec::new(),
+                annotations: annotations.clone(),
                 span: def.span,
                 kind: DefKind::Alias(AliasTy { ty }),
                 flags: DefFlags::default(),
             });
-            
+
             self.name_map.insert(qualified_name, id);
-            self.ctx.scopes.add_definition(self.current_scope, ident.name.clone(), id);
+            self.ctx
+                .scopes
+                .add_definition(self.current_scope, ident.name.clone(), id);
             ids.push(id);
         }
-        
+
         ids
     }
 
     /// Processes a union definition.
     fn process_union(&mut self, def: &ic_syntax::UnionDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
-        
-        // For now, create a simplified union - full support needs more work
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // Resolve discriminator type
         let disc_ty = self.resolve_type(&def.disc.ty);
-        let variants = Vec::new(); // TODO: Process union variants properly
-        
+
+        // Process union variants
+        let mut variants = Vec::new();
+        for field in &def.fields {
+            match &field.field {
+                ic_syntax::UnionElement::Member(member) => {
+                    let base_ty = self.resolve_type(&member.ty);
+                    let (ident, ty) = resolve_declarator(&member.decl, base_ty);
+                    let field_annotations = self.resolve_ast_annotations(&field.annotations);
+
+                    variants.push(crate::hir::Variant {
+                        ident,
+                        ty,
+                        annotations: field_annotations,
+                        labels: Vec::new(), // TODO: Process case labels properly
+                        is_default: false,
+                    });
+                }
+                ic_syntax::UnionElement::Null(_) => {
+                    // TODO: Handle null/default case
+                }
+            }
+        }
+
         let parent = if self.scope_path.is_empty() {
             None
         } else {
             let parent_name = self.scope_path.join("::");
             self.name_map.get(&parent_name).copied()
         };
-        
+
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
             parent,
-            annotations: Vec::new(),
+            annotations,
             span: def.span,
             kind: DefKind::Union(UnionTy {
                 disc: disc_ty,
@@ -459,14 +608,271 @@ impl<'a> SinglePassLowerer<'a> {
             }),
             flags: DefFlags::default(),
         });
-        
+
         self.name_map.insert(qualified_name, id);
-        self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
-        
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
         id
     }
 
-    /// Processes an item and returns the DefIds created.
+    /// Processes an annotation definition.
+    fn process_annotation(&mut self, def: &ic_syntax::AnnotationDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        // Resolve annotations on the annotation definition itself
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Annotation(AnnotationTy {
+                members: Vec::new(),
+                types: Vec::new(),
+            }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
+        // Create new scope for annotation
+        let new_scope = self.ctx.scopes.create_child_scope(
+            self.current_scope,
+            def.ident.name.clone(),
+            Some(id),
+        );
+
+        // Push to scope stack
+        self.scope_path.push(def.ident.name.clone());
+        let old_scope = self.current_scope;
+        self.current_scope = new_scope;
+
+        // Process annotation members
+        let mut members = Vec::new();
+        let mut child_ids = Vec::new();
+
+        for param in &def.params {
+            match param {
+                ic_syntax::AnnotationField::Item(item) => {
+                    // Handle nested type definitions
+                    let ids = self.process_item(item);
+                    child_ids.extend(ids);
+                }
+                ic_syntax::AnnotationField::Member(member) => {
+                    let base_ty = self.resolve_type(&member.ty);
+                    let (ident, ty) = resolve_declarator(&member.decl, base_ty);
+                    members.push(Member {
+                        ident,
+                        ty,
+                        annotations: Vec::new(),
+                        default_value: None, // Will be resolved in evaluation phase
+                    });
+                }
+            }
+        }
+
+        // Update annotation with members and types
+        if let Def {
+            kind: DefKind::Annotation(ann),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
+            ann.members = members;
+            ann.types = child_ids;
+        }
+
+        // Pop scope
+        self.scope_path.pop();
+        self.current_scope = old_scope;
+
+        id
+    }
+
+    /// Processes an exception definition.
+    fn process_exception(&mut self, def: &ic_syntax::ExceptDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // Process members
+        let mut members = Vec::new();
+        for field in &def.members {
+            let base_ty = self.resolve_type(&field.ty);
+            let field_annotations = self.resolve_ast_annotations(&field.annotations);
+            for decl in &field.names {
+                let (ident, ty) = resolve_declarator(decl, base_ty.clone());
+                members.push(Member {
+                    ident,
+                    ty,
+                    annotations: field_annotations.clone(),
+                    default_value: None,
+                });
+            }
+        }
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Except(ExceptTy { members }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
+        id
+    }
+
+    /// Processes a constant definition.
+    fn process_const(&mut self, def: &ic_syntax::ConstDef) -> DefId {
+        // Resolve the type
+        let base_ty = self.resolve_type(&def.ty);
+        let (ident, ty) = resolve_declarator(&def.decl, base_ty);
+
+        let qualified_name = self.qualified_name(&ident.name);
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Const(ConstTy {
+                ty,
+                value: Numeric::Int32(0), // Placeholder, will be filled in evaluation phase
+            }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, ident.name.clone(), id);
+
+        id
+    }
+
+    /// Processes an interface definition.
+    fn process_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // TODO: Handle inheritance
+        let parents = Vec::new();
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Interface(InterfaceTy {
+                parents,
+                prototypes: Vec::new(),
+                attributes: Vec::new(),
+                definitions: Vec::new(),
+                is_local: false, // TODO: Determine from annotations
+            }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+
+        // Create new scope for interface
+        let new_scope = self.ctx.scopes.create_child_scope(
+            self.current_scope,
+            def.ident.name.clone(),
+            Some(id),
+        );
+
+        // Push to scope stack
+        self.scope_path.push(def.ident.name.clone());
+        let old_scope = self.current_scope;
+        self.current_scope = new_scope;
+
+        // Process nested items and operations
+        let mut child_ids = Vec::new();
+        let prototypes = Vec::new();
+
+        for member in &def.members {
+            match member {
+                ic_syntax::InterfaceMember::Item(item) => {
+                    let ids = self.process_item(item);
+                    child_ids.extend(ids);
+                }
+                ic_syntax::InterfaceMember::Proto(_proto) => {
+                    // TODO: Process operations properly
+                }
+                ic_syntax::InterfaceMember::Attr(_attr) => {
+                    // TODO: Process attributes properly
+                }
+            }
+        }
+
+        // Update interface with children
+        if let Def {
+            kind: DefKind::Interface(iface),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
+            iface.definitions = child_ids;
+            iface.prototypes = prototypes;
+        }
+
+        // Pop scope
+        self.scope_path.pop();
+        self.current_scope = old_scope;
+
+        id
+    }
+
+    /// Processes an item and returns the `DefIds` created.
     fn process_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::DeclValue(v) => vec![self.process_forward_declaration(v)],
@@ -475,6 +881,10 @@ impl<'a> SinglePassLowerer<'a> {
             Item::EnumValue(v) => vec![self.process_enum(v)],
             Item::AliasValue(v) => self.process_alias(v),
             Item::UnionValue(v) => vec![self.process_union(v)],
+            Item::AnnotationValue(v) => vec![self.process_annotation(v)],
+            Item::ExceptionValue(v) => vec![self.process_exception(v)],
+            Item::ConstValue(v) => vec![self.process_const(v)],
+            Item::InterfaceValue(v) => vec![self.process_interface(v)],
             // TODO: Add other item types
             _ => {
                 // For now, skip other items
@@ -556,7 +966,7 @@ fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
     })
 }
 
-/// Extension trait for Ty to extract ADT DefId.
+/// Extension trait for Ty to extract ADT `DefId`.
 trait TyExt {
     fn as_adt(&self) -> Option<DefId>;
 }

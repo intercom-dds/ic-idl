@@ -8,5 +8,5 @@ warning: inconsistent capitalization: module `Foo` was previously defined as `FO
  8 │         module Foo {
    ·                ^^^ module reopened here
  2 │         module FOO {
-   ·                ^^^ originally defined here
+   ·                ^^^ first defined here
    └──

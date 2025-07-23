@@ -35,10 +35,12 @@ use ic_cli::color::Colorize;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Ident, Item, Path};
 
+use super::convert_annotation_value;
 use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit, EnumTy,
-    ExceptTy, InterfaceTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
+    ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, StructTy,
+    Ty, TyKind, UnionTy, Variant,
 };
 use crate::scope::ScopeId;
 
@@ -144,10 +146,12 @@ impl<'a> SinglePassLowerer<'a> {
 
             // If all arguments are positional and there's exactly one member, assign to that member
             if members.len() == 1 && ann.args.iter().all(|arg| arg.ident.is_none()) {
-                if let Some(_arg) = ann.args.first() {
+                if let Some(arg) = ann.args.first() {
+                    // Evaluate the expression (simple literals only for now)
+                    let value = convert_annotation_value(&arg.value);
                     args.push(crate::hir::AnnArg {
                         ident: members[0].ident.clone(),
-                        value: Numeric::Int32(0), // TODO: Evaluate expression properly
+                        value,
                     });
                 }
             } else {
@@ -156,9 +160,11 @@ impl<'a> SinglePassLowerer<'a> {
                     if let Some(name) = &arg.ident {
                         // Find matching member
                         if let Some(member) = members.iter().find(|m| m.ident.name == name.name) {
+                            // Evaluate the expression (simple literals only for now)
+                            let value = convert_annotation_value(&arg.value);
                             args.push(crate::hir::AnnArg {
                                 ident: member.ident.clone(),
-                                value: Numeric::Int32(0), // TODO: Evaluate expression properly
+                                value,
                             });
                         }
                     }
@@ -583,9 +589,7 @@ impl<'a> SinglePassLowerer<'a> {
                             ),
                             Label::new(def.ident.span).message("module reopened here"),
                         )
-                        .label(
-                            Label::new(existing_def.ident.span).message("originally defined here"),
-                        ),
+                        .label(Label::new(existing_def.ident.span).message("first defined here")),
                     );
                 }
             }
@@ -739,12 +743,21 @@ impl<'a> SinglePassLowerer<'a> {
                     let (ident, ty) = resolve_declarator(&member.decl, base_ty);
                     let field_annotations = self.resolve_ast_annotations(&field.annotations);
 
+                    // Check if this is a default case
+                    let is_default = field
+                        .labels
+                        .iter()
+                        .any(|label| matches!(label, ic_syntax::Label::Default(_)));
+
+                    // Process case labels (we'll store them as DefIds later in evaluation phase)
+                    let labels = Vec::new(); // Labels will be evaluated in the evaluation phase
+
                     variants.push(crate::hir::Variant {
                         ident,
                         ty,
                         annotations: field_annotations,
-                        labels: Vec::new(), // TODO: Process case labels properly
-                        is_default: false,
+                        labels,
+                        is_default,
                     });
                 }
                 ic_syntax::UnionElement::Null(_) => {
@@ -1216,7 +1229,37 @@ impl<'a> SinglePassLowerer<'a> {
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // Handle inheritance
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        // First create the interface DefId with empty parents
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Interface(InterfaceTy {
+                parents: Vec::new(), // Will be filled in later
+                prototypes: Vec::new(),
+                attributes: Vec::new(),
+                definitions: Vec::new(),
+                is_local: false, // TODO: Determine from annotations
+            }),
+            flags: DefFlags::default(),
+        });
+
+        // Add to name map and scope BEFORE resolving inheritance
+        self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
+        // Now handle inheritance - after the definition is in scope
         let mut parents = Vec::new();
         for parent_path in &def.inherits {
             if let Some(parent_id) = self.resolve_path(parent_path) {
@@ -1265,30 +1308,14 @@ impl<'a> SinglePassLowerer<'a> {
             }
         }
 
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
-
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Interface(InterfaceTy {
-                parents,
-                prototypes: Vec::new(),
-                attributes: Vec::new(),
-                definitions: Vec::new(),
-                is_local: false, // TODO: Determine from annotations
-            }),
-            flags: DefFlags::default(),
-        });
-
-        self.name_map.insert(qualified_name, id);
+        // Update the interface with the resolved parents
+        if let Def {
+            kind: DefKind::Interface(iface),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
+            iface.parents = parents;
+        }
 
         // Create new scope for interface
         let new_scope = self.ctx.scopes.create_child_scope(
@@ -1304,7 +1331,8 @@ impl<'a> SinglePassLowerer<'a> {
 
         // Process nested items and operations
         let mut child_ids = Vec::new();
-        let prototypes = Vec::new();
+        let mut prototypes = Vec::new();
+        let mut attributes = Vec::new();
 
         for member in &def.members {
             match member {
@@ -1312,11 +1340,15 @@ impl<'a> SinglePassLowerer<'a> {
                     let ids = self.process_item(item);
                     child_ids.extend(ids);
                 }
-                ic_syntax::InterfaceMember::Proto(_proto) => {
-                    // TODO: Process operations properly
+                ic_syntax::InterfaceMember::Proto(proto) => {
+                    if let Some(proto_ty) = self.process_prototype(proto) {
+                        prototypes.push(proto_ty);
+                    }
                 }
-                ic_syntax::InterfaceMember::Attr(_attr) => {
-                    // TODO: Process attributes properly
+                ic_syntax::InterfaceMember::Attr(attr) => {
+                    if let Some(attr_ty) = self.process_attribute(attr) {
+                        attributes.push(attr_ty);
+                    }
                 }
             }
         }
@@ -1329,6 +1361,7 @@ impl<'a> SinglePassLowerer<'a> {
         {
             iface.definitions = child_ids;
             iface.prototypes = prototypes;
+            iface.attributes = attributes;
         }
 
         // Pop scope
@@ -1336,6 +1369,47 @@ impl<'a> SinglePassLowerer<'a> {
         self.current_scope = old_scope;
 
         id
+    }
+
+    /// Processes a prototype (method) definition.
+    fn process_prototype(&mut self, proto: &ic_syntax::Prototype) -> Option<ProtoTy> {
+        // Resolve return type
+        let ret_ty = self.resolve_type(&proto.ret);
+
+        // Process parameters
+        let mut params = Vec::new();
+        for param in &proto.params {
+            let param_ty = self.resolve_type(&param.ty);
+
+            // Extract parameter name from declarator
+            let param_ident = match &param.decl {
+                ic_syntax::Declarator::Simple(ident) => ident.clone(),
+                ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
+            };
+
+            params.push(Parameter {
+                ident: param_ident,
+                ty: param_ty,
+                kind: match &param.kind {
+                    Some(ic_syntax::ParamKind::In) => ParamKind::In,
+                    Some(ic_syntax::ParamKind::Out) => ParamKind::Out,
+                    Some(ic_syntax::ParamKind::Inout) => ParamKind::Inout,
+                    None => ParamKind::In, // Default to In when not specified
+                },
+            });
+        }
+
+        Some(ProtoTy {
+            ident: proto.ident.clone(),
+            ty: ret_ty,
+            params,
+        })
+    }
+
+    /// Processes an attribute definition.
+    fn process_attribute(&mut self, _attr: &ic_syntax::Attribute) -> Option<()> {
+        // TODO: Implement attribute processing when AttributeTy is defined
+        Some(())
     }
 
     /// Processes an item and returns the `DefIds` created.
@@ -1404,6 +1478,7 @@ fn path_to_string(path: &Path) -> String {
 /// Resolves a primitive type name.
 fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
     Some(match name {
+        "void" => PrimitiveTy::Void,
         "boolean" => PrimitiveTy::Bool,
         "octet" => PrimitiveTy::UInt8,
         "char" => PrimitiveTy::Char,

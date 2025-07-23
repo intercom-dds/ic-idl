@@ -25,22 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fs;
-
 use ic_hir::hir::DefKind;
-use ic_idl::{Compiler, CompilerOptions};
+use ic_preproc::ProcArgs;
+use ic_vfs::SourceMap;
 
 #[test]
 #[allow(clippy::too_many_lines)]
 fn test_value_annotation_transform_integration() {
     let input = r"
-        // Built-in annotations
-        @annotation value {
-            int32 value;
-        };
-        
-        @annotation deprecated {
-        };
+        @annotation deprecated {};
         
         enum Status {
             @value(200)
@@ -57,19 +50,20 @@ fn test_value_annotation_transform_integration() {
         };
     ";
 
-    // Create a temporary directory and file
-    let temp_dir = format!("/tmp/ic_hir_xform_test_{}", std::process::id());
-    fs::create_dir_all(&temp_dir).unwrap();
-    let input_file = format!("{temp_dir}/test.idl");
-    fs::write(&input_file, input).unwrap();
+    // Parse the input directly
+    let mut source_map = SourceMap::default();
+    let file_id = source_map.embed(input);
+    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
 
-    // Set up compiler options
-    let mut options = CompilerOptions::default();
-    options.files.push(input_file.into());
+    // Parse built-in annotations
+    let builtin_file_id = source_map.embed_with_name(
+        "<builtin-annotations>",
+        include_str!("../../ic-idl/idl/annotations.idl"),
+    );
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
-    // Compile to get HIR
-    let mut compiler = Compiler::new(options);
-    let (hir, _diagnostics) = compiler.compile_hir().expect("Compilation failed");
+    // Convert to HIR
+    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
 
     // Verify we have the expected definitions
     assert!(
@@ -171,18 +165,12 @@ fn test_value_annotation_transform_integration() {
     } else {
         panic!("Expected enum definition");
     }
-
-    // Clean up
-    fs::remove_dir_all(&temp_dir).ok();
 }
 
 #[test]
 fn test_value_annotation_with_auto_increment() {
     let input = r"
-        // Built-in annotations
-        @annotation value {
-            int32 value;
-        };
+        @annotation deprecated {};
         
         enum Numbers {
             ZERO,
@@ -197,19 +185,20 @@ fn test_value_annotation_with_auto_increment() {
         };
     ";
 
-    // Create a temporary directory and file
-    let temp_dir = format!("/tmp/ic_hir_xform_test2_{}", std::process::id());
-    fs::create_dir_all(&temp_dir).unwrap();
-    let input_file = format!("{temp_dir}/test.idl");
-    fs::write(&input_file, input).unwrap();
+    // Parse the input directly
+    let mut source_map = SourceMap::default();
+    let file_id = source_map.embed(input);
+    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
 
-    // Set up compiler options
-    let mut options = CompilerOptions::default();
-    options.files.push(input_file.into());
+    // Parse built-in annotations
+    let builtin_file_id = source_map.embed_with_name(
+        "<builtin-annotations>",
+        include_str!("../../ic-idl/idl/annotations.idl"),
+    );
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
-    // Compile to get HIR
-    let mut compiler = Compiler::new(options);
-    let (hir, _diagnostics) = compiler.compile_hir().expect("Compilation failed");
+    // Convert to HIR
+    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
 
     // Apply the transformation
     let transformed = ic_hir_xform::value_annotation::transform(hir);
@@ -240,7 +229,4 @@ fn test_value_annotation_with_auto_increment() {
     } else {
         panic!("Expected enum definition");
     }
-
-    // Clean up
-    fs::remove_dir_all(&temp_dir).ok();
 }

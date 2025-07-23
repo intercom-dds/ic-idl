@@ -217,8 +217,11 @@ impl<'a> SinglePassLowerer<'a> {
             flags: DefFlags::default(), // Forward declarations are complete
         });
 
-        // Register in name map and scope
-        self.name_map.insert(qualified_name, id);
+        // DON'T update name map for forward declarations - we want to keep all of them
+        // Only update if this is the first one
+        if !self.name_map.contains_key(&qualified_name) {
+            self.name_map.insert(qualified_name, id);
+        }
         self.ctx.scopes.add_definition(self.current_scope, decl.ident.name.clone(), id);
 
         id

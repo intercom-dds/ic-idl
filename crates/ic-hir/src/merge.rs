@@ -301,10 +301,8 @@ impl HirMerger {
         // Add top-level definitions to order
         for &def_id in &graph.order {
             if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
-                // Only add if not already in order (due to deduplication)
-                if !self.order.contains(&new_def_id) {
-                    self.order.push(new_def_id);
-                }
+                // Always add to order - we want to preserve all forward declarations
+                self.order.push(new_def_id);
             }
         }
 
@@ -426,10 +424,26 @@ impl HirMerger {
                     );
 
                     if !is_decl_and_def {
-                        // For other compatible cases (multiple forward decls, identical annotations),
-                        // deduplicate as before
-                        self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-                        return existing_def_id;
+                        // Check if both are forward declarations
+                        let both_are_decls = matches!(
+                            (&old_def.kind, &existing_def.kind),
+                            (DefKind::Decl(_), DefKind::Decl(_))
+                        );
+                        
+                        if both_are_decls {
+                            // For forward declarations, only deduplicate if spans are identical
+                            if old_def.ident.span == existing_def.ident.span {
+                                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                                return existing_def_id;
+                            }
+                            // Different spans = different forward declarations, keep both
+                            // Fall through to create a new definition
+                        } else {
+                            // For other compatible cases (identical annotations),
+                            // deduplicate as before
+                            self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                            return existing_def_id;
+                        }
                     }
                     // Fall through to create a new definition for forward decl + full def pairs
                 } else {

@@ -499,7 +499,7 @@ impl<'a> SinglePassLowerer<'a> {
             kind: DefKind::Enum(EnumTy {
                 fields,
                 ty: Ty {
-                    kind: TyKind::Any, // Placeholder, will be resolved later
+                    kind: TyKind::Primitive(PrimitiveTy::Int32), // Default to int32
                     span: def.span,
                 },
             }),
@@ -919,7 +919,7 @@ impl<'a> SinglePassLowerer<'a> {
             kind: DefKind::Bitmask(crate::hir::BitmaskTy {
                 flags,
                 ty: Ty {
-                    kind: TyKind::Any, // Placeholder, will be resolved later
+                    kind: TyKind::Primitive(PrimitiveTy::UInt32), // Default to unsigned long
                     span: def.span,
                 },
             }),

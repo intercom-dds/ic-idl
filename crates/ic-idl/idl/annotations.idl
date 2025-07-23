@@ -25,10 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Definitions for the compiler's built-in annotations. These are injected
-//! into the HIR's internal state prior to performing type resolution.
-//! Definitions for these types will not be generated, as they are not intended
-//! to be used outside of the compiler.
+// Definitions for the compiler's built-in annotations. These are injected
+// into the HIR's internal state prior to performing type resolution.
 
 module intercom {
 module annotations {

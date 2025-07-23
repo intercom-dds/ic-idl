@@ -1,10 +1,5 @@
-struct Foo;
-struct Foo;
-struct Foo;
-struct Foo;
+             enum MyEnum {
+                 ZERO
+             };
+             const MyEnum MY_CONST = MyEnum::ZERO;
 
-struct Bar {
-    Foo my_foo;
-};
-
-struct Foo {};

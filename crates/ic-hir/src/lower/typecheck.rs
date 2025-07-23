@@ -251,6 +251,19 @@ impl<'a> TypeChecker<'a> {
             (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
                 self.check_uint_fits(*v, *prim, value_desc, value_span)
             }
+            
+            // Integer values assigned to enum types
+            (Numeric::Int8(_) | Numeric::Octet(_) | Numeric::Int16(_) | Numeric::UInt16(_) | 
+             Numeric::Int32(_) | Numeric::UInt32(_) | Numeric::Int64(_) | Numeric::UInt64(_), 
+             TyKind::Adt(type_id)) => {
+                let def = self.ctx.definitions.get(*type_id);
+                if let DefKind::Enum(enum_ty) = &def.kind {
+                    // Check against the enum's underlying type
+                    return self.check_numeric_type(value, &enum_ty.ty, value_desc, value_span);
+                }
+                // Not an enum, fall through to error
+                false
+            }
 
             // Float values
             (Numeric::Float(_), TyKind::Primitive(PrimitiveTy::Float32 | PrimitiveTy::Float64)) => {

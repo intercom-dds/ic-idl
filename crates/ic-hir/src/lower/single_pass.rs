@@ -36,7 +36,8 @@ use ic_syntax::{Ident, Item, Path};
 
 use crate::Context;
 use crate::hir::{
-    Decl, Def, DefFlags, DefId, DefKind, Member, ModuleTy, PrimitiveTy, StructTy, Ty, TyKind,
+    AliasTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit, EnumTy, Member, ModuleTy, 
+    PrimitiveTy, StructTy, Ty, TyKind, UnionTy, Variant,
 };
 use crate::scope::ScopeId;
 
@@ -354,12 +355,126 @@ impl<'a> SinglePassLowerer<'a> {
         id
     }
 
+    /// Processes an enum definition.
+    fn process_enum(&mut self, def: &ic_syntax::EnumDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+        
+        // Create enum literals
+        let fields = def.fields.iter().map(|f| EnumLit {
+            ident: f.ident.clone(),
+            value: 0, // Will be filled in evaluation phase
+            annotations: Vec::new(), // Will be filled in resolve phase
+        }).collect();
+        
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+        
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations: Vec::new(),
+            span: def.span,
+            kind: DefKind::Enum(EnumTy {
+                fields,
+                ty: Ty {
+                    kind: TyKind::Any, // Placeholder, will be resolved later
+                    span: def.span,
+                },
+            }),
+            flags: DefFlags::default(),
+        });
+        
+        self.name_map.insert(qualified_name, id);
+        self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
+        
+        id
+    }
+    
+    /// Processes a type alias definition.
+    fn process_alias(&mut self, def: &ic_syntax::AliasDef) -> Vec<DefId> {
+        let mut ids = Vec::new();
+        
+        // Resolve the base type
+        let base_ty = self.resolve_type(&def.ty);
+        
+        // Process each declarator
+        for decl in &def.decl {
+            let (ident, ty) = resolve_declarator(decl, base_ty.clone());
+            let qualified_name = self.qualified_name(&ident.name);
+            
+            let parent = if self.scope_path.is_empty() {
+                None
+            } else {
+                let parent_name = self.scope_path.join("::");
+                self.name_map.get(&parent_name).copied()
+            };
+            
+            let id = self.ctx.definitions.alloc_with_id(|id| Def {
+                id,
+                ident: ident.clone(),
+                parent,
+                annotations: Vec::new(),
+                span: def.span,
+                kind: DefKind::Alias(AliasTy { ty }),
+                flags: DefFlags::default(),
+            });
+            
+            self.name_map.insert(qualified_name, id);
+            self.ctx.scopes.add_definition(self.current_scope, ident.name.clone(), id);
+            ids.push(id);
+        }
+        
+        ids
+    }
+
+    /// Processes a union definition.
+    fn process_union(&mut self, def: &ic_syntax::UnionDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+        
+        // For now, create a simplified union - full support needs more work
+        let disc_ty = self.resolve_type(&def.disc.ty);
+        let variants = Vec::new(); // TODO: Process union variants properly
+        
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+        
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations: Vec::new(),
+            span: def.span,
+            kind: DefKind::Union(UnionTy {
+                disc: disc_ty,
+                variants,
+            }),
+            flags: DefFlags::default(),
+        });
+        
+        self.name_map.insert(qualified_name, id);
+        self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
+        
+        id
+    }
+
     /// Processes an item and returns the DefIds created.
     fn process_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::DeclValue(v) => vec![self.process_forward_declaration(v)],
             Item::StructValue(v) => vec![self.process_struct(v)],
             Item::ModuleValue(v) => vec![self.process_module(v)],
+            Item::EnumValue(v) => vec![self.process_enum(v)],
+            Item::AliasValue(v) => self.process_alias(v),
+            Item::UnionValue(v) => vec![self.process_union(v)],
             // TODO: Add other item types
             _ => {
                 // For now, skip other items
@@ -428,6 +543,15 @@ fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
         "float" => PrimitiveTy::Float32,
         "double" => PrimitiveTy::Float64,
         "long double" => PrimitiveTy::Float128,
+        // Also support explicit integer type names
+        "int8" => PrimitiveTy::Int8,
+        "uint8" => PrimitiveTy::UInt8,
+        "int16" => PrimitiveTy::Int16,
+        "uint16" => PrimitiveTy::UInt16,
+        "int32" => PrimitiveTy::Int32,
+        "uint32" => PrimitiveTy::UInt32,
+        "int64" => PrimitiveTy::Int64,
+        "uint64" => PrimitiveTy::UInt64,
         _ => return None,
     })
 }

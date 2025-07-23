@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
-assertion_line: 96
 expression: check_ambiguous_precedence(idl)
 ---
 

@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/bit_bound.rs
-expression: test_lint_hir(source)
----
-

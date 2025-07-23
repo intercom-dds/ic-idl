@@ -1,6 +1,6 @@
 ---
 source: crates/ic-lint/tests/initializer_list_size.rs
-expression: "test_lint_hir(r\"\n        struct Point {\n            int32 x;\n            int32 y;\n            int32 z;\n        };\n        const Point MY_POINT = {1, 2};\n    \",)"
+expression: test_lint_hir(input)
 ---
 error[initializer_list_size]: struct initializer has 2 fields but struct 'Point' has 3 members
    ┌ test.idl:7:9

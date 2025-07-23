@@ -94,10 +94,12 @@ impl Context {
     /// Try to get a definition without panicking.
     #[must_use]
     pub fn try_get(&self, id: DefId) -> Option<&Def> {
-        // Arena doesn't have try_get, so we need to check bounds manually
-        // For now, just use get which will panic if invalid
-        // TODO: Implement proper bounds checking
-        Some(self.definitions.get(id))
+        let index: usize = id.into();
+        if index < self.definitions.len() {
+            Some(self.definitions.get(id))
+        } else {
+            None
+        }
     }
 
     /// Similar to `type_of`, but will resolve the underlying type.

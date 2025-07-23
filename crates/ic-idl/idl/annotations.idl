@@ -28,9 +28,6 @@
 // Definitions for the compiler's built-in annotations. These are injected
 // into the HIR's internal state prior to performing type resolution.
 
-module intercom {
-module annotations {
-
 @annotation id {
     unsigned long value;
 };
@@ -289,5 +286,3 @@ module ext {
         string name;
     };
 }; // module ext
-}; // module annotations
-}; // module intercom

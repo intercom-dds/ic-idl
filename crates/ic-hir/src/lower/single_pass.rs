@@ -303,7 +303,7 @@ impl<'a> SinglePassLowerer<'a> {
             annotations: Vec::new(),
             span: decl.span,
             kind,
-            flags: DefFlags::default(), // Forward declarations are complete
+            flags: DefFlags::IS_INCOMPLETE, // Forward declarations are incomplete until defined
         });
 
         // DON'T update name map for forward declarations - we want to keep all of them

@@ -371,18 +371,14 @@ impl<'a> Validator<'a> {
 
     /// Validates all types in the HIR.
     fn validate_all(&mut self, order: &[DefId]) {
-        // First pass: validate all forward declarations are defined
-        for &id in order {
-            self.validate_complete(id);
-        }
+        // First pass: validate forward declarations match definitions
+        // This will also check for forward declarations without definitions
+        self.validate_forward_declarations(order);
 
         // Second pass: validate each type
         for &id in order {
             self.validate_type(id);
         }
-
-        // Third pass: validate forward declarations match definitions
-        self.validate_forward_declarations(order);
     }
 
     /// Validates that forward declarations match their definitions.
@@ -402,10 +398,6 @@ impl<'a> Validator<'a> {
 
         // Check each group of definitions with the same name in the same scope
         for ((name, _parent), ids) in definitions_by_name_and_scope {
-            if ids.len() < 2 {
-                continue; // No duplicates to check
-            }
-
             // Find the actual definition (non-Decl) if any
             let mut actual_def: Option<(DefId, &str)> = None;
             let mut forward_decls: Vec<DefId> = Vec::new();
@@ -505,7 +497,13 @@ impl<'a> Validator<'a> {
                 }
             } else if !forward_decls.is_empty() {
                 // We have forward declarations but no definition
-                // This is handled by validate_complete already
+                for &decl_id in &forward_decls {
+                    let decl_def = self.get_def(decl_id);
+                    self.errors.push(error_span(
+                        format!("type `{}` is declared but not defined", decl_def.ident.name),
+                        Label::new(decl_def.span).message("declared here"),
+                    ));
+                }
             }
         }
     }

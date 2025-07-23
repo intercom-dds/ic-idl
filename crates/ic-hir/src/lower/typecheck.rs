@@ -198,20 +198,6 @@ impl<'a> TypeChecker<'a> {
                 false
             }
 
-            // Enum values - check that the numeric value is compatible with the enum's underlying type
-            (value, TyKind::Adt(type_id)) => {
-                let def = self.ctx.definitions.get(*type_id);
-                if let DefKind::Enum(enum_ty) = &def.kind {
-                    // Check against the enum's underlying type
-                    return self.check_numeric_type(value, &enum_ty.ty, value_desc, value_span);
-                }
-                // Not an enum, report type mismatch
-                self.errors.push(error_span(
-                    format!("{value_desc} value type does not match declared type"),
-                    Label::new(ty.span).message("type mismatch"),
-                ));
-                false
-            }
 
             // Character values
             (Numeric::Char(_), TyKind::Primitive(PrimitiveTy::Char | PrimitiveTy::WChar)) => true,
@@ -251,17 +237,19 @@ impl<'a> TypeChecker<'a> {
             (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
                 self.check_uint_fits(*v, *prim, value_desc, value_span)
             }
-            
-            // Integer values assigned to enum types
-            (Numeric::Int8(_) | Numeric::Octet(_) | Numeric::Int16(_) | Numeric::UInt16(_) | 
-             Numeric::Int32(_) | Numeric::UInt32(_) | Numeric::Int64(_) | Numeric::UInt64(_), 
-             TyKind::Adt(type_id)) => {
+
+            // Enum values and integer values assigned to enum types
+            (value, TyKind::Adt(type_id)) => {
                 let def = self.ctx.definitions.get(*type_id);
                 if let DefKind::Enum(enum_ty) = &def.kind {
                     // Check against the enum's underlying type
                     return self.check_numeric_type(value, &enum_ty.ty, value_desc, value_span);
                 }
-                // Not an enum, fall through to error
+                // Not an enum, report type mismatch
+                self.errors.push(error_span(
+                    format!("{value_desc} value type does not match declared type"),
+                    Label::new(ty.span).message("type mismatch"),
+                ));
                 false
             }
 

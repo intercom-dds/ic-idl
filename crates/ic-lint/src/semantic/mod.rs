@@ -38,6 +38,7 @@ pub mod invalid_enum_value;
 pub mod keywords;
 pub mod multiple_default_cases;
 pub mod oneway;
+pub mod recursive_type;
 pub mod redundant_inheritance;
 pub mod unreachable_union_cases;
 pub mod void_ty;

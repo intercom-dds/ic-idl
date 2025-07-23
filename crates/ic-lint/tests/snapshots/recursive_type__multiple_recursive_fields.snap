@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+error[recursive_type]: type `Tree` contains itself without indirection
+   ┌ test.idl:4:18
+   │
+ 4 │             Tree left;   // Error
+   ·                  ^^^^ recursive member here
+   └──
+ note: recursive types must use indirection through sequences or @shared/@external annotations
+
+error[recursive_type]: type `Tree` contains itself without indirection
+   ┌ test.idl:5:18
+   │
+ 5 │             Tree right;  // Error
+   ·                  ^^^^^ recursive member here
+   └──
+ note: recursive types must use indirection through sequences or @shared/@external annotations

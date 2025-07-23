@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+error: unresolved type `RecursiveError`
+   ┌ test.idl:4:13
+   │
+ 4 │             RecursiveError cause;  // Error: direct recursion without indirection
+   ·             ^^^^^^^^^^^^^^ unknown type
+   └──

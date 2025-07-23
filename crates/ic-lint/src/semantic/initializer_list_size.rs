@@ -53,7 +53,7 @@ impl<'a> Lint<'a> for InitializerListSize<'a> {
 
     fn check_hir(ctx: &'a LintCtx<'a>, hir: &'a ResolvedGraph) {
         let mut lint = Self { ctx, hir };
-        walk_tree(&mut lint, &hir.context.definitions);
+        walk_tree(&mut lint, hir);
     }
 }
 

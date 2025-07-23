@@ -69,7 +69,7 @@ impl<'a> Lint<'a> for Deprecated<'a> {
             hir_ctx: &hir.context,
             deprecated_items,
         };
-        ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
+        ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 

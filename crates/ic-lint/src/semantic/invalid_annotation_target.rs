@@ -53,7 +53,7 @@ impl<'a> Lint<'a> for InvalidAnnotationTarget<'a> {
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = InvalidAnnotationTarget { ctx, hir };
-        ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
+        ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 

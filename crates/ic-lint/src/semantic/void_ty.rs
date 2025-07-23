@@ -80,6 +80,6 @@ impl<'a> Lint<'a> for VoidTy<'a> {
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &'a ic_hir::ResolvedGraph) {
         let mut lint = Self { ctx, hir };
-        walk_tree(&mut lint, &hir.context.definitions);
+        walk_tree(&mut lint, hir);
     }
 }

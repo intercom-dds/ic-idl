@@ -25,12 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
     InterfaceTy, Member, ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy,
     ValueTy, Variant,
 };
+use crate::{Context, ResolvedGraph};
 
 pub trait Visitor<'a> {
     fn context(&self) -> &'a Context;
@@ -124,11 +124,12 @@ pub trait Visitor<'a> {
     }
 }
 
-pub fn walk_tree<'a, V>(visitor: &mut V, tree: &'a [Def])
+pub fn walk_tree<'a, V>(visitor: &mut V, tree: &'a ResolvedGraph)
 where
     V: Visitor<'a> + ?Sized,
 {
-    for def in tree {
+    for id in &tree.order {
+        let def = tree.context.type_of(*id);
         walk_def(visitor, def);
     }
 }
@@ -420,7 +421,6 @@ where
 {
     // Ann no longer has a ty field
     for arg in &ann.args {
-        // Visit the argument's value directly
         visitor.visit_numeric(&arg.value);
     }
 }

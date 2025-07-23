@@ -58,7 +58,7 @@ impl<'a> Lint<'a> for DuplicateEnumValues<'a> {
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = DuplicateEnumValues { ctx, hir };
-        ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
+        ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 

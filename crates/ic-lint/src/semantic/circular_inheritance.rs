@@ -61,7 +61,7 @@ impl<'a> Lint<'a> for CircularInheritance<'a> {
             hir,
             visiting: HashSet::new(),
         };
-        walk_tree(&mut lint, &hir.context.definitions);
+        walk_tree(&mut lint, hir);
     }
 }
 

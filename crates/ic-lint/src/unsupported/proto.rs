@@ -71,6 +71,6 @@ impl<'a> Lint<'a> for Proto<'a> {
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &'a ic_hir::ResolvedGraph) {
         let mut res = Proto { ctx, hir };
-        ic_hir::visit::walk_tree(&mut res, &hir.context.definitions);
+        ic_hir::visit::walk_tree(&mut res, hir);
     }
 }

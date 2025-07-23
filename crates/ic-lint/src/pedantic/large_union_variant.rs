@@ -63,7 +63,7 @@ impl<'a> Lint<'a> for LargeUnionVariant<'a> {
             ctx,
             hir_ctx: &hir.context,
         };
-        ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
+        ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 

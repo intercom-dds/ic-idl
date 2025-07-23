@@ -578,70 +578,75 @@ impl<'a> TypeChecker<'a> {
 
     /// Checks if a numeric type can be promoted to another.
     /// Based on IDL promotion rules similar to C++/CORBA.
+    #[allow(clippy::unused_self)]
     fn check_numeric_promotion(&self, from: PrimitiveTy, to: PrimitiveTy) -> bool {
-        use PrimitiveTy::*;
+        use PrimitiveTy::{
+            Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16,
+            UInt32, UInt64, Void, WChar,
+        };
 
+        // Same type is always allowed
+        if from == to {
+            return true;
+        }
+
+        // Define numeric type ordering for promotions
+        let rank = |ty: PrimitiveTy| -> Option<(u8, bool)> {
+            match ty {
+                // (rank, is_signed)
+                Bool => Some((0, false)),
+                Char => Some((1, false)),
+                WChar => Some((2, false)),
+                Int8 => Some((3, true)),
+                UInt8 => Some((3, false)),
+                Int16 => Some((4, true)),
+                UInt16 => Some((4, false)),
+                Int32 => Some((5, true)),
+                UInt32 => Some((5, false)),
+                Int64 => Some((6, true)),
+                UInt64 => Some((6, false)),
+                Float32 => Some((7, true)),
+                Float64 => Some((8, true)),
+                Float128 => Some((9, true)),
+                Void => None, // Other types don't participate in numeric promotion
+            }
+        };
+
+        let Some((from_rank, from_signed)) = rank(from) else {
+            return false;
+        };
+
+        let Some((to_rank, to_signed)) = rank(to) else {
+            return false;
+        };
+
+        // Special cases
         match (from, to) {
-            // Boolean can only be promoted to itself
-            (Bool, Bool) => true,
+            // Boolean only promotes to itself (already handled by equality check)
+            // Character types (except char->wchar) don't promote to other types
+            (Bool | Char | WChar, _) if !matches!((from, to), (Char, WChar)) => false,
 
-            // Character promotions
-            (Char, Char) => true,
-            (Char, WChar) => true, // char promotes to wchar
-            (WChar, WChar) => true,
+            // Character to wide character is allowed
+            (Char, WChar) => true,
 
-            // Integer promotions follow a hierarchy:
-            // int8/octet -> int16 -> int32 -> int64
-            // uint8 -> uint16 -> uint32 -> uint64
+            // For numeric types, check if promotion is safe
+            _ => {
+                // Can always promote to higher rank
+                if to_rank > from_rank {
+                    return true;
+                }
 
-            // From Int8/Octet
-            (Int8, Int8) => true,
-            (Int8, Int16) => true,
-            (Int8, Int32) => true,
-            (Int8, Int64) => true,
-            (UInt8, UInt8) => true,
-            (UInt8, UInt16) => true,
-            (UInt8, UInt32) => true,
-            (UInt8, UInt64) => true,
-            (UInt8, Int16) => true, // uint8 can promote to int16 (fits)
-            (UInt8, Int32) => true, // uint8 can promote to int32 (fits)
-            (UInt8, Int64) => true, // uint8 can promote to int64 (fits)
-
-            // From Int16
-            (Int16, Int16) => true,
-            (Int16, Int32) => true,
-            (Int16, Int64) => true,
-            (UInt16, UInt16) => true,
-            (UInt16, UInt32) => true,
-            (UInt16, UInt64) => true,
-            (UInt16, Int32) => true, // uint16 can promote to int32 (fits)
-            (UInt16, Int64) => true, // uint16 can promote to int64 (fits)
-
-            // From Int32
-            (Int32, Int32) => true,
-            (Int32, Int64) => true,
-            (UInt32, UInt32) => true,
-            (UInt32, UInt64) => true,
-            (UInt32, Int64) => true, // uint32 can promote to int64 (fits)
-
-            // From Int64
-            (Int64, Int64) => true,
-            (UInt64, UInt64) => true,
-
-            // Floating point promotions
-            (Float32, Float32) => true,
-            (Float32, Float64) => true,
-            (Float32, Float128) => true,
-            (Float64, Float64) => true,
-            (Float64, Float128) => true,
-            (Float128, Float128) => true,
-
-            // Integer to floating point promotions
-            (Int8 | UInt8 | Int16 | UInt16 | Int32 | UInt32, Float32 | Float64 | Float128) => true,
-            (Int64 | UInt64, Float64 | Float128) => true, // Large ints need at least double
-
-            // No other promotions are allowed
-            _ => false,
+                // Same rank: unsigned can promote to signed if the signed type can hold all values
+                if to_rank == from_rank && !from_signed && to_signed {
+                    // Check if the unsigned type's max value fits in the signed type
+                    matches!(
+                        (from, to),
+                        (UInt8, Int16) | (UInt16, Int32) | (UInt32, Int64)
+                    )
+                } else {
+                    false
+                }
+            }
         }
     }
 

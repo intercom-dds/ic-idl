@@ -27,11 +27,11 @@
 
 //! Tests for improved error spans that highlight the exact failing segment in qualified paths.
 
-use ic_vfs::SourceMap;
+mod common;
+
 
 #[test]
 fn test_unresolved_type_error_span_highlights_failing_segment() {
-    let mut source_map = SourceMap::default();
     let input = r"
         module foo {
             module bar {
@@ -46,15 +46,7 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
         };
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, source_map, _) = common::parse_and_resolve(input);
 
     // We expect exactly 2 errors
     assert_eq!(
@@ -75,7 +67,6 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
 
 #[test]
 fn test_deeply_nested_path_error() {
-    let mut source_map = SourceMap::default();
     let input = r"
         module a {
             module b {
@@ -92,15 +83,7 @@ fn test_deeply_nested_path_error() {
         };
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, source_map, _) = common::parse_and_resolve(input);
     assert_eq!(
         result.errors.len(),
         2,
@@ -119,7 +102,6 @@ fn test_deeply_nested_path_error() {
 
 #[test]
 fn test_global_path_unresolved_segment() {
-    let mut source_map = SourceMap::default();
     let input = r"
         module foo {
             struct Bar {};
@@ -132,15 +114,7 @@ fn test_global_path_unresolved_segment() {
         };
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, source_map, _) = common::parse_and_resolve(input);
     assert_eq!(result.errors.len(), 2);
 
     // Snapshot test the error messages

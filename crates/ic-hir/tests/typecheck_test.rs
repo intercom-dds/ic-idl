@@ -74,15 +74,7 @@ fn test_enum_value_overflow() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have an overflow error
     assert!(

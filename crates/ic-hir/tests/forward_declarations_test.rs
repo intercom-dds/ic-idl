@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 #[test]
 fn test_struct_forward_declaration() {
     let input = r"
@@ -34,15 +36,7 @@ fn test_struct_forward_declaration() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Expected no errors, got: {:?}",
@@ -68,15 +62,7 @@ fn test_interface_forward_declaration() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Expected no errors, got: {:?}",
@@ -109,15 +95,7 @@ fn test_duplicate_definitions_same_scope() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         !result.errors.is_empty(),
         "Expected error for duplicate struct"
@@ -146,15 +124,7 @@ fn test_duplicate_names_different_scopes() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Expected no errors for same name in different scopes, got: {:?}",
@@ -180,15 +150,7 @@ fn test_forward_declaration_type_mismatch() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         !result.errors.is_empty(),
         "Expected error for type mismatch"

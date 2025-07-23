@@ -25,8 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 use ic_hir::hir::{DefKind, Numeric};
-use ic_parse::from_str;
 
 #[test]
 fn test_character_literal_propagation() {
@@ -38,14 +39,7 @@ fn test_character_literal_propagation() {
         const char C5 = '\\';
     ";
 
-    let parsed = from_str(idl);
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let hir = ic_hir::from_ast(parsed.tree);
+    let (hir, _, _) = common::parse_and_resolve(idl);
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
 
     // Check the character constants

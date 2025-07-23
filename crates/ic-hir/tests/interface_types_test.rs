@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 #[test]
 fn test_interface_nested_types() {
     let input = r"
@@ -49,15 +51,7 @@ fn test_interface_nested_types() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Expected no errors, got: {:?}",
@@ -80,15 +74,7 @@ fn test_interface_nested_type_in_typedef() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Expected no errors, got: {:?}",
@@ -111,15 +97,7 @@ fn test_interface_type_not_visible_outside() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         !result.errors.is_empty(),
         "Expected error for type not visible outside interface. Errors: {:?}",

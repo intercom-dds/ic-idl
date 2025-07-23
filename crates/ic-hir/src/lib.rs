@@ -42,6 +42,22 @@ pub mod scope;
 pub mod type_size;
 pub mod visit;
 
+/// Input for HIR lowering, supporting both user-only and user+builtins scenarios.
+pub enum AstInput<U, B = std::iter::Empty<ic_syntax::Item>> {
+    /// Just user AST, no builtins
+    User(U),
+    /// User AST with builtin definitions
+    WithBuiltins {
+        /// Built-in definitions that will be marked with IS_BUILTIN flag
+        builtins: B,
+        /// User definitions
+        user: U,
+        /// If true, builtins are included in the output order.
+        /// If false, they're available in context but not in the output.
+        include_in_output: bool,
+    },
+}
+
 #[derive(Debug)]
 pub struct ResolvedGraph {
     /// The primary data structure that owns all the types.
@@ -69,52 +85,26 @@ impl ResolvedGraph {
     }
 }
 
-pub fn from_ast<I>(ast: I) -> ResolvedGraph
+/// Lower AST to HIR with the specified input configuration.
+pub fn lower<U, B>(input: AstInput<U, B>) -> ResolvedGraph
 where
-    I: IntoIterator<Item = ic_syntax::Item>,
-{
-    let result = lower::lower(ast);
-
-    ResolvedGraph {
-        context: result.context,
-        order: result.order,
-        errors: result.errors,
-        warnings: result.warnings,
-    }
-}
-
-/// Lowers AST to HIR with built-in definitions pre-injected.
-///
-/// This is useful when you need built-in types (like annotations) to be
-/// available during HIR construction. The built-in definitions will be
-/// present in the context but excluded from the output order.
-pub fn from_ast_with_builtins<I, B>(builtins: B, ast: I) -> ResolvedGraph
-where
-    I: IntoIterator<Item = ic_syntax::Item>,
+    U: IntoIterator<Item = ic_syntax::Item>,
     B: IntoIterator<Item = ic_syntax::Item>,
 {
-    let result = lower::lower_with_builtins(builtins, ast);
-
-    ResolvedGraph {
-        context: result.context,
-        order: result.order,
-        errors: result.errors,
-        warnings: result.warnings,
-    }
-}
-
-/// Lowers AST to HIR with built-in definitions available for resolution,
-/// but only includes user definitions in the output.
-///
-/// This is useful when compiling multiple files that each need access to
-/// built-in definitions (like annotations) but you want to avoid duplicates
-/// when merging the HIRs.
-pub fn from_ast_with_builtin_context<I, B>(builtins: B, ast: I) -> ResolvedGraph
-where
-    I: IntoIterator<Item = ic_syntax::Item>,
-    B: IntoIterator<Item = ic_syntax::Item>,
-{
-    let result = lower::lower_with_builtin_context(builtins, ast);
+    let result = match input {
+        AstInput::User(ast) => lower::lower(ast),
+        AstInput::WithBuiltins {
+            builtins,
+            user,
+            include_in_output,
+        } => {
+            if include_in_output {
+                lower::lower_with_builtins(builtins, user)
+            } else {
+                lower::lower_with_builtin_context(builtins, user)
+            }
+        }
+    };
 
     ResolvedGraph {
         context: result.context,

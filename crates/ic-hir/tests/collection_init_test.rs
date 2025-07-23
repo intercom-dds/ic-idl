@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 use ic_hir::hir::{DefKind, Numeric};
 
 #[test]
@@ -33,10 +35,7 @@ fn test_array_init_basic() {
         const int32 NUMS[3] = {1, 2, 3};
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let nums = result
@@ -67,10 +66,7 @@ fn test_sequence_init() {
         const sequence<string> NAMES = {"Alice", "Bob", "Charlie"};
     "#;
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let names = result
@@ -108,10 +104,7 @@ fn test_map_init() {
         };
     "#;
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let ages = result
@@ -150,10 +143,7 @@ fn test_nested_collections() {
         const int32 MATRIX[2][3] = {{1, 2, 3}, {4, 5, 6}};
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     let matrix = result
@@ -206,10 +196,7 @@ fn test_array_size_mismatch_error() {
         const int32 NUMS[3] = {1, 2};  // Too few elements
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have an error about array size mismatch
     assert!(
@@ -225,10 +212,7 @@ fn test_empty_collections() {
         const map<int32, string> EMPTY_MAP = {};
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
 
     // Check empty sequence

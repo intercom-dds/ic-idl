@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests for interface visibility rules.
+mod common;
 
 #[test]
 fn test_interface_types_require_qualification() {
@@ -51,10 +51,7 @@ fn test_interface_types_require_qualification() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert_eq!(
         result.errors.len(),
         2,
@@ -93,10 +90,7 @@ fn test_qualified_interface_access_works() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty(), "Qualified access should work");
 }
 
@@ -116,10 +110,7 @@ fn test_visibility_within_interface() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Types should be visible within the same interface"
@@ -146,10 +137,7 @@ fn test_nested_interface_visibility() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Qualified access through modules should work"

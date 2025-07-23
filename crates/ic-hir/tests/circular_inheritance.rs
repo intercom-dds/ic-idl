@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 #[test]
 fn test_circular_struct_inheritance_no_infinite_loop() {
     // Test that circular struct inheritance doesn't cause an infinite loop
@@ -39,11 +41,8 @@ fn test_circular_struct_inheritance_no_infinite_loop() {
         };
     ";
 
-    // Parse
-    let parse_result = ic_parse::from_str(input);
-
-    // Lower to HIR
-    let hir = ic_hir::from_ast(parse_result.tree);
+    // Use common helper which includes builtins
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // The hygiene check should complete without hanging
     // If there's an infinite loop, this test will timeout
@@ -70,11 +69,8 @@ fn test_indirect_circular_inheritance_no_infinite_loop() {
         };
     ";
 
-    // Parse
-    let parse_result = ic_parse::from_str(input);
-
-    // Lower to HIR
-    let hir = ic_hir::from_ast(parse_result.tree);
+    // Use common helper which includes builtins
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // The hygiene check should complete without hanging
     assert!(!hir.order.is_empty());
@@ -89,11 +85,8 @@ fn test_self_inheritance_no_infinite_loop() {
         };
     ";
 
-    // Parse
-    let parse_result = ic_parse::from_str(input);
-
-    // Lower to HIR
-    let hir = ic_hir::from_ast(parse_result.tree);
+    // Use common helper which includes builtins
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // The hygiene check should complete without hanging
     assert!(!hir.order.is_empty());

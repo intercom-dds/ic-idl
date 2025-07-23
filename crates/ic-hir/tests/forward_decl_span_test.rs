@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 #[test]
 fn test_inherit_from_forward_decl_points_to_decl() {
     // Test that error points to forward declaration, not later definition
@@ -36,8 +38,7 @@ fn test_inherit_from_forward_decl_points_to_decl() {
         struct B {};
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should have error about incomplete type
     assert!(!hir.errors.is_empty());
@@ -64,8 +65,7 @@ fn test_interface_inherit_from_forward_decl_points_to_decl() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should have error about incomplete type
     assert!(!hir.errors.is_empty());

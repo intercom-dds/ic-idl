@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 #[test]
 fn test_struct_inherit_from_incomplete_type() {
     // Test that inheriting from a forward-declared struct produces a clear error
@@ -35,8 +37,7 @@ fn test_struct_inherit_from_incomplete_type() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should have errors
     assert!(!hir.errors.is_empty());
@@ -62,8 +63,7 @@ fn test_interface_inherit_from_incomplete_type() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should have errors
     assert!(!hir.errors.is_empty());
@@ -91,8 +91,7 @@ fn test_struct_inherit_from_complete_type() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should compile without errors
     assert_eq!(hir.errors.len(), 0);
@@ -108,8 +107,7 @@ fn test_inherit_from_wrong_type() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should have errors
     assert!(!hir.errors.is_empty());
@@ -138,8 +136,7 @@ fn test_struct_forward_decl_then_inherit() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should compile without errors
     assert_eq!(hir.errors.len(), 0);
@@ -158,8 +155,7 @@ fn test_inherit_from_later_defined_type() {
         };
     ";
 
-    let parse_result = ic_parse::from_str(input);
-    let hir = ic_hir::from_ast(parse_result.tree);
+    let (hir, _, _) = common::parse_and_resolve(input);
 
     // Should have errors about incomplete type
     assert!(

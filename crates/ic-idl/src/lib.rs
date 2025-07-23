@@ -235,7 +235,7 @@ where
     all_warnings.extend(report.warnings);
 
     // Lower to HIR
-    let mut hir = hir::from_ast(ast_vec);
+    let mut hir = hir::lower(hir::AstInput::User(ast_vec));
 
     // Lint the HIR if no errors so far
     if all_errors.is_empty() {
@@ -463,7 +463,11 @@ impl Compiler {
         );
 
         // Compile with built-in context
-        let mut hir = hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
+        let mut hir = hir::lower(hir::AstInput::WithBuiltins {
+            builtins: builtin_parsed.tree,
+            user: ast.tree,
+            include_in_output: false,
+        });
 
         // Run HIR linting
         if diagnostics.errors.is_empty() {

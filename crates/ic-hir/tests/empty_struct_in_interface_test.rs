@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests for empty struct definitions inside interfaces.
+mod common;
 
 #[test]
 fn test_empty_struct_in_interface() {
@@ -39,10 +39,7 @@ fn test_empty_struct_in_interface() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Empty struct in interface should be considered complete: {:?}",
@@ -64,10 +61,7 @@ fn test_non_empty_struct_in_interface() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(
         result.errors.is_empty(),
         "Non-empty struct in interface should work: {:?}",

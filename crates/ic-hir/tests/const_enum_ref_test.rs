@@ -25,9 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Test constant references to enumerators
+mod common;
 
-use ic_vfs::SourceMap;
+// Test constant references to enumerators
 
 #[test]
 fn test_const_enum_reference() {
@@ -43,15 +43,7 @@ fn test_const_enum_reference() {
         const int32 INT_CONST = MyEnum::TWO;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert!(
@@ -93,15 +85,7 @@ fn test_const_ref_to_const() {
         const int32 DERIVED = BASE + 50;
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert!(
@@ -127,7 +111,6 @@ fn test_const_ref_to_const() {
 
 #[test]
 fn test_undefined_enum_field() {
-    let mut source_map = SourceMap::default();
     let input = r"
         enum MyEnum {
             ZERO,
@@ -137,16 +120,7 @@ fn test_undefined_enum_field() {
         const int32 BAD = MyEnum::UNDEFINED;
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, source_map, _) = common::parse_and_resolve(input);
 
     // Should have an error about undefined enum field
     assert!(
@@ -165,21 +139,11 @@ fn test_undefined_enum_field() {
 
 #[test]
 fn test_undefined_variable() {
-    let mut source_map = SourceMap::default();
     let input = r"
         const int32 BAD = UNDEFINED_VAR;
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, source_map, _) = common::parse_and_resolve(input);
 
     // Should have an error about undefined variable
     assert!(

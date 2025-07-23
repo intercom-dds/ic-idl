@@ -27,6 +27,8 @@
 
 // Test forward declaration validation
 
+mod common;
+
 #[test]
 fn test_valid_forward_decl_then_define() {
     let input = r"
@@ -36,15 +38,7 @@ fn test_valid_forward_decl_then_define() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert!(
@@ -63,15 +57,7 @@ fn test_valid_define_then_forward_decl() {
         struct Bar;  // Forward declaration after definition is allowed
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert!(
@@ -92,15 +78,7 @@ fn test_multiple_forward_declarations() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors - multiple forward declarations are allowed
     assert!(
@@ -119,15 +97,7 @@ fn test_mismatched_forward_declaration() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have an error about mismatched types
     assert!(
@@ -148,15 +118,7 @@ fn test_multiple_mismatched_forward_declarations() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have errors about conflicts
     assert!(
@@ -171,15 +133,7 @@ fn test_forward_declaration_without_definition() {
         struct Missing;  // Forward declaration with no definition
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have an error about missing definition
     assert!(
@@ -197,15 +151,7 @@ fn test_interface_forward_declaration() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert!(
@@ -224,15 +170,7 @@ fn test_valuetype_forward_declaration() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(!parsed.tree.is_empty(), "Failed to parse input");
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert!(

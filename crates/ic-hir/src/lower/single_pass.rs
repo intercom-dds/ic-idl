@@ -564,6 +564,31 @@ impl<'a> SinglePassLowerer<'a> {
             .children
             .get(&def.ident.name)
         {
+            // Module already exists in this scope - check case consistency
+            if let Some(existing_def_id) = self.ctx.scopes.scopes[existing_scope_id.0].def_id {
+                let existing_def = self.ctx.definitions.get(existing_def_id);
+                if def.ident.name != existing_def.ident.name
+                    && def
+                        .ident
+                        .name
+                        .eq_ignore_ascii_case(&existing_def.ident.name)
+                {
+                    self.warnings.push(
+                        warn_span(
+                            format!(
+                                "inconsistent capitalization: module `{}` was previously defined \
+                                 as `{}`",
+                                def.ident.name.yellow(),
+                                existing_def.ident.name.yellow()
+                            ),
+                            Label::new(def.ident.span).message("module reopened here"),
+                        )
+                        .label(
+                            Label::new(existing_def.ident.span).message("originally defined here"),
+                        ),
+                    );
+                }
+            }
             // Module already exists in this scope - reuse its scope
             existing_scope_id
         } else {

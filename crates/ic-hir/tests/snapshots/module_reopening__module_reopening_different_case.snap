@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/module_reopening.rs
+expression: diagnostics
+---
+warning: inconsistent capitalization: module `Foo` was previously defined as `FOO`
+   ┌ test.idl:8:16
+   │
+ 8 │         module Foo {
+   ·                ^^^ module reopened here
+ 2 │         module FOO {
+   ·                ^^^ originally defined here
+   └──

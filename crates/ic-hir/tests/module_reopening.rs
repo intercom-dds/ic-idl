@@ -128,6 +128,7 @@ fn test_module_reopening_different_case() {
     ";
 
     // Should have no errors - TypeA is visible in the second module declaration
-    // because module reopening copies type definitions for visibility
-    common::parse_and_resolve_successfully(idl);
+    // But should have a warning about case inconsistency
+    let diagnostics = common::compile_idl_with_warnings(idl);
+    insta::assert_snapshot!(diagnostics);
 }

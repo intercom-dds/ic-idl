@@ -28,7 +28,7 @@
 use std::collections::HashSet;
 
 use ic_diagnostic::Label;
-use ic_hir::hir::{Def, DefId, DefKind};
+use ic_hir::hir::{Def, DefId, DefKind, StructTy, InterfaceTy};
 use ic_hir::visit::{Visitor, walk_tree};
 use ic_hir::ResolvedGraph;
 
@@ -75,7 +75,8 @@ impl<'a> CircularInheritance<'a> {
 
         // Mark as visiting
         self.visiting.insert(id);
-        path.push((id, self.hir.context.definitions.get(id).ident.name.clone()));
+        let def_name = self.hir.context.definitions.get(id).ident.name.clone();
+        path.push((id, def_name));
 
         let mut found_cycle = false;
 
@@ -134,17 +135,13 @@ impl<'a> CircularInheritance<'a> {
 }
 
 impl<'a> Visitor<'a> for CircularInheritance<'a> {
-    fn visit_def(&mut self, def: &'a Def) {
-        // Only check structs and interfaces for circular inheritance
-        match &def.kind {
-            DefKind::Struct(_) | DefKind::Interface(_) => {
-                let mut path = Vec::new();
-                self.check_circular_inheritance(def.id, &mut path);
-            }
-            _ => {}
-        }
-        
-        // Continue visiting
-        ic_hir::visit::walk_def(self, def);
+    fn visit_struct(&mut self, def: &'a Def, _struct_ty: &'a StructTy) {
+        let mut path = Vec::new();
+        self.check_circular_inheritance(def.id, &mut path);
+    }
+    
+    fn visit_interface(&mut self, def: &'a Def, _interface_ty: &'a InterfaceTy) {
+        let mut path = Vec::new();
+        self.check_circular_inheritance(def.id, &mut path);
     }
 }

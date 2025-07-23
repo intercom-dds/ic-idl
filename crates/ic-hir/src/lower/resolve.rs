@@ -297,72 +297,208 @@ impl<'a> Resolver<'a> {
         use ic_syntax::Type;
 
         match ty {
-            Type::Any(v) => Ty {
-                kind: TyKind::Any,
-                span: v.span,
-            },
-            Type::Fixed(v) => Ty {
-                kind: TyKind::Fixed,
-                span: v.span,
-            },
-            Type::Sequence(v) => Ty {
-                kind: TyKind::Sequence {
-                    ty: Box::new(self.resolve_type(&v.ty)),
-                    bound: None, // Will be filled in evaluation phase
-                    bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
-                },
-                span: v.span,
-            },
-            Type::String(v) => Ty {
-                kind: TyKind::String {
-                    wide: v.wide,
-                    bound: None, // Will be filled in evaluation phase
-                    bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
-                },
-                span: v.span,
-            },
-            Type::Map(v) => Ty {
-                kind: TyKind::Map {
-                    key: Box::new(self.resolve_type(&v.key)),
-                    elem: Box::new(self.resolve_type(&v.value)),
-                    bound: None, // Will be filled in evaluation phase
-                    bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
-                },
-                span: v.span,
-            },
-            Type::Path(v) => {
-                // Check if it's a primitive type
-                if v.segments.len() == 1 && v.leading_colons.is_none() {
-                    if let Some(prim) = resolve_primitive(&v.segments[0].name) {
-                        return Ty {
-                            kind: TyKind::Primitive(prim),
-                            span: ic_syntax::util::path_span(v),
-                        };
-                    }
-                }
+            Type::Any(v) => Self::make_any_type(v.span),
+            Type::Fixed(v) => Self::make_fixed_type(v.span),
+            Type::Sequence(v) => self.resolve_sequence_type(v),
+            Type::String(v) => Self::resolve_string_type(v),
+            Type::Map(v) => self.resolve_map_type(v),
+            Type::Path(v) => self.resolve_path_type(v),
+        }
+    }
 
-                // Try to resolve as user-defined type
-                if let Some(id) = self.resolve_path(v) {
-                    Ty {
-                        kind: TyKind::Adt(id),
-                        span: ic_syntax::util::path_span(v),
-                    }
-                } else {
-                    // Type not found - report error
-                    let qualified = path_to_string(v);
-                    self.errors.push(error_span(
-                        format!("unresolved type `{qualified}`"),
-                        Label::new(ic_syntax::util::path_span(v)).message("unknown type"),
-                    ));
+    /// Creates an Any type.
+    fn make_any_type(span: ic_syntax::Span) -> Ty {
+        Ty {
+            kind: TyKind::Any,
+            span,
+        }
+    }
 
-                    // Return placeholder type
-                    Ty {
-                        kind: TyKind::Any,
-                        span: ic_syntax::util::path_span(v),
-                    }
-                }
+    /// Creates a Fixed type.
+    fn make_fixed_type(span: ic_syntax::Span) -> Ty {
+        Ty {
+            kind: TyKind::Fixed,
+            span,
+        }
+    }
+
+    /// Resolves a sequence type.
+    fn resolve_sequence_type(&mut self, v: &ic_syntax::SequenceType) -> Ty {
+        Ty {
+            kind: TyKind::Sequence {
+                ty: Box::new(self.resolve_type(&v.ty)),
+                bound: None, // Will be filled in evaluation phase
+                bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
+            },
+            span: v.span,
+        }
+    }
+
+    /// Resolves a string type.
+    fn resolve_string_type(v: &ic_syntax::StringType) -> Ty {
+        Ty {
+            kind: TyKind::String {
+                wide: v.wide,
+                bound: None, // Will be filled in evaluation phase
+                bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
+            },
+            span: v.span,
+        }
+    }
+
+    /// Resolves a map type.
+    fn resolve_map_type(&mut self, v: &ic_syntax::MapType) -> Ty {
+        Ty {
+            kind: TyKind::Map {
+                key: Box::new(self.resolve_type(&v.key)),
+                elem: Box::new(self.resolve_type(&v.value)),
+                bound: None, // Will be filled in evaluation phase
+                bound_span: v.bound.as_ref().map(ic_syntax::util::expr_span),
+            },
+            span: v.span,
+        }
+    }
+
+    /// Resolves a path type (either primitive or user-defined).
+    fn resolve_path_type(&mut self, v: &ic_syntax::Path) -> Ty {
+        let span = ic_syntax::util::path_span(v);
+
+        // Check if it's a primitive type
+        if v.segments.len() == 1 && v.leading_colons.is_none() {
+            if let Some(prim) = resolve_primitive(&v.segments[0].name) {
+                return Ty {
+                    kind: TyKind::Primitive(prim),
+                    span,
+                };
             }
         }
+
+        // Try to resolve as user-defined type
+        if let Some(id) = self.resolve_path(v) {
+            return Ty {
+                kind: TyKind::Adt(id),
+                span,
+            };
+        }
+
+        // Type not found - report error
+        let qualified = path_to_string(v);
+        self.errors.push(error_span(
+            format!("unresolved type `{qualified}`"),
+            Label::new(span).message("unknown type"),
+        ));
+
+        // Return placeholder type
+        Self::make_any_type(span)
+    }
+
+    /// Gets the current parent `DefId` based on scope path.
+    fn get_current_parent(&self) -> Option<DefId> {
+        if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        }
+    }
+
+    /// Checks for duplicate struct definition.
+    fn check_duplicate_struct(&mut self, qualified_name: &str, def: &ic_syntax::StructDef) {
+        if let Some(existing_id) = self.name_map.get(qualified_name).copied() {
+            let existing = self.ctx.definitions.get(existing_id);
+            if matches!(existing.kind, DefKind::Struct(_)) {
+                self.errors.push(
+                    error_span(
+                        format!("duplicate definition of `{}`", def.ident.name),
+                        Label::new(def.ident.span).message("redefined here"),
+                    )
+                    .label(Label::new(existing.ident.span).message("first defined here")),
+                );
+            }
+        }
+    }
+
+    /// Resolves struct parent and validates inheritance.
+    fn resolve_struct_parent(&mut self, def: &ic_syntax::StructDef) -> Option<DefId> {
+        let parent_path = def.parent.as_ref()?;
+
+        if let Some(parent_id) = self.resolve_path(parent_path) {
+            self.validate_struct_parent(parent_id, def)
+        } else {
+            self.errors.push(error_span(
+                format!(
+                    "struct `{}` inherits from type that is not defined",
+                    def.ident.name
+                ),
+                Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+            ));
+            None
+        }
+    }
+
+    /// Validates that a parent is a valid struct for inheritance.
+    fn validate_struct_parent(
+        &mut self,
+        parent_id: DefId,
+        def: &ic_syntax::StructDef,
+    ) -> Option<DefId> {
+        let parent_def = self.ctx.definitions.get(parent_id);
+
+        if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+            self.errors.push(
+                error_span(
+                    format!(
+                        "struct `{}` cannot inherit from incomplete type `{}`",
+                        def.ident.name, parent_def.ident.name
+                    ),
+                    Label::new(def.span).message("invalid inheritance"),
+                )
+                .label(
+                    Label::new(parent_def.ident.span)
+                        .message("forward declaration here, but no definition found"),
+                ),
+            );
+            None
+        } else if matches!(&parent_def.kind, DefKind::Struct(_)) {
+            Some(parent_id)
+        } else {
+            self.errors.push(error_span(
+                format!(
+                    "struct `{}` cannot inherit from non-struct type `{}`",
+                    def.ident.name, parent_def.ident.name
+                ),
+                Label::new(def.span).message("invalid inheritance"),
+            ));
+            None
+        }
+    }
+
+    /// Registers a definition in the name map and current scope.
+    fn register_definition(&mut self, qualified_name: String, name: String, id: DefId) {
+        self.name_map.insert(qualified_name, id);
+        self.ctx.scopes.add_definition(self.current_scope, name, id);
+    }
+
+    /// Resolves struct members.
+    fn resolve_struct_members(&mut self, fields: &[ic_syntax::Field]) -> Vec<Member> {
+        let mut members = Vec::new();
+
+        for field in fields {
+            let base_ty = self.resolve_type(&field.ty);
+            let field_annotations = self.resolve_ast_annotations(&field.annotations);
+
+            for decl in &field.names {
+                let (ident, ty) = resolve_declarator(decl, base_ty.clone());
+                members.push(Member {
+                    ident,
+                    ty,
+                    annotations: field_annotations.clone(),
+                    default_value: None,
+                });
+            }
+        }
+
+        members
     }
 
     /// Processes a forward declaration.
@@ -415,91 +551,24 @@ impl<'a> Resolver<'a> {
     fn process_struct(&mut self, def: &ic_syntax::StructDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
 
-        // Check if there's already a definition (forward declaration or full)
-        let existing_def = self.name_map.get(&qualified_name).copied();
-
-        // Check if it's a duplicate full definition
-        if let Some(existing_id) = existing_def {
-            let existing = self.ctx.definitions.get(existing_id);
-            if matches!(existing.kind, DefKind::Struct(_)) {
-                // Already have a full struct definition - error
-                self.errors.push(
-                    error_span(
-                        format!("duplicate definition of `{}`", def.ident.name),
-                        Label::new(def.ident.span).message("redefined here"),
-                    )
-                    .label(Label::new(existing.ident.span).message("first defined here")),
-                );
-            }
-        }
+        // Check for duplicate definition
+        self.check_duplicate_struct(&qualified_name, def);
 
         // Resolve parent if any
-        let parent_id = if let Some(parent_path) = &def.parent {
-            if let Some(parent_id) = self.resolve_path(parent_path) {
-                let parent_def = self.ctx.definitions.get(parent_id);
+        let parent_id = self.resolve_struct_parent(def);
 
-                // Check if parent is a forward declaration (incomplete)
-                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
-                    self.errors.push(
-                        error_span(
-                            format!(
-                                "struct `{}` cannot inherit from incomplete type `{}`",
-                                def.ident.name, parent_def.ident.name
-                            ),
-                            Label::new(def.span).message("invalid inheritance"),
-                        )
-                        .label(
-                            Label::new(parent_def.ident.span)
-                                .message("forward declaration here, but no definition found"),
-                        ),
-                    );
-                    None
-                } else {
-                    // Check that parent is actually a struct
-                    if matches!(&parent_def.kind, DefKind::Struct(_)) {
-                        Some(parent_id)
-                    } else {
-                        self.errors.push(error_span(
-                            format!(
-                                "struct `{}` cannot inherit from non-struct type `{}`",
-                                def.ident.name, parent_def.ident.name
-                            ),
-                            Label::new(def.span).message("invalid inheritance"),
-                        ));
-                        None
-                    }
-                }
-            } else {
-                self.errors.push(error_span(
-                    format!(
-                        "struct `{}` inherits from type that is not defined",
-                        def.ident.name
-                    ),
-                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
-                ));
-                None
-            }
-        } else {
-            None
-        };
-
-        // Always create a new definition (don't reuse forward declaration DefId)
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
+        // Get parent for scope
+        let parent = self.get_current_parent();
 
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // First, create a placeholder struct so it can be referenced by its own members
+        // Create placeholder struct so it can be referenced by its own members
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
             parent,
-            annotations: annotations.clone(),
+            annotations,
             span: def.span,
             kind: DefKind::Struct(StructTy {
                 parent: parent_id,
@@ -508,29 +577,13 @@ impl<'a> Resolver<'a> {
             flags: DefFlags::default(),
         });
 
-        // Update name map to point to the full definition BEFORE resolving members
-        self.name_map.insert(qualified_name.clone(), id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), id);
+        // Register struct before resolving members
+        self.register_definition(qualified_name, def.ident.name.clone(), id);
 
-        // Now resolve members (after struct is registered)
-        let mut members = Vec::new();
-        for field in &def.members {
-            let base_ty = self.resolve_type(&field.ty);
-            let field_annotations = self.resolve_ast_annotations(&field.annotations);
-            for decl in &field.names {
-                let (ident, ty) = resolve_declarator(decl, base_ty.clone());
-                members.push(Member {
-                    ident,
-                    ty,
-                    annotations: field_annotations.clone(),
-                    default_value: None, // Will be resolved later
-                });
-            }
-        }
+        // Resolve members
+        let members = self.resolve_struct_members(&def.members);
 
-        // Update the struct with resolved members
+        // Update struct with resolved members
         let def = self.ctx.definitions.get_mut(id);
         if let DefKind::Struct(struct_ty) = &mut def.kind {
             struct_ty.members = members;
@@ -539,21 +592,147 @@ impl<'a> Resolver<'a> {
         id
     }
 
+    /// Resolves interface parents and validates inheritance.
+    fn resolve_interface_parents(&mut self, def: &ic_syntax::InterfaceDef) -> Vec<DefId> {
+        let mut parents = Vec::new();
+
+        for parent_path in &def.inherits {
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                if let Some(valid_parent) = self.validate_interface_parent(parent_id, def) {
+                    parents.push(valid_parent);
+                }
+            } else {
+                self.errors.push(error_span(
+                    format!(
+                        "interface `{}` inherits from type that is not defined",
+                        def.ident.name
+                    ),
+                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+                ));
+            }
+        }
+
+        parents
+    }
+
+    /// Validates that a parent is a valid interface for inheritance.
+    fn validate_interface_parent(
+        &mut self,
+        parent_id: DefId,
+        def: &ic_syntax::InterfaceDef,
+    ) -> Option<DefId> {
+        let parent_def = self.ctx.definitions.get(parent_id);
+
+        if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
+            self.errors.push(
+                error_span(
+                    format!(
+                        "interface `{}` cannot inherit from incomplete type `{}`",
+                        def.ident.name, parent_def.ident.name
+                    ),
+                    Label::new(def.span).message("invalid inheritance"),
+                )
+                .label(
+                    Label::new(parent_def.ident.span)
+                        .message("forward declaration here, but no definition found"),
+                ),
+            );
+            None
+        } else if matches!(&parent_def.kind, DefKind::Interface(_)) {
+            Some(parent_id)
+        } else {
+            self.errors.push(error_span(
+                format!(
+                    "interface `{}` cannot inherit from non-interface type `{}`",
+                    def.ident.name, parent_def.ident.name
+                ),
+                Label::new(def.span).message("invalid inheritance"),
+            ));
+            None
+        }
+    }
+
+    /// Processes interface members and returns child IDs, prototypes, and attributes.
+    fn process_interface_members(
+        &mut self,
+        members: &[ic_syntax::InterfaceMember],
+    ) -> (Vec<DefId>, Vec<ProtoTy>, Vec<()>) {
+        // TODO: Replace () with AttributeTy when implemented
+        let mut child_ids = Vec::new();
+        let mut prototypes = Vec::new();
+        let attributes = Vec::new();
+
+        for member in members {
+            match member {
+                ic_syntax::InterfaceMember::Item(item) => {
+                    let ids = self.process_item(item);
+                    child_ids.extend(ids);
+                }
+                ic_syntax::InterfaceMember::Proto(proto) => {
+                    let proto_ty = self.process_prototype(proto);
+                    prototypes.push(proto_ty);
+                }
+                ic_syntax::InterfaceMember::Attr(attr) => {
+                    self.process_attribute(attr);
+                    // TODO: Add attribute to list when AttributeTy is implemented
+                }
+            }
+        }
+
+        (child_ids, prototypes, attributes)
+    }
+
+    /// Checks if a module already exists and returns its scope if so.
+    fn check_existing_module(&mut self, def: &ic_syntax::ModuleDef) -> Option<ScopeId> {
+        let existing_scope_id = self.ctx.scopes.scopes[self.current_scope.0]
+            .children
+            .get(&def.ident.name)
+            .copied()?;
+
+        // Check case consistency
+        if let Some(existing_def_id) = self.ctx.scopes.scopes[existing_scope_id.0].def_id {
+            let existing_def = self.ctx.definitions.get(existing_def_id);
+            if def.ident.name != existing_def.ident.name
+                && def
+                    .ident
+                    .name
+                    .eq_ignore_ascii_case(&existing_def.ident.name)
+            {
+                self.warnings.push(
+                    warn_span(
+                        format!(
+                            "inconsistent capitalization: module `{}` was previously defined as \
+                             `{}`",
+                            def.ident.name.yellow(),
+                            existing_def.ident.name.yellow()
+                        ),
+                        Label::new(def.ident.span).message("module reopened here"),
+                    )
+                    .label(Label::new(existing_def.ident.span).message("first defined here")),
+                );
+            }
+        }
+
+        Some(existing_scope_id)
+    }
+
+    /// Processes module items and returns child IDs.
+    fn process_module_items(&mut self, items: &[Item]) -> Vec<DefId> {
+        let mut child_ids = Vec::new();
+        for item in items {
+            let ids = self.process_item(item);
+            child_ids.extend(ids);
+        }
+        child_ids
+    }
+
     /// Processes a module definition.
     fn process_module(&mut self, def: &ic_syntax::ModuleDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
-
-        // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
+        let parent = self.get_current_parent();
 
         // Create module definition
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
-
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
@@ -566,69 +745,30 @@ impl<'a> Resolver<'a> {
             flags: DefFlags::default(),
         });
 
-        // Register in name map and scope
+        // Register in name map
         self.name_map.insert(qualified_name, id);
 
-        // Check if we're reopening an existing module
-        let module_scope = if let Some(&existing_scope_id) = self.ctx.scopes.scopes
-            [self.current_scope.0]
-            .children
-            .get(&def.ident.name)
-        {
-            // Module already exists in this scope - check case consistency
-            if let Some(existing_def_id) = self.ctx.scopes.scopes[existing_scope_id.0].def_id {
-                let existing_def = self.ctx.definitions.get(existing_def_id);
-                if def.ident.name != existing_def.ident.name
-                    && def
-                        .ident
-                        .name
-                        .eq_ignore_ascii_case(&existing_def.ident.name)
-                {
-                    self.warnings.push(
-                        warn_span(
-                            format!(
-                                "inconsistent capitalization: module `{}` was previously defined \
-                                 as `{}`",
-                                def.ident.name.yellow(),
-                                existing_def.ident.name.yellow()
-                            ),
-                            Label::new(def.ident.span).message("module reopened here"),
-                        )
-                        .label(Label::new(existing_def.ident.span).message("first defined here")),
-                    );
-                }
-            }
-            // Module already exists in this scope - reuse its scope
-            existing_scope_id
-        } else {
-            // Create new scope for module
+        // Check for existing module or create new scope
+        let module_scope = self.check_existing_module(def).unwrap_or_else(|| {
             self.ctx
                 .scopes
                 .create_child_scope(self.current_scope, def.ident.name.clone(), Some(id))
-        };
+        });
 
-        // Push to scope stack
-        self.scope_path.push(def.ident.name.clone());
+        // Save current state
         let old_scope = self.current_scope;
+        self.scope_path.push(def.ident.name.clone());
         self.current_scope = module_scope;
 
         // Process nested items
-        let mut child_ids = Vec::new();
-        for item in &def.definitions {
-            let ids = self.process_item(item);
-            child_ids.extend(ids);
-        }
+        let child_ids = self.process_module_items(&def.definitions);
 
         // Update module with children
-        if let Def {
-            kind: DefKind::Module(module),
-            ..
-        } = self.ctx.definitions.get_mut(id)
-        {
+        if let DefKind::Module(module) = &mut self.ctx.definitions.get_mut(id).kind {
             module.definitions = child_ids;
         }
 
-        // Pop scope
+        // Restore state
         self.scope_path.pop();
         self.current_scope = old_scope;
 
@@ -1231,18 +1371,10 @@ impl<'a> Resolver<'a> {
     #[allow(clippy::too_many_lines)]
     fn process_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
-
-        // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
+        let parent = self.get_current_parent();
 
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
-
-        // First create the interface DefId with empty parents
+        // Create interface with empty collections
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
@@ -1250,7 +1382,7 @@ impl<'a> Resolver<'a> {
             annotations,
             span: def.span,
             kind: DefKind::Interface(InterfaceTy {
-                parents: Vec::new(), // Will be filled in later
+                parents: Vec::new(),
                 prototypes: Vec::new(),
                 attributes: Vec::new(),
                 definitions: Vec::new(),
@@ -1259,116 +1391,40 @@ impl<'a> Resolver<'a> {
             flags: DefFlags::default(),
         });
 
-        // Add to name map and scope BEFORE resolving inheritance
-        self.name_map.insert(qualified_name, id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), id);
+        // Register before resolving inheritance
+        self.register_definition(qualified_name, def.ident.name.clone(), id);
 
-        // Now handle inheritance - after the definition is in scope
-        let mut parents = Vec::new();
-        for parent_path in &def.inherits {
-            if let Some(parent_id) = self.resolve_path(parent_path) {
-                let parent_def = self.ctx.definitions.get(parent_id);
+        // Resolve parents after interface is registered
+        let parents = self.resolve_interface_parents(def);
 
-                // Check if parent is a forward declaration (incomplete)
-                if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
-                    self.errors.push(
-                        error_span(
-                            format!(
-                                "interface `{}` cannot inherit from incomplete type `{}`",
-                                def.ident.name, parent_def.ident.name
-                            ),
-                            Label::new(def.span).message("invalid inheritance"),
-                        )
-                        .label(
-                            Label::new(parent_def.ident.span)
-                                .message("forward declaration here, but no definition found"),
-                        ),
-                    );
-                } else {
-                    // Check that parent is actually an interface
-                    match &parent_def.kind {
-                        DefKind::Interface(_) => {
-                            parents.push(parent_id);
-                        }
-                        _ => {
-                            self.errors.push(error_span(
-                                format!(
-                                    "interface `{}` cannot inherit from non-interface type `{}`",
-                                    def.ident.name, parent_def.ident.name
-                                ),
-                                Label::new(def.span).message("invalid inheritance"),
-                            ));
-                        }
-                    }
-                }
-            } else {
-                self.errors.push(error_span(
-                    format!(
-                        "interface `{}` inherits from type that is not defined",
-                        def.ident.name
-                    ),
-                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
-                ));
-            }
-        }
-
-        // Update the interface with the resolved parents
-        if let Def {
-            kind: DefKind::Interface(iface),
-            ..
-        } = self.ctx.definitions.get_mut(id)
-        {
+        // Update interface with resolved parents
+        if let DefKind::Interface(iface) = &mut self.ctx.definitions.get_mut(id).kind {
             iface.parents = parents;
         }
 
-        // Create new scope for interface
+        // Create scope for interface members
         let new_scope = self.ctx.scopes.create_child_scope(
             self.current_scope,
             def.ident.name.clone(),
             Some(id),
         );
 
-        // Push to scope stack
-        self.scope_path.push(def.ident.name.clone());
+        // Save current state
         let old_scope = self.current_scope;
+        self.scope_path.push(def.ident.name.clone());
         self.current_scope = new_scope;
 
-        // Process nested items and operations
-        let mut child_ids = Vec::new();
-        let mut prototypes = Vec::new();
-        let attributes = Vec::new();
+        // Process members
+        let (child_ids, prototypes, attributes) = self.process_interface_members(&def.members);
 
-        for member in &def.members {
-            match member {
-                ic_syntax::InterfaceMember::Item(item) => {
-                    let ids = self.process_item(item);
-                    child_ids.extend(ids);
-                }
-                ic_syntax::InterfaceMember::Proto(proto) => {
-                    let proto_ty = self.process_prototype(proto);
-                    prototypes.push(proto_ty);
-                }
-                ic_syntax::InterfaceMember::Attr(attr) => {
-                    self.process_attribute(attr);
-                    // TODO: Add attribute to list when AttributeTy is implemented
-                }
-            }
-        }
-
-        // Update interface with children
-        if let Def {
-            kind: DefKind::Interface(iface),
-            ..
-        } = self.ctx.definitions.get_mut(id)
-        {
+        // Update interface with processed members
+        if let DefKind::Interface(iface) = &mut self.ctx.definitions.get_mut(id).kind {
             iface.definitions = child_ids;
             iface.prototypes = prototypes;
             iface.attributes = attributes;
         }
 
-        // Pop scope
+        // Restore state
         self.scope_path.pop();
         self.current_scope = old_scope;
 

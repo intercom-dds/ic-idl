@@ -25,8 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 use ic_hir::hir::{DefKind, Numeric};
-use ic_vfs::SourceMap;
 
 #[test]
 fn test_struct_init_basic() {
@@ -39,10 +40,7 @@ fn test_struct_init_basic() {
         const Point ORIGIN = { x = 0, y = 0 };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty());
 
     // Find the constant
@@ -86,10 +84,7 @@ fn test_struct_init_with_strings() {
         };
     "#;
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty());
 
     let config = result
@@ -138,10 +133,7 @@ fn test_struct_init_positional() {
         const Vec3 UNIT_X = { 1.0, 0.0, 0.0 };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty());
 
     let unit_x = result
@@ -188,10 +180,7 @@ fn test_struct_init_with_null() {
         const Optional EMPTY = { name= null, value= 42 };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty());
 
     let empty = result
@@ -226,7 +215,6 @@ fn test_struct_init_with_null() {
 #[test]
 #[ignore = "Field order validation not yet implemented"]
 fn test_struct_init_field_order_error() {
-    let mut source_map = SourceMap::default();
     let input = r"
         struct Point {
             int32 x;
@@ -236,11 +224,7 @@ fn test_struct_init_field_order_error() {
         const Point BAD = { y= 1, x= 2 };  // Wrong order
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, output) = common::parse_and_resolve(input);
 
     // Should have an error about field order
     assert!(
@@ -249,18 +233,12 @@ fn test_struct_init_field_order_error() {
     );
 
     // Snapshot test the error message
-    let mut output = String::new();
-    for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
-        output.push('\n');
-    }
     insta::assert_snapshot!(output);
 }
 
 #[test]
 #[ignore = "Missing field validation not yet implemented"]
 fn test_struct_init_missing_field_error() {
-    let mut source_map = SourceMap::default();
     let input = r"
         struct Point {
             int32 x;
@@ -270,11 +248,7 @@ fn test_struct_init_missing_field_error() {
         const Point INCOMPLETE = { x= 1 };  // Missing y
     ";
 
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
-    assert!(parsed.errors.is_empty());
-
-    let result = ic_hir::from_ast(parsed.tree);
+    let (result, _, output) = common::parse_and_resolve(input);
 
     // Should have an error about missing field
     assert!(
@@ -283,10 +257,5 @@ fn test_struct_init_missing_field_error() {
     );
 
     // Snapshot test the error message
-    let mut output = String::new();
-    for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
-        output.push('\n');
-    }
     insta::assert_snapshot!(output);
 }

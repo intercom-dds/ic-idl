@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod common;
+
 use ic_hir::hir::{DefKind, Numeric};
 use ic_hir::merge::merge_hir_trees;
 
@@ -48,14 +50,10 @@ fn test_merge_constant_struct_value_defid_update() {
         const Point MY_POINT = {1, 2, 3};
     ";
 
-    let parsed1 = ic_parse::from_str(input1);
-    assert!(parsed1.errors.is_empty());
-    let result1 = ic_hir::from_ast(parsed1.tree);
+    let (result1, _, _) = common::parse_and_resolve(input1);
     assert!(result1.errors.is_empty());
 
-    let parsed2 = ic_parse::from_str(input2);
-    assert!(parsed2.errors.is_empty());
-    let result2 = ic_hir::from_ast(parsed2.tree);
+    let (result2, _, _) = common::parse_and_resolve(input2);
     assert!(result2.errors.is_empty());
 
     let merged = merge_hir_trees(&[result1, result2]);
@@ -99,14 +97,10 @@ fn test_merge_constant_references_correct_type() {
         const Point MY_POINT = {1, 2, 3};
     ";
 
-    let parsed1 = ic_parse::from_str("");
-    assert!(parsed1.errors.is_empty());
-    let result1 = ic_hir::from_ast(parsed1.tree);
+    let (result1, _, _) = common::parse_and_resolve("");
     assert!(result1.errors.is_empty());
 
-    let parsed2 = ic_parse::from_str(input);
-    assert!(parsed2.errors.is_empty());
-    let result2 = ic_hir::from_ast(parsed2.tree);
+    let (result2, _, _) = common::parse_and_resolve(input);
     assert!(result2.errors.is_empty());
 
     let merged = merge_hir_trees(&[result1, result2]);

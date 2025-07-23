@@ -25,38 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::from_ast;
-use ic_vfs::SourceMap;
+mod common;
+
 use insta::assert_snapshot;
 
 fn test_overflow(source: &str) -> String {
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed_with_name(source, "test.idl");
-
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
-    let hir = from_ast(ast.tree);
-
-    let mut output = String::new();
-
-    // Format errors
-    for (i, diag) in hir.errors.iter().enumerate() {
-        if i > 0 {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    // Format warnings
-    for (i, diag) in hir.warnings.iter().enumerate() {
-        if i > 0 || !hir.errors.is_empty() {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
-            .expect("Failed to format diagnostic");
-    }
-
+    let (_, _, output) = common::parse_and_resolve(source);
     output
 }
 

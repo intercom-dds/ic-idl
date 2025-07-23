@@ -27,6 +27,8 @@
 
 //! Tests for HIR tree merging functionality.
 
+mod common;
+
 use ic_hir::hir::DefKind;
 use ic_hir::merge::merge_hir_trees;
 use ic_vfs::SourceMap;
@@ -48,10 +50,7 @@ fn test_merge_single_graph() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let graph = ic_hir::from_ast(parsed.tree);
+    let (graph, _, _) = common::parse_and_resolve(input);
     assert!(graph.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph]);
@@ -77,11 +76,8 @@ fn test_merge_duplicate_definitions() {
         };
     ";
 
-    let parsed1 = ic_parse::from_str(input1);
-    let parsed2 = ic_parse::from_str(input2);
-
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let (graph1, _, _) = common::parse_and_resolve(input1);
+    let (graph2, _, _) = common::parse_and_resolve(input2);
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -115,11 +111,8 @@ fn test_merge_different_modules() {
         };
     ";
 
-    let parsed1 = ic_parse::from_str(input1);
-    let parsed2 = ic_parse::from_str(input2);
-
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let (graph1, _, _) = common::parse_and_resolve(input1);
+    let (graph2, _, _) = common::parse_and_resolve(input2);
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -156,10 +149,7 @@ fn test_merge_with_references() {
         };
     ";
 
-    let parsed = ic_parse::from_str(input);
-    assert!(parsed.errors.is_empty());
-
-    let graph = ic_hir::from_ast(parsed.tree);
+    let (graph, _, _) = common::parse_and_resolve(input);
     assert!(graph.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph]);
@@ -226,11 +216,8 @@ fn test_merge_module_reopening() {
         };
     ";
 
-    let parsed1 = ic_parse::from_str(input1);
-    let parsed2 = ic_parse::from_str(input2);
-
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let (graph1, _, _) = common::parse_and_resolve(input1);
+    let (graph2, _, _) = common::parse_and_resolve(input2);
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -330,8 +317,8 @@ fn test_merge_conflicting_definitions() {
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
+    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -361,11 +348,8 @@ fn test_merge_same_definition_from_include() {
     ";
 
     // Parse the same input twice (simulating include)
-    let parsed1 = ic_parse::from_str(input);
-    let parsed2 = ic_parse::from_str(input);
-
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let (graph1, _, _) = common::parse_and_resolve(input);
+    let (graph2, _, _) = common::parse_and_resolve(input);
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
@@ -397,8 +381,8 @@ enum Color { RED, GREEN, BLUE };
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
+    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
@@ -441,8 +425,8 @@ module api {
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
+    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
@@ -475,11 +459,8 @@ module abc {
 ";
 
     // Parse the same input twice to simulate it appearing in two files
-    let parsed1 = ic_parse::from_str(input);
-    let parsed2 = ic_parse::from_str(input);
-
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let (graph1, _, _) = common::parse_and_resolve(input);
+    let (graph2, _, _) = common::parse_and_resolve(input);
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -541,10 +522,7 @@ struct Foo {
 ";
 
     // Parse it with built-in context
-    let builtin_idl = include_str!("../../ic-idl/idl/annotations.idl");
-    let builtin_parsed = ic_parse::from_str(builtin_idl);
-    let parsed = ic_parse::from_str(input);
-    let graph = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
+    let (graph, _, _) = common::parse_and_resolve(input);
 
     // Should have no errors
     assert_eq!(graph.errors.len(), 0);
@@ -577,9 +555,7 @@ struct Foo {
     assert_eq!(struct_count, 1, "Should have 1 struct definition");
 
     // Now test merging - parse again for the second graph
-    let builtin_parsed2 = ic_parse::from_str(builtin_idl);
-    let parsed2 = ic_parse::from_str(input);
-    let graph2 = ic_hir::from_ast_with_builtin_context(builtin_parsed2.tree, parsed2.tree);
+    let (graph2, _, _) = common::parse_and_resolve(input);
 
     // Merge them
     let merged = merge_hir_trees(&[graph, graph2]);
@@ -649,8 +625,8 @@ module test {
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::from_ast(parsed1.tree);
-    let graph2 = ic_hir::from_ast(parsed2.tree);
+    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
+    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
 
     assert_eq!(graph1.errors.len(), 0);
     assert_eq!(graph2.errors.len(), 0);

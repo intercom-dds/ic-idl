@@ -1,0 +1,28 @@
+---
+source: crates/ic-hir/tests/incomplete_type_inheritance.rs
+expression: output
+---
+error: struct `A` cannot inherit from incomplete type `B`
+   ┌ test.idl:6:9
+   │
+ 6 │         struct A : B {
+   ·         ^^^^^^^^^^^^^^ invalid inheritance
+ 7 │             long a;
+   · 
+ 8 │         };
+   · ^^^^^^^^^^
+ 3 │         struct B;
+   ·                ^ forward declaration here, but no definition found
+   └──
+error: struct `B` cannot inherit from incomplete type `C`
+    ┌ test.idl:10:9
+    │
+ 10 │         struct B : C {
+    ·         ^^^^^^^^^^^^^^ invalid inheritance
+ 11 │             long b;
+    · 
+ 12 │         };
+    · ^^^^^^^^^^
+  4 │         struct C;
+    ·                ^ forward declaration here, but no definition found
+    └──

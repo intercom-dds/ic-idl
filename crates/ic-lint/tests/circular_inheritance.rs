@@ -25,99 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use insta::assert_snapshot;
-
 mod common;
-
-#[test]
-fn circular_struct_inheritance() {
-    let output = common::test_lint_hir(
-        r"
-        struct A;
-        struct B;
-        
-        struct A : B {
-            long x;
-        };
-        
-        struct B : A {
-            long y;
-        };
-        ",
-    );
-    assert_snapshot!(output);
-}
-
-#[test]
-fn circular_interface_inheritance() {
-    let output = common::test_lint_hir(
-        r"
-        interface Foo;
-        interface Bar;
-        
-        interface Foo : Bar {
-            void method1();
-        };
-        
-        interface Bar : Foo {
-            void method2();
-        };
-        ",
-    );
-    assert_snapshot!(output);
-}
-
-#[test]
-fn self_referential_struct() {
-    let output = common::test_lint_hir(
-        r"
-        struct SelfRef;
-        
-        struct SelfRef : SelfRef {
-            long value;
-        };
-        ",
-    );
-    assert_snapshot!(output);
-}
-
-#[test]
-fn self_referential_interface() {
-    let output = common::test_lint_hir(
-        r"
-        interface SelfRef;
-        
-        interface SelfRef : SelfRef {
-            void method();
-        };
-        ",
-    );
-    assert_snapshot!(output);
-}
-
-#[test]
-fn longer_circular_chain() {
-    let output = common::test_lint_hir(
-        r"
-        struct A;
-        struct B;
-        struct C;
-        
-        struct A : B {
-            long a;
-        };
-        
-        struct B : C {
-            long b;
-        };
-        
-        struct C : A {
-            long c;
-        };
-        ",
-    );
-    assert_snapshot!(output);
-}
 
 #[test]
 fn valid_inheritance() {
@@ -144,28 +52,4 @@ fn valid_inheritance() {
         report.errors.is_empty(),
         "Valid inheritance should not produce errors"
     );
-}
-
-#[test]
-fn multiple_interface_inheritance() {
-    let output = common::test_lint_hir(
-        r"
-        interface A;
-        interface B;
-        interface C;
-        
-        interface A : B, C {
-            void methodA();
-        };
-        
-        interface B {
-            void methodB();
-        };
-        
-        interface C : A {
-            void methodC();
-        };
-        ",
-    );
-    assert_snapshot!(output);
 }

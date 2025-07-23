@@ -1,5 +1,5 @@
 ---
-source: crates/ic-lint/tests/circular_inheritance.rs
+source: crates/ic-hir/tests/incomplete_type_inheritance.rs
 expression: output
 ---
 error: struct `SelfRef` cannot inherit from incomplete type `SelfRef`

@@ -1,0 +1,5 @@
+---
+source: crates/ic-hir/tests/incomplete_type_inheritance.rs
+expression: output
+---
+

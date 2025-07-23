@@ -481,6 +481,7 @@ define_lints! {
         semantic::multiple_default_cases::MultipleDefaultCases,
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::zero_bound::ZeroBound,
+        semantic::void_ty::VoidTy,
         // unsupported::proto::Proto, // Commented out - too restrictive for non-proto3 IDL
     ],
 }

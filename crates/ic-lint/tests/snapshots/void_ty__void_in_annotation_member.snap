@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/void_ty.rs
+expression: test_lint_hir(source)
+---
+error[void_ty]: `void` is only allowed as a return type in prototypes
+   ┌ test.idl:3:5
+   │
+ 3 │     void invalidMember;
+   ·     ^^^^ invalid use of `void`
+   └──

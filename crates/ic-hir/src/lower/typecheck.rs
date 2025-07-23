@@ -503,8 +503,8 @@ impl<'a> TypeChecker<'a> {
             | PrimitiveTy::Float32
             | PrimitiveTy::Float64
             | PrimitiveTy::Float128
-            | PrimitiveTy::Int64 => true, // Always fits
-            PrimitiveTy::Void => false,
+            | PrimitiveTy::Int64
+            | PrimitiveTy::Void => true,
         };
 
         if !fits {
@@ -593,7 +593,6 @@ impl<'a> TypeChecker<'a> {
         // Define numeric type ordering for promotions
         let rank = |ty: PrimitiveTy| -> Option<(u8, bool)> {
             match ty {
-                // (rank, is_signed)
                 Bool => Some((0, false)),
                 Char => Some((1, false)),
                 WChar => Some((2, false)),
@@ -608,7 +607,7 @@ impl<'a> TypeChecker<'a> {
                 Float32 => Some((7, true)),
                 Float64 => Some((8, true)),
                 Float128 => Some((9, true)),
-                Void => None, // Other types don't participate in numeric promotion
+                Void => None,
             }
         };
 

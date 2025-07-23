@@ -25,19 +25,56 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod deprecated;
-pub mod duplicate_annotations_hir;
-pub mod duplicate_case_labels;
-pub mod duplicate_enum_values;
-pub mod duplicate_name;
-pub mod initializer_list_size;
-pub mod invalid_annotation_target;
-pub mod invalid_enum_value;
-pub mod keywords;
-pub mod multiple_default_cases;
-pub mod oneway;
-pub mod redundant_inheritance;
-pub mod unreachable_union_cases;
-pub mod void_ty;
-pub mod zero_bound;
+use ic_diagnostic::Label;
+use ic_hir::hir::{self, PrimitiveTy, TyKind};
+use ic_hir::visit::{Visitor, walk_tree};
+
+use crate::{Category, Lint, LintCtx};
+
+/// Lint that checks for invalid uses of the `void` type.
+/// The `void` type is only valid as a return type in function prototypes.
+pub struct VoidTy<'a> {
+    ctx: &'a LintCtx<'a>,
+}
+
+impl<'a> Visitor<'a> for VoidTy<'a> {
+    fn visit_ty(&mut self, ty: &'a hir::Ty) {
+        if let TyKind::Primitive(PrimitiveTy::Void) = ty.kind
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                "`void` is only allowed as a return type in prototypes",
+                Label::new(ty.span).message("invalid use of `void`"),
+            )
+        {
+            Self::report(self.ctx, diag);
+        }
+    }
+
+    fn visit_proto(&mut self, proto: &'a hir::ProtoTy) {
+        // Skip the return type since `void` is allowed there
+        // TOOD: check exceptions as well
+        for param in &proto.params {
+            self.visit_parameter(param);
+        }
+    }
+}
+
+impl<'a> Lint<'a> for VoidTy<'a> {
+    fn name() -> &'static str {
+        "void_ty"
+    }
+
+    fn category() -> Category {
+        Category::Semantic
+    }
+
+    fn description() -> &'static str {
+        "Errors when `void` is used outside function prototypes"
+    }
+
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
+        let mut lint = Self { ctx };
+        walk_tree(&mut lint, &hir.context.definitions);
+    }
+}

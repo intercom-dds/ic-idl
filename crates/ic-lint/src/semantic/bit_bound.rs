@@ -34,6 +34,7 @@ use crate::{Category, Lint, LintCtx};
 
 pub struct BitBound<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for BitBound<'a> {
@@ -50,7 +51,7 @@ impl<'a> Lint<'a> for BitBound<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = BitBound { ctx };
+        let mut visitor = BitBound { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
@@ -117,6 +118,10 @@ impl BitBound<'_> {
 }
 
 impl<'a> Visitor<'a> for BitBound<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_bitmask(&mut self, _def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
         // Check bit positions in bitmask flags
         if let Some(type_bits) = Self::get_type_bits(&data.ty.kind) {

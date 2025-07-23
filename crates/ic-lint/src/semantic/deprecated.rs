@@ -143,6 +143,10 @@ impl Deprecated<'_> {
 }
 
 impl<'a> Visitor<'a> for Deprecated<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        self.hir_ctx
+    }
+
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.check_type_usage(ty, "");
         ic_hir::visit::walk_ty(self, ty);

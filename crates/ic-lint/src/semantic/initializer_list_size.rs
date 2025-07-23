@@ -58,6 +58,10 @@ impl<'a> Lint<'a> for InitializerListSize<'a> {
 }
 
 impl<'a> ic_hir::visit::Visitor<'a> for InitializerListSize<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_const(&mut self, def: &'a hir::Def, data: &'a hir::ConstTy) {
         validate_init_list(self.ctx, &self.hir.context, &data.value, def.ident.span);
     }
@@ -152,3 +156,93 @@ fn array_len(context: &Context, type_id: DefId) -> Option<usize> {
         _ => None,
     }
 }
+//
+// impl<'a> Visitor<'a> for InitializerListSize<'a> {
+//     fn context(&self) -> &'a Context {
+//         &self.hir.context
+//     }
+//
+//     fn visit_numeric(&mut self, numeric: &'a Numeric) {
+//         match numeric {
+//             Numeric::Array { ty, values } => {
+//                 if let Some(expected_len) = array_len(context, *ty) {
+//                     if values.len() != expected_len {
+//                         self.report(
+//                             Self::name(),
+//                             Self::category(),
+//                             Diag::error(format!(
+//                                 "array initializer has {} elements but array type expects {}",
+//                                 values.len(),
+//                                 expected_len
+//                             ))
+//                             .label(
+//                                 Label::new(span)
+//                                     .message(format!("expected {expected_len} elements"))
+//                                     .color(Color::Red),
+//                             ),
+//                         );
+//                     }
+//                 }
+//                 for value in values {
+//                     self.visit_numeric(value);
+//                 }
+//             }
+//             Numeric::Struct { ty, fields } => {
+//                 let struct_def = self.ctx.definitions.get(*ty);
+//                 if let DefKind::Struct(struct_ty) = &struct_def.kind {
+//                     let expected_count = struct_ty.members.len();
+//                     if fields.len() != expected_count {
+//                         self.report(
+//                             InitializerListSize::name(),
+//                             InitializerListSize::category(),
+//                             Diag::error(format!(
+//                                 "struct initializer has {} fields but struct '{}' has {} members",
+//                                 fields.len(),
+//                                 struct_def.ident.name,
+//                                 expected_count
+//                             ))
+//                             .label(
+//                                 Label::new(span)
+//                                     .message(format!("expected {expected_count} fields"))
+//                                     .color(Color::Red),
+//                             ),
+//                         );
+//                     }
+//                 }
+//                 for (_, value) in fields {
+//                     validate_numeric_initializer(ctx, context, value, span);
+//                 }
+//             }
+//             Numeric::Sequence { values, .. } => {
+//                 for value in values {
+//                     validate_numeric_initializer(ctx, context, value, span);
+//                 }
+//             }
+//             Numeric::Map { values, .. } => {
+//                 for (key, value) in values {
+//                     validate_numeric_initializer(ctx, context, key, span);
+//                     validate_numeric_initializer(ctx, context, value, span);
+//                 }
+//             }
+//             Numeric::Union { value, .. } => {
+//                 validate_numeric_initializer(ctx, context, value, span);
+//             }
+//             _ => {}
+//         }
+//     }
+// }
+//
+// fn array_len(context: &Context, type_id: DefId) -> Option<usize> {
+//     let def = context.definitions.get(type_id);
+//
+//     match &def.kind {
+//         DefKind::Const(const_ty) => {
+//             if let TyKind::Array { len, .. } = &const_ty.ty.kind {
+//                 Some(*len)
+//             } else {
+//                 None
+//             }
+//         }
+//         _ => None,
+//     }
+// }

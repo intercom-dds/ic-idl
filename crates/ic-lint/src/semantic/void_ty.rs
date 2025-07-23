@@ -35,9 +35,14 @@ use crate::{Category, Lint, LintCtx};
 /// The `void` type is only valid as a return type in function prototypes.
 pub struct VoidTy<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Visitor<'a> for VoidTy<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_ty(&mut self, ty: &'a hir::Ty) {
         if let TyKind::Primitive(PrimitiveTy::Void) = ty.kind
             && let Some(diag) = self.ctx.diag_span(
@@ -73,8 +78,8 @@ impl<'a> Lint<'a> for VoidTy<'a> {
         "Errors when `void` is used outside function prototypes"
     }
 
-    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
-        let mut lint = Self { ctx };
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &'a ic_hir::ResolvedGraph) {
+        let mut lint = Self { ctx, hir };
         walk_tree(&mut lint, &hir.context.definitions);
     }
 }

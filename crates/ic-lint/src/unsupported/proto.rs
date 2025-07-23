@@ -34,9 +34,14 @@ use crate::{Category, Lint, LintCtx};
 #[allow(dead_code)]
 pub struct Proto<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
-impl<'a> Visitor<'a> for Proto<'_> {
+impl<'a> Visitor<'a> for Proto<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_enum(&mut self, _def: &'a hir::Def, ty: &'a hir::EnumTy) {
         if let Some(field) = ty.fields.first() {
             if field.value != 0 {
@@ -51,7 +56,7 @@ impl<'a> Visitor<'a> for Proto<'_> {
     }
 }
 
-impl<'a> Lint<'a> for Proto<'_> {
+impl<'a> Lint<'a> for Proto<'a> {
     fn name() -> &'static str {
         "proto"
     }
@@ -64,8 +69,8 @@ impl<'a> Lint<'a> for Proto<'_> {
         "Errors when proto3 constraints are violated"
     }
 
-    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
-        let mut res = Proto { ctx };
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &'a ic_hir::ResolvedGraph) {
+        let mut res = Proto { ctx, hir };
         ic_hir::visit::walk_tree(&mut res, &hir.context.definitions);
     }
 }

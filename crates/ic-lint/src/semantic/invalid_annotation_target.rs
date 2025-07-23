@@ -35,6 +35,7 @@ use crate::{Category, Lint, LintCtx};
 /// Checks that annotations are applied to valid targets
 pub struct InvalidAnnotationTarget<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for InvalidAnnotationTarget<'a> {
@@ -51,7 +52,7 @@ impl<'a> Lint<'a> for InvalidAnnotationTarget<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = InvalidAnnotationTarget { ctx };
+        let mut visitor = InvalidAnnotationTarget { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
@@ -147,6 +148,10 @@ impl InvalidAnnotationTarget<'_> {
 }
 
 impl<'a> Visitor<'a> for InvalidAnnotationTarget<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_def(&mut self, def: &'a Def) {
         // Check annotations on the definition itself
         let target = match &def.kind {

@@ -37,6 +37,7 @@ use crate::{Category, Lint, LintCtx};
 /// HIR-based duplicate annotations lint that properly handles annotation resolution
 pub struct DuplicateAnnotationsHir<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for DuplicateAnnotationsHir<'a> {
@@ -53,7 +54,7 @@ impl<'a> Lint<'a> for DuplicateAnnotationsHir<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = DuplicateAnnotationsHir { ctx };
+        let mut visitor = DuplicateAnnotationsHir { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
@@ -106,6 +107,10 @@ impl DuplicateAnnotationsHir<'_> {
 }
 
 impl<'a> Visitor<'a> for DuplicateAnnotationsHir<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_def(&mut self, def: &'a Def) {
         self.check_annotation_list(&def.annotations);
         ic_hir::visit::walk_def(self, def);

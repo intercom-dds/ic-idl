@@ -36,6 +36,7 @@ use crate::{Category, Lint, LintCtx};
 /// Checks that `@min`, `@max`, and `@range` annotations are valid
 pub struct RangeBound<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for RangeBound<'a> {
@@ -52,7 +53,7 @@ impl<'a> Lint<'a> for RangeBound<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = RangeBound { ctx };
+        let mut visitor = RangeBound { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
@@ -263,6 +264,10 @@ impl RangeBound<'_> {
 }
 
 impl<'a> Visitor<'a> for RangeBound<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_def(&mut self, def: &'a Def) {
         // Check annotations on const and alias definitions
         use ic_hir::hir::DefKind;

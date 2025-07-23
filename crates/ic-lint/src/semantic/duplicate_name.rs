@@ -152,6 +152,10 @@ impl<'a> DuplicateName<'a> {
 }
 
 impl<'a> Visitor<'a> for DuplicateName<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_struct(&mut self, def: &'a Def, struct_ty: &'a StructTy) {
         let mut seen = CaseSet::default();
 

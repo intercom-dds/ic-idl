@@ -36,6 +36,7 @@ use crate::{Category, Lint, LintCtx};
 /// These are treated as errors in standard IDL.
 pub struct ZeroBound<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for ZeroBound<'a> {
@@ -52,12 +53,16 @@ impl<'a> Lint<'a> for ZeroBound<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = ZeroBound { ctx };
+        let mut visitor = ZeroBound { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
 
 impl<'a> Visitor<'a> for ZeroBound<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_ty(&mut self, ty: &'a Ty) {
         match &ty.kind {
             TyKind::Array { len, len_span, .. } => {

@@ -40,6 +40,7 @@ use crate::{Category, Lint, LintCtx};
 /// This is an error because duplicate enum values are not allowed.
 pub struct DuplicateEnumValues<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for DuplicateEnumValues<'a> {
@@ -56,12 +57,16 @@ impl<'a> Lint<'a> for DuplicateEnumValues<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = DuplicateEnumValues { ctx };
+        let mut visitor = DuplicateEnumValues { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
 
 impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_enum(&mut self, def: &'a Def, enum_ty: &'a EnumTy) {
         // Skip built-in types
         if def.ident.name.starts_with("intercom::") {

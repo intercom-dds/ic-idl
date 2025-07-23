@@ -34,6 +34,7 @@ use crate::{Category, Lint, LintCtx};
 
 pub struct UnreachableUnionCases<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
@@ -50,7 +51,7 @@ impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = UnreachableUnionCases { ctx };
+        let mut visitor = UnreachableUnionCases { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, &hir.context.definitions);
     }
 }
@@ -166,6 +167,10 @@ impl UnreachableUnionCases<'_> {
 }
 
 impl<'a> Visitor<'a> for UnreachableUnionCases<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_union(&mut self, def: &'a Def, data: &'a UnionTy) {
         self.check_union(data, &def.ident.name);
         ic_hir::visit::walk_union(self, data);

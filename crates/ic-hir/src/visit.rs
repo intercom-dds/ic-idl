@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
     InterfaceTy, Member, ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy,
@@ -32,6 +33,8 @@ use crate::hir::{
 };
 
 pub trait Visitor<'a> {
+    fn context(&self) -> &'a Context;
+
     fn visit_def(&mut self, def: &'a Def) {
         walk_def(self, def);
     }
@@ -173,14 +176,23 @@ where
     for param in &data.params {
         visitor.visit_ann_param(param);
     }
-    // Note: We don't visit nested types here as they're already visited via walk_def
+
+    let context = visitor.context();
+    for &def_id in &data.types {
+        let nested_def = context.definitions.get(def_id);
+        visitor.visit_def(nested_def);
+    }
 }
 
-pub fn walk_module<'a, V>(_visitor: &mut V, _def: &'a Def, _data: &'a ModuleTy)
+pub fn walk_module<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a ModuleTy)
 where
     V: Visitor<'a> + ?Sized,
 {
-    // Module definitions are visited separately via walk_def, not here
+    let context = visitor.context();
+    for &def_id in &data.definitions {
+        let nested_def = context.definitions.get(def_id);
+        visitor.visit_def(nested_def);
+    }
 }
 
 pub fn walk_except<'a, V>(visitor: &mut V, data: &'a ExceptTy)
@@ -263,7 +275,14 @@ where
     for proto in &data.prototypes {
         visitor.visit_proto(proto);
     }
-    // Note: definitions and attributes would be visited separately
+
+    let context = visitor.context();
+    for &def_id in &data.definitions {
+        let nested_def = context.definitions.get(def_id);
+        visitor.visit_def(nested_def);
+    }
+
+    // TODO: Visit attributes when implemented
 }
 
 pub fn walk_valuetype<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a ValueTy)
@@ -273,7 +292,14 @@ where
     for proto in &data.prototypes {
         visitor.visit_proto(proto);
     }
-    // Note: members and definitions would be visited separately when implemented
+
+    let context = visitor.context();
+    for &def_id in &data.definitions {
+        let nested_def = context.definitions.get(def_id);
+        visitor.visit_def(nested_def);
+    }
+
+    // TODO: Visit members when properly implemented
 }
 
 pub fn walk_decl<'a, V>(_visitor: &mut V, _data: &'a Decl)

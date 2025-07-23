@@ -142,6 +142,10 @@ impl CircularInheritance<'_> {
 }
 
 impl<'a> Visitor<'a> for CircularInheritance<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_struct(&mut self, def: &'a Def, _struct_ty: &'a StructTy) {
         let mut path = Vec::new();
         self.check_circular_inheritance(def.id, &mut path);

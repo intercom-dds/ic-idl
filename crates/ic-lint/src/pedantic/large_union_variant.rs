@@ -68,6 +68,10 @@ impl<'a> Lint<'a> for LargeUnionVariant<'a> {
 }
 
 impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        self.hir_ctx
+    }
+
     fn visit_union(&mut self, _def: &'a Def, union_ty: &'a UnionTy) {
         // Calculate sizes for all variants
         let mut variant_sizes = Vec::new();

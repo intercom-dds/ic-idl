@@ -71,6 +71,10 @@ fn is_complex(ctx: &ic_hir::Context, ty: &Ty) -> bool {
 }
 
 impl<'a> Visitor<'a> for ComplexMapKey<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
     fn visit_ty(&mut self, ty: &'a Ty) {
         if let TyKind::Map { key, .. } = &ty.kind {
             if is_complex(&self.hir.context, key) {

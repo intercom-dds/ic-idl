@@ -67,6 +67,10 @@ impl<'a> Lint<'a> for InvalidArraySize<'a> {
 }
 
 impl<'a> Visitor<'a> for InvalidArraySize<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        self.hir_ctx
+    }
+
     fn visit_ty(&mut self, ty: &'a Ty) {
         if let TyKind::Array {
             ty: elem_ty,

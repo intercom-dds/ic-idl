@@ -40,7 +40,7 @@ use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit, EnumTy,
     ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, StructTy,
-    Ty, TyKind, UnionTy, Variant,
+    Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -98,9 +98,7 @@ impl<'a> SinglePassLowerer<'a> {
 
         for ann in ast_annotations {
             // Try to resolve annotation name
-            let def_id = if let Some(id) = self.resolve_path(&ann.ident) {
-                id
-            } else {
+            let Some(def_id) = self.resolve_path(&ann.ident) else {
                 // Annotation not found - skip with warning
                 let name = path_to_string(&ann.ident);
                 self.warnings.push(warn_span(
@@ -232,7 +230,7 @@ impl<'a> SinglePassLowerer<'a> {
             // Start from the beginning and resolve each prefix to check module names
             let mut current_scope = start_scope;
 
-            for (_i, segment) in path.segments[..path.segments.len() - 1].iter().enumerate() {
+            for segment in &path.segments[..path.segments.len() - 1] {
                 // Get the scope for this segment name
                 if let Some(&ScopeId(scope_idx)) = self.ctx.scopes.scopes[current_scope.0]
                     .children
@@ -413,6 +411,7 @@ impl<'a> SinglePassLowerer<'a> {
     }
 
     /// Processes a struct definition.
+    #[allow(clippy::too_many_lines)]
     fn process_struct(&mut self, def: &ic_syntax::StructDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
 
@@ -457,18 +456,17 @@ impl<'a> SinglePassLowerer<'a> {
                     None
                 } else {
                     // Check that parent is actually a struct
-                    match &parent_def.kind {
-                        DefKind::Struct(_) => Some(parent_id),
-                        _ => {
-                            self.errors.push(error_span(
-                                format!(
-                                    "struct `{}` cannot inherit from non-struct type `{}`",
-                                    def.ident.name, parent_def.ident.name
-                                ),
-                                Label::new(def.span).message("invalid inheritance"),
-                            ));
-                            None
-                        }
+                    if matches!(&parent_def.kind, DefKind::Struct(_)) {
+                        Some(parent_id)
+                    } else {
+                        self.errors.push(error_span(
+                            format!(
+                                "struct `{}` cannot inherit from non-struct type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.span).message("invalid inheritance"),
+                        ));
+                        None
                     }
                 }
             } else {
@@ -974,6 +972,7 @@ impl<'a> SinglePassLowerer<'a> {
     }
 
     /// Processes a valuetype definition.
+    #[allow(clippy::too_many_lines)]
     fn process_valuetype(&mut self, def: &ic_syntax::ValuetypeDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
 
@@ -1003,18 +1002,17 @@ impl<'a> SinglePassLowerer<'a> {
                     None
                 } else {
                     // Check that parent is actually a valuetype
-                    match &parent_def.kind {
-                        DefKind::Valuetype(_) => Some(parent_id),
-                        _ => {
-                            self.errors.push(error_span(
-                                format!(
-                                    "valuetype `{}` cannot inherit from non-valuetype type `{}`",
-                                    def.ident.name, parent_def.ident.name
-                                ),
-                                Label::new(def.span).message("invalid inheritance"),
-                            ));
-                            None
-                        }
+                    if matches!(&parent_def.kind, DefKind::Valuetype(_)) {
+                        Some(parent_id)
+                    } else {
+                        self.errors.push(error_span(
+                            format!(
+                                "valuetype `{}` cannot inherit from non-valuetype type `{}`",
+                                def.ident.name, parent_def.ident.name
+                            ),
+                            Label::new(def.span).message("invalid inheritance"),
+                        ));
+                        None
                     }
                 }
             } else {
@@ -1230,6 +1228,7 @@ impl<'a> SinglePassLowerer<'a> {
     }
 
     /// Processes an interface definition.
+    #[allow(clippy::too_many_lines)]
     fn process_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
 
@@ -1339,7 +1338,7 @@ impl<'a> SinglePassLowerer<'a> {
         // Process nested items and operations
         let mut child_ids = Vec::new();
         let mut prototypes = Vec::new();
-        let mut attributes = Vec::new();
+        let attributes = Vec::new();
 
         for member in &def.members {
             match member {
@@ -1348,14 +1347,12 @@ impl<'a> SinglePassLowerer<'a> {
                     child_ids.extend(ids);
                 }
                 ic_syntax::InterfaceMember::Proto(proto) => {
-                    if let Some(proto_ty) = self.process_prototype(proto) {
-                        prototypes.push(proto_ty);
-                    }
+                    let proto_ty = self.process_prototype(proto);
+                    prototypes.push(proto_ty);
                 }
                 ic_syntax::InterfaceMember::Attr(attr) => {
-                    if let Some(attr_ty) = self.process_attribute(attr) {
-                        attributes.push(attr_ty);
-                    }
+                    self.process_attribute(attr);
+                    // TODO: Add attribute to list when AttributeTy is implemented
                 }
             }
         }
@@ -1379,7 +1376,7 @@ impl<'a> SinglePassLowerer<'a> {
     }
 
     /// Processes a prototype (method) definition.
-    fn process_prototype(&mut self, proto: &ic_syntax::Prototype) -> Option<ProtoTy> {
+    fn process_prototype(&mut self, proto: &ic_syntax::Prototype) -> ProtoTy {
         // Resolve return type
         let ret_ty = self.resolve_type(&proto.ret);
 
@@ -1398,25 +1395,24 @@ impl<'a> SinglePassLowerer<'a> {
                 ident: param_ident,
                 ty: param_ty,
                 kind: match &param.kind {
-                    Some(ic_syntax::ParamKind::In) => ParamKind::In,
+                    Some(ic_syntax::ParamKind::In) | None => ParamKind::In, // Default to In
                     Some(ic_syntax::ParamKind::Out) => ParamKind::Out,
                     Some(ic_syntax::ParamKind::Inout) => ParamKind::Inout,
-                    None => ParamKind::In, // Default to In when not specified
                 },
             });
         }
 
-        Some(ProtoTy {
+        ProtoTy {
             ident: proto.ident.clone(),
             ty: ret_ty,
             params,
-        })
+        }
     }
 
     /// Processes an attribute definition.
-    fn process_attribute(&mut self, _attr: &ic_syntax::Attribute) -> Option<()> {
+    #[allow(clippy::unused_self)]
+    fn process_attribute(&self, _attr: &ic_syntax::Attribute) {
         // TODO: Implement attribute processing when AttributeTy is defined
-        Some(())
     }
 
     /// Processes an item and returns the `DefIds` created.
@@ -1483,6 +1479,7 @@ fn path_to_string(path: &Path) -> String {
 }
 
 /// Resolves a primitive type name.
+#[allow(clippy::match_same_arms)]
 fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
     Some(match name {
         "void" => PrimitiveTy::Void,

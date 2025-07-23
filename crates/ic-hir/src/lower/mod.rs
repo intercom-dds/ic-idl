@@ -53,9 +53,7 @@ use crate::Context;
 use crate::hir::TypeId;
 
 mod builtin;
-mod collect;
 mod evaluate;
-mod resolve;
 mod single_pass;
 mod typecheck;
 mod validate;

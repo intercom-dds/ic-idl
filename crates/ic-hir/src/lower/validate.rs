@@ -41,7 +41,7 @@ use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
 use crate::hir::{
-    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
+    Decl, Def, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
 };
 
 /// Validates the HIR for semantic correctness.
@@ -69,22 +69,12 @@ impl<'a> Validator<'a> {
         self.ctx.definitions.get(id)
     }
 
-    /// Validates that a type is complete (not just declared).
-    fn validate_complete(&mut self, id: DefId) {
-        let def = self.get_def(id);
-
-        if def.flags.contains(DefFlags::IS_INCOMPLETE) {
-            self.errors.push(error_span(
-                format!("type `{}` is declared but not defined", def.ident.name),
-                Label::new(def.span).message("declared here"),
-            ));
-        }
-    }
-
     /// Validates type references (ensures they exist and are complete).
+    #[allow(clippy::only_used_in_recursion)]
+    #[allow(clippy::match_same_arms)]
     fn validate_type_ref(&mut self, ty: &Ty) {
         match &ty.kind {
-            TyKind::Adt(id) => {
+            TyKind::Adt(_) => {
                 // Don't check for completeness here - forward declarations are allowed
                 // to be used before they're defined in IDL
                 // The type will be validated separately in validate_all

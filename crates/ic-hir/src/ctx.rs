@@ -136,6 +136,21 @@ impl Context {
             _ => None,
         }
     }
+
+    #[must_use]
+    pub fn qualified_name(&self, id: DefId) -> String {
+        let def = self.type_of(id);
+        let mut parts = vec![def.ident.name.clone()];
+        let mut current = def.parent;
+        while let Some(parent_id) = current {
+            let parent_def = self.type_of(parent_id);
+            parts.push(parent_def.ident.name.clone());
+            current = parent_def.parent;
+        }
+
+        parts.reverse();
+        parts.join("::")
+    }
 }
 
 /// Inserts primitive types and built-in annotations into the context.

@@ -44,7 +44,6 @@ struct TreeBuilder<'a> {
     ctx: &'a Context,
     state: *mut sys::parser_state,
     lowered: HashMap<DefId, *mut sys::ptree>,
-    recursion_depth: usize,
 }
 
 impl<'a> TreeBuilder<'a> {
@@ -53,7 +52,6 @@ impl<'a> TreeBuilder<'a> {
             state,
             ctx: &tree.context,
             lowered: HashMap::new(),
-            recursion_depth: 0,
         }
     }
 
@@ -111,7 +109,7 @@ impl<'a> TreeBuilder<'a> {
                 let bound = self.lower_bound(*bound);
                 sys::create_map(self.state, key, elem, bound)
             }
-            TyKind::Adt(id) => self.lower_def(*id),
+            TyKind::Adt(id) => self.lookup_type(*id),
         }
     }
 
@@ -218,18 +216,18 @@ impl<'a> TreeBuilder<'a> {
         node
     }
 
+    unsafe fn lookup_type(&self, id: DefId) -> *mut sys::ptree {
+        let name = self.ctx.qualified_name(id);
+        let ident = create_ident(&name);
+        unsafe { sys::lookup_type(self.state, ident.as_ptr()) }
+    }
+
     #[allow(clippy::too_many_lines)]
     unsafe fn lower_def(&mut self, id: DefId) -> *mut sys::ptree {
         // If this has been lowered before, return the corresponding node
         if let Some(v) = self.lowered.get(&id) {
             return *v;
         }
-
-        self.recursion_depth += 1;
-        assert!(
-            (self.recursion_depth <= 100),
-            "Recursion depth exceeded while lowering {id:?}"
-        );
 
         let def = self.ctx.type_of(id);
         let ident = create_ident(&def.ident.name);
@@ -355,10 +353,7 @@ impl<'a> TreeBuilder<'a> {
             }
             DefKind::Bitset(_) => {
                 // TODO: Implement bitset lowering when ptree supports it
-                // For now, create a dummy struct
-                let ty = sys::create_struct_start(self.state, ident, ptr::null_mut());
-                self.lowered.insert(id, ty);
-                sys::create_struct_finish(self.state, ptr::null_mut())
+                std::ptr::null_mut()
             }
             DefKind::Decl(v) => match v {
                 Decl::Struct => sys::create_struct_dcl(self.state, ident),
@@ -372,7 +367,6 @@ impl<'a> TreeBuilder<'a> {
         // Apply annotations
         self.annotate(node, &def.annotations);
         self.lowered.insert(id, node);
-        self.recursion_depth -= 1;
         node
     }
 }

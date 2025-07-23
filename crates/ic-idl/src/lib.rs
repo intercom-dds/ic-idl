@@ -377,8 +377,6 @@ impl Compiler {
 
         // Merge all HIRs
         let merged = hir::merge::merge_hir_trees(&hirs);
-        // It works if we remove the merge call:
-        // let merged = hirs.into_iter().next().unwrap();
 
         // Add merge errors to diagnostics
         all_diagnostics

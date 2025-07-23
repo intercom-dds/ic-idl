@@ -897,9 +897,6 @@ impl<'a> TypeResolver<'a> {
         // Third pass: resolve all other items
         for item in items {
             match item {
-                Item::AnnotationValue(_) => {
-                    // Already processed in second pass
-                }
                 Item::StructValue(v) => {
                     if let Some(&id) = self.item_map.get(&ItemKey {
                         name: v.ident.name.clone(),
@@ -994,8 +991,9 @@ impl<'a> TypeResolver<'a> {
                         self.resolve_module(id, v);
                     }
                 }
-                // TODO: Handle other item types
-                Item::DeclValue(_) => {}
+                Item::DeclValue(_) | Item::AnnotationValue(_) => {
+                    // Already processed in second pass
+                }
             }
         }
     }

@@ -433,6 +433,10 @@ pub fn emit_tree(result: &ResolvedGraph) -> String {
 
     let mut buf = String::new();
     _ = writeln!(&mut buf, "{root}");
-    _ = write!(&mut buf, "{}", plural("definition", result.order.len()));
+    _ = write!(
+        &mut buf,
+        "{}",
+        plural("definition", result.context.definitions.len()),
+    );
     buf
 }

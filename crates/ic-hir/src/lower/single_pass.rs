@@ -36,8 +36,8 @@ use ic_syntax::{Ident, Item, Path};
 
 use crate::Context;
 use crate::hir::{
-    AliasTy, Ann, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit,
-    EnumTy, ExceptTy, InterfaceTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
+    AliasTy, Ann, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit, EnumTy,
+    ExceptTy, InterfaceTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -789,6 +789,219 @@ impl<'a> SinglePassLowerer<'a> {
         id
     }
 
+    /// Processes a valuetype definition.
+    fn process_valuetype(&mut self, def: &ic_syntax::ValuetypeDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // TODO: Handle inheritance
+        let parent_ty = if let Some(parent_path) = &def.inherits {
+            self.resolve_type(&ic_syntax::Type::Path(parent_path.clone()))
+                .as_adt()
+        } else {
+            None
+        };
+
+        // Process members
+        let mut members = Vec::new();
+        for member in &def.members {
+            if member.public.is_some() {
+                // Public members
+                let ty = self.resolve_type(&member.ty);
+                members.push(Member {
+                    ident: member.ident.clone(),
+                    ty,
+                    annotations: Vec::new(),
+                    default_value: None,
+                });
+            }
+        }
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Valuetype(crate::hir::ValueTy {
+                parent: parent_ty,
+                extends: None, // TODO: Handle extends
+                prototypes: Vec::new(),
+                members: Vec::new(), // TODO: ValueTy has Vec<()> for members
+                definitions: Vec::new(),
+            }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+
+        // Create new scope for valuetype
+        let new_scope = self.ctx.scopes.create_child_scope(
+            self.current_scope,
+            def.ident.name.clone(),
+            Some(id),
+        );
+
+        // Push to scope stack
+        self.scope_path.push(def.ident.name.clone());
+        let old_scope = self.current_scope;
+        self.current_scope = new_scope;
+
+        // Process nested items and operations
+        let mut child_ids = Vec::new();
+
+        for item in &def.definitions {
+            let ids = self.process_item(item);
+            child_ids.extend(ids);
+        }
+
+        // TODO: Process prototypes
+
+        // Update valuetype with children
+        if let Def {
+            kind: DefKind::Valuetype(vt),
+            ..
+        } = self.ctx.definitions.get_mut(id)
+        {
+            vt.definitions = child_ids;
+        }
+
+        // Pop scope
+        self.scope_path.pop();
+        self.current_scope = old_scope;
+
+        id
+    }
+
+    /// Processes a bitmask definition.
+    fn process_bitmask(&mut self, def: &ic_syntax::BitmaskDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // Process bits
+        let flags = def
+            .bits
+            .iter()
+            .map(|bit| {
+                let bit_annotations = self.resolve_ast_annotations(&bit.annotations);
+                crate::hir::BitFlag {
+                    ident: bit.ident.clone(),
+                    value: 0, // Will be filled in evaluation phase
+                    annotations: bit_annotations,
+                }
+            })
+            .collect();
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Bitmask(crate::hir::BitmaskTy {
+                flags,
+                ty: Ty {
+                    kind: TyKind::Any, // Placeholder, will be resolved later
+                    span: def.span,
+                },
+            }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
+        id
+    }
+
+    /// Processes a bitset definition.
+    fn process_bitset(&mut self, def: &ic_syntax::BitsetDef) -> DefId {
+        let qualified_name = self.qualified_name(&def.ident.name);
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // Resolve parent if any
+        let parent_ty = if let Some(parent_path) = &def.parent {
+            self.resolve_type(&ic_syntax::Type::Path(parent_path.clone()))
+                .as_adt()
+        } else {
+            None
+        };
+
+        // Process fields
+        let fields = def
+            .fields
+            .iter()
+            .map(|field| {
+                let field_annotations = self.resolve_ast_annotations(&field.annotations);
+                let ty = if let Some(field_ty) = &field.ty {
+                    self.resolve_type(field_ty)
+                } else {
+                    // Use Any as placeholder - evaluation phase will assign correct type based on size
+                    Ty {
+                        kind: TyKind::Any,
+                        span: field.span,
+                    }
+                };
+
+                crate::hir::BitsetField {
+                    ident: field.ident.clone(),
+                    ty,
+                    size: 0, // Will be filled in evaluation phase
+                    annotations: field_annotations,
+                }
+            })
+            .collect();
+
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations,
+            span: def.span,
+            kind: DefKind::Bitset(crate::hir::BitsetTy {
+                parent: parent_ty,
+                fields,
+            }),
+            flags: DefFlags::default(),
+        });
+
+        self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
+        id
+    }
+
     /// Processes an interface definition.
     fn process_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
@@ -885,11 +1098,9 @@ impl<'a> SinglePassLowerer<'a> {
             Item::ExceptionValue(v) => vec![self.process_exception(v)],
             Item::ConstValue(v) => vec![self.process_const(v)],
             Item::InterfaceValue(v) => vec![self.process_interface(v)],
-            // TODO: Add other item types
-            _ => {
-                // For now, skip other items
-                vec![]
-            }
+            Item::ValuetypeValue(v) => vec![self.process_valuetype(v)],
+            Item::BitmaskValue(v) => vec![self.process_bitmask(v)],
+            Item::BitsetValue(v) => vec![self.process_bitset(v)],
         }
     }
 

@@ -1736,7 +1736,7 @@ impl<'a> ExpressionEvaluator<'a> {
 /// Evaluates all expressions in the HIR.
 pub fn evaluate_expressions(
     ctx: &mut Context,
-    _name_map: &super::collect::NameMap,
+    _name_map: &super::single_pass::NameMap,
     items: &[Item],
 ) -> Vec<Diag> {
     let mut evaluator = ExpressionEvaluator::new(ctx);

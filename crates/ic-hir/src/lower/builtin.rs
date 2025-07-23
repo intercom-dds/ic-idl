@@ -44,14 +44,26 @@ where
     I: IntoIterator<Item = Item>,
     B: IntoIterator<Item = Item>,
 {
+    let builtin_items: Vec<Item> = builtins.into_iter().collect();
+    let user_items: Vec<Item> = user_ast.into_iter().collect();
+
+    // First, lower built-ins alone to get their DefIds
+    let builtin_result = super::lower(builtin_items.clone());
+    let builtin_def_ids: std::collections::HashSet<_> = builtin_result.order.into_iter().collect();
+
     // Combine built-ins and user AST
-    let mut all_items: Vec<Item> = builtins.into_iter().collect();
-    all_items.extend(user_ast);
+    let mut all_items = builtin_items;
+    all_items.extend(user_items);
 
     // Process everything together
+    let mut result = super::lower(all_items);
 
-    // Don't filter out built-in definitions - they need to be available for ptree lowering
-    super::lower(all_items)
+    // Mark all builtin definitions with IS_BUILTIN flag
+    for &def_id in &builtin_def_ids {
+        result.context.definitions[def_id].flags |= crate::hir::DefFlags::IS_BUILTIN;
+    }
+
+    result
 }
 
 /// Lowers user AST with built-in definitions available for resolution,
@@ -76,6 +88,11 @@ where
 
     // Process everything together
     let mut result = super::lower(all_items);
+
+    // Mark all builtin definitions with IS_BUILTIN flag
+    for &def_id in &builtin_def_ids {
+        result.context.definitions[def_id].flags |= crate::hir::DefFlags::IS_BUILTIN;
+    }
 
     // Filter the order vector to only include user definitions
     // Built-in definitions are still in the context but not in the output order

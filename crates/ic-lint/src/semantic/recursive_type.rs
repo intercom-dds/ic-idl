@@ -29,7 +29,7 @@ use std::collections::HashSet;
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, Def, DefId, ExceptTy, StructTy, Ty, TyKind};
+use ic_hir::hir::{Ann, Def, DefFlags, DefId, ExceptTy, StructTy, Ty, TyKind};
 use ic_hir::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
@@ -71,14 +71,17 @@ impl<'a> Lint<'a> for RecursiveType<'a> {
 
 impl RecursiveType<'_> {
     /// Check if a type reference is properly indirected
-    fn is_indirected(ty: &Ty, annotations: &[Ann]) -> bool {
+    fn is_indirected(&self, ty: &Ty, annotations: &[Ann]) -> bool {
         match &ty.kind {
             // Sequences and maps provide indirection
             TyKind::Sequence { .. } | TyKind::Map { .. } => true,
             // Check if the field itself has @shared or @external
-            _ => annotations
-                .iter()
-                .any(|ann| ann.ident.name == "shared" || ann.ident.name == "external"),
+            _ => annotations.iter().any(|ann| {
+                let def = self.hir.context.type_of(ann.def_id);
+                // Check if it's a builtin annotation with the right name
+                def.flags.contains(DefFlags::IS_BUILTIN)
+                    && (def.ident.name == "shared" || def.ident.name == "external")
+            }),
         }
     }
 
@@ -94,7 +97,7 @@ impl RecursiveType<'_> {
             TyKind::Adt(id) => {
                 if *id == containing_type {
                     // Found direct recursion - check if it's properly indirected
-                    if !Self::is_indirected(ty, member_annotations) {
+                    if !self.is_indirected(ty, member_annotations) {
                         let def = self.hir.context.definitions.get(containing_type);
                         Self::report(
                             self.ctx,

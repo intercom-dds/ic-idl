@@ -8,7 +8,7 @@ error[recursive_type]: type `Tree` contains itself without indirection
  4 │             Tree left;   // Error
    ·                  ^^^^ recursive member here
    └──
- note: recursive types must use indirection through sequences or @shared/@external annotations
+ note: recursive types must use indirection through sequences, maps, or @external annotations
 
 error[recursive_type]: type `Tree` contains itself without indirection
    ┌ test.idl:5:18
@@ -16,4 +16,4 @@ error[recursive_type]: type `Tree` contains itself without indirection
  5 │             Tree right;  // Error
    ·                  ^^^^^ recursive member here
    └──
- note: recursive types must use indirection through sequences or @shared/@external annotations
+ note: recursive types must use indirection through sequences, maps, or @external annotations

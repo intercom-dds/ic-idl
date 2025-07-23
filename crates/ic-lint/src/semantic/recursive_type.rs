@@ -37,7 +37,7 @@ use crate::{Category, Lint, LintCtx};
 /// Lint that checks for recursive types without proper indirection.
 ///
 /// A recursive type must have indirection through either:
-/// 1. Being the element type of a sequence
+/// 1. Being the element type of a sequence or map
 /// 2. Having @shared or @external annotation on the recursive field
 pub struct RecursiveType<'a> {
     ctx: &'a LintCtx<'a>,
@@ -73,8 +73,8 @@ impl RecursiveType<'_> {
     /// Check if a type reference is properly indirected
     fn is_indirected(ty: &Ty, annotations: &[Ann]) -> bool {
         match &ty.kind {
-            // Sequences provide indirection
-            TyKind::Sequence { .. } => true,
+            // Sequences and maps provide indirection
+            TyKind::Sequence { .. } | TyKind::Map { .. } => true,
             // Check if the field itself has @shared or @external
             _ => annotations
                 .iter()
@@ -106,8 +106,8 @@ impl RecursiveType<'_> {
                                 Label::new(member_span).message("recursive member here"),
                             )
                             .note(
-                                "recursive types must use indirection through sequences or \
-                                 @shared/@external annotations",
+                                "recursive types must use indirection through sequences, maps, or \
+                                 @external annotations",
                             ),
                         );
                     }
@@ -128,54 +128,14 @@ impl RecursiveType<'_> {
                                 Label::new(member_span).message("recursive member here"),
                             )
                             .note(
-                                "recursive types must use indirection through sequences or \
-                                 @shared/@external annotations",
+                                "recursive types must use indirection through sequences, maps, or \
+                                 @external annotations",
                             ),
                         );
                     }
                 }
             }
-            // Maps containing self are also problematic
-            TyKind::Map { key, elem, .. } => {
-                if let TyKind::Adt(id) = &key.kind {
-                    if *id == containing_type {
-                        let def = self.hir.context.definitions.get(containing_type);
-                        Self::report(
-                            self.ctx,
-                            ic_diagnostic::error_span(
-                                format!(
-                                    "type `{}` contains itself without indirection",
-                                    def.ident.name
-                                ),
-                                Label::new(member_span).message("recursive member here"),
-                            )
-                            .note(
-                                "recursive types must use indirection through sequences or \
-                                 @shared/@external annotations",
-                            ),
-                        );
-                    }
-                }
-                if let TyKind::Adt(id) = &elem.kind {
-                    if *id == containing_type {
-                        let def = self.hir.context.definitions.get(containing_type);
-                        Self::report(
-                            self.ctx,
-                            ic_diagnostic::error_span(
-                                format!(
-                                    "type `{}` contains itself without indirection",
-                                    def.ident.name
-                                ),
-                                Label::new(member_span).message("recursive member here"),
-                            )
-                            .note(
-                                "recursive types must use indirection through sequences or \
-                                 @shared/@external annotations",
-                            ),
-                        );
-                    }
-                }
-            }
+            // Maps provide indirection, so no need to check
             _ => {}
         }
     }

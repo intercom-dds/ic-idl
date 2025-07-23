@@ -8,4 +8,4 @@ error[recursive_type]: type `Node` contains itself without indirection
  4 │             Node next;  // Error: direct recursion without indirection
    ·                  ^^^^ recursive member here
    └──
- note: recursive types must use indirection through sequences or @shared/@external annotations
+ note: recursive types must use indirection through sequences, maps, or @external annotations

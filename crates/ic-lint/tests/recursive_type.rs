@@ -122,26 +122,32 @@ fn recursion_through_array() {
 
 #[test]
 fn recursion_through_map_key() {
-    let output = common::test_lint_hir(
+    let report = common::lint_hir(
         r"
         struct Node {
-            map<Node, string> children;  // Error: map key doesn't have indirection
+            map<Node, string> children;  // OK: map provides indirection
         };
         ",
     );
-    assert_snapshot!(output);
+    assert!(
+        report.errors.is_empty(),
+        "Map should provide sufficient indirection for key type"
+    );
 }
 
 #[test]
 fn recursion_through_map_value() {
-    let output = common::test_lint_hir(
+    let report = common::lint_hir(
         r"
         struct Node {
-            map<string, Node> children;  // Error: map value doesn't have indirection
+            map<string, Node> children;  // OK: map provides indirection
         };
         ",
     );
-    assert_snapshot!(output);
+    assert!(
+        report.errors.is_empty(),
+        "Map should provide sufficient indirection for value type"
+    );
 }
 
 #[test]

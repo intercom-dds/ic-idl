@@ -323,7 +323,6 @@ mod tests {
                         },
                         ty: make_primitive_type(PrimitiveTy::Int32),
                         annotations: vec![],
-                        default_value: None,
                     },
                     Member {
                         ident: Ident {
@@ -332,7 +331,6 @@ mod tests {
                         },
                         ty: make_primitive_type(PrimitiveTy::Int64),
                         annotations: vec![],
-                        default_value: None,
                     },
                     Member {
                         ident: Ident {
@@ -341,7 +339,6 @@ mod tests {
                         },
                         ty: make_primitive_type(PrimitiveTy::Bool),
                         annotations: vec![],
-                        default_value: None,
                     },
                 ],
             }),
@@ -589,7 +586,6 @@ mod tests {
                         },
                         ty: make_primitive_type(PrimitiveTy::Int32),
                         annotations: vec![],
-                        default_value: None,
                     },
                     Member {
                         ident: Ident {
@@ -598,7 +594,6 @@ mod tests {
                         },
                         ty: make_primitive_type(PrimitiveTy::Int32),
                         annotations: vec![],
-                        default_value: None,
                     },
                 ],
             }),
@@ -625,7 +620,6 @@ mod tests {
                         },
                         ty: make_primitive_type(PrimitiveTy::Bool),
                         annotations: vec![],
-                        default_value: None,
                     },
                     Member {
                         ident: Ident {
@@ -637,7 +631,6 @@ mod tests {
                             kind: TyKind::Adt(inner_id),
                         },
                         annotations: vec![],
-                        default_value: None,
                     },
                 ],
             }),

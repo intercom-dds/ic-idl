@@ -38,9 +38,9 @@ use ic_syntax::{Ident, Item, Path};
 use super::convert_annotation_value;
 use crate::Context;
 use crate::hir::{
-    AliasTy, Ann, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit, EnumTy,
-    ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, StructTy,
-    Ty, TyKind, UnionTy,
+    AliasTy, Ann, AnnParam, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit,
+    EnumTy, ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy,
+    StructTy, Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -110,10 +110,10 @@ impl<'a> Resolver<'a> {
             };
 
             // Get annotation definition
-            let members = {
+            let params = {
                 let def = self.ctx.definitions.get(def_id);
                 if let DefKind::Annotation(ann_ty) = &def.kind {
-                    ann_ty.members.clone()
+                    ann_ty.params.clone()
                 } else {
                     // Not an annotation type
                     continue;
@@ -121,12 +121,12 @@ impl<'a> Resolver<'a> {
             };
 
             // Check for multi-parameter annotations with positional arguments
-            if members.len() > 1 && ann.args.iter().any(|arg| arg.ident.is_none()) {
+            if params.len() > 1 && ann.args.iter().any(|arg| arg.ident.is_none()) {
                 let ann_name = path_to_string(&ann.ident);
                 self.warnings.push(warn_span(
                     format!(
                         "@{ann_name} has {} parameters and requires named arguments",
-                        members.len()
+                        params.len()
                     ),
                     Label::new(ic_syntax::util::path_span(&ann.ident))
                         .message("use named arguments for annotations with multiple parameters"),
@@ -143,12 +143,12 @@ impl<'a> Resolver<'a> {
             let mut args = Vec::new();
 
             // If all arguments are positional and there's exactly one member, assign to that member
-            if members.len() == 1 && ann.args.iter().all(|arg| arg.ident.is_none()) {
+            if params.len() == 1 && ann.args.iter().all(|arg| arg.ident.is_none()) {
                 if let Some(arg) = ann.args.first() {
                     // Evaluate the expression (simple literals only for now)
                     let value = convert_annotation_value(&arg.value);
                     args.push(crate::hir::AnnArg {
-                        ident: members[0].ident.clone(),
+                        ident: params[0].ident.clone(),
                         value,
                     });
                 }
@@ -157,11 +157,11 @@ impl<'a> Resolver<'a> {
                 for arg in &ann.args {
                     if let Some(name) = &arg.ident {
                         // Find matching member
-                        if let Some(member) = members.iter().find(|m| m.ident.name == name.name) {
+                        if let Some(param) = params.iter().find(|p| p.ident.name == name.name) {
                             // Evaluate the expression (simple literals only for now)
                             let value = convert_annotation_value(&arg.value);
                             args.push(crate::hir::AnnArg {
-                                ident: member.ident.clone(),
+                                ident: param.ident.clone(),
                                 value,
                             });
                         }
@@ -493,7 +493,6 @@ impl<'a> Resolver<'a> {
                     ident,
                     ty,
                     annotations: field_annotations.clone(),
-                    default_value: None,
                 });
             }
         }
@@ -960,7 +959,7 @@ impl<'a> Resolver<'a> {
             annotations,
             span: def.span,
             kind: DefKind::Annotation(AnnotationTy {
-                members: Vec::new(),
+                params: Vec::new(),
                 types: Vec::new(),
             }),
             flags: DefFlags::default(),
@@ -984,7 +983,7 @@ impl<'a> Resolver<'a> {
         self.current_scope = new_scope;
 
         // Process annotation members
-        let mut members = Vec::new();
+        let mut params = Vec::new();
         let mut child_ids = Vec::new();
 
         for param in &def.params {
@@ -997,11 +996,10 @@ impl<'a> Resolver<'a> {
                 ic_syntax::AnnotationField::Member(member) => {
                     let base_ty = self.resolve_type(&member.ty);
                     let (ident, ty) = resolve_declarator(&member.decl, base_ty);
-                    members.push(Member {
+                    params.push(AnnParam {
                         ident,
                         ty,
-                        annotations: Vec::new(),
-                        default_value: None, // Will be resolved in evaluation phase
+                        default: None, // Will be resolved in evaluation phase
                     });
                 }
             }
@@ -1013,7 +1011,7 @@ impl<'a> Resolver<'a> {
             ..
         } = self.ctx.definitions.get_mut(id)
         {
-            ann.members = members;
+            ann.params = params;
             ann.types = child_ids;
         }
 
@@ -1042,7 +1040,6 @@ impl<'a> Resolver<'a> {
                     ident,
                     ty,
                     annotations: field_annotations.clone(),
-                    default_value: None,
                 });
             }
         }
@@ -1179,7 +1176,6 @@ impl<'a> Resolver<'a> {
                     ident: member.ident.clone(),
                     ty,
                     annotations: Vec::new(),
-                    default_value: None,
                 });
             }
         }

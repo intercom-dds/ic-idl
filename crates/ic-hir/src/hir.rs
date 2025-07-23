@@ -293,10 +293,21 @@ pub enum Numeric {
 
 #[derive(Debug, Clone)]
 pub struct AnnotationTy {
-    pub members: Vec<Member>,
+    /// Parameters of the annotation
+    pub params: Vec<AnnParam>,
 
     /// Types defined inside the annotation.
     pub types: Vec<DefId>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnnParam {
+    /// Parameter name
+    pub ident: Ident,
+    /// Parameter type
+    pub ty: Ty,
+    /// Default value for the parameter
+    pub default: Option<Numeric>,
 }
 
 #[derive(Debug, Clone)]
@@ -318,8 +329,6 @@ pub struct Member {
     pub ident: Ident,
     pub ty: Ty,
     pub annotations: Vec<Ann>,
-    /// Default value for annotation members
-    pub default_value: Option<Numeric>,
 }
 
 #[derive(Debug, Clone)]

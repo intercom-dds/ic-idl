@@ -100,6 +100,10 @@ pub trait Visitor<'a> {
         walk_member(self, member);
     }
 
+    fn visit_ann_param(&mut self, param: &'a crate::hir::AnnParam) {
+        walk_ann_param(self, param);
+    }
+
     fn visit_variant(&mut self, variant: &'a Variant) {
         walk_variant(self, variant);
     }
@@ -166,8 +170,8 @@ pub fn walk_annotation_def<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a Anno
 where
     V: Visitor<'a> + ?Sized,
 {
-    for member in &data.members {
-        visitor.visit_member(member);
+    for param in &data.params {
+        visitor.visit_ann_param(param);
     }
     // Note: We don't visit nested types here as they're already visited via walk_def
 }
@@ -341,6 +345,16 @@ where
     visitor.visit_ty(&member.ty);
     for ann in &member.annotations {
         visitor.visit_annotation(ann);
+    }
+}
+
+pub fn walk_ann_param<'a, V>(visitor: &mut V, param: &'a crate::hir::AnnParam)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&param.ty);
+    if let Some(ref default) = param.default {
+        visitor.visit_numeric(default);
     }
 }
 

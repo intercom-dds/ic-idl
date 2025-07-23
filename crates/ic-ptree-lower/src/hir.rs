@@ -239,11 +239,11 @@ impl<'a> TreeBuilder<'a> {
                 let types = collect_with(self.state, sys::append_node, &v.types, |id| {
                     self.lower_def(*id)
                 });
-                let fields = collect_with(self.state, sys::append_node, &v.members, |mem| {
-                    let ty = self.lower_ty(&mem.ty);
-                    let decl = self.lower_decl(&mem.ident);
-                    let default = mem
-                        .default_value
+                let fields = collect_with(self.state, sys::append_node, &v.params, |param| {
+                    let ty = self.lower_ty(&param.ty);
+                    let decl = self.lower_decl(&param.ident);
+                    let default = param
+                        .default
                         .as_ref()
                         .map_or(NUM_UNDEF, |v| self.lower_numeric(v));
                     sys::create_annotation_member(self.state, decl, ty, default)

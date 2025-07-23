@@ -211,8 +211,8 @@ fn test_type_resolution_in_annotation() {
         .expect("Should find annotation");
 
     if let DefKind::Annotation(ann) = &ann_def.kind {
-        assert_eq!(ann.members.len(), 1);
-        assert_eq!(ann.members[0].ident.name, "value");
+        assert_eq!(ann.params.len(), 1);
+        assert_eq!(ann.params[0].ident.name, "value");
         // The type should be resolved to ExtensibilityKind
     }
 }

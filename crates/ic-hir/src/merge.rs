@@ -147,25 +147,25 @@ impl HirMerger {
     /// Two annotations are considered identical if they have the same members with
     /// the same types in the same order.
     fn annotations_are_identical(ann1: &AnnotationTy, ann2: &AnnotationTy) -> bool {
-        // Check if they have the same number of members
-        if ann1.members.len() != ann2.members.len() {
+        // Check if they have the same number of parameters
+        if ann1.params.len() != ann2.params.len() {
             return false;
         }
 
-        // Check if all members match in order
-        for (m1, m2) in ann1.members.iter().zip(ann2.members.iter()) {
-            // Member names must match
-            if m1.ident.name != m2.ident.name {
+        // Check if all parameters match in order
+        for (p1, p2) in ann1.params.iter().zip(ann2.params.iter()) {
+            // Parameter names must match
+            if p1.ident.name != p2.ident.name {
                 return false;
             }
 
-            // Member types must match
-            if !Self::types_are_identical(&m1.ty, &m2.ty) {
+            // Parameter types must match
+            if !Self::types_are_identical(&p1.ty, &p2.ty) {
                 return false;
             }
 
             // Default values must match
-            match (&m1.default_value, &m2.default_value) {
+            match (&p1.default, &p2.default) {
                 (None, None) => {}
                 (Some(v1), Some(v2)) => {
                     if !Self::numerics_are_identical(v1, v2) {
@@ -750,10 +750,10 @@ impl HirMerger {
                 definitions: self.map_def_ids(graph_index, &m.definitions),
             }),
             DefKind::Annotation(a) => DefKind::Annotation(AnnotationTy {
-                members: a
-                    .members
+                params: a
+                    .params
                     .iter()
-                    .map(|m| self.update_member(graph_index, m))
+                    .map(|p| self.update_ann_param(graph_index, p))
                     .collect(),
                 types: self.map_def_ids(graph_index, &a.types),
             }),
@@ -854,8 +854,19 @@ impl HirMerger {
                 .iter()
                 .map(|ann| self.update_annotation(graph_index, ann))
                 .collect(),
-            default_value: member
-                .default_value
+        }
+    }
+
+    fn update_ann_param(
+        &self,
+        graph_index: usize,
+        param: &crate::hir::AnnParam,
+    ) -> crate::hir::AnnParam {
+        crate::hir::AnnParam {
+            ident: param.ident.clone(),
+            ty: self.update_type(graph_index, &param.ty),
+            default: param
+                .default
                 .as_ref()
                 .map(|v| self.update_numeric(graph_index, v)),
         }

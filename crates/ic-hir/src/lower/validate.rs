@@ -333,9 +333,9 @@ impl<'a> Validator<'a> {
                 }
             }
             DefKind::Annotation(a) => {
-                // Validate annotation members
-                for member in &a.members {
-                    self.validate_type_ref(&member.ty);
+                // Validate annotation parameters
+                for param in &a.params {
+                    self.validate_type_ref(&param.ty);
                 }
                 for &child_id in &a.types {
                     self.validate_type(child_id);

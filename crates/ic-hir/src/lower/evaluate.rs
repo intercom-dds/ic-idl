@@ -1667,8 +1667,8 @@ impl<'a> ExpressionEvaluator<'a> {
         let def = self.ctx.definitions.get_mut(def_id);
         if let DefKind::Annotation(ann) = &mut def.kind {
             for (idx, value) in default_values {
-                if idx < ann.members.len() {
-                    ann.members[idx].default_value = Some(value);
+                if idx < ann.params.len() {
+                    ann.params[idx].default = Some(value);
                 }
             }
         }

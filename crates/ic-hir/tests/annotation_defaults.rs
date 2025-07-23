@@ -49,15 +49,15 @@ fn test_annotation_boolean_default() {
         .expect("annotation not found");
 
     if let DefKind::Annotation(ann) = &ann_def.1.kind {
-        assert_eq!(ann.members.len(), 2);
+        assert_eq!(ann.params.len(), 2);
 
         // Check first member
-        assert_eq!(ann.members[0].ident.name, "enable");
-        assert_eq!(ann.members[0].default_value, Some(Numeric::Bool(true)));
+        assert_eq!(ann.params[0].ident.name, "enable");
+        assert_eq!(ann.params[0].default, Some(Numeric::Bool(true)));
 
         // Check second member
-        assert_eq!(ann.members[1].ident.name, "debug");
-        assert_eq!(ann.members[1].default_value, Some(Numeric::Bool(false)));
+        assert_eq!(ann.params[1].ident.name, "debug");
+        assert_eq!(ann.params[1].default, Some(Numeric::Bool(false)));
     } else {
         panic!("Expected annotation definition");
     }
@@ -84,20 +84,20 @@ fn test_annotation_numeric_defaults() {
         .expect("annotation not found");
 
     if let DefKind::Annotation(ann) = &ann_def.1.kind {
-        assert_eq!(ann.members.len(), 3);
+        assert_eq!(ann.params.len(), 3);
 
         // Check members
-        assert_eq!(ann.members[0].ident.name, "value");
-        assert_eq!(ann.members[0].default_value, Some(Numeric::Int32(42)));
+        assert_eq!(ann.params[0].ident.name, "value");
+        assert_eq!(ann.params[0].default, Some(Numeric::Int32(42)));
 
-        assert_eq!(ann.members[1].ident.name, "ratio");
+        assert_eq!(ann.params[1].ident.name, "ratio");
         assert!(
-            matches!(ann.members[1].default_value, Some(Numeric::Float(f)) if (f - 3.15).abs() < 0.001)
+            matches!(ann.params[1].default, Some(Numeric::Float(f)) if (f - 3.15).abs() < 0.001)
         );
 
-        assert_eq!(ann.members[2].ident.name, "priority");
+        assert_eq!(ann.params[2].ident.name, "priority");
         // Note: literals are evaluated as Int32 by default, not considering target type
-        assert_eq!(ann.members[2].default_value, Some(Numeric::Int32(5)));
+        assert_eq!(ann.params[2].default, Some(Numeric::Int32(5)));
     } else {
         panic!("Expected annotation definition");
     }
@@ -122,10 +122,10 @@ fn test_annotation_string_default() {
         .expect("annotation not found");
 
     if let DefKind::Annotation(ann) = &ann_def.1.kind {
-        assert_eq!(ann.members.len(), 1);
-        assert_eq!(ann.members[0].ident.name, "description");
+        assert_eq!(ann.params.len(), 1);
+        assert_eq!(ann.params[0].ident.name, "description");
         assert_eq!(
-            ann.members[0].default_value,
+            ann.params[0].default,
             Some(Numeric::String("No description".to_string()))
         );
     } else {
@@ -153,15 +153,15 @@ fn test_annotation_no_default() {
         .expect("annotation not found");
 
     if let DefKind::Annotation(ann) = &ann_def.1.kind {
-        assert_eq!(ann.members.len(), 2);
+        assert_eq!(ann.params.len(), 2);
 
         // First member has no default
-        assert_eq!(ann.members[0].ident.name, "name");
-        assert_eq!(ann.members[0].default_value, None);
+        assert_eq!(ann.params[0].ident.name, "name");
+        assert_eq!(ann.params[0].default, None);
 
         // Second member has default
-        assert_eq!(ann.members[1].ident.name, "enabled");
-        assert_eq!(ann.members[1].default_value, Some(Numeric::Bool(true)));
+        assert_eq!(ann.params[1].ident.name, "enabled");
+        assert_eq!(ann.params[1].default, Some(Numeric::Bool(true)));
     } else {
         panic!("Expected annotation definition");
     }

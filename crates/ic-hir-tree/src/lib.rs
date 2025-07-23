@@ -180,6 +180,26 @@ fn emit_numeric(val: &Numeric) -> String {
     }
 }
 
+fn emit_ann_param(context: &Context, param: &ic_hir::hir::AnnParam) -> Leaf<String> {
+    let span = emit_span(&param.ident.span);
+    let ty = emit_ty(context, &param.ty);
+
+    let mut member = leaf!(
+        "{} {span} {} emit",
+        "param".green().bold(),
+        param.ident.name.cyan(),
+    );
+
+    if let Some(ref default) = param.default {
+        let default_str = emit_numeric(default);
+        member.push(leaf!("{} {}", "default".purple(), default_str.yellow()));
+    }
+
+    member.push(ty);
+
+    member
+}
+
 fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
     let span = emit_span(&mem.ident.span);
     let ty = emit_ty(context, &mem.ty);
@@ -196,12 +216,6 @@ fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
     }
 
     member.push(leaf!("{} {ty}", "type".purple()));
-
-    // Show default value if present
-    if let Some(default) = &mem.default_value {
-        let default_str = emit_numeric(default);
-        member.push(leaf!("{} {}", "default".purple(), default_str.yellow()));
-    }
 
     member
 }
@@ -269,8 +283,8 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             let nested = v.types.iter().map(|&v| emit_def(context, v));
             node.extend(nested);
 
-            let members = v.members.iter().map(|v| emit_member(context, v));
-            node.extend(members);
+            let params = v.params.iter().map(|v| emit_ann_param(context, v));
+            node.extend(params);
         }
         DefKind::Module(v) => {
             let nested = v.definitions.iter().map(|&v| emit_def(context, v));

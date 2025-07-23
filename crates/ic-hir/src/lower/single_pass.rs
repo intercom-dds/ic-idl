@@ -188,17 +188,8 @@ impl<'a> SinglePassLowerer<'a> {
     fn process_forward_declaration(&mut self, decl: &ic_syntax::Decl) -> DefId {
         let qualified_name = self.qualified_name(&decl.ident.name);
         
-        // Check if already defined
-        if let Some(&existing_id) = self.name_map.get(&qualified_name) {
-            let existing = self.ctx.definitions.get(existing_id);
-            self.errors.push(
-                error_span(
-                    format!("duplicate definition of `{}`", decl.ident.name),
-                    Label::new(decl.ident.span).message("redefined here"),
-                )
-                .label(Label::new(existing.ident.span).message("first defined here")),
-            );
-        }
+        // Always create a new forward declaration DefId
+        // (even if one already exists - we keep all declarations)
 
         // Create the forward declaration
         let kind = DefKind::Decl(match decl.kind {
@@ -209,9 +200,12 @@ impl<'a> SinglePassLowerer<'a> {
             ic_syntax::DeclKind::Valuetype => Decl::Valuetype,
         });
 
-        let parent = self.scope_path.last().and_then(|parent_name| {
-            self.name_map.get(parent_name).copied()
-        });
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
 
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
@@ -234,8 +228,23 @@ impl<'a> SinglePassLowerer<'a> {
     fn process_struct(&mut self, def: &ic_syntax::StructDef) -> DefId {
         let qualified_name = self.qualified_name(&def.ident.name);
         
-        // Check if there's a forward declaration
-        let existing_forward_decl = self.name_map.get(&qualified_name).copied();
+        // Check if there's already a definition (forward declaration or full)
+        let existing_def = self.name_map.get(&qualified_name).copied();
+        
+        // Check if it's a duplicate full definition
+        if let Some(existing_id) = existing_def {
+            let existing = self.ctx.definitions.get(existing_id);
+            if matches!(existing.kind, DefKind::Struct(_)) {
+                // Already have a full struct definition - error
+                self.errors.push(
+                    error_span(
+                        format!("duplicate definition of `{}`", def.ident.name),
+                        Label::new(def.ident.span).message("redefined here"),
+                    )
+                    .label(Label::new(existing.ident.span).message("first defined here")),
+                );
+            }
+        }
         
         // Resolve parent if any
         let parent_id = if let Some(parent_path) = &def.parent {
@@ -259,35 +268,27 @@ impl<'a> SinglePassLowerer<'a> {
             }
         }
 
-        // Create or update the definition
-        let parent = self.scope_path.last().and_then(|parent_name| {
-            self.name_map.get(parent_name).copied()
-        });
-
-        let id = if let Some(forward_id) = existing_forward_decl {
-            // Update the forward declaration
-            let def = self.ctx.definitions.get_mut(forward_id);
-            def.kind = DefKind::Struct(StructTy { parent: parent_id, members });
-            def.span = def.span; // Keep original forward declaration span
-            forward_id
+        // Always create a new definition (don't reuse forward declaration DefId)
+        let parent = if self.scope_path.is_empty() {
+            None
         } else {
-            // Create new definition
-            self.ctx.definitions.alloc_with_id(|id| Def {
-                id,
-                ident: def.ident.clone(),
-                parent,
-                annotations: Vec::new(), // Will be resolved later
-                span: def.span,
-                kind: DefKind::Struct(StructTy { parent: parent_id, members }),
-                flags: DefFlags::default(),
-            })
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
         };
 
-        // Register in name map and scope if new
-        if existing_forward_decl.is_none() {
-            self.name_map.insert(qualified_name, id);
-            self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
-        }
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations: Vec::new(), // Will be resolved later
+            span: def.span,
+            kind: DefKind::Struct(StructTy { parent: parent_id, members }),
+            flags: DefFlags::default(),
+        });
+
+        // Update name map to point to the full definition
+        self.name_map.insert(qualified_name, id);
+        self.ctx.scopes.add_definition(self.current_scope, def.ident.name.clone(), id);
 
         id
     }
@@ -297,9 +298,12 @@ impl<'a> SinglePassLowerer<'a> {
         let qualified_name = self.qualified_name(&def.ident.name);
         
         // Create module definition
-        let parent = self.scope_path.last().and_then(|parent_name| {
-            self.name_map.get(parent_name).copied()
-        });
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
 
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,

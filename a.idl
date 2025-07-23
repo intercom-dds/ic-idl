@@ -1,1 +1,7 @@
+struct Foo;
+
+struct Bar {
+    Foo my_foo;
+};
+
 struct Foo {};

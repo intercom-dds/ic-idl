@@ -253,7 +253,6 @@ impl<'a> Validator<'a> {
         }
     }
 
-
     /// Main validation entry point for a type.
     fn validate_type(&mut self, id: DefId) {
         if self.validated.contains(&id) {

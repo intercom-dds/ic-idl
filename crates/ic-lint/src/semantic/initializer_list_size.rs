@@ -26,14 +26,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Color, Diag, Label};
-use ic_hir::hir::{DefId, DefKind, Numeric, TyKind};
+use ic_hir::hir::{self, DefId, DefKind, Numeric, TyKind};
+use ic_hir::visit::walk_tree;
 use ic_hir::{Context, ResolvedGraph};
 use ic_syntax::Span;
 
 use crate::{Category, Lint, LintCtx};
 
 pub struct InitializerListSize<'a> {
-    _marker: std::marker::PhantomData<&'a ()>,
+    ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for InitializerListSize<'a> {
@@ -49,24 +51,28 @@ impl<'a> Lint<'a> for InitializerListSize<'a> {
         "Errors when initializer list size doesn't match type"
     }
 
-    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        for (_, def) in &hir.context.definitions {
-            if let DefKind::Const(const_ty) = &def.kind {
-                validate_numeric_initializer(ctx, &hir.context, &const_ty.value, def.span);
-            }
+    fn check_hir(ctx: &'a LintCtx<'a>, hir: &'a ResolvedGraph) {
+        let mut lint = Self { ctx, hir };
+        walk_tree(&mut lint, &hir.context.definitions);
+    }
+}
+
+impl<'a> ic_hir::visit::Visitor<'a> for InitializerListSize<'a> {
+    fn visit_const(&mut self, def: &'a hir::Def, data: &'a hir::ConstTy) {
+        validate_init_list(self.ctx, &self.hir.context, &data.value, def.ident.span);
+    }
+
+    fn visit_ann_param(&mut self, param: &'a hir::AnnParam) {
+        if let Some(num) = &param.default {
+            validate_init_list(self.ctx, &self.hir.context, num, param.ident.span);
         }
     }
 }
 
-fn validate_numeric_initializer(
-    ctx: &LintCtx<'_>,
-    context: &Context,
-    numeric: &Numeric,
-    span: Span,
-) {
+fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, span: Span) {
     match numeric {
         Numeric::Array { ty, values } => {
-            if let Some(expected_len) = get_array_length(context, *ty) {
+            if let Some(expected_len) = array_len(context, *ty) {
                 if values.len() != expected_len {
                     ctx.report(
                         InitializerListSize::name(),
@@ -85,7 +91,7 @@ fn validate_numeric_initializer(
                 }
             }
             for value in values {
-                validate_numeric_initializer(ctx, context, value, span);
+                validate_init_list(ctx, context, value, span);
             }
         }
         Numeric::Struct { ty, fields } => {
@@ -111,28 +117,28 @@ fn validate_numeric_initializer(
                 }
             }
             for (_, value) in fields {
-                validate_numeric_initializer(ctx, context, value, span);
+                validate_init_list(ctx, context, value, span);
             }
         }
         Numeric::Sequence { values, .. } => {
             for value in values {
-                validate_numeric_initializer(ctx, context, value, span);
+                validate_init_list(ctx, context, value, span);
             }
         }
         Numeric::Map { values, .. } => {
             for (key, value) in values {
-                validate_numeric_initializer(ctx, context, key, span);
-                validate_numeric_initializer(ctx, context, value, span);
+                validate_init_list(ctx, context, key, span);
+                validate_init_list(ctx, context, value, span);
             }
         }
         Numeric::Union { value, .. } => {
-            validate_numeric_initializer(ctx, context, value, span);
+            validate_init_list(ctx, context, value, span);
         }
         _ => {}
     }
 }
 
-fn get_array_length(context: &Context, type_id: DefId) -> Option<usize> {
+fn array_len(context: &Context, type_id: DefId) -> Option<usize> {
     let def = context.definitions.get(type_id);
 
     match &def.kind {

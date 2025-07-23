@@ -32,7 +32,7 @@ mod common;
 #[test]
 fn circular_struct_inheritance() {
     let output = common::test_lint_hir(
-        r#"
+        r"
         struct A;
         struct B;
         
@@ -43,7 +43,7 @@ fn circular_struct_inheritance() {
         struct B : A {
             long y;
         };
-        "#,
+        ",
     );
     assert_snapshot!(output);
 }
@@ -51,7 +51,7 @@ fn circular_struct_inheritance() {
 #[test]
 fn circular_interface_inheritance() {
     let output = common::test_lint_hir(
-        r#"
+        r"
         interface Foo;
         interface Bar;
         
@@ -62,7 +62,7 @@ fn circular_interface_inheritance() {
         interface Bar : Foo {
             void method2();
         };
-        "#,
+        ",
     );
     assert_snapshot!(output);
 }
@@ -70,13 +70,13 @@ fn circular_interface_inheritance() {
 #[test]
 fn self_referential_struct() {
     let output = common::test_lint_hir(
-        r#"
+        r"
         struct SelfRef;
         
         struct SelfRef : SelfRef {
             long value;
         };
-        "#,
+        ",
     );
     assert_snapshot!(output);
 }
@@ -84,13 +84,13 @@ fn self_referential_struct() {
 #[test]
 fn self_referential_interface() {
     let output = common::test_lint_hir(
-        r#"
+        r"
         interface SelfRef;
         
         interface SelfRef : SelfRef {
             void method();
         };
-        "#,
+        ",
     );
     assert_snapshot!(output);
 }
@@ -98,7 +98,7 @@ fn self_referential_interface() {
 #[test]
 fn longer_circular_chain() {
     let output = common::test_lint_hir(
-        r#"
+        r"
         struct A;
         struct B;
         struct C;
@@ -114,7 +114,7 @@ fn longer_circular_chain() {
         struct C : A {
             long c;
         };
-        "#,
+        ",
     );
     assert_snapshot!(output);
 }
@@ -122,7 +122,7 @@ fn longer_circular_chain() {
 #[test]
 fn valid_inheritance() {
     let report = common::lint_hir(
-        r#"
+        r"
         struct Base {
             long x;
         };
@@ -138,15 +138,18 @@ fn valid_inheritance() {
         interface IDerived : IBase {
             void method2();
         };
-        "#,
+        ",
     );
-    assert!(report.errors.is_empty(), "Valid inheritance should not produce errors");
+    assert!(
+        report.errors.is_empty(),
+        "Valid inheritance should not produce errors"
+    );
 }
 
 #[test]
 fn multiple_interface_inheritance() {
     let output = common::test_lint_hir(
-        r#"
+        r"
         interface A;
         interface B;
         interface C;
@@ -162,7 +165,7 @@ fn multiple_interface_inheritance() {
         interface C : A {
             void methodC();
         };
-        "#,
+        ",
     );
     assert_snapshot!(output);
 }

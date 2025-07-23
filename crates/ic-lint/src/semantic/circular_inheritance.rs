@@ -28,9 +28,9 @@
 use std::collections::HashSet;
 
 use ic_diagnostic::Label;
-use ic_hir::hir::{Def, DefId, DefKind, StructTy, InterfaceTy};
-use ic_hir::visit::{Visitor, walk_tree};
 use ic_hir::ResolvedGraph;
+use ic_hir::hir::{Def, DefId, DefKind, InterfaceTy, StructTy};
+use ic_hir::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -65,7 +65,7 @@ impl<'a> Lint<'a> for CircularInheritance<'a> {
     }
 }
 
-impl<'a> CircularInheritance<'a> {
+impl CircularInheritance<'_> {
     /// Check for circular inheritance starting from the given type
     fn check_circular_inheritance(&mut self, id: DefId, path: &mut Vec<(DefId, String)>) -> bool {
         // If we're already visiting this type, we found a cycle
@@ -94,23 +94,30 @@ impl<'a> CircularInheritance<'a> {
         for parent in parents {
             if self.check_circular_inheritance(parent, path) {
                 found_cycle = true;
-                
+
                 // Report the cycle when we're back at the type that completes the cycle
                 if path.iter().any(|(type_id, _)| *type_id == parent) {
                     let def = self.hir.context.definitions.get(id);
                     let parent_def = self.hir.context.definitions.get(parent);
-                    
+
                     // Build the cycle path for the error message
-                    let cycle_start = path.iter().position(|(type_id, _)| *type_id == parent).unwrap();
+                    let cycle_start = path
+                        .iter()
+                        .position(|(type_id, _)| *type_id == parent)
+                        .unwrap();
                     let cycle_path: Vec<_> = path[cycle_start..]
                         .iter()
                         .map(|(_, name)| name.as_str())
                         .collect();
-                    
+
                     let diag = ic_diagnostic::error_span(
                         format!(
                             "{} `{}` has circular inheritance",
-                            if matches!(def.kind, DefKind::Struct(_)) { "struct" } else { "interface" },
+                            if matches!(def.kind, DefKind::Struct(_)) {
+                                "struct"
+                            } else {
+                                "interface"
+                            },
                             def.ident.name
                         ),
                         Label::new(def.span).message("type is part of a circular dependency"),
@@ -120,7 +127,7 @@ impl<'a> CircularInheritance<'a> {
                         cycle_path.join(" -> "),
                         parent_def.ident.name
                     ));
-                    
+
                     Self::report(self.ctx, diag);
                 }
             }
@@ -139,7 +146,7 @@ impl<'a> Visitor<'a> for CircularInheritance<'a> {
         let mut path = Vec::new();
         self.check_circular_inheritance(def.id, &mut path);
     }
-    
+
     fn visit_interface(&mut self, def: &'a Def, _interface_ty: &'a InterfaceTy) {
         let mut path = Vec::new();
         self.check_circular_inheritance(def.id, &mut path);

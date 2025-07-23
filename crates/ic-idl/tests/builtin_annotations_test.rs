@@ -88,15 +88,7 @@ fn test_builtin_key_annotation() {
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
-    let builtin_annotations = r"
-        module intercom {
-        module annotations {
-            @annotation key {
-                boolean value default TRUE;
-            };
-        }; // module annotations
-        }; // module intercom
-    ";
+    let builtin_annotations = include_str!("../../ic-idl/idl/annotations.idl");
 
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(

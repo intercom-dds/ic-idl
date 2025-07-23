@@ -485,7 +485,38 @@ impl<'a> SinglePassLowerer<'a> {
             None
         };
 
-        // Resolve members
+        // Always create a new definition (don't reuse forward declaration DefId)
+        let parent = if self.scope_path.is_empty() {
+            None
+        } else {
+            let parent_name = self.scope_path.join("::");
+            self.name_map.get(&parent_name).copied()
+        };
+
+        // Resolve annotations
+        let annotations = self.resolve_ast_annotations(&def.annotations);
+
+        // First, create a placeholder struct so it can be referenced by its own members
+        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: def.ident.clone(),
+            parent,
+            annotations: annotations.clone(),
+            span: def.span,
+            kind: DefKind::Struct(StructTy {
+                parent: parent_id,
+                members: Vec::new(), // Placeholder - will be updated
+            }),
+            flags: DefFlags::default(),
+        });
+
+        // Update name map to point to the full definition BEFORE resolving members
+        self.name_map.insert(qualified_name.clone(), id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
+
+        // Now resolve members (after struct is registered)
         let mut members = Vec::new();
         for field in &def.members {
             let base_ty = self.resolve_type(&field.ty);
@@ -501,35 +532,11 @@ impl<'a> SinglePassLowerer<'a> {
             }
         }
 
-        // Always create a new definition (don't reuse forward declaration DefId)
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
-
-        // Resolve annotations
-        let annotations = self.resolve_ast_annotations(&def.annotations);
-
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Struct(StructTy {
-                parent: parent_id,
-                members,
-            }),
-            flags: DefFlags::default(),
-        });
-
-        // Update name map to point to the full definition
-        self.name_map.insert(qualified_name, id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), id);
+        // Update the struct with resolved members
+        let def = self.ctx.definitions.get_mut(id);
+        if let DefKind::Struct(struct_ty) = &mut def.kind {
+            struct_ty.members = members;
+        }
 
         id
     }

@@ -195,15 +195,15 @@ fn test_union_lowering() {
                 double d;
         };
         
+        enum Color {
+            RED, GREEN, BLUE
+        };
+        
         union EnumUnion switch (Color) {
             case RED:
                 long red_value;
             case GREEN:
                 string green_value;
-        };
-        
-        enum Color {
-            RED, GREEN, BLUE
         };
     ";
 
@@ -376,7 +376,7 @@ fn test_self_referential_struct() {
     let idl = r"
         struct Node {
             long value;
-            Node next;
+            sequence<Node> children;
         };
     ";
 

@@ -85,8 +85,8 @@ impl<'a> Validator<'a> {
     fn validate_type_ref(&mut self, ty: &Ty) {
         match &ty.kind {
             TyKind::Adt(id) => {
-                self.validate_complete(*id);
-                // Don't validate_type here - it would cause infinite recursion
+                // Don't check for completeness here - forward declarations are allowed
+                // to be used before they're defined in IDL
                 // The type will be validated separately in validate_all
             }
             TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {

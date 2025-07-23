@@ -42,16 +42,16 @@
 //!
 //! let mut compiler = Compiler::new(options);
 //! match compiler.compile() {
-//!     Ok((ptree, diagnostics)) => {
+//!     Ok(compiled_ast) => {
 //!         // Check for warnings
-//!         if !diagnostics.warnings.is_empty() {
+//!         if !compiled_ast.diagnostics.warnings.is_empty() {
 //!             // Use the pretty module to format warnings
-//!             let formatted = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
+//!             let formatted = ic_idl::pretty::fmt_warnings(&compiled_ast.diagnostics.warnings, compiler.source_map());
 //!             // User can print formatted warnings if desired
 //!         }
 //!
-//!         // Now you can use the ptree for further processing
-//!         // The ptree contains the fully analyzed IDL structure
+//!         // Now you can use the AST items for further processing
+//!         // compiled_ast.items contains all parsed AST items
 //!     }
 //!     Err(ic_idl::CompileError::Diagnostics(diagnostics)) => {
 //!         // Format errors and warnings using the pretty module
@@ -67,15 +67,22 @@
 //!     }
 //! }
 //!
-//! // Example 2: Parse a single file to ptree
+//! // Example 2: Compile to HIR
 //! let mut compiler = Compiler::new(CompilerOptions::default());
-//! let ptree = compiler.parse_to_ptree(&PathBuf::from("example.idl")).unwrap();
-//! // Use the ptree for analysis or code generation
+//! match compiler.compile_hir() {
+//!     Ok((hir, diagnostics)) => {
+//!         // Use the HIR for analysis or code generation
+//!     }
+//!     Err(e) => {
+//!         // Handle errors
+//!     }
+//! }
 //!
-//! // Example 3: Access the compilation pipeline stages
-//! let ast = compiler.parse_to_ast(&PathBuf::from("example.idl")).unwrap();
-//! let hir = compiler.ast_to_hir(ast).unwrap();
-//! let ptree = compiler.hir_to_ptree(&hir);
+//! // Example 3: Parse a single file
+//! let file_path = PathBuf::from("example.idl");
+//! let mut source_map = ic_vfs::SourceMap::default();
+//! let file_id = source_map.open(&file_path, ic_vfs::Include::Static).unwrap().0;
+//! let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
 //!
 //! ```
 

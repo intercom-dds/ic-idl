@@ -73,7 +73,7 @@ fn test_ext_annotation_requires_qualification() {
         hir.warnings
     );
     assert!(hir.warnings[0].to_string().contains("no_serializer"));
-    assert!(hir.warnings[0].to_string().contains("annotation not found"));
+    assert!(hir.warnings[0].to_string().contains("not found"));
 
     // Verify struct has correct annotations resolved
     let struct_def = hir

@@ -150,7 +150,10 @@ const long test11 = a ^ b ^ c ^ d;
 ";
 
     let output = test_lint(idl);
-    assert!(output.is_empty(), "Expected no warnings for operators with same associativity, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for operators with same associativity, but got: {output}"
+    );
 }
 
 #[test]

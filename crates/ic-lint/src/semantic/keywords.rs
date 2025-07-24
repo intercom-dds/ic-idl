@@ -47,7 +47,7 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
 
     // don't visit types
     fn visit_type(&mut self, _: &'a ic_syntax::Type) {}
-    
+
     // Visit union members to check their declarators
     fn visit_union_member(&mut self, member: &'a ic_syntax::UnionMember) {
         // Handle the declarator which can be Simple(Ident) or Array(ArrayDeclarator)

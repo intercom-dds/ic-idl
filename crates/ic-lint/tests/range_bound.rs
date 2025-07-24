@@ -56,8 +56,7 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for valid min/max, but got: {}",
-        output
+        "Expected no warnings for valid min/max, but got: {output}"
     );
 }
 
@@ -126,8 +125,7 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for range with only min, but got: {}",
-        output
+        "Expected no warnings for range with only min, but got: {output}"
     );
 }
 
@@ -144,8 +142,7 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for range with only max, but got: {}",
-        output
+        "Expected no warnings for range with only max, but got: {output}"
     );
 }
 
@@ -162,8 +159,7 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for multiple ranges, but got: {}",
-        output
+        "Expected no warnings for multiple ranges, but got: {output}"
     );
 }
 
@@ -181,8 +177,7 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for range on struct, but got: {}",
-        output
+        "Expected no warnings for range on struct, but got: {output}"
     );
 }
 
@@ -198,8 +193,7 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for range on const, but got: {}",
-        output
+        "Expected no warnings for range on const, but got: {output}"
     );
 }
 
@@ -280,7 +274,6 @@ module MyModule {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no warnings for positive min, but got: {}",
-        output
+        "Expected no warnings for positive min, but got: {output}"
     );
 }

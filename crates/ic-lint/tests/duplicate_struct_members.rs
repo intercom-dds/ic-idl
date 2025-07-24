@@ -41,7 +41,10 @@ struct Point {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no warnings for valid struct members, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for valid struct members, but got: {output}"
+    );
 }
 
 #[test]

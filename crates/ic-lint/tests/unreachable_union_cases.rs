@@ -95,7 +95,12 @@ union MyUnion switch (unsigned short) {
     case -1: string b;  // Negative value for unsigned type
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+    let output = test_lint_hir(source);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for negative values on unsigned types (they wrap around), but got: \
+         {output}"
+    );
 }
 
 #[test]

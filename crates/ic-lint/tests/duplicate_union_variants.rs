@@ -41,7 +41,10 @@ union Result switch (long) {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no warnings for valid union variants, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for valid union variants, but got: {output}"
+    );
 }
 
 #[test]

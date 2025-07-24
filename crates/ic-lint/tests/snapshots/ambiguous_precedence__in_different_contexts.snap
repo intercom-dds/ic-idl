@@ -3,6 +3,15 @@ source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: check_ambiguous_precedence(idl)
 ---
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+   ┌ test.idl:8:20
+   │
+ 8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
+   ·                    ^ ^^^^^ than this expression
+   ·                    └─ this operator has lower precedence
+   └──
+ help: add parentheses to clarify the intended order of operations
+
+warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:21:27
     │
  21 │     const long nested = 1 | 2 & 3;  // Should warn in nested context

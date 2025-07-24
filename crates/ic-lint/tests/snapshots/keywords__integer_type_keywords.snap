@@ -2,4 +2,66 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
+error[keywords]: `int8` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:10
+   │
+ 3 │     long int8;              // 'int8' is a keyword
+   ·          ^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int8`
 
+error[keywords]: `int16` is a keyword and may not be used as an identifier
+   ┌ test.idl:4:10
+   │
+ 4 │     long int16;             // 'int16' is a keyword
+   ·          ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int16`
+
+error[keywords]: `int32` is a keyword and may not be used as an identifier
+   ┌ test.idl:5:10
+   │
+ 5 │     long int32;             // 'int32' is a keyword
+   ·          ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int32`
+
+error[keywords]: `int64` is a keyword and may not be used as an identifier
+   ┌ test.idl:6:10
+   │
+ 6 │     long int64;             // 'int64' is a keyword
+   ·          ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int64`
+
+error[keywords]: `uint8` is a keyword and may not be used as an identifier
+   ┌ test.idl:7:19
+   │
+ 7 │     unsigned long uint8;    // 'uint8' is a keyword
+   ·                   ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_uint8`
+
+error[keywords]: `uint16` is a keyword and may not be used as an identifier
+   ┌ test.idl:8:19
+   │
+ 8 │     unsigned long uint16;   // 'uint16' is a keyword
+   ·                   ^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_uint16`
+
+error[keywords]: `uint32` is a keyword and may not be used as an identifier
+   ┌ test.idl:9:19
+   │
+ 9 │     unsigned long uint32;   // 'uint32' is a keyword
+   ·                   ^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_uint32`
+
+error[keywords]: `uint64` is a keyword and may not be used as an identifier
+    ┌ test.idl:10:19
+    │
+ 10 │     unsigned long uint64;   // 'uint64' is a keyword
+    ·                   ^^^^^^ this is an IDL keyword
+    └──
+ help: the keyword can be escaped by changing to `_uint64`

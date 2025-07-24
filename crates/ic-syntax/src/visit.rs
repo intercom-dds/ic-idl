@@ -161,11 +161,15 @@ pub trait Visitor<'a> {
         walk_expr_group(self, group);
     }
 
-    fn visit_forward_decl(&mut self, decl: &'a Decl) {}
+    fn visit_forward_decl(&mut self, decl: &'a Decl) {
+        walk_decl(self, decl);
+    }
 
     fn visit_ident(&mut self, ident: &'a Ident) {}
 
-    fn visit_declarator(&mut self, decl: &'a Declarator) {}
+    fn visit_declarator(&mut self, decl: &'a Declarator) {
+        walk_declarator(self, decl);
+    }
 
     fn visit_path(&mut self, path: &'a Path) {
         walk_path(self, path);
@@ -273,8 +277,8 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_type(&def.ty);
-    for _decl in &def.names {
-        // visitor.visit_decl(decl.clon);
+    for decl in &def.names {
+        visitor.visit_declarator(decl);
     }
 }
 
@@ -543,4 +547,26 @@ where
         }
         Type::Path(v) => visitor.visit_path(v),
     }
+}
+
+pub fn walk_declarator<'a, V>(visitor: &mut V, decl: &'a Declarator)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    match decl {
+        Declarator::Simple(ident) => visitor.visit_ident(ident),
+        Declarator::Array(array) => {
+            visitor.visit_ident(&array.ident);
+            for bound in &array.bounds {
+                visitor.visit_expr(bound);
+            }
+        }
+    }
+}
+
+pub fn walk_decl<'a, V>(visitor: &mut V, decl: &'a Decl)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ident(&decl.ident);
 }

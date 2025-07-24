@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/bitmask_ann.rs
-assertion_line: 46
 expression: test_lint(source)
 ---
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension

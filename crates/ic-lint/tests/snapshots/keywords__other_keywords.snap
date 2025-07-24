@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/keywords.rs
-assertion_line: 327
 expression: test_lint(source)
 ---
 error[keywords]: `home` is a keyword and may not be used as an identifier

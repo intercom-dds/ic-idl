@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/scoped_lit.rs
-assertion_line: 128
 expression: test_lint(source)
 ---
 warning[assign_expr]: assignment operator on enumerators is an InterCOM extension

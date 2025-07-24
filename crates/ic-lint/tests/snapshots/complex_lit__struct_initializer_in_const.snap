@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/complex_lit.rs
-assertion_line: 44
 expression: test_lint(source)
 ---
 warning[complex_lit]: complex literals are an InterCOM extension

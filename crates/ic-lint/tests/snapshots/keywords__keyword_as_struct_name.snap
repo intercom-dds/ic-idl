@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/keywords.rs
-assertion_line: 60
 expression: test_lint(source)
 ---
 error[keywords]: `int32` is a keyword and may not be used as an identifier

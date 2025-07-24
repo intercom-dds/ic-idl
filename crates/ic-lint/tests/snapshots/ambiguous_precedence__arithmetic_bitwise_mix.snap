@@ -1,6 +1,6 @@
 ---
 source: crates/ic-lint/tests/ambiguous_precedence.rs
-expression: check_ambiguous_precedence(idl)
+expression: test_lint(idl)
 ---
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:3:22

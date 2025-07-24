@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/void_ty.rs
-assertion_line: 212
 expression: test_lint_hir(source)
 ---
 error[void_ty]: `void` is only allowed as a return type in prototypes

@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/bitmask_ann.rs
-assertion_line: 90
 expression: test_lint(source)
 ---
 error[ann_members]: only consts, typedefs and enums can be defined in annotations

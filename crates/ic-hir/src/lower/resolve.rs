@@ -322,6 +322,13 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn make_null_type(span: ic_syntax::Span) -> Ty {
+        Ty {
+            kind: TyKind::Null,
+            span,
+        }
+    }
+
     /// Resolves a sequence type.
     fn resolve_sequence_type(&mut self, v: &ic_syntax::SequenceType) -> Ty {
         Ty {
@@ -389,10 +396,7 @@ impl<'a> Resolver<'a> {
         ));
 
         // Return placeholder type - use Null to distinguish from legitimate Any
-        Ty {
-            kind: TyKind::Null,
-            span,
-        }
+        Self::make_null_type(span)
     }
 
     /// Gets the current parent `DefId` based on scope path.
@@ -971,11 +975,7 @@ impl<'a> Resolver<'a> {
                     let labels = Vec::new();
 
                     // Use a null type for null cases
-                    let null_ty = Ty {
-                        kind: TyKind::Null,
-                        span: null_elem.span,
-                    };
-
+                    let null_ty = Self::make_null_type(null_elem.span);
                     variants.push(crate::hir::Variant {
                         ident,
                         ty: null_ty,
@@ -1397,10 +1397,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_type(field_ty)
                 } else {
                     // Use Null as placeholder - evaluation phase will assign correct type based on size
-                    Ty {
-                        kind: TyKind::Null,
-                        span: field.span,
-                    }
+                    Self::make_null_type(field.span)
                 };
 
                 crate::hir::BitsetField {

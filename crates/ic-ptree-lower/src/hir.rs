@@ -109,7 +109,7 @@ impl<'a> TreeBuilder<'a> {
                 let bound = self.lower_bound(*bound);
                 sys::create_map(self.state, key, elem, bound)
             }
-            TyKind::Adt(id) => self.lookup_type(*id),
+            TyKind::Adt(id) => self.lookup_node(*id),
         }
     }
 
@@ -163,7 +163,8 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_str(self.state, str.as_ptr())
             }
             Numeric::Const(v) => {
-                let node = self.lower_def(*v);
+                let node = self.lookup_node(*v);
+                assert!(!node.is_null());
                 let numeric = sys::create_numeric_node(self.state, node);
                 sys::create_value_node(self.state, numeric, ptr::null_mut())
             }
@@ -216,10 +217,10 @@ impl<'a> TreeBuilder<'a> {
         node
     }
 
-    unsafe fn lookup_type(&self, id: DefId) -> *mut sys::ptree {
+    unsafe fn lookup_node(&self, id: DefId) -> *mut sys::ptree {
         let name = self.ctx.qualified_name(id);
         let ident = create_ident(&name);
-        unsafe { sys::lookup_type(self.state, ident.as_ptr()) }
+        unsafe { sys::lookup_node(self.state, ident.as_ptr()) }
     }
 
     #[allow(clippy::too_many_lines)]
@@ -299,25 +300,17 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_union_finish(self.state, disc, variants)
             }
             DefKind::Enum(v) => {
-                let values =
-                    collect_with(self.state, sys::append_enum_node, &v.fields, |&var_id| {
-                        let var_def = self.ctx.definitions.get(var_id);
-                        let name = create_ident(&var_def.ident.name);
-
-                        let value = if let DefKind::Const(const_ty) = &var_def.kind {
-                            match const_ty.value {
-                                Numeric::Int32(v) => i64::from(v),
-                                Numeric::Int64(v) => v,
-                                _ => 0,
-                            }
-                        } else {
-                            0
-                        };
-
-                        let value_node = sys::create_i64(self.state, value, 10);
-                        let node = sys::create_enum_value(self.state, name.as_ptr(), value_node);
-                        self.annotate(node, &var_def.annotations)
-                    });
+                let values = collect_with(self.state, sys::append_enum_node, &v.fields, |&var| {
+                    let var = self.ctx.type_of(var);
+                    let name = create_ident(&var.ident.name);
+                    if let DefKind::Const(const_ty) = &var.kind {
+                        let value = self.lower_numeric(&const_ty.value);
+                        let node = sys::create_enum_value(self.state, name.as_ptr(), value);
+                        self.annotate(node, &var.annotations)
+                    } else {
+                        std::ptr::null_mut()
+                    }
+                });
                 sys::create_enum(self.state, ident, values)
             }
             DefKind::Const(v) => {

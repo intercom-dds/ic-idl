@@ -2,4 +2,9 @@
 source: crates/ic-lint/tests/ann_members.rs
 expression: test_lint(source)
 ---
-
+error[ann_members]: only consts, typedefs and enums can be defined in annotations
+   ┌ test.idl:4:16
+   │
+ 4 │         struct Point {
+   ·                ^^^^^ `struct`s are not allowed in annotations
+   └──

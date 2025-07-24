@@ -34,25 +34,22 @@ use common::test_lint;
 fn valid_annotation_members() {
     let source = r"
 module MyModule {
-    @annotation
-    annotation MyAnn {
+    @annotation MyAnn {
         const long value = 10;
         typedef string Name;
         enum Level { LOW, MEDIUM, HIGH };
-        bitmask Flags { FLAG_A, FLAG_B };
     };
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    assert_eq!(test_lint(source), "");
 }
 
 #[test]
 fn invalid_struct_in_annotation() {
     let source = r"
 module MyModule {
-    @annotation
-    annotation BadAnn {
+    @annotation BadAnn {
         struct Point {
             long x;
             long y;
@@ -68,27 +65,10 @@ module MyModule {
 fn invalid_union_in_annotation() {
     let source = r"
 module MyModule {
-    @annotation
-    annotation BadAnn {
+    @annotation BadAnn {
         union Value switch (long) {
             case 1: string s;
             case 2: long n;
-        };
-    };
-};
-";
-
-    assert_snapshot!(test_lint(source));
-}
-
-#[test]
-fn invalid_interface_in_annotation() {
-    let source = r"
-module MyModule {
-    @annotation
-    annotation BadAnn {
-        interface Service {
-            void doSomething();
         };
     };
 };

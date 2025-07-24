@@ -54,6 +54,9 @@ impl<'a> Visitor<'a> for VoidTy<'a> {
         {
             Self::report(self.ctx, diag);
         }
+
+        // Continue visiting nested types
+        ic_hir::visit::walk_ty(self, ty);
     }
 
     fn visit_proto(&mut self, proto: &'a hir::ProtoTy) {

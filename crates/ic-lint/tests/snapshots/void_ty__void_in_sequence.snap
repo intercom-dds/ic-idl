@@ -2,4 +2,16 @@
 source: crates/ic-lint/tests/void_ty.rs
 expression: test_lint_hir(source)
 ---
+error[void_ty]: `void` is only allowed as a return type in prototypes
+   ┌ test.idl:3:14
+   │
+ 3 │     sequence<void> voidSeq;
+   ·              ^^^^ invalid use of `void`
+   └──
 
+error[void_ty]: `void` is only allowed as a return type in prototypes
+   ┌ test.idl:4:23
+   │
+ 4 │     sequence<sequence<void>> nestedVoidSeq;
+   ·                       ^^^^ invalid use of `void`
+   └──

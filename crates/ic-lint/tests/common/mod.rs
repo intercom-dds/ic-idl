@@ -141,11 +141,12 @@ pub fn test_lint_hir(source: &str) -> String {
         user: ast.tree,
         include_in_output: false,
     });
-    
+
     // Assert that we have either definitions or errors
     assert!(
         !hir.order.is_empty() || !hir.errors.is_empty(),
-        "HIR has no definitions and no errors were reported. This indicates a bug in parsing or HIR construction."
+        "HIR has no definitions and no errors were reported. This indicates a bug in parsing or \
+         HIR construction."
     );
 
     // Configure lint to enable semantic errors, pedantic warnings, and annotation warnings

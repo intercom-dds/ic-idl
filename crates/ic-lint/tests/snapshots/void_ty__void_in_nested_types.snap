@@ -1,5 +1,25 @@
 ---
 source: crates/ic-lint/tests/void_ty.rs
+assertion_line: 212
 expression: test_lint_hir(source)
 ---
+error[void_ty]: `void` is only allowed as a return type in prototypes
+   ┌ test.idl:3:23
+   │
+ 3 │     sequence<sequence<void>> deeplyNested;
+   ·                       ^^^^ invalid use of `void`
+   └──
 
+error[void_ty]: `void` is only allowed as a return type in prototypes
+   ┌ test.idl:4:26
+   │
+ 4 │     map<string, sequence<void>> mapOfVoidSeq;
+   ·                          ^^^^ invalid use of `void`
+   └──
+
+error[void_ty]: `void` is only allowed as a return type in prototypes
+    ┌ test.idl:12:33
+    │
+ 12 │     void handleData(in sequence<void> data);
+    ·                                 ^^^^ invalid use of `void`
+    └──

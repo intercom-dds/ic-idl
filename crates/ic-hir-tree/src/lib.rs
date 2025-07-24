@@ -31,7 +31,7 @@ use std::fmt::Write;
 
 use ic_cli::color::Colorize;
 use ic_hir::hir::{
-    Decl, DefFlags, DefId, DefKind, Member, Numeric, ParamKind, Span, Ty, TyKind, Variant,
+    Decl, DefFlags, DefId, DefKind, Label, Member, Numeric, ParamKind, Span, Ty, TyKind, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
 
@@ -220,6 +220,24 @@ fn emit_member(context: &Context, mem: &Member) -> Leaf<String> {
     member
 }
 
+fn emit_label(context: &Context, label: &Label) -> Leaf<String> {
+    let span = emit_span(&label.span);
+    let value_str = if let Numeric::Const(def_id) = &label.value {
+        let def = context.type_of(*def_id);
+        let qualified_name = context.qualified_name(*def_id);
+        let value = if let DefKind::Const(const_ty) = &def.kind {
+            format!(" '= {}'", emit_numeric(&const_ty.value)).purple()
+        } else {
+            emit_numeric(&label.value)
+        };
+        format!("{}{}", qualified_name.cyan(), value)
+    } else {
+        format!("' = {}'", emit_numeric(&label.value)).purple()
+    };
+
+    leaf!("{} {span} {}", "label".green().bold(), value_str)
+}
+
 fn emit_variant(context: &Context, var: &Variant) -> Leaf<String> {
     let span = emit_span(&var.ident.span);
     let default = if var.is_default { "default" } else { "" };
@@ -239,7 +257,7 @@ fn emit_variant(context: &Context, var: &Variant) -> Leaf<String> {
     node.push(leaf!("{} {}", "type".purple(), ty));
 
     for label in &var.labels {
-        node.push(leaf!("{} {label:?}", "label".green().bold()));
+        node.push(emit_label(context, label));
     }
     node
 }
@@ -328,7 +346,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
                         "{} {span} {} {}",
                         "enumerator".green().bold(),
                         &var_def.ident.name.cyan(),
-                        format!("'= {}'", value).purple(),
+                        format!("'= {value}'").purple(),
                     );
 
                     // Add annotation nodes

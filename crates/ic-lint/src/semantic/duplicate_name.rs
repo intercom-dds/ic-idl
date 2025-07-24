@@ -206,7 +206,9 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         }
 
         // Check for duplicate field names
-        let field_defs: Vec<&Def> = enum_ty.fields.iter()
+        let field_defs: Vec<&Def> = enum_ty
+            .fields
+            .iter()
             .map(|&id| self.context().definitions.get(id))
             .collect();
         self.check_names(&field_defs, |f| &f.ident, "field", &def.ident.name);

@@ -174,8 +174,14 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                                 let field_def = self.ctx.definitions.get(field_id);
                                 if field_def.ident.name == field_name {
                                     if let DefKind::Const(const_ty) = &field_def.kind {
-                                        if let Numeric::Int32(value) = const_ty.value {
-                                            return Ok(GenericNumeric::Int32(value));
+                                        match const_ty.value {
+                                            Numeric::Int32(value) => {
+                                                return Ok(GenericNumeric::Int32(value));
+                                            }
+                                            Numeric::Int64(value) => {
+                                                return Ok(GenericNumeric::Int64(value));
+                                            }
+                                            _ => {}
                                         }
                                     }
                                 }
@@ -205,8 +211,14 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                         let field_def = self.ctx.definitions.get(field_id);
                         if field_def.ident.name == enumerator {
                             if let DefKind::Const(const_ty) = &field_def.kind {
-                                if let Numeric::Int32(value) = const_ty.value {
-                                    return Ok(GenericNumeric::Int32(value));
+                                match const_ty.value {
+                                    Numeric::Int32(value) => {
+                                        return Ok(GenericNumeric::Int32(value));
+                                    }
+                                    Numeric::Int64(value) => {
+                                        return Ok(GenericNumeric::Int64(value));
+                                    }
+                                    _ => {}
                                 }
                             }
                         }
@@ -252,8 +264,14 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                                     let field_def = self.ctx.definitions.get(field_id);
                                     if field_def.ident.name == enumerator {
                                         if let DefKind::Const(const_ty) = &field_def.kind {
-                                            if let Numeric::Int32(value) = const_ty.value {
-                                                return Ok(GenericNumeric::Int32(value));
+                                            match const_ty.value {
+                                                Numeric::Int32(value) => {
+                                                    return Ok(GenericNumeric::Int32(value));
+                                                }
+                                                Numeric::Int64(value) => {
+                                                    return Ok(GenericNumeric::Int64(value));
+                                                }
+                                                _ => {}
                                             }
                                         }
                                     }
@@ -890,7 +908,7 @@ impl<'a> ExpressionEvaluator<'a> {
 
         // Evaluate all the values and update the constants
         let mut last_value = -1isize;
-        
+
         for (i, field) in def.fields.iter().enumerate() {
             #[allow(clippy::cast_possible_wrap)]
             let value = if let Some(expr) = &field.value {
@@ -899,12 +917,17 @@ impl<'a> ExpressionEvaluator<'a> {
                 last_value + 1
             };
             last_value = value;
-            
+
             // Update the constant definition with the evaluated value
             if i < field_ids.len() {
                 let field_def = self.ctx.definitions.get_mut(field_ids[i]);
                 if let DefKind::Const(const_ty) = &mut field_def.kind {
-                    const_ty.value = Numeric::Int32(value as i32);
+                    // Store as Int64 if value doesn't fit in Int32
+                    const_ty.value = if value >= i32::MIN as isize && value <= i32::MAX as isize {
+                        Numeric::Int32(value as i32)
+                    } else {
+                        Numeric::Int64(value as i64)
+                    };
                 }
             }
         }

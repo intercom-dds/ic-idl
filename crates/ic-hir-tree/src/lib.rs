@@ -323,7 +323,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
                         Numeric::Int64(v) => v.to_string(),
                         _ => "?".to_string(),
                     };
-                    
+
                     let mut enum_node = leaf!(
                         "{} {span} {} {}",
                         "enumerator".green().bold(),

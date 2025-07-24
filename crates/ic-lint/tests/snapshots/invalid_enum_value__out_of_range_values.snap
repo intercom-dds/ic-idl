@@ -2,4 +2,9 @@
 source: crates/ic-lint/tests/invalid_enum_value.rs
 expression: test_lint_hir(source)
 ---
-
+error[invalid_enum_value]: enum value 4294967296 is outside the range [-2147483648, 2147483647] for the underlying type
+   ┌ test.idl:5:5
+   │
+ 5 │     LARGE = 4294967296  // Out of range for 32-bit
+   ·     ^^^^^ value out of range
+   └──

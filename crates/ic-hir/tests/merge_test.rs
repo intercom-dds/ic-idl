@@ -388,7 +388,7 @@ enum Color { RED, GREEN, BLUE };
 
     // Should have 4 errors for the conflicting definitions:
     // - Point struct conflict
-    // - Color enum conflict  
+    // - Color enum conflict
     // - RED constant conflict (enum fields are now constants)
     // - GREEN constant conflict (enum fields are now constants)
     assert_eq!(merged.errors.len(), 4);

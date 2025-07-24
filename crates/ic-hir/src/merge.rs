@@ -38,8 +38,8 @@ use ic_syntax::Span;
 
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
-    Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric,
-    Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
+    ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};

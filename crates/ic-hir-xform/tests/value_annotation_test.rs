@@ -34,7 +34,7 @@ fn test_value_annotation_transform_is_noop() {
     // The value annotation transform is now a no-op since enum values
     // are handled during HIR lowering with the new constant-based enum structure.
     // This test verifies that the transform doesn't break anything.
-    
+
     let input = r"
         enum Status {
             OK = 200,
@@ -64,20 +64,20 @@ fn test_value_annotation_transform_is_noop() {
 
     if let DefKind::Enum(enum_ty) = &status_enum.1.kind {
         assert_eq!(enum_ty.fields.len(), 3);
-        
+
         // Check that explicit values are preserved
         let field0 = transformed.context.definitions.get(enum_ty.fields[0]);
         assert_eq!(field0.ident.name, "OK");
         if let DefKind::Const(const_ty) = &field0.kind {
             assert_eq!(const_ty.value, Numeric::Int32(200));
         }
-        
+
         let field1 = transformed.context.definitions.get(enum_ty.fields[1]);
         assert_eq!(field1.ident.name, "NOT_FOUND");
         if let DefKind::Const(const_ty) = &field1.kind {
             assert_eq!(const_ty.value, Numeric::Int32(404));
         }
-        
+
         let field2 = transformed.context.definitions.get(enum_ty.fields[2]);
         assert_eq!(field2.ident.name, "ERROR");
         if let DefKind::Const(const_ty) = &field2.kind {
@@ -122,27 +122,27 @@ fn test_enum_auto_increment() {
 
     if let DefKind::Enum(enum_ty) = &numbers_enum.1.kind {
         assert_eq!(enum_ty.fields.len(), 5);
-        
+
         let field0 = transformed.context.definitions.get(enum_ty.fields[0]);
         if let DefKind::Const(const_ty) = &field0.kind {
             assert_eq!(const_ty.value, Numeric::Int32(0)); // ZERO
         }
-        
+
         let field1 = transformed.context.definitions.get(enum_ty.fields[1]);
         if let DefKind::Const(const_ty) = &field1.kind {
             assert_eq!(const_ty.value, Numeric::Int32(1)); // ONE
         }
-        
+
         let field2 = transformed.context.definitions.get(enum_ty.fields[2]);
         if let DefKind::Const(const_ty) = &field2.kind {
             assert_eq!(const_ty.value, Numeric::Int32(10)); // TEN
         }
-        
+
         let field3 = transformed.context.definitions.get(enum_ty.fields[3]);
         if let DefKind::Const(const_ty) = &field3.kind {
             assert_eq!(const_ty.value, Numeric::Int32(11)); // ELEVEN
         }
-        
+
         let field4 = transformed.context.definitions.get(enum_ty.fields[4]);
         if let DefKind::Const(const_ty) = &field4.kind {
             assert_eq!(const_ty.value, Numeric::Int32(20)); // TWENTY

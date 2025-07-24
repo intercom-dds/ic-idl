@@ -68,7 +68,7 @@ fn test_nested_enum_in_annotation() {
     // Verify enum values are evaluated correctly
     if let DefKind::Enum(enum_ty) = &enum_def.kind {
         assert_eq!(enum_ty.fields.len(), 3);
-        
+
         let field0 = hir.context.definitions.get(enum_ty.fields[0]);
         assert_eq!(field0.ident.name, "FIRST");
         if let DefKind::Const(const_ty) = &field0.kind {
@@ -76,7 +76,7 @@ fn test_nested_enum_in_annotation() {
         } else {
             panic!("Expected const");
         }
-        
+
         let field1 = hir.context.definitions.get(enum_ty.fields[1]);
         assert_eq!(field1.ident.name, "SECOND");
         if let DefKind::Const(const_ty) = &field1.kind {
@@ -84,7 +84,7 @@ fn test_nested_enum_in_annotation() {
         } else {
             panic!("Expected const");
         }
-        
+
         let field2 = hir.context.definitions.get(enum_ty.fields[2]);
         assert_eq!(field2.ident.name, "THIRD");
         if let DefKind::Const(const_ty) = &field2.kind {
@@ -137,12 +137,12 @@ fn test_nested_enum_in_interface() {
         if let DefKind::Const(const_ty) = &field0.kind {
             assert_eq!(const_ty.value, Numeric::Int32(10));
         }
-        
+
         let field1 = hir.context.definitions.get(enum_ty.fields[1]);
         if let DefKind::Const(const_ty) = &field1.kind {
             assert_eq!(const_ty.value, Numeric::Int32(20));
         }
-        
+
         let field2 = hir.context.definitions.get(enum_ty.fields[2]);
         if let DefKind::Const(const_ty) = &field2.kind {
             assert_eq!(const_ty.value, Numeric::Int32(30));
@@ -192,12 +192,12 @@ fn test_nested_enum_in_module() {
         if let DefKind::Const(const_ty) = &field0.kind {
             assert_eq!(const_ty.value, Numeric::Int32(0));
         }
-        
+
         let field1 = hir.context.definitions.get(enum_ty.fields[1]);
         if let DefKind::Const(const_ty) = &field1.kind {
             assert_eq!(const_ty.value, Numeric::Int32(1));
         }
-        
+
         let field2 = hir.context.definitions.get(enum_ty.fields[2]);
         if let DefKind::Const(const_ty) = &field2.kind {
             assert_eq!(const_ty.value, Numeric::Int32(2));

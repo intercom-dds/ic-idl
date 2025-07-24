@@ -299,24 +299,25 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_union_finish(self.state, disc, variants)
             }
             DefKind::Enum(v) => {
-                let values = collect_with(self.state, sys::append_enum_node, &v.fields, |&var_id| {
-                    let var_def = self.ctx.definitions.get(var_id);
-                    let name = create_ident(&var_def.ident.name);
-                    
-                    let value = if let DefKind::Const(const_ty) = &var_def.kind {
-                        match const_ty.value {
-                            Numeric::Int32(v) => i64::from(v),
-                            Numeric::Int64(v) => v,
-                            _ => 0,
-                        }
-                    } else {
-                        0
-                    };
-                    
-                    let value_node = sys::create_i64(self.state, value, 10);
-                    let node = sys::create_enum_value(self.state, name.as_ptr(), value_node);
-                    self.annotate(node, &var_def.annotations)
-                });
+                let values =
+                    collect_with(self.state, sys::append_enum_node, &v.fields, |&var_id| {
+                        let var_def = self.ctx.definitions.get(var_id);
+                        let name = create_ident(&var_def.ident.name);
+
+                        let value = if let DefKind::Const(const_ty) = &var_def.kind {
+                            match const_ty.value {
+                                Numeric::Int32(v) => i64::from(v),
+                                Numeric::Int64(v) => v,
+                                _ => 0,
+                            }
+                        } else {
+                            0
+                        };
+
+                        let value_node = sys::create_i64(self.state, value, 10);
+                        let node = sys::create_enum_value(self.state, name.as_ptr(), value_node);
+                        self.annotate(node, &var_def.annotations)
+                    });
                 sys::create_enum(self.state, ident, values)
             }
             DefKind::Const(v) => {

@@ -38,9 +38,9 @@ use ic_syntax::{Ident, Item, Path};
 use super::convert_annotation_value;
 use crate::Context;
 use crate::hir::{
-    AliasTy, Ann, AnnParam, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
-    EnumTy, ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy,
-    StructTy, Ty, TyKind, UnionTy,
+    AliasTy, Ann, AnnParam, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumTy,
+    ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, StructTy,
+    Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -820,7 +820,7 @@ impl<'a> Resolver<'a> {
         for field in &def.fields {
             let field_qualified_name = self.qualified_name(&field.ident.name);
             let field_annotations = self.resolve_ast_annotations(&field.annotations);
-            
+
             // Create a constant definition for this enumerator
             let field_id = self.ctx.definitions.alloc_with_id(|id| Def {
                 id,
@@ -829,12 +829,12 @@ impl<'a> Resolver<'a> {
                 annotations: field_annotations,
                 span: field.ident.span,
                 kind: DefKind::Const(ConstTy {
-                    value: Numeric::Int32(0), // Will be filled in evaluation phase
+                    value: Numeric::Int32(0),  // Will be filled in evaluation phase
                     ty: underlying_ty.clone(), // Enum constants have the enum's underlying type
                 }),
                 flags: DefFlags::default(),
             });
-            
+
             field_ids.push(field_id);
             self.name_map.insert(field_qualified_name, field_id);
             self.ctx

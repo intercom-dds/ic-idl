@@ -76,7 +76,7 @@ impl InvalidEnumValue<'_> {
         // Check each enumerator
         for &field_id in &enum_ty.fields {
             let field_def = self.context().definitions.get(field_id);
-            
+
             if let DefKind::Const(const_ty) = &field_def.kind {
                 let value = match const_ty.value {
                     Numeric::Int32(v) => i64::from(v),

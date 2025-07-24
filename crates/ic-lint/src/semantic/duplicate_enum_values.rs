@@ -78,7 +78,7 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
 
         for &field_id in &enum_ty.fields {
             let field_def = self.context().definitions.get(field_id);
-            
+
             // Check for duplicate names (case-insensitive)
             if !field_names.insert(field_def.ident.name.as_str()) {
                 if let Some(diag) = self.ctx.diag_span(
@@ -102,7 +102,7 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
                     Numeric::Int64(v) => v as isize,
                     _ => continue,
                 };
-                
+
                 field_values
                     .entry(value)
                     .or_default()
@@ -114,7 +114,9 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
         for (value, names) in field_values {
             if names.len() > 1 {
                 // Find the span of the first occurrence
-                let first_field_id = enum_ty.fields.iter()
+                let first_field_id = enum_ty
+                    .fields
+                    .iter()
                     .find(|&&id| {
                         let def = self.context().definitions.get(id);
                         def.ident.name == names[0]
@@ -135,8 +137,8 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
                         def.ident.name == *name
                     }) {
                         let field_def = self.context().definitions.get(field_id);
-                        diag =
-                            diag.label(Label::new(field_def.ident.span).message("value already used"));
+                        diag = diag
+                            .label(Label::new(field_def.ident.span).message("value already used"));
                     }
                 }
 

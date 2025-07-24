@@ -105,7 +105,7 @@ mod tests {
         // transformation happens during lowering, not as a separate transform.
         // This test now just verifies the transform is a no-op.
         let mut transformer = ValueAnnotationTransform::new();
-        
+
         // Create a simple definition to test with
         let def = Def {
             id: DefId::from(0),
@@ -122,9 +122,9 @@ mod tests {
 
         let original_id = def.id;
         let original_name = def.ident.name.clone();
-        
+
         let result = transformer.fold_def(def);
-        
+
         // Should be unchanged
         assert_eq!(result.id, original_id);
         assert_eq!(result.ident.name, original_name);

@@ -719,7 +719,8 @@ impl<'a> TypeChecker<'a> {
             for &field_id in &enum_ty.fields {
                 let field_def = self.ctx.definitions.get(field_id);
                 if let DefKind::Const(const_ty) = &field_def.kind {
-                    let value_desc = format!("enum field `{}::{}`", def.ident.name, field_def.ident.name);
+                    let value_desc =
+                        format!("enum field `{}::{}`", def.ident.name, field_def.ident.name);
                     if let Numeric::Int32(value) = const_ty.value {
                         self.check_int_fits(
                             value as i64,

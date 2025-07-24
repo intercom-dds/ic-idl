@@ -45,13 +45,13 @@ impl<'a> Visitor<'a> for Proto<'a> {
     fn visit_enum(&mut self, _def: &'a hir::Def, ty: &'a hir::EnumTy) {
         if let Some(&field_id) = ty.fields.first() {
             let field_def = self.context().definitions.get(field_id);
-            
+
             if let hir::DefKind::Const(const_ty) = &field_def.kind {
                 let value = match const_ty.value {
                     hir::Numeric::Int32(v) => v,
                     _ => return,
                 };
-                
+
                 if value != 0 {
                     let diag = error_span(
                         "the first enum value must be zero in proto3",

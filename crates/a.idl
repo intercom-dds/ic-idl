@@ -1,5 +1,0 @@
-struct Foo {};
-
-struct Bar {
-	foo my_value;
-};

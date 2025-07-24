@@ -38,7 +38,7 @@ use ic_syntax::Span;
 
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
-    Def, DefId, DefKind, EnumLit, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric,
+    Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric,
     Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
@@ -729,11 +729,7 @@ impl HirMerger {
             }),
             DefKind::Enum(e) => DefKind::Enum(EnumTy {
                 ty: self.update_type(graph_index, &e.ty),
-                fields: e
-                    .fields
-                    .iter()
-                    .map(|f| self.update_enum_lit(graph_index, f))
-                    .collect(),
+                fields: self.map_def_ids(graph_index, &e.fields),
             }),
             DefKind::Interface(i) => DefKind::Interface(InterfaceTy {
                 parents: self.map_def_ids(graph_index, &i.parents),
@@ -887,18 +883,6 @@ impl HirMerger {
                 .map(|label| self.update_numeric(graph_index, label))
                 .collect(),
             is_default: variant.is_default,
-        }
-    }
-
-    fn update_enum_lit(&self, graph_index: usize, lit: &EnumLit) -> EnumLit {
-        EnumLit {
-            ident: lit.ident.clone(),
-            value: lit.value,
-            annotations: lit
-                .annotations
-                .iter()
-                .map(|ann| self.update_annotation(graph_index, ann))
-                .collect(),
         }
     }
 

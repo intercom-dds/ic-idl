@@ -38,7 +38,7 @@ use ic_syntax::{Ident, Item, Path};
 use super::convert_annotation_value;
 use crate::Context;
 use crate::hir::{
-    AliasTy, Ann, AnnParam, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumLit,
+    AliasTy, Ann, AnnParam, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
     EnumTy, ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy,
     StructTy, Ty, TyKind, UnionTy,
 };
@@ -802,20 +802,6 @@ impl<'a> Resolver<'a> {
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // Create enum literals
-        let fields = def
-            .fields
-            .iter()
-            .map(|f| {
-                let field_annotations = self.resolve_ast_annotations(&f.annotations);
-                EnumLit {
-                    ident: f.ident.clone(),
-                    value: 0, // Will be filled in evaluation phase
-                    annotations: field_annotations,
-                }
-            })
-            .collect();
-
         let parent = if self.scope_path.is_empty() {
             None
         } else {
@@ -823,14 +809,48 @@ impl<'a> Resolver<'a> {
             self.name_map.get(&parent_name).copied()
         };
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
+        // Determine the underlying type (defaults to Int32)
+        let underlying_ty = Ty {
+            kind: TyKind::Primitive(PrimitiveTy::Int32),
+            span: def.span,
+        };
+
+        // Create constants for each enumerator
+        let mut field_ids = Vec::new();
+        for field in &def.fields {
+            let field_qualified_name = self.qualified_name(&field.ident.name);
+            let field_annotations = self.resolve_ast_annotations(&field.annotations);
+            
+            // Create a constant definition for this enumerator
+            let field_id = self.ctx.definitions.alloc_with_id(|id| Def {
+                id,
+                ident: field.ident.clone(),
+                parent: Some(id), // Will be fixed below
+                annotations: field_annotations,
+                span: field.ident.span,
+                kind: DefKind::Const(ConstTy {
+                    value: Numeric::Int32(0), // Will be filled in evaluation phase
+                    ty: underlying_ty.clone(), // Enum constants have the enum's underlying type
+                }),
+                flags: DefFlags::default(),
+            });
+            
+            field_ids.push(field_id);
+            self.name_map.insert(field_qualified_name, field_id);
+            self.ctx
+                .scopes
+                .add_definition(self.current_scope, field.ident.name.clone(), field_id);
+        }
+
+        // Create the enum definition
+        let enum_id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
             parent,
             annotations,
             span: def.span,
             kind: DefKind::Enum(EnumTy {
-                fields,
+                fields: field_ids.clone(),
                 ty: Ty {
                     kind: TyKind::Primitive(PrimitiveTy::Int32), // Default to int32
                     span: def.span,
@@ -839,12 +859,18 @@ impl<'a> Resolver<'a> {
             flags: DefFlags::default(),
         });
 
-        self.name_map.insert(qualified_name, id);
+        // Fix the parent references for the enumerator constants
+        for field_id in &field_ids {
+            let field_def = self.ctx.definitions.get_mut(*field_id);
+            field_def.parent = Some(enum_id);
+        }
+
+        self.name_map.insert(qualified_name, enum_id);
         self.ctx
             .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), id);
+            .add_definition(self.current_scope, def.ident.name.clone(), enum_id);
 
-        id
+        enum_id
     }
 
     /// Processes a type alias definition.

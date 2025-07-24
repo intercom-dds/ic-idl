@@ -386,8 +386,12 @@ enum Color { RED, GREEN, BLUE };
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
-    // Should have 2 errors for the conflicting definitions
-    assert_eq!(merged.errors.len(), 2);
+    // Should have 4 errors for the conflicting definitions:
+    // - Point struct conflict
+    // - Color enum conflict  
+    // - RED constant conflict (enum fields are now constants)
+    // - GREEN constant conflict (enum fields are now constants)
+    assert_eq!(merged.errors.len(), 4);
 
     // Snapshot test all error messages
     let mut output = String::new();

@@ -43,14 +43,23 @@ impl<'a> Visitor<'a> for Proto<'a> {
     }
 
     fn visit_enum(&mut self, _def: &'a hir::Def, ty: &'a hir::EnumTy) {
-        if let Some(field) = ty.fields.first() {
-            if field.value != 0 {
-                let diag = error_span(
-                    "the first enum value must be zero in proto3",
-                    Label::new(field.ident.span)
-                        .message(format!("this field has the value {}", field.value)),
-                );
-                Self::report(self.ctx, diag);
+        if let Some(&field_id) = ty.fields.first() {
+            let field_def = self.context().definitions.get(field_id);
+            
+            if let hir::DefKind::Const(const_ty) = &field_def.kind {
+                let value = match const_ty.value {
+                    hir::Numeric::Int32(v) => v,
+                    _ => return,
+                };
+                
+                if value != 0 {
+                    let diag = error_span(
+                        "the first enum value must be zero in proto3",
+                        Label::new(field_def.ident.span)
+                            .message(format!("this field has the value {}", value)),
+                    );
+                    Self::report(self.ctx, diag);
+                }
             }
         }
     }

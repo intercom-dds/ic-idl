@@ -206,7 +206,10 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         }
 
         // Check for duplicate field names
-        self.check_names(&enum_ty.fields, |f| &f.ident, "field", &def.ident.name);
+        let field_defs: Vec<&Def> = enum_ty.fields.iter()
+            .map(|&id| self.context().definitions.get(id))
+            .collect();
+        self.check_names(&field_defs, |f| &f.ident, "field", &def.ident.name);
 
         ic_hir::visit::walk_enum(self, enum_ty);
     }

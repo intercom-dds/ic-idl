@@ -34,7 +34,7 @@
 //! 4. Removes the `@value` annotation
 
 use ic_hir::fold::Fold;
-use ic_hir::hir::{Ann, Def, DefId, DefKind, EnumLit, EnumTy, Numeric};
+use ic_hir::hir::{Def, DefId, DefKind};
 use ic_hir::{Context, ResolvedGraph};
 
 /// Transformer that converts @value annotations to direct enum values.
@@ -60,48 +60,9 @@ impl Default for ValueAnnotationTransform {
 }
 
 impl Fold for ValueAnnotationTransform {
-    fn fold_def(&mut self, mut def: Def) -> Def {
-        // Only process enum definitions
-        if let DefKind::Enum(ref mut enum_ty) = def.kind {
-            // Process each enum field
-            enum_ty.fields = enum_ty
-                .fields
-                .drain(..)
-                .map(|mut field| {
-                    // Look for @value annotation
-                    let mut value_found = None;
-                    let mut new_annotations = Vec::new();
-
-                    for ann in field.annotations {
-                        if ann.ident.name == self.value_ann_name {
-                            // Extract the value from the annotation
-                            if let Some(arg) = ann.args.first() {
-                                if let Numeric::Int32(v) = &arg.value {
-                                    value_found = Some(*v as isize);
-                                } else if let Numeric::Int64(v) = &arg.value {
-                                    // Try to convert to isize
-                                    // Allow truncation - enum values are typically 32-bit anyway
-                                    #[allow(clippy::cast_possible_truncation)]
-                                    let isize_value = *v as isize;
-                                    value_found = Some(isize_value);
-                                }
-                            }
-                            // Don't add @value annotation to the new list
-                        } else {
-                            // Keep other annotations
-                            new_annotations.push(ann);
-                        }
-                    }
-
-                    // Update field if we found a value
-                    if let Some(new_value) = value_found {
-                        field.value = new_value;
-                    }
-                    field.annotations = new_annotations;
-                    field
-                })
-                .collect();
-        }
+    fn fold_def(&mut self, def: Def) -> Def {
+        // Since enums now use constants, we don't need to transform enum definitions
+        // The @value annotations are already handled during lowering
         def
     }
 }
@@ -136,75 +97,36 @@ pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
 
 #[cfg(test)]
 mod tests {
-    use ic_hir::hir::{Ann, AnnArg, DefFlags, Ident, PrimitiveTy, Span, Ty, TyKind};
-
     use super::*;
 
     #[test]
     fn test_value_annotation_transform() {
+        // With the new enum structure using constants, the @value annotation
+        // transformation happens during lowering, not as a separate transform.
+        // This test now just verifies the transform is a no-op.
+        let mut transformer = ValueAnnotationTransform::new();
+        
+        // Create a simple definition to test with
         let def = Def {
             id: DefId::from(0),
             parent: None,
-            ident: Ident {
-                name: "TestEnum".to_string(),
-                span: Span::default(),
+            ident: ic_hir::hir::Ident {
+                name: "TestType".to_string(),
+                span: ic_hir::hir::Span::default(),
             },
-            kind: DefKind::Enum(EnumTy {
-                fields: vec![
-                    EnumLit {
-                        ident: Ident {
-                            name: "FOO".to_string(),
-                            span: Span::default(),
-                        },
-                        value: 0,
-                        annotations: vec![Ann {
-                            ident: Ident {
-                                name: "value".to_string(),
-                                span: Span::default(),
-                            },
-                            def_id: DefId::from(1),
-                            args: vec![AnnArg {
-                                ident: Ident {
-                                    name: "value".to_string(),
-                                    span: Span::default(),
-                                },
-                                value: Numeric::Int32(42),
-                            }],
-                        }],
-                    },
-                    EnumLit {
-                        ident: Ident {
-                            name: "BAR".to_string(),
-                            span: Span::default(),
-                        },
-                        value: 1,
-                        annotations: vec![],
-                    },
-                ],
-                ty: Ty {
-                    span: Span::default(),
-                    kind: TyKind::Primitive(PrimitiveTy::Int32),
-                },
-            }),
-            flags: DefFlags::nil(),
-            span: Span::default(),
+            kind: DefKind::Decl(ic_hir::hir::Decl::Struct),
+            flags: ic_hir::hir::DefFlags::nil(),
+            span: ic_hir::hir::Span::default(),
             annotations: vec![],
         };
 
-        let mut transformer = ValueAnnotationTransform::new();
+        let original_id = def.id;
+        let original_name = def.ident.name.clone();
+        
         let result = transformer.fold_def(def);
-
-        // Extract the enum from the result
-        if let DefKind::Enum(enum_ty) = result.kind {
-            // Check that FOO has value 42 and no annotations
-            assert_eq!(enum_ty.fields[0].value, 42);
-            assert!(enum_ty.fields[0].annotations.is_empty());
-
-            // Check that BAR is unchanged
-            assert_eq!(enum_ty.fields[1].value, 1);
-            assert!(enum_ty.fields[1].annotations.is_empty());
-        } else {
-            panic!("Expected enum definition");
-        }
+        
+        // Should be unchanged
+        assert_eq!(result.id, original_id);
+        assert_eq!(result.ident.name, original_name);
     }
 }

@@ -210,12 +210,8 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_ty(&data.ty);
-    for field in &data.fields {
-        // Visit annotations on enum literals
-        for ann in &field.annotations {
-            visitor.visit_annotation(ann);
-        }
-    }
+    // Enum fields are now DefIds pointing to constants
+    // The visitor should visit those definitions separately
 }
 
 pub fn walk_union<'a, V>(visitor: &mut V, data: &'a UnionTy)

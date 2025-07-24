@@ -169,11 +169,15 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                     if let Some(enum_id) = self.ctx.scopes.resolve_path(start_scope, enum_parts) {
                         let enum_def = self.ctx.definitions.get(enum_id);
                         if let DefKind::Enum(enum_ty) = &enum_def.kind {
-                            // Look for the field
-                            for field in &enum_ty.fields {
-                                if field.ident.name == field_name {
-                                    #[allow(clippy::cast_possible_truncation)]
-                                    return Ok(GenericNumeric::Int32(field.value as i32));
+                            // Look for the field constant
+                            for &field_id in &enum_ty.fields {
+                                let field_def = self.ctx.definitions.get(field_id);
+                                if field_def.ident.name == field_name {
+                                    if let DefKind::Const(const_ty) = &field_def.kind {
+                                        if let Numeric::Int32(value) = const_ty.value {
+                                            return Ok(GenericNumeric::Int32(value));
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -196,10 +200,15 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
             for enum_id in visible_enums {
                 let enum_def = self.ctx.definitions.get(enum_id);
                 if let DefKind::Enum(enum_ty) = &enum_def.kind {
-                    for field in &enum_ty.fields {
-                        if field.ident.name == enumerator {
-                            #[allow(clippy::cast_possible_truncation)]
-                            return Ok(GenericNumeric::Int32(field.value as i32));
+                    // Look through the enum's field constants
+                    for &field_id in &enum_ty.fields {
+                        let field_def = self.ctx.definitions.get(field_id);
+                        if field_def.ident.name == enumerator {
+                            if let DefKind::Const(const_ty) = &field_def.kind {
+                                if let Numeric::Int32(value) = const_ty.value {
+                                    return Ok(GenericNumeric::Int32(value));
+                                }
+                            }
                         }
                     }
                 }
@@ -238,10 +247,15 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                         if let Some(&enum_id) = enums.first() {
                             let enum_def = self.ctx.definitions.get(enum_id);
                             if let DefKind::Enum(enum_ty) = &enum_def.kind {
-                                for field in &enum_ty.fields {
-                                    if field.ident.name == enumerator {
-                                        #[allow(clippy::cast_possible_truncation)]
-                                        return Ok(GenericNumeric::Int32(field.value as i32));
+                                // Look through the enum's field constants
+                                for &field_id in &enum_ty.fields {
+                                    let field_def = self.ctx.definitions.get(field_id);
+                                    if field_def.ident.name == enumerator {
+                                        if let DefKind::Const(const_ty) = &field_def.kind {
+                                            if let Numeric::Int32(value) = const_ty.value {
+                                                return Ok(GenericNumeric::Int32(value));
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -864,29 +878,33 @@ impl<'a> ExpressionEvaluator<'a> {
             return;
         }
 
-        // First evaluate all the values
-        let mut field_values = Vec::new();
-        let mut last_value = -1isize;
+        // Get the enum definition to access field DefIds
+        let field_ids = {
+            let hir_def = self.ctx.definitions.get(id);
+            if let DefKind::Enum(enum_ty) = &hir_def.kind {
+                enum_ty.fields.clone()
+            } else {
+                return;
+            }
+        };
 
-        for field in &def.fields {
+        // Evaluate all the values and update the constants
+        let mut last_value = -1isize;
+        
+        for (i, field) in def.fields.iter().enumerate() {
             #[allow(clippy::cast_possible_wrap)]
             let value = if let Some(expr) = &field.value {
                 self.eval_bound(expr) as isize
             } else {
                 last_value + 1
             };
-
             last_value = value;
-            field_values.push(value);
-        }
-
-        // Then update the existing enum fields with their evaluated values
-        let hir_def = self.ctx.definitions.get_mut(id);
-
-        if let DefKind::Enum(enum_ty) = &mut hir_def.kind {
-            for (i, value) in field_values.into_iter().enumerate() {
-                if i < enum_ty.fields.len() {
-                    enum_ty.fields[i].value = value;
+            
+            // Update the constant definition with the evaluated value
+            if i < field_ids.len() {
+                let field_def = self.ctx.definitions.get_mut(field_ids[i]);
+                if let DefKind::Const(const_ty) = &mut field_def.kind {
+                    const_ty.value = Numeric::Int32(value as i32);
                 }
             }
         }

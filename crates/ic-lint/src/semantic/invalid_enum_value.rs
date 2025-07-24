@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, EnumTy, PrimitiveTy, TyKind};
+use ic_hir::hir::{Def, DefKind, EnumTy, Numeric, PrimitiveTy, TyKind};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -74,21 +74,29 @@ impl InvalidEnumValue<'_> {
         };
 
         // Check each enumerator
-        for field in &enum_ty.fields {
-            let value = i64::try_from(field.value).unwrap();
+        for &field_id in &enum_ty.fields {
+            let field_def = self.context().definitions.get(field_id);
+            
+            if let DefKind::Const(const_ty) = &field_def.kind {
+                let value = match const_ty.value {
+                    Numeric::Int32(v) => i64::from(v),
+                    Numeric::Int64(v) => v,
+                    _ => continue,
+                };
 
-            // Check if value is in range
-            if value < min || value > max {
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!(
-                        "enum value {value} is outside the range [{min}, {max}] for the \
-                         underlying type"
-                    ),
-                    Label::new(field.ident.span).message("value out of range"),
-                ) {
-                    Self::report(self.ctx, diag);
+                // Check if value is in range
+                if value < min || value > max {
+                    if let Some(diag) = self.ctx.diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!(
+                            "enum value {value} is outside the range [{min}, {max}] for the \
+                             underlying type"
+                        ),
+                        Label::new(field_def.ident.span).message("value out of range"),
+                    ) {
+                        Self::report(self.ctx, diag);
+                    }
                 }
             }
         }

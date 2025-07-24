@@ -31,7 +31,7 @@ use ic_alloc::insensitive::CaseSet;
 use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, EnumTy};
+use ic_hir::hir::{Def, DefKind, EnumTy, Numeric};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -76,39 +76,51 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
         let mut field_names = CaseSet::default();
         let mut field_values: HashMap<isize, Vec<&str>> = HashMap::new();
 
-        for field in &enum_ty.fields {
+        for &field_id in &enum_ty.fields {
+            let field_def = self.context().definitions.get(field_id);
+            
             // Check for duplicate names (case-insensitive)
-            if !field_names.insert(field.ident.name.as_str()) {
+            if !field_names.insert(field_def.ident.name.as_str()) {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!(
                         "duplicate field `{}` in enum `{}`",
-                        field.ident.name.yellow(),
+                        field_def.ident.name.yellow(),
                         def.ident.name
                     ),
-                    Label::new(field.ident.span).message("redefined here"),
+                    Label::new(field_def.ident.span).message("redefined here"),
                 ) {
                     Self::report(self.ctx, diag.note("field names are case-insensitive"));
                 }
             }
 
             // Track values for duplicate checking
-            field_values
-                .entry(field.value)
-                .or_default()
-                .push(&field.ident.name);
+            if let DefKind::Const(const_ty) = &field_def.kind {
+                let value = match const_ty.value {
+                    Numeric::Int32(v) => i64::from(v) as isize,
+                    Numeric::Int64(v) => v as isize,
+                    _ => continue,
+                };
+                
+                field_values
+                    .entry(value)
+                    .or_default()
+                    .push(&field_def.ident.name);
+            }
         }
 
         // Check for duplicate values
         for (value, names) in field_values {
             if names.len() > 1 {
                 // Find the span of the first occurrence
-                let first_field = enum_ty
-                    .fields
-                    .iter()
-                    .find(|f| f.ident.name == names[0])
+                let first_field_id = enum_ty.fields.iter()
+                    .find(|&&id| {
+                        let def = self.context().definitions.get(id);
+                        def.ident.name == names[0]
+                    })
                     .unwrap();
+                let first_field = self.context().definitions.get(*first_field_id);
 
                 let mut diag = ic_diagnostic::error_span(
                     format!("duplicate value {} in enum `{}`", value, def.ident.name),
@@ -118,9 +130,13 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
 
                 // Add labels for other occurrences
                 for name in &names[1..] {
-                    if let Some(field) = enum_ty.fields.iter().find(|f| f.ident.name == *name) {
+                    if let Some(&field_id) = enum_ty.fields.iter().find(|&&id| {
+                        let def = self.context().definitions.get(id);
+                        def.ident.name == *name
+                    }) {
+                        let field_def = self.context().definitions.get(field_id);
                         diag =
-                            diag.label(Label::new(field.ident.span).message("value already used"));
+                            diag.label(Label::new(field_def.ident.span).message("value already used"));
                     }
                 }
 

@@ -249,16 +249,19 @@ fn test_enum_field_annotations() {
         assert_eq!(e.fields.len(), 3);
 
         // A should have annotation
-        assert_eq!(e.fields[0].ident.name, "A");
-        assert_eq!(e.fields[0].annotations.len(), 1);
+        let field_a = result.context.definitions.get(e.fields[0]);
+        assert_eq!(field_a.ident.name, "A");
+        assert_eq!(field_a.annotations.len(), 1);
 
         // B should have no annotation
-        assert_eq!(e.fields[1].ident.name, "B");
-        assert_eq!(e.fields[1].annotations.len(), 0);
+        let field_b = result.context.definitions.get(e.fields[1]);
+        assert_eq!(field_b.ident.name, "B");
+        assert_eq!(field_b.annotations.len(), 0);
 
         // C should have annotation
-        assert_eq!(e.fields[2].ident.name, "C");
-        assert_eq!(e.fields[2].annotations.len(), 1);
+        let field_c = result.context.definitions.get(e.fields[2]);
+        assert_eq!(field_c.ident.name, "C");
+        assert_eq!(field_c.annotations.len(), 1);
     } else {
         panic!("Expected enum");
     }

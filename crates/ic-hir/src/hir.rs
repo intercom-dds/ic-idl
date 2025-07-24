@@ -367,17 +367,11 @@ pub struct Variant {
 
 #[derive(Debug, Clone)]
 pub struct EnumTy {
-    pub fields: Vec<EnumLit>,
+    /// DefIds of the enum constants
+    pub fields: Vec<DefId>,
 
     /// Underlying primitive type of the enum.
     pub ty: Ty,
-}
-
-#[derive(Debug, Clone)]
-pub struct EnumLit {
-    pub ident: Ident,
-    pub value: isize,
-    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug, Clone)]

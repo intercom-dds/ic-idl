@@ -299,8 +299,10 @@ impl ScopeTree {
         for (_, &def_id) in scope_data.definitions.iter() {
             let def = definitions.get(def_id);
             if let crate::hir::DefKind::Enum(enum_ty) = &def.kind {
-                for field in &enum_ty.fields {
-                    if field.ident.name == enumerator {
+                // Check each field constant
+                for &field_id in &enum_ty.fields {
+                    let field_def = definitions.get(field_id);
+                    if field_def.ident.name == enumerator {
                         results.push(def_id);
                         break;
                     }

@@ -716,14 +716,19 @@ impl<'a> TypeChecker<'a> {
                 return;
             };
 
-            for field in &enum_ty.fields {
-                let value_desc = format!("enum field `{}::{}`", def.ident.name, field.ident.name);
-                self.check_int_fits(
-                    field.value as i64,
-                    *underlying_prim,
-                    &value_desc,
-                    field.ident.span,
-                );
+            for &field_id in &enum_ty.fields {
+                let field_def = self.ctx.definitions.get(field_id);
+                if let DefKind::Const(const_ty) = &field_def.kind {
+                    let value_desc = format!("enum field `{}::{}`", def.ident.name, field_def.ident.name);
+                    if let Numeric::Int32(value) = const_ty.value {
+                        self.check_int_fits(
+                            value as i64,
+                            *underlying_prim,
+                            &value_desc,
+                            field_def.ident.span,
+                        );
+                    }
+                }
             }
         }
     }

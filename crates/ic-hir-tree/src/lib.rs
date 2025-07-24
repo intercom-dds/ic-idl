@@ -313,22 +313,31 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             let ty = emit_ty(context, &v.ty);
             node.push(leaf!("{} {ty} builtin", "type".purple()));
 
-            for var in &v.fields {
-                let span = emit_span(&var.ident.span);
+            for &var_id in &v.fields {
+                let var_def = context.definitions.get(var_id);
+                let span = emit_span(&var_def.ident.span);
 
-                let mut enum_node = leaf!(
-                    "{} {span} {} {}",
-                    "enumerator".green().bold(),
-                    &var.ident.name.cyan(),
-                    format!("'= {}'", var.value).purple(),
-                );
+                if let DefKind::Const(const_ty) = &var_def.kind {
+                    let value = match const_ty.value {
+                        Numeric::Int32(v) => v.to_string(),
+                        Numeric::Int64(v) => v.to_string(),
+                        _ => "?".to_string(),
+                    };
+                    
+                    let mut enum_node = leaf!(
+                        "{} {span} {} {}",
+                        "enumerator".green().bold(),
+                        &var_def.ident.name.cyan(),
+                        format!("'= {}'", value).purple(),
+                    );
 
-                // Add annotation nodes
-                for ann in &var.annotations {
-                    enum_node.push(emit_ann_node(ann));
+                    // Add annotation nodes
+                    for ann in &var_def.annotations {
+                        enum_node.push(emit_ann_node(ann));
+                    }
+
+                    node.push(enum_node);
                 }
-
-                node.push(enum_node);
             }
         }
         DefKind::Const(v) => {

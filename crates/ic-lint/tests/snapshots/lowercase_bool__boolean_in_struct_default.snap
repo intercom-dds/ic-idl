@@ -2,4 +2,27 @@
 source: crates/ic-lint/tests/lowercase_bool.rs
 expression: test_lint(source)
 ---
+warning[complex_lit]: complex literals are an InterCOM extension
+   ┌ test.idl:7:40
+   │
+ 7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
+   ·                      ^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^ complex constants are an InterCOM extension
+   ·                      └─ const defined here
+   └──
+ note: only literals of trivial types are allowed in standard IDL
 
+warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
+   ┌ test.idl:7:40
+   │
+ 7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
+   ·                                        ^^^^ lowercase boolean literal
+   └──
+ help: use `TRUE` instead
+
+warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
+   ┌ test.idl:7:46
+   │
+ 7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
+   ·                                              ^^^^^ lowercase boolean literal
+   └──
+ help: use `FALSE` instead

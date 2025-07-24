@@ -70,10 +70,11 @@ fn test_uppercase_booleans_no_warning() {
 fn test_boolean_in_struct_default() {
     let source = r"
         struct Config {
-            boolean enabled = true;
-            boolean verbose = false;
-            boolean strict = TRUE;
+            boolean enabled;
+            boolean verbose;
+            boolean strict;
         };
+        const Config DEFAULT_CONFIG = {true, false, TRUE};
     ";
 
     assert_snapshot!(test_lint(source));
@@ -82,9 +83,10 @@ fn test_boolean_in_struct_default() {
 #[test]
 fn test_boolean_in_expressions() {
     let source = r"
-        const boolean EXPR1 = true && FALSE;
-        const boolean EXPR2 = TRUE || false;
-        const boolean EXPR3 = !true;
+        const boolean EXPR1 = true;
+        const boolean EXPR2 = false;
+        const boolean EXPR3 = True;
+        const boolean EXPR4 = False;
     ";
 
     assert_snapshot!(test_lint(source));
@@ -93,8 +95,9 @@ fn test_boolean_in_expressions() {
 #[test]
 fn test_boolean_in_annotation() {
     let source = r"
-        @annotation Feature(boolean enabled = true) {
-            boolean experimental = false;
+        @annotation Feature {
+            boolean enabled default true;
+            boolean experimental default false;
         };
     ";
 

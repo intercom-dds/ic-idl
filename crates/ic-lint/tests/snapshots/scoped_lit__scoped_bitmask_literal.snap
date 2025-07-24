@@ -1,5 +1,46 @@
 ---
 source: crates/ic-lint/tests/scoped_lit.rs
+assertion_line: 61
 expression: test_lint(source)
 ---
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:3:20
+   │
+ 3 │             READ = 0x01,
+   ·                    ^^^^ 
+   └──
+ help: use the `@position` annotation instead
 
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:4:21
+   │
+ 4 │             WRITE = 0x02,
+   ·                     ^^^^ 
+   └──
+ help: use the `@position` annotation instead
+
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:5:23
+   │
+ 5 │             EXECUTE = 0x04
+   ·                       ^^^^ 
+   └──
+ help: use the `@position` annotation instead
+
+warning[scoped_lit]: scoped bitmasks are an InterCOM extension
+   ┌ test.idl:8:43
+   │
+ 8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
+   ·                                           ^^^^^^^^^^^ used here
+   └──
+ help: use `READ` instead of `Permissions::READ`
+ note: bitmask flags are registered in the parent scope
+
+warning[scoped_lit]: scoped bitmasks are an InterCOM extension
+   ┌ test.idl:8:63
+   │
+ 8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
+   ·                                                               ^^^^^^^^^^^ used here
+   └──
+ help: use `WRITE` instead of `Permissions::WRITE`
+ note: bitmask flags are registered in the parent scope

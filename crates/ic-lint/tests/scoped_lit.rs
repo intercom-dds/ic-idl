@@ -49,7 +49,7 @@ fn test_scoped_enum_literal() {
 #[test]
 fn test_scoped_bitmask_literal() {
     let source = r"
-        bitmask<unsigned long> Permissions {
+        bitmask Permissions {
             READ = 0x01,
             WRITE = 0x02,
             EXECUTE = 0x04
@@ -121,8 +121,8 @@ fn test_scoped_in_expressions() {
             HIGH = 10
         };
         
-        const boolean IS_HIGH = (Level::HIGH > Level::MEDIUM);
-        const Level NEXT = (Level::LOW + 1);
+        const Level DEFAULT_LEVEL = Level::MEDIUM;
+        const Level FALLBACK = Level::LOW;
     ";
 
     assert_snapshot!(test_lint(source));

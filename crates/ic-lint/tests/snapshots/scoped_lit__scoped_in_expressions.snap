@@ -1,5 +1,46 @@
 ---
 source: crates/ic-lint/tests/scoped_lit.rs
+assertion_line: 128
 expression: test_lint(source)
 ---
+warning[assign_expr]: assignment operator on enumerators is an InterCOM extension
+   ┌ test.idl:3:19
+   │
+ 3 │             LOW = 1,
+   ·                   ^ 
+   └──
+ help: use the `@value` annotation instead
 
+warning[assign_expr]: assignment operator on enumerators is an InterCOM extension
+   ┌ test.idl:4:22
+   │
+ 4 │             MEDIUM = 5,
+   ·                      ^ 
+   └──
+ help: use the `@value` annotation instead
+
+warning[assign_expr]: assignment operator on enumerators is an InterCOM extension
+   ┌ test.idl:5:20
+   │
+ 5 │             HIGH = 10
+   ·                    ^^ 
+   └──
+ help: use the `@value` annotation instead
+
+warning[scoped_lit]: scoped enums are an InterCOM extension
+   ┌ test.idl:8:37
+   │
+ 8 │         const Level DEFAULT_LEVEL = Level::MEDIUM;
+   ·                                     ^^^^^ used here
+   └──
+ help: use `MEDIUM` instead of `Level::MEDIUM`
+ note: enumerators are registered in the parent scope
+
+warning[scoped_lit]: scoped enums are an InterCOM extension
+   ┌ test.idl:9:32
+   │
+ 9 │         const Level FALLBACK = Level::LOW;
+   ·                                ^^^^^ used here
+   └──
+ help: use `LOW` instead of `Level::LOW`
+ note: enumerators are registered in the parent scope

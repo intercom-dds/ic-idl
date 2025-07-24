@@ -1082,8 +1082,8 @@ impl<'a> ExpressionEvaluator<'a> {
                 // Evaluate the size
                 updated_field.size = self.eval_bound(&field.size);
 
-                // If the type is a placeholder (Any), assign the appropriate type based on size
-                if matches!(updated_field.ty.kind, TyKind::Any) {
+                // If the type is a placeholder (Null), assign the appropriate type based on size
+                if matches!(updated_field.ty.kind, TyKind::Null) {
                     updated_field.ty = Self::default_bitfield_type(updated_field.size);
                 }
             }

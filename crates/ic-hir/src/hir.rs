@@ -212,7 +212,9 @@ pub enum TyKind {
         bound_span: Option<Span>,
     },
 
-    /// The null type (used in union cases with no data).
+    /// The null type.
+    /// - Used in union cases with no data
+    /// - Used as a placeholder for unresolved types during HIR construction
     Null,
 
     /// An algebraic data type.

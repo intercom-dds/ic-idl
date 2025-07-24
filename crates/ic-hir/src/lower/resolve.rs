@@ -388,8 +388,11 @@ impl<'a> Resolver<'a> {
             Label::new(span).message("unknown type"),
         ));
 
-        // Return placeholder type
-        Self::make_any_type(span)
+        // Return placeholder type - use Null to distinguish from legitimate Any
+        Ty {
+            kind: TyKind::Null,
+            span,
+        }
     }
 
     /// Gets the current parent `DefId` based on scope path.
@@ -1393,9 +1396,9 @@ impl<'a> Resolver<'a> {
                 let ty = if let Some(field_ty) = &field.ty {
                     self.resolve_type(field_ty)
                 } else {
-                    // Use Any as placeholder - evaluation phase will assign correct type based on size
+                    // Use Null as placeholder - evaluation phase will assign correct type based on size
                     Ty {
-                        kind: TyKind::Any,
+                        kind: TyKind::Null,
                         span: field.span,
                     }
                 };

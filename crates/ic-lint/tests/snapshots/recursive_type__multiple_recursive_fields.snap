@@ -17,3 +17,11 @@ error[recursive_type]: type `Tree` contains itself without indirection
    ·                  ^^^^^ recursive member here
    └──
  note: recursive types must use indirection through sequences, maps, or @external annotations
+
+warning[deprecated_ann]: use of deprecated annotation `@shared`
+   ┌ test.idl:6:14
+   │
+ 6 │             @shared Tree parent;  // OK
+   ·              ^^^^^^ deprecated annotation used here
+   └──
+ help: use `@external` instead

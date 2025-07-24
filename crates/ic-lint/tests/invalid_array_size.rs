@@ -79,8 +79,8 @@ struct NegativeArray {
 #[test]
 fn const_expression_array_size() {
     let source = r"
-const MILLION = 1000000;
-const TWO = 2;
+const long MILLION = 1000000;
+const long TWO = 2;
 struct ConstArrays {
     long large[MILLION * TWO];  // 2 million
     long small[MILLION / 10];   // 100k, should be fine

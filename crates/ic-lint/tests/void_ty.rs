@@ -196,14 +196,14 @@ interface AnotherInterface {
 fn void_in_nested_types() {
     let source = r"
 struct NestedInvalid {
-    sequence<array<void, 5>> deeplyNested;
+    sequence<sequence<void>> deeplyNested;
     map<string, sequence<void>> mapOfVoidSeq;
 };
 
 interface NestedInterface {
     // Valid void return
     void process();
-    
+
     // Invalid void in nested parameter type
     void handleData(in sequence<void> data);
 };

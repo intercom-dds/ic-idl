@@ -465,6 +465,7 @@ define_lints! {
         unsupported::items::Unsupported,
     ],
     hir_lints: [
+        annotation::deprecated_annotations::DeprecatedAnnotations,
         annotation::range_bound::RangeBound,
         pedantic::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,

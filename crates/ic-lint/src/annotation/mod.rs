@@ -27,6 +27,7 @@
 
 pub mod bit_bound;
 pub mod decl;
+pub mod deprecated_annotations;
 pub mod range_bound;
 pub mod topic_nested;
 pub mod unnamed_args;

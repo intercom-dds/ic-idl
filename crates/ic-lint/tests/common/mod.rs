@@ -123,12 +123,30 @@ pub fn test_lint_hir(source: &str) -> String {
     let builtin_parsed =
         ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
 
+    // Assert no parse errors in test code
+    assert!(
+        ast.errors.is_empty(),
+        "Parse errors in test code: {:?}",
+        ast.errors
+    );
+    assert!(
+        builtin_parsed.errors.is_empty(),
+        "Parse errors in builtin annotations: {:?}",
+        builtin_parsed.errors
+    );
+
     // Lower to HIR with built-ins
     let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: ast.tree,
         include_in_output: false,
     });
+    
+    // Assert that we have either definitions or errors
+    assert!(
+        !hir.order.is_empty() || !hir.errors.is_empty(),
+        "HIR has no definitions and no errors were reported. This indicates a bug in parsing or HIR construction."
+    );
 
     // Configure lint to enable semantic errors, pedantic warnings, and annotation warnings
     let mut config = LintConfig::new();

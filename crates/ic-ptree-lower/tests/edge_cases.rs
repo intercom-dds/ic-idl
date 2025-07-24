@@ -56,7 +56,7 @@ fn test_empty_idl() {
     assert!(ptree_ast.diagnostics().is_none());
 
     // Test HIR lowering
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
     let ptree_hir = from_hir(&hir, &vfs);
     assert!(ptree_hir.diagnostics().is_none());
@@ -79,7 +79,7 @@ fn test_deeply_nested_types() {
     check_parse_errors(&parsed, "test_deeply_nested_types");
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -105,7 +105,7 @@ fn test_mutually_recursive_structs() {
     check_parse_errors(&parsed, "test_mutually_recursive_structs");
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     // Skip ptree lowering for this test - C++ code has issues with duplicate registrations
@@ -132,7 +132,7 @@ fn test_empty_containers() {
     let (parsed, _vfs) = parse_idl(idl);
     // Empty enum/bitmask might have parse errors, but struct/interface should work
 
-    let _hir = ic_hir::from_ast(parsed.tree);
+    let _hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     // Check if we can at least create the HIR
 }
 
@@ -161,7 +161,7 @@ fn test_numeric_literals() {
     check_parse_errors(&parsed, "test_numeric_literals");
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -211,7 +211,7 @@ fn test_union_edge_cases() {
     check_parse_errors(&parsed, "test_union_edge_cases");
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -247,7 +247,7 @@ fn test_interface_edge_cases() {
     check_parse_errors(&parsed, "test_interface_edge_cases");
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -284,7 +284,7 @@ fn test_annotation_edge_cases() {
     check_parse_errors(&parsed, "test_annotation_edge_cases");
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -309,7 +309,7 @@ fn test_type_bounds() {
     let (parsed, vfs) = parse_idl(idl);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -347,7 +347,7 @@ fn test_scoped_references() {
     let (parsed, vfs) = parse_idl(idl);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 
     let ptree = from_hir(&hir, &vfs);
@@ -376,7 +376,7 @@ fn test_const_expression_references() {
     let (parsed, vfs) = parse_idl(idl);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     // Const expressions might have limitations
 
     if hir.errors.is_empty() {

@@ -317,8 +317,8 @@ fn test_merge_conflicting_definitions() {
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
-    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -381,8 +381,8 @@ enum Color { RED, GREEN, BLUE };
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
-    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
@@ -425,8 +425,8 @@ module api {
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
-    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
@@ -625,8 +625,8 @@ module test {
     let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
     let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
 
-    let graph1 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed1.tree));
-    let graph2 = ic_hir::lower(ic_hir::AstInput::<_, Vec<ic_syntax::Item>>::User(parsed2.tree));
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
 
     assert_eq!(graph1.errors.len(), 0);
     assert_eq!(graph2.errors.len(), 0);

@@ -87,7 +87,11 @@ pub fn lint_hir(source: &str) -> Report {
         ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
 
     // Lower to HIR with built-ins
-    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: ast.tree,
+        include_in_output: false,
+    });
 
     // Configure lint to enable semantic errors
     let mut config = LintConfig::new();
@@ -120,7 +124,11 @@ pub fn test_lint_hir(source: &str) -> String {
         ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
 
     // Lower to HIR with built-ins
-    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, ast.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: ast.tree,
+        include_in_output: false,
+    });
 
     // Configure lint to enable semantic errors, pedantic warnings, and annotation warnings
     let mut config = LintConfig::new();

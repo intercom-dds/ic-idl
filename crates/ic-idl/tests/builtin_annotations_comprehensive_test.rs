@@ -51,7 +51,11 @@ fn ast_to_hir_with_builtins(
     );
 
     // Use from_ast_with_builtins to properly handle built-in injection
-    let mut hir = hir::from_ast_with_builtins(builtin_parsed.tree, ast);
+    let mut hir = hir::from_ast(hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: ast,
+        include_in_output: false,
+    });
 
     let mut all_warnings = Vec::new();
     let mut all_errors = Vec::new();

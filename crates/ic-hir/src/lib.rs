@@ -43,15 +43,18 @@ pub mod type_size;
 pub mod visit;
 
 /// Input for HIR lowering, supporting both user-only and user+builtins scenarios.
-pub enum AstInput<U, B = std::iter::Empty<ic_syntax::Item>> {
+pub enum AstInput<I> {
     /// Just user AST, no builtins
-    User(U),
+    User(I),
+
     /// User AST with builtin definitions
     WithBuiltins {
-        /// Built-in definitions that will be marked with IS_BUILTIN flag
-        builtins: B,
+        /// Built-in definitions that will be marked with `IS_BUILTIN` flag
+        builtins: I,
+
         /// User definitions
-        user: U,
+        user: I,
+
         /// If true, builtins are included in the output order.
         /// If false, they're available in context but not in the output.
         include_in_output: bool,
@@ -85,11 +88,10 @@ impl ResolvedGraph {
     }
 }
 
-/// Lower AST to HIR with the specified input configuration.
-pub fn lower<U, B>(input: AstInput<U, B>) -> ResolvedGraph
+/// Convert AST to HIR with the specified input configuration.
+pub fn from_ast<I>(input: AstInput<I>) -> ResolvedGraph
 where
-    U: IntoIterator<Item = ic_syntax::Item>,
-    B: IntoIterator<Item = ic_syntax::Item>,
+    I: IntoIterator<Item = ic_syntax::Item>,
 {
     let result = match input {
         AstInput::User(ast) => lower::lower(ast),

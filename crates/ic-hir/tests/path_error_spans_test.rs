@@ -29,7 +29,6 @@
 
 mod common;
 
-
 #[test]
 fn test_unresolved_type_error_span_highlights_failing_segment() {
     let input = r"

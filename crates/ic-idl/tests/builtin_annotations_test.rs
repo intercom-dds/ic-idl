@@ -99,7 +99,11 @@ fn test_builtin_key_annotation() {
     assert!(builtin_parsed.errors.is_empty());
 
     // We need to use from_ast_with_builtins to include built-in annotations
-    let hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
 
     // Check for errors
     assert!(

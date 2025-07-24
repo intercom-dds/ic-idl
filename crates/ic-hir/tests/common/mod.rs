@@ -54,7 +54,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
         &mut source_map,
     );
 
-    let result = ic_hir::lower(AstInput::WithBuiltins {
+    let result = ic_hir::from_ast(AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: parsed.tree,
         include_in_output: false,
@@ -135,7 +135,6 @@ pub fn compile_idl_with_warnings(input: &str) -> String {
     diagnostics
 }
 
-
 /// Parse IDL with custom builtins (for testing builtin behavior)
 #[allow(dead_code)]
 pub fn parse_with_custom_builtins(
@@ -144,20 +143,17 @@ pub fn parse_with_custom_builtins(
     include_builtins_in_output: bool,
 ) -> (ResolvedGraph, SourceMap, String) {
     let mut source_map = SourceMap::default();
-    
+
     let builtin_file = source_map.embed_with_name("<builtin>", builtins);
     let builtin_parsed = ic_parse::from_file(
         builtin_file,
         ic_preproc::ProcArgs::default(),
         &mut source_map,
     );
-    
+
     let user_file = source_map.embed_with_name("test.idl", user);
-    let user_parsed = ic_parse::from_file(
-        user_file,
-        ic_preproc::ProcArgs::default(),
-        &mut source_map,
-    );
+    let user_parsed =
+        ic_parse::from_file(user_file, ic_preproc::ProcArgs::default(), &mut source_map);
 
     assert!(
         builtin_parsed.errors.is_empty(),
@@ -170,7 +166,7 @@ pub fn parse_with_custom_builtins(
         user_parsed.errors
     );
 
-    let result = ic_hir::lower(AstInput::WithBuiltins {
+    let result = ic_hir::from_ast(AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: user_parsed.tree,
         include_in_output: include_builtins_in_output,

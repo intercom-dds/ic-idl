@@ -39,7 +39,7 @@ fn test_empty_input() {
     assert!(parsed.errors.is_empty());
 
     // HIR lowering should also work
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     let _ptree_hir = from_hir(&hir, &vfs);
     // Just check it doesn't panic
 }
@@ -63,7 +63,7 @@ fn test_minimal_struct() {
     let _ = ptree_ast.diagnostics();
 
     // Try HIR lowering
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     if !hir.errors.is_empty() {
         // HIR errors encountered
         return;
@@ -89,7 +89,7 @@ fn test_from_file() {
     }
 
     // This should definitely work since it's used internally
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
 
     let _ptree = from_hir(&hir, &vfs);

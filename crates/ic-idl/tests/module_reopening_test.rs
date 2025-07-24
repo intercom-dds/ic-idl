@@ -65,7 +65,11 @@ fn test_module_reopening_preserves_annotations() {
     assert!(builtin_parsed.errors.is_empty());
 
     // Convert to HIR with built-ins
-    let hir = ic_hir::from_ast_with_builtins(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
 
     // Should have no errors or warnings
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
@@ -131,7 +135,7 @@ fn test_nested_module_reopening() {
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
 
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);

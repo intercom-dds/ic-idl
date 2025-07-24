@@ -40,7 +40,7 @@ fn test_duplicate_enum_values_error() {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     let report = ic_lint::lint_hir(&hir, &vfs);
 
     // Should have errors for duplicate value
@@ -68,7 +68,7 @@ fn test_duplicate_bitmask_values_allowed() {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut vfs);
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
     let report = ic_lint::lint_hir(&hir, &vfs);
 
     // Should have no errors - duplicate values in bitmasks are allowed

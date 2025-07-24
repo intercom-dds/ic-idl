@@ -46,7 +46,7 @@ fn test_nested_enum_in_annotation() {
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
 
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
@@ -98,7 +98,7 @@ fn test_nested_enum_in_interface() {
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
 
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
@@ -143,7 +143,7 @@ fn test_nested_enum_in_module() {
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
 
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);
@@ -188,7 +188,7 @@ fn test_type_resolution_in_annotation() {
     let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
 
     // Should have no errors
     assert!(hir.errors.is_empty(), "Unexpected errors: {:?}", hir.errors);

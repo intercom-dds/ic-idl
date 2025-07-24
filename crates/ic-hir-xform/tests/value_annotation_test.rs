@@ -63,7 +63,11 @@ fn test_value_annotation_transform_integration() {
     let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
     // Convert to HIR
-    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
 
     // Verify we have the expected definitions
     assert!(
@@ -198,7 +202,11 @@ fn test_value_annotation_with_auto_increment() {
     let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
     // Convert to HIR
-    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
 
     // Apply the transformation
     let transformed = ic_hir_xform::value_annotation::transform(hir);

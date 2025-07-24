@@ -60,7 +60,11 @@ fn test_position_annotation_transform_integration() {
     let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
     // Convert to HIR
-    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
 
     // Verify expected definitions exist
     assert!(
@@ -184,7 +188,11 @@ fn test_position_annotation_mixed_values() {
     let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
     // Convert to HIR
-    let hir = ic_hir::from_ast_with_builtin_context(builtin_parsed.tree, parsed.tree);
+    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
 
     // Apply the transformation
     let transformed = ic_hir_xform::position_annotation::transform(hir);

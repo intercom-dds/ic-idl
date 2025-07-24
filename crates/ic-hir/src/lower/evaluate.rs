@@ -403,6 +403,66 @@ impl<'a> ExpressionEvaluator<'a> {
         }
     }
 
+    /// Evaluates an expression to a numeric value, preserving constant references.
+    /// When the expression is a reference to a constant or enum value, this returns
+    /// Numeric::Const(DefId) instead of the evaluated value, preserving semantic information
+    /// about which constant is being referenced.
+    fn eval_expr_with_const_refs(&mut self, expr: &Expr) -> Numeric {
+        // Check if this is a simple path that might be a constant reference
+        if let Expr::Path(path) = expr {
+            // Convert path to string for resolution
+            let path_str = path_to_string(path);
+
+            // Check if name starts with :: for global scope resolution
+            let (start_scope, name_without_prefix) =
+                if let Some(stripped) = path_str.strip_prefix("::") {
+                    (self.ctx.scopes.root(), stripped)
+                } else {
+                    (self.current_scope, path_str.as_str())
+                };
+
+            let parts: Vec<&str> = name_without_prefix.split("::").collect();
+
+            // Try to resolve the path - could be a constant or enum value
+            if let Some(def_id) = self.ctx.scopes.resolve_path(start_scope, &parts) {
+                let def = self.ctx.definitions.get(def_id);
+                if matches!(def.kind, DefKind::Const(_)) {
+                    // Return a reference to the constant
+                    return Numeric::Const(def_id);
+                }
+            }
+
+            // Check if it's an unscoped enum enumerator
+            if parts.len() == 1 {
+                let enumerator = parts[0];
+
+                // Get all visible enums from current scope
+                let visible_enums = self
+                    .ctx
+                    .scopes
+                    .get_visible_enums(self.current_scope, &self.ctx.definitions);
+
+                // Check each enum for this enumerator
+                for enum_id in visible_enums {
+                    let enum_def = self.ctx.definitions.get(enum_id);
+                    if let DefKind::Enum(enum_ty) = &enum_def.kind {
+                        // Look through the enum's field constants
+                        for &field_id in &enum_ty.fields {
+                            let field_def = self.ctx.definitions.get(field_id);
+                            if field_def.ident.name == enumerator {
+                                // Found the enum constant - return reference to it
+                                return Numeric::Const(field_id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Otherwise evaluate normally
+        self.eval_expr(expr)
+    }
+
     /// Evaluates an expression to a numeric value.
     fn eval_expr(&mut self, expr: &Expr) -> Numeric {
         // Convert to ic-expr format
@@ -755,7 +815,7 @@ impl<'a> ExpressionEvaluator<'a> {
 
             for label in &field.labels {
                 if let ic_syntax::Label::Case(expr) = label {
-                    labels.push(self.eval_expr(expr));
+                    labels.push(self.eval_expr_with_const_refs(expr));
                 }
             }
 

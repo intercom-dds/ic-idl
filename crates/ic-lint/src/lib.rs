@@ -482,6 +482,7 @@ define_lints! {
         semantic::invalid_enum_value::InvalidEnumValue,
         semantic::multiple_default_cases::MultipleDefaultCases,
         semantic::recursive_type::RecursiveType,
+        semantic::union_case_type_mismatch::UnionCaseTypeMismatch,
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::zero_bound::ZeroBound,
         semantic::void_ty::VoidTy,

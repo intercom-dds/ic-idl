@@ -78,9 +78,6 @@ impl<'a> Validator<'a> {
                 // Null is only valid in union variants
                 // If we see it elsewhere, it's a placeholder for an unresolved type
                 // Don't report an error here as it was already reported during resolution
-                if !in_union_variant {
-                    // Silently skip - error already reported
-                }
             }
             TyKind::Adt(_) => {
                 // Don't check for completeness here - forward declarations are allowed

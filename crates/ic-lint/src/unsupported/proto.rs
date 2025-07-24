@@ -56,7 +56,7 @@ impl<'a> Visitor<'a> for Proto<'a> {
                     let diag = error_span(
                         "the first enum value must be zero in proto3",
                         Label::new(field_def.ident.span)
-                            .message(format!("this field has the value {}", value)),
+                            .message(format!("this field has the value {value}")),
                     );
                     Self::report(self.ctx, diag);
                 }

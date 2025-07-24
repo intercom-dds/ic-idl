@@ -187,7 +187,9 @@ impl HirMerger {
     /// Checks if two types are identical.
     fn types_are_identical(ty1: &Ty, ty2: &Ty) -> bool {
         match (&ty1.kind, &ty2.kind) {
-            (TyKind::Any, TyKind::Any) | (TyKind::Fixed, TyKind::Fixed) => true,
+            (TyKind::Any, TyKind::Any)
+            | (TyKind::Fixed, TyKind::Fixed)
+            | (TyKind::Null, TyKind::Null) => true,
 
             (TyKind::Primitive(p1), TyKind::Primitive(p2)) => p1 == p2,
 

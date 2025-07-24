@@ -320,6 +320,7 @@ where
         | TyKind::Primitive(_)
         | TyKind::Any
         | TyKind::Fixed
+        | TyKind::Null
         | TyKind::Adt(_) => {
             // No nested types to visit
         }

@@ -212,6 +212,9 @@ pub enum TyKind {
         bound_span: Option<Span>,
     },
 
+    /// The null type (used in union cases with no data).
+    Null,
+
     /// An algebraic data type.
     Adt(DefId),
 }
@@ -375,7 +378,7 @@ pub struct Variant {
 
 #[derive(Debug, Clone)]
 pub struct EnumTy {
-    /// DefIds of the enum constants
+    /// `DefIds` of the enum constants
     pub fields: Vec<DefId>,
 
     /// Underlying primitive type of the enum.

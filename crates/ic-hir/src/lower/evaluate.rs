@@ -405,7 +405,7 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates an expression to a numeric value, preserving constant references.
     /// When the expression is a reference to a constant or enum value, this returns
-    /// Numeric::Const(DefId) instead of the evaluated value, preserving semantic information
+    /// `Numeric::Const(DefId)` instead of the evaluated value, preserving semantic information
     /// about which constant is being referenced.
     fn eval_expr_with_const_refs(&mut self, expr: &Expr) -> Numeric {
         // Check if this is a simple path that might be a constant reference
@@ -988,7 +988,7 @@ impl<'a> ExpressionEvaluator<'a> {
                 let field_def = self.ctx.definitions.get_mut(field_ids[i]);
                 if let DefKind::Const(const_ty) = &mut field_def.kind {
                     // Store as Int64 if value doesn't fit in Int32
-                    const_ty.value = if value >= i32::MIN as isize && value <= i32::MAX as isize {
+                    const_ty.value = if i32::try_from(value).is_ok() {
                         Numeric::Int32(value as i32)
                     } else {
                         Numeric::Int64(value as i64)

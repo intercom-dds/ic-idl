@@ -951,8 +951,35 @@ impl<'a> Resolver<'a> {
                         is_default,
                     });
                 }
-                ic_syntax::UnionElement::Null(_) => {
-                    // TODO: Handle null/default case
+                ic_syntax::UnionElement::Null(null_elem) => {
+                    // Generate a synthetic identifier for the null case based on its position
+                    let ident = Ident {
+                        name: format!("_null_case_{}", variants.len()),
+                        span: null_elem.span,
+                    };
+
+                    // Check if this is a default case
+                    let is_default = field
+                        .labels
+                        .iter()
+                        .any(|label| matches!(label, ic_syntax::Label::Default(_)));
+
+                    // Process case labels (will be evaluated in the evaluation phase)
+                    let labels = Vec::new();
+
+                    // Use a null type for null cases
+                    let null_ty = Ty {
+                        kind: TyKind::Null,
+                        span: null_elem.span,
+                    };
+
+                    variants.push(crate::hir::Variant {
+                        ident,
+                        ty: null_ty,
+                        annotations: self.resolve_ast_annotations(&field.annotations),
+                        labels,
+                        is_default,
+                    });
                 }
             }
         }

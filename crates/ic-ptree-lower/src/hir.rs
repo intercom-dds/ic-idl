@@ -110,6 +110,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_map(self.state, key, elem, bound)
             }
             TyKind::Adt(id) => self.lookup_node(*id),
+            TyKind::Null => ptr::null_mut(), // Null type has no ptree representation
         }
     }
 
@@ -137,11 +138,18 @@ impl<'a> TreeBuilder<'a> {
             sys::create_case_label(self.state, value)
         });
 
-        let decl = self.lower_decl(&var.ident);
-        let ty = self.lower_ty(&var.ty);
-        let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
-        let annotations = self.lower_annotations(&var.annotations);
-        sys::create_union_member(self.state, mem, cases, annotations)
+        // Check if this is a null case
+        if matches!(var.ty.kind, TyKind::Null) {
+            let null_node = sys::create_null_node(self.state);
+            let annotations = self.lower_annotations(&var.annotations);
+            sys::create_union_member(self.state, null_node, cases, annotations)
+        } else {
+            let decl = self.lower_decl(&var.ident);
+            let ty = self.lower_ty(&var.ty);
+            let mem = sys::create_member(self.state, decl, ty, ptr::null_mut());
+            let annotations = self.lower_annotations(&var.annotations);
+            sys::create_union_member(self.state, mem, cases, annotations)
+        }
     }
 
     unsafe fn lower_numeric(&mut self, num: &Numeric) -> *const sys::numeric {

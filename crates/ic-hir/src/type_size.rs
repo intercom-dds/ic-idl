@@ -35,6 +35,7 @@ pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
     match &ty.kind {
         TyKind::Any | TyKind::Sequence { .. } | TyKind::String { .. } | TyKind::Map { .. } => None, // Dynamic or unknown size
         TyKind::Fixed => Some(8), // Fixed point, assume 64-bit
+        TyKind::Null => Some(0),  // Null type has no size
         TyKind::Primitive(prim) => primitive_size(*prim),
         TyKind::Array {
             ty: elem_ty, len, ..

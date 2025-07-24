@@ -109,6 +109,7 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
     let kind = match &ty.kind {
         TyKind::Any => "any",
         TyKind::Fixed => "fixed",
+        TyKind::Null => "null",
         TyKind::Primitive(kind) => {
             return kind.to_string().to_ascii_lowercase().cyan();
         }

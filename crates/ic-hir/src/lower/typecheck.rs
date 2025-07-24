@@ -59,6 +59,7 @@ impl<'a> TypeChecker<'a> {
     fn type_name(&self, ty: &Ty) -> String {
         match &ty.kind {
             TyKind::Primitive(prim) => prim.name().to_string(),
+            TyKind::Null => "null".to_string(),
             TyKind::String { wide, .. } => {
                 if *wide {
                     "wstring".to_string()
@@ -276,12 +277,17 @@ impl<'a> TypeChecker<'a> {
                         .find(|v| v.ident.name == field.name)
                     {
                         // Check the variant value type
-                        self.check_numeric_type(
-                            value,
-                            &variant.ty,
-                            &format!("{value_desc}.{}", field.name),
-                            value_span,
-                        )
+                        if matches!(variant.ty.kind, TyKind::Null) {
+                            // This is a null case - the value should be Numeric::Null
+                            matches!(**value, Numeric::Null)
+                        } else {
+                            self.check_numeric_type(
+                                value,
+                                &variant.ty,
+                                &format!("{value_desc}.{}", field.name),
+                                value_span,
+                            )
+                        }
                     } else {
                         self.errors.push(error_span(
                             format!("{value_desc}: unknown union field `{}`", field.name),
@@ -723,7 +729,7 @@ impl<'a> TypeChecker<'a> {
                         format!("enum field `{}::{}`", def.ident.name, field_def.ident.name);
                     if let Numeric::Int32(value) = const_ty.value {
                         self.check_int_fits(
-                            value as i64,
+                            i64::from(value),
                             *underlying_prim,
                             &value_desc,
                             field_def.ident.span,

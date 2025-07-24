@@ -49,7 +49,8 @@ const long test11 = 1 | ((2 & 3) + 4);
 const long test12 = ((1 | 2) & 3) + 4;
 ";
 
-    assert_snapshot!(test_lint(idl));
+    let output = test_lint(idl);
+    assert!(output.is_empty(), "Expected no warnings when parentheses are used to clarify precedence, but got: {}", output);
 }
 
 #[test]
@@ -103,7 +104,8 @@ const long test11 = (~1) & 2;
 const long test12 = (-1) + 2;
 ";
 
-    assert_snapshot!(test_lint(idl));
+    let output = test_lint(idl);
+    assert!(output.is_empty(), "Expected no false positives for well-parenthesized expressions, but got: {}", output);
 }
 
 #[test]

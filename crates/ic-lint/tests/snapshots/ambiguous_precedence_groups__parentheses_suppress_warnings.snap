@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
-expression: test_lint(idl)
----
-

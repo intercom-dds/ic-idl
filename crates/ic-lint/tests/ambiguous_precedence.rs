@@ -85,7 +85,8 @@ const long test6 = 1 + 2 * 3 - 4 / 5;
 const long test7 = (1 + 2) * (3 - 4) / 5;
 ";
 
-    assert_snapshot!(test_lint(idl));
+    let output = test_lint(idl);
+    assert!(output.is_empty(), "Expected no warnings for well-known arithmetic precedence, but got: {}", output);
 }
 
 #[test]

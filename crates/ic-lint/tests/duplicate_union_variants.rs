@@ -40,7 +40,8 @@ union Result switch (long) {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no warnings for valid union variants, but got: {}", output);
 }
 
 #[test]

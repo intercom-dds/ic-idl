@@ -149,7 +149,8 @@ const long test10 = a & b & c & d;
 const long test11 = a ^ b ^ c ^ d;
 ";
 
-    assert_snapshot!(test_lint(idl));
+    let output = test_lint(idl);
+    assert!(output.is_empty(), "Expected no warnings for operators with same associativity, but got: {}", output);
 }
 
 #[test]

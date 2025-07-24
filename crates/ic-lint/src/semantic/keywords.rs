@@ -47,6 +47,15 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
 
     // don't visit types
     fn visit_type(&mut self, _: &'a ic_syntax::Type) {}
+    
+    // Visit union members to check their declarators
+    fn visit_union_member(&mut self, member: &'a ic_syntax::UnionMember) {
+        // Handle the declarator which can be Simple(Ident) or Array(ArrayDeclarator)
+        match &member.decl {
+            ic_syntax::Declarator::Simple(ident) => self.visit_ident(ident),
+            ic_syntax::Declarator::Array(array_decl) => self.visit_ident(&array_decl.ident),
+        }
+    }
 
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
         if IDL_KEYWORDS.contains(&ident.name.as_str())

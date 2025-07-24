@@ -1,5 +1,76 @@
 ---
 source: crates/ic-lint/tests/keywords.rs
+assertion_line: 248
 expression: test_lint(source)
 ---
+error[keywords]: `boolean` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:10
+   │
+ 3 │     long boolean;           // 'boolean' is a keyword
+   ·          ^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_boolean`
 
+error[keywords]: `char` is a keyword and may not be used as an identifier
+   ┌ test.idl:4:10
+   │
+ 4 │     long char;              // 'char' is a keyword
+   ·          ^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_char`
+
+error[keywords]: `int32` is a keyword and may not be used as an identifier
+   ┌ test.idl:5:10
+   │
+ 5 │     long int32;             // 'int32' is a keyword
+   ·          ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int32`
+
+error[keywords]: `uint16` is a keyword and may not be used as an identifier
+   ┌ test.idl:6:10
+   │
+ 6 │     long uint16;            // 'uint16' is a keyword
+   ·          ^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_uint16`
+
+error[keywords]: `octet` is a keyword and may not be used as an identifier
+   ┌ test.idl:7:10
+   │
+ 7 │     long octet;             // 'octet' is a keyword
+   ·          ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_octet`
+
+error[keywords]: `abstract` is a keyword and may not be used as an identifier
+   ┌ test.idl:8:10
+   │
+ 8 │     long abstract;          // 'abstract' is a keyword
+   ·          ^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_abstract`
+
+error[keywords]: `uint64` is a keyword and may not be used as an identifier
+   ┌ test.idl:9:10
+   │
+ 9 │     long uint64;            // 'uint64' is a keyword
+   ·          ^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_uint64`
+
+error[keywords]: `truncatable` is a keyword and may not be used as an identifier
+    ┌ test.idl:10:10
+    │
+ 10 │     long truncatable;       // 'truncatable' is a keyword
+    ·          ^^^^^^^^^^^ this is an IDL keyword
+    └──
+ help: the keyword can be escaped by changing to `_truncatable`
+
+error[keywords]: `multiple` is a keyword and may not be used as an identifier
+    ┌ test.idl:11:10
+    │
+ 11 │     long multiple;          // 'multiple' is a keyword
+    ·          ^^^^^^^^ this is an IDL keyword
+    └──
+ help: the keyword can be escaped by changing to `_multiple`

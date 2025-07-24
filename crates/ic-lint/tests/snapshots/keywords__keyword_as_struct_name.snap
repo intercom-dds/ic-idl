@@ -1,5 +1,12 @@
 ---
 source: crates/ic-lint/tests/keywords.rs
+assertion_line: 60
 expression: test_lint(source)
 ---
-
+error[keywords]: `int32` is a keyword and may not be used as an identifier
+   ┌ test.idl:2:8
+   │
+ 2 │ struct int32 {  // 'int32' is a primitive type keyword
+   ·        ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int32`

@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/complex_lit.rs
-expression: test_lint(source)
----
-

@@ -38,6 +38,13 @@ pub fn test_lint(source: &str) -> String {
     let args = ic_preproc::ProcArgs::default();
     let ast = ic_parse::from_file(file_id, args, &mut vfs);
 
+    // Assert no parse errors in test code
+    assert!(
+        ast.errors.is_empty(),
+        "Parse errors in test code: {:?}",
+        ast.errors
+    );
+
     // Configure lint to enable pedantic warnings
     let mut config = LintConfig::new();
     config.set_category_level(Category::Pedantic, Level::Warning);

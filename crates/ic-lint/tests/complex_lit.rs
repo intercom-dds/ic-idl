@@ -38,7 +38,7 @@ fn test_struct_initializer_in_const() {
             double y;
         };
         
-        const Point ORIGIN = { x: 0.0, y: 0.0 };
+        const Point ORIGIN = { 0.0, 0.0 };
     ";
 
     assert_snapshot!(test_lint(source));
@@ -61,13 +61,15 @@ fn test_initializer_in_annotation() {
             string name;
             long value;
         };
-        
-        @annotation Settings(Config default_config = { name: "default", value: 42 }) {
-            boolean enabled;
+
+        struct HasConfig {
+            @default({"default", 42})
+            Config my_config;
         };
     "#;
 
-    assert_snapshot!(test_lint(source));
+    let output = test_lint(source);
+    assert!(output.is_empty());
 }
 
 #[test]
@@ -97,8 +99,8 @@ fn test_nested_initializers() {
         };
         
         const Outer NESTED = {
-            inner: { a: 1, b: 2 },
-            name: "test"
+            { 1, 2 },
+            "test"
         };
     "#;
 

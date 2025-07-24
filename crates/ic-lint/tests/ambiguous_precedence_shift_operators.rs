@@ -25,41 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Level;
-use ic_lint::{Category, LintConfig};
-use ic_vfs::SourceMap;
 use insta::assert_snapshot;
 
-fn check_ambiguous_precedence(idl_code: &str) -> String {
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed(idl_code);
-
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
-
-    let mut config = LintConfig::new();
-    config.set_category_level(Category::Pedantic, Level::Warning);
-
-    let report = ic_lint::lint_syntax_with_config(&ast.tree, &vfs, &config);
-
-    let mut output = String::new();
-
-    let precedence_warnings: Vec<_> = report
-        .warnings
-        .into_iter()
-        .filter(|diag| format!("{diag}").contains("precedence"))
-        .collect();
-
-    for (i, diag) in precedence_warnings.iter().enumerate() {
-        if i > 0 {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", idl_code, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    output
-}
+mod common;
+use common::test_lint;
 
 #[test]
 fn test_shift_operator_precedence() {
@@ -80,7 +49,7 @@ const long test11 = 1 >> 2 / 3;
 const long test12 = 1 / 2 >> 3;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -101,7 +70,7 @@ const long test9 = (1 & 2) << 3;
 const long test10 = 1 & (2 << 3);
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -124,5 +93,5 @@ const long test9 = data >> start & (1 << length) - 1;
 const long test10 = (data >> start) & ((1 << length) - 1);
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }

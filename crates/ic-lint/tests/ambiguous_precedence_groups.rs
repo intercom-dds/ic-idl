@@ -25,41 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Level;
-use ic_lint::{Category, LintConfig};
-use ic_vfs::SourceMap;
 use insta::assert_snapshot;
 
-fn check_ambiguous_precedence(idl_code: &str) -> String {
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed(idl_code);
-
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
-
-    let mut config = LintConfig::new();
-    config.set_category_level(Category::Pedantic, Level::Warning);
-
-    let report = ic_lint::lint_syntax_with_config(&ast.tree, &vfs, &config);
-
-    let mut output = String::new();
-
-    let precedence_warnings: Vec<_> = report
-        .warnings
-        .into_iter()
-        .filter(|diag| format!("{diag}").contains("precedence"))
-        .collect();
-
-    for (i, diag) in precedence_warnings.iter().enumerate() {
-        if i > 0 {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", idl_code, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    output
-}
+mod common;
+use common::test_lint;
 
 #[test]
 fn test_parentheses_suppress_warnings() {
@@ -80,7 +49,7 @@ const long test11 = 1 | ((2 & 3) + 4);
 const long test12 = ((1 | 2) & 3) + 4;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -98,7 +67,7 @@ const long test7 = 1 | 2 & 3 ^ 4;
 const long test8 = (1 | 2) & 3 ^ 4;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -113,7 +82,7 @@ const long test5 = (1 | 2) & ((3 ^ 4) + 5);
 const long test6 = 1 | (2 & 3) ^ 4 + 5;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -134,7 +103,7 @@ const long test11 = (~1) & 2;
 const long test12 = (-1) + 2;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -144,7 +113,7 @@ const long MASK_LOWER = 0xFF;
 const long MASK_UPPER = 0xFF00;
 
 const long combined1 = (MASK_LOWER & value) | (MASK_UPPER & (value << 8));
-const long combined2 = ((flags & MASK_LOWER) != 0) ? 1 : 0;
+const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
 const long combined3 = (base + offset) & ~(alignment - 1);
 
 const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
@@ -152,5 +121,5 @@ const long bad2 = flags & MASK_LOWER + 1;
 const long bad3 = base + offset & ~alignment - 1;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }

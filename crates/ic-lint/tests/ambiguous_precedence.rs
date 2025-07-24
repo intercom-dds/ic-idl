@@ -25,51 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Level;
-use ic_lint::{Category, LintConfig};
-use ic_vfs::SourceMap;
 use insta::assert_snapshot;
 
-/// Helper to run the ambiguous precedence lint on IDL code and return formatted diagnostics
-fn check_ambiguous_precedence(idl_code: &str) -> String {
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed(idl_code);
-
-    // Parse the IDL code
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
-
-    // Configure lint to enable pedantic warnings
-    let mut config = LintConfig::new();
-    config.set_category_level(Category::Pedantic, Level::Warning);
-
-    // Run lints
-    let report = ic_lint::lint_syntax_with_config(&ast.tree, &vfs, &config);
-
-    // Format all diagnostics
-    let mut output = String::new();
-
-    // Collect all warnings that contain "precedence"
-    let precedence_warnings: Vec<_> = report
-        .warnings
-        .into_iter()
-        .filter(|diag| {
-            // Check if the diagnostic message contains "precedence"
-            format!("{diag}").contains("precedence")
-        })
-        .collect();
-
-    // Emit each diagnostic
-    for (i, diag) in precedence_warnings.iter().enumerate() {
-        if i > 0 {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", idl_code, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    output
-}
+mod common;
+use common::test_lint;
 
 #[test]
 fn test_bitwise_precedence() {
@@ -90,7 +49,7 @@ const long test8 = 1 & 2 & 3;
 const long test9 = 1 ^ 2 ^ 3;      
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -108,7 +67,7 @@ const long test6 = 1 | 2 + 3 * 4;  // Both + and * bind tighter than |
 const long test7 = 1 & 2 * 3 + 4;  // Both * and + bind tighter than &
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -126,7 +85,7 @@ const long test6 = 1 + 2 * 3 - 4 / 5;
 const long test7 = (1 + 2) * (3 - 4) / 5;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -170,7 +129,7 @@ union Value switch (long) {
 const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -192,7 +151,7 @@ const long HAS_RW = READ_PERMISSION | WRITE_PERMISSION;
 const long TEST_FLAGS = HAS_RW & READ_PERMISSION | EXEC_PERMISSION;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -215,5 +174,5 @@ const long test6 = MASK & FLAGS + 1;   // Should warn
 // Empty file should not crash
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }

@@ -46,7 +46,12 @@ module ValidNames {
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    let output = test_lint(source);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for valid identifiers, but got: {}",
+        output
+    );
 }
 
 #[test]

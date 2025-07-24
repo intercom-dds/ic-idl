@@ -1,6 +1,6 @@
 ---
 source: crates/ic-lint/tests/ambiguous_precedence.rs
-expression: check_ambiguous_precedence(idl)
+expression: test_lint(idl)
 ---
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:8:20
@@ -46,3 +46,12 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `+`
     ·                                └─ this operator has lower precedence
     └──
  help: add parentheses to clarify the intended order of operations
+
+warning[complex_lit]: complex literals are an InterCOM extension
+   ┌ test.idl:8:33
+   │
+ 8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
+   ·            ^^^^^                ^ complex constants are an InterCOM extension
+   ·            └─ const defined here
+   └──
+ note: only literals of trivial types are allowed in standard IDL

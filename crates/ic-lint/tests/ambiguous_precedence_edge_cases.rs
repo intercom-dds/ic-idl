@@ -25,41 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::Level;
-use ic_lint::{Category, LintConfig};
-use ic_vfs::SourceMap;
 use insta::assert_snapshot;
 
-fn check_ambiguous_precedence(idl_code: &str) -> String {
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed(idl_code);
-
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
-
-    let mut config = LintConfig::new();
-    config.set_category_level(Category::Pedantic, Level::Warning);
-
-    let report = ic_lint::lint_syntax_with_config(&ast.tree, &vfs, &config);
-
-    let mut output = String::new();
-
-    let precedence_warnings: Vec<_> = report
-        .warnings
-        .into_iter()
-        .filter(|diag| format!("{diag}").contains("precedence"))
-        .collect();
-
-    for (i, diag) in precedence_warnings.iter().enumerate() {
-        if i > 0 {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", idl_code, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    output
-}
+mod common;
+use common::test_lint;
 
 #[test]
 fn test_extreme_nesting() {
@@ -73,7 +42,7 @@ const long test5 = (1 | 2) & 3 ^ (4 + 5) * 6;
 const long test6 = 1 | (2 & 3 ^ 4) + 5 * 6;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -97,7 +66,7 @@ const long test10 = 1 | (
 );
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -105,7 +74,7 @@ fn test_numeric_literals() {
     let idl = r"
 const long test1 = 0xFF & 0x0F + 1;
 const long test2 = 0377 | 010 & 3;
-const long test3 = 0b1111 & 0b0011 + 1;
+const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
 
 const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
 const long test5 = 4294967295 | 2147483647 & 1000000;
@@ -118,7 +87,7 @@ const long test9 = (-1) & (2 + 3);
 const long test10 = -(1 & 2) + 3;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -145,7 +114,7 @@ const long test15 = a ^ (b & c);
 const long test16 = (a ^ b) & c;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -160,7 +129,7 @@ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
 const long array_size = MAX_SIZE & ALIGN_MASK + 1;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -180,7 +149,7 @@ const long test10 = a & b & c & d;
 const long test11 = a ^ b ^ c ^ d;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }
 
 #[test]
@@ -199,5 +168,5 @@ const long test8 = -1 + 2;
 const long test9 = ~a | ~b & ~c;
 ";
 
-    assert_snapshot!(check_ambiguous_precedence(idl));
+    assert_snapshot!(test_lint(idl));
 }

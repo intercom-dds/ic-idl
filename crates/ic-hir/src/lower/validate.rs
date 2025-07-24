@@ -39,9 +39,7 @@ use std::collections::{HashMap, HashSet};
 use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
-use crate::hir::{
-    Decl, Def, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
-};
+use crate::hir::{Decl, Def, DefId, DefKind, InterfaceTy, PrimitiveTy, StructTy, TyKind, UnionTy};
 
 /// Validates the HIR for semantic correctness.
 pub struct Validator<'a> {
@@ -63,34 +61,6 @@ impl<'a> Validator<'a> {
     /// Gets a definition by ID.
     fn get_def(&self, id: DefId) -> &Def {
         self.ctx.definitions.get(id)
-    }
-
-    /// Validates type references (ensures they exist and are complete).
-    #[allow(clippy::only_used_in_recursion)]
-    fn validate_type_ref(&mut self, ty: &Ty) {
-        self.validate_type_ref_in_context(ty, false);
-    }
-
-    #[allow(clippy::only_used_in_recursion)]
-    fn validate_type_ref_in_context(&mut self, ty: &Ty, _in_union_variant: bool) {
-        match &ty.kind {
-            TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
-                self.validate_type_ref_in_context(ty, false);
-            }
-            TyKind::Map { key, elem, .. } => {
-                self.validate_type_ref_in_context(key, false);
-                self.validate_type_ref_in_context(elem, false);
-            }
-            _ => {
-                // TyKind::Null: Null is only valid in union variants
-                //   If we see it elsewhere, it's a placeholder for an unresolved type
-                //   Don't report an error here as it was already reported during resolution
-                // TyKind::Adt: Don't check for completeness here - forward declarations are allowed
-                //   to be used before they're defined in IDL
-                //   The type will be validated separately in validate_all
-                // Others: No validation needed
-            }
-        }
     }
 
     /// Validates a struct definition.
@@ -133,11 +103,6 @@ impl<'a> Validator<'a> {
                 }
             }
         }
-
-        // Validate members
-        for member in &struct_ty.members {
-            self.validate_type_ref(&member.ty);
-        }
     }
 
     /// Validates a union definition.
@@ -147,8 +112,6 @@ impl<'a> Validator<'a> {
             let def = self.get_def(id);
             (def.ident.name.clone(), def.span)
         };
-        // Validate discriminator type
-        self.validate_type_ref(&union_ty.disc);
 
         // Check that discriminator is an appropriate type
         match &union_ty.disc.kind {
@@ -191,15 +154,6 @@ impl<'a> Validator<'a> {
                         .message("discriminator must be an integral type"),
                 ));
             }
-        }
-
-        // Validate variants
-        for variant in &union_ty.variants {
-            self.validate_type_ref_in_context(&variant.ty, true);
-
-            // Check case labels
-            // TODO: Implement duplicate case value checking that handles float values
-            // For now, skip this validation since Numeric contains float types which don't implement Eq/Hash
         }
     }
 
@@ -244,16 +198,6 @@ impl<'a> Validator<'a> {
             }
         }
 
-        // Validate prototypes
-        // Note: Duplicate method checking is now done in resolve.rs with case-insensitive comparison
-        for proto in &interface.prototypes {
-            self.validate_type_ref(&proto.ty);
-
-            for param in &proto.params {
-                self.validate_type_ref(&param.ty);
-            }
-        }
-
         // Validate nested definitions
         for &child_id in &interface.definitions {
             self.validate_type(child_id);
@@ -283,9 +227,6 @@ impl<'a> Validator<'a> {
                 };
                 self.validate_struct(id, &struct_ty);
             }
-            DefKind::Alias(a) => {
-                self.validate_type_ref(&a.ty);
-            }
             DefKind::Module(m) => {
                 // Validate all module members
                 for &child_id in &m.definitions {
@@ -294,26 +235,11 @@ impl<'a> Validator<'a> {
             }
             DefKind::Annotation(a) => {
                 // Validate annotation parameters
-                for param in &a.params {
-                    self.validate_type_ref(&param.ty);
-                }
                 for &child_id in &a.types {
                     self.validate_type(child_id);
                 }
             }
-            DefKind::Const(c) => {
-                self.validate_type_ref(&c.ty);
-                // TODO: Validate that constant value matches type
-            }
-            DefKind::Enum(_)
-            | DefKind::Bitmask(_)
-            | DefKind::Bitset(_)
-            | DefKind::Decl(_)
-            | DefKind::Valuetype(_) => {
-                // Duplicate checks moved to ic-lint for Enum and Bitmask
-                // Forward declarations are checked for completion elsewhere
-                // Valuetype validation handled elsewhere
-            }
+            _ => {}
         }
 
         self.validated.insert(id);

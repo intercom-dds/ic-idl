@@ -28,6 +28,9 @@
 mod common;
 
 use common::lint_hir;
+use insta::assert_snapshot;
+
+use crate::common::test_lint;
 
 #[test]
 #[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
@@ -58,9 +61,7 @@ struct Foo {
 };
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint(source));
 }
 
 #[test]
@@ -75,9 +76,7 @@ struct Foo {
 };
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint(source));
 }
 
 #[test]
@@ -91,9 +90,7 @@ interface Service {
 };
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint(source));
 }
 
 #[test]

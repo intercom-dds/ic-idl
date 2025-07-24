@@ -31,13 +31,12 @@ mod common;
 use common::test_lint;
 
 #[test]
-#[ignore = "Parser doesn't support array declarators in parameter positions"]
 fn test_array_as_parameter() {
     let source = r"
         interface Test {
             void process_array(in long data[10]);
             void process_matrix(in double matrix[3][3]);
-            void process_string_array(in string names[]);
+            void process_string_array(in string names[3]);
         };
     ";
 
@@ -77,7 +76,6 @@ fn test_array_in_struct_member() {
 }
 
 #[test]
-#[ignore = "Parser doesn't support array declarators in parameter positions"]
 fn test_multiple_array_params() {
     let source = r"
         interface Calculator {
@@ -94,7 +92,6 @@ fn test_multiple_array_params() {
 }
 
 #[test]
-#[ignore = "Parser doesn't support array declarators in parameter positions"]
 fn test_array_with_different_directions() {
     let source = r"
         interface Buffer {

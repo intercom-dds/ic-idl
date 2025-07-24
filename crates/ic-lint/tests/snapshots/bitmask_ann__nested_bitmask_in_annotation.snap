@@ -1,5 +1,57 @@
 ---
 source: crates/ic-lint/tests/bitmask_ann.rs
+assertion_line: 90
 expression: test_lint(source)
 ---
+error[ann_members]: only consts, typedefs and enums can be defined in annotations
+   ┌ test.idl:3:20
+   │
+ 3 │             struct Config {
+   ·                    ^^^^^^ `struct`s are not allowed in annotations
+   └──
 
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:8:25
+   │
+ 8 │                 OPT_A = 1,
+   ·                         ^ 
+   └──
+ help: use the `@position` annotation instead
+
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:9:25
+   │
+ 9 │                 OPT_B = 2
+   ·                         ^ 
+   └──
+ help: use the `@position` annotation instead
+
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+    ┌ test.idl:13:26
+    │
+ 13 │                 MORE_A = 0x10,
+    ·                          ^^^^ 
+    └──
+ help: use the `@position` annotation instead
+
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+    ┌ test.idl:14:26
+    │
+ 14 │                 MORE_B = 0x20
+    ·                          ^^^^ 
+    └──
+ help: use the `@position` annotation instead
+
+warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
+   ┌ test.idl:7:21
+   │
+ 7 │             bitmask Options {
+   ·                     ^^^^^^^ defined here
+   └──
+
+warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
+    ┌ test.idl:12:21
+    │
+ 12 │             bitmask MoreOptions {
+    ·                     ^^^^^^^^^^^ defined here
+    └──

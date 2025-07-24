@@ -39,7 +39,12 @@ interface Service {
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    let output = test_lint(source);
+    assert!(
+        output.is_empty(),
+        "Expected no lint warnings for valid oneway operations, but got: {}",
+        output
+    );
 }
 
 #[test]

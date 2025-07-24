@@ -1,5 +1,35 @@
 ---
 source: crates/ic-lint/tests/bitmask_ann.rs
+assertion_line: 46
 expression: test_lint(source)
 ---
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:4:26
+   │
+ 4 │                 FLAG_A = 0x01,
+   ·                          ^^^^ 
+   └──
+ help: use the `@position` annotation instead
 
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:5:26
+   │
+ 5 │                 FLAG_B = 0x02,
+   ·                          ^^^^ 
+   └──
+ help: use the `@position` annotation instead
+
+warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+   ┌ test.idl:6:26
+   │
+ 6 │                 FLAG_C = 0x04
+   ·                          ^^^^ 
+   └──
+ help: use the `@position` annotation instead
+
+warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
+   ┌ test.idl:3:21
+   │
+ 3 │             bitmask Flags {
+   ·                     ^^^^^ defined here
+   └──

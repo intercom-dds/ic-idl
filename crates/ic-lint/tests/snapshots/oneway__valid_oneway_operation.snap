@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/oneway.rs
-expression: test_lint(source)
----
-

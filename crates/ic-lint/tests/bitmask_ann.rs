@@ -34,7 +34,7 @@ use common::test_lint;
 fn test_bitmask_in_annotation() {
     let source = r"
         @annotation MyAnnotation {
-            bitmask<unsigned long> Flags {
+            bitmask Flags {
                 FLAG_A = 0x01,
                 FLAG_B = 0x02,
                 FLAG_C = 0x04
@@ -49,7 +49,7 @@ fn test_bitmask_in_annotation() {
 #[test]
 fn test_normal_bitmask_outside_annotation() {
     let source = r"
-        bitmask<unsigned long> GlobalFlags {
+        bitmask GlobalFlags {
             ENABLED = 0x01,
             VERBOSE = 0x02,
             DEBUG = 0x04
@@ -75,12 +75,12 @@ fn test_nested_bitmask_in_annotation() {
                 string name;
             };
             
-            bitmask<octet> Options {
+            bitmask Options {
                 OPT_A = 1,
                 OPT_B = 2
             };
             
-            bitmask<unsigned short> MoreOptions {
+            bitmask MoreOptions {
                 MORE_A = 0x10,
                 MORE_B = 0x20
             };

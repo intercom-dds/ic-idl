@@ -47,9 +47,8 @@ impl<'a> Visitor<'a> for Proto<'a> {
             let field_def = self.context().definitions.get(field_id);
 
             if let hir::DefKind::Const(const_ty) = &field_def.kind {
-                let value = match const_ty.value {
-                    hir::Numeric::Int32(v) => v,
-                    _ => return,
+                let hir::Numeric::Int32(value) = const_ty.value else {
+                    return;
                 };
 
                 if value != 0 {

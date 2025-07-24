@@ -98,8 +98,8 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
             // Track values for duplicate checking
             if let DefKind::Const(const_ty) = &field_def.kind {
                 let value = match const_ty.value {
-                    Numeric::Int32(v) => i64::from(v) as isize,
-                    Numeric::Int64(v) => v as isize,
+                    Numeric::Int32(v) => isize::try_from(i64::from(v)).unwrap_or(isize::MAX),
+                    Numeric::Int64(v) => isize::try_from(v).unwrap_or(isize::MAX),
                     _ => continue,
                 };
 

@@ -134,6 +134,7 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn lookup_var(&mut self, name: &str) -> ExprResult<Self::Value> {
         // Check if name starts with :: for global scope resolution
         let (start_scope, name_without_prefix) = if let Some(stripped) = name.strip_prefix("::") {
@@ -988,8 +989,8 @@ impl<'a> ExpressionEvaluator<'a> {
                 let field_def = self.ctx.definitions.get_mut(field_ids[i]);
                 if let DefKind::Const(const_ty) = &mut field_def.kind {
                     // Store as Int64 if value doesn't fit in Int32
-                    const_ty.value = if i32::try_from(value).is_ok() {
-                        Numeric::Int32(value as i32)
+                    const_ty.value = if let Ok(v) = i32::try_from(value) {
+                        Numeric::Int32(v)
                     } else {
                         Numeric::Int64(value as i64)
                     };

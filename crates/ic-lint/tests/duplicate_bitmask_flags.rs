@@ -44,8 +44,7 @@ bitmask Permissions {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -108,8 +107,7 @@ bitmask Aliases {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -124,8 +122,7 @@ bitmask EmptyFlags {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -141,8 +138,7 @@ bitmask SingleFlag {
     let output = test_lint_hir(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 

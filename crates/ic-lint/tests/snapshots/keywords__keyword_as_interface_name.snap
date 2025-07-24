@@ -2,18 +2,10 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `octet` is a keyword and may not be used as an identifier
+error[keywords]: `abstract` is a keyword and may not be used as an identifier
    ┌ test.idl:2:11
    │
- 2 │ interface octet {           // 'octet' is a keyword
-   ·           ^^^^^ this is an IDL keyword
+ 2 │ interface abstract {
+   ·           ^^^^^^^^ this is an IDL keyword
    └──
- help: the keyword can be escaped by changing to `_octet`
-
-error[keywords]: `int8` is a keyword and may not be used as an identifier
-   ┌ test.idl:6:11
-   │
- 6 │ interface int8 {            // 'int8' is a keyword
-   ·           ^^^^ this is an IDL keyword
-   └──
- help: the keyword can be escaped by changing to `_int8`
+ help: the keyword can be escaped by changing to `_abstract`

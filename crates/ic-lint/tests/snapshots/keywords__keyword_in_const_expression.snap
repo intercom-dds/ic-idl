@@ -2,4 +2,10 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-
+error[keywords]: `abstract` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:12
+   │
+ 3 │ const long abstract = SIZE + 5;      // 'any' is a keyword
+   ·            ^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_abstract`

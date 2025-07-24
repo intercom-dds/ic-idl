@@ -2,4 +2,18 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
+error[keywords]: `context` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:12
+   │
+ 3 │     string context();
+   ·            ^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_context`
 
+error[keywords]: `abstract` is a keyword and may not be used as an identifier
+   ┌ test.idl:4:10
+   │
+ 4 │     long abstract();
+   ·          ^^^^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_abstract`

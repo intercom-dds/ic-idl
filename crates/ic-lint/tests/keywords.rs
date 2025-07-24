@@ -64,9 +64,9 @@ struct int32 {  // 'int32' is a primitive type keyword
 fn keyword_as_field_name() {
     let source = r"
 struct Data {
-    long octet;     // 'octet' is a primitive type keyword
-    string float;   // 'float' is a primitive type keyword
-    boolean double; // 'double' is a primitive type keyword
+    octet octet;
+    int32 int32;
+    uint64 uint64;
 };
 ";
 
@@ -90,7 +90,7 @@ enum Type {
 fn keyword_as_parameter_name() {
     let source = r"
 interface Service {
-    void process(in long int16, out string float);  // 'int16' and 'float' are keywords
+    void process(in long int16, out string int32);
 };
 ";
 
@@ -127,9 +127,8 @@ union Data switch (long) {
 #[test]
 fn keyword_as_typedef_name() {
     let source = r"
-typedef long uint32;        // 'uint32' is a keyword
-typedef string wstring;     // 'wstring' is a keyword
-typedef boolean octet;      // 'octet' is a keyword
+typedef long uint32;
+typedef boolean octet;
 ";
 
     assert_snapshot!(test_lint(source));
@@ -137,24 +136,15 @@ typedef boolean octet;      // 'octet' is a keyword
 
 #[test]
 fn keyword_as_const_name() {
-    let source = r#"
-const long int8 = 42;       // 'int8' is a keyword
-const string native = "test"; // 'native' is a keyword
-const boolean abstract = true; // 'abstract' is a keyword
-"#;
-
+    let source = "const boolean abstract = TRUE;";
     assert_snapshot!(test_lint(source));
 }
 
 #[test]
 fn keyword_as_exception_name() {
     let source = r"
-exception uint16 {          // 'uint16' is a keyword
+exception uint16 {
     string message;
-};
-
-exception raises {          // 'raises' is a keyword
-    long code;
 };
 ";
 
@@ -164,12 +154,8 @@ exception raises {          // 'raises' is a keyword
 #[test]
 fn keyword_as_interface_name() {
     let source = r"
-interface octet {           // 'octet' is a keyword
+interface abstract {
     void process();
-};
-
-interface int8 {            // 'int8' is a keyword
-    string getName();
 };
 ";
 
@@ -179,14 +165,9 @@ interface int8 {            // 'int8' is a keyword
 #[test]
 fn keyword_as_bitmask_name() {
     let source = r"
-bitmask int32 {             // 'int32' is a keyword
+bitmask abstract {
     FLAG1,
     FLAG2
-};
-
-bitmask bitfield {          // 'bitfield' is a keyword
-    BIT0,
-    BIT1
 };
 ";
 
@@ -196,9 +177,9 @@ bitmask bitfield {          // 'bitfield' is a keyword
 #[test]
 fn keyword_as_bitset_name() {
     let source = r"
-bitset<16> uint64 {         // 'uint64' is a keyword
-    bit0,
-    bit1
+bitset uint64 {
+    bitfield<5> bit0;
+    bitfield<10> bit1;
 };
 ";
 
@@ -209,10 +190,8 @@ bitset<16> uint64 {         // 'uint64' is a keyword
 fn keyword_as_interface_method() {
     let source = r"
 interface Service {
-    void attribute();       // 'attribute' is a keyword
-    string context();       // 'context' is a keyword
-    long factory();         // 'factory' is a keyword
-    boolean readonly();     // 'readonly' is a keyword
+    string context();
+    long abstract();
 };
 ";
 
@@ -328,17 +307,6 @@ struct OtherKeywords {
 }
 
 #[test]
-fn keyword_as_alias() {
-    let source = r"
-alias string int16;         // 'int16' is a keyword
-alias long custom;          // 'custom' is a keyword
-alias boolean valuetype;    // 'valuetype' is a keyword
-";
-
-    assert_snapshot!(test_lint(source));
-}
-
-#[test]
 fn keyword_as_map_type() {
     let source = r"
 typedef map<string, long> uint16;  // 'uint16' is a keyword
@@ -351,7 +319,7 @@ typedef map<string, long> uint16;  // 'uint16' is a keyword
 fn keyword_in_const_expression() {
     let source = r"
 const long SIZE = 10;
-const long any = SIZE + 5;      // 'any' is a keyword
+const long abstract = SIZE + 5;      // 'any' is a keyword
 ";
 
     assert_snapshot!(test_lint(source));

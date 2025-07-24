@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use insta::assert_snapshot;
-
 mod common;
 use common::test_lint;
 
@@ -44,8 +42,7 @@ struct Data {
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -62,8 +59,7 @@ struct Invalid {
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -79,8 +75,7 @@ struct Invalid {
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -94,8 +89,7 @@ typedef string<0> EmptyString;  // Zero-length string
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -109,8 +103,7 @@ typedef sequence<long, -10> BadSequence;  // Negative sequence bound
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }
 
@@ -129,7 +122,6 @@ struct Problems {
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings, but got: {}",
-        output
+        "Expected no lint warnings, but got: {output}"
     );
 }

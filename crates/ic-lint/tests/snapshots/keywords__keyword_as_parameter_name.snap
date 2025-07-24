@@ -2,4 +2,18 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
+error[keywords]: `int16` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:26
+   │
+ 3 │     void process(in long int16, out string int32);
+   ·                          ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int16`
 
+error[keywords]: `int32` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:44
+   │
+ 3 │     void process(in long int16, out string int32);
+   ·                                            ^^^^^ this is an IDL keyword
+   └──
+ help: the keyword can be escaped by changing to `_int32`

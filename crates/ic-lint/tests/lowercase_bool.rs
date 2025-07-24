@@ -93,7 +93,7 @@ fn test_boolean_in_annotation() {
     let output = test_lint(source);
     assert!(
         output.is_empty(),
-        "Expected no lint warnings (parser doesn't support defaults in annotations), but got: {}",
-        output
+        "Expected no lint warnings (parser doesn't support defaults in annotations), but got: \
+         {output}"
     );
 }

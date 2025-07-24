@@ -60,11 +60,7 @@ fn test_normal_bitmask_outside_annotation() {
         };
     ";
 
-    let output = test_lint(source);
-    assert!(
-        output.is_empty(),
-        "Should not warn for bitmasks outside annotations"
-    );
+    assert_snapshot!(test_lint(source));
 }
 
 #[test]

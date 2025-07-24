@@ -67,23 +67,13 @@ impl<'a> Validator<'a> {
 
     /// Validates type references (ensures they exist and are complete).
     #[allow(clippy::only_used_in_recursion)]
-    #[allow(clippy::match_same_arms)]
     fn validate_type_ref(&mut self, ty: &Ty) {
         self.validate_type_ref_in_context(ty, false);
     }
 
-    fn validate_type_ref_in_context(&mut self, ty: &Ty, in_union_variant: bool) {
+    #[allow(clippy::only_used_in_recursion)]
+    fn validate_type_ref_in_context(&mut self, ty: &Ty, _in_union_variant: bool) {
         match &ty.kind {
-            TyKind::Null => {
-                // Null is only valid in union variants
-                // If we see it elsewhere, it's a placeholder for an unresolved type
-                // Don't report an error here as it was already reported during resolution
-            }
-            TyKind::Adt(_) => {
-                // Don't check for completeness here - forward declarations are allowed
-                // to be used before they're defined in IDL
-                // The type will be validated separately in validate_all
-            }
             TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
                 self.validate_type_ref_in_context(ty, false);
             }
@@ -91,7 +81,15 @@ impl<'a> Validator<'a> {
                 self.validate_type_ref_in_context(key, false);
                 self.validate_type_ref_in_context(elem, false);
             }
-            _ => {}
+            _ => {
+                // TyKind::Null: Null is only valid in union variants
+                //   If we see it elsewhere, it's a placeholder for an unresolved type
+                //   Don't report an error here as it was already reported during resolution
+                // TyKind::Adt: Don't check for completeness here - forward declarations are allowed
+                //   to be used before they're defined in IDL
+                //   The type will be validated separately in validate_all
+                // Others: No validation needed
+            }
         }
     }
 

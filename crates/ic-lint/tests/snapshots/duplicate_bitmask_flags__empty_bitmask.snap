@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
-expression: test_lint_hir(source)
----
-

@@ -1,5 +1,0 @@
----
-source: crates/ic-lint/tests/sanity.rs
-expression: test_lint(source)
----
-

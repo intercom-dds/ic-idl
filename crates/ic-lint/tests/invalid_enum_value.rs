@@ -41,7 +41,11 @@ enum Color {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no lint warnings, but got: {}",
+        output
+    );
 }
 
 #[test]
@@ -55,7 +59,11 @@ enum Status {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no lint warnings, but got: {}",
+        output
+    );
 }
 
 #[test]
@@ -135,7 +143,11 @@ enum Permissions {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no lint warnings, but got: {}",
+        output
+    );
 }
 
 #[test]
@@ -150,7 +162,11 @@ enum Sparse {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no lint warnings, but got: {}",
+        output
+    );
 }
 
 #[test]
@@ -172,5 +188,9 @@ module B {
 ";
 
     let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
+    assert!(
+        output.is_empty(),
+        "Expected no lint warnings, but got: {}",
+        output
+    );
 }

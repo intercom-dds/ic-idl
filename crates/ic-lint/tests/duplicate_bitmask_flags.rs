@@ -41,7 +41,8 @@ bitmask Permissions {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
 }
 
 #[test]
@@ -99,7 +100,9 @@ bitmask Aliases {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    // Different flag names with the same value are allowed
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
 }
 
 #[test]
@@ -109,7 +112,9 @@ bitmask EmptyFlags {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    // Empty bitmasks are valid
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
 }
 
 #[test]
@@ -120,7 +125,9 @@ bitmask SingleFlag {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    // Single flag bitmasks are valid
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no lint warnings, but got: {}", output);
 }
 
 #[test]

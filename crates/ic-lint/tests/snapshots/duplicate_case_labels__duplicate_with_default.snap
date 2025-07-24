@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:6:19
+   ┌ test.idl:6:10
    │
  6 │     case 1: octet d;  // Duplicate, even with default present
-   ·                   ^ duplicate case label
+   ·          ^ duplicate case label
    └──

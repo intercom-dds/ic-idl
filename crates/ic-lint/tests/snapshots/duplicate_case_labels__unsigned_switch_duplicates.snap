@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'UnsignedUnion' has duplicate case label '4294967295'
-   ┌ test.idl:6:28
+   ┌ test.idl:6:10
    │
  6 │     case 4294967295: float dup_max;  // Duplicate
-   ·                            ^^^^^^^ duplicate case label
+   ·          ^^^^^^^^^^ duplicate case label
    └──

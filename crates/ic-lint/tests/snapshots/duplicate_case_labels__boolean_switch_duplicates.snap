@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'BoolUnion' has duplicate case label 'true'
-   ┌ test.idl:5:22
+   ┌ test.idl:5:10
    │
  5 │     case TRUE: float another_true;  // Duplicate
-   ·                      ^^^^^^^^^^^^ duplicate case label
+   ·          ^^^^ duplicate case label
    └──

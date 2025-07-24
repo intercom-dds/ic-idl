@@ -770,7 +770,12 @@ impl<'a> TypeChecker<'a> {
                         "union case label for variant `{}::{}`",
                         def.ident.name, variant.ident.name
                     );
-                    self.check_numeric_type(label, &union_ty.disc, &value_desc, variant.ident.span);
+                    self.check_numeric_type(
+                        &label.value,
+                        &union_ty.disc,
+                        &value_desc,
+                        variant.ident.span,
+                    );
                 }
             }
         }

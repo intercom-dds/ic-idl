@@ -390,7 +390,7 @@ where
     }
     visitor.visit_ty(&variant.ty);
     for label in &variant.labels {
-        visitor.visit_numeric(label);
+        visitor.visit_numeric(&label.value);
     }
 }
 

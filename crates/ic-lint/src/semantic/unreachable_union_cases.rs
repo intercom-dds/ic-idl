@@ -62,7 +62,7 @@ impl UnreachableUnionCases<'_> {
         if let Some((min, max)) = Self::get_discriminator_range(&union_ty.disc.kind) {
             for variant in &union_ty.variants {
                 for label in &variant.labels {
-                    if let Some(value) = Self::numeric_to_i64(label) {
+                    if let Some(value) = Self::numeric_to_i64(&label.value) {
                         // For unsigned discriminators, negative values wrap around
                         let effective_value =
                             if Self::is_unsigned_discriminator(&union_ty.disc.kind) && value < 0 {
@@ -80,7 +80,7 @@ impl UnreachableUnionCases<'_> {
                                     "case label {value} is outside the range [{min}, {max}] of \
                                      the discriminator type"
                                 ),
-                                Label::new(variant.ident.span).message("case label out of range"),
+                                Label::new(label.span).message("case label out of range"),
                             ) {
                                 Self::report(self.ctx, diag);
                             }

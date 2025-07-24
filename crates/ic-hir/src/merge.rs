@@ -33,13 +33,13 @@
 
 use std::collections::HashMap;
 
-use ic_diagnostic::{Color, Diag, Label};
+use ic_diagnostic::{Color, Diag, Label as DiagLabel};
 use ic_syntax::Span;
 
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
-    Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter,
-    ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Label, Member, ModuleTy, Numeric,
+    Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};
@@ -460,11 +460,13 @@ impl HirMerger {
                             old_def.ident.name
                         ))
                         .label(
-                            Label::new(old_def.ident.span)
+                            DiagLabel::new(old_def.ident.span)
                                 .message("redefined here")
                                 .color(Color::Red),
                         )
-                        .label(Label::new(existing_def.ident.span).message("first defined here")),
+                        .label(
+                            DiagLabel::new(existing_def.ident.span).message("first defined here"),
+                        ),
                     );
                     // Map to existing to avoid cascading errors
                     self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
@@ -880,7 +882,10 @@ impl HirMerger {
             labels: variant
                 .labels
                 .iter()
-                .map(|label| self.update_numeric(graph_index, label))
+                .map(|label| Label {
+                    value: self.update_numeric(graph_index, &label.value),
+                    span: label.span,
+                })
                 .collect(),
             is_default: variant.is_default,
         }

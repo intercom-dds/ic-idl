@@ -2,9 +2,9 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'StatusData' has duplicate case label '1'
-    ┌ test.idl:11:27
+error[duplicate_case]: union 'StatusData' has duplicate case label 'const_64'
+    ┌ test.idl:11:10
     │
  11 │     case PENDING: boolean dup_pending;  // Duplicate
-    ·                           ^^^^^^^^^^^ duplicate case label
+    ·          ^^^^^^^ duplicate case label
     └──

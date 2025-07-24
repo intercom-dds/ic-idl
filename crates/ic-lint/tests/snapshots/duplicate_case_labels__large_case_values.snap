@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'LargeUnion' has duplicate case label '9223372036854775807'
-   ┌ test.idl:5:39
+   ┌ test.idl:5:10
    │
  5 │     case 9223372036854775807: boolean dup_max;  // Duplicate
-   ·                                       ^^^^^^^ duplicate case label
+   ·          ^^^^^^^^^^^^^^^^^^^ duplicate case label
    └──
 
 error: integer overflow in constant expression: negation

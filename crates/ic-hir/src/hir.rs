@@ -347,6 +347,15 @@ pub struct UnionTy {
 }
 
 #[derive(Debug, Clone)]
+pub struct Label {
+    /// The evaluated value of the case label.
+    pub value: Numeric,
+
+    /// The span of the label expression/identifier.
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct Variant {
     /// Annotations attached to the variant.
     pub annotations: Vec<Ann>,
@@ -358,8 +367,7 @@ pub struct Variant {
     pub ty: Ty,
 
     /// All switch cases that map to this variant.
-    // TODO: should this be a const? It can have a name, so maybe?
-    pub labels: Vec<Numeric>,
+    pub labels: Vec<Label>,
 
     /// Indicates whether this variant has a default label.
     pub is_default: bool,

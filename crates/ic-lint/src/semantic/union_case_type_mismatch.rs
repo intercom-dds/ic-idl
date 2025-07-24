@@ -80,7 +80,7 @@ impl UnionCaseTypeMismatch<'_> {
         // Check each variant's labels
         for variant in &union_ty.variants {
             for label in &variant.labels {
-                if let Numeric::Const(const_id) = label {
+                if let Numeric::Const(const_id) = &label.value {
                     let const_def = self.context().definitions.get(*const_id);
 
                     // Find which enum this constant belongs to
@@ -101,7 +101,7 @@ impl UnionCaseTypeMismatch<'_> {
                                     parent_def.ident.name,
                                     expected_enum.ident.name,
                                 ),
-                                Label::new(variant.ident.span).message("mismatched case label"),
+                                Label::new(label.span).message("mismatched case label"),
                             ) {
                                 Self::report(self.ctx, diag);
                             }

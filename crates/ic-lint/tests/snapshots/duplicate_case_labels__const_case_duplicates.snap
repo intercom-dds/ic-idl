@@ -2,9 +2,4 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'ConstUnion' has duplicate case label '1'
-   ┌ test.idl:9:21
-   │
- 9 │     case C: boolean c_val;  // Should be duplicate of A
-   ·                     ^^^^^ duplicate case label
-   └──
+

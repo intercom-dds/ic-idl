@@ -815,7 +815,9 @@ impl<'a> ExpressionEvaluator<'a> {
 
             for label in &field.labels {
                 if let ic_syntax::Label::Case(expr) = label {
-                    labels.push(self.eval_expr_with_const_refs(expr));
+                    let value = self.eval_expr_with_const_refs(expr);
+                    let span = ic_syntax::util::expr_span(expr);
+                    labels.push(crate::hir::Label { value, span });
                 }
             }
 
@@ -864,13 +866,16 @@ impl<'a> ExpressionEvaluator<'a> {
         };
 
         // Convert labels to match discriminator type
-        let converted_labels: Vec<Vec<Numeric>> = if let Some(disc_ty) = disc_ty {
+        let converted_labels: Vec<Vec<crate::hir::Label>> = if let Some(disc_ty) = disc_ty {
             all_labels
                 .into_iter()
                 .map(|labels| {
                     labels
                         .into_iter()
-                        .map(|label| self.convert_to_type(label, &disc_ty))
+                        .map(|label| crate::hir::Label {
+                            value: self.convert_to_type(label.value, &disc_ty),
+                            span: label.span,
+                        })
                         .collect()
                 })
                 .collect()

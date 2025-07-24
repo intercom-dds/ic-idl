@@ -3,22 +3,22 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:5:21
+   ┌ test.idl:5:10
    │
  5 │     case 1: boolean c;  // First duplicate
-   ·                     ^ duplicate case label
+   ·          ^ duplicate case label
    └──
 
 error[duplicate_case]: union 'MyUnion' has duplicate case label '2'
-   ┌ test.idl:7:20
+   ┌ test.idl:7:10
    │
  7 │     case 2: double e;   // Second duplicate
-   ·                    ^ duplicate case label
+   ·          ^ duplicate case label
    └──
 
 error[duplicate_case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:8:18
+   ┌ test.idl:8:10
    │
  8 │     case 1: char f;     // Third duplicate of case 1
-   ·                  ^ duplicate case label
+   ·          ^ duplicate case label
    └──

@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:5:21
+   ┌ test.idl:5:10
    │
  5 │     case 1: boolean c;  // Duplicate of first case
-   ·                     ^ duplicate case label
+   ·          ^ duplicate case label
    └──

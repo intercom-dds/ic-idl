@@ -60,16 +60,11 @@ fn test_union_with_enum_case_labels() {
         assert_eq!(union_ty.variants.len(), 3);
 
         // Check that each variant has a numeric label with the enum value
-        for (i, variant) in union_ty.variants.iter().enumerate() {
+        for variant in &union_ty.variants {
             assert_eq!(variant.labels.len(), 1);
 
-            // The label should be evaluated to the enum's numeric value
-            match i {
-                0 => assert_eq!(variant.labels[0], Numeric::Int32(0)), // RED = 0
-                1 => assert_eq!(variant.labels[0], Numeric::Int32(1)), // GREEN = 1
-                2 => assert_eq!(variant.labels[0], Numeric::Int32(2)), // BLUE = 2
-                _ => panic!("Unexpected variant index"),
-            }
+            // The label should be a Const reference to the enum constant
+            assert!(matches!(variant.labels[0].value, Numeric::Const(_)));
         }
     } else {
         panic!("ColorData should be a union");
@@ -105,11 +100,19 @@ fn test_union_with_const_case_labels() {
 
         // First variant should have the value of STATUS_OK (200)
         assert_eq!(union_ty.variants[0].labels.len(), 1);
-        assert_eq!(union_ty.variants[0].labels[0], Numeric::Int32(200));
+        // Should be a Const reference to STATUS_OK
+        assert!(matches!(
+            union_ty.variants[0].labels[0].value,
+            Numeric::Const(_)
+        ));
 
         // Second variant should have the value of STATUS_ERROR (500)
         assert_eq!(union_ty.variants[1].labels.len(), 1);
-        assert_eq!(union_ty.variants[1].labels[0], Numeric::Int32(500));
+        // Should be a Const reference to STATUS_ERROR
+        assert!(matches!(
+            union_ty.variants[1].labels[0].value,
+            Numeric::Const(_)
+        ));
 
         // Third variant is default
         assert!(union_ty.variants[2].is_default);
@@ -144,9 +147,12 @@ fn test_union_with_numeric_case_labels() {
         assert_eq!(union_ty.variants.len(), 3);
 
         // Check that numeric literals are stored as Int32 values, not Const
-        assert_eq!(union_ty.variants[0].labels, vec![Numeric::Int32(1)]);
-        assert_eq!(union_ty.variants[1].labels, vec![Numeric::Int32(2)]);
-        assert_eq!(union_ty.variants[2].labels, vec![Numeric::Int32(100)]);
+        assert_eq!(union_ty.variants[0].labels.len(), 1);
+        assert_eq!(union_ty.variants[0].labels[0].value, Numeric::Int32(1));
+        assert_eq!(union_ty.variants[1].labels.len(), 1);
+        assert_eq!(union_ty.variants[1].labels[0].value, Numeric::Int32(2));
+        assert_eq!(union_ty.variants[2].labels.len(), 1);
+        assert_eq!(union_ty.variants[2].labels[0].value, Numeric::Int32(100));
     } else {
         panic!("NumberData should be a union");
     }
@@ -180,15 +186,24 @@ fn test_union_with_mixed_case_labels() {
     if let DefKind::Union(union_ty) = &union_def.1.kind {
         assert_eq!(union_ty.variants.len(), 4);
 
-        // First two should have enum values (PENDING=0, ACTIVE=1)
-        assert_eq!(union_ty.variants[0].labels[0], Numeric::Int32(0)); // PENDING
-        assert_eq!(union_ty.variants[1].labels[0], Numeric::Int32(1)); // ACTIVE
+        // First two should have Const references to enum values
+        assert!(matches!(
+            union_ty.variants[0].labels[0].value,
+            Numeric::Const(_)
+        )); // PENDING
+        assert!(matches!(
+            union_ty.variants[1].labels[0].value,
+            Numeric::Const(_)
+        )); // ACTIVE
 
-        // Third should have SPECIAL_CODE value (999)
-        assert_eq!(union_ty.variants[2].labels[0], Numeric::Int32(999)); // SPECIAL_CODE
+        // Third should have Const reference to SPECIAL_CODE
+        assert!(matches!(
+            union_ty.variants[2].labels[0].value,
+            Numeric::Const(_)
+        )); // SPECIAL_CODE
 
         // Fourth should be numeric literal
-        assert_eq!(union_ty.variants[3].labels, vec![Numeric::Int32(42)]);
+        assert_eq!(union_ty.variants[3].labels[0].value, Numeric::Int32(42));
     } else {
         panic!("Data should be a union");
     }

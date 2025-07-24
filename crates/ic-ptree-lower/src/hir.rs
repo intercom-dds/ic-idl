@@ -133,7 +133,7 @@ impl<'a> TreeBuilder<'a> {
 
     unsafe fn lower_variant(&mut self, var: &Variant) -> *mut sys::ptree {
         let cases = collect_with(self.state, sys::append_node, &var.labels, |label| {
-            let value = self.lower_numeric(label);
+            let value = self.lower_numeric(&label.value);
             sys::create_case_label(self.state, value)
         });
 

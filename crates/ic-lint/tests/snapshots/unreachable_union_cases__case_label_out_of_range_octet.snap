@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/unreachable_union_cases.rs
 expression: test_lint_hir(source)
 ---
 error[unreachable_case]: case label 300 is outside the range [0, 255] of the discriminator type
-   ┌ test.idl:5:23
+   ┌ test.idl:5:10
    │
  5 │     case 300: boolean c;  // Out of range for octet (0-255)
-   ·                       ^ case label out of range
+   ·          ^^^ case label out of range
    └──
 
 error: union case label for variant `MyUnion::c` value 300 does not fit in type uint8

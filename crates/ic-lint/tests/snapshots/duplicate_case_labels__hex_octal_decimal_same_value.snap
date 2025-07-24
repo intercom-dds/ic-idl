@@ -3,15 +3,15 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'NumberUnion' has duplicate case label '10'
-   ┌ test.idl:4:22
+   ┌ test.idl:4:10
    │
  4 │     case 0xA: string hex;      // Same as 10, duplicate
-   ·                      ^^^ duplicate case label
+   ·          ^^^ duplicate case label
    └──
 
 error[duplicate_case]: union 'NumberUnion' has duplicate case label '10'
-   ┌ test.idl:5:23
+   ┌ test.idl:5:10
    │
  5 │     case 012: boolean octal;   // Same as 10, duplicate
-   ·                       ^^^^^ duplicate case label
+   ·          ^^^ duplicate case label
    └──

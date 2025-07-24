@@ -3,8 +3,8 @@ source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
 error[duplicate_case]: union 'CharUnion' has duplicate case label ''a''
-   ┌ test.idl:5:23
+   ┌ test.idl:5:10
    │
  5 │     case 'a': boolean dup_a;  // Duplicate
-   ·                       ^^^^^ duplicate case label
+   ·          ^^^ duplicate case label
    └──

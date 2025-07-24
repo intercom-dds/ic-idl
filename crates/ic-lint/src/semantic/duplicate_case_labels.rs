@@ -63,13 +63,13 @@ impl DuplicateCaseLabels<'_> {
         let mut seen_labels = HashSet::new();
         for variant in &union_ty.variants {
             for label in &variant.labels {
-                let label_key = Self::numeric_to_string(label);
+                let label_key = Self::numeric_to_string(&label.value);
                 if !seen_labels.insert(label_key.clone()) {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
                         format!("union '{union_name}' has duplicate case label '{label_key}'"),
-                        Label::new(variant.ident.span).message("duplicate case label"),
+                        Label::new(label.span).message("duplicate case label"),
                     ) {
                         Self::report(self.ctx, diag);
                     }

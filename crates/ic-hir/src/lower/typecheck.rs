@@ -237,6 +237,30 @@ impl<'a> TypeChecker<'a> {
             (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
                 self.check_uint_fits(*v, *prim, value_desc, value_span)
             }
+            
+            // Special case: integer values being assigned to enum types
+            // This is for enum members that have numeric values
+            (Numeric::Int8(_) | Numeric::Int16(_) | Numeric::Int32(_) | Numeric::Int64(_), TyKind::Adt(enum_id)) => {
+                // Check if this is an enum
+                let def = self.ctx.definitions.get(*enum_id);
+                if let DefKind::Enum(enum_ty) = &def.kind {
+                    // Check if the value fits in the enum's underlying type
+                    if let TyKind::Primitive(prim) = &enum_ty.ty.kind {
+                        let val = match value {
+                            Numeric::Int8(v) => i64::from(*v),
+                            Numeric::Int16(v) => i64::from(*v),
+                            Numeric::Int32(v) => i64::from(*v),
+                            Numeric::Int64(v) => *v,
+                            _ => unreachable!(),
+                        };
+                        self.check_int_fits(val, *prim, value_desc, value_span)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
 
             // Union values must be handled before generic Adt pattern
             (
@@ -369,19 +393,6 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Const(id), _expected_ty) => {
                 let const_def = self.ctx.definitions.get(*id);
                 if let DefKind::Const(const_ty) = &const_def.kind {
-                    // Special case: enum members can be assigned to their parent enum type
-                    if let (TyKind::Primitive(_), TyKind::Adt(enum_id)) =
-                        (&const_ty.ty.kind, &ty.kind)
-                    {
-                        // Check if this constant is a member of the expected enum
-                        if let Some(parent_id) = const_def.parent {
-                            if parent_id == *enum_id {
-                                // This is an enum member being assigned to its parent enum type
-                                return true;
-                            }
-                        }
-                    }
-
                     // Special case: check if the referenced constant itself contains a Const reference
                     // In that case, follow the chain
                     if let Numeric::Const(inner_id) = &const_ty.value {
@@ -392,9 +403,9 @@ impl<'a> TypeChecker<'a> {
                             value_span,
                         );
                     }
-
-                    // Check if the referenced constant's type matches
-                    self.check_type_compatible(&const_ty.ty, ty, value_desc)
+                    
+                    // If the referenced constant has a numeric value, check if it's compatible with the expected type
+                    return self.check_numeric_type(&const_ty.value, ty, value_desc, value_span);
                 } else {
                     self.errors.push(error_span(
                         format!("{value_desc} references a non-constant definition"),
@@ -731,6 +742,15 @@ impl<'a> TypeChecker<'a> {
 
         if let DefKind::Const(const_ty) = &def.kind {
             let value_desc = format!("constant `{}`", def.ident.name);
+            // Skip type checking for enum members - their numeric values don't need to match the enum type
+            if def.parent.is_some() {
+                if let Some(parent_def) = def.parent.and_then(|p| Some(self.ctx.definitions.get(p))) {
+                    if matches!(parent_def.kind, DefKind::Enum(_)) {
+                        // This is an enum member, skip type checking
+                        return;
+                    }
+                }
+            }
             self.check_numeric_type(&const_ty.value, &const_ty.ty, &value_desc, def.span);
         }
     }

@@ -854,11 +854,6 @@ impl<'a> Resolver<'a> {
             self.name_map.get(&parent_name).copied()
         };
 
-        // Determine the underlying type (defaults to Int32)
-        let underlying_ty = Ty {
-            kind: TyKind::Primitive(PrimitiveTy::Int32),
-            span: def.span,
-        };
 
         // Create constants for each enumerator
         let mut field_ids = Vec::new();
@@ -875,7 +870,10 @@ impl<'a> Resolver<'a> {
                 span: field.ident.span,
                 kind: DefKind::Const(ConstTy {
                     value: Numeric::Int32(0),  // Will be filled in evaluation phase
-                    ty: underlying_ty.clone(), // Enum constants have the enum's underlying type
+                    ty: Ty {
+                        kind: TyKind::Adt(id), // Will be fixed below to point to the enum
+                        span: field.ident.span,
+                    },
                 }),
                 flags: DefFlags::default(),
             });
@@ -904,10 +902,13 @@ impl<'a> Resolver<'a> {
             flags: DefFlags::default(),
         });
 
-        // Fix the parent references for the enumerator constants
+        // Fix the parent references and type references for the enumerator constants
         for field_id in &field_ids {
             let field_def = self.ctx.definitions.get_mut(*field_id);
             field_def.parent = Some(enum_id);
+            if let DefKind::Const(const_ty) = &mut field_def.kind {
+                const_ty.ty.kind = TyKind::Adt(enum_id);
+            }
         }
 
         self.name_map.insert(qualified_name, enum_id);

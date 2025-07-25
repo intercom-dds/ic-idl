@@ -34,6 +34,7 @@ pub mod duplicate_enum_values;
 pub mod duplicate_name;
 pub mod initializer_list_size;
 pub mod invalid_annotation_target;
+pub mod invalid_enum_literal;
 pub mod invalid_enum_value;
 pub mod keywords;
 pub mod multiple_default_cases;

@@ -473,7 +473,7 @@ define_lints! {
         semantic::bit_bound::BitBound,
         semantic::circular_inheritance::CircularInheritance,
         semantic::deprecated::Deprecated,
-        semantic::duplicate_annotations_hir::DuplicateAnnotationsHir,
+        semantic::duplicate_annotations_hir::DuplicateAnnotations,
         semantic::duplicate_case_labels::DuplicateCaseLabels,
         semantic::duplicate_enum_values::DuplicateEnumValues,
         semantic::duplicate_name::DuplicateName,

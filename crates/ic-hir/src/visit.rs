@@ -130,7 +130,7 @@ where
 {
     for id in &tree.order {
         let def = tree.context.type_of(*id);
-        walk_def(visitor, def);
+        visitor.visit_def(def);
     }
 }
 

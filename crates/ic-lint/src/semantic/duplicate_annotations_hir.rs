@@ -29,20 +29,20 @@ use std::collections::HashSet;
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, Def};
+use ic_hir::hir::{Ann, Def, DefFlags};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
 
 /// HIR-based duplicate annotations lint that properly handles annotation resolution
-pub struct DuplicateAnnotationsHir<'a> {
+pub struct DuplicateAnnotations<'a> {
     ctx: &'a LintCtx<'a>,
     hir: &'a ic_hir::ResolvedGraph,
 }
 
-impl<'a> Lint<'a> for DuplicateAnnotationsHir<'a> {
+impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
     fn name() -> &'static str {
-        "duplicate_annotations"
+        "duplicate_ann"
     }
 
     fn category() -> Category {
@@ -50,25 +50,24 @@ impl<'a> Lint<'a> for DuplicateAnnotationsHir<'a> {
     }
 
     fn description() -> &'static str {
-        "Errors when annotations are duplicated on the same item"
+        "Detects duplicate annotations on the same item"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = DuplicateAnnotationsHir { ctx, hir };
+        let mut visitor = DuplicateAnnotations { ctx, hir };
         ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 
-impl DuplicateAnnotationsHir<'_> {
+impl DuplicateAnnotations<'_> {
     fn check_annotation_list(&mut self, annotations: &[Ann]) {
         let mut seen = HashSet::new();
 
         for ann in annotations {
-            // Use the resolved DefId for proper comparison
-            let ann_id = ann.def_id;
-
-            if !seen.insert(ann_id) {
-                // Found duplicate - emit diagnostic
+            let def = self.hir.context.type_of(ann.def_id);
+            if !(seen.insert(ann.def_id)
+                || def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc")
+            {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
@@ -106,7 +105,7 @@ impl DuplicateAnnotationsHir<'_> {
     }
 }
 
-impl<'a> Visitor<'a> for DuplicateAnnotationsHir<'a> {
+impl<'a> Visitor<'a> for DuplicateAnnotations<'a> {
     fn context(&self) -> &'a ic_hir::Context {
         &self.hir.context
     }

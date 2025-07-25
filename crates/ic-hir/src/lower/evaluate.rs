@@ -1712,7 +1712,17 @@ impl<'a> ExpressionEvaluator<'a> {
                         self.evaluate_interface(def_id, v);
                     }
                 }
-                _ => {}
+                Item::ValuetypeValue(v) => {
+                    // Evaluate nested items in valuetypes
+                    if let Some(def_id) = self
+                        .ctx
+                        .scopes
+                        .resolve_name(self.current_scope, &v.ident.name)
+                    {
+                        self.evaluate_valuetype(def_id, v);
+                    }
+                }
+                Item::DeclValue(_) => {}
             }
         }
     }
@@ -1823,6 +1833,36 @@ impl<'a> ExpressionEvaluator<'a> {
             .iter()
             .filter_map(|member| {
                 if let ic_syntax::InterfaceMember::Item(item) = member {
+                    Some(item.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Evaluate all nested items
+        if !nested_items.is_empty() {
+            self.evaluate_types(&nested_items);
+        }
+
+        // Restore scope
+        self.current_scope = saved_scope;
+    }
+
+    /// Evaluates nested items in a valuetype.
+    fn evaluate_valuetype(&mut self, def_id: DefId, ast: &ic_syntax::ValuetypeDef) {
+        // Save current scope and enter valuetype scope
+        let saved_scope = self.current_scope;
+        if let Some(valuetype_scope) = self.ctx.scopes.find_scope_for_def(def_id) {
+            self.current_scope = valuetype_scope;
+        }
+
+        // Extract nested type definitions from valuetype elements
+        let nested_items: Vec<Item> = ast
+            .elements
+            .iter()
+            .filter_map(|element| {
+                if let ic_syntax::ValueElement::Item(item) = element {
                     Some(item.clone())
                 } else {
                     None

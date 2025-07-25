@@ -38,9 +38,9 @@ use ic_syntax::{Ident, Item, Path};
 use super::convert_annotation_value;
 use crate::Context;
 use crate::hir::{
-    AliasTy, Ann, AnnParam, AnnotationTy, ConstTy, Decl, Def, DefFlags, DefId, DefKind, EnumTy,
-    ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, StructTy,
-    Ty, TyKind, UnionTy,
+    AliasTy, Ann, AnnParam, AnnotationTy, AttributeTy, ConstTy, Decl, Def, DefFlags, DefId,
+    DefKind, EnumTy, ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy,
+    ProtoTy, StructTy, Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -665,11 +665,10 @@ impl<'a> Resolver<'a> {
         &mut self,
         interface: &ic_syntax::InterfaceDef,
         members: &[ic_syntax::InterfaceMember],
-    ) -> (Vec<DefId>, Vec<ProtoTy>, Vec<()>) {
-        // TODO: Replace () with AttributeTy when implemented
+    ) -> (Vec<DefId>, Vec<ProtoTy>, Vec<AttributeTy>) {
         let mut child_ids = Vec::new();
         let mut prototypes = Vec::new();
-        let attributes = Vec::new();
+        let mut attributes = Vec::new();
 
         // Track method names for duplicate detection (case-insensitive)
         let mut seen_methods = CaseMap::<ic_syntax::Span>::new();
@@ -702,8 +701,8 @@ impl<'a> Resolver<'a> {
                     prototypes.push(proto_ty);
                 }
                 ic_syntax::InterfaceMember::Attr(attr) => {
-                    self.process_attribute(attr);
-                    // TODO: Add attribute to list when AttributeTy is implemented
+                    let attribute_ty = self.process_attribute(attr);
+                    attributes.push(attribute_ty);
                 }
             }
         }
@@ -1245,27 +1244,39 @@ impl<'a> Resolver<'a> {
             None
         };
 
-        // Process members
-        let mut members = Vec::new();
-        for element in &def.elements {
-            if let ic_syntax::ValueElement::State(member) = element {
-                if member.is_public {
-                    // Public members
-                    let ty = self.resolve_type(&member.ty);
-                    for decl in &member.decl {
-                        if let ic_syntax::Declarator::Simple(ident) = decl {
-                            members.push(Member {
-                                ident: ident.clone(),
-                                ty: ty.clone(),
-                                annotations: Vec::new(),
-                            });
-                        } else {
-                            // TODO: Handle array declarators
-                        }
-                    }
+        // Resolve supports interface
+        let supports_ty = if let Some(supports_path) = &def.supports {
+            if let Some(supports_id) = self.resolve_path(supports_path) {
+                let supports_def = self.ctx.definitions.get(supports_id);
+
+                // Check if supports is an interface
+                if matches!(&supports_def.kind, DefKind::Interface(_)) {
+                    Some(supports_id)
+                } else {
+                    self.errors.push(error_span(
+                        format!(
+                            "valuetype `{}` cannot support non-interface type `{}`",
+                            def.ident.name, supports_def.ident.name
+                        ),
+                        Label::new(ic_syntax::util::path_span(supports_path))
+                            .message("not an interface"),
+                    ));
+                    None
                 }
+            } else {
+                self.errors.push(error_span(
+                    format!(
+                        "valuetype `{}` supports interface that is not defined",
+                        def.ident.name
+                    ),
+                    Label::new(ic_syntax::util::path_span(supports_path))
+                        .message("undefined interface"),
+                ));
+                None
             }
-        }
+        } else {
+            None
+        };
 
         let parent = if self.scope_path.is_empty() {
             None
@@ -1274,6 +1285,7 @@ impl<'a> Resolver<'a> {
             self.name_map.get(&parent_name).copied()
         };
 
+        // Create the valuetype definition first with empty members
         let id = self.ctx.definitions.alloc_with_id(|id| Def {
             id,
             ident: def.ident.clone(),
@@ -1282,9 +1294,10 @@ impl<'a> Resolver<'a> {
             span: def.span,
             kind: DefKind::Valuetype(crate::hir::ValueTy {
                 parent: parent_ty,
-                extends: None, // TODO: Handle extends
+                supports: supports_ty,
                 prototypes: Vec::new(),
-                members: Vec::new(), // TODO: ValueTy has Vec<()> for members
+                attributes: Vec::new(),
+                members: Vec::new(),
                 definitions: Vec::new(),
             }),
             flags: DefFlags::default(),
@@ -1304,23 +1317,43 @@ impl<'a> Resolver<'a> {
         let old_scope = self.current_scope;
         self.current_scope = new_scope;
 
-        // Process nested items and operations
+        // Process elements in declaration order
         let mut child_ids = Vec::new();
+        let mut members = Vec::new();
+        let mut prototypes = Vec::new();
+        let mut attributes = Vec::new();
 
         for element in &def.elements {
             match element {
                 ic_syntax::ValueElement::Item(item) => {
+                    // Process nested type definitions
                     let ids = self.process_item(item);
                     child_ids.extend(ids);
                 }
-                ic_syntax::ValueElement::Proto(_proto) => {
-                    // TODO: Process prototypes
+                ic_syntax::ValueElement::State(member) => {
+                    if member.is_public {
+                        // Public members - types defined before this point should be resolvable
+                        let ty = self.resolve_type(&member.ty);
+                        for decl in &member.decl {
+                            if let ic_syntax::Declarator::Simple(ident) = decl {
+                                members.push(Member {
+                                    ident: ident.clone(),
+                                    ty: ty.clone(),
+                                    annotations: Vec::new(),
+                                });
+                            } else {
+                                // TODO: Handle array declarators
+                            }
+                        }
+                    }
                 }
-                ic_syntax::ValueElement::Attr(_attr) => {
-                    // TODO: Process attributes
+                ic_syntax::ValueElement::Proto(proto) => {
+                    let proto_ty = self.process_prototype(proto);
+                    prototypes.push(proto_ty);
                 }
-                ic_syntax::ValueElement::State(_) => {
-                    // Already processed above
+                ic_syntax::ValueElement::Attr(attr) => {
+                    let attr_ty = self.process_attribute(attr);
+                    attributes.push(attr_ty);
                 }
             }
         }
@@ -1332,6 +1365,8 @@ impl<'a> Resolver<'a> {
         } = self.ctx.definitions.get_mut(id)
         {
             vt.definitions = child_ids;
+            vt.prototypes = prototypes;
+            vt.attributes = attributes;
         }
 
         // Pop scope
@@ -1557,9 +1592,37 @@ impl<'a> Resolver<'a> {
     }
 
     /// Processes an attribute definition.
-    #[allow(clippy::unused_self)]
-    fn process_attribute(&self, _attr: &ic_syntax::Attribute) {
-        // TODO: Implement attribute processing when AttributeTy is defined
+    fn process_attribute(&mut self, attr: &ic_syntax::Attribute) -> AttributeTy {
+        let ty = self.resolve_type(&attr.ty);
+
+        // Process declarators
+        let mut attributes = Vec::new();
+        for decl in &attr.decl {
+            if let ic_syntax::Declarator::Simple(ident) = decl {
+                attributes.push(AttributeTy {
+                    ident: ident.clone(),
+                    ty: ty.clone(),
+                    is_readonly: attr.readonly.is_some(),
+                    getraises: Vec::new(), // TODO: Process getraises exceptions
+                    setraises: Vec::new(), // TODO: Process setraises exceptions
+                });
+            } else {
+                // TODO: Handle array declarators
+            }
+        }
+
+        // Return the first attribute (for now)
+        // TODO: Handle multiple declarators properly
+        attributes.into_iter().next().unwrap_or(AttributeTy {
+            ident: ic_syntax::Ident {
+                name: String::new(),
+                span: ic_syntax::util::ty_span(&attr.ty),
+            },
+            ty,
+            is_readonly: attr.readonly.is_some(),
+            getraises: Vec::new(),
+            setraises: Vec::new(),
+        })
     }
 
     /// Processes an item and returns the `DefIds` created.

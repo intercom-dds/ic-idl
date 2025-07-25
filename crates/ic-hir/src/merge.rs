@@ -37,9 +37,9 @@ use ic_diagnostic::{Color, Diag, Label as DiagLabel};
 use ic_syntax::Span;
 
 use crate::hir::{
-    AliasTy, Ann, AnnArg, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
-    Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Label, Member, ModuleTy, Numeric,
-    Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Ann, AnnArg, AnnotationTy, AttributeTy, BitFlag, BitmaskTy, BitsetField, BitsetTy,
+    ConstTy, Decl, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Label, Member, ModuleTy,
+    Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};
@@ -762,7 +762,11 @@ impl HirMerger {
                     .iter()
                     .map(|p| self.update_proto(graph_index, p))
                     .collect(),
-                attributes: i.attributes.clone(),
+                attributes: i
+                    .attributes
+                    .iter()
+                    .map(|a| self.update_attribute(graph_index, a))
+                    .collect(),
                 definitions: self.map_def_ids(graph_index, &i.definitions),
                 is_local: i.is_local,
             }),
@@ -802,13 +806,22 @@ impl HirMerger {
             }),
             DefKind::Valuetype(v) => DefKind::Valuetype(ValueTy {
                 parent: self.map_def_id(graph_index, v.parent),
-                extends: self.map_def_id(graph_index, v.extends),
+                supports: self.map_def_id(graph_index, v.supports),
                 prototypes: v
                     .prototypes
                     .iter()
                     .map(|p| self.update_proto(graph_index, p))
                     .collect(),
-                members: v.members.clone(), // Vec<()> - nothing to update
+                attributes: v
+                    .attributes
+                    .iter()
+                    .map(|a| self.update_attribute(graph_index, a))
+                    .collect(),
+                members: v
+                    .members
+                    .iter()
+                    .map(|m| self.update_member(graph_index, m))
+                    .collect(),
                 definitions: self.map_def_ids(graph_index, &v.definitions),
             }),
             DefKind::Except(e) => DefKind::Except(ExceptTy {
@@ -922,6 +935,16 @@ impl HirMerger {
                 .iter()
                 .map(|p| self.update_parameter(graph_index, p))
                 .collect(),
+        }
+    }
+
+    fn update_attribute(&self, graph_index: usize, attr: &AttributeTy) -> AttributeTy {
+        AttributeTy {
+            ident: attr.ident.clone(),
+            ty: self.update_type(graph_index, &attr.ty),
+            is_readonly: attr.is_readonly,
+            getraises: self.map_def_ids(graph_index, &attr.getraises),
+            setraises: self.map_def_ids(graph_index, &attr.setraises),
         }
     }
 

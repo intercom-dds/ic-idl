@@ -49,7 +49,7 @@ use ic_diagnostic::Diag;
 use ic_syntax::Item;
 
 use crate::Context;
-use crate::hir::TypeId;
+use crate::hir::{DefId, TypeId};
 
 mod builtin;
 mod evaluate;
@@ -63,6 +63,7 @@ pub use builtin::{lower_with_builtin_context, lower_with_builtins};
 fn convert_annotation_value(
     expr: &ic_syntax::Expr,
     resolver: &mut resolve::Resolver,
+    annotation_def_id: Option<DefId>,
 ) -> crate::hir::Numeric {
     match expr {
         ic_syntax::Expr::Literal(lit) => match &lit.value {
@@ -77,7 +78,14 @@ fn convert_annotation_value(
             _ => crate::hir::Numeric::Null,
         },
         ic_syntax::Expr::Path(path) => {
-            // Try to resolve the path to a definition
+            // For annotation arguments, first try to resolve in the annotation's own scope
+            if let Some(ann_def_id) = annotation_def_id {
+                if let Some(def_id) = resolver.resolve_path_in_annotation_scope(path, ann_def_id) {
+                    return crate::hir::Numeric::Const(def_id);
+                }
+            }
+
+            // Then try to resolve in the current scope
             if let Some(def_id) = resolver.resolve_path(path) {
                 // Return a reference to the constant - the actual value will be resolved
                 // during expression evaluation phase

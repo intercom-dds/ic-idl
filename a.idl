@@ -1,5 +1,0 @@
-             enum MyEnum {
-                 ZERO
-             };
-             const MyEnum MY_CONST = MyEnum::ZERO;
-

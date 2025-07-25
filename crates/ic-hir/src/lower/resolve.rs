@@ -83,6 +83,38 @@ impl<'a> Resolver<'a> {
         self.ctx.definitions.get(def_id)
     }
 
+    /// Resolves a path within an annotation's scope.
+    pub fn resolve_path_in_annotation_scope(
+        &self,
+        path: &Path,
+        ann_def_id: DefId,
+    ) -> Option<DefId> {
+        // Find the scope for this annotation
+        let ann_scope = self
+            .ctx
+            .scopes
+            .scopes
+            .iter()
+            .position(|scope| scope.def_id == Some(ann_def_id))
+            .map(ScopeId)?;
+
+        let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
+
+        // For single-segment paths, try local resolution in the annotation scope
+        if segments.len() == 1 && path.leading_colons.is_none() {
+            // Look only in the annotation's direct scope, not parent scopes
+            if let Some(&def_id) = self.ctx.scopes.scopes[ann_scope.0]
+                .definitions
+                .get(segments[0])
+            {
+                return Some(def_id);
+            }
+        }
+
+        // For multi-segment paths, resolve from the annotation scope
+        self.ctx.scopes.resolve_path(ann_scope, &segments)
+    }
+
     /// Gets the qualified name for a definition in the current scope.
     fn qualified_name(&self, name: &str) -> String {
         if self.scope_path.is_empty() {
@@ -151,7 +183,7 @@ impl<'a> Resolver<'a> {
             if params.len() == 1 && ann.args.iter().all(|arg| arg.ident.is_none()) {
                 if let Some(arg) = ann.args.first() {
                     // Evaluate the expression
-                    let value = convert_annotation_value(&arg.value, self);
+                    let value = convert_annotation_value(&arg.value, self, Some(def_id));
                     args.push(crate::hir::AnnArg {
                         ident: params[0].ident.clone(),
                         value,
@@ -164,7 +196,7 @@ impl<'a> Resolver<'a> {
                         // Find matching member
                         if let Some(param) = params.iter().find(|p| p.ident.name == name.name) {
                             // Evaluate the expression
-                            let value = convert_annotation_value(&arg.value, self);
+                            let value = convert_annotation_value(&arg.value, self, Some(def_id));
                             args.push(crate::hir::AnnArg {
                                 ident: param.ident.clone(),
                                 value,

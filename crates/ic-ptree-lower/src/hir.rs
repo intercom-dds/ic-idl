@@ -398,9 +398,18 @@ impl<'a> TreeBuilder<'a> {
                 self.lowered.insert(id, ty);
                 sys::create_valuetype_finish(self.state, ptr::null_mut())
             }
-            DefKind::Bitset(_) => {
-                // TODO: Implement bitset lowering when ptree supports it
-                std::ptr::null_mut()
+            DefKind::Bitset(v) => {
+                let parent = v.parent.map_or(ptr::null_mut(), |id| self.lower_def(id));
+                
+                let fields = collect_with(self.state, sys::append_node, &v.fields, |field| {
+                    let name = create_ident(&field.ident.name);
+                    let size = sys::create_u64(self.state, field.size as u64, 10);
+                    let ty = self.lower_ty(&field.ty);
+                    let node = sys::create_bitfield(self.state, name.as_ptr(), size, ty);
+                    self.annotate(node, &field.annotations)
+                });
+                
+                sys::create_bitset(self.state, ident, fields, parent)
             }
             DefKind::Decl(v) => match v {
                 Decl::Struct => sys::create_struct_dcl(self.state, ident),

@@ -1,0 +1,23 @@
+// Test bitset lowering
+bitset SimpleFlags {
+    bitfield<1> flag1;
+    bitfield<1> flag2; 
+    bitfield<6> reserved;
+};
+
+bitset BaseFlags {
+    bitfield<1> enabled;
+    bitfield<1> active;
+    bitfield<6> reserved;
+};
+
+bitset ExtendedFlags : BaseFlags {
+    bitfield<1> extra1;
+    bitfield<1> extra2;
+    bitfield<6> padding;
+};
+
+struct TestStruct {
+    SimpleFlags flags;
+    ExtendedFlags extended_flags;
+};

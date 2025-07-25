@@ -39,14 +39,15 @@ fn test_bitset_lowering_simple() {
 
     let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
-    
+
     // Verify the bitset was processed correctly
-    let bitset = result.context
+    let bitset = result
+        .context
         .definitions
         .iter()
         .find(|(_, def)| def.ident.name == "SimpleFlags")
         .expect("Bitset not found");
-    
+
     if let ic_hir::hir::DefKind::Bitset(bs) = &bitset.1.kind {
         assert_eq!(bs.fields.len(), 3);
         assert_eq!(bs.fields[0].ident.name, "flag1");
@@ -78,14 +79,15 @@ fn test_bitset_with_inheritance() {
 
     let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
-    
+
     // Find the extended bitset
-    let extended = result.context
+    let extended = result
+        .context
         .definitions
         .iter()
         .find(|(_, def)| def.ident.name == "ExtendedFlags")
         .expect("ExtendedFlags not found");
-    
+
     if let ic_hir::hir::DefKind::Bitset(bs) = &extended.1.kind {
         assert!(bs.parent.is_some());
         assert_eq!(bs.fields.len(), 3);
@@ -112,17 +114,18 @@ fn test_bitset_with_complex_types() {
 
     let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
-    
+
     // Verify the bitset fields have correct types
-    let bitset = result.context
+    let bitset = result
+        .context
         .definitions
         .iter()
         .find(|(_, def)| def.ident.name == "StatusFlags")
         .expect("StatusFlags not found");
-    
+
     if let ic_hir::hir::DefKind::Bitset(bs) = &bitset.1.kind {
         assert_eq!(bs.fields.len(), 3);
-        
+
         // First field should reference the enum type
         if let ic_hir::hir::TyKind::Adt(def_id) = &bs.fields[0].ty.kind {
             let enum_def = result.context.type_of(*def_id);

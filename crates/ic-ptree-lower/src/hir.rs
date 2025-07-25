@@ -400,7 +400,7 @@ impl<'a> TreeBuilder<'a> {
             }
             DefKind::Bitset(v) => {
                 let parent = v.parent.map_or(ptr::null_mut(), |id| self.lower_def(id));
-                
+
                 let fields = collect_with(self.state, sys::append_node, &v.fields, |field| {
                     let name = create_ident(&field.ident.name);
                     let size = sys::create_u64(self.state, field.size as u64, 10);
@@ -408,7 +408,7 @@ impl<'a> TreeBuilder<'a> {
                     let node = sys::create_bitfield(self.state, name.as_ptr(), size, ty);
                     self.annotate(node, &field.annotations)
                 });
-                
+
                 sys::create_bitset(self.state, ident, fields, parent)
             }
             DefKind::Decl(v) => match v {

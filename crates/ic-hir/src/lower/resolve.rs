@@ -78,6 +78,11 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// Gets a definition by ID.
+    pub fn get_definition(&self, def_id: DefId) -> &Def {
+        self.ctx.definitions.get(def_id)
+    }
+
     /// Gets the qualified name for a definition in the current scope.
     fn qualified_name(&self, name: &str) -> String {
         if self.scope_path.is_empty() {
@@ -145,8 +150,8 @@ impl<'a> Resolver<'a> {
             // If all arguments are positional and there's exactly one member, assign to that member
             if params.len() == 1 && ann.args.iter().all(|arg| arg.ident.is_none()) {
                 if let Some(arg) = ann.args.first() {
-                    // Evaluate the expression (simple literals only for now)
-                    let value = convert_annotation_value(&arg.value);
+                    // Evaluate the expression
+                    let value = convert_annotation_value(&arg.value, self);
                     args.push(crate::hir::AnnArg {
                         ident: params[0].ident.clone(),
                         value,
@@ -158,8 +163,8 @@ impl<'a> Resolver<'a> {
                     if let Some(name) = &arg.ident {
                         // Find matching member
                         if let Some(param) = params.iter().find(|p| p.ident.name == name.name) {
-                            // Evaluate the expression (simple literals only for now)
-                            let value = convert_annotation_value(&arg.value);
+                            // Evaluate the expression
+                            let value = convert_annotation_value(&arg.value, self);
                             args.push(crate::hir::AnnArg {
                                 ident: param.ident.clone(),
                                 value,
@@ -180,7 +185,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Resolves a path to a `DefId` if it has been defined.
-    fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
+    pub fn resolve_path(&mut self, path: &Path) -> Option<DefId> {
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
 
         // If path has leading colons (::), resolve from global scope

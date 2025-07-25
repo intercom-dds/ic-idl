@@ -41,16 +41,17 @@ fn test_attribute_with_valid_exceptions() {
     "#;
 
     let (result, _, _) = common::parse_and_resolve(idl);
-    
+
     assert!(result.errors.is_empty());
-    
+
     // Find the interface
-    let interface = result.context
+    let interface = result
+        .context
         .definitions
         .iter()
         .find(|(_, def)| def.ident.name == "Foo")
         .expect("Interface Foo not found");
-    
+
     // Check that the attribute has the correct exceptions
     if let ic_hir::hir::DefKind::Interface(iface) = &interface.1.kind {
         assert_eq!(iface.attributes.len(), 1);
@@ -75,7 +76,7 @@ fn test_attribute_with_unknown_exception() {
     "#;
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
-    
+
     assert_eq!(result.errors.len(), 2);
     insta::assert_snapshot!(diagnostics);
 }
@@ -96,7 +97,7 @@ fn test_attribute_with_non_exception_type() {
     "#;
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
-    
+
     assert_eq!(result.errors.len(), 1);
     insta::assert_snapshot!(diagnostics);
 }
@@ -114,25 +115,26 @@ fn test_readonly_attribute_with_raises() {
     "#;
 
     let (result, _, _) = common::parse_and_resolve(idl);
-    
+
     assert!(result.errors.is_empty());
-    
+
     // Find the interface
-    let interface = result.context
+    let interface = result
+        .context
         .definitions
         .iter()
         .find(|(_, def)| def.ident.name == "Foo")
         .expect("Interface Foo not found");
-    
+
     // Check that the readonly attributes have raises in getraises
     if let ic_hir::hir::DefKind::Interface(iface) = &interface.1.kind {
         assert_eq!(iface.attributes.len(), 2);
-        
+
         let attr1 = &iface.attributes[0];
         assert!(attr1.is_readonly);
         assert_eq!(attr1.getraises.len(), 1);
         assert_eq!(attr1.setraises.len(), 0);
-        
+
         let attr2 = &iface.attributes[1];
         assert!(attr2.is_readonly);
         assert_eq!(attr2.getraises.len(), 2);
@@ -154,7 +156,7 @@ fn test_readonly_attribute_with_unknown_raises() {
     "#;
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
-    
+
     assert_eq!(result.errors.len(), 2);
     insta::assert_snapshot!(diagnostics);
 }
@@ -172,7 +174,7 @@ fn test_readonly_attribute_with_non_exception_raises() {
     "#;
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
-    
+
     assert_eq!(result.errors.len(), 1);
     insta::assert_snapshot!(diagnostics);
 }

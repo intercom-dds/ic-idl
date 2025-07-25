@@ -60,9 +60,10 @@ mod validate;
 pub use builtin::{lower_with_builtin_context, lower_with_builtins};
 
 /// Converts an annotation argument value (expression) to a Numeric value
-fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {
-    // For now, only handle literal expressions
-    // TODO: Full expression evaluation should happen in the evaluate phase
+fn convert_annotation_value(
+    expr: &ic_syntax::Expr,
+    resolver: &mut resolve::Resolver,
+) -> crate::hir::Numeric {
     match expr {
         ic_syntax::Expr::Literal(lit) => match &lit.value {
             ic_syntax::LiteralValue::Bool(b) => crate::hir::Numeric::Bool(*b),
@@ -75,7 +76,40 @@ fn convert_annotation_value(expr: &ic_syntax::Expr) -> crate::hir::Numeric {
             ic_syntax::LiteralValue::String(s) => crate::hir::Numeric::String(s.clone()),
             _ => crate::hir::Numeric::Null,
         },
-        _ => crate::hir::Numeric::Null, // Non-literal expressions need evaluation
+        ic_syntax::Expr::Path(path) => {
+            // Try to resolve the path to a definition
+            if let Some(def_id) = resolver.resolve_path(path) {
+                // Return a reference to the constant - the actual value will be resolved
+                // during expression evaluation phase
+                crate::hir::Numeric::Const(def_id)
+            } else {
+                // Handle enum-qualified paths like foo::Status::NOT_FOUND
+                // where foo::Status is the enum type and NOT_FOUND is the enumerator
+                if path.segments.len() >= 2 {
+                    // Try to resolve all but the last segment as the enum type
+                    let enum_path = ic_syntax::Path {
+                        leading_colons: path.leading_colons,
+                        segments: path.segments[..path.segments.len() - 1].to_vec(),
+                    };
+
+                    if let Some(enum_def_id) = resolver.resolve_path(&enum_path) {
+                        let enum_def = resolver.get_definition(enum_def_id);
+                        if let crate::hir::DefKind::Enum(enum_ty) = &enum_def.kind {
+                            // Look for the enumerator in this enum
+                            let enumerator_name = &path.segments.last().unwrap().name;
+                            for &field_id in &enum_ty.fields {
+                                let field_def = resolver.get_definition(field_id);
+                                if field_def.ident.name == *enumerator_name {
+                                    return crate::hir::Numeric::Const(field_id);
+                                }
+                            }
+                        }
+                    }
+                }
+                crate::hir::Numeric::Null
+            }
+        }
+        _ => crate::hir::Numeric::Null, // Other expressions need evaluation
     }
 }
 

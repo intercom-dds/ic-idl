@@ -29,11 +29,11 @@ use chumsky::Parser;
 use chumsky::prelude::*;
 use ic_lexer::token::Kw;
 use ic_syntax::{
-    AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, AnyType, ArrayDeclarator,
-    Attribute, Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr,
-    Field, Fixed, FixedType, Group, Ident, InitList, InterfaceMember, Item, Label, Literal,
-    LiteralValue, MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType,
-    Span, StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
+    AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, ArrayDeclarator, Attribute,
+    Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr, Field,
+    Fixed, FixedType, Group, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue,
+    MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
+    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
 };
 
 use crate::lexer::Kind;
@@ -461,11 +461,11 @@ fn simple_type_spec() -> impl IdlParser<Type> {
 }
 
 // Rule 23 with the rule 69 extension
+// Does not include `any_type` because we treat it as an ordinary identifier
 fn base_type_spec() -> impl IdlParser<Type> {
     choice((
         floating_pt_type(),
         integer_type(),
-        any_type(),
         scoped_name().map(Type::Path),
     ))
 }
@@ -853,11 +853,6 @@ fn declarators() -> impl IdlParser<Vec<Declarator>> {
 // Rule 68 with the rule 217 extension
 fn declarator() -> impl IdlParser<Declarator> {
     choice((array_declarator(), simple_declarator()))
-}
-
-// Rule 70
-fn any_type() -> impl IdlParser<Type> {
-    keyword(Kw::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
 }
 
 // Rule 72
@@ -1360,13 +1355,10 @@ fn annotation_member() -> impl IdlParser<AnnotationMember> {
 
 // Rule 223
 fn annotation_member_type() -> impl IdlParser<Type> {
-    // `scoped_name` is omitted because it's already included in `const_type`
-    choice((const_type(), any_const_type()))
-}
-
-// Rule 224
-fn any_const_type() -> impl IdlParser<Type> {
-    keyword(Kw::Any).map_with_span(|_, span| Type::Any(AnyType { span }))
+    // `scoped_name` is omitted because it's already included in `const_type`,
+    // and `any_const_type` is dropped because we treat `any` as an ordinary
+    // identifier.
+    const_type()
 }
 
 // Rule 225

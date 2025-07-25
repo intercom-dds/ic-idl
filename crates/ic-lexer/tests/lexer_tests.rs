@@ -48,7 +48,7 @@ fn kinds(input: &str) -> Vec<Kind> {
 
 #[test]
 fn test_all_keywords() {
-    assert_eq!(kinds("any"), vec![Kind::Keyword(Kw::Any)]);
+    assert_eq!(kinds("any"), vec![Kind::Ident]);
     assert_eq!(kinds("module"), vec![Kind::Keyword(Kw::Module)]);
     assert_eq!(kinds("struct"), vec![Kind::Keyword(Kw::Struct)]);
     assert_eq!(kinds("const"), vec![Kind::Keyword(Kw::Const)]);

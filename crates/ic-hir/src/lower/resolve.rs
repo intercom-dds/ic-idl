@@ -297,20 +297,11 @@ impl<'a> Resolver<'a> {
         use ic_syntax::Type;
 
         match ty {
-            Type::Any(v) => Self::make_any_type(v.span),
             Type::Fixed(v) => Self::make_fixed_type(v.span),
             Type::Sequence(v) => self.resolve_sequence_type(v),
             Type::String(v) => Self::resolve_string_type(v),
             Type::Map(v) => self.resolve_map_type(v),
             Type::Path(v) => self.resolve_path_type(v),
-        }
-    }
-
-    /// Creates an Any type.
-    fn make_any_type(span: ic_syntax::Span) -> Ty {
-        Ty {
-            kind: TyKind::Any,
-            span,
         }
     }
 
@@ -370,9 +361,20 @@ impl<'a> Resolver<'a> {
     fn resolve_path_type(&mut self, v: &ic_syntax::Path) -> Ty {
         let span = ic_syntax::util::path_span(v);
 
-        // Check if it's a primitive type
+        // Check if it's a single identifier
         if v.segments.len() == 1 && v.leading_colons.is_none() {
-            if let Some(prim) = resolve_primitive(&v.segments[0].name) {
+            let name = &v.segments[0].name;
+
+            // Special case for "any" type
+            if name == "any" {
+                return Ty {
+                    kind: TyKind::Any,
+                    span,
+                };
+            }
+
+            // Check if it's a primitive type
+            if let Some(prim) = resolve_primitive(name) {
                 return Ty {
                     kind: TyKind::Primitive(prim),
                     span,

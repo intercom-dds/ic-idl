@@ -49,7 +49,6 @@ pub fn path_name(path: &Path) -> String {
 #[must_use]
 pub fn type_name(path: &Type) -> String {
     match path {
-        Type::Any(..) => "any".to_string(),
         Type::String(..) => "string".to_string(),
         Type::Map(..) => "map".to_string(),
         Type::Fixed(..) => "fixed".to_string(),
@@ -126,7 +125,6 @@ pub fn expr_span(expr: &Expr) -> Span {
 #[must_use]
 pub fn ty_span(ty: &Type) -> Span {
     match ty {
-        Type::Any(v) => v.span,
         Type::Sequence(v) => v.span,
         Type::String(v) => v.span,
         Type::Map(v) => v.span,

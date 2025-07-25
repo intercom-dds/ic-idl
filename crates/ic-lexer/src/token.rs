@@ -55,7 +55,6 @@ pub enum Base {
 /// IDL keywords.
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum Kw {
-    Any,
     Annotation,
     Module,
     Struct,
@@ -251,7 +250,6 @@ static KEYWORD_MAP: OnceLock<FxHashMap<&'static str, Kw>> = OnceLock::new();
 fn keyword_map() -> &'static FxHashMap<&'static str, Kw> {
     KEYWORD_MAP.get_or_init(|| {
         let mut map = FxHashMap::with_capacity_and_hasher(45, FxBuildHasher);
-        map.insert("any", Kw::Any);
         map.insert("@annotation", Kw::Annotation);
         map.insert("module", Kw::Module);
         map.insert("struct", Kw::Struct);
@@ -316,7 +314,6 @@ impl Kw {
 impl fmt::Display for Kw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
-            Kw::Any => "any",
             Kw::Annotation => "@annotation",
             Kw::Module => "module",
             Kw::Struct => "struct",
@@ -375,7 +372,6 @@ mod tests {
         let map = keyword_map();
 
         // Test all keywords are present
-        assert_eq!(map.get("any"), Some(&Kw::Any));
         assert_eq!(map.get("module"), Some(&Kw::Module));
         assert_eq!(map.get("struct"), Some(&Kw::Struct));
 

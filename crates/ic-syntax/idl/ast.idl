@@ -54,18 +54,6 @@ struct ConstDef;
 struct Field;
 
 @nested
-struct PlainLocation {
-    uint32 offset;
-    uint32 file_id;
-};
-
-@nested
-struct PlainSpan {
-    PlainLocation start;
-    PlainLocation end;
-};
-
-@nested
 @ext::suppress(language="rust")
 struct Position {
     /// Byte offset to the position.
@@ -244,11 +232,6 @@ struct Binary {
 };
 
 @nested
-struct AnyType {
-    Span span;
-};
-
-@nested
 struct SequenceType {
     @external Type ty;
     @optional Expr bound;
@@ -283,7 +266,6 @@ struct FixedType {
 };
 
 enum TypeKind {
-    TYPE_ANY,
     TYPE_SEQUENCE,
     TYPE_STRING,
     TYPE_MAP,
@@ -293,10 +275,6 @@ enum TypeKind {
 
 @nested
 union Type switch(TypeKind) {
-case TYPE_ANY:
-    /// The `any` type.
-    AnyType _any;
-
 case TYPE_SEQUENCE:
     /// Sequence of another type, e.g. `sequence<string>`.
     SequenceType _sequence;

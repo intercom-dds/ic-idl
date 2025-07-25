@@ -525,7 +525,7 @@ where
     V: Visitor<'a> + ?Sized,
 {
     match ty {
-        Type::Any(_) | Type::Fixed(_) => (),
+        Type::Fixed(_) => (),
         Type::Sequence(v) => {
             visitor.visit_type(&v.ty);
             if let Some(expr) = &v.bound {

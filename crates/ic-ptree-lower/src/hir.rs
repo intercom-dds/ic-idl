@@ -432,8 +432,9 @@ where
     list
 }
 
+// TODO: need to lower built-in annotations...
 pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
-    let state = unsafe { sys::ic_parser_create() };
+    let state = sys::ic_parser_create();
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);

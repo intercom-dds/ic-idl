@@ -1365,6 +1365,7 @@ impl<'a> Resolver<'a> {
         } = self.ctx.definitions.get_mut(id)
         {
             vt.definitions = child_ids;
+            vt.members = members;
             vt.prototypes = prototypes;
             vt.attributes = attributes;
         }

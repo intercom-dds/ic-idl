@@ -1,0 +1,147 @@
+// Complete Valuetype Example - Demonstrating all valuetype grammar rules
+// This file shows every possible valuetype feature according to GRAMMAR.md
+
+// Forward declarations (rule 111)
+valuetype CompleteValue;
+
+interface Printable;
+
+// Exception that can be used in operations
+exception InvalidOperation {
+    string message;
+    long code;
+};
+
+// Base valuetype for inheritance demonstration
+valuetype BaseValue {
+    public string base_id;
+    private long internal_counter;
+};
+
+// Interface that valuetype can support
+interface Printable {
+    string toString();
+    void print();
+};
+
+// Complete valuetype demonstrating all features (rules 98-110)
+valuetype CompleteValue : BaseValue supports Printable {
+    // === State members (rule 106) ===
+    
+    // Public state members
+    public string name;
+    public double price;
+    public boolean active;
+    public sequence<string> tags;
+    public map<string, any> metadata;
+    public string array[3];
+    
+    // Private state members
+    private long internal_id;
+    private sequence<octet> cached_data;
+    private fixed<10, 2> internal_balance;
+    private string private_array[3];
+    
+    // === Type declarations (rules 97, 112) ===
+    
+    // Struct declaration within valuetype
+    struct Timestamp {
+        long seconds;
+        long nanoseconds;
+    };
+    
+    // Enum declaration
+    // TODO:
+    enum State {
+        CREATED
+    //     INITIALIZED,
+    //     ACTIVE,
+    //     DESTROYED
+    };
+    
+    // Union declaration
+    union StorageData switch (long) {
+        case 0:
+            string text_data;
+        case 1:
+            sequence<octet> binary_data;
+        case 2:
+            Timestamp timestamp_data;
+        default:
+            any generic_data;
+    };
+    
+    // Exception declaration
+    exception ValueError {
+        string field_name;
+        string reason;
+    };
+    
+    // Typedef declarations
+    typedef sequence<Timestamp> TimestampList;
+    typedef map<string, StorageData> StorageMap;
+    
+    // Constant declarations
+    const long MAX_NAME_LENGTH = 255;
+    const double DEFAULT_PRICE = 0.0;
+    const string VALUE_PREFIX = "VAL_";
+    
+    // Simple operations
+    void initialize(in string initial_name);
+    State getState();
+    
+    // Operation with multiple parameters
+    boolean updateData(
+        in string new_name,
+        in double new_price,
+        out Timestamp update_time
+    );
+    
+    // Operation with raises clause
+    void validate() raises (ValueError);
+    
+    // Complex operation
+    StorageData processStorage(
+        in StorageMap input_map,
+        out TimestampList access_times,
+        inout State current_state
+    ) raises (ValueError, InvalidOperation);
+    
+    // === Attributes (same as interface attributes) ===
+    
+    // Readonly attributes
+    readonly attribute string unique_id;
+    // TODO: readonly attribute int64 creation_time[3];
+    
+    // Read-write attributes
+    attribute State current_state;
+    attribute StorageMap storage;
+    
+    // Attributes with raises clauses
+    attribute long access_count
+        getraises (ValueError);
+    
+    attribute double computed_value
+        getraises (ValueError)
+        setraises (ValueError, InvalidOperation);
+};
+
+// Abstract valuetype (rule 127)
+valuetype AbstractValue {
+    // Only exports, no state members or factories
+    void abstractMethod();
+    readonly attribute string abstractProperty;
+};
+
+// Valuetype forward declaration examples (rule 110)
+valuetype ForwardDeclared1;
+// valuetype ForwardDeclared2;
+
+// Now define them
+valuetype ForwardDeclared1 {
+    public string data;
+};
+
+valuetype ForwardDeclared2 : ForwardDeclared1 {
+    public long count;
+};

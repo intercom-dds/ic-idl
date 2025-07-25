@@ -1,0 +1,156 @@
+// Complete Interface Example - Demonstrating all interface grammar rules
+// This file shows every possible interface feature according to GRAMMAR.md
+
+// Exception declarations for use in raises clauses (rule 72)
+exception InvalidOperation {
+    string reason;
+    long error_code;
+};
+
+exception ConfigurationError {
+    string parameter_name;
+    any invalid_value;
+};
+
+exception NetworkError {
+    string host;
+    unsigned short _port;
+};
+
+// Base interface to demonstrate inheritance (rule 78)
+interface BaseInterface {
+    void baseMethod();
+};
+
+// Complete interface demonstrating all interface features
+interface CompleteInterface : BaseInterface {
+    // === Type declarations within interface (rule 97) ===
+    
+    // Struct declaration
+    struct InternalData {
+        string name;
+        sequence<long> values;
+    };
+    
+    // Enum declaration
+    enum Status {
+        IDLE,
+        RUNNING,
+        PAUSED,
+        STOPPED
+    };
+    
+    // Union declaration  
+    union Result switch (boolean) {
+        case TRUE:
+            InternalData data;
+        case FALSE:
+            string error_message;
+    };
+    
+    // Typedef declaration
+    typedef sequence<InternalData> DataList;
+    typedef map<string, any> ConfigMap;
+    
+    // Constant declarations
+    const long MAX_RETRIES = 10;
+    const string DEFAULT_NAME = "Unnamed";
+    
+    // Exception declaration
+    exception InternalError {
+        Status current_status;
+        string details;
+    };
+    
+    // Simple readonly attributes (rule 90)
+    readonly attribute string identifier;
+    readonly attribute Status current_status;
+    
+    // Readonly attribute with raises clause
+    readonly attribute long connection_count 
+        raises (NetworkError);
+    
+    // Read-write attributes (rules 91-92)
+    attribute string name;
+    attribute ConfigMap configuration;
+    
+    // Attribute with getraises clause (rule 94)
+    attribute DataList cached_data 
+        getraises (InvalidOperation);
+    
+    // Attribute with setraises clause (rule 95)
+    attribute long timeout_seconds 
+        setraises (ConfigurationError);
+    
+    // Attribute with both getraises and setraises (rule 93)
+    attribute Result last_result
+        getraises (InvalidOperation)
+        setraises (InvalidOperation, ConfigurationError);
+    
+    // === Operations (rules 82-87) ===
+    
+    // Void operation with no parameters
+    void initialize();
+    
+    // Operation with return value
+    boolean isReady();
+    
+    // Operation with in parameter (rule 86)
+    void configure(in ConfigMap config);
+    
+    // Operation with out parameter
+    void getStatistics(out long request_count, out long error_count);
+    
+    // Operation with inout parameter
+    void processData(inout InternalData data);
+    
+    // Operation with multiple parameters of different types
+    Result executeCommand(
+        in string command,
+        in sequence<string> arguments,
+        out long execution_time,
+        inout Status status
+    );
+    
+    // Operation with raises clause (rule 87)
+    DataList fetchData(in string source)
+        raises (NetworkError, InvalidOperation);
+    
+    // Operation with multiple exceptions in raises clause
+    void updateConfiguration(in ConfigMap new_config)
+        raises (ConfigurationError, InvalidOperation, InternalError);
+    
+    // Complex operation using all parameter types and raises
+    boolean performComplexOperation(
+        in InternalData input_data,
+        out Result operation_result,
+        inout Status current_status
+    ) raises (InvalidOperation, ConfigurationError, NetworkError, InternalError);
+    
+    // === Oneway operations (rules 120-122) ===
+    
+    // Simple oneway operation
+    oneway void notifyEvent(in string event_name);
+    
+    // Oneway with multiple parameters
+    oneway void logMessage(
+        in string level,
+        in string message,
+        in any context_data
+    );
+};
+
+// Local interface example (rule 119)
+local interface LocalHelper {
+    void localMethod();
+};
+
+// Another interface to show multiple inheritance
+interface AnotherBase {
+    void anotherMethod();
+};
+
+// Interface with multiple inheritance (rule 78)
+interface MultipleInheritance : CompleteInterface, AnotherBase {
+    void combinedMethod();
+};

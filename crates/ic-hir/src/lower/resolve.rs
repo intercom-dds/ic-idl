@@ -1618,6 +1618,16 @@ impl<'a> Resolver<'a> {
     fn process_attribute(&mut self, attr: &ic_syntax::Attribute) -> Attribute {
         let ty = self.resolve_type(&attr.ty);
 
+        // Process getraises exceptions
+        let getraises: Vec<DefId> = attr.getraises.iter()
+            .filter_map(|path| self.resolve_path(path))
+            .collect();
+        
+        // Process setraises exceptions
+        let setraises: Vec<DefId> = attr.setraises.iter()
+            .filter_map(|path| self.resolve_path(path))
+            .collect();
+
         // Process declarators
         let mut attributes = Vec::new();
         for decl in &attr.decl {
@@ -1626,8 +1636,8 @@ impl<'a> Resolver<'a> {
                     ident: ident.clone(),
                     ty: ty.clone(),
                     is_readonly: attr.readonly.is_some(),
-                    getraises: Vec::new(), // TODO: Process getraises exceptions
-                    setraises: Vec::new(), // TODO: Process setraises exceptions
+                    getraises: getraises.clone(),
+                    setraises: setraises.clone(),
                 });
             } else {
                 // TODO: Handle array declarators
@@ -1643,8 +1653,8 @@ impl<'a> Resolver<'a> {
             },
             ty,
             is_readonly: attr.readonly.is_some(),
-            getraises: Vec::new(),
-            setraises: Vec::new(),
+            getraises,
+            setraises,
         })
     }
 

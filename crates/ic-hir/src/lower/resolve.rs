@@ -1619,14 +1619,54 @@ impl<'a> Resolver<'a> {
         let ty = self.resolve_type(&attr.ty);
 
         // Process getraises exceptions
-        let getraises: Vec<DefId> = attr.getraises.iter()
-            .filter_map(|path| self.resolve_path(path))
-            .collect();
-        
+        let mut getraises = Vec::new();
+        for path in &attr.getraises {
+            let span = ic_syntax::util::path_span(path);
+            if let Some(def_id) = self.resolve_path(path) {
+                // Verify this is an exception type
+                let def = self.ctx.type_of(def_id);
+                if matches!(def.kind, DefKind::Except(_)) {
+                    getraises.push(def_id);
+                } else {
+                    let name = path_to_string(path);
+                    self.errors.push(error_span(
+                        format!("'{}' is not an exception type", name),
+                        Label::new(span).message("not an exception"),
+                    ));
+                }
+            } else {
+                let name = path_to_string(path);
+                self.errors.push(error_span(
+                    format!("unknown exception type '{}'", name),
+                    Label::new(span).message("unknown type"),
+                ));
+            }
+        }
+
         // Process setraises exceptions
-        let setraises: Vec<DefId> = attr.setraises.iter()
-            .filter_map(|path| self.resolve_path(path))
-            .collect();
+        let mut setraises = Vec::new();
+        for path in &attr.setraises {
+            let span = ic_syntax::util::path_span(path);
+            if let Some(def_id) = self.resolve_path(path) {
+                // Verify this is an exception type
+                let def = self.ctx.type_of(def_id);
+                if matches!(def.kind, DefKind::Except(_)) {
+                    setraises.push(def_id);
+                } else {
+                    let name = path_to_string(path);
+                    self.errors.push(error_span(
+                        format!("'{}' is not an exception type", name),
+                        Label::new(span).message("not an exception"),
+                    ));
+                }
+            } else {
+                let name = path_to_string(path);
+                self.errors.push(error_span(
+                    format!("unknown exception type '{}'", name),
+                    Label::new(span).message("unknown type"),
+                ));
+            }
+        }
 
         // Process declarators
         let mut attributes = Vec::new();

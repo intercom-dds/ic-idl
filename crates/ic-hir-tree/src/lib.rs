@@ -417,32 +417,36 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             for attr in &v.attributes {
                 let span = emit_span(&attr.ident.span);
                 let ty = emit_ty(context, &attr.ty);
-                let readonly = if attr.is_readonly { "readonly" } else { "" };
-                
+                let readonly = if attr.is_readonly { "readonly " } else { "" };
+
                 let mut attr_node = leaf!(
-                    "{} {span} {} {readonly} emit",
+                    "{} {span} {} {readonly}emit",
                     "attribute".green().bold(),
                     attr.ident.name.cyan(),
                 );
-                
+
                 attr_node.push(leaf!("{} {}", "type".purple(), ty));
-                
+
                 if !attr.getraises.is_empty() {
-                    let raises = attr.getraises.iter()
+                    let raises = attr
+                        .getraises
+                        .iter()
                         .map(|&id| context.type_of(id).ident.name.as_str())
                         .collect::<Vec<_>>()
                         .join(", ");
                     attr_node.push(leaf!("{} {}", "getraises".purple(), raises.cyan()));
                 }
-                
+
                 if !attr.setraises.is_empty() {
-                    let raises = attr.setraises.iter()
+                    let raises = attr
+                        .setraises
+                        .iter()
                         .map(|&id| context.type_of(id).ident.name.as_str())
                         .collect::<Vec<_>>()
                         .join(", ");
                     attr_node.push(leaf!("{} {}", "setraises".purple(), raises.cyan()));
                 }
-                
+
                 node.push(attr_node);
             }
         }

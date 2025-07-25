@@ -264,10 +264,8 @@ impl From<ic_preproc::Token> for Token {
             ic_preproc::Kind::Modulo => Kind::Modulo,
             ic_preproc::Kind::Number { .. } => Kind::Decimal(0),
             ic_preproc::Kind::Float => Kind::Float(0.0),
-            ic_preproc::Kind::Newline => todo!(),
-            ic_preproc::Kind::Backslash => todo!(),
             ic_preproc::Kind::Eoi => Kind::Eoi,
-            _ => Kind::Invalid,
+            _ => Kind::Invalid, // Invalid includes newlines and backslashes handled by preprocessor
         };
 
         Self {

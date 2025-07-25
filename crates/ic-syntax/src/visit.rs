@@ -385,9 +385,8 @@ where
     for def in &def.definitions {
         visitor.visit_item(def);
     }
-    for mem in &def.members {
-        todo!();
-    }
+    // Valuetype members are not yet implemented in the AST
+    // When implemented, they should be visited here
 }
 
 pub fn walk_attribute<'a, V>(visitor: &mut V, def: &'a Attribute)

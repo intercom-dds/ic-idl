@@ -68,8 +68,6 @@ impl Fold for Renamer {
         }
 
         match &mut def.kind {
-            hir::DefKind::Annotation(_) => todo!(),
-            hir::DefKind::Module(_) => todo!(),
             hir::DefKind::Struct(data) => {
                 for mem in &mut data.members {
                     // TODO: impl a trait for all data types in the HIR
@@ -77,16 +75,23 @@ impl Fold for Renamer {
                     mem.ident.name = case::convert(&mem.ident.name, Case::Snake);
                 }
             }
-            hir::DefKind::Except(_) => todo!(),
-            hir::DefKind::Union(_) => todo!(),
-            hir::DefKind::Enum(_) => todo!(),
-            hir::DefKind::Const(_) => todo!(),
-            hir::DefKind::Bitmask(_) => todo!(),
-            hir::DefKind::Bitset(_) => todo!(),
-            hir::DefKind::Alias(_) => todo!(),
-            hir::DefKind::Interface(_) => todo!(),
-            hir::DefKind::Valuetype(_) => todo!(),
-            hir::DefKind::Decl(_) => todo!(),
+            // NOTE: This transformation is incomplete and not currently used.
+            // The remaining DefKind variants would need implementation if this
+            // transformation is needed in the future.
+            hir::DefKind::Annotation(_)
+            | hir::DefKind::Module(_)
+            | hir::DefKind::Except(_)
+            | hir::DefKind::Union(_)
+            | hir::DefKind::Enum(_)
+            | hir::DefKind::Const(_)
+            | hir::DefKind::Bitmask(_)
+            | hir::DefKind::Bitset(_)
+            | hir::DefKind::Alias(_)
+            | hir::DefKind::Interface(_)
+            | hir::DefKind::Valuetype(_)
+            | hir::DefKind::Decl(_) => {
+                // Not implemented - this transformation is not currently used
+            }
         }
         def
     }

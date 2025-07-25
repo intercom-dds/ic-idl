@@ -157,11 +157,6 @@ impl SourceMap {
         &self.file_info(id).path
     }
 
-    #[must_use]
-    pub fn line_span(&self, _id: FileId) -> Span {
-        todo!()
-    }
-
     fn insert(
         &mut self,
         path: PathBuf,

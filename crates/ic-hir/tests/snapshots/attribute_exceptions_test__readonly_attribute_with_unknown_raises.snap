@@ -1,0 +1,16 @@
+---
+source: crates/ic-hir/tests/attribute_exceptions_test.rs
+expression: diagnostics
+---
+error: unknown exception type 'UnknownException'
+   ┌ test.idl:5:53
+   │
+ 5 │             readonly attribute string value raises (UnknownException);
+   ·                                                     ^^^^^^^^^^^^^^^^ unknown type
+   └──
+error: unknown exception type 'AnotherUnknown'
+   ┌ test.idl:6:72
+   │
+ 6 │             readonly attribute string value2 raises (InvalidOperation, AnotherUnknown);
+   ·                                                                        ^^^^^^^^^^^^^^ unknown type
+   └──

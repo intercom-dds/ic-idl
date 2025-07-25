@@ -102,12 +102,14 @@ fn test_attribute_with_non_exception_type() {
 }
 
 #[test]
-fn test_attribute_readonly_no_setraises() {
+fn test_readonly_attribute_with_raises() {
     let idl = r#"
         exception InvalidOperation {};
+        exception ConfigurationError {};
         
         interface Foo {
-            readonly attribute string value;
+            readonly attribute string value raises (InvalidOperation);
+            readonly attribute string value2 raises (InvalidOperation, ConfigurationError);
         };
     "#;
 
@@ -122,14 +124,55 @@ fn test_attribute_readonly_no_setraises() {
         .find(|(_, def)| def.ident.name == "Foo")
         .expect("Interface Foo not found");
     
-    // Check that the readonly attribute has no raises
+    // Check that the readonly attributes have raises in getraises
     if let ic_hir::hir::DefKind::Interface(iface) = &interface.1.kind {
-        assert_eq!(iface.attributes.len(), 1);
-        let attr = &iface.attributes[0];
-        assert!(attr.is_readonly);
-        assert_eq!(attr.getraises.len(), 0);
-        assert_eq!(attr.setraises.len(), 0);
+        assert_eq!(iface.attributes.len(), 2);
+        
+        let attr1 = &iface.attributes[0];
+        assert!(attr1.is_readonly);
+        assert_eq!(attr1.getraises.len(), 1);
+        assert_eq!(attr1.setraises.len(), 0);
+        
+        let attr2 = &iface.attributes[1];
+        assert!(attr2.is_readonly);
+        assert_eq!(attr2.getraises.len(), 2);
+        assert_eq!(attr2.setraises.len(), 0);
     } else {
         panic!("Expected interface");
     }
+}
+
+#[test]
+fn test_readonly_attribute_with_unknown_raises() {
+    let idl = r#"
+        exception InvalidOperation {};
+        
+        interface Foo {
+            readonly attribute string value raises (UnknownException);
+            readonly attribute string value2 raises (InvalidOperation, AnotherUnknown);
+        };
+    "#;
+
+    let (result, _, diagnostics) = common::parse_and_resolve(idl);
+    
+    assert_eq!(result.errors.len(), 2);
+    insta::assert_snapshot!(diagnostics);
+}
+
+#[test]
+fn test_readonly_attribute_with_non_exception_raises() {
+    let idl = r#"
+        struct NotAnException {
+            string data;
+        };
+        
+        interface Foo {
+            readonly attribute string value raises (NotAnException);
+        };
+    "#;
+
+    let (result, _, diagnostics) = common::parse_and_resolve(idl);
+    
+    assert_eq!(result.errors.len(), 1);
+    insta::assert_snapshot!(diagnostics);
 }

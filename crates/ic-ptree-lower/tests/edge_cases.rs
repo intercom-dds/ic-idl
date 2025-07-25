@@ -25,41 +25,28 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::{ParseResult, from_file};
+use ic_hir::{AstInput, ResolvedGraph};
+use ic_parse::from_file;
 use ic_preproc::ProcArgs;
-use ic_ptree_lower::{from_ast, from_hir};
+use ic_ptree_lower::from_hir;
 use ic_vfs::SourceMap;
 
-fn parse_idl(idl: &str) -> (ParseResult, SourceMap) {
+fn parse_idl(idl: &str) -> (ResolvedGraph, SourceMap) {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(idl);
     let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
-    (parsed, vfs)
-}
+    assert!(parsed.errors.is_empty());
 
-fn check_parse_errors(parsed: &ParseResult, test_name: &str) {
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors in {}: {:?}",
-        test_name,
-        parsed.errors
-    );
+    let hir = ic_hir::from_ast(AstInput::User(parsed.tree));
+    assert!(hir.errors.is_empty());
+    (hir, vfs)
 }
 
 #[test]
 fn test_empty_idl() {
-    let (parsed, vfs) = parse_idl("");
-    assert!(parsed.errors.is_empty());
-
-    // Test AST lowering
-    let ptree_ast = from_ast(&parsed, &vfs);
-    assert!(ptree_ast.diagnostics().is_none());
-
-    // Test HIR lowering
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-    let ptree_hir = from_hir(&hir, &vfs);
-    assert!(ptree_hir.diagnostics().is_none());
+    let (hir, vfs) = parse_idl("");
+    let ptree = from_hir(&hir, &vfs);
+    assert!(ptree.diagnostics().is_none());
 }
 
 #[test]
@@ -67,7 +54,7 @@ fn test_deeply_nested_types() {
     let idl = r"
         typedef sequence<sequence<sequence<sequence<long>>>> Deep4;
         typedef map<string, map<string, map<string, long>>> DeepMap;
-        
+
         struct DeepNesting {
             Deep4 nested_sequences;
             DeepMap nested_maps;
@@ -75,13 +62,7 @@ fn test_deeply_nested_types() {
         };
     ";
 
-    let (parsed, vfs) = parse_idl(idl);
-    check_parse_errors(&parsed, "test_deeply_nested_types");
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -91,26 +72,19 @@ fn test_mutually_recursive_structs() {
     let idl = r"
         // Forward declaration
         struct A;
-        
+
         struct B {
             @shared A a;
         };
-        
+
         struct A {
             @shared B b;
         };
     ";
 
-    let (parsed, _vfs) = parse_idl(idl);
-    check_parse_errors(&parsed, "test_mutually_recursive_structs");
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
-    // Skip ptree lowering for this test - C++ code has issues with duplicate registrations
-    // let ptree = from_hir(&hir, &vfs);
-    // assert!(ptree.diagnostics().is_none());
+    let (hir, vfs) = parse_idl(idl);
+    let ptree = from_hir(&hir, &vfs);
+    assert!(ptree.diagnostics().is_none());
 }
 
 #[test]
@@ -118,22 +92,20 @@ fn test_empty_containers() {
     let idl = r"
         struct EmptyStruct {
         };
-        
+
         exception EmptyException {
         };
-        
+
         interface EmptyInterface {
         };
-        
+
         module EmptyModule {
         };
     ";
 
-    let (parsed, _vfs) = parse_idl(idl);
-    // Empty enum/bitmask might have parse errors, but struct/interface should work
-
-    let _hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    // Check if we can at least create the HIR
+    let (hir, vfs) = parse_idl(idl);
+    let ptree = from_hir(&hir, &vfs);
+    assert!(ptree.diagnostics().is_none());
 }
 
 #[test]
@@ -157,13 +129,7 @@ fn test_numeric_literals() {
         const boolean B2 = FALSE;
     "#;
 
-    let (parsed, vfs) = parse_idl(idl);
-    check_parse_errors(&parsed, "test_numeric_literals");
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -176,13 +142,13 @@ fn test_union_edge_cases() {
             case 1:
                 string s;
         };
-        
+
         // Union with only default
         union OnlyDefault switch (long) {
             default:
                 long value;
         };
-        
+
         // Union with multiple labels per case
         union MultiLabel switch (long) {
             case 1:
@@ -194,7 +160,7 @@ fn test_union_edge_cases() {
             default:
                 null;
         };
-        
+
         // Union with enum discriminator
         enum Color { RED, GREEN, BLUE };
         union ColorUnion switch (Color) {
@@ -207,13 +173,7 @@ fn test_union_edge_cases() {
         };
     ";
 
-    let (parsed, vfs) = parse_idl(idl);
-    check_parse_errors(&parsed, "test_union_edge_cases");
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -226,30 +186,24 @@ fn test_interface_edge_cases() {
             void method1();
             void method2(in long x);
         };
-        
+
         // Interface with complex parameter types
         typedef long Matrix[10][10];
         typedef string StringArray[100];
-        
+
         interface ComplexParams {
             void processMatrix(in Matrix matrix);
             sequence<string> getStrings(in sequence<long> indices);
             map<string, long> countWords(in StringArray text);
         };
-        
+
         // Interface with all parameter directions
         interface ParamDirections {
             void allTypes(in long input, out long output, inout long both);
         };
     ";
 
-    let (parsed, vfs) = parse_idl(idl);
-    check_parse_errors(&parsed, "test_interface_edge_cases");
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -263,14 +217,14 @@ fn test_annotation_edge_cases() {
         struct AnnotatedStruct {
             @range(min = 0, max = 100)
             long field1;
-            
+
             @optional
             string field2;
-            
+
             @bit(5)
             octet field3;
         };
-        
+
         // Multiple annotations on same element
         @deprecated
         @optional
@@ -280,13 +234,7 @@ fn test_annotation_edge_cases() {
         };
     ";
 
-    let (parsed, vfs) = parse_idl(idl);
-    check_parse_errors(&parsed, "test_annotation_edge_cases");
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -306,12 +254,7 @@ fn test_type_bounds() {
         };
     ";
 
-    let (parsed, vfs) = parse_idl(idl);
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -321,11 +264,11 @@ fn test_scoped_references() {
     let idl = r"
         module A {
             struct S1 { long x; };
-            
+
             module B {
                 struct S2 { S1 s; };
                 typedef S1 S1Alias;
-                
+
                 module C {
                     struct S3 {
                         S1 s1;
@@ -336,7 +279,7 @@ fn test_scoped_references() {
                 };
             };
         };
-        
+
         struct Global {
             A::S1 s1;
             A::B::S2 s2;
@@ -344,12 +287,7 @@ fn test_scoped_references() {
         };
     ";
 
-    let (parsed, vfs) = parse_idl(idl);
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    assert!(hir.errors.is_empty());
-
+    let (hir, vfs) = parse_idl(idl);
     let ptree = from_hir(&hir, &vfs);
     assert!(ptree.diagnostics().is_none());
 }
@@ -361,26 +299,19 @@ fn test_const_expression_references() {
         const long B = A;
         const long C = A + B;
         const long D = C * 2;
-        
+
         struct ConstArrays {
             long arr1[A];
             long arr2[B];
             long arr3[C];
             long arr4[D];
         };
-        
+
         const string PREFIX = "ID_";
         const long VERSION = 1;
     "#;
 
-    let (parsed, vfs) = parse_idl(idl);
-    assert!(parsed.errors.is_empty());
-
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    // Const expressions might have limitations
-
-    if hir.errors.is_empty() {
-        let ptree = from_hir(&hir, &vfs);
-        assert!(ptree.diagnostics().is_none());
-    }
+    let (hir, vfs) = parse_idl(idl);
+    let ptree = from_hir(&hir, &vfs);
+    assert!(ptree.diagnostics().is_none());
 }

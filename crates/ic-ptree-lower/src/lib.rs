@@ -29,18 +29,10 @@
 
 use ic_ptree::ParseResult;
 
-mod ast;
-mod common;
 mod hir;
 
 /// Lowers the HIR into a `ptree`. This process should be infallible, as
 /// everything should have been resolved and type checked prior to this.
 pub fn from_hir(tree: &ic_hir::ResolvedGraph, vfs: &ic_vfs::SourceMap) -> ParseResult {
     unsafe { hir::lower(tree, vfs) }
-}
-
-/// Lowers the AST into a `ptree`. This process should be infallible, as
-/// long as a HIR has been successfully constructed from the same AST.
-pub fn from_ast(ast: &ic_parse::ParseResult, vfs: &ic_vfs::SourceMap) -> ParseResult {
-    unsafe { ast::lower(&ast.tree, vfs) }
 }

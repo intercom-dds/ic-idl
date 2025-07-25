@@ -32,13 +32,15 @@ use std::ffi::CString;
 use std::{ffi, ptr};
 
 use ic_hir::hir::{
-    Ann, Decl, DefId, DefKind, Ident, Numeric, PrimitiveTy, ProtoTy, Ty, TyKind, Variant,
+    Ann, Decl, DefId, DefKind, Ident, Numeric, ParamKind, PrimitiveTy, ProtoTy, Ty, TyKind, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
 use ic_vfs::SourceMap;
 
-use crate::common::{self, NUM_UNDEF, collect_with, create_ident};
+// SAFETY: Taking the address of a static variable is safe
+#[allow(unused_unsafe)]
+pub static mut NUM_UNDEF: *const sys::numeric = unsafe { std::ptr::addr_of!(sys::num_undef) };
 
 struct TreeBuilder<'a> {
     ctx: &'a Context,
@@ -122,7 +124,7 @@ impl<'a> TreeBuilder<'a> {
     unsafe fn lower_proto(&mut self, proto: &ProtoTy) -> *mut sys::ptree {
         let params = collect_with(self.state, sys::append_node, &proto.params, |param| {
             let ty = self.lower_ty(&param.ty);
-            let kind = common::param_kind(param.kind);
+            let kind = param_kind(param.kind);
             let decl = self.lower_decl(&param.ident);
             sys::create_param_dcl(self.state, decl, ty, kind as ffi::c_int)
         });
@@ -385,6 +387,51 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
+#[must_use]
+fn create_ident(name: &str) -> CString {
+    CString::new(name).unwrap()
+}
+
+#[allow(clippy::cast_possible_wrap)]
+fn param_kind(kind: ParamKind) -> ffi::c_int {
+    let c = match kind {
+        ParamKind::In => sys::OPT_IN,
+        ParamKind::Out => sys::OPT_OUT,
+        ParamKind::Inout => sys::OPT_INOUT,
+    };
+    c as ffi::c_int
+}
+
+type Appender = unsafe extern "C" fn(
+    *mut sys::parser_state,
+    *mut sys::ptree,
+    *mut sys::ptree,
+) -> *mut sys::ptree;
+
+#[must_use]
+unsafe fn collect_with<I, C, T>(
+    state: *mut sys::parser_state,
+    appender: Appender,
+    iter: I,
+    mut cb: C,
+) -> *mut sys::ptree
+where
+    I: IntoIterator<Item = T>,
+    C: FnMut(T) -> *mut sys::ptree,
+{
+    let mut list = std::ptr::null_mut();
+
+    // SAFETY: The appender function is expected to handle the pointers correctly
+    // and the callback is responsible for returning valid pointers
+    unsafe {
+        for elem in iter {
+            let node = cb(elem);
+            list = appender(state, list, node);
+        }
+    }
+    list
+}
+
 pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     let state = unsafe { sys::ic_parser_create() };
 
@@ -406,7 +453,7 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     };
 
     if let Some(err) = result.diagnostics() {
-        debug_assert!(false, "{err}");
+        panic!("ptree lowering failed: {err}");
     }
     result
 }

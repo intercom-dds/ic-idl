@@ -1199,24 +1199,46 @@ impl<'a> Resolver<'a> {
             if let Some(parent_id) = self.resolve_path(parent_path) {
                 let parent_def = self.ctx.definitions.get(parent_id);
 
-                // Check if parent is a forward declaration (incomplete)
+                // If we found a forward declaration, check if there's an actual definition
                 if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
-                    self.errors.push(
-                        error_span(
-                            format!(
-                                "valuetype `{}` cannot inherit from incomplete type `{}`",
-                                def.ident.name, parent_def.ident.name
+                    // Look for the actual definition by checking all definitions with the same name
+                    let parent_name = &parent_def.ident.name;
+                    let mut found_definition = None;
+
+                    // Search through all definitions to find a non-forward declaration
+                    for (def_id, def) in self.ctx.definitions.iter() {
+                        if def.ident.name == *parent_name
+                            && !def.flags.contains(DefFlags::IS_INCOMPLETE)
+                        {
+                            if matches!(&def.kind, DefKind::Valuetype(_)) {
+                                found_definition = Some(def_id);
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some(actual_parent_id) = found_definition {
+                        // Found the actual definition, use it
+                        Some(actual_parent_id)
+                    } else {
+                        // No actual definition found, only forward declaration
+                        self.errors.push(
+                            error_span(
+                                format!(
+                                    "valuetype `{}` cannot inherit from incomplete type `{}`",
+                                    def.ident.name, parent_def.ident.name
+                                ),
+                                Label::new(def.span).message("invalid inheritance"),
+                            )
+                            .label(
+                                Label::new(parent_def.ident.span)
+                                    .message("forward declaration here, but no definition found"),
                             ),
-                            Label::new(def.span).message("invalid inheritance"),
-                        )
-                        .label(
-                            Label::new(parent_def.ident.span)
-                                .message("forward declaration here, but no definition found"),
-                        ),
-                    );
-                    None
+                        );
+                        None
+                    }
                 } else {
-                    // Check that parent is actually a valuetype
+                    // Not a forward declaration, check that parent is actually a valuetype
                     if matches!(&parent_def.kind, DefKind::Valuetype(_)) {
                         Some(parent_id)
                     } else {

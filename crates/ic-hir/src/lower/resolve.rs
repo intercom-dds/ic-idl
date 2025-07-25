@@ -1712,32 +1712,23 @@ fn path_to_string(path: &Path) -> String {
 }
 
 /// Resolves a primitive type name.
-#[allow(clippy::match_same_arms)]
 fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
     Some(match name {
         "void" => PrimitiveTy::Void,
         "boolean" => PrimitiveTy::Bool,
-        "octet" => PrimitiveTy::UInt8,
-        "char" => PrimitiveTy::Char,
-        "wchar" => PrimitiveTy::WChar,
-        "short" => PrimitiveTy::Int16,
-        "long" => PrimitiveTy::Int32,
-        "long long" => PrimitiveTy::Int64,
-        "unsigned short" => PrimitiveTy::UInt16,
-        "unsigned long" => PrimitiveTy::UInt32,
-        "unsigned long long" => PrimitiveTy::UInt64,
-        "float" => PrimitiveTy::Float32,
-        "double" => PrimitiveTy::Float64,
-        "long double" => PrimitiveTy::Float128,
-        // Also support explicit integer type names
+        "octet" | "uint8" => PrimitiveTy::UInt8,
         "int8" => PrimitiveTy::Int8,
-        "uint8" => PrimitiveTy::UInt8,
         "int16" => PrimitiveTy::Int16,
         "uint16" => PrimitiveTy::UInt16,
         "int32" => PrimitiveTy::Int32,
         "uint32" => PrimitiveTy::UInt32,
         "int64" => PrimitiveTy::Int64,
         "uint64" => PrimitiveTy::UInt64,
+        "char" => PrimitiveTy::Char,
+        "wchar" => PrimitiveTy::WChar,
+        "float" => PrimitiveTy::Float32,
+        "double" => PrimitiveTy::Float64,
+        "long double" => PrimitiveTy::Float128,
         _ => return None,
     })
 }

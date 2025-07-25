@@ -87,6 +87,9 @@ pub struct LoweringResult {
     /// Top-level type IDs in order of appearance.
     pub order: Vec<TypeId>,
 
+    /// Built-in type IDs in order of definition.
+    pub builtin_order: Vec<TypeId>,
+
     /// Errors collected during all phases.
     pub errors: Vec<Diag>,
 
@@ -125,6 +128,7 @@ where
     LoweringResult {
         context,
         order,
+        builtin_order: Vec::new(),
         errors,
         warnings,
     }

@@ -71,6 +71,10 @@ pub struct ResolvedGraph {
     /// the types were defined.
     pub order: Vec<hir::TypeId>,
 
+    /// Defines the order in which built-in types were defined.
+    /// Empty if no built-ins were loaded.
+    pub builtin_order: Vec<hir::TypeId>,
+
     /// Errors accumulated during type resolution, type checking, etc.
     pub errors: Vec<ic_diagnostic::Diag>,
 
@@ -111,6 +115,7 @@ where
     ResolvedGraph {
         context: result.context,
         order: result.order,
+        builtin_order: result.builtin_order,
         errors: result.errors,
         warnings: result.warnings,
     }

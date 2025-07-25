@@ -397,6 +397,7 @@ impl Compiler {
         let merged_hir = hir::ResolvedGraph {
             context: merged.context,
             order: merged.order,
+            builtin_order: merged.builtin_order,
             errors: Vec::new(),
             warnings: Vec::new(),
         };

@@ -48,6 +48,7 @@ use crate::{Context, ResolvedGraph};
 pub struct MergedGraph {
     pub context: Context,
     pub order: Vec<DefId>,
+    pub builtin_order: Vec<DefId>,
     pub errors: Vec<Diag>,
 }
 
@@ -75,6 +76,7 @@ pub fn merge_hir_trees(graphs: &[ResolvedGraph]) -> MergedGraph {
         return MergedGraph {
             context: Context::new(),
             order: Vec::new(),
+            builtin_order: Vec::new(),
             errors: Vec::new(),
         };
     }
@@ -112,6 +114,9 @@ struct HirMerger {
     /// The final order of definitions
     order: Vec<DefId>,
 
+    /// The final order of built-in definitions
+    builtin_order: Vec<DefId>,
+
     /// Errors collected during merging
     errors: Vec<Diag>,
 }
@@ -126,6 +131,7 @@ impl HirMerger {
             module_defs: HashMap::new(),
             def_to_scope_map: HashMap::new(),
             order: Vec::new(),
+            builtin_order: Vec::new(),
             errors: Vec::new(),
         }
     }
@@ -311,6 +317,20 @@ impl HirMerger {
 
                 if !was_deduplicated && !self.order.contains(&new_def_id) {
                     self.order.push(new_def_id);
+                }
+            }
+        }
+
+        // Add built-in definitions to builtin_order
+        for &def_id in &graph.builtin_order {
+            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
+                // Only add to builtin_order if this definition wasn't deduplicated
+                let was_deduplicated = self.def_id_maps[..graph_index]
+                    .iter()
+                    .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id));
+
+                if !was_deduplicated && !self.builtin_order.contains(&new_def_id) {
+                    self.builtin_order.push(new_def_id);
                 }
             }
         }
@@ -1052,6 +1072,7 @@ impl HirMerger {
         MergedGraph {
             context: self.new_context,
             order: self.order,
+            builtin_order: self.builtin_order,
             errors: self.errors,
         }
     }

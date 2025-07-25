@@ -437,6 +437,18 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
 
     // Lower the tree
     let mut builder = TreeBuilder::new(state, hir);
+
+    // Lower built-in definitions, but discard the nodes
+    if !hir.builtin_order.is_empty() {
+        let include = create_ident("<builtin-annotations>");
+        sys::create_include_start(state, include.as_ptr(), 0);
+        let nodes = collect_with(state, sys::append_node, &hir.builtin_order, |id| {
+            builder.lower_def(*id)
+        });
+        sys::create_include_finish(state, nodes);
+    }
+
+    // Lower user definitions
     let tree = collect_with(state, sys::append_node, &hir.order, |id| {
         let def = builder.ctx.definitions.get(id);
         let defined_in = format!("{}", vfs.name(def.span.start.file_id).display());

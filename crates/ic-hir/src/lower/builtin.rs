@@ -63,6 +63,9 @@ where
         result.context.definitions[def_id].flags |= crate::hir::DefFlags::IS_BUILTIN;
     }
 
+    // Store builtin order separately
+    result.builtin_order = builtin_def_ids.into_iter().collect();
+
     result
 }
 
@@ -93,6 +96,9 @@ where
     for &def_id in &builtin_def_ids {
         result.context.definitions[def_id].flags |= crate::hir::DefFlags::IS_BUILTIN;
     }
+
+    // Store builtin order separately
+    result.builtin_order = builtin_def_ids.clone().into_iter().collect();
 
     // Filter the order vector to only include user definitions
     // Built-in definitions are still in the context but not in the output order

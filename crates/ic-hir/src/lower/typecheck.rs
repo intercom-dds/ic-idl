@@ -369,6 +369,30 @@ impl<'a> TypeChecker<'a> {
             (Numeric::Const(id), _expected_ty) => {
                 let const_def = self.ctx.definitions.get(*id);
                 if let DefKind::Const(const_ty) = &const_def.kind {
+                    // Special case: enum members can be assigned to their parent enum type
+                    if let (TyKind::Primitive(_), TyKind::Adt(enum_id)) =
+                        (&const_ty.ty.kind, &ty.kind)
+                    {
+                        // Check if this constant is a member of the expected enum
+                        if let Some(parent_id) = const_def.parent {
+                            if parent_id == *enum_id {
+                                // This is an enum member being assigned to its parent enum type
+                                return true;
+                            }
+                        }
+                    }
+
+                    // Special case: check if the referenced constant itself contains a Const reference
+                    // In that case, follow the chain
+                    if let Numeric::Const(inner_id) = &const_ty.value {
+                        return self.check_numeric_type(
+                            &Numeric::Const(*inner_id),
+                            ty,
+                            value_desc,
+                            value_span,
+                        );
+                    }
+
                     // Check if the referenced constant's type matches
                     self.check_type_compatible(&const_ty.ty, ty, value_desc)
                 } else {

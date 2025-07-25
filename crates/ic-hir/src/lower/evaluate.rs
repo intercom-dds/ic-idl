@@ -1516,7 +1516,7 @@ impl<'a> ExpressionEvaluator<'a> {
                     Numeric::Null
                 }
             }
-            _ => self.eval_expr(&def.value),
+            _ => self.eval_expr_with_const_refs(&def.value),
         };
 
         // Get the declared type for conversion

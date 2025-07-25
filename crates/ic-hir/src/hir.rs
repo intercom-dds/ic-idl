@@ -443,7 +443,7 @@ pub struct BitsetField {
 pub struct InterfaceTy {
     pub parents: Vec<DefId>,
     pub prototypes: Vec<ProtoTy>,
-    pub attributes: Vec<AttributeTy>,
+    pub attributes: Vec<Attribute>,
     pub definitions: Vec<DefId>,
     pub is_local: bool,
 }
@@ -453,7 +453,7 @@ pub struct ValueTy {
     pub parent: Option<DefId>,
     pub supports: Option<DefId>,
     pub prototypes: Vec<ProtoTy>,
-    pub attributes: Vec<AttributeTy>,
+    pub attributes: Vec<Attribute>,
     pub members: Vec<Member>,
     pub definitions: Vec<DefId>,
 }
@@ -473,7 +473,7 @@ pub struct Parameter {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeTy {
+pub struct Attribute {
     pub ident: Ident,
     pub ty: Ty,
     pub is_readonly: bool,

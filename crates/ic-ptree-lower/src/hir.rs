@@ -32,7 +32,8 @@ use std::ffi::CString;
 use std::{ffi, ptr};
 
 use ic_hir::hir::{
-    Ann, Decl, DefId, DefKind, Ident, Numeric, ParamKind, PrimitiveTy, ProtoTy, Ty, TyKind, Variant,
+    Ann, Attribute, Decl, DefId, DefKind, Ident, Numeric, ParamKind, PrimitiveTy, ProtoTy, Ty,
+    TyKind, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
 use ic_ptree::{ParseResult, sys};
@@ -132,6 +133,27 @@ impl<'a> TreeBuilder<'a> {
         let ident = create_ident(&proto.ident.name);
         let ret = self.lower_ty(&proto.ty);
         sys::create_interface_op(self.state, ident.as_ptr(), params, ret, ptr::null_mut())
+    }
+
+    unsafe fn lower_attr(&mut self, attr: &Attribute) -> *mut sys::ptree {
+        let decl = self.lower_decl(&attr.ident);
+        let ty = self.lower_ty(&attr.ty);
+        // let getraises = collect_with(self.state, sys::append_node, &attr.getraises, |raise| {
+        //     self.lower_def(*raise)
+        // });
+        // let setraises = collect_with(self.state, sys::append_node, &attr.setraises, |raise| {
+        //     self.lower_def(*raise)
+        // });
+
+        // TODO: adjust ptree API to take list of getraises/setraises nodes
+        sys::create_attribute(
+            self.state,
+            decl,
+            ty,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            ffi::c_int::from(attr.is_readonly),
+        )
     }
 
     unsafe fn lower_variant(&mut self, var: &Variant) -> *mut sys::ptree {
@@ -352,10 +374,19 @@ impl<'a> TreeBuilder<'a> {
                 );
                 self.lowered.insert(id, ty);
 
+                let defs = collect_with(self.state, sys::append_node, &v.definitions, |def| {
+                    self.lower_def(*def)
+                });
+                let attrs = collect_with(self.state, sys::append_node, &v.attributes, |attr| {
+                    self.lower_attr(attr)
+                });
                 let members = collect_with(self.state, sys::append_node, &v.prototypes, |proto| {
                     self.lower_proto(proto)
                 });
-                sys::create_interface_finish(self.state, members)
+
+                let list = sys::append_node(self.state, defs, members);
+                let list = sys::append_node(self.state, list, attrs);
+                sys::create_interface_finish(self.state, list)
             }
             DefKind::Valuetype(_) => {
                 let ty = sys::create_valuetype_start(

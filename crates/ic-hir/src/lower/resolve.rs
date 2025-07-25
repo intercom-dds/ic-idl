@@ -38,9 +38,9 @@ use ic_syntax::{Ident, Item, Path};
 use super::convert_annotation_value;
 use crate::Context;
 use crate::hir::{
-    AliasTy, Ann, AnnParam, AnnotationTy, AttributeTy, ConstTy, Decl, Def, DefFlags, DefId,
-    DefKind, EnumTy, ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy,
-    ProtoTy, StructTy, Ty, TyKind, UnionTy,
+    AliasTy, Ann, AnnParam, AnnotationTy, Attribute, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
+    EnumTy, ExceptTy, InterfaceTy, Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy,
+    StructTy, Ty, TyKind, UnionTy,
 };
 use crate::scope::ScopeId;
 
@@ -665,7 +665,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         interface: &ic_syntax::InterfaceDef,
         members: &[ic_syntax::InterfaceMember],
-    ) -> (Vec<DefId>, Vec<ProtoTy>, Vec<AttributeTy>) {
+    ) -> (Vec<DefId>, Vec<ProtoTy>, Vec<Attribute>) {
         let mut child_ids = Vec::new();
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
@@ -1615,14 +1615,14 @@ impl<'a> Resolver<'a> {
     }
 
     /// Processes an attribute definition.
-    fn process_attribute(&mut self, attr: &ic_syntax::Attribute) -> AttributeTy {
+    fn process_attribute(&mut self, attr: &ic_syntax::Attribute) -> Attribute {
         let ty = self.resolve_type(&attr.ty);
 
         // Process declarators
         let mut attributes = Vec::new();
         for decl in &attr.decl {
             if let ic_syntax::Declarator::Simple(ident) = decl {
-                attributes.push(AttributeTy {
+                attributes.push(Attribute {
                     ident: ident.clone(),
                     ty: ty.clone(),
                     is_readonly: attr.readonly.is_some(),
@@ -1636,7 +1636,7 @@ impl<'a> Resolver<'a> {
 
         // Return the first attribute (for now)
         // TODO: Handle multiple declarators properly
-        attributes.into_iter().next().unwrap_or(AttributeTy {
+        attributes.into_iter().next().unwrap_or(Attribute {
             ident: ic_syntax::Ident {
                 name: String::new(),
                 span: ic_syntax::util::ty_span(&attr.ty),

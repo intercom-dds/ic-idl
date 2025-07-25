@@ -37,7 +37,7 @@ use ic_diagnostic::{Color, Diag, Label as DiagLabel};
 use ic_syntax::Span;
 
 use crate::hir::{
-    AliasTy, Ann, AnnArg, AnnotationTy, AttributeTy, BitFlag, BitmaskTy, BitsetField, BitsetTy,
+    AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitFlag, BitmaskTy, BitsetField, BitsetTy,
     ConstTy, Decl, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Label, Member, ModuleTy,
     Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
@@ -938,8 +938,8 @@ impl HirMerger {
         }
     }
 
-    fn update_attribute(&self, graph_index: usize, attr: &AttributeTy) -> AttributeTy {
-        AttributeTy {
+    fn update_attribute(&self, graph_index: usize, attr: &Attribute) -> Attribute {
+        Attribute {
             ident: attr.ident.clone(),
             ty: self.update_type(graph_index, &attr.ty),
             is_readonly: attr.is_readonly,

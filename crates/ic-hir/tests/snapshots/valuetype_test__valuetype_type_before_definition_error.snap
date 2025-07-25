@@ -1,0 +1,16 @@
+---
+source: crates/ic-hir/tests/valuetype_test.rs
+expression: rendered
+---
+error: unresolved type `Status`
+   ┌ test.idl:4:20
+   │
+ 4 │             public Status current_status;
+   ·                    ^^^^^^ unknown type
+   └──
+error: unresolved type `Data`
+    ┌ test.idl:12:13
+    │
+ 12 │             Data getData();
+    ·             ^^^^ unknown type
+    └──

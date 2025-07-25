@@ -383,3 +383,33 @@ fn valuetype_with_attributes() {
     assert_eq!(valuetype_def.attributes[1].ident.name, "count");
     assert!(valuetype_def.attributes[1].is_readonly);
 }
+
+#[test]
+fn valuetype_type_before_definition_error() {
+    let idl = r#"
+        valuetype BadOrder {
+            // Error: Status is used before it's defined
+            public Status current_status;
+            
+            enum Status {
+                ACTIVE,
+                INACTIVE
+            };
+            
+            // This would also fail
+            Data getData();
+            
+            struct Data {
+                string value;
+            };
+        };
+    "#;
+
+    let (result, _source_map, rendered) = common::parse_and_resolve(idl);
+
+    // Should have errors
+    assert!(!result.errors.is_empty());
+
+    // Snapshot test for the error output
+    insta::assert_snapshot!(rendered);
+}

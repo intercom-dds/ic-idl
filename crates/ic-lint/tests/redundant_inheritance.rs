@@ -72,8 +72,9 @@ interface Derived : M::Base, M::Base {};
 #[test]
 fn redundant_valuetype_inheritance() {
     let source = r"
+interface Bar {};
 valuetype Base {};
-valuetype Derived : Base supports Base {};
+valuetype Derived : Base supports Bar {};
 ";
 
     let report = lint_hir(source);

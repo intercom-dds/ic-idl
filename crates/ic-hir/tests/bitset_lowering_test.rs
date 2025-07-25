@@ -29,13 +29,13 @@ mod common;
 
 #[test]
 fn test_bitset_lowering_simple() {
-    let idl = r#"
+    let idl = r"
         bitset SimpleFlags {
             bitfield<1> flag1;
             bitfield<1> flag2;
             bitfield<6> reserved;
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
@@ -63,7 +63,7 @@ fn test_bitset_lowering_simple() {
 
 #[test]
 fn test_bitset_with_inheritance() {
-    let idl = r#"
+    let idl = r"
         bitset BaseFlags {
             bitfield<1> enabled;
             bitfield<1> active;
@@ -75,7 +75,7 @@ fn test_bitset_with_inheritance() {
             bitfield<1> extra2;
             bitfield<6> padding;
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
@@ -98,7 +98,7 @@ fn test_bitset_with_inheritance() {
 
 #[test]
 fn test_bitset_with_complex_types() {
-    let idl = r#"
+    let idl = r"
         enum StatusCode {
             OK = 0,
             ERROR = 1,
@@ -110,7 +110,7 @@ fn test_bitset_with_complex_types() {
             bitfield<1> is_final;
             bitfield<31, uint32> timestamp;
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());

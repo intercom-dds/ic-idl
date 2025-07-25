@@ -386,7 +386,7 @@ fn valuetype_with_attributes() {
 
 #[test]
 fn valuetype_type_before_definition_error() {
-    let idl = r#"
+    let idl = r"
         valuetype BadOrder {
             // Error: Status is used before it's defined
             public Status current_status;
@@ -403,7 +403,7 @@ fn valuetype_type_before_definition_error() {
                 string value;
             };
         };
-    "#;
+    ";
 
     let (result, _source_map, rendered) = common::parse_and_resolve(idl);
 

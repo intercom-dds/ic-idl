@@ -29,7 +29,7 @@ mod common;
 
 #[test]
 fn valuetype_forward_declared_then_defined_then_inherited() {
-    let idl = r#"
+    let idl = r"
         valuetype ForwardDeclared1;
         
         valuetype ForwardDeclared1 {
@@ -37,38 +37,30 @@ fn valuetype_forward_declared_then_defined_then_inherited() {
         };
         
         valuetype ForwardDeclared2 : ForwardDeclared1 {};
-    "#;
+    ";
 
-    let (result, _, rendered) = common::parse_and_resolve(idl);
-
-    // Should have no errors - ForwardDeclared1 is defined before being inherited
-    if !result.errors.is_empty() {
-        panic!("Expected no errors, but got:\n{}", rendered);
-    }
+    let (result, _, _) = common::parse_and_resolve(idl);
+    assert!(result.errors.is_empty());
 }
 
 #[test]
 fn valuetype_inherit_from_only_forward_declared() {
-    let idl = r#"
+    let idl = r"
         valuetype OnlyForward;
         
         valuetype Derived : OnlyForward {};
-    "#;
+    ";
 
-    let (result, _, _) = common::parse_and_resolve(idl);
+    let (result, _, diagnostics) = common::parse_and_resolve(idl);
 
     // Should have errors - OnlyForward is never defined
     assert!(!result.errors.is_empty());
-
-    // We expect 2 errors:
-    // 1. Cannot inherit from incomplete type
-    // 2. Type is declared but not defined
-    assert_eq!(result.errors.len(), 2);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
 fn struct_forward_declared_then_defined_then_inherited() {
-    let idl = r#"
+    let idl = r"
         struct ForwardDeclared1;
         
         struct ForwardDeclared1 {
@@ -76,19 +68,15 @@ fn struct_forward_declared_then_defined_then_inherited() {
         };
         
         struct ForwardDeclared2 : ForwardDeclared1 {};
-    "#;
+    ";
 
-    let (result, _, rendered) = common::parse_and_resolve(idl);
-
-    // Should have no errors - ForwardDeclared1 is defined before being inherited
-    if !result.errors.is_empty() {
-        panic!("Expected no errors, but got:\n{}", rendered);
-    }
+    let (result, _, _) = common::parse_and_resolve(idl);
+    assert!(result.errors.is_empty());
 }
 
 #[test]
 fn interface_forward_declared_then_defined_then_inherited() {
-    let idl = r#"
+    let idl = r"
         interface ForwardDeclared1;
         
         interface ForwardDeclared1 {
@@ -96,12 +84,8 @@ fn interface_forward_declared_then_defined_then_inherited() {
         };
         
         interface ForwardDeclared2 : ForwardDeclared1 {};
-    "#;
+    ";
 
-    let (result, _, rendered) = common::parse_and_resolve(idl);
-
-    // Should have no errors - ForwardDeclared1 is defined before being inherited
-    if !result.errors.is_empty() {
-        panic!("Expected no errors, but got:\n{}", rendered);
-    }
+    let (result, _, _) = common::parse_and_resolve(idl);
+    assert!(result.errors.is_empty());
 }

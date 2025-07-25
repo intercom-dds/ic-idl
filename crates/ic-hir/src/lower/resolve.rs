@@ -1211,14 +1211,13 @@ impl<'a> Resolver<'a> {
                     let mut found_definition = None;
 
                     // Search through all definitions to find a non-forward declaration
-                    for (def_id, def) in self.ctx.definitions.iter() {
+                    for (def_id, def) in &self.ctx.definitions {
                         if def.ident.name == *parent_name
                             && !def.flags.contains(DefFlags::IS_INCOMPLETE)
+                            && matches!(&def.kind, DefKind::Valuetype(_))
                         {
-                            if matches!(&def.kind, DefKind::Valuetype(_)) {
-                                found_definition = Some(def_id);
-                                break;
-                            }
+                            found_definition = Some(def_id);
+                            break;
                         }
                     }
 
@@ -1635,14 +1634,14 @@ impl<'a> Resolver<'a> {
                 } else {
                     let name = path_to_string(path);
                     self.errors.push(error_span(
-                        format!("'{}' is not an exception type", name),
+                        format!("'{name}' is not an exception type"),
                         Label::new(span).message("not an exception"),
                     ));
                 }
             } else {
                 let name = path_to_string(path);
                 self.errors.push(error_span(
-                    format!("unknown exception type '{}'", name),
+                    format!("unknown exception type '{name}'"),
                     Label::new(span).message("unknown type"),
                 ));
             }
@@ -1660,14 +1659,14 @@ impl<'a> Resolver<'a> {
                 } else {
                     let name = path_to_string(path);
                     self.errors.push(error_span(
-                        format!("'{}' is not an exception type", name),
+                        format!("'{name}' is not an exception type"),
                         Label::new(span).message("not an exception"),
                     ));
                 }
             } else {
                 let name = path_to_string(path);
                 self.errors.push(error_span(
-                    format!("unknown exception type '{}'", name),
+                    format!("unknown exception type '{name}'"),
                     Label::new(span).message("unknown type"),
                 ));
             }

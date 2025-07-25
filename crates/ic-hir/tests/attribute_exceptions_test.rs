@@ -29,7 +29,7 @@ mod common;
 
 #[test]
 fn test_attribute_with_valid_exceptions() {
-    let idl = r#"
+    let idl = r"
         exception InvalidOperation {};
         exception ConfigurationError {};
         
@@ -38,7 +38,7 @@ fn test_attribute_with_valid_exceptions() {
                 getraises (InvalidOperation)
                 setraises (InvalidOperation, ConfigurationError);
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(idl);
 
@@ -65,7 +65,7 @@ fn test_attribute_with_valid_exceptions() {
 
 #[test]
 fn test_attribute_with_unknown_exception() {
-    let idl = r#"
+    let idl = r"
         exception InvalidOperation {};
         
         interface Foo {
@@ -73,7 +73,7 @@ fn test_attribute_with_unknown_exception() {
                 getraises (UnknownException)
                 setraises (InvalidOperation, AnotherUnknown);
         };
-    "#;
+    ";
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
 
@@ -83,7 +83,7 @@ fn test_attribute_with_unknown_exception() {
 
 #[test]
 fn test_attribute_with_non_exception_type() {
-    let idl = r#"
+    let idl = r"
         exception InvalidOperation {};
         struct NotAnException {
             string data;
@@ -94,7 +94,7 @@ fn test_attribute_with_non_exception_type() {
                 getraises (InvalidOperation)
                 setraises (NotAnException);
         };
-    "#;
+    ";
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
 
@@ -104,7 +104,7 @@ fn test_attribute_with_non_exception_type() {
 
 #[test]
 fn test_readonly_attribute_with_raises() {
-    let idl = r#"
+    let idl = r"
         exception InvalidOperation {};
         exception ConfigurationError {};
         
@@ -112,7 +112,7 @@ fn test_readonly_attribute_with_raises() {
             readonly attribute string value raises (InvalidOperation);
             readonly attribute string value2 raises (InvalidOperation, ConfigurationError);
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(idl);
 
@@ -146,14 +146,14 @@ fn test_readonly_attribute_with_raises() {
 
 #[test]
 fn test_readonly_attribute_with_unknown_raises() {
-    let idl = r#"
+    let idl = r"
         exception InvalidOperation {};
         
         interface Foo {
             readonly attribute string value raises (UnknownException);
             readonly attribute string value2 raises (InvalidOperation, AnotherUnknown);
         };
-    "#;
+    ";
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
 
@@ -163,7 +163,7 @@ fn test_readonly_attribute_with_unknown_raises() {
 
 #[test]
 fn test_readonly_attribute_with_non_exception_raises() {
-    let idl = r#"
+    let idl = r"
         struct NotAnException {
             string data;
         };
@@ -171,7 +171,7 @@ fn test_readonly_attribute_with_non_exception_raises() {
         interface Foo {
             readonly attribute string value raises (NotAnException);
         };
-    "#;
+    ";
 
     let (result, _, diagnostics) = common::parse_and_resolve(idl);
 

@@ -31,7 +31,7 @@ use ic_hir::hir::{DefKind, Numeric};
 
 #[test]
 fn test_annotation_with_enum_argument() {
-    let idl = r#"
+    let idl = r"
         enum MyEnum {
             ONE,
             TWO,
@@ -46,13 +46,9 @@ fn test_annotation_with_enum_argument() {
         struct TestStruct {
             string field;
         };
-    "#;
+    ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    if !result.errors.is_empty() {
-        eprintln!("Diagnostics:\n{}", diagnostics);
-    }
+    let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
 
     // Find the struct definition
@@ -84,13 +80,13 @@ fn test_annotation_with_enum_argument() {
                 panic!("Expected const definition");
             }
         }
-        other => panic!("Expected Numeric::Const, got {:?}", other),
+        other => panic!("Expected Numeric::Const, got {other:?}"),
     }
 }
 
 #[test]
 fn test_annotation_with_scoped_enum_argument() {
-    let idl = r#"
+    let idl = r"
         module foo {
             enum Status {
                 OK = 200,
@@ -107,13 +103,9 @@ fn test_annotation_with_scoped_enum_argument() {
         exception NotFoundException {
             string message;
         };
-    "#;
+    ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    if !result.errors.is_empty() {
-        eprintln!("Diagnostics:\n{}", diagnostics);
-    }
+    let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
 
     // Find the exception definition
@@ -145,13 +137,13 @@ fn test_annotation_with_scoped_enum_argument() {
                 panic!("Expected const definition");
             }
         }
-        other => panic!("Expected Numeric::Const, got {:?}", other),
+        other => panic!("Expected Numeric::Const, got {other:?}"),
     }
 }
 
 #[test]
 fn test_annotation_with_unscoped_enum_argument() {
-    let idl = r#"
+    let idl = r"
         enum Color {
             RED,
             GREEN,
@@ -166,13 +158,9 @@ fn test_annotation_with_unscoped_enum_argument() {
         interface ColoredInterface {
             void paint();
         };
-    "#;
+    ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    if !result.errors.is_empty() {
-        eprintln!("Diagnostics:\n{}", diagnostics);
-    }
+    let (result, _, _) = common::parse_and_resolve(idl);
     assert!(result.errors.is_empty());
 
     // Find the interface definition
@@ -204,6 +192,6 @@ fn test_annotation_with_unscoped_enum_argument() {
                 panic!("Expected const definition");
             }
         }
-        other => panic!("Expected Numeric::Const, got {:?}", other),
+        other => panic!("Expected Numeric::Const, got {other:?}"),
     }
 }

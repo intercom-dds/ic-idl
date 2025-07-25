@@ -237,10 +237,13 @@ impl<'a> TypeChecker<'a> {
             (Numeric::UInt64(v), TyKind::Primitive(prim)) => {
                 self.check_uint_fits(*v, *prim, value_desc, value_span)
             }
-            
+
             // Special case: integer values being assigned to enum types
             // This is for enum members that have numeric values
-            (Numeric::Int8(_) | Numeric::Int16(_) | Numeric::Int32(_) | Numeric::Int64(_), TyKind::Adt(enum_id)) => {
+            (
+                Numeric::Int8(_) | Numeric::Int16(_) | Numeric::Int32(_) | Numeric::Int64(_),
+                TyKind::Adt(enum_id),
+            ) => {
                 // Check if this is an enum
                 let def = self.ctx.definitions.get(*enum_id);
                 if let DefKind::Enum(enum_ty) = &def.kind {
@@ -403,9 +406,9 @@ impl<'a> TypeChecker<'a> {
                             value_span,
                         );
                     }
-                    
+
                     // If the referenced constant has a numeric value, check if it's compatible with the expected type
-                    return self.check_numeric_type(&const_ty.value, ty, value_desc, value_span);
+                    self.check_numeric_type(&const_ty.value, ty, value_desc, value_span)
                 } else {
                     self.errors.push(error_span(
                         format!("{value_desc} references a non-constant definition"),
@@ -690,52 +693,6 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// Checks if two types are compatible (for constant references).
-    fn check_type_compatible(&mut self, from_ty: &Ty, to_ty: &Ty, value_desc: &str) -> bool {
-        match (&from_ty.kind, &to_ty.kind) {
-            // Same primitive types
-            (TyKind::Primitive(p1), TyKind::Primitive(p2)) if p1 == p2 => true,
-
-            // Numeric promotions (e.g., int32 to int64)
-            (TyKind::Primitive(from), TyKind::Primitive(to)) => {
-                self.check_numeric_promotion(*from, *to)
-            }
-
-            // Same ADT
-            (TyKind::Adt(id1), TyKind::Adt(id2)) if id1 == id2 => true,
-
-            // Same string types
-            (TyKind::String { wide: w1, .. }, TyKind::String { wide: w2, .. }) if w1 == w2 => true,
-
-            // Arrays and Sequences with same element type
-            (TyKind::Array { ty: ty1, .. }, TyKind::Array { ty: ty2, .. })
-            | (TyKind::Sequence { ty: ty1, .. }, TyKind::Sequence { ty: ty2, .. }) => {
-                self.check_type_compatible(ty1, ty2, value_desc)
-            }
-
-            // Maps with same key and element types
-            (
-                TyKind::Map {
-                    key: k1, elem: e1, ..
-                },
-                TyKind::Map {
-                    key: k2, elem: e2, ..
-                },
-            ) => {
-                self.check_type_compatible(k1, k2, value_desc)
-                    && self.check_type_compatible(e1, e2, value_desc)
-            }
-
-            _ => {
-                self.errors.push(error_span(
-                    format!("{value_desc} type mismatch"),
-                    Label::new(to_ty.span).message("incompatible types"),
-                ));
-                false
-            }
-        }
-    }
-
     /// Type checks a constant definition.
     fn check_const(&mut self, id: DefId) {
         let def = self.ctx.definitions.get(id);
@@ -744,7 +701,7 @@ impl<'a> TypeChecker<'a> {
             let value_desc = format!("constant `{}`", def.ident.name);
             // Skip type checking for enum members - their numeric values don't need to match the enum type
             if def.parent.is_some() {
-                if let Some(parent_def) = def.parent.and_then(|p| Some(self.ctx.definitions.get(p))) {
+                if let Some(parent_def) = def.parent.map(|p| self.ctx.definitions.get(p)) {
                     if matches!(parent_def.kind, DefKind::Enum(_)) {
                         // This is an enum member, skip type checking
                         return;
@@ -820,12 +777,7 @@ impl<'a> TypeChecker<'a> {
                         "union case label for variant `{}::{}`",
                         def.ident.name, variant.ident.name
                     );
-                    self.check_numeric_type(
-                        &label.value,
-                        &union_ty.disc,
-                        &value_desc,
-                        variant.ident.span,
-                    );
+                    self.check_numeric_type(&label.value, &union_ty.disc, &value_desc, label.span);
                 }
             }
         }

@@ -854,7 +854,6 @@ impl<'a> Resolver<'a> {
             self.name_map.get(&parent_name).copied()
         };
 
-
         // Create constants for each enumerator
         let mut field_ids = Vec::new();
         for field in &def.fields {
@@ -869,7 +868,7 @@ impl<'a> Resolver<'a> {
                 annotations: field_annotations,
                 span: field.ident.span,
                 kind: DefKind::Const(ConstTy {
-                    value: Numeric::Int32(0),  // Will be filled in evaluation phase
+                    value: Numeric::Int32(0), // Will be filled in evaluation phase
                     ty: Ty {
                         kind: TyKind::Adt(id), // Will be fixed below to point to the enum
                         span: field.ident.span,

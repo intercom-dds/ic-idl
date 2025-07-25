@@ -10,8 +10,8 @@ error[unreachable_case]: case label 2 is outside the range [0, 1] of the discrim
    └──
 
 error: union case label for variant `MyUnion::c` value 2 does not fit in type boolean
-   ┌ test.idl:5:21
+   ┌ test.idl:5:10
    │
  5 │     case 2: boolean c;  // Out of range for boolean
-   ·                     ^ value out of range
+   ·          ^ value out of range
    └──

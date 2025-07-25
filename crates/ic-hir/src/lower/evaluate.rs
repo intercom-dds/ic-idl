@@ -102,6 +102,23 @@ struct IdlEvalContext<'a> {
     current_scope: crate::scope::ScopeId,
 }
 
+impl IdlEvalContext<'_> {
+    fn resolve_numeric_value(&self, value: &Numeric) -> Numeric {
+        match value {
+            Numeric::Const(id) => {
+                let def = self.ctx.definitions.get(*id);
+                if let DefKind::Const(const_ty) = &def.kind {
+                    // Recursively resolve if needed
+                    self.resolve_numeric_value(&const_ty.value)
+                } else {
+                    value.clone()
+                }
+            }
+            _ => value.clone(),
+        }
+    }
+}
+
 impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
     type Value = EvalNumeric;
 
@@ -151,7 +168,9 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
 
             // Check if it's a constant
             if let DefKind::Const(const_ty) = &def.kind {
-                if let Some(eval_num) = from_hir_numeric(&const_ty.value) {
+                // Resolve constant references recursively
+                let resolved_value = self.resolve_numeric_value(&const_ty.value);
+                if let Some(eval_num) = from_hir_numeric(&resolved_value) {
                     return Ok(eval_num);
                 }
             }
@@ -175,7 +194,9 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                                 let field_def = self.ctx.definitions.get(field_id);
                                 if field_def.ident.name == field_name {
                                     if let DefKind::Const(const_ty) = &field_def.kind {
-                                        match const_ty.value {
+                                        let resolved_value =
+                                            self.resolve_numeric_value(&const_ty.value);
+                                        match resolved_value {
                                             Numeric::Int32(value) => {
                                                 return Ok(GenericNumeric::Int32(value));
                                             }
@@ -212,7 +233,8 @@ impl ic_expr::EvalContext<IdlLiteral> for IdlEvalContext<'_> {
                         let field_def = self.ctx.definitions.get(field_id);
                         if field_def.ident.name == enumerator {
                             if let DefKind::Const(const_ty) = &field_def.kind {
-                                match const_ty.value {
+                                let resolved_value = self.resolve_numeric_value(&const_ty.value);
+                                match resolved_value {
                                     Numeric::Int32(value) => {
                                         return Ok(GenericNumeric::Int32(value));
                                     }
@@ -663,17 +685,36 @@ impl<'a> ExpressionEvaluator<'a> {
 
     /// Evaluates a bound expression to a usize.
     fn eval_bound(&mut self, expr: &Expr) -> usize {
-        let result = self.eval_expr(expr);
-        match result {
-            Numeric::Int32(v) if v >= 0 => usize::try_from(v).unwrap_or(0),
-            Numeric::UInt32(v) => usize::try_from(v).unwrap_or(0),
-            Numeric::Int64(v) if v >= 0 => usize::try_from(v).unwrap_or(0),
-            Numeric::UInt64(v) => usize::try_from(v).unwrap_or(0),
+        let result = self.eval_expr_with_const_refs(expr);
+        self.resolve_bound_value(&result, ic_syntax::util::expr_span(expr))
+    }
+
+    fn resolve_bound_value(&mut self, value: &Numeric, span: Span) -> usize {
+        match value {
+            Numeric::Int32(v) if *v >= 0 => usize::try_from(*v).unwrap_or(0),
+            Numeric::UInt32(v) => usize::try_from(*v).unwrap_or(0),
+            Numeric::Int64(v) if *v >= 0 => usize::try_from(*v).unwrap_or(0),
+            Numeric::UInt64(v) => usize::try_from(*v).unwrap_or(0),
+            Numeric::Const(id) => {
+                // Resolve constant reference
+                let const_def = self.ctx.definitions.get(*id);
+                if let DefKind::Const(const_ty) = &const_def.kind {
+                    // Clone the value to avoid borrow checker issues
+                    let value_to_resolve = const_ty.value.clone();
+                    // Recursively resolve if the constant itself contains a reference
+                    self.resolve_bound_value(&value_to_resolve, span)
+                } else {
+                    self.errors.push(error_span(
+                        "invalid bound expression",
+                        Label::new(span).message("bound must be a positive integer"),
+                    ));
+                    0
+                }
+            }
             _ => {
                 self.errors.push(error_span(
                     "invalid bound expression",
-                    Label::new(ic_syntax::util::expr_span(expr))
-                        .message("bound must be a positive integer"),
+                    Label::new(span).message("bound must be a positive integer"),
                 ));
                 0
             }

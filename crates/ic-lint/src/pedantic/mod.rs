@@ -39,4 +39,5 @@ pub mod large_union_variant;
 pub mod lowercase_bool;
 pub mod null;
 pub mod omitted_in;
+pub mod prefer_enum_name;
 pub mod scoped_lit;

@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/prefer_enum_name.rs
+expression: test_lint_hir(source)
+---
+warning[prefer_enum_name]: prefer using enum member name 'MEDIUM' instead of numeric literal
+   ┌ test.idl:9:1
+   │
+ 9 │ const Priority P2 = 2;       // Should warn: prefer MEDIUM
+   · ^^^^^^^^^^^^^^^^^^^^^^ consider using 'MEDIUM' instead of '2'
+   └──
+
+warning[prefer_enum_name]: prefer using enum member name 'LOW' instead of numeric literal
+    ┌ test.idl:11:1
+    │
+ 11 │ const Priority P4 = 1;       // Should warn: prefer LOW
+    · ^^^^^^^^^^^^^^^^^^^^^^ consider using 'LOW' instead of '1'
+    └──

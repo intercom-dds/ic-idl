@@ -1,0 +1,54 @@
+---
+source: crates/ic-lint/tests/prefer_enum_name.rs
+expression: test_lint_hir(source)
+---
+error[duplicate_enum_values]: duplicate value 0 in enum `Temperature`
+   ┌ test.idl:3:5
+   │
+ 3 │     FREEZING = -273,
+   ·     ^^^^^^^^ first use of value 0
+ 4 │     COLD = -10,
+   ·     ^^^^ value already used
+   └──
+
+error[invalid_enum_literal]: `-273` is not a valid `Temperature` value
+   ┌ test.idl:9:19
+   │
+ 9 │ const Temperature T1 = -273;  // Should warn: prefer FREEZING
+   ·                   ^^ this constant evaluates to an invalid value
+   └──
+
+error[invalid_enum_literal]: `-10` is not a valid `Temperature` value
+    ┌ test.idl:10:19
+    │
+ 10 │ const Temperature T2 = -10;   // Should warn: prefer COLD
+    ·                   ^^ this constant evaluates to an invalid value
+    └──
+
+error: invalid bound expression
+   ┌ test.idl:3:16
+   │
+ 3 │     FREEZING = -273,
+   ·                ^^^^ bound must be a positive integer
+   └──
+
+error: invalid bound expression
+   ┌ test.idl:4:12
+   │
+ 4 │     COLD = -10,
+   ·            ^^^ bound must be a positive integer
+   └──
+
+warning[prefer_enum_name]: prefer using enum member name 'NORMAL' instead of numeric literal
+    ┌ test.idl:11:1
+    │
+ 11 │ const Temperature T3 = 20;    // Should warn: prefer NORMAL
+    · ^^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'NORMAL' instead of '20'
+    └──
+
+warning[prefer_enum_name]: prefer using enum member name 'HOT' instead of numeric literal
+    ┌ test.idl:12:1
+    │
+ 12 │ const Temperature T4 = 40;    // Should warn: prefer HOT
+    · ^^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'HOT' instead of '40'
+    └──

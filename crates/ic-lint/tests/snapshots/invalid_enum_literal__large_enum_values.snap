@@ -8,3 +8,17 @@ error[invalid_enum_literal]: `10001` is not a valid `LargeEnum` value
  9 │ const LargeEnum VAL2 = 10001;    // Invalid
    ·                 ^^^^ this constant evaluates to an invalid value
    └──
+
+warning[prefer_enum_name]: prefer using enum member name 'SMALL' instead of numeric literal
+   ┌ test.idl:8:1
+   │
+ 8 │ const LargeEnum VAL1 = 100;      // Valid: SMALL
+   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'SMALL' instead of '100'
+   └──
+
+warning[prefer_enum_name]: prefer using enum member name 'LARGE' instead of numeric literal
+    ┌ test.idl:10:1
+    │
+ 10 │ const LargeEnum VAL3 = 1000000;  // Valid: LARGE
+    · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'LARGE' instead of '1000000'
+    └──

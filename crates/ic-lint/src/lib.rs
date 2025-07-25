@@ -470,6 +470,7 @@ define_lints! {
         pedantic::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,
+        pedantic::prefer_enum_name::PreferEnumName,
         semantic::bit_bound::BitBound,
         semantic::circular_inheritance::CircularInheritance,
         semantic::deprecated::Deprecated,

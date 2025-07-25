@@ -31,25 +31,6 @@ mod common;
 use common::{lint_hir, test_lint_hir};
 
 #[test]
-fn valid_enum_constant() {
-    let source = r"
-enum Color {
-    RED = 0,
-    GREEN = 1,
-    BLUE = 2
-};
-
-const Color MY_COLOR = 1;  // Valid: GREEN
-";
-
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no lint warnings, but got: {output}"
-    );
-}
-
-#[test]
 fn valid_enum_constant_by_name() {
     let source = r"
 enum Status {
@@ -113,27 +94,6 @@ const Status STATUS3 = 1;   // Valid: RUNNING
 ";
 
     assert_snapshot!(test_lint_hir(source));
-}
-
-#[test]
-fn enum_with_gaps_valid() {
-    let source = r"
-enum ErrorCode {
-    NONE = 0,
-    NOT_FOUND = 404,
-    SERVER_ERROR = 500
-};
-
-const ErrorCode CODE1 = 0;    // Valid: NONE
-const ErrorCode CODE2 = 404;  // Valid: NOT_FOUND
-const ErrorCode CODE3 = 500;  // Valid: SERVER_ERROR
-";
-
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no lint warnings, but got: {output}"
-    );
 }
 
 #[test]

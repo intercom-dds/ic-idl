@@ -15,3 +15,10 @@ error[invalid_enum_literal]: `10` is not a valid `Status` value
  9 │ const Status STATUS2 = 10;  // Invalid
    ·              ^^^^^^^ this constant evaluates to an invalid value
    └──
+
+warning[prefer_enum_name]: prefer using enum member name 'RUNNING' instead of numeric literal
+    ┌ test.idl:10:1
+    │
+ 10 │ const Status STATUS3 = 1;   // Valid: RUNNING
+    · ^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'RUNNING' instead of '1'
+    └──

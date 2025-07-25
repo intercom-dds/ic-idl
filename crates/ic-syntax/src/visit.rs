@@ -32,7 +32,8 @@ use crate::{
     Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Declarator, Discriminator, EnumDef,
     Enumerator, ExceptDef, Expr, Field, Group, Ident, InitList, InterfaceDef, InterfaceMember,
     Item, ItemKind, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, Span, StructDef,
-    Type, Unary, UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValuetypeDef,
+    Type, Unary, UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValueElement,
+    ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -379,14 +380,26 @@ where
     }
     visitor.visit_ident(&def.ident);
 
-    for proto in &def.prototypes {
-        visitor.visit_prototype(proto);
+    for element in &def.elements {
+        match element {
+            ValueElement::State(member) => {
+                // Visit value member fields
+                for decl in &member.decl {
+                    visitor.visit_declarator(decl);
+                }
+                visitor.visit_type(&member.ty);
+            }
+            ValueElement::Attr(attr) => {
+                visitor.visit_attribute(attr);
+            }
+            ValueElement::Proto(proto) => {
+                visitor.visit_prototype(proto);
+            }
+            ValueElement::Item(item) => {
+                visitor.visit_item(item);
+            }
+        }
     }
-    for def in &def.definitions {
-        visitor.visit_item(def);
-    }
-    // Valuetype members are not yet implemented in the AST
-    // When implemented, they should be visited here
 }
 
 pub fn walk_attribute<'a, V>(visitor: &mut V, def: &'a Attribute)

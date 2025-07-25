@@ -1247,15 +1247,23 @@ impl<'a> Resolver<'a> {
 
         // Process members
         let mut members = Vec::new();
-        for member in &def.members {
-            if member.public.is_some() {
-                // Public members
-                let ty = self.resolve_type(&member.ty);
-                members.push(Member {
-                    ident: member.ident.clone(),
-                    ty,
-                    annotations: Vec::new(),
-                });
+        for element in &def.elements {
+            if let ic_syntax::ValueElement::State(member) = element {
+                if member.is_public {
+                    // Public members
+                    let ty = self.resolve_type(&member.ty);
+                    for decl in &member.decl {
+                        if let ic_syntax::Declarator::Simple(ident) = decl {
+                            members.push(Member {
+                                ident: ident.clone(),
+                                ty: ty.clone(),
+                                annotations: Vec::new(),
+                            });
+                        } else {
+                            // TODO: Handle array declarators
+                        }
+                    }
+                }
             }
         }
 
@@ -1299,12 +1307,23 @@ impl<'a> Resolver<'a> {
         // Process nested items and operations
         let mut child_ids = Vec::new();
 
-        for item in &def.definitions {
-            let ids = self.process_item(item);
-            child_ids.extend(ids);
+        for element in &def.elements {
+            match element {
+                ic_syntax::ValueElement::Item(item) => {
+                    let ids = self.process_item(item);
+                    child_ids.extend(ids);
+                }
+                ic_syntax::ValueElement::Proto(_proto) => {
+                    // TODO: Process prototypes
+                }
+                ic_syntax::ValueElement::Attr(_attr) => {
+                    // TODO: Process attributes
+                }
+                ic_syntax::ValueElement::State(_) => {
+                    // Already processed above
+                }
+            }
         }
-
-        // TODO: Process prototypes
 
         // Update valuetype with children
         if let Def {

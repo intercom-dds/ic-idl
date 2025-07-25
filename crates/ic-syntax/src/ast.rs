@@ -1,4 +1,3 @@
-// @generated
 // Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
@@ -5737,18 +5736,20 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ValueMember {
-    pub ident: crate::ast::Ident,
+    pub decl: Vec<crate::ast::Declarator>,
     pub ty: crate::ast::Type,
-    pub public: Option<crate::ast::Span>,
+    pub visibility: crate::ast::Span,
+    pub is_public: bool,
 }
 
 impl ValueMember {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            ident: <crate::ast::Ident>::default(),
+            decl: <Vec<crate::ast::Declarator>>::default(),
             ty: <crate::ast::Type>::default(),
-            public: None,
+            visibility: <crate::ast::Span>::default(),
+            is_public: false,
         }
     }
 }
@@ -5770,7 +5771,7 @@ const _: () = {
 
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
         ::intercom_cts::MemberInfo {
-            name: "ident",
+            name: "decl",
             member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
@@ -5780,9 +5781,14 @@ const _: () = {
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "public",
+            name: "visibility",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "is_public",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
         },
     ];
 
@@ -5794,9 +5800,10 @@ const _: () = {
             use ::intercom_cts::encode::StructSerializer as _;
 
             let mut state = ar.encode_struct(&TYPE_INFO)?;
-            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[0], &self.decl)?;
             state.encode_field(&MEMBER_INFO[1], &self.ty)?;
-            state.encode_optional(&MEMBER_INFO[2], &self.public)?;
+            state.encode_field(&MEMBER_INFO[2], &self.visibility)?;
+            state.encode_field(&MEMBER_INFO[3], &self.is_public)?;
             state.end()
         }
     }
@@ -5809,10 +5816,270 @@ const _: () = {
             use ::intercom_cts::decode::StructDeserializer as _;
 
             let mut state = ar.decode_struct(&TYPE_INFO)?;
-            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.decl)?;
             state.decode_field(&MEMBER_INFO[1], &mut self.ty)?;
-            state.decode_field(&MEMBER_INFO[2], &mut self.public)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.visibility)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.is_public)?;
             state.end()?;
+            Ok(())
+        }
+    }
+};
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[repr(i32)]
+pub enum ValueElementKind {
+    Member,
+    Attr,
+    Proto,
+    Item,
+}
+
+impl ValueElementKind {
+    #[must_use]
+    pub const fn new() -> Self {
+        crate::ast::ValueElementKind::Member
+    }
+}
+
+impl ::std::str::FromStr for ValueElementKind {
+    type Err = ::intercom_cts::error::UnknownVariant;
+
+    fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
+        match s {
+            "VALUE_MEMBER" => Ok(Self::Member),
+            "VALUE_ATTR" => Ok(Self::Attr),
+            "VALUE_PROTO" => Ok(Self::Proto),
+            "VALUE_ITEM" => Ok(Self::Item),
+            _ => Err(::intercom_cts::error::UnknownVariant),
+        }
+    }
+}
+
+impl ::std::fmt::Display for ValueElementKind {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        match self {
+            Self::Member => f.write_str("VALUE_MEMBER"),
+            Self::Attr => f.write_str("VALUE_ATTR"),
+            Self::Proto => f.write_str("VALUE_PROTO"),
+            Self::Item => f.write_str("VALUE_ITEM"),
+        }
+    }
+}
+
+impl ::std::default::Default for ValueElementKind {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ValueElementKind",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        kind: ::intercom_cts::TypeKind::Enum,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::I32,
+    };
+
+    impl ::intercom_cts::Marshal for ValueElementKind {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::EnumSerializer as _;
+
+            let state = ar.encode_enum(TYPE_INFO.name)?;
+            match self {
+                Self::Member => state.encode_variant::<i32>("VALUE_MEMBER", 0),
+                Self::Attr => state.encode_variant::<i32>("VALUE_ATTR", 1),
+                Self::Proto => state.encode_variant::<i32>("VALUE_PROTO", 2),
+                Self::Item => state.encode_variant::<i32>("VALUE_ITEM", 3),
+            }
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for ValueElementKind {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::EnumDeserializer as _;
+
+            let state = ar.decode_enum(TYPE_INFO.name)?;
+            *self = state.decode_enumerator(*self)?;
+            Ok(())
+        }
+    }
+    impl ::intercom_cts::decode::EnumVisitor for ValueElementKind {
+        fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match de.decode_i32()? {
+                0 => Self::Member,
+                1 => Self::Attr,
+                2 => Self::Proto,
+                3 => Self::Item,
+                _ => {
+                    return Err(D::Error::custom(
+                        "invalid enum value for type ast::ValueElementKind",
+                    ));
+                }
+            };
+            Ok(value)
+        }
+
+        fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::error::Error as _;
+
+            let value = match name {
+                "VALUE_MEMBER" => Self::Member,
+                "VALUE_ATTR" => Self::Attr,
+                "VALUE_PROTO" => Self::Proto,
+                "VALUE_ITEM" => Self::Item,
+                _ => {
+                    return Err(D::Error::custom(
+                        "invalid enum value for type ast::ValueElementKind",
+                    ));
+                }
+            };
+            Ok(value)
+        }
+    }
+};
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum ValueElement {
+    State(crate::ast::ValueMember),
+    Attr(crate::ast::Attribute),
+    Proto(crate::ast::Prototype),
+    Item(crate::ast::Item),
+}
+
+impl ValueElement {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::State(<crate::ast::ValueMember>::default())
+    }
+
+    #[must_use]
+    pub const fn disc(&self) -> crate::ast::ValueElementKind {
+        match self {
+            Self::State(_) => crate::ast::ValueElementKind::Member,
+            Self::Attr(_) => crate::ast::ValueElementKind::Attr,
+            Self::Proto(_) => crate::ast::ValueElementKind::Proto,
+            Self::Item(_) => crate::ast::ValueElementKind::Item,
+        }
+    }
+}
+
+impl From<crate::ast::ValueElementKind> for ValueElement {
+    fn from(disc: crate::ast::ValueElementKind) -> Self {
+        match disc {
+            crate::ast::ValueElementKind::Member => {
+                Self::State(<crate::ast::ValueMember>::default())
+            }
+            crate::ast::ValueElementKind::Attr => Self::Attr(<crate::ast::Attribute>::default()),
+            crate::ast::ValueElementKind::Proto => Self::Proto(<crate::ast::Prototype>::default()),
+            crate::ast::ValueElementKind::Item => Self::Item(<crate::ast::Item>::default()),
+        }
+    }
+}
+
+impl ::std::default::Default for ValueElement {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const _: () = {
+    const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
+        name: "ast::ValueElement",
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
+        kind: ::intercom_cts::TypeKind::Union,
+        key_kind: ::intercom_cts::TypeKind::None,
+        element_kind: ::intercom_cts::TypeKind::None,
+    };
+
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "state",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "attr",
+            member_id: 2,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "proto",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "item",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
+
+    impl ::intercom_cts::Marshal for ValueElement {
+        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::intercom_cts::encode::Serializer,
+        {
+            use ::intercom_cts::encode::UnionSerializer as _;
+
+            let mut state = ar.encode_union(&TYPE_INFO)?;
+            state.encode_discriminant(&self.disc())?;
+            match self {
+                Self::State(v) => state.encode_variant(&MEMBER_INFO[0], v),
+                Self::Attr(v) => state.encode_variant(&MEMBER_INFO[1], v),
+                Self::Proto(v) => state.encode_variant(&MEMBER_INFO[2], v),
+                Self::Item(v) => state.encode_variant(&MEMBER_INFO[3], v),
+            }
+        }
+    }
+
+    impl ::intercom_cts::Unmarshal for ValueElement {
+        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        where
+            D: ::intercom_cts::decode::Deserializer,
+        {
+            use ::intercom_cts::decode::UnionDeserializer as _;
+
+            let mut state = ar.decode_union(&TYPE_INFO)?;
+            let mut disc = crate::ast::ValueElementKind::default();
+            state.decode_discriminant(&mut disc)?;
+            *self = match disc {
+                crate::ast::ValueElementKind::Member => {
+                    let mut value = <crate::ast::ValueMember>::default();
+                    state.decode_variant(&MEMBER_INFO[0], &mut value)?;
+                    Self::State(value)
+                }
+                crate::ast::ValueElementKind::Attr => {
+                    let mut value = <crate::ast::Attribute>::default();
+                    state.decode_variant(&MEMBER_INFO[1], &mut value)?;
+                    Self::Attr(value)
+                }
+                crate::ast::ValueElementKind::Proto => {
+                    let mut value = <crate::ast::Prototype>::default();
+                    state.decode_variant(&MEMBER_INFO[2], &mut value)?;
+                    Self::Proto(value)
+                }
+                crate::ast::ValueElementKind::Item => {
+                    let mut value = <crate::ast::Item>::default();
+                    state.decode_variant(&MEMBER_INFO[3], &mut value)?;
+                    Self::Item(value)
+                }
+            };
             Ok(())
         }
     }
@@ -5832,9 +6099,7 @@ pub struct ValuetypeDef {
     pub annotations: Vec<crate::ast::AnnotationAppl>,
     /// Name of the item.
     pub ident: crate::ast::Ident,
-    pub members: Vec<crate::ast::ValueMember>,
-    pub prototypes: Vec<crate::ast::Prototype>,
-    pub definitions: Vec<crate::ast::Item>,
+    pub elements: Vec<crate::ast::ValueElement>,
     pub inherits: Option<crate::ast::Path>,
     pub supports: Option<crate::ast::Path>,
 }
@@ -5846,9 +6111,7 @@ impl ValuetypeDef {
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             ident: <crate::ast::Ident>::default(),
-            members: <Vec<crate::ast::ValueMember>>::default(),
-            prototypes: <Vec<crate::ast::Prototype>>::default(),
-            definitions: <Vec<crate::ast::Item>>::default(),
+            elements: <Vec<crate::ast::ValueElement>>::default(),
             inherits: None,
             supports: None,
         }
@@ -5887,28 +6150,18 @@ const _: () = {
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "members",
+            name: "elements",
             member_id: 3,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "prototypes",
-            member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
-            name: "definitions",
-            member_id: 5,
-            flags: ::intercom_cts::MemberFlag::nil(),
-        },
-        ::intercom_cts::MemberInfo {
             name: "inherits",
-            member_id: 6,
+            member_id: 4,
             flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
         },
         ::intercom_cts::MemberInfo {
             name: "supports",
-            member_id: 7,
+            member_id: 5,
             flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
         },
     ];
@@ -5924,11 +6177,9 @@ const _: () = {
             state.encode_field(&MEMBER_INFO[0], &self.span)?;
             state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
             state.encode_field(&MEMBER_INFO[2], &self.ident)?;
-            state.encode_field(&MEMBER_INFO[3], &self.members)?;
-            state.encode_field(&MEMBER_INFO[4], &self.prototypes)?;
-            state.encode_field(&MEMBER_INFO[5], &self.definitions)?;
-            state.encode_optional(&MEMBER_INFO[6], &self.inherits)?;
-            state.encode_optional(&MEMBER_INFO[7], &self.supports)?;
+            state.encode_field(&MEMBER_INFO[3], &self.elements)?;
+            state.encode_optional(&MEMBER_INFO[4], &self.inherits)?;
+            state.encode_optional(&MEMBER_INFO[5], &self.supports)?;
             state.end()
         }
     }
@@ -5944,11 +6195,9 @@ const _: () = {
             state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
             state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
             state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
-            state.decode_field(&MEMBER_INFO[3], &mut self.members)?;
-            state.decode_field(&MEMBER_INFO[4], &mut self.prototypes)?;
-            state.decode_field(&MEMBER_INFO[5], &mut self.definitions)?;
-            state.decode_field(&MEMBER_INFO[6], &mut self.inherits)?;
-            state.decode_field(&MEMBER_INFO[7], &mut self.supports)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.elements)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.inherits)?;
+            state.decode_field(&MEMBER_INFO[5], &mut self.supports)?;
             state.end()?;
             Ok(())
         }

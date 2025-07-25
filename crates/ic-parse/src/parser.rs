@@ -33,7 +33,8 @@ use ic_syntax::{
     Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr, Field,
     Fixed, FixedType, Group, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue,
     MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
-    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull,
+    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull, ValueElement,
+    ValueMember,
 };
 
 use crate::lexer::Kind;
@@ -1114,8 +1115,8 @@ fn value_dcl() -> impl IdlParser<Item> {
 fn value_def() -> impl IdlParser<Item> {
     let fields = value_element().repeated().braced();
     let def = value_header().then(fields).then_ignore(just(Kind::Semi));
-    def.map_with_span(|((ident, (inherits, supports)), _), span| {
-        Item::valuetype(ident, vec![], vec![], vec![], inherits, supports, span)
+    def.map_with_span(|((ident, (inherits, supports)), elements), span| {
+        Item::valuetype(ident, elements, inherits, supports, span)
     })
 }
 
@@ -1144,43 +1145,32 @@ fn value_name() -> impl IdlParser<Path> {
 }
 
 // Rule 105
-fn value_element() -> impl IdlParser<()> {
-    choice((export().ignored(), state_member(), init_dcl()))
+fn value_element() -> impl IdlParser<ValueElement> {
+    choice((
+        export().map(|export| match export {
+            InterfaceMember::Proto(proto) => ValueElement::Proto(proto),
+            InterfaceMember::Item(item) => ValueElement::Item(item),
+            InterfaceMember::Attr(attr) => ValueElement::Attr(attr),
+        }),
+        state_member().map(ValueElement::State),
+    ))
 }
 
 // Rule 106
-fn state_member() -> impl IdlParser<()> {
-    choice((keyword(Kw::Public), keyword(Kw::Private)))
+fn state_member() -> impl IdlParser<ValueMember> {
+    let visibility = choice((keyword(Kw::Public).to(true), keyword(Kw::Private).to(false)))
+        .map_with_span(|is_public, span| (is_public, span));
+
+    visibility
         .then(type_spec())
         .then(declarators())
         .then_ignore(just(Kind::Semi))
-        .ignored()
-}
-
-// Rule 107
-fn init_dcl() -> impl IdlParser<()> {
-    let params = init_param_dcls().parenthesized();
-    let raises = raises_expr().or_not();
-
-    keyword(Kw::Factory)
-        .ignore_then(ident())
-        .then(params)
-        .then(raises)
-        .then_ignore(just(Kind::Semi))
-        .ignored()
-}
-
-// Rule 108
-fn init_param_dcls() -> impl IdlParser<()> {
-    init_param_dcl().separated_by(just(Kind::Comma)).ignored()
-}
-
-// Rule 109
-fn init_param_dcl() -> impl IdlParser<()> {
-    keyword(Kw::In)
-        .ignore_then(type_spec())
-        .then(simple_declarator())
-        .ignored()
+        .map(|(((is_public, visibility), ty), decl)| ValueMember {
+            decl,
+            ty,
+            visibility,
+            is_public,
+        })
 }
 
 // Rule 110

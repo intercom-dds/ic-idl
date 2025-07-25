@@ -28,8 +28,8 @@
 use crate::{
     AliasDef, AnnotationAppl, AnnotationDef, AnnotationField, Bit, Bitfield, BitmaskDef, BitsetDef,
     ConstDef, Decl, DeclKind, Declarator, Discriminator, EnumDef, Enumerator, ExceptDef, Expr,
-    Field, Ident, InterfaceDef, InterfaceMember, Item, ItemKind, ModuleDef, Path, Prototype, Span,
-    StructDef, Type, UnionDef, UnionField, ValueMember, ValuetypeDef,
+    Field, Ident, InterfaceDef, InterfaceMember, Item, ItemKind, ModuleDef, Path, Span, StructDef,
+    Type, UnionDef, UnionField, ValueElement, ValuetypeDef,
 };
 
 impl Item {
@@ -132,9 +132,7 @@ impl Item {
     #[must_use]
     pub fn valuetype(
         ident: Ident,
-        members: Vec<ValueMember>,
-        prototypes: Vec<Prototype>,
-        definitions: Vec<Item>,
+        elements: Vec<ValueElement>,
         inherits: Option<Path>,
         supports: Option<Path>,
         span: Span,
@@ -143,10 +141,8 @@ impl Item {
             ident,
             span,
             annotations: vec![],
+            elements,
             inherits,
-            members,
-            prototypes,
-            definitions,
             supports,
         })
     }

@@ -597,16 +597,34 @@ struct InterfaceDef : IDef {
 
 @nested
 struct ValueMember {
-    Ident ident;
+    sequence<Declarator> decl;
     Type ty;
-    @optional Span _public;
+    Span visibility;
+    boolean is_public;
+};
+
+enum ValueElementKind {
+    VALUE_MEMBER,
+    VALUE_ATTR,
+    VALUE_PROTO,
+    VALUE_ITEM
+};
+
+@nested
+union ValueElement switch(ValueElementKind) {
+case VALUE_MEMBER:
+    ValueMember state;
+case VALUE_ATTR:
+    Attribute attr;
+case VALUE_PROTO:
+    Prototype proto;
+case VALUE_ITEM:
+    Item item;
 };
 
 @nested
 struct ValuetypeDef : IDef {
-    sequence<ValueMember> members;
-    sequence<Prototype> prototypes;
-    sequence<Item> definitions;
+    sequence<ValueElement> elements;
     @optional Path inherits;
     @optional Path _supports;
 };

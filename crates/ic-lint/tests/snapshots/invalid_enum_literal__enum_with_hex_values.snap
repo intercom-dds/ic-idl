@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/invalid_enum_literal.rs
+expression: test_lint_hir(source)
+---
+error[invalid_enum_literal]: `3` is not a valid `Flags` value
+    ┌ test.idl:10:13
+    │
+ 10 │ const Flags FLAG2 = 0x03;  // Invalid: 0x03 is not a defined flag
+    ·             ^^^^^ this constant evaluates to an invalid value
+    └──

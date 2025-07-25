@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/invalid_enum_literal.rs
+expression: test_lint_hir(source)
+---
+error[invalid_enum_literal]: `200` is not a valid `ErrorCode` value
+   ┌ test.idl:8:17
+   │
+ 8 │ const ErrorCode CODE1 = 200;  // Invalid: 200 is not defined
+   ·                 ^^^^^ this constant evaluates to an invalid value
+   └──
+
+error[invalid_enum_literal]: `403` is not a valid `ErrorCode` value
+   ┌ test.idl:9:17
+   │
+ 9 │ const ErrorCode CODE2 = 403;  // Invalid: 403 is not defined
+   ·                 ^^^^^ this constant evaluates to an invalid value
+   └──

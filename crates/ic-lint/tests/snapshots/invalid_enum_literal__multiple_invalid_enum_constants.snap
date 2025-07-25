@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/invalid_enum_literal.rs
+expression: test_lint_hir(source)
+---
+error[invalid_enum_literal]: `5` is not a valid `Status` value
+   ┌ test.idl:8:14
+   │
+ 8 │ const Status STATUS1 = 5;   // Invalid
+   ·              ^^^^^^^ this constant evaluates to an invalid value
+   └──
+
+error[invalid_enum_literal]: `10` is not a valid `Status` value
+   ┌ test.idl:9:14
+   │
+ 9 │ const Status STATUS2 = 10;  // Invalid
+   ·              ^^^^^^^ this constant evaluates to an invalid value
+   └──

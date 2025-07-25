@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/invalid_enum_literal.rs
+expression: test_lint_hir(source)
+---
+error[invalid_enum_literal]: `192` is not a valid `Permissions` value
+    ┌ test.idl:10:19
+    │
+ 10 │ const Permissions PERM2 = 0300;  // Invalid: 192 in decimal is not defined
+    ·                   ^^^^^ this constant evaluates to an invalid value
+    └──

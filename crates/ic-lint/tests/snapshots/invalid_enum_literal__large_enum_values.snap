@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/invalid_enum_literal.rs
+expression: test_lint_hir(source)
+---
+error[invalid_enum_literal]: `10001` is not a valid `LargeEnum` value
+   ┌ test.idl:9:17
+   │
+ 9 │ const LargeEnum VAL2 = 10001;    // Invalid
+   ·                 ^^^^ this constant evaluates to an invalid value
+   └──

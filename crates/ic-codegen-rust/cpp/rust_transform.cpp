@@ -160,7 +160,7 @@ squash_modules(parser_state* state, ptree* node, std::map<std::string, ptree*>& 
                     next_mem = mem->next;
                     mem->next = nullptr;
                     mem->scope = mem->super = target;
-                    target->members = append_node(state, target->members, mem);
+                    target->members = append_node(target->members, mem);
                 }
             }
         }

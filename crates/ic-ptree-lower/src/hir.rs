@@ -123,7 +123,7 @@ impl<'a> TreeBuilder<'a> {
     }
 
     unsafe fn lower_proto(&mut self, proto: &ProtoTy) -> *mut sys::ptree {
-        let params = collect_with(self.state, sys::append_node, &proto.params, |param| {
+        let params = collect_with(sys::append_node, &proto.params, |param| {
             let ty = self.lower_ty(&param.ty);
             let kind = param_kind(param.kind);
             let decl = self.lower_decl(&param.ident);
@@ -138,26 +138,29 @@ impl<'a> TreeBuilder<'a> {
     unsafe fn lower_attr(&mut self, attr: &Attribute) -> *mut sys::ptree {
         let decl = self.lower_decl(&attr.ident);
         let ty = self.lower_ty(&attr.ty);
-        // let getraises = collect_with(self.state, sys::append_node, &attr.getraises, |raise| {
-        //     self.lower_def(*raise)
-        // });
-        // let setraises = collect_with(self.state, sys::append_node, &attr.setraises, |raise| {
-        //     self.lower_def(*raise)
-        // });
+        let getraises = collect_with(sys::append_decl, &attr.getraises, |&raise| {
+            let name = self.ctx.qualified_name(raise);
+            let ident = create_ident(&name);
+            sys::create_decl(self.state, ident.as_ptr(), std::ptr::null_mut())
+        });
+        let setraises = collect_with(sys::append_decl, &attr.setraises, |&raise| {
+            let name = self.ctx.qualified_name(raise);
+            let ident = create_ident(&name);
+            sys::create_decl(self.state, ident.as_ptr(), std::ptr::null_mut())
+        });
 
-        // TODO: adjust ptree API to take list of getraises/setraises nodes
         sys::create_attribute(
             self.state,
             decl,
             ty,
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
+            getraises,
+            setraises,
             ffi::c_int::from(attr.is_readonly),
         )
     }
 
     unsafe fn lower_variant(&mut self, var: &Variant) -> *mut sys::ptree {
-        let cases = collect_with(self.state, sys::append_node, &var.labels, |label| {
+        let cases = collect_with(sys::append_node, &var.labels, |label| {
             let value = self.lower_numeric(&label.value);
             sys::create_case_label(self.state, value)
         });
@@ -201,7 +204,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_value_node(self.state, numeric, ptr::null_mut())
             }
             Numeric::Struct { fields, .. } => {
-                let values = collect_with(self.state, sys::append_node, fields, |(ident, num)| {
+                let values = collect_with(sys::append_node, fields, |(ident, num)| {
                     let num = self.lower_numeric(num);
                     let decl = self.lower_decl(ident);
                     sys::create_const_node(self.state, decl, std::ptr::null_mut(), num)
@@ -209,7 +212,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_value_node(self.state, NUM_UNDEF, values)
             }
             Numeric::Sequence { values, .. } | Numeric::Array { values, .. } => {
-                let values = collect_with(self.state, sys::append_node, values, |num| {
+                let values = collect_with(sys::append_node, values, |num| {
                     let num = self.lower_numeric(num);
                     sys::create_const_node(
                         self.state,
@@ -229,7 +232,7 @@ impl<'a> TreeBuilder<'a> {
         let ident = create_ident(&name);
 
         sys::create_annotation_start(self.state, ident.as_ptr());
-        let params = collect_with(self.state, sys::append_node, &ann.args, |arg| {
+        let params = collect_with(sys::append_node, &ann.args, |arg| {
             let decl = create_ident(&arg.ident.name);
             let val = self.lower_numeric(&arg.value);
             sys::create_annotation_param(self.state, decl.as_ptr(), val)
@@ -238,9 +241,7 @@ impl<'a> TreeBuilder<'a> {
     }
 
     unsafe fn lower_annotations(&mut self, anns: &[Ann]) -> *mut sys::ptree {
-        collect_with(self.state, sys::append_node, anns, |ann| {
-            self.lower_annotation(ann)
-        })
+        collect_with(sys::append_node, anns, |ann| self.lower_annotation(ann))
     }
 
     unsafe fn annotate(&mut self, node: *mut sys::ptree, anns: &[Ann]) -> *mut sys::ptree {
@@ -269,10 +270,8 @@ impl<'a> TreeBuilder<'a> {
         let node = match &def.kind {
             DefKind::Annotation(v) => {
                 sys::create_annotation_dcl_start(self.state, ident);
-                let types = collect_with(self.state, sys::append_node, &v.types, |id| {
-                    self.lower_def(*id)
-                });
-                let fields = collect_with(self.state, sys::append_node, &v.params, |param| {
+                let types = collect_with(sys::append_node, &v.types, |id| self.lower_def(*id));
+                let fields = collect_with(sys::append_node, &v.params, |param| {
                     let ty = self.lower_ty(&param.ty);
                     let decl = self.lower_decl(&param.ident);
                     let default = param
@@ -281,14 +280,13 @@ impl<'a> TreeBuilder<'a> {
                         .map_or(NUM_UNDEF, |v| self.lower_numeric(v));
                     sys::create_annotation_member(self.state, decl, ty, default)
                 });
-                let members = sys::append_node(self.state, types, fields);
+                let members = sys::append_node(types, fields);
                 sys::create_annotation_dcl_finish(self.state, members)
             }
             DefKind::Module(v) => {
                 sys::create_module_start(self.state, ident);
-                let members = collect_with(self.state, sys::append_node, &v.definitions, |id| {
-                    self.lower_def(*id)
-                });
+                let members =
+                    collect_with(sys::append_node, &v.definitions, |id| self.lower_def(*id));
                 sys::create_module_finish(self.state, members)
             }
             DefKind::Struct(v) => {
@@ -299,7 +297,7 @@ impl<'a> TreeBuilder<'a> {
                 // before lowering any of its members.
                 self.lowered.insert(id, ty);
 
-                let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
+                let members = collect_with(sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
                     let ann = self.lower_annotations(&mem.annotations);
@@ -311,7 +309,7 @@ impl<'a> TreeBuilder<'a> {
                 let ty = sys::create_exception_start(self.state, ident);
                 self.lowered.insert(id, ty);
 
-                let members = collect_with(self.state, sys::append_node, &v.members, |mem| {
+                let members = collect_with(sys::append_node, &v.members, |mem| {
                     let ty = self.lower_ty(&mem.ty);
                     let decl = self.lower_decl(&mem.ident);
                     let ann = self.lower_annotations(&mem.annotations);
@@ -323,16 +321,15 @@ impl<'a> TreeBuilder<'a> {
                 let ty = sys::create_union_start(self.state, ident);
                 self.lowered.insert(id, ty);
 
-                let variants = collect_with(self.state, sys::append_node, &v.variants, |var| {
-                    self.lower_variant(var)
-                });
+                let variants =
+                    collect_with(sys::append_node, &v.variants, |var| self.lower_variant(var));
 
                 let ty = self.lower_ty(&v.disc);
                 let disc = sys::create_union_discriminator(self.state, ty, ptr::null_mut());
                 sys::create_union_finish(self.state, disc, variants)
             }
             DefKind::Enum(v) => {
-                let values = collect_with(self.state, sys::append_enum_node, &v.fields, |&var| {
+                let values = collect_with(sys::append_node, &v.fields, |&var| {
                     let var = self.ctx.type_of(var);
                     let name = create_ident(&var.ident.name);
                     if let DefKind::Const(const_ty) = &var.kind {
@@ -352,7 +349,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_const_node(self.state, decl, ty, value)
             }
             DefKind::Bitmask(v) => {
-                let values = collect_with(self.state, sys::append_enum_node, &v.flags, |flag| {
+                let values = collect_with(sys::append_node, &v.flags, |flag| {
                     let name = create_ident(&flag.ident.name);
                     let value = sys::create_u64(self.state, flag.value as u64, 10);
                     let node = sys::create_bitmask_value(self.state, name.as_ptr(), value);
@@ -374,18 +371,17 @@ impl<'a> TreeBuilder<'a> {
                 );
                 self.lowered.insert(id, ty);
 
-                let defs = collect_with(self.state, sys::append_node, &v.definitions, |def| {
-                    self.lower_def(*def)
-                });
-                let attrs = collect_with(self.state, sys::append_node, &v.attributes, |attr| {
+                let defs =
+                    collect_with(sys::append_node, &v.definitions, |def| self.lower_def(*def));
+                let attrs = collect_with(sys::append_node, &v.attributes, |attr| {
                     self.lower_attr(attr)
                 });
-                let members = collect_with(self.state, sys::append_node, &v.prototypes, |proto| {
+                let members = collect_with(sys::append_node, &v.prototypes, |proto| {
                     self.lower_proto(proto)
                 });
 
-                let list = sys::append_node(self.state, defs, members);
-                let list = sys::append_node(self.state, list, attrs);
+                let list = sys::append_node(defs, members);
+                let list = sys::append_node(list, attrs);
                 sys::create_interface_finish(self.state, list)
             }
             DefKind::Valuetype(_) => {
@@ -401,7 +397,7 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Bitset(v) => {
                 let parent = v.parent.map_or(ptr::null_mut(), |id| self.lower_def(id));
 
-                let fields = collect_with(self.state, sys::append_node, &v.fields, |field| {
+                let fields = collect_with(sys::append_node, &v.fields, |field| {
                     let name = create_ident(&field.ident.name);
                     let size = sys::create_u64(self.state, field.size as u64, 10);
                     let ty = self.lower_ty(&field.ty);
@@ -442,33 +438,25 @@ fn param_kind(kind: ParamKind) -> ffi::c_int {
     c as ffi::c_int
 }
 
-type Appender = unsafe extern "C" fn(
-    *mut sys::parser_state,
-    *mut sys::ptree,
-    *mut sys::ptree,
-) -> *mut sys::ptree;
+type Appender<T> = unsafe extern "C" fn(*mut T, *mut T) -> *mut T;
 
 #[must_use]
-unsafe fn collect_with<I, C, T>(
-    state: *mut sys::parser_state,
-    appender: Appender,
-    iter: I,
-    mut cb: C,
-) -> *mut sys::ptree
-where
-    I: IntoIterator<Item = T>,
-    C: FnMut(T) -> *mut sys::ptree,
-{
+unsafe fn collect_with<T, N>(
+    appender: Appender<N>,
+    iter: impl IntoIterator<Item = T>,
+    mut cb: impl FnMut(T) -> *mut N,
+) -> *mut N {
     let mut list = std::ptr::null_mut();
 
-    // SAFETY: The appender function is expected to handle the pointers correctly
-    // and the callback is responsible for returning valid pointers
+    // SAFETY: The appender function is expected to handle the pointers
+    // correctly and the callback is responsible for returning valid pointers
     unsafe {
         for elem in iter {
             let node = cb(elem);
-            list = appender(state, list, node);
+            list = appender(list, node);
         }
     }
+
     list
 }
 
@@ -483,14 +471,14 @@ pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     if !hir.builtin_order.is_empty() {
         let include = create_ident("<builtin-annotations>");
         sys::create_include_start(state, include.as_ptr(), 0);
-        let nodes = collect_with(state, sys::append_node, &hir.builtin_order, |id| {
+        let nodes = collect_with(sys::append_node, &hir.builtin_order, |id| {
             builder.lower_def(*id)
         });
         sys::create_include_finish(state, nodes);
     }
 
     // Lower user definitions
-    let tree = collect_with(state, sys::append_node, &hir.order, |id| {
+    let tree = collect_with(sys::append_node, &hir.order, |id| {
         let def = builder.ctx.definitions.get(id);
         let defined_in = format!("{}", vfs.name(def.span.start.file_id).display());
         let include = create_ident(&defined_in);

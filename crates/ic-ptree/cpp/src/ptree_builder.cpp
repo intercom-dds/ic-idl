@@ -724,7 +724,7 @@ ptree* create_doc(parser_state* state, const char* ident, int post_doc) {
         placement->value.val.l(placement_value);
         placement->type = &long_type;
     }
-    param = append_node(state, param, placement);
+    param = append_node(param, placement);
 
     auto ann = create_annotation_finish(state, param);
     return ann;
@@ -784,7 +784,7 @@ void set_node_flags(ptree* p, ptree_opts flags) {
     p->flags = flags;
 }
 
-ptree* append_node(parser_state* state, ptree* list, ptree* node) {
+ptree* append_node(ptree* list, ptree* node) {
     if (list == node) {
         return list;
     }
@@ -800,7 +800,7 @@ ptree* append_node(parser_state* state, ptree* list, ptree* node) {
     if (node->next) {
         auto next = node->next;
         node->next = nullptr;
-        return append_node(state, append_node(state, list, node), next);
+        return append_node(append_node(list, node), next);
     }
 
     // Find last node in list
@@ -822,43 +822,6 @@ ptree* remove_node(ptree* list, ptree* node) {
             a->next = node->next;
         }
     }
-    return list;
-}
-
-ptree* append_enum_node(parser_state* state, ptree* list, ptree* node) {
-    if (list == nullptr) {
-        state->enum_counter = 0;
-    }
-    auto enum_node = node;
-    while (enum_node && enum_node->kind == N_ANNOTATION) {
-        enum_node = enum_node->next;
-    }
-    if (enum_node) {
-        if (enum_node->value.kind() != UNDEF_KIND) {
-            state->enum_counter = long_long_value(enum_node->value);
-        }
-        ptree* value_ann = enum_node->annotations;
-        for (; value_ann; value_ann = value_ann->next) {
-            if (value_ann->type == annotation_type_value ||
-                value_ann->type == annotation_type_position) {
-                if (value_ann->value.kind() == STRING_KIND) {
-                    value_ann->value = *lookup_value(state, value_ann->value.val.str().c_str());
-                }
-                state->enum_counter = long_long_value(value_ann->value);
-                break;
-            }
-        }
-        if (value_ann) {
-            enum_node->annotations = remove_node(enum_node->annotations, value_ann);
-        }
-        if (enum_node->value.kind() == UNDEF_KIND) {
-            enum_node->value = longlong_type.value;
-            enum_node->value.val.ll(state->enum_counter);
-        }
-        state->enum_counter++;
-    }
-    list = append_node(state, list, node);
-
     return list;
 }
 
@@ -1318,7 +1281,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
             default_case->type = discriminator->type;
             auto default_member =
                 create_union_member(state, create_null_node(state), default_case, nullptr);
-            append_node(state, members, default_member);
+            append_node(members, default_member);
         }
         if (default_case && default_case->value.kind() == UNDEF_KIND) {
             if (default_case->type->kind == N_ENUM) {
@@ -1350,7 +1313,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                     for (auto c : mem->members) {
                         c->super = null_case;
                     }
-                    null_case->members = append_node(state, null_case->members, mem->members);
+                    null_case->members = append_node(null_case->members, mem->members);
                     last->next = mem->next;
                 } else {
                     null_case = mem;
@@ -1385,7 +1348,7 @@ ptree* create_union_dcl(parser_state* state, const char* ident) {
 
 ptree* create_union_member(parser_state* state, ptree* value, ptree* cases, ptree* annotations) {
     if (value) {
-        value->members = append_node(state, value->members, cases);
+        value->members = append_node(value->members, cases);
 
         for (auto cas = value->members; cas; cas = cas->next) {
             cas->super = value;
@@ -1410,8 +1373,8 @@ create_member(parser_state* state, declarator* declarators, ptree* type, ptree* 
             register_node(state, node);
             node->type =
                 !declarators->bounds.empty() ? create_array_type(state, declarators, type) : type;
-            annotate(state, node, append_node(state, declarators->annotations, annotations));
-            res = append_node(state, res, node);
+            annotate(state, node, append_node(declarators->annotations, annotations));
+            res = append_node(res, node);
             declarators = declarators->next;
         }
     } else {
@@ -1462,7 +1425,7 @@ ptree* create_type(parser_state* state, declarator* declarators, ptree* type) {
         node->type = t;
         annotate(state, node, declarators->annotations);
         register_node(state, node);
-        res = append_node(state, res, node);
+        res = append_node(res, node);
         declarators = declarators->next;
     }
     return res;
@@ -1654,7 +1617,7 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                 }
             }
             if (do_add) {
-                node->annotations = append_node(state, node->annotations, maybe_append);
+                node->annotations = append_node(node->annotations, maybe_append);
             }
         }
 
@@ -2002,7 +1965,7 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
             ptree* arg = nullptr;
             if (it == arguments.end()) {
                 arg = create_annotation_param(state, el->name.c_str(), &el->value);
-                params = append_node(state, params, arg);
+                params = append_node(params, arg);
                 arg->type = el->type;
             } else {
                 arg = it->second;
@@ -2090,7 +2053,7 @@ create_valuetype_member(parser_state* state, declarator* declarators, ptree* typ
             !declarators->bounds.empty() ? create_array_type(state, declarators, type) : type;
         node->flags |= is_public ? 0 : OPT_PRIVATE;
         node->annotations = declarators->annotations;
-        res = append_node(state, res, node);
+        res = append_node(res, node);
         declarators = declarators->next;
     }
     return res;
@@ -2229,18 +2192,17 @@ void validate_node(parser_state* state, ptree* node) {
             }
             if (has_all_type_values(node->discriminator->type, case_values) &&
                 has_default_case(node)) {
-                state->error(
-                ) << "Default labels are not allowed when all possible discriminator values are "
-                     "covered in union "
-                  << node;
+                state->error()
+                    << "Default labels are not allowed when all possible discriminator values are "
+                       "covered in union "
+                    << node;
             }
 
             // Discirminators may not be annotated with @id or @hashid
             if (get_annotation(node->discriminator, annotation_type_id) ||
                 get_annotation(node->discriminator, annotation_type_hashid)) {
-                state->error(
-                ) << "Discriminators cannot be annotated with @id or @hashid for union "
-                  << node;
+                state->error()
+                    << "Discriminators cannot be annotated with @id or @hashid for union " << node;
             }
         }
 

@@ -59,8 +59,8 @@ fn ic_idl_path() -> PathBuf {
     if cfg!(windows) {
         path.set_extension("exe");
     }
-    
-    assert!(path.exists(), "ic-idl binary not found at {:?}", path);
+
+    assert!(path.exists(), "ic-idl binary not found at {path:?}");
     path
 }
 
@@ -70,17 +70,17 @@ fn generate_code(idl_path: &Path, language: &str, output_dir: &Path) -> Result<(
         "cpp" => "--cpp-out",
         "rust" => "--rust-out",
         "python" => "--python-out",
-        _ => return Err(format!("Unknown language: {}", language)),
+        _ => return Err(format!("Unknown language: {language}")),
     };
     
     let output = Command::new(ic_idl_path())
-        .args(&[
+        .args([
             idl_path.to_str().unwrap(),
             flag, output_dir.to_str().unwrap(),
         ])
         .output()
-        .map_err(|e| format!("Failed to run ic-idl: {}", e))?;
-    
+        .map_err(|e| format!("Failed to run ic-idl: {e}"))?;
+
     if !output.status.success() {
         return Err(format!(
             "ic-idl failed:\nstdout: {}\nstderr: {}",
@@ -98,7 +98,9 @@ fn test_rust_serialization_roundtrip() {
     let idl_path = test_dir.join("test.idl");
     
     // Create a comprehensive IDL file
-    fs::write(&idl_path, r#"
+    fs::write(
+        &idl_path,
+        r"
 module test {
     struct Person {
         string name;
@@ -120,8 +122,10 @@ module test {
     
     typedef sequence<Employee> EmployeeList;
 }
-"#).expect("Failed to write IDL");
-    
+",
+    )
+    .expect("Failed to write IDL");
+
     // Generate Rust code
     generate_code(&idl_path, "rust", &test_dir)
         .expect("Failed to generate Rust code");
@@ -201,7 +205,11 @@ fn main() {
     
     // Build and run the test
     let output = Command::new("cargo")
-        .args(&["run", "--manifest-path", &test_dir.join("Cargo.toml").to_string_lossy()])
+        .args([
+            "run",
+            "--manifest-path",
+            &test_dir.join("Cargo.toml").to_string_lossy(),
+        ])
         .output();
     
     match output {
@@ -228,7 +236,9 @@ fn test_cpp_compilation_and_usage() {
     let idl_path = test_dir.join("test.idl");
     
     // Create IDL with various C++ features
-    fs::write(&idl_path, r#"
+    fs::write(
+        &idl_path,
+        r"
 module geometry {
     struct Point2D {
         double x;
@@ -266,8 +276,10 @@ module geometry {
         Point2D get_center(in ShapeData shape);
     };
 }
-"#).expect("Failed to write IDL");
-    
+",
+    )
+    .expect("Failed to write IDL");
+
     // Generate C++ code
     generate_code(&idl_path, "cpp", &test_dir)
         .expect("Failed to generate C++ code");
@@ -314,7 +326,7 @@ int main() {
     
     // Try to compile the C++ code
     let compile_output = Command::new("c++")
-        .args(&[
+        .args([
             "-std=c++17",
             "-I", &test_dir.to_string_lossy(),
             "-I", "library/cpp/defs",
@@ -358,7 +370,9 @@ fn test_python_generation() {
     let idl_path = test_dir.join("test.idl");
     
     // Create IDL for Python
-    fs::write(&idl_path, r#"
+    fs::write(
+        &idl_path,
+        r"
 module api {
     struct Request {
         string method;
@@ -377,8 +391,10 @@ module api {
         long error_code;
     };
 }
-"#).expect("Failed to write IDL");
-    
+",
+    )
+    .expect("Failed to write IDL");
+
     // Generate Python code
     generate_code(&idl_path, "python", &test_dir)
         .expect("Failed to generate Python code");
@@ -440,7 +456,9 @@ fn test_all_backends_same_idl() {
     let idl_path = test_dir.join("common.idl");
     
     // Create a comprehensive IDL that exercises many features
-    fs::write(&idl_path, r#"
+    fs::write(
+        &idl_path,
+        r"
 module common {
     // Basic types
     typedef string<128> BoundedString;
@@ -494,13 +512,15 @@ module common {
         sequence<LogEntry> query_logs(in Timestamp start, in Timestamp end);
     };
 }
-"#).expect("Failed to write IDL");
-    
+",
+    )
+    .expect("Failed to write IDL");
+
     // Test that all backends can generate code from the same IDL
     let backends = vec!["cpp", "rust", "python"];
     
     for backend in backends {
-        println!("Testing {} backend...", backend);
+        println!("Testing {backend} backend...");
         let backend_dir = test_dir.join(backend);
         fs::create_dir_all(&backend_dir).expect("Failed to create backend directory");
         

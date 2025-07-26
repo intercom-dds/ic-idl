@@ -346,14 +346,6 @@ impl Compiler {
     pub fn compile_hir(
         &mut self,
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
-        if self.options.files.is_empty() {
-            return Err(CompileError::Diagnostics(CompileDiagnostics {
-                errors: vec![InternalError::Custom("no input files".to_string())],
-                warnings: Vec::new(),
-                expansion_info: std::collections::HashMap::new(),
-            }));
-        }
-
         // Compile each file to a separate HIR (with built-ins in context)
         let mut hirs = Vec::new();
         let mut all_diagnostics = CompileDiagnostics {

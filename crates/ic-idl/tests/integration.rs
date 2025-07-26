@@ -55,13 +55,13 @@ fn run_ic_idl(args: &[&str]) -> std::process::Output {
     Command::new(&binary)
         .args(args)
         .output()
-        .unwrap_or_else(|e| panic!("Failed to run ic-idl: {}", e))
+        .unwrap_or_else(|e| panic!("Failed to run ic-idl: {e}"))
 }
 
 fn setup_test_dir(name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();
-    path.push(format!("ic-idl-test-{}", name));
-    
+    path.push(format!("ic-idl-test-{name}"));
+
     if path.exists() {
         fs::remove_dir_all(&path).expect("Failed to clean test directory");
     }
@@ -76,7 +76,9 @@ fn test_cpp_codegen_basic() {
     let idl_file = test_dir.join("test.idl");
     
     // Write a simple IDL file
-    fs::write(&idl_file, r#"
+    fs::write(
+        &idl_file,
+        r"
 struct Point {
     double x;
     double y;
@@ -92,7 +94,9 @@ interface Shape {
     void move(in Point delta);
     Point get_center();
 };
-"#).expect("Failed to write IDL file");
+",
+    )
+    .expect("Failed to write IDL file");
 
     // Run ic-idl to generate C++ code
     let output = run_ic_idl(&[
@@ -110,7 +114,7 @@ interface Shape {
     
     // Try to compile the generated C++ code
     let cpp_output = Command::new("c++")
-        .args(&[
+        .args([
             "-std=c++17",
             "-c",
             "-I", &test_dir.to_string_lossy(),
@@ -135,7 +139,9 @@ fn test_rust_codegen_basic() {
     let idl_file = test_dir.join("test.idl");
     
     // Write a simple IDL file
-    fs::write(&idl_file, r#"
+    fs::write(
+        &idl_file,
+        r"
 struct Message {
     string content;
     uint32 timestamp;
@@ -146,7 +152,9 @@ enum Status {
     ERROR,
     PENDING
 };
-"#).expect("Failed to write IDL file");
+",
+    )
+    .expect("Failed to write IDL file");
 
     // Run ic-idl to generate Rust code
     let output = run_ic_idl(&[
@@ -215,7 +223,11 @@ mod tests {
     
     // Try to compile the generated Rust code
     let cargo_output = Command::new("cargo")
-        .args(&["check", "--manifest-path", &test_dir.join("Cargo.toml").to_string_lossy()])
+        .args([
+            "check",
+            "--manifest-path",
+            &test_dir.join("Cargo.toml").to_string_lossy(),
+        ])
         .output();
     
     if let Ok(output) = cargo_output {
@@ -233,7 +245,9 @@ fn test_complex_types() {
     let idl_file = test_dir.join("complex.idl");
     
     // Write a more complex IDL file with various features
-    fs::write(&idl_file, r#"
+    fs::write(
+        &idl_file,
+        r"
 module test {
     typedef sequence<string> StringList;
     typedef map<string, long> StringToIntMap;
@@ -259,7 +273,9 @@ module test {
         Result process_data(in ComplexStruct input) raises (DataError);
     };
 };
-"#).expect("Failed to write IDL file");
+",
+    )
+    .expect("Failed to write IDL file");
 
     // Test with multiple backends
     for (lang, flag) in &[("cpp", "--cpp-out"), ("rust", "--rust-out"), ("python", "--python-out")] {
@@ -269,7 +285,7 @@ module test {
         ]);
         
         if !output.status.success() {
-            eprintln!("ic-idl failed for {}", lang);
+            eprintln!("ic-idl failed for {lang}");
             eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
             eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
         }
@@ -286,11 +302,15 @@ fn test_error_handling() {
     let idl_file = test_dir.join("invalid.idl");
     
     // Write an invalid IDL file
-    fs::write(&idl_file, r#"
+    fs::write(
+        &idl_file,
+        r"
 struct Invalid {
     unknown_type field;  // This should cause an error
 };
-"#).expect("Failed to write IDL file");
+",
+    )
+    .expect("Failed to write IDL file");
 
     // Run ic-idl and expect it to fail
     let output = run_ic_idl(&[
@@ -310,22 +330,30 @@ fn test_include_paths() {
     fs::create_dir_all(&include_dir).expect("Failed to create include directory");
     
     // Write a base IDL file in include directory
-    fs::write(include_dir.join("base.idl"), r#"
+    fs::write(
+        include_dir.join("base.idl"),
+        r"
 struct BaseStruct {
     long id;
 };
-"#).expect("Failed to write base IDL file");
-    
+",
+    )
+    .expect("Failed to write base IDL file");
+
     // Write main IDL file that includes the base
     let main_idl = test_dir.join("main.idl");
-    fs::write(&main_idl, r#"
+    fs::write(
+        &main_idl,
+        r"
 #include <base.idl>
 
 struct DerivedStruct : BaseStruct {
     string name;
 };
-"#).expect("Failed to write main IDL file");
-    
+",
+    )
+    .expect("Failed to write main IDL file");
+
     // Run ic-idl with include path
     let output = run_ic_idl(&[
         &main_idl.to_string_lossy(),
@@ -344,7 +372,9 @@ fn test_annotations() {
     let idl_file = test_dir.join("annotated.idl");
     
     // Write IDL with annotations
-    fs::write(&idl_file, r#"
+    fs::write(
+        &idl_file,
+        r"
 @range(min=0, max=100)
 typedef long Percentage;
 
@@ -358,7 +388,9 @@ struct Config {
     @optional
     boolean legacy_mode;
 };
-"#).expect("Failed to write IDL file");
+",
+    )
+    .expect("Failed to write IDL file");
 
     // Run ic-idl - annotations should be handled properly
     let output = run_ic_idl(&[
@@ -368,5 +400,6 @@ struct Config {
     
     assert!(output.status.success(), 
         "ic-idl failed with annotations: {}",
-        String::from_utf8_lossy(&output.stderr));
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

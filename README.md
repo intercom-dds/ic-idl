@@ -85,6 +85,5 @@ semver-breaking change.
 
 ## Known bugs
 
-- `valuetype`s are parsed but not resolved or emitted.
 - The Python backend has not been updated and will still generate code that
   targets InterCOM DDS.

@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+error[recursive_type]: type `Node` contains itself without indirection
+   ┌ test.idl:3:18
+   │
+ 3 │             Node items[10];  // Error: array doesn't provide indirection
+   ·                  ^^^^^ recursive member here
+   └──
+ note: recursive types must use indirection through sequences, maps, or @external annotations

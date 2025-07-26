@@ -105,10 +105,6 @@ fn exception_recursion() {
 
 #[test]
 fn recursion_through_array() {
-    // TODO: This test causes a stack overflow during HIR construction
-    // because the array type tries to resolve the size of Node recursively.
-    // For now, we'll skip this test.
-    /*
     let output = common::test_lint_hir(
         r"
         struct Node {
@@ -117,7 +113,6 @@ fn recursion_through_array() {
         ",
     );
     assert_snapshot!(output);
-    */
 }
 
 #[test]

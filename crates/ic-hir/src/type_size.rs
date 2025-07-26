@@ -25,42 +25,54 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashSet;
+
 use crate::Context;
-use crate::hir::{PrimitiveTy, Ty, TyKind};
+use crate::hir::{DefId, PrimitiveTy, Ty, TyKind};
 
 /// Calculate the size in bytes of a type.
 /// Returns None for dynamically-sized types or types with unknown size.
 #[must_use]
 pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
+    type_size_impl(ty, ctx, &mut HashSet::new())
+}
+
+fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Option<usize> {
     match &ty.kind {
-        TyKind::Any | TyKind::Sequence { .. } | TyKind::String { .. } | TyKind::Map { .. } => None, // Dynamic or unknown size
-        TyKind::Fixed => Some(8), // Fixed point, assume 64-bit
-        TyKind::Null => Some(0),  // Null type has no size
+        TyKind::Any | TyKind::Sequence { .. } | TyKind::String { .. } | TyKind::Map { .. } => None,
+        TyKind::Null => Some(0),
+        TyKind::Fixed => Some(8),
         TyKind::Primitive(prim) => primitive_size(*prim),
         TyKind::Array {
             ty: elem_ty, len, ..
         } => {
             // Array size = element size * count
-            type_size(elem_ty, ctx).map(|elem_size| elem_size * len)
+            type_size_impl(elem_ty, ctx, visited).map(|elem_size| elem_size * len)
         }
         TyKind::Adt(id) => {
-            // Look up the definition and get its size
+            if !visited.insert(*id) {
+                // We've seen this type before in the current calculation path,
+                // which means there's a cycle. Return None to indicate unknown
+                // size.
+                return None;
+            }
+
             let def = ctx.definitions.get(*id);
-            match &def.kind {
+            let size = match &def.kind {
                 crate::hir::DefKind::Struct(struct_ty) => {
-                    // Struct size = sum of member sizes (ignoring padding for now)
+                    // Struct size = sum of member sizes
                     let mut total = 0;
                     for member in &struct_ty.members {
-                        total += type_size(&member.ty, ctx)?;
+                        total += type_size_impl(&member.ty, ctx, visited)?;
                     }
                     Some(total)
                 }
                 crate::hir::DefKind::Union(union_ty) => {
                     // Union size = max of variant sizes + discriminator
-                    let disc_size = type_size(&union_ty.disc, ctx)?;
+                    let disc_size = type_size_impl(&union_ty.disc, ctx, visited)?;
                     let mut max_variant_size = 0;
                     for variant in &union_ty.variants {
-                        if let Some(size) = type_size(&variant.ty, ctx) {
+                        if let Some(size) = type_size_impl(&variant.ty, ctx, visited) {
                             max_variant_size = max_variant_size.max(size);
                         }
                     }
@@ -68,11 +80,11 @@ pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
                 }
                 crate::hir::DefKind::Enum(enum_ty) => {
                     // Enum size = underlying type size
-                    type_size(&enum_ty.ty, ctx)
+                    type_size_impl(&enum_ty.ty, ctx, visited)
                 }
                 crate::hir::DefKind::Bitmask(bitmask_ty) => {
                     // Bitmask size = underlying type size
-                    type_size(&bitmask_ty.ty, ctx)
+                    type_size_impl(&bitmask_ty.ty, ctx, visited)
                 }
                 crate::hir::DefKind::Bitset(bitset_ty) => {
                     // Bitset size = sum of field sizes (bits) / 8 (rounded up)
@@ -84,10 +96,14 @@ pub fn type_size(ty: &Ty, ctx: &Context) -> Option<usize> {
                 }
                 crate::hir::DefKind::Alias(alias_ty) => {
                     // Alias size = aliased type size
-                    type_size(&alias_ty.ty, ctx)
+                    type_size_impl(&alias_ty.ty, ctx, visited)
                 }
-                _ => None, // Other types don't have a fixed size
-            }
+                _ => None,
+            };
+
+            // Remove the type from visited set before returning
+            visited.remove(id);
+            size
         }
     }
 }
@@ -102,7 +118,7 @@ fn primitive_size(prim: PrimitiveTy) -> Option<usize> {
             Some(4)
         }
         PrimitiveTy::Int64 | PrimitiveTy::UInt64 | PrimitiveTy::Float64 => Some(8),
-        PrimitiveTy::Float128 => Some(16), // Platform-specific, but often 16
+        PrimitiveTy::Float128 => Some(16),
     }
 }
 
@@ -644,5 +660,150 @@ mod tests {
 
         // 1 (bool) + 8 (inner struct: 4 + 4) = 9 bytes
         assert_eq!(type_size(&outer_type, &ctx), Some(9));
+    }
+
+    #[test]
+    fn test_recursive_struct_through_array() {
+        let mut ctx = Context::new();
+
+        // Create a recursive struct through array: struct Node { Node items[10]; }
+        // This should return None due to the cycle
+        let node_id = ctx.definitions.alloc_with_id(|id| {
+            let node_ty = Ty {
+                span: Span::default(),
+                kind: TyKind::Adt(id),
+            };
+
+            Def {
+                id,
+                parent: None,
+                ident: Ident {
+                    name: "Node".to_string(),
+                    span: Span::default(),
+                },
+                span: Span::default(),
+                flags: DefFlags::default(),
+                annotations: vec![],
+                kind: DefKind::Struct(StructTy {
+                    parent: None,
+                    members: vec![Member {
+                        ident: Ident {
+                            name: "items".to_string(),
+                            span: Span::default(),
+                        },
+                        ty: make_array_type(node_ty, 10),
+                        annotations: vec![],
+                    }],
+                }),
+            }
+        });
+
+        let node_type = Ty {
+            span: Span::default(),
+            kind: TyKind::Adt(node_id),
+        };
+
+        // Should return None due to recursion
+        assert_eq!(type_size(&node_type, &ctx), None);
+    }
+
+    #[test]
+    fn test_indirect_recursion() {
+        let mut ctx = Context::new();
+
+        // Create two mutually recursive structs
+        // We'll use alloc_with_id twice and create temporary placeholder values
+        let a_id = ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            parent: None,
+            ident: Ident {
+                name: "A_temp".to_string(),
+                span: Span::default(),
+            },
+            span: Span::default(),
+            flags: DefFlags::default(),
+            annotations: vec![],
+            kind: DefKind::Struct(StructTy {
+                parent: None,
+                members: vec![],
+            }),
+        });
+
+        let b_id = ctx.definitions.alloc_with_id(|id| Def {
+            id,
+            parent: None,
+            ident: Ident {
+                name: "B_temp".to_string(),
+                span: Span::default(),
+            },
+            span: Span::default(),
+            flags: DefFlags::default(),
+            annotations: vec![],
+            kind: DefKind::Struct(StructTy {
+                parent: None,
+                members: vec![],
+            }),
+        });
+
+        // Now update them with the actual recursive definitions
+        *ctx.definitions.get_mut(a_id) = Def {
+            id: a_id,
+            parent: None,
+            ident: Ident {
+                name: "A".to_string(),
+                span: Span::default(),
+            },
+            span: Span::default(),
+            flags: DefFlags::default(),
+            annotations: vec![],
+            kind: DefKind::Struct(StructTy {
+                parent: None,
+                members: vec![Member {
+                    ident: Ident {
+                        name: "b".to_string(),
+                        span: Span::default(),
+                    },
+                    ty: Ty {
+                        span: Span::default(),
+                        kind: TyKind::Adt(b_id),
+                    },
+                    annotations: vec![],
+                }],
+            }),
+        };
+
+        *ctx.definitions.get_mut(b_id) = Def {
+            id: b_id,
+            parent: None,
+            ident: Ident {
+                name: "B".to_string(),
+                span: Span::default(),
+            },
+            span: Span::default(),
+            flags: DefFlags::default(),
+            annotations: vec![],
+            kind: DefKind::Struct(StructTy {
+                parent: None,
+                members: vec![Member {
+                    ident: Ident {
+                        name: "a".to_string(),
+                        span: Span::default(),
+                    },
+                    ty: Ty {
+                        span: Span::default(),
+                        kind: TyKind::Adt(a_id),
+                    },
+                    annotations: vec![],
+                }],
+            }),
+        };
+
+        let a_type = Ty {
+            span: Span::default(),
+            kind: TyKind::Adt(a_id),
+        };
+
+        // Should return None due to indirect recursion
+        assert_eq!(type_size(&a_type, &ctx), None);
     }
 }

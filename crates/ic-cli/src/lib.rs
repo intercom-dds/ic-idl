@@ -363,49 +363,20 @@ impl CommandLine {
     where
         P: FnMut(&&Opt) -> bool + Clone,
     {
-        let mut lines = vec![];
-        let matches: Vec<_> = self.options.values().iter().filter(filter).collect();
-
-        // Find the highest number of short options
-        let n_short: usize = matches
-            .iter()
-            .map(|v| v.tokens.iter().filter(|v| v.len() == 1).count())
-            .max()
-            .unwrap_or(0);
-
-        let width = if self.align_sections {
-            self.options
-                .values()
-                .iter()
-                .map(|v| v.formatted().len())
-                .max()
-                .unwrap_or(0)
-        } else {
-            matches
-                .iter()
-                .map(|v| v.formatted().len())
-                .max()
-                .unwrap_or(0)
-        };
-
-        for opt in matches {
-            let current_n_short = opt.tokens.iter().filter(|v| v.len() == 1).count();
-
-            // 4 is the number of characters that separate short options
-            let current_width = 4 * (n_short - current_n_short);
-            let indent_by = PAD + current_width;
-            let width = 2 + PAD + width - opt.formatted().len() - current_width;
-
-            let tokens = opt.formatted();
-            let desc = opt.desc.clone().unwrap_or_default();
-            let line = format!("{:indent_by$}{tokens}{}{desc}", " ", " ".repeat(width));
-            lines.push(line);
-        }
-        lines
+        self.format_args_common(filter, None)
     }
 
-    // TODO: total hack, should be cleaned up and merged with the function above
     pub fn format_args_prefix<P>(&self, prefix: &str, filter: P) -> Vec<String>
+    where
+        P: FnMut(&&Opt) -> bool + Clone,
+    {
+        self.format_args_common(filter, Some(prefix))
+    }
+
+    /// Common implementation for formatting command line arguments.
+    /// If prefix is None, uses default formatting with -/-- prefixes.
+    /// If prefix is Some, uses the provided custom prefix.
+    fn format_args_common<P>(&self, filter: P, prefix: Option<&str>) -> Vec<String>
     where
         P: FnMut(&&Opt) -> bool + Clone,
     {
@@ -419,17 +390,24 @@ impl CommandLine {
             .max()
             .unwrap_or(0);
 
+        // Calculate the width based on whether we're using custom prefix or default formatting
         let width = if self.align_sections {
             self.options
                 .values()
                 .iter()
-                .map(|v| v.with_prefix(prefix).len())
+                .map(|v| match prefix {
+                    Some(p) => v.with_prefix(p).len(),
+                    None => v.formatted().len(),
+                })
                 .max()
                 .unwrap_or(0)
         } else {
             matches
                 .iter()
-                .map(|v| v.with_prefix(prefix).len())
+                .map(|v| match prefix {
+                    Some(p) => v.with_prefix(p).len(),
+                    None => v.formatted().len(),
+                })
                 .max()
                 .unwrap_or(0)
         };
@@ -440,9 +418,13 @@ impl CommandLine {
             // 4 is the number of characters that separate short options
             let current_width = 4 * (n_short - current_n_short);
             let indent_by = PAD + current_width;
-            let width = 2 + PAD + width - opt.with_prefix(prefix).len() - current_width;
 
-            let tokens = opt.with_prefix(prefix);
+            let tokens = match prefix {
+                Some(p) => opt.with_prefix(p),
+                None => opt.formatted(),
+            };
+
+            let width = 2 + PAD + width - tokens.len() - current_width;
             let desc = opt.desc.clone().unwrap_or_default();
             let line = format!("{:indent_by$}{tokens}{}{desc}", " ", " ".repeat(width));
             lines.push(line);

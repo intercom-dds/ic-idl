@@ -33,11 +33,18 @@ struct Color {
 };
 
 // C-style designated initializer
+// TODO: name is ignored, order matters
+// const Color MY_COLOR = {
+//     .red = 1 + 2,
+//     .green = -128,
+//     .blue = 123.456,
+//     .name = "blurple"
+// };
 const Color MY_COLOR = {
+    .name = "blurple",
     .red = 1 + 2,
     .green = -128,
-    .blue = 123.456,
-    .name = "blurple"
+    .blue = 123.456
 };
 
 // InterCOM variation

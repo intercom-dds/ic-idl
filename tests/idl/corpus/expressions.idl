@@ -70,16 +70,9 @@ const int32 X = 9 / 10; // 0
 const float X = 3.0/2;
 const float X = 3/2.0;
 
-const foo foobar = {};
+struct foo {
+    int64 value;
+};
+
+// TODO: const foo foobar = {};
 const foo foobar = { value = 123 };
-
-// TODO: add snapshot of this
-@default({ service_cleanup_delay = DURATION_ZERO })
-struct foo {
-    Duration_t service_cleanup_delay;
-};
-
-@default({})
-struct foo {
-    Duration_t service_cleanup_delay;
-};

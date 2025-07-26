@@ -41,7 +41,7 @@ module _module {
         string _case;
     default:
         string _default;
-    }
+    };
 
     interface _valuetype {
         attribute _struct _attribute;

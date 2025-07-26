@@ -1362,6 +1362,9 @@ impl<'a> Resolver<'a> {
         });
 
         self.name_map.insert(qualified_name, id);
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, def.ident.name.clone(), id);
 
         // Create new scope for valuetype
         let new_scope = self.ctx.scopes.create_child_scope(

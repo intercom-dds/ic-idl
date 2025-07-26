@@ -25,14 +25,47 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Code generation framework for the IDL compiler.
+//!
+//! This crate provides common utilities and traits for code generators to
+//! produce output in various target languages. It includes:
+//!
+//! - Case conversion utilities for different naming conventions
+//! - Pretty-printing infrastructure for code formatting
+//! - File abstraction for generated code and dependencies
+//!
+//! # Example
+//!
+//! ```ignore
+//! use ic_emit::{File, printer::Printer};
+//!
+//! let mut printer = Printer::new();
+//! printer.line("// Generated code");
+//! printer.line("struct Example {");
+//! printer.indent();
+//! printer.line("field: i32,");
+//! printer.dedent();
+//! printer.line("}");
+//!
+//! let file = File::Generated {
+//!     path: "example.rs".into(),
+//!     source: printer.finish(),
+//! };
+//! ```
+
 use std::path::PathBuf;
 
+/// Case conversion utilities for different naming conventions.
 pub mod case;
 mod ffi;
+/// Pretty-printing utilities for code generation.
 pub mod printer;
 
+/// Represents a file in the code generation output.
 pub enum File {
+    /// A dependency file that should be tracked but not generated.
     Dep(String),
+    /// A generated source file with its path and contents.
     Generated { path: PathBuf, source: String },
 }
 

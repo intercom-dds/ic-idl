@@ -25,65 +25,130 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Expression evaluation for constant expressions in IDL.
+//!
+//! This crate provides generic expression evaluation functionality that can work
+//! with different numeric types. It's primarily used for evaluating constant
+//! expressions in IDL files, such as array bounds, enumeration values, and
+//! constant definitions.
+//!
+//! # Examples
+//!
+//! ```ignore
+//! use ic_expr::{Expr, Op, Binary, eval};
+//!
+//! let expr = Expr::Binary(Box::new(Binary {
+//!     lhs: Expr::Lit(10),
+//!     op: Op::Add,
+//!     rhs: Expr::Lit(5),
+//! }));
+//!
+//! let result = eval(&expr, &Default::default(), |_| None)?;
+//! assert_eq!(result, 15);
+//! ```
+
 use std::fmt;
 
+/// Error types for expression evaluation.
 pub mod error;
 pub use error::{Error, Result};
 
+/// C language adapter for expression evaluation.
 pub mod c_adapter;
+/// Generic numeric type that can represent various numeric values.
 pub mod generic_numeric;
 pub use generic_numeric::GenericNumeric;
 
+/// Binary and unary operators supported in expressions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Op {
+    /// Logical NOT (!)
     Not,
+    /// Logical AND (&&)
     And,
+    /// Logical OR (||)
     Or,
+    /// Greater than (>)
     Gt,
+    /// Greater than or equal (>=)
     GtEq,
+    /// Less than (<)
     Lt,
+    /// Less than or equal (<=)
     LtEq,
+    /// Equality (==)
     EqEq,
+    /// Inequality (!=)
     NotEq,
+    /// Bitwise NOT (~)
     BitNot,
+    /// Bitwise AND (&)
     BitAnd,
+    /// Bitwise OR (|)
     BitOr,
+    /// Bitwise XOR (^)
     BitXor,
+    /// Left shift (<<)
     LShift,
+    /// Right shift (>>)
     RShift,
+    /// Addition (+)
     Add,
+    /// Subtraction (-)
     Sub,
+    /// Multiplication (*)
     Mul,
+    /// Division (/)
     Div,
+    /// Modulo (%)
     Mod,
 }
 
+/// An expression tree that can be evaluated.
+///
+/// The type parameter `T` represents the type of literals in the expression.
 #[derive(Debug)]
 pub enum Expr<T> {
+    /// A literal value.
     Lit(T),
+    /// A variable reference.
     Var(String),
+    /// A unary operation.
     Unary(Box<Unary<T>>),
+    /// A binary operation.
     Binary(Box<Binary<T>>),
+    /// A ternary conditional expression (? :).
     Ternary(Box<Ternary<T>>),
 }
 
+/// A unary operation on an expression.
 #[derive(Debug)]
 pub struct Unary<T> {
+    /// The unary operator.
     pub op: Op,
+    /// The expression to apply the operator to.
     pub expr: Expr<T>,
 }
 
+/// A binary operation on two expressions.
 #[derive(Debug)]
 pub struct Binary<T> {
+    /// The left-hand side expression.
     pub lhs: Expr<T>,
+    /// The binary operator.
     pub op: Op,
+    /// The right-hand side expression.
     pub rhs: Expr<T>,
 }
 
+/// A ternary conditional expression (cond ? then : else).
 #[derive(Debug)]
 pub struct Ternary<T> {
+    /// The condition to evaluate.
     pub cond: Expr<T>,
+    /// The expression to evaluate if the condition is true.
     pub then: Expr<T>,
+    /// The expression to evaluate if the condition is false.
     pub els: Expr<T>,
 }
 

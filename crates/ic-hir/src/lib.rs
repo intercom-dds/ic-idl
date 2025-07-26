@@ -25,6 +25,38 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! High-level Intermediate Representation (HIR) for IDL compilation.
+//!
+//! This crate transforms the parse tree (AST) into a typed, resolved representation
+//! suitable for semantic analysis and code generation. The HIR resolves names,
+//! performs type checking, evaluates constant expressions, and validates IDL semantics.
+//!
+//! # Architecture
+//!
+//! The main entry point is [`from_ast`], which takes an AST and produces a [`ResolvedGraph`].
+//! The graph contains:
+//! - A [`Context`] with all type definitions and metadata
+//! - The order in which types were defined
+//! - Any errors or warnings encountered during lowering
+//!
+//! # Example
+//!
+//! ```ignore
+//! use ic_hir::{from_ast, AstInput};
+//!
+//! let ast = parse_idl_file("example.idl")?;
+//! let hir = from_ast(AstInput::User(ast));
+//! 
+//! if !hir.errors.is_empty() {
+//!     // Handle compilation errors
+//! }
+//!
+//! // Use the HIR for code generation or analysis
+//! for def in hir.iter() {
+//!     println!("Found type: {}", def.ident.name);
+//! }
+//! ```
+
 use std::fmt::Debug;
 
 pub use crate::ctx::Context;
@@ -32,13 +64,21 @@ pub use crate::ctx::Context;
 mod ctx;
 mod lower;
 
+/// Annotation processing and validation.
 pub mod annotation;
+/// HIR tree folding for transformations.
 pub mod fold;
+/// Core HIR type definitions and data structures.
 pub mod hir;
+/// IDL keywords and reserved identifiers.
 pub mod keywords;
+/// Merging multiple HIR graphs into a single graph.
 pub mod merge;
+/// Scope resolution and name lookup utilities.
 pub mod scope;
+/// Type size calculations for fixed-size types.
 pub mod type_size;
+/// HIR visitor pattern for traversal and analysis.
 pub mod visit;
 
 /// Input for HIR lowering, supporting both user-only and user+builtins scenarios.
@@ -60,6 +100,10 @@ pub enum AstInput<I> {
     },
 }
 
+/// The result of lowering AST to HIR.
+///
+/// This structure contains the fully resolved and type-checked HIR graph,
+/// along with any diagnostics produced during the lowering process.
 #[derive(Debug)]
 pub struct ResolvedGraph {
     /// The primary data structure that owns all the types.

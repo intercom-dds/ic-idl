@@ -174,6 +174,11 @@ impl Diag {
     }
 }
 
+/// A label that points to a specific location in the source code.
+///
+/// Labels are used to highlight specific spans of code that are relevant
+/// to the diagnostic. Multiple labels can be attached to a single diagnostic
+/// to show different parts of the code that contribute to the issue.
 #[must_use]
 #[derive(Debug)]
 pub struct Label {
@@ -183,6 +188,7 @@ pub struct Label {
 }
 
 impl Label {
+    /// Creates a new label pointing to the given span.
     pub fn new(span: impl Into<Span>) -> Self {
         Self {
             span: span.into(),
@@ -191,11 +197,13 @@ impl Label {
         }
     }
 
+    /// Attaches a message to this label that will be displayed alongside the span.
     pub fn message<S: Into<String>>(mut self, msg: S) -> Self {
         self.msg = msg.into();
         self
     }
 
+    /// Sets the color used to highlight this label's span.
     pub fn color(mut self, color: Color) -> Self {
         self.color = color;
         self

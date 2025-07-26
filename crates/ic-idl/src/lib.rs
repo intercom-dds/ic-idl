@@ -337,7 +337,21 @@ impl Compiler {
     pub fn compile_hir(
         &mut self,
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
-        // Compile each file to a separate HIR (with built-ins in context)
+        // Parse built-in annotations once
+        let builtin_file_id = self.source_map.embed_with_name(
+            "<builtin-annotations>",
+            include_str!("../idl/annotations.idl"),
+        );
+        let builtin_parsed =
+            ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
+
+        assert!(
+            builtin_parsed.errors.is_empty(),
+            "Failed to parse built-in annotations: {:?}",
+            builtin_parsed.errors
+        );
+
+        // Compile each file to a separate HIR
         let mut hirs = Vec::new();
         let mut all_diagnostics = CompileDiagnostics {
             errors: Vec::new(),
@@ -345,8 +359,10 @@ impl Compiler {
             expansion_info: std::collections::HashMap::new(),
         };
 
-        for file in &self.options.files.clone() {
-            match self.compile_file_to_hir_without_builtins(file) {
+        for (idx, file) in self.options.files.clone().iter().enumerate() {
+            // Only include built-ins with the first file
+            let include_builtins = idx == 0;
+            match self.compile_file_to_hir_without_builtins(file, include_builtins, &builtin_parsed.tree) {
                 Ok((hir, diag)) => {
                     hirs.push(hir);
                     all_diagnostics.warnings.extend(diag.warnings);
@@ -396,6 +412,8 @@ impl Compiler {
     fn compile_file_to_hir_without_builtins(
         &mut self,
         path: &Path,
+        include_builtins: bool,
+        builtin_ast: &[ic_syntax::Item],
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
         let proc_args = self.proc_args();
         let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
@@ -432,26 +450,16 @@ impl Compiler {
             diagnostics.warnings.extend(report.warnings);
         }
 
-        // Parse built-in annotations
-        let builtin_file_id = self.source_map.embed_with_name(
-            "<builtin-annotations>",
-            include_str!("../idl/annotations.idl"),
-        );
-        let builtin_parsed =
-            ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
-
-        assert!(
-            builtin_parsed.errors.is_empty(),
-            "Failed to parse built-in annotations: {:?}",
-            builtin_parsed.errors
-        );
-
-        // Compile with built-in context
-        let mut hir = hir::from_ast(hir::AstInput::WithBuiltins {
-            builtins: builtin_parsed.tree,
-            user: ast.tree,
-            include_in_output: false,
-        });
+        // Compile with or without built-in context
+        let mut hir = if include_builtins {
+            hir::from_ast(hir::AstInput::WithBuiltins {
+                builtins: builtin_ast.to_vec(),
+                user: ast.tree,
+                include_in_output: false,
+            })
+        } else {
+            hir::from_ast(hir::AstInput::User(ast.tree))
+        };
 
         // Run HIR linting
         if diagnostics.errors.is_empty() {
@@ -485,7 +493,21 @@ impl Compiler {
         &mut self,
         path: &Path,
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
-        self.compile_file_to_hir_without_builtins(path)
+        // Parse built-in annotations
+        let builtin_file_id = self.source_map.embed_with_name(
+            "<builtin-annotations>",
+            include_str!("../idl/annotations.idl"),
+        );
+        let builtin_parsed =
+            ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
+
+        assert!(
+            builtin_parsed.errors.is_empty(),
+            "Failed to parse built-in annotations: {:?}",
+            builtin_parsed.errors
+        );
+        
+        self.compile_file_to_hir_without_builtins(path, true, &builtin_parsed.tree)
     }
 
     /// Parse files and get the AST.

@@ -25,6 +25,30 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Virtual File System for the IDL compiler.
+//!
+//! This crate provides a source file management system that tracks all files
+//! loaded by the compiler, maintains their contents in memory, and provides
+//! span-based location tracking for error reporting.
+//!
+//! # Key Components
+//!
+//! - [`SourceMap`]: The main file registry that manages all loaded files
+//! - [`FileId`]: Unique identifier for a file in the source map
+//! - [`Span`]: A range within a file, used for error reporting
+//! - [`Location`]: Line and column information for a position in a file
+//!
+//! # Example
+//!
+//! ```ignore
+//! use ic_vfs::{SourceMap, Include};
+//!
+//! let mut source_map = SourceMap::default();
+//! let (file_id, _) = source_map.open("example.idl", Include::Static)?;
+//! let span = source_map.span_of(file_id);
+//! let location = source_map.location(span.start());
+//! ```
+
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::io;
@@ -39,6 +63,7 @@ pub use span::{Location, Span};
 /// An ID of a file in the [`SourceMap`].
 pub type FileId = Id<FileInfo>;
 
+/// The type of file inclusion, affecting how paths are resolved.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Include {
     /// System include, e.g. <foo.idl>
@@ -53,6 +78,7 @@ pub enum Include {
     Static,
 }
 
+/// Information about a file loaded into the source map.
 #[must_use]
 #[derive(Debug)]
 pub struct FileInfo {
@@ -68,6 +94,12 @@ pub struct FileInfo {
     pub kind: Include,
 }
 
+/// A registry of all source files loaded by the compiler.
+///
+/// The SourceMap maintains file contents in memory and provides utilities
+/// for mapping between file positions, spans, and line/column locations.
+/// It deduplicates files by their absolute path to avoid loading the same
+/// file multiple times.
 #[derive(Debug, Default)]
 pub struct SourceMap {
     sources: Arena<FileInfo>,

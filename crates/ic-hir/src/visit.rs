@@ -26,9 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::hir::{
-    AliasTy, Ann, AnnotationTy, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind, EnumTy, ExceptTy,
-    InterfaceTy, Member, ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy,
-    ValueTy, Variant,
+    AliasTy, Ann, AnnotationTy, Attribute, BitmaskTy, BitsetTy, ConstTy, Decl, Def, DefKind,
+    EnumTy, ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty,
+    TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::{Context, ResolvedGraph};
 
@@ -121,6 +121,10 @@ pub trait Visitor<'a> {
 
     fn visit_annotation(&mut self, ann: &'a Ann) {
         walk_annotation(self, ann);
+    }
+
+    fn visit_attribute(&mut self, attr: &'a Attribute) {
+        walk_attribute(self, attr);
     }
 }
 
@@ -273,13 +277,15 @@ where
         visitor.visit_proto(proto);
     }
 
+    for attr in &data.attributes {
+        visitor.visit_attribute(attr);
+    }
+
     let context = visitor.context();
     for &def_id in &data.definitions {
         let nested_def = context.definitions.get(def_id);
         visitor.visit_def(nested_def);
     }
-
-    // TODO: Visit attributes when implemented
 }
 
 pub fn walk_valuetype<'a, V>(visitor: &mut V, _def: &'a Def, data: &'a ValueTy)
@@ -290,13 +296,19 @@ where
         visitor.visit_proto(proto);
     }
 
+    for attr in &data.attributes {
+        visitor.visit_attribute(attr);
+    }
+
+    for member in &data.members {
+        visitor.visit_member(member);
+    }
+
     let context = visitor.context();
     for &def_id in &data.definitions {
         let nested_def = context.definitions.get(def_id);
         visitor.visit_def(nested_def);
     }
-
-    // TODO: Visit members when properly implemented
 }
 
 pub fn walk_decl<'a, V>(_visitor: &mut V, _data: &'a Decl)
@@ -420,4 +432,11 @@ where
     for arg in &ann.args {
         visitor.visit_numeric(&arg.value);
     }
+}
+
+pub fn walk_attribute<'a, V>(visitor: &mut V, attr: &'a Attribute)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_ty(&attr.ty);
 }

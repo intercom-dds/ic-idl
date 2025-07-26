@@ -1902,27 +1902,21 @@ ptree* create_annotation_finish(parser_state* state, ptree* params) {
         node->type = annotation_type_extensibility;
         node->name = node->type->name;
         numeric value;
-        value.val.node(
-            try_lookup_node(state, "intercom::annotations::Extensibility::FINAL", ANY_KIND)
-        );
+        value.val.node(try_lookup_node(state, "Extensibility::FINAL", ANY_KIND));
         params = create_annotation_param(state, "value", &value);
     }
     if (node->type == annotation_type_mutable) {
         node->type = annotation_type_extensibility;
         node->name = node->type->name;
         numeric value;
-        value.val.node(
-            try_lookup_node(state, "intercom::annotations::Extensibility::MUTABLE", ANY_KIND)
-        );
+        value.val.node(try_lookup_node(state, "Extensibility::MUTABLE", ANY_KIND));
         params = create_annotation_param(state, "value", &value);
     }
     if (node->type == annotation_type_appendable) {
         node->type = annotation_type_extensibility;
         node->name = node->type->name;
         numeric value;
-        value.val.node(
-            try_lookup_node(state, "intercom::annotations::Extensibility::APPENDABLE", ANY_KIND)
-        );
+        value.val.node(try_lookup_node(state, "Extensibility::APPENDABLE", ANY_KIND));
         params = create_annotation_param(state, "value", &value);
     }
     node->scope = state->context.empty() ? nullptr : state->context[state->context.size() - 1][0];

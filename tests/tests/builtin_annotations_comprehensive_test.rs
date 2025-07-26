@@ -40,7 +40,7 @@ fn ast_to_hir_with_builtins(
     // Add built-in annotations to the source map
     let builtin_file_id = source_map.embed_with_name(
         "<builtin-annotations>",
-        include_str!("../idl/annotations.idl"),
+        include_str!("../../crates/ic-idl/idl/annotations.idl"),
     );
 
     // Parse the built-in annotations

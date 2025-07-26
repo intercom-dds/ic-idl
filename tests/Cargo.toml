@@ -33,11 +33,26 @@ publish.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lib]
+name = "tests"
+
 [lints]
 workspace = true
 
 [dependencies]
+ic-idl = { path = "../crates/ic-idl" }
+ic-hir = { path = "../crates/ic-hir" }
+ic-lint = { path = "../crates/ic-lint" }
+ic-parse = { path = "../crates/ic-parse" }
+ic-preproc = { path = "../crates/ic-preproc" }
+ic-vfs = { path = "../crates/ic-vfs" }
+ic-syntax = { path = "../crates/ic-syntax" }
+ic-ptree = { path = "../crates/ic-ptree" }
+ic-ptree-lower = { path = "../crates/ic-ptree-lower" }
+ic-emit = { path = "../crates/ic-emit" }
+ic-codegen-idl = { path = "../crates/ic-codegen-idl" }
 
 [dev-dependencies]
+cc = "1.0"
 tempfile = "3.8"
 walkdir = "2.4"

@@ -27,10 +27,10 @@
 
 //! Test valid IDL files that should successfully generate code.
 
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
+
 use tempfile::TempDir;
 
 fn ic_idl_binary() -> PathBuf {
@@ -41,20 +41,20 @@ fn ic_idl_binary() -> PathBuf {
         .parent()
         .expect("Failed to get parent directory")
         .to_path_buf();
-    
+
     path.push("ic-idl");
-    
+
     if cfg!(windows) {
         path.set_extension("exe");
     }
-    
+
     assert!(path.exists(), "ic-idl binary not found at {:?}", path);
     path
 }
 
 fn project_root() -> PathBuf {
     let mut path = env::current_dir().expect("Failed to get current directory");
-    
+
     loop {
         if path.join("Cargo.toml").exists() {
             let content = fs::read_to_string(path.join("Cargo.toml")).unwrap();
@@ -62,7 +62,7 @@ fn project_root() -> PathBuf {
                 return path;
             }
         }
-        
+
         if !path.pop() {
             panic!("Could not find workspace root");
         }
@@ -157,30 +157,30 @@ module geometry {
 "#,
         ),
     ];
-    
+
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let mut all_passed = true;
-    
+
     for (filename, content) in test_cases {
         println!("\n=== Testing {} ===", filename);
-        
+
         let idl_path = temp_dir.path().join(filename);
         fs::write(&idl_path, content).expect("Failed to write IDL file");
-        
+
         // Test each backend
         for backend in &["rust", "cpp", "python"] {
             print!("  {} generation... ", backend);
-            
+
             let output_dir = temp_dir.path().join(format!("{}-{}", filename, backend));
             fs::create_dir_all(&output_dir).expect("Failed to create output dir");
-            
+
             let flag = match *backend {
                 "rust" => "--rust-out",
                 "cpp" => "--cpp-out",
                 "python" => "--python-out",
                 _ => unreachable!(),
             };
-            
+
             let output = Command::new(ic_idl_binary())
                 .args(&[
                     idl_path.to_str().unwrap(),
@@ -189,14 +189,14 @@ module geometry {
                 ])
                 .output()
                 .expect("Failed to run ic-idl");
-            
+
             if output.status.success() {
                 println!("OK");
-                
+
                 // For Rust, try to compile if cargo is available
                 if *backend == "rust" && Command::new("cargo").arg("--version").output().is_ok() {
                     print!("    Compiling Rust code... ");
-                    
+
                     let cargo_toml = format!(
                         r#"[package]
 name = "test-{}"
@@ -209,38 +209,49 @@ intercom-cts = {{ path = "{}/library/rust/intercom-cts" }}
                         filename.replace('.', "_"),
                         project_root().display()
                     );
-                    
+
                     fs::write(output_dir.join("Cargo.toml"), cargo_toml).unwrap();
-                    
+
                     let src_dir = output_dir.join("src");
                     fs::create_dir_all(&src_dir).unwrap();
-                    
+
                     fs::write(
                         src_dir.join("lib.rs"),
-                        "#![allow(unused)]\ninclude!(\"../lib.rs\");\n"
-                    ).unwrap();
-                    
+                        "#![allow(unused)]\ninclude!(\"../lib.rs\");\n",
+                    )
+                    .unwrap();
+
                     let check = Command::new("cargo")
-                        .args(&["check", "--manifest-path", &output_dir.join("Cargo.toml").to_string_lossy()])
+                        .args(&[
+                            "check",
+                            "--manifest-path",
+                            &output_dir.join("Cargo.toml").to_string_lossy(),
+                        ])
                         .output()
                         .expect("Failed to run cargo check");
-                    
+
                     if check.status.success() {
                         println!("OK");
                     } else {
                         println!("FAILED");
-                        eprintln!("Cargo check failed:\n{}", String::from_utf8_lossy(&check.stderr));
+                        eprintln!(
+                            "Cargo check failed:\n{}",
+                            String::from_utf8_lossy(&check.stderr)
+                        );
                         all_passed = false;
                     }
                 }
             } else {
                 println!("FAILED");
-                eprintln!("ic-idl failed:\nstderr: {}", String::from_utf8_lossy(&output.stderr));
+                eprintln!(
+                    "ic-idl failed:\nstderr: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
                 all_passed = false;
             }
         }
     }
-    
+
     assert!(all_passed, "Some tests failed");
 }
 
@@ -312,24 +323,24 @@ module messaging {
     };
 };
 "#;
-    
+
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let idl_path = temp_dir.path().join("messaging.idl");
     fs::write(&idl_path, idl_content).expect("Failed to write IDL file");
-    
+
     println!("\n=== Testing real-world messaging example ===");
-    
+
     // Test all backends
     for backend in &["rust", "cpp", "python"] {
         print!("  {} generation... ", backend);
-        
+
         let flag = match *backend {
             "rust" => "--rust-out",
-            "cpp" => "--cpp-out", 
+            "cpp" => "--cpp-out",
             "python" => "--python-out",
             _ => unreachable!(),
         };
-        
+
         let output = Command::new(ic_idl_binary())
             .args(&[
                 idl_path.to_str().unwrap(),
@@ -338,7 +349,7 @@ module messaging {
             ])
             .output()
             .expect("Failed to run ic-idl");
-        
+
         if output.status.success() {
             println!("OK");
         } else {

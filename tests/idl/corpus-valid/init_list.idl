@@ -25,53 +25,45 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Multiplication and addition
-const int32 MUL_ADD = 3 + 4 * 5; // 23
-const int32 MUL_ADD_2 = 4 * 5 + 3; // 23
-const int32 MUL_ADD_PAREN = (3 + 4) * 5; // 35
-
-// Division and subtraction
-const int32 DIV_SUB = 10 - 3 / 2; // 9
-const int32 DIV_SUB_2 = 3/2 - 10; // -9
-const int32 DIV_SUB_PAREN = 3 / (2 - 10); // 0
-
-// Complex
-const int32 COMPLEX = 8 + 2 * 5 - 7 / 1 & 4 | 7; // 7
-
-const int32 AND_ADD    = 5 + 3 & 2; // 5
-const int32 OR_MUL     = 4 | 1 * 2; // 6
-const int32 XOR_SUB    = 7 - 5 ^ 3; // 1
-const int32 LSHIFT_ADD = 2 << 1 + 3; // 32
-const int32 LSHIFT_MUL = 1 + 2 << 2 * 2; // 48
-const int32 LSHIFT_OR  = 1 | 2 << 2; // 9
-const int32 LSHIFT_AND = 3 & 1 << 4; // 0
-
-// Left-to-right association
-const int32 ADD_SUB       = 10 - 3 + 2;
-const int32 MUL_SUB       = 10 - 3 - 2;
-const int32 MIXED_ADD_SUB = 10 + 3 - 2 + 1;
-const int32 CHAINED_DIV   = 100 / 5 / 2; // 10
-
-// Combined
-const int32 X1 = (5 + 3) << 2; // 32
-const int32 X2 = 1 + 3 & 2 << 1; // 3
-const int32 X3 = 1 << 2 * 2 + 3; // 128
-const int32 X4 = 10 + 2 * 3 << 1 & 4; // 0
-const int32 X5 = (5 + 3) & (2 | 1); // 0
-const int32 X6 = (2 + 3) << (1 * 2); // 20
-const int32 X7 = (4 ^ 2) & (1 | 3); // 0
-const int32 X8 = 10 + 2 * 3 ^ 1 | 4; // 21
-
-// Rounding
-const int32 Y1 = 1 / 2; // 0
-const int32 Y2 = 2 / 3; // 0
-const int32 Y3 = 9 / 10; // 0
-const float Y4 = 3.0/2;
-const float Y5 = 3/2.0;
-
-struct foo {
-    int64 value;
+struct Color {
+    string name;
+    octet red;
+    int32 green;
+    double blue;
 };
 
-// TODO: const foo foobar = {};
-const foo foobar = { value = 123 };
+// C-style designated initializer
+// TODO: name is ignored, order matters
+// const Color MY_COLOR = {
+//     .red = 1 + 2,
+//     .green = -128,
+//     .blue = 123.456,
+//     .name = "blurple"
+// };
+const Color MY_COLOR = {
+    .name = "blurple",
+    .red = 1 + 2,
+    .green = -128,
+    .blue = 123.456
+};
+
+// InterCOM variation
+const Color MY_COLOR2 = {
+    name = "blurple",
+    red = 1 + 2,
+    green = -128,
+    blue = 123.456
+};
+
+// Unnamed
+const Color MY_COLOR3 = {"foo", 1, 2, 3.0};
+
+// Empty initializer -- all members should use their respective default values.
+// const Color MY_COLOR4 = {};
+
+struct HasOptional {
+    @optional string value;
+};
+
+const HasOptional HAS_VALUE = { "foo" };
+const HasOptional NO_VALUE = { null };

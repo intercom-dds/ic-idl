@@ -69,3 +69,5 @@ ic-codegen-rust = { path = "../ic-codegen-rust" }
 ic-codegen-xml = { path = "../ic-codegen-xml" }
 
 intercom-cts.workspace = true
+
+[dev-dependencies]

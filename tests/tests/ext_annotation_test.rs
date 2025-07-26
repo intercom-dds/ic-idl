@@ -49,7 +49,7 @@ fn test_ext_annotation_requires_qualification() {
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
-    let builtin_annotations = include_str!("../idl/annotations.idl");
+    let builtin_annotations = include_str!("../../crates/ic-idl/idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(
         builtin_file_id,
@@ -126,7 +126,7 @@ fn test_other_qualified_annotations() {
     assert!(parsed.errors.is_empty());
 
     // Parse built-in annotations
-    let builtin_annotations = include_str!("../idl/annotations.idl");
+    let builtin_annotations = include_str!("../../crates/ic-idl/idl/annotations.idl");
     let builtin_file_id = source_map.embed_with_name("<builtin-annotations>", builtin_annotations);
     let builtin_parsed = ic_parse::from_file(
         builtin_file_id,

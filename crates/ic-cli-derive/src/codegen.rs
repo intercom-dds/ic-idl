@@ -29,7 +29,7 @@ use quote::quote;
 use syn::{Attribute, DataEnum, DataStruct, Ident};
 
 use crate::attrs::{extract_doc_comment, extract_string_attr};
-use crate::parsing::{parse_field, variant_to_kebab_case, CliOption, OptionKind};
+use crate::parsing::{CliOption, OptionKind, parse_field, variant_to_kebab_case};
 
 /// Generate the Command trait implementation for a struct.
 pub fn generate_struct_impl(
@@ -67,7 +67,7 @@ pub fn generate_struct_impl(
 
     // Generate command building code
     let command_impl = generate_struct_command(attrs, &options, &sections, !positionals.is_empty());
-    
+
     // Generate parsing code
     let parse_impl = generate_struct_parse(&options, &sections, &positionals);
 
@@ -94,11 +94,8 @@ pub fn generate_enum_impl(
     // Validate enum structure
     for variant in &data.variants {
         if variant.fields.len() != 1 {
-            return syn::Error::new_spanned(
-                variant,
-                "enum variants must have exactly one field",
-            )
-            .to_compile_error();
+            return syn::Error::new_spanned(variant, "enum variants must have exactly one field")
+                .to_compile_error();
         }
     }
 
@@ -130,7 +127,7 @@ fn generate_struct_command(
         .map_or_else(|| quote! { env!("CARGO_PKG_NAME") }, |n| quote! { #n });
 
     let option_builders = options.iter().map(generate_option_builder);
-    
+
     let section_builders = sections.iter().map(|opt| {
         let (section_name, section_type) = opt.section.as_ref().unwrap();
         quote! {
@@ -153,11 +150,11 @@ fn generate_struct_command(
 /// Generate the command building code for an enum.
 fn generate_enum_command(data: &DataEnum, attrs: &[Attribute]) -> proc_macro2::TokenStream {
     let doc = extract_doc_comment(attrs);
-    
+
     let subcommands = data.variants.iter().map(|variant| {
         let name = variant_to_kebab_case(&variant.ident);
         let field_type = &variant.fields.iter().next().unwrap().ty;
-        
+
         quote! {
             #field_type::command().name(#name)
         }
@@ -205,7 +202,7 @@ fn generate_enum_parse(data: &DataEnum) -> proc_macro2::TokenStream {
         let variant_ident = &variant.ident;
         let name = variant_to_kebab_case(&variant.ident);
         let field_type = &variant.fields.iter().next().unwrap().ty;
-        
+
         quote! {
             #name => Self::#variant_ident(#field_type::from_result(&cmd))
         }
@@ -232,7 +229,7 @@ fn generate_option_builder(opt: &CliOption) -> proc_macro2::TokenStream {
     let doc = &opt.doc;
     let required = opt.required;
     let arg_name = opt.arg_name.as_deref().unwrap_or("arg");
-    
+
     let kind = match opt.kind {
         OptionKind::Flag => quote! { ::ic_cli::Value::Flag },
         OptionKind::Value => quote! { ::ic_cli::Value::Multiple },

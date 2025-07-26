@@ -91,6 +91,19 @@ fn main() {
         warn!("unknown warning '{}'", unknown.yellow());
     }
 
+    // Expand files
+    let files = match util::collect_files(&options.files) {
+        Ok(files) => files,
+        Err(e) => {
+            error!("{e}");
+            std::process::exit(1);
+        }
+    };
+
+    // Replace the options files with the expanded list
+    let mut options = options;
+    options.files = files;
+
     if options.files.is_empty() {
         error!("no input files");
         return;

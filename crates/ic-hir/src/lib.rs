@@ -46,7 +46,7 @@
 //!
 //! let ast = parse_idl_file("example.idl")?;
 //! let hir = from_ast(AstInput::User(ast));
-//! 
+//!
 //! if !hir.errors.is_empty() {
 //!     // Handle compilation errors
 //! }

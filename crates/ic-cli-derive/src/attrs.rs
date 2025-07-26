@@ -72,7 +72,12 @@ pub fn parse_option_attrs(attrs: &[Attribute]) -> Result<Option<OptionAttrs>> {
 
         found_option = true;
         attr.parse_nested_meta(|meta| {
-            match meta.path.get_ident().map(std::string::ToString::to_string).as_deref() {
+            match meta
+                .path
+                .get_ident()
+                .map(std::string::ToString::to_string)
+                .as_deref()
+            {
                 Some("short") => {
                     result.short = Some(if meta.input.peek(syn::Token![=]) {
                         meta.input.parse::<syn::Token![=]>()?;
@@ -135,7 +140,7 @@ pub fn parse_option_attrs(attrs: &[Attribute]) -> Result<Option<OptionAttrs>> {
 /// Extract documentation from doc comment attributes.
 pub fn extract_doc_comment(attrs: &[Attribute]) -> String {
     let mut lines = Vec::new();
-    
+
     for attr in attrs {
         if !attr.path().is_ident("doc") {
             continue;
@@ -150,7 +155,7 @@ pub fn extract_doc_comment(attrs: &[Attribute]) -> String {
             }
         }
     }
-    
+
     lines.join("\n")
 }
 
@@ -170,6 +175,6 @@ pub fn extract_string_attr(name: &str, attrs: &[Attribute]) -> Option<String> {
             }
         }
     }
-    
+
     None
 }

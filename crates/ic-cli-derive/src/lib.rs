@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Data, DeriveInput};
+use syn::{Data, DeriveInput, parse_macro_input};
 
 mod attrs;
 mod codegen;
@@ -68,8 +68,9 @@ pub fn derive_cli(input: TokenStream) -> TokenStream {
     let result = match &input.data {
         Data::Struct(data) => generate_struct_impl(ident, data, &input.attrs),
         Data::Enum(data) => generate_enum_impl(ident, data, &input.attrs),
-        Data::Union(_) => syn::Error::new_spanned(&input, "unions are not supported")
-            .to_compile_error(),
+        Data::Union(_) => {
+            syn::Error::new_spanned(&input, "unions are not supported").to_compile_error()
+        }
     };
 
     TokenStream::from(result)

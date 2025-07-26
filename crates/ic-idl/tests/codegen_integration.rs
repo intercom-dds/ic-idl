@@ -34,12 +34,16 @@ use std::process::Command;
 /// Helper to create a temporary test directory
 fn create_test_dir(name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();
-    path.push(format!("ic-idl-codegen-test-{}-{}", name, std::process::id()));
-    
+    path.push(format!(
+        "ic-idl-codegen-test-{}-{}",
+        name,
+        std::process::id()
+    ));
+
     if path.exists() {
         fs::remove_dir_all(&path).expect("Failed to clean test directory");
     }
-    
+
     fs::create_dir_all(&path).expect("Failed to create test directory");
     path
 }
@@ -53,9 +57,9 @@ fn ic_idl_path() -> PathBuf {
         .parent()
         .expect("Failed to get parent directory")
         .to_path_buf();
-    
+
     path.push("ic-idl");
-    
+
     if cfg!(windows) {
         path.set_extension("exe");
     }
@@ -72,11 +76,12 @@ fn generate_code(idl_path: &Path, language: &str, output_dir: &Path) -> Result<(
         "python" => "--python-out",
         _ => return Err(format!("Unknown language: {language}")),
     };
-    
+
     let output = Command::new(ic_idl_path())
         .args([
             idl_path.to_str().unwrap(),
-            flag, output_dir.to_str().unwrap(),
+            flag,
+            output_dir.to_str().unwrap(),
         ])
         .output()
         .map_err(|e| format!("Failed to run ic-idl: {e}"))?;
@@ -88,7 +93,7 @@ fn generate_code(idl_path: &Path, language: &str, output_dir: &Path) -> Result<(
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-    
+
     Ok(())
 }
 
@@ -96,7 +101,7 @@ fn generate_code(idl_path: &Path, language: &str, output_dir: &Path) -> Result<(
 fn test_rust_serialization_roundtrip() {
     let test_dir = create_test_dir("rust-serialization");
     let idl_path = test_dir.join("test.idl");
-    
+
     // Create a comprehensive IDL file
     fs::write(
         &idl_path,
@@ -127,9 +132,8 @@ module test {
     .expect("Failed to write IDL");
 
     // Generate Rust code
-    generate_code(&idl_path, "rust", &test_dir)
-        .expect("Failed to generate Rust code");
-    
+    generate_code(&idl_path, "rust", &test_dir).expect("Failed to generate Rust code");
+
     // Create a Cargo project to test the generated code
     let project_root = std::env::current_dir()
         .unwrap()
@@ -138,8 +142,9 @@ module test {
         .parent()
         .unwrap()
         .to_path_buf();
-    
-    let cargo_toml = format!(r#"
+
+    let cargo_toml = format!(
+        r#"
 [package]
 name = "test-rust-serialization"
 version = "0.1.0"
@@ -148,16 +153,19 @@ edition = "2021"
 [dependencies]
 intercom-cts = {{ path = "{}/library/rust/intercom-cts" }}
 serde_json = "1.0"
-"#, project_root.display());
-    
-    fs::write(test_dir.join("Cargo.toml"), cargo_toml)
-        .expect("Failed to write Cargo.toml");
-    
+"#,
+        project_root.display()
+    );
+
+    fs::write(test_dir.join("Cargo.toml"), cargo_toml).expect("Failed to write Cargo.toml");
+
     // Create test program
     let src_dir = test_dir.join("src");
     fs::create_dir_all(&src_dir).expect("Failed to create src directory");
-    
-    fs::write(src_dir.join("main.rs"), r#"
+
+    fs::write(
+        src_dir.join("main.rs"),
+        r#"
 include!("../lib.rs");
 
 use intercom_cts::{
@@ -201,8 +209,10 @@ fn main() {
     
     println!("All serialization tests passed!");
 }
-"#).expect("Failed to write main.rs");
-    
+"#,
+    )
+    .expect("Failed to write main.rs");
+
     // Build and run the test
     let output = Command::new("cargo")
         .args([
@@ -211,18 +221,22 @@ fn main() {
             &test_dir.join("Cargo.toml").to_string_lossy(),
         ])
         .output();
-    
+
     match output {
         Ok(output) => {
-            assert!(output.status.success(),
+            assert!(
+                output.status.success(),
                 "Rust test failed:\nstdout: {}\nstderr: {}",
                 String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr));
-            
+                String::from_utf8_lossy(&output.stderr)
+            );
+
             // Verify the output contains our success message
             let stdout = String::from_utf8_lossy(&output.stdout);
-            assert!(stdout.contains("All serialization tests passed!"),
-                "Test output missing success message");
+            assert!(
+                stdout.contains("All serialization tests passed!"),
+                "Test output missing success message"
+            );
         }
         Err(_) => {
             eprintln!("Warning: Cargo not available, skipping Rust compilation test");
@@ -234,7 +248,7 @@ fn main() {
 fn test_cpp_compilation_and_usage() {
     let test_dir = create_test_dir("cpp-compilation");
     let idl_path = test_dir.join("test.idl");
-    
+
     // Create IDL with various C++ features
     fs::write(
         &idl_path,
@@ -281,12 +295,13 @@ module geometry {
     .expect("Failed to write IDL");
 
     // Generate C++ code
-    generate_code(&idl_path, "cpp", &test_dir)
-        .expect("Failed to generate C++ code");
-    
+    generate_code(&idl_path, "cpp", &test_dir).expect("Failed to generate C++ code");
+
     // Create a test C++ program
     let test_cpp = test_dir.join("test_main.cpp");
-    fs::write(&test_cpp, r#"
+    fs::write(
+        &test_cpp,
+        r#"
 #include "test.h"
 #include <ic_cts/json_serializer.h>
 #include <iostream>
@@ -322,20 +337,25 @@ int main() {
     std::cout << "All C++ tests passed!" << std::endl;
     return 0;
 }
-"#).expect("Failed to write test program");
-    
+"#,
+    )
+    .expect("Failed to write test program");
+
     // Try to compile the C++ code
     let compile_output = Command::new("c++")
         .args([
             "-std=c++17",
-            "-I", &test_dir.to_string_lossy(),
-            "-I", "library/cpp/defs",
-            "-o", &test_dir.join("test_program").to_string_lossy(),
+            "-I",
+            &test_dir.to_string_lossy(),
+            "-I",
+            "library/cpp/defs",
+            "-o",
+            &test_dir.join("test_program").to_string_lossy(),
             &test_cpp.to_string_lossy(),
             &test_dir.join("test.cpp").to_string_lossy(),
         ])
         .output();
-    
+
     match compile_output {
         Ok(output) => {
             if output.status.success() {
@@ -343,18 +363,24 @@ int main() {
                 let run_output = Command::new(test_dir.join("test_program"))
                     .output()
                     .expect("Failed to run test program");
-                
-                assert!(run_output.status.success(),
+
+                assert!(
+                    run_output.status.success(),
                     "C++ test program failed:\nstdout: {}\nstderr: {}",
                     String::from_utf8_lossy(&run_output.stdout),
-                    String::from_utf8_lossy(&run_output.stderr));
-                
+                    String::from_utf8_lossy(&run_output.stderr)
+                );
+
                 let stdout = String::from_utf8_lossy(&run_output.stdout);
-                assert!(stdout.contains("All C++ tests passed!"),
-                    "Test output missing success message");
+                assert!(
+                    stdout.contains("All C++ tests passed!"),
+                    "Test output missing success message"
+                );
             } else {
-                eprintln!("C++ compilation failed:\nstderr: {}",
-                    String::from_utf8_lossy(&output.stderr));
+                eprintln!(
+                    "C++ compilation failed:\nstderr: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
                 eprintln!("This might be due to missing C++ dependencies");
             }
         }
@@ -368,7 +394,7 @@ int main() {
 fn test_python_generation() {
     let test_dir = create_test_dir("python-generation");
     let idl_path = test_dir.join("test.idl");
-    
+
     // Create IDL for Python
     fs::write(
         &idl_path,
@@ -396,15 +422,19 @@ module api {
     .expect("Failed to write IDL");
 
     // Generate Python code
-    generate_code(&idl_path, "python", &test_dir)
-        .expect("Failed to generate Python code");
-    
+    generate_code(&idl_path, "python", &test_dir).expect("Failed to generate Python code");
+
     // Verify Python file was generated
-    assert!(test_dir.join("test.py").exists(), "Python file not generated");
-    
+    assert!(
+        test_dir.join("test.py").exists(),
+        "Python file not generated"
+    );
+
     // Create a test Python script
     let test_py = test_dir.join("test_script.py");
-    fs::write(&test_py, r#"
+    fs::write(
+        &test_py,
+        r#"
 #!/usr/bin/env python3
 import sys
 sys.path.insert(0, '.')
@@ -424,23 +454,29 @@ assert len(req.parameters) == 2
 assert req.headers["Content-Type"] == "application/json"
 
 print("All Python tests passed!")
-"#).expect("Failed to write test script");
-    
+"#,
+    )
+    .expect("Failed to write test script");
+
     // Try to run the Python test
     let python_output = Command::new("python3")
         .current_dir(&test_dir)
         .arg("test_script.py")
         .output();
-    
+
     match python_output {
         Ok(output) => {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                assert!(stdout.contains("All Python tests passed!"),
-                    "Python test output missing success message");
+                assert!(
+                    stdout.contains("All Python tests passed!"),
+                    "Python test output missing success message"
+                );
             } else {
-                eprintln!("Python test failed:\nstderr: {}",
-                    String::from_utf8_lossy(&output.stderr));
+                eprintln!(
+                    "Python test failed:\nstderr: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
                 eprintln!("This might be due to missing Python dependencies");
             }
         }
@@ -454,7 +490,7 @@ print("All Python tests passed!")
 fn test_all_backends_same_idl() {
     let test_dir = create_test_dir("all-backends");
     let idl_path = test_dir.join("common.idl");
-    
+
     // Create a comprehensive IDL that exercises many features
     fs::write(
         &idl_path,
@@ -518,33 +554,45 @@ module common {
 
     // Test that all backends can generate code from the same IDL
     let backends = vec!["cpp", "rust", "python"];
-    
+
     for backend in backends {
         println!("Testing {backend} backend...");
         let backend_dir = test_dir.join(backend);
         fs::create_dir_all(&backend_dir).expect("Failed to create backend directory");
-        
+
         let result = generate_code(&idl_path, backend, &backend_dir);
-        assert!(result.is_ok(), 
-            "Failed to generate {} code: {:?}", backend, result.err());
-        
+        assert!(
+            result.is_ok(),
+            "Failed to generate {} code: {:?}",
+            backend,
+            result.err()
+        );
+
         // Verify files were generated
         match backend {
             "cpp" => {
-                assert!(backend_dir.join("common.h").exists(), 
-                    "C++ header not generated");
-                assert!(backend_dir.join("common.cpp").exists(), 
-                    "C++ source not generated");
+                assert!(
+                    backend_dir.join("common.h").exists(),
+                    "C++ header not generated"
+                );
+                assert!(
+                    backend_dir.join("common.cpp").exists(),
+                    "C++ source not generated"
+                );
             }
             "rust" => {
-                assert!(backend_dir.join("lib.rs").exists(), 
-                    "Rust source not generated");
+                assert!(
+                    backend_dir.join("lib.rs").exists(),
+                    "Rust source not generated"
+                );
             }
             "python" => {
-                assert!(backend_dir.join("common.py").exists(), 
-                    "Python source not generated");
+                assert!(
+                    backend_dir.join("common.py").exists(),
+                    "Python source not generated"
+                );
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

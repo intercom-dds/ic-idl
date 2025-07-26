@@ -26,9 +26,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::case;
-use syn::{ext::IdentExt, Field, Path, Result, Type};
+use syn::ext::IdentExt;
+use syn::{Field, Path, Result, Type};
 
-use crate::attrs::{extract_doc_comment, parse_option_attrs, LongOption, ShortOption};
+use crate::attrs::{LongOption, ShortOption, extract_doc_comment, parse_option_attrs};
 
 /// Represents a parsed CLI option field.
 pub struct CliOption {

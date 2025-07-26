@@ -74,7 +74,7 @@ impl std::fmt::Display for Error {
 /// # Errors
 ///
 /// Returns a vector of I/O errors if any files or directories cannot be read.
-pub fn collect_files<'a, I>(paths: I) -> std::result::Result<Vec<PathBuf>, Vec<io::Error>>
+pub fn collect_files<'a, I>(paths: I) -> std::result::Result<Vec<PathBuf>, io::Error>
 where
     I: IntoIterator<Item = &'a PathBuf>,
 {
@@ -93,25 +93,18 @@ where
         Ok(())
     }
 
-    let mut errors = vec![];
     let mut files = HashSet::new();
     for path in paths {
         if std::fs::metadata(path).is_ok_and(|v| v.is_dir()) {
-            if let Err(e) = collect(path, &mut files) {
-                errors.push(e);
-            }
+            collect(path, &mut files)?;
         } else {
             files.insert(path.clone());
         }
     }
 
-    if errors.is_empty() {
-        let mut files: Vec<_> = files.into_iter().collect();
-        files.sort();
-        Ok(files)
-    } else {
-        Err(errors)
-    }
+    let mut files: Vec<_> = files.into_iter().collect();
+    files.sort();
+    Ok(files)
 }
 
 /// Write contents to a file only if it has changed.

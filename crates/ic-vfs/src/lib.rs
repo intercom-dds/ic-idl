@@ -96,7 +96,7 @@ pub struct FileInfo {
 
 /// A registry of all source files loaded by the compiler.
 ///
-/// The SourceMap maintains file contents in memory and provides utilities
+/// The `SourceMap` maintains file contents in memory and provides utilities
 /// for mapping between file positions, spans, and line/column locations.
 /// It deduplicates files by their absolute path to avoid loading the same
 /// file multiple times.

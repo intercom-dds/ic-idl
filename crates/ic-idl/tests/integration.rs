@@ -38,20 +38,20 @@ fn ic_idl_binary() -> PathBuf {
         .parent()
         .expect("Failed to get parent directory")
         .to_path_buf();
-    
+
     path.push("ic-idl");
-    
+
     // On Windows, add .exe extension
     if cfg!(windows) {
         path.set_extension("exe");
     }
-    
+
     path
 }
 
 fn run_ic_idl(args: &[&str]) -> std::process::Output {
     let binary = ic_idl_binary();
-    
+
     Command::new(&binary)
         .args(args)
         .output()
@@ -65,7 +65,7 @@ fn setup_test_dir(name: &str) -> PathBuf {
     if path.exists() {
         fs::remove_dir_all(&path).expect("Failed to clean test directory");
     }
-    
+
     fs::create_dir_all(&path).expect("Failed to create test directory");
     path
 }
@@ -74,7 +74,7 @@ fn setup_test_dir(name: &str) -> PathBuf {
 fn test_cpp_codegen_basic() {
     let test_dir = setup_test_dir("cpp-basic");
     let idl_file = test_dir.join("test.idl");
-    
+
     // Write a simple IDL file
     fs::write(
         &idl_file,
@@ -101,33 +101,47 @@ interface Shape {
     // Run ic-idl to generate C++ code
     let output = run_ic_idl(&[
         &idl_file.to_string_lossy(),
-        "--cpp-out", &test_dir.to_string_lossy(),
+        "--cpp-out",
+        &test_dir.to_string_lossy(),
     ]);
-    
-    assert!(output.status.success(), 
+
+    assert!(
+        output.status.success(),
         "ic-idl failed: {}",
-        String::from_utf8_lossy(&output.stderr));
-    
+        String::from_utf8_lossy(&output.stderr)
+    );
+
     // Check that expected files were generated
-    assert!(test_dir.join("test.h").exists(), "Header file not generated");
-    assert!(test_dir.join("test.cpp").exists(), "Source file not generated");
-    
+    assert!(
+        test_dir.join("test.h").exists(),
+        "Header file not generated"
+    );
+    assert!(
+        test_dir.join("test.cpp").exists(),
+        "Source file not generated"
+    );
+
     // Try to compile the generated C++ code
     let cpp_output = Command::new("c++")
         .args([
             "-std=c++17",
             "-c",
-            "-I", &test_dir.to_string_lossy(),
-            "-I", "library/cpp/defs",
-            "-o", &test_dir.join("test.o").to_string_lossy(),
+            "-I",
+            &test_dir.to_string_lossy(),
+            "-I",
+            "library/cpp/defs",
+            "-o",
+            &test_dir.join("test.o").to_string_lossy(),
             &test_dir.join("test.cpp").to_string_lossy(),
         ])
         .output();
-    
+
     if let Ok(output) = cpp_output {
-        assert!(output.status.success(),
+        assert!(
+            output.status.success(),
             "C++ compilation failed: {}",
-            String::from_utf8_lossy(&output.stderr));
+            String::from_utf8_lossy(&output.stderr)
+        );
     } else {
         eprintln!("Warning: C++ compiler not available, skipping compilation test");
     }
@@ -137,7 +151,7 @@ interface Shape {
 fn test_rust_codegen_basic() {
     let test_dir = setup_test_dir("rust-basic");
     let idl_file = test_dir.join("test.idl");
-    
+
     // Write a simple IDL file
     fs::write(
         &idl_file,
@@ -159,16 +173,19 @@ enum Status {
     // Run ic-idl to generate Rust code
     let output = run_ic_idl(&[
         &idl_file.to_string_lossy(),
-        "--rust-out", &test_dir.to_string_lossy(),
+        "--rust-out",
+        &test_dir.to_string_lossy(),
     ]);
-    
-    assert!(output.status.success(), 
+
+    assert!(
+        output.status.success(),
         "ic-idl failed: {}",
-        String::from_utf8_lossy(&output.stderr));
-    
+        String::from_utf8_lossy(&output.stderr)
+    );
+
     // Check that expected file was generated
     assert!(test_dir.join("lib.rs").exists(), "Rust file not generated");
-    
+
     // Create a simple Cargo.toml to test compilation
     let project_root = std::env::current_dir()
         .unwrap()
@@ -177,8 +194,9 @@ enum Status {
         .parent()
         .unwrap()
         .to_path_buf();
-    
-    let cargo_toml = format!(r#"
+
+    let cargo_toml = format!(
+        r#"
 [package]
 name = "test-rust-codegen"
 version = "0.1.0"
@@ -186,16 +204,19 @@ edition = "2021"
 
 [dependencies]
 intercom-cts = {{ path = "{}/library/rust/intercom-cts" }}
-"#, project_root.display());
-    
-    fs::write(test_dir.join("Cargo.toml"), cargo_toml)
-        .expect("Failed to write Cargo.toml");
-    
+"#,
+        project_root.display()
+    );
+
+    fs::write(test_dir.join("Cargo.toml"), cargo_toml).expect("Failed to write Cargo.toml");
+
     // Create src directory and lib.rs that includes generated code
     let src_dir = test_dir.join("src");
     fs::create_dir_all(&src_dir).expect("Failed to create src directory");
-    
-    fs::write(src_dir.join("lib.rs"), r#"
+
+    fs::write(
+        src_dir.join("lib.rs"),
+        r#"
 include!("../lib.rs");
 
 #[cfg(test)]
@@ -219,8 +240,10 @@ mod tests {
         assert_eq!(Status::PENDING as i32, 2);
     }
 }
-"#).expect("Failed to write lib.rs");
-    
+"#,
+    )
+    .expect("Failed to write lib.rs");
+
     // Try to compile the generated Rust code
     let cargo_output = Command::new("cargo")
         .args([
@@ -229,11 +252,13 @@ mod tests {
             &test_dir.join("Cargo.toml").to_string_lossy(),
         ])
         .output();
-    
+
     if let Ok(output) = cargo_output {
-        assert!(output.status.success(),
+        assert!(
+            output.status.success(),
             "Rust compilation failed: {}",
-            String::from_utf8_lossy(&output.stderr));
+            String::from_utf8_lossy(&output.stderr)
+        );
     } else {
         eprintln!("Warning: Cargo not available, skipping Rust compilation test");
     }
@@ -243,7 +268,7 @@ mod tests {
 fn test_complex_types() {
     let test_dir = setup_test_dir("complex-types");
     let idl_file = test_dir.join("complex.idl");
-    
+
     // Write a more complex IDL file with various features
     fs::write(
         &idl_file,
@@ -278,21 +303,28 @@ module test {
     .expect("Failed to write IDL file");
 
     // Test with multiple backends
-    for (lang, flag) in &[("cpp", "--cpp-out"), ("rust", "--rust-out"), ("python", "--python-out")] {
+    for (lang, flag) in &[
+        ("cpp", "--cpp-out"),
+        ("rust", "--rust-out"),
+        ("python", "--python-out"),
+    ] {
         let output = run_ic_idl(&[
             &idl_file.to_string_lossy(),
-            flag, &test_dir.to_string_lossy(),
+            flag,
+            &test_dir.to_string_lossy(),
         ]);
-        
+
         if !output.status.success() {
             eprintln!("ic-idl failed for {lang}");
             eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
             eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
         }
-        assert!(output.status.success(), 
+        assert!(
+            output.status.success(),
             "ic-idl failed for {}: {}",
             lang,
-            String::from_utf8_lossy(&output.stderr));
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
 
@@ -300,7 +332,7 @@ module test {
 fn test_error_handling() {
     let test_dir = setup_test_dir("error-handling");
     let idl_file = test_dir.join("invalid.idl");
-    
+
     // Write an invalid IDL file
     fs::write(
         &idl_file,
@@ -315,12 +347,18 @@ struct Invalid {
     // Run ic-idl and expect it to fail
     let output = run_ic_idl(&[
         &idl_file.to_string_lossy(),
-        "--cpp-out", &test_dir.to_string_lossy(),
+        "--cpp-out",
+        &test_dir.to_string_lossy(),
     ]);
-    
-    assert!(!output.status.success(), "ic-idl should have failed on invalid input");
-    assert!(!String::from_utf8_lossy(&output.stderr).is_empty(), 
-        "Error output should not be empty");
+
+    assert!(
+        !output.status.success(),
+        "ic-idl should have failed on invalid input"
+    );
+    assert!(
+        !String::from_utf8_lossy(&output.stderr).is_empty(),
+        "Error output should not be empty"
+    );
 }
 
 #[test]
@@ -328,7 +366,7 @@ fn test_include_paths() {
     let test_dir = setup_test_dir("include-paths");
     let include_dir = test_dir.join("include");
     fs::create_dir_all(&include_dir).expect("Failed to create include directory");
-    
+
     // Write a base IDL file in include directory
     fs::write(
         include_dir.join("base.idl"),
@@ -357,20 +395,24 @@ struct DerivedStruct : BaseStruct {
     // Run ic-idl with include path
     let output = run_ic_idl(&[
         &main_idl.to_string_lossy(),
-        "-I", &include_dir.to_string_lossy(),
-        "--cpp-out", &test_dir.to_string_lossy(),
+        "-I",
+        &include_dir.to_string_lossy(),
+        "--cpp-out",
+        &test_dir.to_string_lossy(),
     ]);
-    
-    assert!(output.status.success(), 
+
+    assert!(
+        output.status.success(),
         "ic-idl failed with includes: {}",
-        String::from_utf8_lossy(&output.stderr));
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]
 fn test_annotations() {
     let test_dir = setup_test_dir("annotations");
     let idl_file = test_dir.join("annotated.idl");
-    
+
     // Write IDL with annotations
     fs::write(
         &idl_file,
@@ -395,10 +437,12 @@ struct Config {
     // Run ic-idl - annotations should be handled properly
     let output = run_ic_idl(&[
         &idl_file.to_string_lossy(),
-        "--rust-out", &test_dir.to_string_lossy(),
+        "--rust-out",
+        &test_dir.to_string_lossy(),
     ]);
-    
-    assert!(output.status.success(), 
+
+    assert!(
+        output.status.success(),
         "ic-idl failed with annotations: {}",
         String::from_utf8_lossy(&output.stderr)
     );

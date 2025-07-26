@@ -322,17 +322,8 @@ impl Compiler {
     /// Returns an error if compilation fails. The error will contain all diagnostics
     /// including both errors and warnings.
     pub fn compile(&mut self) -> Result<CompiledAst, CompileError> {
-        if self.options.files.is_empty() {
-            return Err(CompileError::Diagnostics(CompileDiagnostics {
-                errors: vec![InternalError::Custom("no input files".to_string())],
-                warnings: Vec::new(),
-                expansion_info: std::collections::HashMap::new(),
-            }));
-        }
-
         // Parse all files to AST
         let (items, diagnostics) = try_compile_to_ast(&self.options, &mut self.source_map)?;
-
         Ok(CompiledAst { items, diagnostics })
     }
 
@@ -572,15 +563,9 @@ fn try_compile_to_ast(
     let mut all_warnings = vec![];
     let mut all_expansion_info = std::collections::HashMap::new();
 
-    let files = util::collect_files(&options.files).map_err(|e| {
-        CompileError::Io(std::io::Error::other(format!(
-            "Failed to collect files: {e:?}"
-        )))
-    })?;
-
     // Parse all files to AST
-    for file in files {
-        let ast = match ic_parse::from_path(&file, args.clone(), vfs) {
+    for file in &options.files {
+        let ast = match ic_parse::from_path(file, args.clone(), vfs) {
             Ok(ast) => ast,
             Err(e) => {
                 all_errors.push(InternalError::Custom(format!(

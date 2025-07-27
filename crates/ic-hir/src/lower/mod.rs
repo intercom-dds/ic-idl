@@ -35,8 +35,9 @@
 //! 1. **Resolution**: Processes items in order, creating HIR nodes and
 //!    resolving type references as they appear
 //! 2. **Evaluation**: Evaluates constant expressions and enum values
-//! 3. **Type Checking**: Validates that values match their declared types
-//! 4. **Validation**: Performs semantic validation and consistency checks
+//! 3. **Reference Update**: Updates type references from forward declarations to definitions
+//! 4. **Type Checking**: Validates that values match their declared types
+//! 5. **Validation**: Performs semantic validation and consistency checks
 //!
 //! ## Design Principles
 //!
@@ -55,6 +56,7 @@ mod builtin;
 mod evaluate;
 mod resolve;
 mod typecheck;
+mod update_refs;
 mod validate;
 
 pub use builtin::{lower_with_builtin_context, lower_with_builtins};
@@ -158,6 +160,9 @@ where
     // Evaluate constant expressions
     let mut phase_errors = evaluate::evaluate_expressions(&mut context, &ast_items);
     errors.append(&mut phase_errors);
+
+    // Update type references from forward declarations to definitions
+    update_refs::update_forward_references(&mut context);
 
     // Type check values against their declared types
     let mut phase_errors = typecheck::typecheck_hir(&context, &order);

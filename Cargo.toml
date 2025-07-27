@@ -56,7 +56,6 @@ members = [
     "crates/ic-ptree-lower",
     "crates/ic-syntax",
     "crates/ic-vfs",
-    "tests",
     "tools/xtask",
 ]
 exclude = [

@@ -27,7 +27,6 @@
 
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
-use ic_syntax::Span;
 
 use crate::hir::{self, Def, DefId, DefKind, Ty, TyKind};
 use crate::scope::ScopeTree;
@@ -45,10 +44,6 @@ pub struct Context {
 
     // Scope hierarchy for name resolution
     pub scopes: ScopeTree,
-
-    // Forward declarations: type name => (DefId, Span)
-    // This map tracks all forward declarations and is never modified after insertion
-    pub forward_declarations: CaseMap<(DefId, Span)>,
 }
 
 impl Default for Context {
@@ -58,24 +53,14 @@ impl Default for Context {
 }
 
 impl Context {
-    /// Creates a new context where built-in type definitions and annotations
-    /// have been injected.
+    /// Creates a new context.
     #[must_use]
     pub fn new() -> Self {
-        let mut ctx = Self::empty();
-        init_ctx_state(&mut ctx);
-        ctx
-    }
-
-    /// Creates a new context without injecting any of the built-in types.
-    #[must_use]
-    pub fn empty() -> Self {
         Self {
             types: Arena::default(),
             definitions: Arena::default(),
             registered: CaseMap::new(),
             scopes: ScopeTree::new(),
-            forward_declarations: CaseMap::new(),
         }
     }
 
@@ -153,10 +138,4 @@ impl Context {
         parts.reverse();
         parts.join("::")
     }
-}
-
-/// Inserts primitive types and built-in annotations into the context.
-fn init_ctx_state(_ctx: &mut Context) {
-    // Built-in annotations are now handled differently to avoid circular dependencies
-    // They are recognized by name during annotation resolution
 }

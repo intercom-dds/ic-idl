@@ -341,20 +341,7 @@ impl HirMerger {
         // Fourth pass: update scope def_id fields to point to new definitions
         self.update_scope_def_id_fields(graph_index, &graph.context);
 
-        // Fifth pass: merge forward declarations map
-        for (name, (old_def_id, span)) in graph.context.forward_declarations.iter() {
-            // Map the old DefId to the new one if it exists
-            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(old_def_id) {
-                // Only insert if we don't already have a forward declaration for this name
-                if !self.new_context.forward_declarations.contains_key(name) {
-                    self.new_context
-                        .forward_declarations
-                        .insert(name.to_string(), (new_def_id, *span));
-                }
-            }
-        }
-
-        // Sixth pass: update all references in the copied definitions
+        // Fifth pass: update all references in the copied definitions
         self.update_references(graph_index);
     }
 

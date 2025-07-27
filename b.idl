@@ -1,5 +1,0 @@
-#include "a.idl"
-
-struct Bar {
-	@optional string vlaue;
-};

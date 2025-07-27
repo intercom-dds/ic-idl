@@ -33,6 +33,7 @@ use ic_cli::color::Colorize;
 use ic_hir::hir::{
     Decl, DefFlags, DefId, DefKind, Label, Member, Numeric, ParamKind, Span, Ty, TyKind, Variant,
 };
+use ic_hir::visit::{self, Visitor};
 use ic_hir::{Context, ResolvedGraph};
 
 use crate::tree::Leaf;
@@ -474,18 +475,36 @@ fn plural(word: &str, count: usize) -> String {
     format!("{} {word}{s}", count.green())
 }
 
+struct DefCount<'a> {
+    ctx: &'a Context,
+    count: usize,
+}
+
+impl<'a> Visitor<'a> for DefCount<'a> {
+    fn context(&self) -> &'a Context {
+        self.ctx
+    }
+
+    fn visit_def(&mut self, def: &'a ic_hir::hir::Def) {
+        self.count += 1;
+        visit::walk_def(self, def);
+    }
+}
+
 #[must_use]
 pub fn emit_tree(result: &ResolvedGraph) -> String {
     let leaves = result.order.iter().map(|id| emit_def(&result.context, *id));
     let mut root = leaf!("{}", ".".gray());
     root.extend(leaves);
 
+    let mut counter = DefCount {
+        ctx: &result.context,
+        count: 0,
+    };
+    visit::walk_tree(&mut counter, result);
+
     let mut buf = String::new();
     _ = writeln!(&mut buf, "{root}");
-    _ = write!(
-        &mut buf,
-        "{}",
-        plural("definition", result.context.definitions.len()),
-    );
+    _ = write!(&mut buf, "{}", plural("definition", counter.count));
     buf
 }

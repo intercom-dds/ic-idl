@@ -116,8 +116,9 @@ impl ScopeTree {
     }
 
     /// Adds a definition to a scope.
-    pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) {
-        self.scopes[scope.0].definitions.insert(name, def_id);
+    /// Returns the previous definition if one existed with the same name.
+    pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) -> Option<DefId> {
+        self.scopes[scope.0].definitions.insert(name, def_id)
     }
 
     /// Gets a scope by ID.

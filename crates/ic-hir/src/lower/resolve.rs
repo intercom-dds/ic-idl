@@ -522,7 +522,27 @@ impl<'a> Resolver<'a> {
     /// Registers a definition in the name map and current scope.
     fn register_definition(&mut self, qualified_name: String, name: String, id: DefId) {
         self.name_map.insert(qualified_name, id);
-        self.ctx.scopes.add_definition(self.current_scope, name, id);
+        self.register_in_scope(name, id);
+    }
+
+    /// Registers a definition in the current scope, checking for duplicates.
+    fn register_in_scope(&mut self, name: String, id: DefId) {
+        if let Some(existing_id) =
+            self.ctx
+                .scopes
+                .add_definition(self.current_scope, name.clone(), id)
+        {
+            // Found a duplicate definition in the same scope
+            let existing = self.ctx.definitions.get(existing_id);
+            let new_def = self.ctx.definitions.get(id);
+            self.errors.push(
+                error_span(
+                    format!("duplicate definition of `{}`", name),
+                    Label::new(new_def.span).message("redefined here"),
+                )
+                .label(Label::new(existing.span).message("first defined here")),
+            );
+        }
     }
 
     /// Resolves struct members.
@@ -584,9 +604,7 @@ impl<'a> Resolver<'a> {
         if !self.name_map.contains_key(&qualified_name) {
             self.name_map.insert(qualified_name, id);
         }
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, decl.ident.name.clone(), id);
+        self.register_in_scope(decl.ident.name.clone(), id);
 
         id
     }
@@ -879,9 +897,7 @@ impl<'a> Resolver<'a> {
 
             field_ids.push(field_id);
             self.name_map.insert(field_qualified_name, field_id);
-            self.ctx
-                .scopes
-                .add_definition(self.current_scope, field.ident.name.clone(), field_id);
+            self.register_in_scope(field.ident.name.clone(), field_id);
         }
 
         // Create the enum definition
@@ -911,9 +927,7 @@ impl<'a> Resolver<'a> {
         }
 
         self.name_map.insert(qualified_name, enum_id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), enum_id);
+        self.register_in_scope(def.ident.name.clone(), enum_id);
 
         enum_id
     }
@@ -1216,9 +1230,7 @@ impl<'a> Resolver<'a> {
         });
 
         self.name_map.insert(qualified_name, id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, ident.name.clone(), id);
+        self.register_in_scope(ident.name.clone(), id);
 
         id
     }

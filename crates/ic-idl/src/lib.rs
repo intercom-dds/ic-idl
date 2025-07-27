@@ -334,6 +334,11 @@ impl Compiler {
     /// # Errors
     ///
     /// Returns an error if compilation fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the built-in annotations file fails to parse. This should never
+    /// happen in practice as the built-in annotations are embedded in the binary.
     pub fn compile_hir(
         &mut self,
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {

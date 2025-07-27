@@ -364,14 +364,8 @@ impl Compiler {
             expansion_info: std::collections::HashMap::new(),
         };
 
-        for (idx, file) in self.options.files.clone().iter().enumerate() {
-            // Only include built-ins with the first file
-            let include_builtins = idx == 0;
-            match self.compile_file_to_hir_without_builtins(
-                file,
-                include_builtins,
-                &builtin_parsed.tree,
-            ) {
+        for file in self.options.files.clone().iter() {
+            match self.compile_file_to_hir_without_builtins(file, true, &builtin_parsed.tree) {
                 Ok((hir, diag)) => {
                     hirs.push(hir);
                     all_diagnostics.warnings.extend(diag.warnings);

@@ -817,3 +817,80 @@ module Outer {
     let type_c_qualified = merged.context.qualified_name(type_c.0);
     assert_eq!(type_c_qualified, "Outer::Another::TypeC");
 }
+
+#[test]
+fn test_merge_preserves_builtin_annotations() {
+    // Test that built-in annotations are available in all merged files
+    // This was a bug where only the first file had access to built-in annotations
+
+    // Create built-in annotations
+    let builtins = r"
+        @annotation optional {
+            boolean value default TRUE;
+        };
+    ";
+
+    // First file using the annotation
+    let input1 = r"
+        struct TypeA {
+            @optional string name;
+        };
+    ";
+
+    // Second file also using the annotation
+    let input2 = r"
+        struct TypeB {
+            @optional long value;
+        };
+    ";
+
+    // Parse and resolve with built-in context
+    let (graph1, _, _) = common::parse_with_custom_builtins(builtins, input1, false);
+    let (graph2, _, _) = common::parse_with_custom_builtins(builtins, input2, false);
+
+    // Both should compile without errors
+    assert_eq!(graph1.errors.len(), 0, "First file should have no errors");
+    assert_eq!(graph2.errors.len(), 0, "Second file should have no errors");
+
+    // Merge the graphs
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no merge errors
+    assert_eq!(merged.errors.len(), 0, "Merge should have no errors");
+
+    // Find both structs
+    let type_a = merged
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "TypeA" && matches!(def.kind, DefKind::Struct(_)))
+        .expect("TypeA should exist");
+
+    let type_b = merged
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "TypeB" && matches!(def.kind, DefKind::Struct(_)))
+        .expect("TypeB should exist");
+
+    // Verify both have members with annotations
+    if let DefKind::Struct(struct_a) = &type_a.1.kind {
+        assert_eq!(struct_a.members.len(), 1);
+        assert!(
+            !struct_a.members[0].annotations.is_empty(),
+            "TypeA member should have annotation"
+        );
+    } else {
+        panic!("TypeA should be a struct");
+    }
+
+    if let DefKind::Struct(struct_b) = &type_b.1.kind {
+        assert_eq!(struct_b.members.len(), 1);
+        assert!(
+            !struct_b.members[0].annotations.is_empty(),
+            "TypeB member should have annotation"
+        );
+    } else {
+        panic!("TypeB should be a struct");
+    }
+}

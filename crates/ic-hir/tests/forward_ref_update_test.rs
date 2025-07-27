@@ -34,7 +34,7 @@ use ic_hir::hir::{DefFlags, DefKind, TyKind};
 /// Test that type references are updated from forward declarations to definitions.
 #[test]
 fn test_forward_declaration_reference_update() {
-    let source = r#"
+    let source = r"
         // Forward declare A
         struct A;
         
@@ -52,11 +52,15 @@ fn test_forward_declaration_reference_update() {
         struct C {
             A field;
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(source);
 
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 
     // Find the definitions
     let mut forward_decl_a = None;
@@ -125,7 +129,7 @@ fn test_forward_declaration_reference_update() {
 /// Test with multiple forward declarations of the same type.
 #[test]
 fn test_multiple_forward_declarations() {
-    let source = r#"
+    let source = r"
         // Multiple forward declarations
         struct X;
         struct X;
@@ -147,11 +151,15 @@ fn test_multiple_forward_declarations() {
         struct Z {
             X field;
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(source);
 
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 
     // Find the definition of X
     let mut definition_x = None;
@@ -168,7 +176,11 @@ fn test_multiple_forward_declarations() {
     }
 
     let definition_x = definition_x.expect("Should have definition of X");
-    assert_eq!(forward_decls_x.len(), 3, "Should have 3 forward declarations of X");
+    assert_eq!(
+        forward_decls_x.len(),
+        3,
+        "Should have 3 forward declarations of X"
+    );
 
     // Find Y and Z
     let mut struct_y = None;
@@ -193,14 +205,13 @@ fn test_multiple_forward_declarations() {
             if let TyKind::Adt(type_id) = &field_ty.kind {
                 assert_eq!(
                     *type_id, definition_x,
-                    "{}'s field should point to X's definition",
-                    name
+                    "{name}'s field should point to X's definition"
                 );
             } else {
-                panic!("Expected ADT type for {}'s field", name);
+                panic!("Expected ADT type for {name}'s field");
             }
         } else {
-            panic!("Expected struct {}", name);
+            panic!("Expected struct {name}");
         }
     }
 }
@@ -208,7 +219,7 @@ fn test_multiple_forward_declarations() {
 /// Test with nested types (arrays, sequences, maps).
 #[test]
 fn test_nested_type_reference_update() {
-    let source = r#"
+    let source = r"
         // Forward declare
         struct Element;
         
@@ -223,11 +234,15 @@ fn test_nested_type_reference_update() {
         struct Element {
             long data;
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(source);
 
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 
     // Find the definition of Element
     let mut definition_element = None;
@@ -258,7 +273,10 @@ fn test_nested_type_reference_update() {
         let array_field = &struct_ty.members[0];
         if let TyKind::Array { ty, .. } = &array_field.ty.kind {
             if let TyKind::Adt(type_id) = &ty.kind {
-                assert_eq!(*type_id, definition_element, "Array element type should point to Element's definition");
+                assert_eq!(
+                    *type_id, definition_element,
+                    "Array element type should point to Element's definition"
+                );
             } else {
                 panic!("Expected ADT type for array element");
             }
@@ -270,7 +288,10 @@ fn test_nested_type_reference_update() {
         let seq_field = &struct_ty.members[1];
         if let TyKind::Sequence { ty, .. } = &seq_field.ty.kind {
             if let TyKind::Adt(type_id) = &ty.kind {
-                assert_eq!(*type_id, definition_element, "Sequence element type should point to Element's definition");
+                assert_eq!(
+                    *type_id, definition_element,
+                    "Sequence element type should point to Element's definition"
+                );
             } else {
                 panic!("Expected ADT type for sequence element");
             }
@@ -282,7 +303,10 @@ fn test_nested_type_reference_update() {
         let map_field = &struct_ty.members[2];
         if let TyKind::Map { elem, .. } = &map_field.ty.kind {
             if let TyKind::Adt(type_id) = &elem.kind {
-                assert_eq!(*type_id, definition_element, "Map value type should point to Element's definition");
+                assert_eq!(
+                    *type_id, definition_element,
+                    "Map value type should point to Element's definition"
+                );
             } else {
                 panic!("Expected ADT type for map value");
             }
@@ -298,7 +322,7 @@ fn test_nested_type_reference_update() {
 /// Note: This behavior is intentional - you cannot inherit from a type that hasn't been defined yet.
 #[test]
 fn test_inheritance_from_forward_declaration_error() {
-    let source = r#"
+    let source = r"
         // Forward declare base
         interface Base;
         
@@ -311,19 +335,26 @@ fn test_inheritance_from_forward_declaration_error() {
         interface Base {
             void base_method();
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(source);
 
     // This should produce an error about inheriting from incomplete type
-    assert!(!result.errors.is_empty(), "Expected error about inheriting from incomplete type");
-    assert!(result.errors[0].to_string().contains("cannot inherit from incomplete type"));
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error about inheriting from incomplete type"
+    );
+    assert!(
+        result.errors[0]
+            .to_string()
+            .contains("cannot inherit from incomplete type")
+    );
 }
 
 /// Test inheritance when base is defined first.
 #[test]
 fn test_inheritance_with_defined_base() {
-    let source = r#"
+    let source = r"
         // Define Base first
         interface Base {
             void base_method();
@@ -333,16 +364,20 @@ fn test_inheritance_with_defined_base() {
         interface Derived : Base {
             void method();
         };
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(source);
 
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 
     // Find Base and Derived
     let mut base = None;
     let mut derived = None;
-    
+
     for (def_id, def) in &result.context.definitions {
         if def.ident.name == "Base" {
             base = Some(def_id);
@@ -358,7 +393,10 @@ fn test_inheritance_with_defined_base() {
     let derived_def = result.context.definitions.get(derived);
     if let DefKind::Interface(interface_ty) = &derived_def.kind {
         assert_eq!(interface_ty.parents.len(), 1);
-        assert_eq!(interface_ty.parents[0], base, "Derived should inherit from Base");
+        assert_eq!(
+            interface_ty.parents[0], base,
+            "Derived should inherit from Base"
+        );
     } else {
         panic!("Expected interface Derived");
     }
@@ -367,7 +405,7 @@ fn test_inheritance_with_defined_base() {
 /// Test that only forward declarations get updated (not actual invalid references).
 #[test]
 fn test_no_update_for_non_forward_declarations() {
-    let source = r#"
+    let source = r"
         // Define A
         struct A {
             long x;
@@ -380,11 +418,15 @@ fn test_no_update_for_non_forward_declarations() {
         
         // Forward declare A again (should not affect B)
         struct A;
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(source);
 
-    assert!(result.errors.is_empty(), "Expected no errors, got: {:?}", result.errors);
+    assert!(
+        result.errors.is_empty(),
+        "Expected no errors, got: {:?}",
+        result.errors
+    );
 
     // Find the definition of A
     let mut definition_a = None;

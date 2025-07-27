@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+module collections {
+
 typedef sequence<string> my_string;
 typedef sequence<string, 10> my_string2;
 typedef sequence<string, 10 * 2> my_string3;
@@ -32,3 +34,5 @@ typedef sequence<string, 10 * 2> my_string3;
 typedef map<string, string> my_map;
 typedef map<string, string, 10> my_map2;
 typedef map<string, string, 10 * 2> my_map3;
+
+};

@@ -667,3 +667,153 @@ module test {
     assert_eq!(decl_count, 1, "Should have 1 forward declaration");
     assert_eq!(struct_count, 1, "Should have 1 struct definition");
 }
+
+#[test]
+fn test_merge_preserves_parent_defid() {
+    // Test that parent DefId relationships are preserved during merge
+    // This was the bug where types lost their parent DefId, causing
+    // unqualified name lookups to fail
+    let mut source_map = SourceMap::default();
+
+    // First file defines a module
+    let input1 = r"
+module TestModule {
+    // Empty module
+};
+";
+
+    // Second file adds to the module
+    let input2 = r"
+module TestModule {
+    struct ChildStruct {
+        long value;
+    };
+};
+";
+
+    let file1 = source_map.embed_with_name("parent.idl", input1);
+    let file2 = source_map.embed_with_name("child.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
+
+    assert_eq!(graph1.errors.len(), 0);
+    assert_eq!(graph2.errors.len(), 0);
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no errors
+    assert_eq!(merged.errors.len(), 0);
+
+    // Find the ChildStruct definition
+    let child_struct = merged
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "ChildStruct" && matches!(def.kind, DefKind::Struct(_)))
+        .expect("ChildStruct should exist");
+
+    // The key test: ChildStruct should have a parent DefId
+    assert!(
+        child_struct.1.parent.is_some(),
+        "ChildStruct should have a parent DefId"
+    );
+
+    // Verify the parent is a TestModule
+    let parent_id = child_struct.1.parent.unwrap();
+    let parent_def = merged.context.definitions.get(parent_id);
+    assert_eq!(parent_def.ident.name, "TestModule");
+    assert!(matches!(parent_def.kind, DefKind::Module(_)));
+
+    // Verify we can get the qualified name (this would panic before the fix)
+    let qualified_name = merged.context.qualified_name(child_struct.0);
+    assert_eq!(qualified_name, "TestModule::ChildStruct");
+}
+
+#[test]
+fn test_merge_complex_parent_relationships() {
+    // Test more complex parent relationships with nested modules
+    let mut source_map = SourceMap::default();
+
+    let input1 = r"
+module Outer {
+    module Inner {
+        struct TypeA {
+            long id;
+        };
+    };
+};
+";
+
+    let input2 = r"
+module Outer {
+    module Inner {
+        struct TypeB {
+            long value;
+        };
+    };
+    
+    module Another {
+        struct TypeC {
+            string name;
+        };
+    };
+};
+";
+
+    let file1 = source_map.embed_with_name("types1.idl", input1);
+    let file2 = source_map.embed_with_name("types2.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
+
+    assert_eq!(graph1.errors.len(), 0);
+    assert_eq!(graph2.errors.len(), 0);
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    // Should have no errors
+    assert_eq!(merged.errors.len(), 0);
+
+    // Find TypeA and verify its parent chain
+    let type_a = merged
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "TypeA" && matches!(def.kind, DefKind::Struct(_)))
+        .expect("TypeA struct should exist");
+
+    assert!(type_a.1.parent.is_some(), "TypeA should have a parent");
+    let type_a_qualified = merged.context.qualified_name(type_a.0);
+    assert_eq!(type_a_qualified, "Outer::Inner::TypeA");
+
+    // Find TypeB and verify its parent chain
+    let type_b = merged
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "TypeB" && matches!(def.kind, DefKind::Struct(_)))
+        .expect("TypeB struct should exist");
+
+    assert!(type_b.1.parent.is_some(), "TypeB should have a parent");
+    let type_b_qualified = merged.context.qualified_name(type_b.0);
+    assert_eq!(type_b_qualified, "Outer::Inner::TypeB");
+
+    // Find TypeC and verify its parent chain
+    let type_c = merged
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "TypeC" && matches!(def.kind, DefKind::Struct(_)))
+        .expect("TypeC struct should exist");
+
+    assert!(type_c.1.parent.is_some(), "TypeC should have a parent");
+    let type_c_qualified = merged.context.qualified_name(type_c.0);
+    assert_eq!(type_c_qualified, "Outer::Another::TypeC");
+}

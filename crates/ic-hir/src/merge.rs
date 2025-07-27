@@ -137,15 +137,46 @@ impl HirMerger {
     }
 
     /// Maps an optional `DefId` from old to new using the graph's `DefId` map
+    /// Also checks previous graphs' mappings since a DefId might come from an earlier file
     fn map_def_id(&self, graph_index: usize, def_id: Option<DefId>) -> Option<DefId> {
-        def_id.and_then(|id| self.def_id_maps[graph_index].get(&id).copied())
+        def_id.and_then(|id| {
+            // First check the current graph's mapping
+            if let Some(&mapped) = self.def_id_maps[graph_index].get(&id) {
+                return Some(mapped);
+            }
+
+            // Then check all previous graphs' mappings
+            // This handles the case where a definition references a type from an earlier file
+            for i in 0..graph_index {
+                if let Some(&mapped) = self.def_id_maps[i].get(&id) {
+                    return Some(mapped);
+                }
+            }
+
+            None
+        })
     }
 
     /// Maps a vector of `DefIds` from old to new, filtering out any that don't exist
     fn map_def_ids(&self, graph_index: usize, def_ids: &[DefId]) -> Vec<DefId> {
         def_ids
             .iter()
-            .filter_map(|&id| self.def_id_maps[graph_index].get(&id).copied())
+            .filter_map(|&id| {
+                // Use the same logic as map_def_id to handle cross-graph references
+                // First check the current graph's mapping
+                if let Some(&mapped) = self.def_id_maps[graph_index].get(&id) {
+                    return Some(mapped);
+                }
+
+                // Then check all previous graphs' mappings
+                for i in 0..graph_index {
+                    if let Some(&mapped) = self.def_id_maps[i].get(&id) {
+                        return Some(mapped);
+                    }
+                }
+
+                None
+            })
             .collect()
     }
 
@@ -295,6 +326,9 @@ impl HirMerger {
         // Second pass: copy all definitions from the arena
         let all_def_ids: Vec<DefId> = graph.context.definitions.iter().map(|(id, _)| id).collect();
 
+        // First, copy all definitions without mapping parents yet
+        let mut parent_fixups: Vec<(DefId, Option<DefId>)> = Vec::new();
+
         for old_def_id in all_def_ids {
             // Find which scope contains this definition
             let old_scope = graph
@@ -303,7 +337,34 @@ impl HirMerger {
                 .find_scope_containing_def(old_def_id)
                 .unwrap_or(graph.context.scopes.root());
 
-            let _ = self.copy_definition(graph_index, &graph.context, old_def_id, old_scope);
+            let new_def_id =
+                self.copy_definition(graph_index, &graph.context, old_def_id, old_scope);
+
+            // Record the original parent for later fixup
+            let old_def = graph.context.definitions.get(old_def_id);
+            if old_def.parent.is_some() {
+                parent_fixups.push((new_def_id, old_def.parent));
+            }
+        }
+
+        // Now fix up all parent relationships
+        for (new_def_id, original_parent) in parent_fixups {
+            if let Some(mapped_parent) = self.map_def_id(graph_index, original_parent) {
+                // Update the child's parent pointer
+                let def = self.new_context.definitions.get_mut(new_def_id);
+                def.parent = Some(mapped_parent);
+
+                // Add the child to the parent's definitions list
+                if let Def {
+                    kind: DefKind::Module(module),
+                    ..
+                } = self.new_context.definitions.get_mut(mapped_parent)
+                {
+                    if !module.definitions.contains(&new_def_id) {
+                        module.definitions.push(new_def_id);
+                    }
+                }
+            }
         }
 
         // Add top-level definitions to order
@@ -509,12 +570,11 @@ impl HirMerger {
             }
         }
 
-        // Create a new definition with mapped parent
-        let mapped_parent = self.map_def_id(graph_index, old_def.parent);
+        // Create a new definition - parent will be set later in the fixup phase
         let new_def_id = self.new_context.definitions.alloc_with_id(|id| Def {
             id,
             ident: old_def.ident.clone(),
-            parent: mapped_parent,                    // Map parent immediately
+            parent: None,                             // Parent will be fixed up later
             annotations: old_def.annotations.clone(), // Will need updating
             span: old_def.span,
             kind: old_def.kind.clone(), // Will need updating
@@ -553,18 +613,7 @@ impl HirMerger {
             }
         }
 
-        // If this definition has a parent, add it to the parent's definitions list
-        if let Some(parent_id) = mapped_parent {
-            if let Def {
-                kind: DefKind::Module(module),
-                ..
-            } = self.new_context.definitions.get_mut(parent_id)
-            {
-                if !module.definitions.contains(&new_def_id) {
-                    module.definitions.push(new_def_id);
-                }
-            }
-        }
+        // Parent relationship will be handled in the fixup phase
 
         // Map the new definition to its scope
         if let Some(&new_scope) = self.scope_id_maps[graph_index].get(&old_scope) {
@@ -704,7 +753,6 @@ impl HirMerger {
             let def = self.new_context.definitions.get(new_def_id);
 
             (
-                self.map_def_id(graph_index, def.parent),
                 def.annotations
                     .iter()
                     .map(|ann| self.update_annotation(graph_index, ann))
@@ -715,9 +763,8 @@ impl HirMerger {
 
         // Apply all updates at once
         let def_mut = self.new_context.definitions.get_mut(new_def_id);
-        def_mut.parent = updated_data.0;
-        def_mut.annotations = updated_data.1;
-        def_mut.kind = updated_data.2;
+        def_mut.annotations = updated_data.0;
+        def_mut.kind = updated_data.1;
     }
 
     fn update_def_kind(&self, graph_index: usize, kind: &DefKind) -> DefKind {
@@ -825,10 +872,24 @@ impl HirMerger {
     fn update_type(&self, graph_index: usize, ty: &Ty) -> Ty {
         let kind = match &ty.kind {
             TyKind::Adt(def_id) => {
+                // Check current graph first
                 if let Some(&new_id) = self.def_id_maps[graph_index].get(def_id) {
                     TyKind::Adt(new_id)
                 } else {
-                    TyKind::Adt(*def_id)
+                    // Check previous graphs
+                    let mut found = None;
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(def_id) {
+                            found = Some(new_id);
+                            break;
+                        }
+                    }
+                    if let Some(new_id) = found {
+                        TyKind::Adt(new_id)
+                    } else {
+                        eprintln!("WARNING: Unmapped DefId in TyKind::Adt: {:?}", def_id);
+                        TyKind::Adt(*def_id)
+                    }
                 }
             }
             TyKind::Array { ty, len, len_span } => TyKind::Array {
@@ -971,17 +1032,33 @@ impl HirMerger {
     fn update_numeric(&self, graph_index: usize, num: &Numeric) -> Numeric {
         match num {
             Numeric::Const(def_id) => {
+                // Check current graph first
                 if let Some(&new_id) = self.def_id_maps[graph_index].get(def_id) {
                     Numeric::Const(new_id)
                 } else {
+                    // Check previous graphs
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(def_id) {
+                            return Numeric::Const(new_id);
+                        }
+                    }
                     num.clone()
                 }
             }
             Numeric::Array { ty, values } => {
+                // Map the type DefId, checking all graphs
                 let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
                     new_id
                 } else {
-                    *ty
+                    // Check previous graphs
+                    let mut found = None;
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
+                            found = Some(new_id);
+                            break;
+                        }
+                    }
+                    found.unwrap_or(*ty)
                 };
                 Numeric::Array {
                     ty: new_ty,
@@ -992,10 +1069,19 @@ impl HirMerger {
                 }
             }
             Numeric::Sequence { ty, values } => {
+                // Map the type DefId, checking all graphs
                 let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
                     new_id
                 } else {
-                    *ty
+                    // Check previous graphs
+                    let mut found = None;
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
+                            found = Some(new_id);
+                            break;
+                        }
+                    }
+                    found.unwrap_or(*ty)
                 };
                 Numeric::Sequence {
                     ty: new_ty,
@@ -1006,10 +1092,19 @@ impl HirMerger {
                 }
             }
             Numeric::Map { ty, values } => {
+                // Map the type DefId, checking all graphs
                 let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
                     new_id
                 } else {
-                    *ty
+                    // Check previous graphs
+                    let mut found = None;
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
+                            found = Some(new_id);
+                            break;
+                        }
+                    }
+                    found.unwrap_or(*ty)
                 };
                 Numeric::Map {
                     ty: new_ty,
@@ -1025,10 +1120,19 @@ impl HirMerger {
                 }
             }
             Numeric::Struct { ty, fields } => {
+                // Map the type DefId, checking all graphs
                 let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
                     new_id
                 } else {
-                    *ty
+                    // Check previous graphs
+                    let mut found = None;
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
+                            found = Some(new_id);
+                            break;
+                        }
+                    }
+                    found.unwrap_or(*ty)
                 };
                 Numeric::Struct {
                     ty: new_ty,
@@ -1066,7 +1170,15 @@ impl HirMerger {
             def_id: if let Some(&new_id) = self.def_id_maps[graph_index].get(&ann.def_id) {
                 new_id
             } else {
-                ann.def_id
+                // Check previous graphs
+                let mut found = None;
+                for i in 0..graph_index {
+                    if let Some(&new_id) = self.def_id_maps[i].get(&ann.def_id) {
+                        found = Some(new_id);
+                        break;
+                    }
+                }
+                found.unwrap_or(ann.def_id)
             },
             args: ann
                 .args

@@ -190,14 +190,12 @@ fn emit_ann_param(context: &Context, param: &ic_hir::hir::AnnParam) -> Leaf<Stri
         "param".green().bold(),
         param.ident.name.cyan(),
     );
+    member.push(leaf!("{} {ty}", "type".purple()));
 
     if let Some(ref default) = param.default {
         let default_str = emit_numeric(default);
         member.push(leaf!("{} {}", "default".purple(), default_str.yellow()));
     }
-
-    member.push(ty);
-
     member
 }
 

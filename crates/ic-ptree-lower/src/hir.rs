@@ -113,7 +113,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_map(self.state, key, elem, bound)
             }
             TyKind::Adt(id) => self.lookup_node(*id),
-            TyKind::Null => ptr::null_mut(), // Null type has no ptree representation
+            TyKind::Null => ptr::null_mut(),
         }
     }
 
@@ -164,6 +164,13 @@ impl<'a> TreeBuilder<'a> {
             let value = self.lower_numeric(&label.value);
             sys::create_case_label(self.state, value)
         });
+
+        let cases = if var.is_default {
+            let default = sys::create_default_case(self.state);
+            sys::append_node(cases, default)
+        } else {
+            cases
+        };
 
         // Check if this is a null case
         if matches!(var.ty.kind, TyKind::Null) {
@@ -460,7 +467,6 @@ unsafe fn collect_with<T, N>(
     list
 }
 
-// TODO: need to lower built-in annotations...
 pub unsafe fn lower(hir: &ResolvedGraph, vfs: &SourceMap) -> ParseResult {
     let state = sys::ic_parser_create();
 

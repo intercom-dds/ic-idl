@@ -535,13 +535,35 @@ impl<'a> Resolver<'a> {
             // Found a duplicate definition in the same scope
             let existing = self.ctx.definitions.get(existing_id);
             let new_def = self.ctx.definitions.get(id);
-            self.errors.push(
-                error_span(
-                    format!("duplicate definition of `{}`", name),
-                    Label::new(new_def.span).message("redefined here"),
-                )
-                .label(Label::new(existing.span).message("first defined here")),
-            );
+
+            // Check if both are forward declarations - if so, it's allowed
+            let both_forward_decls = matches!(existing.kind, DefKind::Decl(_))
+                && matches!(new_def.kind, DefKind::Decl(_));
+
+            // Check if one is a forward declaration and the other is a definition of the same type
+            let forward_and_definition = match (&existing.kind, &new_def.kind) {
+                (DefKind::Decl(decl_type), other) | (other, DefKind::Decl(decl_type)) => {
+                    match (decl_type, other) {
+                        (Decl::Struct, DefKind::Struct(_)) => true,
+                        (Decl::Union, DefKind::Union(_)) => true,
+                        (Decl::Interface, DefKind::Interface(_)) => true,
+                        (Decl::Valuetype, DefKind::Struct(_)) => true, // Valuetypes are structs
+                        _ => false,
+                    }
+                }
+                _ => false,
+            };
+
+            // Only report an error if it's not allowed
+            if !both_forward_decls && !forward_and_definition {
+                self.errors.push(
+                    error_span(
+                        format!("duplicate definition of `{}`", name),
+                        Label::new(new_def.span).message("redefined here"),
+                    )
+                    .label(Label::new(existing.span).message("first defined here")),
+                );
+            }
         }
     }
 

@@ -1,10 +1,11 @@
 ---
 source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
+assertion_line: 37
 expression: diagnostics
 ---
-error: constant `value`: integer value cannot be assigned to type string
+error: constant `myValue`: integer value cannot be assigned to type string
    ┌ test.idl:2:9
    │
- 2 │         const string value = 123;
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected type string
+ 2 │         const string myValue = 123;
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type string
    └──

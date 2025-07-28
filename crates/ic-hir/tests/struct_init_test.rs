@@ -172,30 +172,34 @@ fn test_struct_init_positional() {
 #[test]
 fn test_struct_init_with_null() {
     let input = r"
-        struct Optional {
+        struct MyOptional {
             string<16> name;
-            int32 value;
+            int32 myValue;
         };
         
-        const Optional EMPTY = { name= null, value= 42 };
+        const MyOptional MY_EMPTY = { name= null, myValue= 42 };
     ";
 
     let (result, _, _) = common::parse_and_resolve(input);
-    assert!(result.errors.is_empty());
+    assert!(
+        result.errors.is_empty(),
+        "Unexpected errors: {:?}",
+        result.errors
+    );
 
     let empty = result
         .context
         .definitions
         .iter()
-        .find(|(_, def)| def.ident.name == "EMPTY")
-        .expect("EMPTY constant not found");
+        .find(|(_, def)| def.ident.name == "MY_EMPTY")
+        .expect("MY_EMPTY constant not found");
 
     match &empty.1.kind {
         DefKind::Const(const_ty) => match &const_ty.value {
             Numeric::Struct { fields, .. } => {
                 assert_eq!(fields.len(), 2);
                 assert_eq!(fields[0].0.name, "name");
-                assert_eq!(fields[1].0.name, "value");
+                assert_eq!(fields[1].0.name, "myValue");
 
                 match &fields[0].1 {
                     Numeric::Null => {}
@@ -203,7 +207,7 @@ fn test_struct_init_with_null() {
                 }
                 match &fields[1].1 {
                     Numeric::Int32(42) => {}
-                    _ => panic!("Expected 42 for value field"),
+                    _ => panic!("Expected 42 for myValue field"),
                 }
             }
             _ => panic!("Expected struct initialization"),

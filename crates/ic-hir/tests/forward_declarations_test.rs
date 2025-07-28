@@ -56,8 +56,8 @@ fn test_struct_forward_declaration() {
 #[test]
 fn test_interface_forward_declaration() {
     let input = r"
-        interface Service;
-        interface Service {
+        interface IMyService;
+        interface IMyService {
             void method();
         };
     ";

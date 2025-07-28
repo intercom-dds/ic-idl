@@ -32,7 +32,7 @@ use ic_hir::hir::{DefKind, Numeric};
 #[test]
 fn test_string_literal_assigned_to_string() {
     let input = r#"
-        const string value = "hello world";
+        const string myStrValue = "hello world";
     "#;
 
     let result = common::parse_and_resolve_successfully(input);
@@ -53,7 +53,7 @@ fn test_string_literal_assigned_to_string() {
 #[test]
 fn test_wide_string_literal_assigned_to_wstring() {
     let input = r#"
-        const wstring value = "wide string";
+        const wstring myWStrValue = "wide string";
     "#;
 
     let result = common::parse_and_resolve_successfully(input);
@@ -74,7 +74,7 @@ fn test_wide_string_literal_assigned_to_wstring() {
 #[test]
 fn test_string_literal_with_escapes() {
     let input = r#"
-        const string value = "hello\nworld\ttab";
+        const string myEscValue = "hello\nworld\ttab";
     "#;
 
     let result = common::parse_and_resolve_successfully(input);

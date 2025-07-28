@@ -30,7 +30,7 @@ mod common;
 #[test]
 fn test_int_literal_assigned_to_string() {
     let input = r"
-        const string value = 123;
+        const string myValue = 123;
     ";
 
     let diagnostics = common::parse_and_expect_errors(input);
@@ -40,7 +40,7 @@ fn test_int_literal_assigned_to_string() {
 #[test]
 fn test_string_literal_assigned_to_int() {
     let input = r#"
-        const int32 value = "hello";
+        const int32 myValue = "hello";
     "#;
 
     let diagnostics = common::parse_and_expect_errors(input);
@@ -50,7 +50,7 @@ fn test_string_literal_assigned_to_int() {
 #[test]
 fn test_float_literal_assigned_to_string() {
     let input = r"
-        const string value = 3.14;
+        const string myValue = 3.14;
     ";
 
     let diagnostics = common::parse_and_expect_errors(input);
@@ -60,7 +60,7 @@ fn test_float_literal_assigned_to_string() {
 #[test]
 fn test_bool_literal_assigned_to_string() {
     let input = r"
-        const string value = TRUE;
+        const string myValue = TRUE;
     ";
 
     let diagnostics = common::parse_and_expect_errors(input);

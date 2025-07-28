@@ -1,10 +1,11 @@
 ---
 source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
+assertion_line: 67
 expression: diagnostics
 ---
-error: constant `value`: boolean value cannot be assigned to type string
+error: constant `myValue`: boolean value cannot be assigned to type string
    ┌ test.idl:2:9
    │
- 2 │         const string value = TRUE;
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type string
+ 2 │         const string myValue = TRUE;
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type string
    └──

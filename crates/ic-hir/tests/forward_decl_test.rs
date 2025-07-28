@@ -164,8 +164,8 @@ fn test_interface_forward_declaration() {
 #[test]
 fn test_valuetype_forward_declaration() {
     let input = r"
-        valuetype Value;
-        valuetype Value {
+        valuetype MyValueType;
+        valuetype MyValueType {
             public int32 x;
         };
     ";

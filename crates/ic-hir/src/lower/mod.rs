@@ -53,6 +53,8 @@ use crate::Context;
 use crate::hir::{DefId, TypeId};
 
 mod builtin;
+mod definition_builder;
+mod definition_registry;
 mod evaluate;
 mod resolve;
 mod typecheck;

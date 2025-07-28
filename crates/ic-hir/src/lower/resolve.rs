@@ -36,6 +36,8 @@ use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_syntax::{Ident, Item, Path};
 
 use super::convert_annotation_value;
+use super::definition_builder::DefBuilder;
+use super::definition_registry::DefinitionRegistry;
 use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnParam, AnnotationTy, Attribute, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
@@ -124,6 +126,17 @@ impl<'a> Resolver<'a> {
             path.push(name.to_string());
             path.join("::")
         }
+    }
+
+    /// Creates a definition registry for the current scope.
+    fn registry(&mut self) -> DefinitionRegistry<'_> {
+        DefinitionRegistry::new(
+            self.ctx,
+            &mut self.name_map,
+            self.current_scope,
+            &self.scope_path,
+            &mut self.errors,
+        )
     }
 
     /// Resolves annotations from AST and returns only those that could be resolved.
@@ -663,21 +676,14 @@ impl<'a> Resolver<'a> {
             ic_syntax::DeclKind::Valuetype => Decl::Valuetype,
         });
 
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
+        let parent = self.get_current_parent();
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: decl.ident.clone(),
-            parent,
-            annotations: Vec::new(),
-            span: decl.span,
-            kind,
-            flags: DefFlags::IS_INCOMPLETE, // Forward declarations are incomplete until defined
+        let id = self.ctx.definitions.alloc_with_id(|id| {
+            DefBuilder::new(id, decl.ident.clone(), decl.span)
+                .parent(parent)
+                .kind(kind)
+                .incomplete()
+                .build()
         });
 
         // DON'T update name map for forward declarations - we want to keep all of them
@@ -708,21 +714,19 @@ impl<'a> Resolver<'a> {
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
         // Create placeholder struct so it can be referenced by its own members
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Struct(StructTy {
-                parent: parent_id,
-                members: Vec::new(), // Placeholder - will be updated
-            }),
-            flags: DefFlags::default(),
+        let id = self.ctx.definitions.alloc_with_id(|id| {
+            DefBuilder::new(id, def.ident.clone(), def.span)
+                .parent(parent)
+                .annotations(annotations)
+                .kind(DefKind::Struct(StructTy {
+                    parent: parent_id,
+                    members: Vec::new(), // Placeholder - will be updated
+                }))
+                .build()
         });
 
         // Register struct before resolving members
-        self.register_definition(qualified_name, def.ident.name.clone(), id);
+        self.registry().register(&def.ident.name, id);
 
         // Resolve members
         let members = self.resolve_struct_members(&def.members);
@@ -941,17 +945,11 @@ impl<'a> Resolver<'a> {
 
     /// Processes an enum definition.
     fn process_enum(&mut self, def: &ic_syntax::EnumDef) -> DefId {
-        let qualified_name = self.qualified_name(&def.ident.name);
 
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
+        let parent = self.get_current_parent();
 
         // Create constants for each enumerator
         let mut field_ids = Vec::new();
@@ -960,20 +958,18 @@ impl<'a> Resolver<'a> {
             let field_annotations = self.resolve_ast_annotations(&field.annotations);
 
             // Create a constant definition for this enumerator
-            let field_id = self.ctx.definitions.alloc_with_id(|id| Def {
-                id,
-                ident: field.ident.clone(),
-                parent: Some(id), // Will be fixed below
-                annotations: field_annotations,
-                span: field.ident.span,
-                kind: DefKind::Const(ConstTy {
-                    value: Numeric::Int32(0), // Will be filled in evaluation phase
-                    ty: Ty {
-                        kind: TyKind::Adt(id), // Will be fixed below to point to the enum
-                        span: field.ident.span,
-                    },
-                }),
-                flags: DefFlags::default(),
+            let field_id = self.ctx.definitions.alloc_with_id(|id| {
+                DefBuilder::new(id, field.ident.clone(), field.ident.span)
+                    .parent(Some(id)) // Will be fixed below
+                    .annotations(field_annotations)
+                    .kind(DefKind::Const(ConstTy {
+                        value: Numeric::Int32(0), // Will be filled in evaluation phase
+                        ty: Ty {
+                            kind: TyKind::Adt(id), // Will be fixed below to point to the enum
+                            span: field.ident.span,
+                        },
+                    }))
+                    .build()
             });
 
             field_ids.push(field_id);
@@ -982,20 +978,18 @@ impl<'a> Resolver<'a> {
         }
 
         // Create the enum definition
-        let enum_id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Enum(EnumTy {
-                fields: field_ids.clone(),
-                ty: Ty {
-                    kind: TyKind::Primitive(PrimitiveTy::Int32), // Default to int32
-                    span: def.span,
-                },
-            }),
-            flags: DefFlags::default(),
+        let enum_id = self.ctx.definitions.alloc_with_id(|id| {
+            DefBuilder::new(id, def.ident.clone(), def.span)
+                .parent(parent)
+                .annotations(annotations)
+                .kind(DefKind::Enum(EnumTy {
+                    fields: field_ids.clone(),
+                    ty: Ty {
+                        kind: TyKind::Primitive(PrimitiveTy::Int32), // Default to int32
+                        span: def.span,
+                    },
+                }))
+                .build()
         });
 
         // Fix the parent references and type references for the enumerator constants
@@ -1007,8 +1001,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.name_map.insert(qualified_name, enum_id);
-        self.register_in_scope(def.ident.name.clone(), enum_id);
+        self.registry().register(&def.ident.name, enum_id);
 
         enum_id
     }
@@ -1859,6 +1852,7 @@ impl<'a> Resolver<'a> {
         (self.order, self.errors, self.warnings)
     }
 }
+
 
 /// Resolves a declarator into (name, type).
 fn resolve_declarator(decl: &ic_syntax::Declarator, base_ty: Ty) -> (Ident, Ty) {

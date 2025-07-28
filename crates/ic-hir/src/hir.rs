@@ -155,6 +155,33 @@ pub enum DefKind {
     Decl(Decl),
 }
 
+impl DefKind {
+    /// Returns a human-readable name for the definition kind.
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            DefKind::Annotation(_) => "annotation",
+            DefKind::Module(_) => "module",
+            DefKind::Struct(_) => "struct",
+            DefKind::Except(_) => "exception",
+            DefKind::Union(_) => "union",
+            DefKind::Enum(_) => "enum",
+            DefKind::Const(_) => "const",
+            DefKind::Bitmask(_) => "bitmask",
+            DefKind::Bitset(_) => "bitset",
+            DefKind::Alias(_) => "typedef",
+            DefKind::Interface(_) => "interface",
+            DefKind::Valuetype(_) => "valuetype",
+            DefKind::Decl(decl) => match decl {
+                Decl::Struct => "struct forward declaration",
+                Decl::Union => "union forward declaration",
+                Decl::Native => "native",
+                Decl::Interface => "interface forward declaration",
+                Decl::Valuetype => "valuetype forward declaration",
+            },
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Decl {
     Struct,

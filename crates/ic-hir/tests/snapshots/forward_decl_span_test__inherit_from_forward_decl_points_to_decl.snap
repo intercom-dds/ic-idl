@@ -6,7 +6,7 @@ error: struct `A` cannot inherit from incomplete type `B`
    ┌ test.idl:4:9
    │
  4 │         struct A : B {};
-   ·         ^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^ inherits from incomplete type here
  3 │         struct B;
-   ·                ^ forward declaration here, but no definition found
+   ·                ^ parent type is only forward declared
    └──

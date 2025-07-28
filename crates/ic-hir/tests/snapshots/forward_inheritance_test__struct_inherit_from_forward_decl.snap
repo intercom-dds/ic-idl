@@ -6,11 +6,11 @@ error: struct `Derived` cannot inherit from incomplete type `Base`
    ┌ test.idl:4:9
    │
  4 │         struct Derived : Base {  // Should fail - inheriting from incomplete type
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  5 │             int32 value;
    · 
  6 │         };
    · ^^^^^^^^^^
  2 │         struct Base;  // Forward declaration
-   ·                ^^^^ forward declaration here, but no definition found
+   ·                ^^^^ parent type is only forward declared
    └──

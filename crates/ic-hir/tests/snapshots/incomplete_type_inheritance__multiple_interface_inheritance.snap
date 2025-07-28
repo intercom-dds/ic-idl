@@ -6,23 +6,23 @@ error: interface `A` cannot inherit from incomplete type `B`
    ┌ test.idl:6:9
    │
  6 │         interface A : B, C {
-   ·         ^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  7 │             void methodA();
    · 
  8 │         };
    · ^^^^^^^^^^
  3 │         interface B;
-   ·                   ^ forward declaration here, but no definition found
+   ·                   ^ parent type is only forward declared
    └──
 error: interface `A` cannot inherit from incomplete type `C`
    ┌ test.idl:6:9
    │
  6 │         interface A : B, C {
-   ·         ^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  7 │             void methodA();
    · 
  8 │         };
    · ^^^^^^^^^^
  4 │         interface C;
-   ·                   ^ forward declaration here, but no definition found
+   ·                   ^ parent type is only forward declared
    └──

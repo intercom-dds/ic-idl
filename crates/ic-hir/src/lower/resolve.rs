@@ -38,6 +38,8 @@ use ic_syntax::{Ident, Item, Path};
 use super::convert_annotation_value;
 use super::definition_builder::DefBuilder;
 use super::definition_registry::DefinitionRegistry;
+use super::member_builder::{MemberBuilder, MemberResolver};
+use super::parent_validator::ParentValidator;
 use crate::Context;
 use crate::hir::{
     AliasTy, Ann, AnnParam, AnnotationTy, Attribute, ConstTy, Decl, Def, DefFlags, DefId, DefKind,
@@ -461,76 +463,6 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Checks for duplicate struct definition.
-    fn check_duplicate_struct(&mut self, qualified_name: &str, def: &ic_syntax::StructDef) {
-        if let Some(existing_id) = self.name_map.get(qualified_name).copied() {
-            let existing = self.ctx.definitions.get(existing_id);
-            if matches!(existing.kind, DefKind::Struct(_)) {
-                self.errors.push(
-                    error_span(
-                        format!("duplicate definition of `{}`", def.ident.name),
-                        Label::new(def.ident.span).message("redefined here"),
-                    )
-                    .label(Label::new(existing.ident.span).message("first defined here")),
-                );
-            }
-        }
-    }
-
-    /// Resolves struct parent and validates inheritance.
-    fn resolve_struct_parent(&mut self, def: &ic_syntax::StructDef) -> Option<DefId> {
-        let parent_path = def.parent.as_ref()?;
-
-        if let Some(parent_id) = self.resolve_path(parent_path) {
-            self.validate_struct_parent(parent_id, def)
-        } else {
-            self.errors.push(error_span(
-                format!(
-                    "struct `{}` inherits from type that is not defined",
-                    def.ident.name
-                ),
-                Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
-            ));
-            None
-        }
-    }
-
-    /// Validates that a parent is a valid struct for inheritance.
-    fn validate_struct_parent(
-        &mut self,
-        parent_id: DefId,
-        def: &ic_syntax::StructDef,
-    ) -> Option<DefId> {
-        let parent_def = self.ctx.definitions.get(parent_id);
-
-        if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
-            self.errors.push(
-                error_span(
-                    format!(
-                        "struct `{}` cannot inherit from incomplete type `{}`",
-                        def.ident.name, parent_def.ident.name
-                    ),
-                    Label::new(def.span).message("invalid inheritance"),
-                )
-                .label(
-                    Label::new(parent_def.ident.span)
-                        .message("forward declaration here, but no definition found"),
-                ),
-            );
-            None
-        } else if matches!(&parent_def.kind, DefKind::Struct(_)) {
-            Some(parent_id)
-        } else {
-            self.errors.push(error_span(
-                format!(
-                    "struct `{}` cannot inherit from non-struct type `{}`",
-                    def.ident.name, parent_def.ident.name
-                ),
-                Label::new(def.span).message("invalid inheritance"),
-            ));
-            None
-        }
-    }
 
     /// Registers a definition in the name map and current scope.
     fn register_definition(&mut self, qualified_name: String, name: String, id: DefId) {
@@ -640,25 +572,6 @@ impl<'a> Resolver<'a> {
     }
 
     /// Resolves struct members.
-    fn resolve_struct_members(&mut self, fields: &[ic_syntax::Field]) -> Vec<Member> {
-        let mut members = Vec::new();
-
-        for field in fields {
-            let base_ty = self.resolve_type(&field.ty);
-            let field_annotations = self.resolve_ast_annotations(&field.annotations);
-
-            for decl in &field.names {
-                let (ident, ty) = resolve_declarator(decl, base_ty.clone());
-                members.push(Member {
-                    ident,
-                    ty,
-                    annotations: field_annotations.clone(),
-                });
-            }
-        }
-
-        members
-    }
 
     /// Processes a forward declaration.
     fn process_forward_declaration(&mut self, decl: &ic_syntax::Decl) -> DefId {
@@ -679,11 +592,12 @@ impl<'a> Resolver<'a> {
         let parent = self.get_current_parent();
 
         let id = self.ctx.definitions.alloc_with_id(|id| {
-            DefBuilder::new(id, decl.ident.clone(), decl.span)
+            DefBuilder::new(decl.ident.clone())
+                .span(decl.span)
                 .parent(parent)
                 .kind(kind)
                 .incomplete()
-                .build()
+                .build_with_id(id)
         });
 
         // DON'T update name map for forward declarations - we want to keep all of them
@@ -697,15 +611,30 @@ impl<'a> Resolver<'a> {
     }
 
     /// Processes a struct definition.
-    #[allow(clippy::too_many_lines)]
     fn process_struct(&mut self, def: &ic_syntax::StructDef) -> DefId {
-        let qualified_name = self.qualified_name(&def.ident.name);
-
         // Check for duplicate definition
-        self.check_duplicate_struct(&qualified_name, def);
+        let qualified_name = self.qualified_name(&def.ident.name);
+        if let Some(existing_id) = self.name_map.get(&qualified_name).copied() {
+            let existing = self.ctx.definitions.get(existing_id);
+            if matches!(existing.kind, DefKind::Struct(_)) {
+                let mut registry = self.registry();
+                registry.report_duplicate("struct", "struct", def.ident.span, existing_id);
+            }
+        }
 
         // Resolve parent if any
-        let parent_id = self.resolve_struct_parent(def);
+        let parent_id = if let Some(parent_path) = &def.parent {
+            if let Some(parent_id) = self.resolve_path(parent_path) {
+                let mut validator = ParentValidator::new(self.ctx, &mut self.errors);
+                validator.validate_struct_parent(parent_id, &def.ident.name, def.span)
+            } else {
+                let mut validator = ParentValidator::new(self.ctx, &mut self.errors);
+                validator.report_undefined_parent("struct", &def.ident.name, parent_path);
+                None
+            }
+        } else {
+            None
+        };
 
         // Get parent for scope
         let parent = self.get_current_parent();
@@ -713,23 +642,28 @@ impl<'a> Resolver<'a> {
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // Create placeholder struct so it can be referenced by its own members
-        let id = self.ctx.definitions.alloc_with_id(|id| {
-            DefBuilder::new(id, def.ident.clone(), def.span)
-                .parent(parent)
-                .annotations(annotations)
-                .kind(DefKind::Struct(StructTy {
-                    parent: parent_id,
-                    members: Vec::new(), // Placeholder - will be updated
-                }))
-                .build()
-        });
+        // Create struct using registry and builder
+        let mut registry = DefinitionRegistry::new(
+            self.ctx,
+            &mut self.name_map,
+            self.current_scope,
+            &self.scope_path,
+            &mut self.errors,
+        );
 
-        // Register struct before resolving members
-        self.registry().register(&def.ident.name, id);
+        let builder = DefBuilder::new(def.ident.clone())
+            .parent(parent)
+            .annotations(annotations)
+            .span(def.span)
+            .kind(DefKind::Struct(StructTy {
+                parent: parent_id,
+                members: Vec::new(), // Placeholder - will be updated
+            }));
 
-        // Resolve members
-        let members = self.resolve_struct_members(&def.members);
+        let id = registry.register_and_build(builder);
+
+        // Resolve members using MemberBuilder
+        let members = MemberBuilder::new(self).build_members(&def.members);
 
         // Update struct with resolved members
         let def = self.ctx.definitions.get_mut(id);
@@ -742,62 +676,20 @@ impl<'a> Resolver<'a> {
 
     /// Resolves interface parents and validates inheritance.
     fn resolve_interface_parents(&mut self, def: &ic_syntax::InterfaceDef) -> Vec<DefId> {
-        let mut parents = Vec::new();
+        let mut parent_ids = Vec::new();
 
         for parent_path in &def.inherits {
             if let Some(parent_id) = self.resolve_path(parent_path) {
-                if let Some(valid_parent) = self.validate_interface_parent(parent_id, def) {
-                    parents.push(valid_parent);
-                }
+                parent_ids.push(parent_id);
             } else {
-                self.errors.push(error_span(
-                    format!(
-                        "interface `{}` inherits from type that is not defined",
-                        def.ident.name
-                    ),
-                    Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
-                ));
+                let mut validator = ParentValidator::new(self.ctx, &mut self.errors);
+                validator.report_undefined_parent("interface", &def.ident.name, parent_path);
             }
         }
 
-        parents
-    }
-
-    /// Validates that a parent is a valid interface for inheritance.
-    fn validate_interface_parent(
-        &mut self,
-        parent_id: DefId,
-        def: &ic_syntax::InterfaceDef,
-    ) -> Option<DefId> {
-        let parent_def = self.ctx.definitions.get(parent_id);
-
-        if parent_def.flags.contains(DefFlags::IS_INCOMPLETE) {
-            self.errors.push(
-                error_span(
-                    format!(
-                        "interface `{}` cannot inherit from incomplete type `{}`",
-                        def.ident.name, parent_def.ident.name
-                    ),
-                    Label::new(def.span).message("invalid inheritance"),
-                )
-                .label(
-                    Label::new(parent_def.ident.span)
-                        .message("forward declaration here, but no definition found"),
-                ),
-            );
-            None
-        } else if matches!(&parent_def.kind, DefKind::Interface(_)) {
-            Some(parent_id)
-        } else {
-            self.errors.push(error_span(
-                format!(
-                    "interface `{}` cannot inherit from non-interface type `{}`",
-                    def.ident.name, parent_def.ident.name
-                ),
-                Label::new(def.span).message("invalid inheritance"),
-            ));
-            None
-        }
+        // Validate all parents
+        let mut validator = ParentValidator::new(self.ctx, &mut self.errors);
+        validator.validate_interface_parents(&parent_ids, &def.ident.name, def.span)
     }
 
     /// Processes interface members and returns child IDs, prototypes, and attributes.
@@ -959,7 +851,8 @@ impl<'a> Resolver<'a> {
 
             // Create a constant definition for this enumerator
             let field_id = self.ctx.definitions.alloc_with_id(|id| {
-                DefBuilder::new(id, field.ident.clone(), field.ident.span)
+                DefBuilder::new(field.ident.clone())
+                    .span(field.ident.span)
                     .parent(Some(id)) // Will be fixed below
                     .annotations(field_annotations)
                     .kind(DefKind::Const(ConstTy {
@@ -969,7 +862,7 @@ impl<'a> Resolver<'a> {
                             span: field.ident.span,
                         },
                     }))
-                    .build()
+                    .build_with_id(id)
             });
 
             field_ids.push(field_id);
@@ -979,7 +872,8 @@ impl<'a> Resolver<'a> {
 
         // Create the enum definition
         let enum_id = self.ctx.definitions.alloc_with_id(|id| {
-            DefBuilder::new(id, def.ident.clone(), def.span)
+            DefBuilder::new(def.ident.clone())
+                .span(def.span)
                 .parent(parent)
                 .annotations(annotations)
                 .kind(DefKind::Enum(EnumTy {
@@ -989,7 +883,7 @@ impl<'a> Resolver<'a> {
                         span: def.span,
                     },
                 }))
-                .build()
+                .build_with_id(id)
         });
 
         // Fix the parent references and type references for the enumerator constants
@@ -1050,11 +944,6 @@ impl<'a> Resolver<'a> {
 
     /// Processes a union definition.
     fn process_union(&mut self, def: &ic_syntax::UnionDef) -> DefId {
-        let qualified_name = self.qualified_name(&def.ident.name);
-
-        // Resolve annotations
-        let annotations = self.resolve_ast_annotations(&def.annotations);
-
         // Resolve discriminator type
         let disc_ty = self.resolve_type(&def.disc.ty);
 
@@ -1113,32 +1002,29 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
+        // Resolve other needed values before creating registry
+        let parent = self.get_current_parent();
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Union(UnionTy {
+        // Create union using registry and builder
+        let mut registry = DefinitionRegistry::new(
+            self.ctx,
+            &mut self.name_map,
+            self.current_scope,
+            &self.scope_path,
+            &mut self.errors,
+        );
+
+        let builder = DefBuilder::new(def.ident.clone())
+            .parent(parent)
+            .annotations(annotations)
+            .span(def.span)
+            .kind(DefKind::Union(UnionTy {
                 disc: disc_ty,
                 variants,
-            }),
-            flags: DefFlags::default(),
-        });
+            }));
 
-        self.name_map.insert(qualified_name, id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), id);
-
-        id
+        registry.register_and_build(builder)
     }
 
     /// Processes an annotation definition.
@@ -1227,11 +1113,6 @@ impl<'a> Resolver<'a> {
 
     /// Processes an exception definition.
     fn process_exception(&mut self, def: &ic_syntax::ExceptDef) -> DefId {
-        let qualified_name = self.qualified_name(&def.ident.name);
-
-        // Resolve annotations
-        let annotations = self.resolve_ast_annotations(&def.annotations);
-
         // Process members
         let mut members = Vec::new();
         for field in &def.members {
@@ -1247,29 +1128,26 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let parent = if self.scope_path.is_empty() {
-            None
-        } else {
-            let parent_name = self.scope_path.join("::");
-            self.name_map.get(&parent_name).copied()
-        };
+        // Resolve other needed values before creating registry
+        let parent = self.get_current_parent();
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Except(ExceptTy { members }),
-            flags: DefFlags::default(),
-        });
+        // Create exception using registry and builder
+        let mut registry = DefinitionRegistry::new(
+            self.ctx,
+            &mut self.name_map,
+            self.current_scope,
+            &self.scope_path,
+            &mut self.errors,
+        );
 
-        self.name_map.insert(qualified_name, id);
-        self.ctx
-            .scopes
-            .add_definition(self.current_scope, def.ident.name.clone(), id);
+        let builder = DefBuilder::new(def.ident.clone())
+            .parent(parent)
+            .annotations(annotations)
+            .span(def.span)
+            .kind(DefKind::Except(ExceptTy { members }));
 
-        id
+        registry.register_and_build(builder)
     }
 
     /// Processes a constant definition.
@@ -1644,29 +1522,32 @@ impl<'a> Resolver<'a> {
     /// Processes an interface definition.
     #[allow(clippy::too_many_lines)]
     fn process_interface(&mut self, def: &ic_syntax::InterfaceDef) -> DefId {
-        let qualified_name = self.qualified_name(&def.ident.name);
-        let annotations = self.resolve_ast_annotations(&def.annotations);
+        // Resolve needed values before creating registry
         let parent = self.get_current_parent();
+        let annotations = self.resolve_ast_annotations(&def.annotations);
 
-        // Create interface with empty collections
-        let id = self.ctx.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: def.ident.clone(),
-            parent,
-            annotations,
-            span: def.span,
-            kind: DefKind::Interface(InterfaceTy {
+        // Create interface using registry and builder
+        let mut registry = DefinitionRegistry::new(
+            self.ctx,
+            &mut self.name_map,
+            self.current_scope,
+            &self.scope_path,
+            &mut self.errors,
+        );
+
+        let builder = DefBuilder::new(def.ident.clone())
+            .parent(parent)
+            .annotations(annotations)
+            .span(def.span)
+            .kind(DefKind::Interface(InterfaceTy {
                 parents: Vec::new(),
                 prototypes: Vec::new(),
                 attributes: Vec::new(),
                 definitions: Vec::new(),
                 is_local: false, // TODO: Determine from annotations
-            }),
-            flags: DefFlags::default(),
-        });
+            }));
 
-        // Register before resolving inheritance
-        self.register_definition(qualified_name, def.ident.name.clone(), id);
+        let id = registry.register_and_build(builder);
 
         // Resolve parents after interface is registered
         let parents = self.resolve_interface_parents(def);
@@ -1850,6 +1731,16 @@ impl<'a> Resolver<'a> {
         }
 
         (self.order, self.errors, self.warnings)
+    }
+}
+
+impl<'a> MemberResolver for Resolver<'a> {
+    fn resolve_type(&mut self, ty: &ic_syntax::Type) -> Ty {
+        self.resolve_type(ty)
+    }
+
+    fn resolve_annotations(&mut self, annotations: &[ic_syntax::AnnotationAppl]) -> Vec<Ann> {
+        self.resolve_ast_annotations(annotations)
     }
 }
 

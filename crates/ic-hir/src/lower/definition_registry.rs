@@ -28,11 +28,13 @@
 //! Common functionality for registering and managing definitions during resolution.
 
 use ic_alloc::insensitive::CaseMap;
+use ic_alloc::arena::Id;
 use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
 use crate::hir::{Decl, DefId, DefKind};
 use crate::scope::ScopeId;
+use crate::lower::definition_builder::DefBuilder;
 
 /// Helper for registering definitions and checking for duplicates.
 pub struct DefinitionRegistry<'a> {
@@ -192,6 +194,33 @@ impl<'a> DefinitionRegistry<'a> {
             )
             .label(Label::new(existing.span).message(format!("{} first defined here", kind))),
         );
+    }
+    
+    /// Registers a definition builder and builds it with the allocated ID.
+    pub fn register_and_build(&mut self, builder: DefBuilder) -> DefId {
+        // Build a temporary definition to extract the ident
+        let temp_def = builder.build_with_id(Id::_do_not_use());
+        let ident = temp_def.ident.clone();
+        let qualified_name = self.qualified_name(&ident.name);
+        
+        // Rebuild the builder with the same parameters
+        let builder = DefBuilder::new(ident.clone())
+            .parent(temp_def.parent)
+            .annotations(temp_def.annotations)
+            .span(temp_def.span)
+            .kind(temp_def.kind)
+            .flags(temp_def.flags);
+        
+        // Allocate the definition
+        let id = self.ctx.definitions.alloc_with_id(|id| builder.build_with_id(id));
+        
+        // Register in name map
+        self.name_map.insert(qualified_name, id);
+        
+        // Register in scope
+        self.ctx.scopes.add_definition(self.current_scope, ident.name, id);
+        
+        id
     }
 }
 

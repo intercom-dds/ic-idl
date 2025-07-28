@@ -6,11 +6,11 @@ error: interface `IDerived` cannot inherit from incomplete type `IBase`
    ┌ test.idl:3:9
    │
  3 │         interface IDerived : IBase {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  4 │             void method();
    · 
  5 │         };
    · ^^^^^^^^^^
  2 │         interface IBase;
-   ·                   ^^^^^ forward declaration here, but no definition found
+   ·                   ^^^^^ parent type is only forward declared
    └──

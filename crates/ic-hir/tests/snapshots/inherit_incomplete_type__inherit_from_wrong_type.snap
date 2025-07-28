@@ -1,15 +1,16 @@
 ---
 source: crates/ic-hir/tests/inherit_incomplete_type.rs
-assertion_line: 84
 expression: diagnostics
 ---
-error: struct `MyStruct` cannot inherit from non-struct type `Color`
+error: struct `MyStruct` inherits from non-struct type `Color`
    ┌ test.idl:3:9
    │
  3 │         struct MyStruct : Color {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^ inherits here
  4 │             long field;
    · 
  5 │         };
    · ^^^^^^^^^^
+ 2 │         enum Color { RED, GREEN, BLUE };
+   ·              ^^^^^ enum defined here
    └──

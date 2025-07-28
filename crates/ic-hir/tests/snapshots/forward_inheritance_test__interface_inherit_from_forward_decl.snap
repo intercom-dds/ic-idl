@@ -6,11 +6,11 @@ error: interface `Derived` cannot inherit from incomplete type `Base`
    ┌ test.idl:4:9
    │
  4 │         interface Derived : Base {  // Should fail - inheriting from incomplete type
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  5 │             void method();
    · 
  6 │         };
    · ^^^^^^^^^^
  2 │         interface Base;  // Forward declaration
-   ·                   ^^^^ forward declaration here, but no definition found
+   ·                   ^^^^ parent type is only forward declared
    └──

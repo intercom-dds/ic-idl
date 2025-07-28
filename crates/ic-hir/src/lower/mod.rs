@@ -56,6 +56,8 @@ mod builtin;
 mod definition_builder;
 mod definition_registry;
 mod evaluate;
+mod member_builder;
+mod parent_validator;
 mod resolve;
 mod typecheck;
 mod update_refs;

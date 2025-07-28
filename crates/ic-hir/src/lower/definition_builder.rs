@@ -27,6 +27,7 @@
 
 //! Builder pattern for creating HIR definitions.
 
+use ic_alloc::arena::Id;
 use ic_syntax::{Ident, Span};
 
 use crate::hir::{Ann, Def, DefFlags, DefId, DefKind};
@@ -44,16 +45,22 @@ pub struct DefBuilder {
 
 impl DefBuilder {
     /// Creates a new definition builder.
-    pub fn new(id: DefId, ident: Ident, span: Span) -> Self {
+    pub fn new(ident: Ident) -> Self {
         Self {
-            id,
+            id: Id::_do_not_use(), // Will be set by registry
             ident,
             parent: None,
             annotations: Vec::new(),
-            span,
+            span: Span::default(),
             kind: None,
             flags: DefFlags::default(),
         }
+    }
+    
+    /// Sets the span.
+    pub fn span(mut self, span: Span) -> Self {
+        self.span = span;
+        self
     }
 
     /// Sets the parent definition ID.
@@ -112,5 +119,11 @@ impl DefBuilder {
             kind: self.kind.expect("Definition kind must be set"),
             flags: self.flags,
         }
+    }
+    
+    /// Builds the definition with a specific ID.
+    pub fn build_with_id(mut self, id: DefId) -> Def {
+        self.id = id;
+        self.build()
     }
 }

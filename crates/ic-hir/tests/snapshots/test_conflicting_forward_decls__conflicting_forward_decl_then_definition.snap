@@ -10,14 +10,6 @@ error: `Foo` forward declared as both struct and union
  2 │         struct Foo;
    ·         ^^^^^^^^^^^ first forward declared as struct here
    └──
-error: duplicate definition of `Foo`
-   ┌ test.idl:4:9
-   │
- 4 │         struct Foo {};
-   ·         ^^^^^^^^^^^^^^ redefined here
- 3 │         union Foo;
-   ·         ^^^^^^^^^^ first defined here
-   └──
 error: forward declaration of `Foo` as union conflicts with struct definition
    ┌ test.idl:3:9
    │

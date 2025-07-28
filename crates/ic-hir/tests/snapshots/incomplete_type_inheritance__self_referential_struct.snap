@@ -6,11 +6,11 @@ error: struct `SelfRef` cannot inherit from incomplete type `SelfRef`
    ┌ test.idl:4:9
    │
  4 │         struct SelfRef : SelfRef {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  5 │             long value;
    · 
  6 │         };
    · ^^^^^^^^^^
  2 │         struct SelfRef;
-   ·                ^^^^^^^ forward declaration here, but no definition found
+   ·                ^^^^^^^ parent type is only forward declared
    └──

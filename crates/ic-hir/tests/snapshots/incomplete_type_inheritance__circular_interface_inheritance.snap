@@ -6,11 +6,11 @@ error: interface `Foo` cannot inherit from incomplete type `Bar`
    ┌ test.idl:5:9
    │
  5 │         interface Foo : Bar {
-   ·         ^^^^^^^^^^^^^^^^^^^^^ invalid inheritance
+   ·         ^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
  6 │             void method1();
    · 
  7 │         };
    · ^^^^^^^^^^
  3 │         interface Bar;
-   ·                   ^^^ forward declaration here, but no definition found
+   ·                   ^^^ parent type is only forward declared
    └──

@@ -27,15 +27,17 @@
 
 //! Processing for value items: constants, enums, bitmasks.
 
-use ic_syntax::{BitmaskDef, ConstDef, EnumDef};
+use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
 
 // use super::utils::literal_to_numeric; // not used here; evaluation handled by ConstEvaluator
 use super::LoweringContext;
 use super::eval::ConstEvaluator;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
+use super::utils::TyExt;
 use crate::hir::{
-    BitFlag, BitmaskTy, ConstTy, Def, DefFlags, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
+    AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
+    DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
 use crate::scope::ScopeId;
 
@@ -339,6 +341,210 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
         // Record as a top-level type
         self.ctx.order.push(bitmask_id);
+    }
+
+    /// Process a bitset definition.
+    pub fn process_bitset(&mut self, b: &BitsetDef) {
+        // Resolve parent bitset if present
+        let parent = if let Some(ref parent_path) = b.parent {
+            let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+            resolver.resolve_path_type(parent_path).and_then(|ty| {
+                if let Some(parent_id) = ty.as_adt() {
+                    Some(parent_id)
+                } else {
+                    self.ctx.diagnostics.error(
+                        "parent must be a bitset type".to_string(),
+                        ic_diagnostic::Label::new(super::utils::path_span(parent_path))
+                            .message("expected bitset type"),
+                    );
+                    None
+                }
+            })
+        } else {
+            None
+        };
+
+        // Process bitset fields
+        let mut fields = Vec::new();
+        for field in &b.fields {
+            // Evaluate the size expression
+            let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
+            let size = match evaluator.eval_nonneg_bound(&field.size) {
+                Some(size) => size,
+                None => {
+                    self.ctx.diagnostics.error(
+                        "bitfield size must be a non-negative constant expression".to_string(),
+                        ic_diagnostic::Label::new(field.size.span())
+                            .message("expected constant expression"),
+                    );
+                    continue;
+                }
+            };
+
+            // Resolve the type if present, otherwise default to appropriate unsigned type
+            let ty = if let Some(ref field_ty) = field.ty {
+                let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+                match resolver.resolve_type(field_ty) {
+                    Some(ty) => ty,
+                    None => continue, // Error already reported
+                }
+            } else {
+                // Default type based on size
+                let prim_ty = if size <= 8 {
+                    PrimitiveTy::UInt8
+                } else if size <= 16 {
+                    PrimitiveTy::UInt16
+                } else if size <= 32 {
+                    PrimitiveTy::UInt32
+                } else {
+                    PrimitiveTy::UInt64
+                };
+                Ty {
+                    span: field.ident.span,
+                    kind: TyKind::Primitive(prim_ty),
+                }
+            };
+
+            fields.push(BitsetField {
+                ident: field.ident.clone(),
+                size,
+                ty,
+                annotations: Vec::new(), // TODO: Convert annotations
+            });
+        }
+
+        // Create the bitset definition
+        let bitset_ty = BitsetTy { parent, fields };
+
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: b.ident.clone(),
+            parent: None,
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: b.ident.span,
+            kind: DefKind::Bitset(bitset_ty),
+            flags: DefFlags::nil(),
+        });
+
+        // Bitsets are not forward-declarable, just register in the scope
+        self.ctx
+            .context
+            .scopes
+            .add_definition(self.current_scope, b.ident.name.clone(), def_id);
+
+        // Record as a top-level type
+        self.ctx.order.push(def_id);
+    }
+
+    /// Process an annotation definition.
+    pub fn process_annotation(&mut self, a: &AnnotationDef) {
+        // Create scope for the annotation
+        let scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            a.ident.name.clone(),
+            None,
+        );
+
+        // Process annotation parameters and nested types
+        let mut params = Vec::new();
+        let types;
+
+        for field in &a.params {
+            match field {
+                ic_syntax::AnnotationField::Member(member) => {
+                    // Process annotation parameter
+                    let ident = ic_syntax::Ident {
+                        name: ic_syntax::util::decl_name(&member.decl).to_string(),
+                        span: ic_syntax::util::decl_span(&member.decl),
+                    };
+
+                    // Resolve the parameter type
+                    let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+                    let ty = match resolver.resolve_type(&member.ty) {
+                        Some(ty) => ty,
+                        None => continue, // Error already reported
+                    };
+
+                    // Evaluate default value if present
+                    let default = if let Some(ref default_expr) = member.default {
+                        let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
+                        evaluator.eval_numeric(default_expr)
+                    } else {
+                        None
+                    };
+
+                    params.push(AnnParam { ident, ty, default });
+                }
+                ic_syntax::AnnotationField::Item(item) => {
+                    // Process nested type definition
+                    // Create a new HirBuilder to process this nested item
+                    let mut builder = super::builder::HirBuilder::new(self.ctx);
+
+                    // Save current scope and switch to annotation scope
+                    let prev_scope = builder.current_scope;
+                    builder.current_scope = scope;
+
+                    // Process the nested item
+                    builder.process_item(item);
+
+                    // Restore previous scope
+                    builder.current_scope = prev_scope;
+
+                    // Note: The nested type's DefId will be added to the annotation's scope
+                    // and we'll collect it when we query the scope
+                }
+            }
+        }
+
+        // Collect all definitions from the annotation scope
+        {
+            let scope_def = self.ctx.context.scopes.get_scope(scope);
+            types = scope_def
+                .definitions
+                .values()
+                .cloned()
+                .collect();
+        }
+
+        // Create the annotation definition
+        let annotation_ty = AnnotationTy { params, types };
+
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: a.ident.clone(),
+            parent: None,
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: a.ident.span,
+            kind: DefKind::Annotation(annotation_ty),
+            flags: DefFlags::nil(),
+        });
+
+        // Update the scope's def_id
+        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+
+        // Register with the registry
+        if self
+            .ctx
+            .registry
+            .register_definition(
+                self.current_scope,
+                &a.ident,
+                DefKindTag::Annotation,
+                def_id,
+                &mut self.ctx.diagnostics,
+            )
+            .is_some()
+        {
+            // Register in scope only if registry registration succeeded
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                a.ident.name.clone(),
+                def_id,
+            );
+
+            // Record as a top-level type
+            self.ctx.order.push(def_id);
+        }
     }
 
     // No local evaluators; constants are evaluated via ConstEvaluator

@@ -27,15 +27,15 @@
 
 //! Processing for type items: struct, union, interface, valuetype, native.
 
-use ic_syntax::{InterfaceDef, StructDef, UnionDef, ValuetypeDef};
+use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
 
 use super::LoweringContext;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::hir::{
-    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, Member, StructTy, Ty, TyKind, UnionTy,
-    ValueTy, Variant,
+    AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Member,
+    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 
@@ -139,9 +139,45 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None,
         );
 
-        // TODO: Process interface members (operations, attributes)
-        let prototypes = Vec::new();
-        let attributes = Vec::new();
+        // Process interface members
+        let mut prototypes = Vec::new();
+        let mut attributes = Vec::new();
+        let definitions;
+
+        // Save current scope and switch to interface scope
+        let prev_scope = self.current_scope;
+        self.current_scope = scope;
+
+        for member in &i.members {
+            match member {
+                ic_syntax::InterfaceMember::Proto(proto) => {
+                    prototypes.push(self.process_prototype(proto));
+                }
+                ic_syntax::InterfaceMember::Attr(attr) => {
+                    attributes.extend(self.process_attributes(attr));
+                }
+                ic_syntax::InterfaceMember::Item(item) => {
+                    // Process nested type definition
+                    let mut builder = super::builder::HirBuilder::new(self.ctx);
+                    builder.current_scope = scope;
+                    builder.process_item(item);
+
+                    // Collect the DefId - it will be added to the scope
+                    // We'll gather all definitions from the scope later
+                }
+            }
+        }
+
+        // Restore previous scope
+        self.current_scope = prev_scope;
+
+        // Collect all definitions from the interface scope
+        let scope_def = self.ctx.context.scopes.get_scope(scope);
+        definitions = scope_def
+            .definitions
+            .values()
+            .cloned()
+            .collect();
 
         // Create the complete interface definition
         let interface_ty = InterfaceTy {
@@ -149,8 +185,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             prototypes,
             attributes,
             is_local: i.local.is_some(),
-            // TODO: process members
-            definitions: vec![],
+            definitions,
         };
 
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -266,27 +301,88 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None
         };
 
-        // TODO: Process supports interface
+        // Process supports interface
         let supports = if let Some(ref supports_type) = v.supports {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            resolver
-                .resolve_path_type(supports_type)
-                .and_then(|ty| ty.as_adt())
+            resolver.resolve_path_type(supports_type).and_then(|ty| {
+                if let Some(supports_id) = ty.as_adt() {
+                    // Verify it's an interface type
+                    let def = self.ctx.context.definitions.get(supports_id);
+                    if matches!(&def.kind, DefKind::Interface(_)) {
+                        Some(supports_id)
+                    } else {
+                        self.ctx.diagnostics.error(
+                            "supports must be an interface type".to_string(),
+                            ic_diagnostic::Label::new(super::utils::path_span(supports_type))
+                                .message("expected interface type"),
+                        );
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
         } else {
             None
         };
 
-        // TODO: Process valuetype elements properly
-        let members = Vec::new();
+        // Create scope for valuetype members
+        let scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            v.ident.name.clone(),
+            None,
+        );
+
+        // Process valuetype elements
+        let mut members = Vec::new();
+        let mut prototypes = Vec::new();
+        let mut attributes = Vec::new();
+        let definitions;
+
+        // Save current scope and switch to valuetype scope
+        let prev_scope = self.current_scope;
+        self.current_scope = scope;
+
+        for element in &v.elements {
+            match element {
+                ic_syntax::ValueElement::State(member) => {
+                    // Process state members (fields)
+                    members.extend(self.process_value_members(member));
+                }
+                ic_syntax::ValueElement::Proto(proto) => {
+                    prototypes.push(self.process_prototype(proto));
+                }
+                ic_syntax::ValueElement::Attr(attr) => {
+                    attributes.extend(self.process_attributes(attr));
+                }
+                ic_syntax::ValueElement::Item(item) => {
+                    // Process nested type definition
+                    let mut builder = super::builder::HirBuilder::new(self.ctx);
+                    builder.current_scope = scope;
+                    builder.process_item(item);
+                }
+            }
+        }
+
+        // Restore previous scope
+        self.current_scope = prev_scope;
+
+        // Collect all definitions from the valuetype scope
+        let scope_def = self.ctx.context.scopes.get_scope(scope);
+        definitions = scope_def
+            .definitions
+            .values()
+            .cloned()
+            .collect();
 
         // Create the complete valuetype definition
         let value_ty = ValueTy {
             parent,
             supports,
             members,
-            prototypes: Vec::new(),  // TODO: implement valuetype prototypes
-            attributes: Vec::new(),  // TODO: implement valuetype attributes
-            definitions: Vec::new(), // TODO: implement valuetype definitions
+            prototypes,
+            attributes,
+            definitions,
         };
 
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -482,5 +578,213 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         }
 
         variants
+    }
+
+    /// Process a prototype (interface method).
+    fn process_prototype(&mut self, proto: &ic_syntax::Prototype) -> ProtoTy {
+        // Resolve return type
+        let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+        let ty = resolver.resolve_type(&proto.ret).unwrap_or_else(|| {
+            // Default to void on error
+            Ty {
+                span: ic_syntax::util::ty_span(&proto.ret),
+                kind: TyKind::Null,
+            }
+        });
+
+        // Process parameters
+        let params = proto
+            .params
+            .iter()
+            .map(|param| {
+                let ident = ic_syntax::Ident {
+                    name: ic_syntax::util::decl_name(&param.decl).to_string(),
+                    span: ic_syntax::util::decl_span(&param.decl),
+                };
+
+                let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+                let param_ty = resolver.resolve_type(&param.ty).unwrap_or_else(|| {
+                    // Default type on error
+                    Ty {
+                        span: ic_syntax::util::ty_span(&param.ty),
+                        kind: TyKind::Primitive(PrimitiveTy::Int32),
+                    }
+                });
+
+                Parameter {
+                    ident,
+                    ty: param_ty,
+                    kind: param.kind.unwrap_or(ic_syntax::ParamKind::In),
+                }
+            })
+            .collect();
+
+        ProtoTy {
+            ident: proto.ident.clone(),
+            ty,
+            params,
+        }
+    }
+
+    /// Process attributes (can have multiple declarators).
+    fn process_attributes(&mut self, attr: &ic_syntax::Attribute) -> Vec<Attribute> {
+        let mut attributes = Vec::new();
+
+        // Resolve the attribute type
+        let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+        let ty = match resolver.resolve_type(&attr.ty) {
+            Some(ty) => ty,
+            None => return attributes, // Error already reported
+        };
+
+        // Process raises clauses (for exceptions)
+        let getraises = self.resolve_exception_paths(&attr.getraises);
+        let setraises = self.resolve_exception_paths(&attr.setraises);
+
+        // Process each declarator
+        for decl in &attr.decl {
+            let ident = ic_syntax::Ident {
+                name: ic_syntax::util::decl_name(decl).to_string(),
+                span: ic_syntax::util::decl_span(decl),
+            };
+
+            attributes.push(Attribute {
+                ident,
+                ty: ty.clone(),
+                is_readonly: attr.readonly.is_some(),
+                getraises: getraises.clone(),
+                setraises: setraises.clone(),
+            });
+        }
+
+        attributes
+    }
+
+    /// Resolve exception paths to DefIds.
+    fn resolve_exception_paths(&mut self, paths: &[ic_syntax::Path]) -> Vec<DefId> {
+        paths
+            .iter()
+            .filter_map(|path| {
+                let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+                resolver.resolve_path_type(path).and_then(|ty| {
+                    if let Some(def_id) = ty.as_adt() {
+                        // Verify it's an exception type
+                        let def = self.ctx.context.definitions.get(def_id);
+                        if matches!(&def.kind, DefKind::Except(_)) {
+                            Some(def_id)
+                        } else {
+                            self.ctx.diagnostics.error(
+                                "expected exception type".to_string(),
+                                ic_diagnostic::Label::new(super::utils::path_span(path))
+                                    .message("must be an exception"),
+                            );
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect()
+    }
+
+    /// Process a type alias definition.
+    pub fn process_alias(&mut self, a: &AliasDef) {
+        // Type aliases can have multiple declarators, process each one
+        for decl in &a.decl {
+            let ident = ic_syntax::Ident {
+                name: ic_syntax::util::decl_name(decl).to_string(),
+                span: ic_syntax::util::decl_span(decl),
+            };
+
+            // Resolve the aliased type
+            let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+            let ty = match resolver.resolve_type(&a.ty) {
+                Some(ty) => ty,
+                None => continue, // Error already reported
+            };
+
+            // Create the alias definition
+            let alias_ty = AliasTy { ty };
+
+            let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+                id,
+                ident: ident.clone(),
+                parent: None,
+                annotations: Vec::new(), // TODO: Convert annotations
+                span: ic_syntax::util::decl_span(decl),
+                kind: DefKind::Alias(alias_ty),
+                flags: DefFlags::nil(),
+            });
+
+            // Type aliases don't use the registry (they're not forward-declarable)
+            // Just register in the scope
+            self.ctx
+                .context
+                .scopes
+                .add_definition(self.current_scope, ident.name.clone(), def_id);
+
+            // Record as a top-level type
+            self.ctx.order.push(def_id);
+        }
+    }
+
+    /// Process an exception definition.
+    pub fn process_exception(&mut self, e: &ExceptDef) {
+        // Process exception members (similar to struct members)
+        let (_scope, members) = self.process_members(&e.members);
+
+        // Create the exception definition
+        let except_ty = ExceptTy { members };
+
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: e.ident.clone(),
+            parent: None,
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: e.ident.span,
+            kind: DefKind::Except(except_ty),
+            flags: DefFlags::nil(),
+        });
+
+        // Exceptions are not forward-declarable, just register in the scope
+        self.ctx
+            .context
+            .scopes
+            .add_definition(self.current_scope, e.ident.name.clone(), def_id);
+
+        // Record as a top-level type
+        self.ctx.order.push(def_id);
+    }
+
+    /// Process valuetype state members.
+    fn process_value_members(&mut self, members: &ic_syntax::ValueMember) -> Vec<Member> {
+        let mut result = Vec::new();
+
+        // Process visibility (public/private)
+        let _is_public = members.is_public;
+
+        // Resolve the type
+        let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+        let ty = match resolver.resolve_type(&members.ty) {
+            Some(ty) => ty,
+            None => return result, // Error already reported
+        };
+
+        // Process each declarator
+        for decl in &members.decl {
+            let ident = ic_syntax::Ident {
+                name: ic_syntax::util::decl_name(decl).to_string(),
+                span: ic_syntax::util::decl_span(decl),
+            };
+
+            result.push(Member {
+                ident: ident.clone(),
+                ty: ty.clone(),
+                annotations: Vec::new(), // TODO: Convert annotations
+            });
+        }
+
+        result
     }
 }

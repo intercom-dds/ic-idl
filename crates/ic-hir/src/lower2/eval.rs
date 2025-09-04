@@ -30,8 +30,6 @@
 //! focuses on numeric arithmetic/bitwise semantics needed for IDL
 //! constants, enum values, bitmask bits, and bounds.
 
-use std::collections::HashSet;
-
 use ic_diagnostic::Label;
 
 use super::LoweringContext;
@@ -126,7 +124,8 @@ fn rank_ord(r: IntRank) -> u32 {
     }
 }
 
-const INT_RANK: IntRank = IntRank::I32; // IDL long
+// IDL long
+const INT_RANK: IntRank = IntRank::I32;
 
 fn int_min_max(r: IntRank) -> (i128, i128) {
     let bits = rank_bits(r);
@@ -145,14 +144,23 @@ fn can_int_represent_all(r: IntRank, int_r: IntRank) -> bool {
     min >= imin && max <= imax
 }
 
+/// Integer promotions (C standard 6.3.1.1)
+///
+/// Values of types smaller than int are promoted when used in expressions:
+/// - If int (Int32) can represent all values of the original type, promote to int
+/// - Otherwise, promote to unsigned int (UInt32)
+/// - Types already int-sized or larger are unchanged
 fn promote_integer(r: IntRank) -> IntRank {
     if rank_bits(r) < rank_bits(INT_RANK) {
         if can_int_represent_all(r, INT_RANK) {
+            // int8/uint8/int16 → int32
             INT_RANK
         } else {
+            // uint16 → uint32 (when int32 can't hold all values)
             IntRank::U32
         }
     } else {
+        // Already int-sized or larger
         r
     }
 }
@@ -166,48 +174,65 @@ fn unsigned_of_rank(rank_ord_val: u32) -> IntRank {
     }
 }
 
-fn usual_int_conv(a: IntRank, b: IntRank) -> IntRank {
-    let ap = promote_integer(a);
-    let bp = promote_integer(b);
-    if ap == bp {
-        return ap;
+/// Usual arithmetic conversions (C standard 6.3.1.8)
+///
+/// When two operands have different types, they are converted to a common type:
+/// 1. If both operands have the same type after promotion, no further conversion
+/// 2. If both are signed or both unsigned, the smaller rank converts to larger
+/// 3. If the unsigned operand has rank >= signed operand, signed converts to unsigned
+/// 4. If the signed type can represent all values of the unsigned type, unsigned converts to signed
+/// 5. Otherwise, both convert to the unsigned type corresponding to the signed type's rank
+fn usual_int_conv(lhs: IntRank, rhs: IntRank) -> IntRank {
+    let lhs_prom = promote_integer(lhs);
+    let rhs_prom = promote_integer(rhs);
+    if lhs_prom == rhs_prom {
+        return lhs_prom;
     }
-    let asgn = is_signed(ap);
-    let bsgn = is_signed(bp);
-    let ar = rank_ord(ap);
-    let br = rank_ord(bp);
-    match (asgn, bsgn) {
+
+    let a_rank = rank_ord(lhs_prom);
+    let b_rank = rank_ord(rhs_prom);
+    match (is_signed(lhs_prom), is_signed(rhs_prom)) {
+        // Both signed or both unsigned: use the larger rank
         (true, true) | (false, false) => {
-            if ar >= br {
-                ap
+            if a_rank >= b_rank {
+                lhs_prom
             } else {
-                bp
+                rhs_prom
             }
         }
+        // Mixed signedness: follow C rules
         (true, false) => {
-            if ar > br {
-                if can_int_represent_all(bp, ap) {
-                    ap
+            if a_rank > b_rank {
+                if can_int_represent_all(rhs_prom, lhs_prom) {
+                    // Signed can represent all unsigned values
+                    lhs_prom
                 } else {
-                    unsigned_of_rank(ar)
+                    // Convert to unsigned of signed's rank
+                    unsigned_of_rank(a_rank)
                 }
-            } else if ar < br {
-                bp
+            } else if a_rank < b_rank {
+                // Unsigned has higher rank
+                rhs_prom
             } else {
-                unsigned_of_rank(ar)
+                // Same rank: use unsigned
+                unsigned_of_rank(a_rank)
             }
         }
         (false, true) => {
-            if br > ar {
-                if can_int_represent_all(ap, bp) {
-                    bp
+            if b_rank > a_rank {
+                if can_int_represent_all(lhs_prom, rhs_prom) {
+                    // Signed can represent all unsigned values
+                    rhs_prom
                 } else {
-                    unsigned_of_rank(br)
+                    // Convert to unsigned of signed's rank
+                    unsigned_of_rank(b_rank)
                 }
-            } else if br < ar {
-                ap
+            } else if b_rank < a_rank {
+                // Unsigned has higher rank
+                lhs_prom
             } else {
-                unsigned_of_rank(ar)
+                // Same rank: use unsigned
+                unsigned_of_rank(a_rank)
             }
         }
     }
@@ -215,7 +240,7 @@ fn usual_int_conv(a: IntRank, b: IntRank) -> IntRank {
 
 #[derive(Clone, Copy, Debug)]
 enum TyTag {
-    Int(IntRank, /*signed*/ bool),
+    Int(IntRank, bool),
     Float(FloatRank),
 }
 
@@ -422,36 +447,33 @@ fn bit_xor(a: Value, b: Value) -> Result<Value, EvalError> {
     }
 }
 
+/// Validate and convert shift amount to u32
+fn validate_shift_amount(shift: i128, signed: bool, rank: IntRank) -> Result<u32, EvalError> {
+    if signed && shift < 0 {
+        return Err(EvalError::ShiftOutOfRange);
+    }
+    let s = shift as u32;
+    if s >= rank_bits(rank) {
+        return Err(EvalError::ShiftOutOfRange);
+    }
+    Ok(s)
+}
+
 fn shl(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(x, r), Value::Int(shift, _)) => {
-            if shift < 0 {
-                return Err(EvalError::ShiftOutOfRange);
-            }
-            let s = shift as u32;
-            if s >= rank_bits(r) {
-                return Err(EvalError::ShiftOutOfRange);
-            }
+            let s = validate_shift_amount(shift, true, r)?;
             match x.checked_shl(s) {
                 Some(v) => Ok(Value::Int(v, r)),
                 None => signed_overflow(Value::Int(x.wrapping_shl(s), r)),
             }
         }
         (Value::UInt(x, r), Value::Int(shift, _)) => {
-            if shift < 0 {
-                return Err(EvalError::ShiftOutOfRange);
-            }
-            let s = shift as u32;
-            if s >= rank_bits(r) {
-                return Err(EvalError::ShiftOutOfRange);
-            }
+            let s = validate_shift_amount(shift, true, r)?;
             Ok(Value::UInt(x.wrapping_shl(s), r))
         }
         (Value::UInt(x, r), Value::UInt(shift, _)) => {
-            let s = shift as u32;
-            if s >= rank_bits(r) {
-                return Err(EvalError::ShiftOutOfRange);
-            }
+            let s = validate_shift_amount(shift as i128, false, r)?;
             Ok(Value::UInt(x.wrapping_shl(s), r))
         }
         _ => Err(EvalError::TypeMismatch),
@@ -461,30 +483,15 @@ fn shl(a: Value, b: Value) -> Result<Value, EvalError> {
 fn shr(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(x, r), Value::Int(shift, _)) => {
-            if shift < 0 {
-                return Err(EvalError::ShiftOutOfRange);
-            }
-            let s = shift as u32;
-            if s >= rank_bits(r) {
-                return Err(EvalError::ShiftOutOfRange);
-            }
+            let s = validate_shift_amount(shift, true, r)?;
             Ok(Value::Int(x >> s, r))
         }
         (Value::UInt(x, r), Value::Int(shift, _)) => {
-            if shift < 0 {
-                return Err(EvalError::ShiftOutOfRange);
-            }
-            let s = shift as u32;
-            if s >= rank_bits(r) {
-                return Err(EvalError::ShiftOutOfRange);
-            }
+            let s = validate_shift_amount(shift, true, r)?;
             Ok(Value::UInt(x >> s, r))
         }
         (Value::UInt(x, r), Value::UInt(shift, _)) => {
-            let s = shift as u32;
-            if s >= rank_bits(r) {
-                return Err(EvalError::ShiftOutOfRange);
-            }
+            let s = validate_shift_amount(shift as i128, false, r)?;
             Ok(Value::UInt(x >> s, r))
         }
         _ => Err(EvalError::TypeMismatch),
@@ -696,7 +703,7 @@ fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, EvalError> {
         }
         (A::Not, Value::Int(i, r)) => Ok(Value::Int(!i, r)),
         (A::Not, Value::UInt(u, r)) => Ok(Value::UInt(!u, r)),
-        (A::Add, v) => Ok(v), // unary plus
+        (A::Add, v) => Ok(v),
         _ => Err(EvalError::TypeMismatch),
     }
 }

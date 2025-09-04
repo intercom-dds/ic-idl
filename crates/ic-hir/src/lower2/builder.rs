@@ -32,16 +32,17 @@ use ic_syntax::Item;
 use super::LoweringContext;
 use super::type_items::TypeItemProcessor;
 use super::value_items::ValueItemProcessor;
+use crate::hir::DefId;
 use crate::scope::ScopeId;
 
 /// Main HIR builder that orchestrates the lowering process.
 pub struct HirBuilder<'ctx> {
     ctx: &'ctx mut LoweringContext,
-    current_scope: ScopeId,
+    pub(super) current_scope: ScopeId,
 }
 
 impl<'ctx> HirBuilder<'ctx> {
-    pub fn new(ctx: &'ctx mut LoweringContext) -> Self {
+    pub(super) fn new(ctx: &'ctx mut LoweringContext) -> Self {
         let root_scope = ctx.scopes.root();
         Self {
             ctx,
@@ -57,7 +58,7 @@ impl<'ctx> HirBuilder<'ctx> {
     }
 
     /// Process a single AST item.
-    fn process_item(&mut self, item: &Item) {
+    pub(super) fn process_item(&mut self, item: &Item) {
         match item {
             Item::ModuleValue(m) => self.process_module(m),
 
@@ -98,17 +99,21 @@ impl<'ctx> HirBuilder<'ctx> {
             }
 
             // Other items
-            Item::AnnotationValue(_a) => {
-                // TODO: Process annotation
+            Item::AnnotationValue(a) => {
+                let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
+                processor.process_annotation(a);
             }
-            Item::AliasValue(_t) => {
-                // TODO: Process type alias
+            Item::AliasValue(a) => {
+                let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
+                processor.process_alias(a);
             }
-            Item::ExceptionValue(_e) => {
-                // TODO: Process exception
+            Item::ExceptionValue(e) => {
+                let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
+                processor.process_exception(e);
             }
-            Item::BitsetValue(_b) => {
-                // TODO: Process bitsets
+            Item::BitsetValue(b) => {
+                let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
+                processor.process_bitset(b);
             }
         }
     }
@@ -127,8 +132,46 @@ impl<'ctx> HirBuilder<'ctx> {
         let prev_scope = self.current_scope;
         self.current_scope = module_scope;
 
+        // Record definitions before processing contents
+        let definitions_before = self.ctx.context.scopes.get_scope(module_scope)
+            .definitions
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
         // Process module contents
         self.build(&m.definitions);
+
+        // Collect new definitions added by this module block
+        let all_definitions = self.ctx.context.scopes.get_scope(module_scope)
+            .definitions
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        
+        let new_definitions: Vec<DefId> = all_definitions
+            .into_iter()
+            .filter(|id| !definitions_before.contains(id))
+            .collect();
+
+        // Create a module definition in the HIR for this module block
+        let module_ty = crate::hir::ModuleTy {
+            definitions: new_definitions,
+        };
+
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| crate::hir::Def {
+            id,
+            ident: m.ident.clone(),
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: m.ident.span,
+            kind: crate::hir::DefKind::Module(module_ty),
+            flags: crate::hir::DefFlags::nil(),
+        });
+
+        // Don't register in scope - module names are already handled by the scope mechanism
+        // Just record as a top-level item
+        self.ctx.order.push(def_id);
 
         // Restore previous scope
         self.current_scope = prev_scope;

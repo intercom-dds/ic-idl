@@ -32,6 +32,7 @@ use ic_syntax::{Path, Type as AstType};
 
 use super::utils::{path_span, path_to_string};
 use super::{LoweringContext, ResolveMode};
+use super::eval::ConstEvaluator;
 use crate::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
@@ -164,16 +165,10 @@ impl<'ctx> TypeResolver<'ctx> {
     }
 
     /// Evaluate a bound expression to a numeric value.
-    fn evaluate_bound(&self, expr: &ic_syntax::Expr) -> Option<usize> {
-        // TODO: Implement proper expression evaluation
-        // For now, just handle integer literals
-        match expr {
-            ic_syntax::Expr::Literal(lit) => match &lit.value {
-                ic_syntax::LiteralValue::Int(n) => Some(*n as usize),
-                _ => None,
-            },
-            _ => None,
-        }
+    fn evaluate_bound(&mut self, expr: &ic_syntax::Expr) -> Option<usize> {
+        // Use the full expression evaluator
+        let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
+        evaluator.eval_nonneg_bound(expr)
     }
 
     /// Check if a DefKind represents a type definition.

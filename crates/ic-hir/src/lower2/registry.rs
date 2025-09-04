@@ -29,7 +29,6 @@
 
 use std::collections::HashMap;
 
-use ic_diagnostic::Label;
 use ic_syntax::Ident;
 
 use super::Diagnostics;
@@ -125,13 +124,16 @@ impl DefinitionRegistry {
             def_kind_tag_from_decl(kind),
         );
         if let Some(&_existing_def_id) = self.definitions.get(&def_key) {
-            diagnostics.error(
+            use ic_diagnostic::{Label, error_span};
+            // This case should not happen in the old module's flow
+            // The old module handles this in the validate phase instead
+            diagnostics.errors.push(error_span(
                 format!(
                     "forward declaration of `{}` conflicts with existing definition",
                     name.name
                 ),
                 Label::new(name.span).message("forward declaration here"),
-            );
+            ));
             return None;
         }
 
@@ -154,10 +156,11 @@ impl DefinitionRegistry {
 
         // Check if definition already exists
         if let Some(&_existing_id) = self.definitions.get(&key) {
-            diagnostics.error(
-                format!("redefinition of `{}`", name.name),
+            use ic_diagnostic::{Label, error_span};
+            diagnostics.errors.push(error_span(
+                format!("duplicate definition of `{}`", name.name),
                 Label::new(name.span).message("redefined here"),
-            );
+            ));
             return None;
         }
 

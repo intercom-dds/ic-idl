@@ -133,7 +133,11 @@ impl<'ctx> HirBuilder<'ctx> {
         self.current_scope = module_scope;
 
         // Record definitions before processing contents
-        let definitions_before = self.ctx.context.scopes.get_scope(module_scope)
+        let definitions_before = self
+            .ctx
+            .context
+            .scopes
+            .get_scope(module_scope)
             .definitions
             .values()
             .cloned()
@@ -143,12 +147,16 @@ impl<'ctx> HirBuilder<'ctx> {
         self.build(&m.definitions);
 
         // Collect new definitions added by this module block
-        let all_definitions = self.ctx.context.scopes.get_scope(module_scope)
+        let all_definitions = self
+            .ctx
+            .context
+            .scopes
+            .get_scope(module_scope)
             .definitions
             .values()
             .cloned()
             .collect::<Vec<_>>();
-        
+
         let new_definitions: Vec<DefId> = all_definitions
             .into_iter()
             .filter(|id| !definitions_before.contains(id))
@@ -159,15 +167,19 @@ impl<'ctx> HirBuilder<'ctx> {
             definitions: new_definitions,
         };
 
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| crate::hir::Def {
-            id,
-            ident: m.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(), // TODO: Convert annotations
-            span: m.ident.span,
-            kind: crate::hir::DefKind::Module(module_ty),
-            flags: crate::hir::DefFlags::nil(),
-        });
+        let def_id = self
+            .ctx
+            .context
+            .definitions
+            .alloc_with_id(|id| crate::hir::Def {
+                id,
+                ident: m.ident.clone(),
+                parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+                annotations: Vec::new(), // TODO: Convert annotations
+                span: m.ident.span,
+                kind: crate::hir::DefKind::Module(module_ty),
+                flags: crate::hir::DefFlags::nil(),
+            });
 
         // Don't register in scope - module names are already handled by the scope mechanism
         // Just record as a top-level item

@@ -63,7 +63,7 @@ mod typecheck;
 mod update_refs;
 mod validate;
 
-pub use builtin::{lower_with_builtin_context, lower_with_builtins};
+// pub use builtin::{lower_with_builtin_context, lower_with_builtins};
 
 /// Converts an annotation argument value (expression) to a Numeric value
 fn convert_annotation_value(

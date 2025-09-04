@@ -30,9 +30,9 @@
 use ic_diagnostic::Label;
 use ic_syntax::{Path, Type as AstType};
 
+use super::eval::ConstEvaluator;
 use super::utils::{path_span, path_to_string};
 use super::{LoweringContext, ResolveMode};
-use super::eval::ConstEvaluator;
 use crate::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
@@ -98,6 +98,14 @@ impl<'ctx> TypeResolver<'ctx> {
         if path.segments.len() == 1 && path.leading_colons.is_none() {
             let name = &path.segments[0].name;
 
+            // Special case for "any" type
+            if name == "any" {
+                return Some(Ty {
+                    span: (span),
+                    kind: TyKind::Any,
+                });
+            }
+
             // Check if it's a primitive type
             if let Some(prim) = Self::resolve_primitive(name) {
                 return Some(Ty {
@@ -125,18 +133,20 @@ impl<'ctx> TypeResolver<'ctx> {
                         kind: TyKind::Adt(def_id),
                     })
                 } else {
-                    self.ctx.diagnostics.error(
+                    use ic_diagnostic::error_span;
+                    self.ctx.diagnostics.errors.push(error_span(
                         format!("`{}` is not a type", path_to_string(path)),
                         Label::new(path_span(path)).message("expected a type"),
-                    );
+                    ));
                     None
                 }
             }
             None => {
-                self.ctx.diagnostics.error(
-                    format!("type `{}` not found", path_to_string(path)),
-                    Label::new(path_span(path)).message("type must be declared before use"),
-                );
+                use ic_diagnostic::error_span;
+                self.ctx.diagnostics.errors.push(error_span(
+                    format!("unresolved type `{}`", path_to_string(path)),
+                    Label::new(path_span(path)).message("unknown type"),
+                ));
                 None
             }
         }
@@ -173,15 +183,9 @@ impl<'ctx> TypeResolver<'ctx> {
 
     /// Check if a DefKind represents a type definition.
     fn is_type_definition(&self, kind: &DefKind) -> bool {
-        matches!(
+        !matches!(
             kind,
-            DefKind::Struct(_)
-                | DefKind::Union(_)
-                | DefKind::Interface(_)
-                | DefKind::Valuetype(_)
-                | DefKind::Enum(_)
-                | DefKind::Bitmask(_)
-                | DefKind::Decl(_) // Forward declarations are also types
+            DefKind::Annotation(_) | DefKind::Module(_) | DefKind::Const(_)
         )
     }
 

@@ -40,6 +40,7 @@ use crate::Context;
 use crate::hir::{DefId, DefKind, Ty, TyKind, TypeId};
 
 mod builder;
+mod builtin;
 mod eval;
 mod registry;
 mod scope_manager;
@@ -49,6 +50,7 @@ mod utils;
 mod validator;
 mod value_items;
 
+// pub use builtin::{lower_with_builtin_context, lower_with_builtins};
 pub use registry::DefinitionRegistry;
 pub use scope_manager::{ResolveMode, ScopeTree};
 
@@ -137,6 +139,30 @@ impl LoweringContext {
             order: Vec::new(),
         }
     }
+
+    /// Create a lowering context from existing components.
+    pub fn from_existing(context: Context, errors: Vec<Diag>, warnings: Vec<Diag>) -> Self {
+        let root_scope = context.scopes.root();
+
+        // Create a new scope tree that's aware of existing scopes
+        let scopes = ScopeTree::new(root_scope);
+
+        // Create a new registry that's aware of existing definitions
+        let registry = DefinitionRegistry::new();
+        // The registry starts fresh for the new items
+
+        Self {
+            context,
+            scopes,
+            registry,
+            diagnostics: Diagnostics {
+                errors,
+                warnings,
+                has_critical_error: false,
+            },
+            order: Vec::new(),
+        }
+    }
 }
 
 /// Diagnostics collection during lowering.
@@ -155,6 +181,7 @@ impl Diagnostics {
         }
     }
 
+    #[allow(dead_code)]
     pub fn error(&mut self, message: String, label: ic_diagnostic::Label) {
         use ic_diagnostic::error_span;
         self.errors.push(error_span(message, label));

@@ -30,7 +30,7 @@
 //! focuses on numeric arithmetic/bitwise semantics needed for IDL
 //! constants, enum values, bitmask bits, and bounds.
 
-use ic_diagnostic::Label;
+use ic_diagnostic::{Label, error_span, warn_span};
 
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_span, path_to_string};
@@ -93,6 +93,7 @@ enum EvalError {
     /// Invalid Unicode scalar value for a character type (e.g., surrogate for wchar).
     InvalidChar,
     DivByZero,
+    ModByZero,
     TypeMismatch,
     ShiftOutOfRange,
 }
@@ -409,7 +410,7 @@ fn div_float(a: Value, b: Value) -> Result<Value, EvalError> {
 fn mod_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => {
-            Err(EvalError::DivByZero)
+            Err(EvalError::ModByZero)
         }
         (Value::Int(x, r), Value::Int(y, _)) => {
             if y == -1 {
@@ -738,17 +739,17 @@ impl<'a> ConstEvaluator<'a> {
                 None
             }
             Err(EvalError::InvalidChar) => {
-                self.ctx.diagnostics.error(
-                    "invalid Unicode scalar for character type".to_string(),
+                self.ctx.diagnostics.errors.push(error_span(
+                    "invalid Unicode scalar for character type",
                     Label::new(expr.span()).message("invalid character value"),
-                );
+                ));
                 None
             }
             Err(_) => {
-                self.ctx.diagnostics.error(
-                    "cannot convert constant to expected type".to_string(),
+                self.ctx.diagnostics.errors.push(error_span(
+                    "cannot convert constant to expected type",
                     Label::new(expr.span()).message("type mismatch"),
-                );
+                ));
                 None
             }
         }
@@ -771,19 +772,25 @@ impl<'a> ConstEvaluator<'a> {
                         match &def.kind {
                             DefKind::Const(c) => value_from_numeric(&c.value),
                             _ => {
-                                self.ctx.diagnostics.error(
+                                self.ctx.diagnostics.errors.push(error_span(
                                     format!("`{}` is not a constant value", path_to_string(path)),
                                     Label::new(path_span(path))
                                         .message("expected constant, enumerator, or flag"),
-                                );
+                                ));
                                 None
                             }
                         }
                     }
                     None => {
-                        self.ctx.diagnostics.error(
-                            format!("constant `{}` not found", path_to_string(path)),
-                            Label::new(path_span(path)).message("must be declared before use"),
+                        self.ctx.diagnostics.errors.push(
+                            error_span(
+                                format!(
+                                    "undefined constant or enum value `{}`",
+                                    path_to_string(path)
+                                ),
+                                Label::new(path_span(path)).message("evaluation error"),
+                            )
+                            .note("check that the name is spelled correctly"),
                         );
                         None
                     }
@@ -793,10 +800,10 @@ impl<'a> ConstEvaluator<'a> {
                 let op = match op_from_ast(bin.op.kind) {
                     Some(o) => o,
                     None => {
-                        self.ctx.diagnostics.error(
-                            "unsupported binary operation in constant expression".to_string(),
+                        self.ctx.diagnostics.errors.push(error_span(
+                            "unsupported binary operation in constant expression",
                             Label::new(expr.span()).message("unsupported operation"),
-                        );
+                        ));
                         return None;
                     }
                 };
@@ -806,7 +813,7 @@ impl<'a> ConstEvaluator<'a> {
                 let r = self.eval_value(&bin.rhs)?;
 
                 // For division/modulo by zero errors, use the RHS span if available
-                let error_span = match op {
+                let op_span = match op {
                     Op::Div | Op::Mod => bin.rhs.span(),
                     _ => expr.span(),
                 };
@@ -815,17 +822,25 @@ impl<'a> ConstEvaluator<'a> {
                     Ok(v) => Some(v),
                     Err(EvalError::SignedOverflow(v)) => {
                         // Signed overflow: warn and continue with wrapped result
-                        self.ctx.diagnostics.warn(
-                            "signed overflow in constant expression".to_string(),
-                            Label::new(expr.span()).message("overflow (wrapped)"),
+                        self.ctx.diagnostics.warnings.push(
+                            warn_span(
+                                "integer overflow in constant expression",
+                                Label::new(expr.span()).message("overflow detected"),
+                            )
+                            .note(
+                                "the value wrapped around according to two's complement arithmetic",
+                            )
+                            .note(
+                                "consider using a larger integer type if overflow was not intended",
+                            ),
                         );
                         Some(v)
                     }
                     Err(EvalError::RangeError) => {
-                        self.ctx.diagnostics.error(
-                            "value out of range for target type".to_string(),
+                        self.ctx.diagnostics.errors.push(error_span(
+                            "value out of range for target type",
                             Label::new(expr.span()).message("out of range"),
-                        );
+                        ));
                         None
                     }
                     Err(EvalError::InvalidChar) => {
@@ -836,18 +851,25 @@ impl<'a> ConstEvaluator<'a> {
                         None
                     }
                     Err(EvalError::DivByZero) => {
-                        self.ctx.diagnostics.error(
-                            "division by zero in constant expression".to_string(),
-                            Label::new(error_span).message("division by zero"),
-                        );
+                        self.ctx.diagnostics.errors.push(error_span(
+                            "division by zero in constant expression",
+                            Label::new(op_span).message("division by zero"),
+                        ));
+                        None
+                    }
+                    Err(EvalError::ModByZero) => {
+                        self.ctx.diagnostics.errors.push(error_span(
+                            "modulo by zero in constant expression",
+                            Label::new(op_span).message("modulo by zero"),
+                        ));
                         None
                     }
                     Err(EvalError::ShiftOutOfRange) => {
-                        // Match C behavior: warn but continue with masked shift
-                        self.ctx.diagnostics.warn(
-                            "shift count >= width of type or negative".to_string(),
-                            Label::new(bin.rhs.span()).message("shift count overflow"),
-                        );
+                        // The old module reports this as an error, not a warning
+                        self.ctx.diagnostics.errors.push(error_span(
+                            "invalid shift amount: shift count >= width of type or negative",
+                            Label::new(bin.rhs.span()).message("invalid shift"),
+                        ));
                         None
                     }
                     Err(EvalError::TypeMismatch) => {

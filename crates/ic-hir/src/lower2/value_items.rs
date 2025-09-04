@@ -207,7 +207,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                         span: (enumerator.ident.span),
                         kind: TyKind::Adt(enum_id),
                     },
-                    value: Numeric::Int64(value),
+                    value: Numeric::Int32(value as i32),
                 }),
                 flags: DefFlags::nil(),
             });
@@ -499,11 +499,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         // Collect all definitions from the annotation scope
         {
             let scope_def = self.ctx.context.scopes.get_scope(scope);
-            types = scope_def
-                .definitions
-                .values()
-                .cloned()
-                .collect();
+            types = scope_def.definitions.values().cloned().collect();
         }
 
         // Create the annotation definition

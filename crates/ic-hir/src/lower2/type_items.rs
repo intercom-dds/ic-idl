@@ -50,6 +50,37 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         Self { ctx, current_scope }
     }
 
+    /// Check if a parent type is valid for inheritance (not a forward declaration).
+    /// Returns Some(parent_id) if valid, None if invalid (error already reported).
+    fn validate_parent_inheritance(
+        &mut self,
+        parent_id: DefId,
+        child_kind: &str,
+        child_name: &str,
+        inheritance_span: ic_syntax::Span,
+    ) -> Option<DefId> {
+        let parent_def = self.ctx.context.definitions.get(parent_id);
+        if matches!(&parent_def.kind, DefKind::Decl(_)) {
+            use ic_diagnostic::{Label, error_span};
+            self.ctx.diagnostics.errors.push(
+                error_span(
+                    format!(
+                        "{child_kind} `{child_name}` cannot inherit from incomplete type `{}`",
+                        parent_def.ident.name
+                    ),
+                    Label::new(inheritance_span).message("invalid inheritance"),
+                )
+                .label(
+                    Label::new(parent_def.ident.span)
+                        .message("forward declaration here, but no definition found"),
+                ),
+            );
+            None
+        } else {
+            Some(parent_id)
+        }
+    }
+
     /// Process a struct definition.
     pub fn process_struct(&mut self, s: &StructDef) {
         // Resolve parent type if present
@@ -57,7 +88,12 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_type).and_then(|ty| {
                 if let Some(parent_id) = ty.as_adt() {
-                    Some(parent_id)
+                    self.validate_parent_inheritance(
+                        parent_id,
+                        "struct",
+                        &s.ident.name,
+                        super::utils::path_span(parent_type),
+                    )
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a struct type".to_string(),
@@ -121,7 +157,15 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             if let Some(ty) = resolver.resolve_path_type(parent_path) {
                 if let Some(parent_id) = ty.as_adt() {
-                    parents.push(parent_id);
+                    // Validate that parent is not an incomplete type
+                    if let Some(valid_parent_id) = self.validate_parent_inheritance(
+                        parent_id,
+                        "interface",
+                        &i.ident.name,
+                        super::utils::path_span(parent_path),
+                    ) {
+                        parents.push(valid_parent_id);
+                    }
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be an interface type".to_string(),
@@ -173,11 +217,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Collect all definitions from the interface scope
         let scope_def = self.ctx.context.scopes.get_scope(scope);
-        definitions = scope_def
-            .definitions
-            .values()
-            .cloned()
-            .collect();
+        definitions = scope_def.definitions.values().cloned().collect();
 
         // Create the complete interface definition
         let interface_ty = InterfaceTy {
@@ -297,6 +337,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             resolver
                 .resolve_path_type(parent_type)
                 .and_then(|ty| ty.as_adt())
+                .and_then(|parent_id| {
+                    self.validate_parent_inheritance(
+                        parent_id,
+                        "valuetype",
+                        &v.ident.name,
+                        super::utils::path_span(parent_type),
+                    )
+                })
         } else {
             None
         };
@@ -369,11 +417,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Collect all definitions from the valuetype scope
         let scope_def = self.ctx.context.scopes.get_scope(scope);
-        definitions = scope_def
-            .definitions
-            .values()
-            .cloned()
-            .collect();
+        definitions = scope_def.definitions.values().cloned().collect();
 
         // Create the complete valuetype definition
         let value_ty = ValueTy {

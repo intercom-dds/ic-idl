@@ -29,11 +29,10 @@
 
 use ic_syntax::Item;
 
-use crate::scope::ScopeId;
-
+use super::LoweringContext;
 use super::type_items::TypeItemProcessor;
 use super::value_items::ValueItemProcessor;
-use super::LoweringContext;
+use crate::scope::ScopeId;
 
 /// Main HIR builder that orchestrates the lowering process.
 pub struct HirBuilder<'ctx> {
@@ -49,19 +48,19 @@ impl<'ctx> HirBuilder<'ctx> {
             current_scope: root_scope,
         }
     }
-    
+
     /// Build HIR from AST items.
     pub fn build(&mut self, items: &[Item]) {
         for item in items {
             self.process_item(item);
         }
     }
-    
+
     /// Process a single AST item.
     fn process_item(&mut self, item: &Item) {
         match item {
             Item::ModuleValue(m) => self.process_module(m),
-            
+
             // Delegate type items to type_items.rs
             Item::StructValue(s) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
@@ -83,7 +82,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 processor.process_forward_decl(decl);
             }
-            
+
             // Delegate value items to value_items.rs
             Item::ConstValue(c) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
@@ -97,7 +96,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 processor.process_bitmask(b);
             }
-            
+
             // Other items
             Item::AnnotationValue(_a) => {
                 // TODO: Process annotation
@@ -113,7 +112,7 @@ impl<'ctx> HirBuilder<'ctx> {
             }
         }
     }
-    
+
     /// Process a module definition.
     fn process_module(&mut self, m: &ic_syntax::ModuleDef) {
         // Find or create the module scope (handles reopening)
@@ -123,14 +122,14 @@ impl<'ctx> HirBuilder<'ctx> {
             &mut self.ctx.context,
             &mut self.ctx.diagnostics,
         );
-        
+
         // Save current scope and switch to module scope
         let prev_scope = self.current_scope;
         self.current_scope = module_scope;
-        
+
         // Process module contents
         self.build(&m.definitions);
-        
+
         // Restore previous scope
         self.current_scope = prev_scope;
     }

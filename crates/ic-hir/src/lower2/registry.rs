@@ -32,10 +32,9 @@ use std::collections::HashMap;
 use ic_diagnostic::Label;
 use ic_syntax::Ident;
 
+use super::Diagnostics;
 use crate::hir::{Decl, DefId, DefKind};
 use crate::scope::ScopeId;
-
-use super::Diagnostics;
 
 /// Case-folded name for case-insensitive lookup.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -88,7 +87,7 @@ impl DefKindTag {
 pub struct DefinitionRegistry {
     /// Map (scope, case-folded name, decl kind) → forward-decl DefId
     forward_decls: HashMap<(ScopeId, NameKey, Decl), DefId>,
-    
+
     /// Map (scope, case-folded name, def kind) → definition DefId
     definitions: HashMap<(ScopeId, NameKey, DefKindTag), DefId>,
 }
@@ -100,7 +99,7 @@ impl DefinitionRegistry {
             definitions: HashMap::new(),
         }
     }
-    
+
     /// Register a forward declaration.
     /// Returns DefId if successful, None if there's a conflict.
     pub fn register_forward_decl(
@@ -112,28 +111,35 @@ impl DefinitionRegistry {
         diagnostics: &mut Diagnostics,
     ) -> Option<DefId> {
         let key = (scope, NameKey::new(&name.name), kind);
-        
+
         // Check if forward decl already exists
         if let Some(&existing_id) = self.forward_decls.get(&key) {
             // Multiple forward declarations of the same kind are allowed
             return Some(existing_id);
         }
-        
+
         // Check for definition conflict
-        let def_key = (scope, NameKey::new(&name.name), def_kind_tag_from_decl(kind));
+        let def_key = (
+            scope,
+            NameKey::new(&name.name),
+            def_kind_tag_from_decl(kind),
+        );
         if let Some(&_existing_def_id) = self.definitions.get(&def_key) {
             diagnostics.error(
-                format!("forward declaration of `{}` conflicts with existing definition", name.name),
+                format!(
+                    "forward declaration of `{}` conflicts with existing definition",
+                    name.name
+                ),
                 Label::new(name.span).message("forward declaration here"),
             );
             return None;
         }
-        
+
         // Register the forward declaration
         self.forward_decls.insert(key, def_id);
         Some(def_id)
     }
-    
+
     /// Register a definition.
     /// Returns DefId if successful, None if there's a conflict.
     pub fn register_definition(
@@ -145,7 +151,7 @@ impl DefinitionRegistry {
         diagnostics: &mut Diagnostics,
     ) -> Option<DefId> {
         let key = (scope, NameKey::new(&name.name), kind);
-        
+
         // Check if definition already exists
         if let Some(&_existing_id) = self.definitions.get(&key) {
             diagnostics.error(
@@ -154,45 +160,35 @@ impl DefinitionRegistry {
             );
             return None;
         }
-        
+
         // Register the definition
         self.definitions.insert(key, def_id);
         Some(def_id)
     }
-    
+
     /// Find a forward declaration for the given name and kind.
-    pub fn find_forward_decl(
-        &self,
-        scope: ScopeId,
-        name: &str,
-        kind: Decl,
-    ) -> Option<DefId> {
+    pub fn find_forward_decl(&self, scope: ScopeId, name: &str, kind: Decl) -> Option<DefId> {
         let key = (scope, NameKey::new(name), kind);
         self.forward_decls.get(&key).copied()
     }
-    
+
     /// Find a definition for the given name and kind.
-    pub fn find_definition(
-        &self,
-        scope: ScopeId,
-        name: &str,
-        kind: DefKindTag,
-    ) -> Option<DefId> {
+    pub fn find_definition(&self, scope: ScopeId, name: &str, kind: DefKindTag) -> Option<DefId> {
         let key = (scope, NameKey::new(name), kind);
         self.definitions.get(&key).copied()
     }
-    
+
     /// Get all forward declarations and their matching definitions.
     pub fn get_forward_to_def_mapping(&self) -> HashMap<DefId, DefId> {
         let mut mapping = HashMap::new();
-        
+
         for ((scope, name, decl_kind), &decl_id) in &self.forward_decls {
             let def_kind = def_kind_tag_from_decl(*decl_kind);
             if let Some(&def_id) = self.definitions.get(&(*scope, name.clone(), def_kind)) {
                 mapping.insert(decl_id, def_id);
             }
         }
-        
+
         mapping
     }
 }

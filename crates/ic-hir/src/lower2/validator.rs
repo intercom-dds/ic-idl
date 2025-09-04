@@ -38,7 +38,7 @@ impl<'ctx> Validator<'ctx> {
     pub fn new(ctx: &'ctx LoweringContext) -> Self {
         Self { ctx }
     }
-    
+
     /// Run all validation checks.
     pub fn validate(&mut self) {
         // TODO: Implement validation

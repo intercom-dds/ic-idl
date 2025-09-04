@@ -49,7 +49,7 @@ pub enum ResolveMode {
 pub struct ScopeTree {
     /// Root scope ID from the context.
     root: ScopeId,
-    
+
     /// Additional scope metadata (e.g., for module reopening).
     /// Maps (parent_scope, module_name) to the module's scope.
     module_scopes: HashMap<(ScopeId, String), ScopeId>,
@@ -62,11 +62,11 @@ impl ScopeTree {
             module_scopes: HashMap::new(),
         }
     }
-    
+
     pub fn root(&self) -> ScopeId {
         self.root
     }
-    
+
     /// Find or create a module scope.
     /// This handles module reopening by returning the existing scope if found.
     pub fn find_or_create_module(
@@ -77,19 +77,21 @@ impl ScopeTree {
         _diagnostics: &mut super::Diagnostics,
     ) -> ScopeId {
         let key = (parent, name.to_ascii_lowercase());
-        
+
         if let Some(&scope_id) = self.module_scopes.get(&key) {
             // Module already exists - check capitalization
             // TODO: Emit warning if capitalization differs
             return scope_id;
         }
-        
+
         // Create new module scope
-        let scope_id = ctx.scopes.create_child_scope(parent, name.to_string(), None);
+        let scope_id = ctx
+            .scopes
+            .create_child_scope(parent, name.to_string(), None);
         self.module_scopes.insert(key, scope_id);
         scope_id
     }
-    
+
     /// Resolve a name in the given scope with the specified mode.
     pub fn resolve_name(
         &self,
@@ -113,27 +115,22 @@ impl ScopeTree {
             }
         }
     }
-    
+
     /// Resolve a path starting from the given scope.
-    pub fn resolve_path(
-        &self,
-        ctx: &crate::Context,
-        start: ScopeId,
-        path: &Path,
-    ) -> Option<DefId> {
+    pub fn resolve_path(&self, ctx: &crate::Context, start: ScopeId, path: &Path) -> Option<DefId> {
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
-        
+
         if segments.is_empty() {
             return None;
         }
-        
+
         // Start from root for absolute paths
         let mut current_scope = if path.leading_colons.is_some() {
             self.root
         } else {
             start
         };
-        
+
         // Resolve all but the last segment as scopes
         for segment in &segments[..segments.len() - 1] {
             if let Some(def_id) = self.lookup_in_scope(ctx, current_scope, segment) {
@@ -147,21 +144,16 @@ impl ScopeTree {
                 return None;
             }
         }
-        
+
         // Resolve the final segment
         self.lookup_in_scope(ctx, current_scope, segments.last().unwrap())
     }
-    
+
     /// Look up a name in a specific scope only.
-    fn lookup_in_scope(
-        &self,
-        ctx: &crate::Context,
-        scope: ScopeId,
-        name: &str,
-    ) -> Option<DefId> {
+    fn lookup_in_scope(&self, ctx: &crate::Context, scope: ScopeId, name: &str) -> Option<DefId> {
         ctx.scopes.resolve_name(scope, name)
     }
-    
+
     /// Resolve a name by searching current scope and parents.
     fn resolve_unqualified(
         &self,
@@ -170,16 +162,16 @@ impl ScopeTree {
         name: &str,
     ) -> Option<DefId> {
         let mut current = Some(start);
-        
+
         while let Some(scope_id) = current {
             // Check current scope
             if let Some(def_id) = self.lookup_in_scope(ctx, scope_id, name) {
                 return Some(def_id);
             }
-            
+
             // Move to parent scope
             current = ctx.scopes.get_scope(scope_id).parent;
-            
+
             // Skip interface scopes during unqualified lookup from outside
             if let Some(parent_id) = current {
                 if self.is_interface_scope(ctx, parent_id) {
@@ -188,10 +180,10 @@ impl ScopeTree {
                 }
             }
         }
-        
+
         None
     }
-    
+
     /// Resolve in interface context, including inherited interfaces.
     fn resolve_in_interface_context(
         &self,
@@ -204,11 +196,11 @@ impl ScopeTree {
         if let Some(def_id) = self.resolve_unqualified(ctx, start, name) {
             return Some(def_id);
         }
-        
+
         // Then check inherited interfaces
         self.search_inherited_interfaces(ctx, name, interface_id)
     }
-    
+
     /// Search for a name in inherited interfaces.
     fn search_inherited_interfaces(
         &self,
@@ -217,7 +209,7 @@ impl ScopeTree {
         interface_id: DefId,
     ) -> Option<DefId> {
         let def = ctx.definitions.get(interface_id);
-        
+
         if let crate::hir::DefKind::Interface(interface) = &def.kind {
             // Check each parent interface
             for &parent_id in &interface.parents {
@@ -227,17 +219,17 @@ impl ScopeTree {
                         return Some(def_id);
                     }
                 }
-                
+
                 // Recursively check parent's parents
                 if let Some(def_id) = self.search_inherited_interfaces(ctx, name, parent_id) {
                     return Some(def_id);
                 }
             }
         }
-        
+
         None
     }
-    
+
     /// Check if a scope belongs to an interface.
     fn is_interface_scope(&self, ctx: &crate::Context, scope_id: ScopeId) -> bool {
         // Check if this scope has an interface as its definition

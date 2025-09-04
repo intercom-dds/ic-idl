@@ -35,7 +35,7 @@ use crate::hir::{Ann, Member, Ty};
 pub trait MemberResolver {
     /// Resolves an AST type to a HIR type.
     fn resolve_type(&mut self, ty: &ic_syntax::Type) -> Ty;
-    
+
     /// Resolves AST annotations to HIR annotations.
     fn resolve_annotations(&mut self, annotations: &[ic_syntax::AnnotationAppl]) -> Vec<Ann>;
 }

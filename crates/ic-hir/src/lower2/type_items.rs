@@ -34,8 +34,8 @@ use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::hir::{
-    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, Member, StructTy, Ty, TyKind,
-    UnionTy, ValueTy, Variant,
+    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, Member, StructTy, Ty, TyKind, UnionTy,
+    ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 
@@ -55,20 +55,18 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         // Resolve parent type if present
         let parent = if let Some(ref parent_type) = s.parent {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            resolver
-                .resolve_path_type(parent_type)
-                .and_then(|ty| {
-                    if let Some(parent_id) = ty.as_adt() {
-                        Some(parent_id)
-                    } else {
-                        self.ctx.diagnostics.error(
-                            "parent must be a struct type".to_string(),
-                            ic_diagnostic::Label::new(super::utils::path_span(parent_type))
-                                .message("expected struct type"),
-                        );
-                        None
-                    }
-                })
+            resolver.resolve_path_type(parent_type).and_then(|ty| {
+                if let Some(parent_id) = ty.as_adt() {
+                    Some(parent_id)
+                } else {
+                    self.ctx.diagnostics.error(
+                        "parent must be a struct type".to_string(),
+                        ic_diagnostic::Label::new(super::utils::path_span(parent_type))
+                            .message("expected struct type"),
+                    );
+                    None
+                }
+            })
         } else {
             None
         };
@@ -103,10 +101,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .is_some()
         {
             // Register in scope only if registry registration succeeded
-            self.ctx
-                .context
-                .scopes
-                .add_definition(self.current_scope, s.ident.name.clone(), def_id);
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                s.ident.name.clone(),
+                def_id,
+            );
 
             // Record as a top-level type
             self.ctx.order.push(def_id);
@@ -134,11 +133,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         }
 
         // Create scope and process members
-        let scope = self
-            .ctx
-            .context
-            .scopes
-            .create_child_scope(self.current_scope, i.ident.name.clone(), None);
+        let scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            i.ident.name.clone(),
+            None,
+        );
 
         // TODO: Process interface members (operations, attributes)
         let prototypes = Vec::new();
@@ -181,10 +180,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .is_some()
         {
             // Register in scope only if registry registration succeeded
-            self.ctx
-                .context
-                .scopes
-                .add_definition(self.current_scope, i.ident.name.clone(), def_id);
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                i.ident.name.clone(),
+                def_id,
+            );
 
             // Record as a top-level type
             self.ctx.order.push(def_id);
@@ -204,20 +204,17 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         });
 
         // Create scope and process branches
-        let scope = self
-            .ctx
-            .context
-            .scopes
-            .create_child_scope(self.current_scope, u.ident.name.clone(), None);
+        let scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            u.ident.name.clone(),
+            None,
+        );
 
         // Process union variants
         let variants = self.process_union_variants(&u.fields);
 
         // Create the complete union definition
-        let union_ty = UnionTy {
-            disc,
-            variants,
-        };
+        let union_ty = UnionTy { disc, variants };
 
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
@@ -246,10 +243,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .is_some()
         {
             // Register in scope only if registry registration succeeded
-            self.ctx
-                .context
-                .scopes
-                .add_definition(self.current_scope, u.ident.name.clone(), def_id);
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                u.ident.name.clone(),
+                def_id,
+            );
 
             // Record as a top-level type
             self.ctx.order.push(def_id);
@@ -286,8 +284,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             parent,
             supports,
             members,
-            prototypes: Vec::new(), // TODO: implement valuetype prototypes
-            attributes: Vec::new(), // TODO: implement valuetype attributes
+            prototypes: Vec::new(),  // TODO: implement valuetype prototypes
+            attributes: Vec::new(),  // TODO: implement valuetype attributes
             definitions: Vec::new(), // TODO: implement valuetype definitions
         };
 
@@ -315,10 +313,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .is_some()
         {
             // Register in scope only if registry registration succeeded
-            self.ctx
-                .context
-                .scopes
-                .add_definition(self.current_scope, v.ident.name.clone(), def_id);
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                v.ident.name.clone(),
+                def_id,
+            );
 
             // Record as a top-level type
             self.ctx.order.push(def_id);
@@ -379,7 +378,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process members and create a scope for them.
     fn process_members(&mut self, fields: &[ic_syntax::Field]) -> (ScopeId, Vec<Member>) {
-        let scope = self.ctx.context.scopes.create_child_scope(self.current_scope, "_members_".to_string(), None);
+        let scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            "_members_".to_string(),
+            None,
+        );
         let mut members = Vec::new();
 
         for field in fields {
@@ -429,9 +432,10 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     };
 
                     // Check if this is a default case
-                    let is_default = field.labels.iter().any(|label| {
-                        matches!(label, ic_syntax::Label::Default(_))
-                    });
+                    let is_default = field
+                        .labels
+                        .iter()
+                        .any(|label| matches!(label, ic_syntax::Label::Default(_)));
 
                     // Process case labels (will be evaluated later)
                     let labels = Vec::new(); // Labels will be evaluated in the evaluation phase
@@ -452,9 +456,10 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     };
 
                     // Check if this is a default case
-                    let is_default = field.labels.iter().any(|label| {
-                        matches!(label, ic_syntax::Label::Default(_))
-                    });
+                    let is_default = field
+                        .labels
+                        .iter()
+                        .any(|label| matches!(label, ic_syntax::Label::Default(_)));
 
                     // Process case labels (will be evaluated later)
                     let labels = Vec::new(); // Labels will be evaluated in the evaluation phase

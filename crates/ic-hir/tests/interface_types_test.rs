@@ -99,6 +99,6 @@ fn test_interface_type_not_visible_outside() {
 
     let (result, _, diagnostics) = common::parse_and_resolve(input);
     assert!(!result.errors.is_empty());
-    
+
     insta::assert_snapshot!(diagnostics);
 }

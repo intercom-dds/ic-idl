@@ -97,7 +97,7 @@ fn test_duplicate_definitions_same_scope() {
 
     let (result, _, diagnostics) = common::parse_and_resolve(input);
     assert!(!result.errors.is_empty());
-    
+
     insta::assert_snapshot!(diagnostics);
 }
 

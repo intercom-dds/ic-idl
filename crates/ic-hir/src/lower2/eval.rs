@@ -34,19 +34,31 @@ use std::collections::HashSet;
 
 use ic_diagnostic::Label;
 
+use super::LoweringContext;
+use super::utils::{literal_to_numeric, path_span, path_to_string};
 use crate::hir::{DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
-use super::utils::{literal_to_numeric, path_span, path_to_string};
-use super::LoweringContext;
-
 /// Integer rank categories for promotions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum IntRank { I8, U8, I16, U16, I32, U32, I64, U64 }
+enum IntRank {
+    I8,
+    U8,
+    I16,
+    U16,
+    I32,
+    U32,
+    I64,
+    U64,
+}
 
 /// Floating-point widths we care about.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum FloatRank { F32, F64, F128 }
+enum FloatRank {
+    F32,
+    F64,
+    F128,
+}
 
 /// A simplified value domain for evaluation.
 #[derive(Clone, Debug)]
@@ -61,7 +73,18 @@ enum Value {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum Op { Add, Sub, Mul, Div, Mod, BitAnd, BitOr, Xor, Shl, Shr }
+enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitAnd,
+    BitOr,
+    Xor,
+    Shl,
+    Shr,
+}
 
 #[derive(Debug)]
 enum EvalError {
@@ -69,13 +92,17 @@ enum EvalError {
     SignedOverflow(Value),
     /// Value does not fit in the target type range.
     RangeError,
+    /// Invalid Unicode scalar value for a character type (e.g., surrogate for wchar).
+    InvalidChar,
     DivByZero,
     TypeMismatch,
     ShiftOutOfRange,
 }
 
 // Helper to return a SignedOverflow while carrying a wrapped result
-fn signed_overflow(v: Value) -> Result<Value, EvalError> { Err(EvalError::SignedOverflow(v)) }
+fn signed_overflow(v: Value) -> Result<Value, EvalError> {
+    Err(EvalError::SignedOverflow(v))
+}
 
 fn rank_bits(r: IntRank) -> u32 {
     match r {
@@ -85,9 +112,18 @@ fn rank_bits(r: IntRank) -> u32 {
         IntRank::I64 | IntRank::U64 => 64,
     }
 }
-fn is_signed(r: IntRank) -> bool { matches!(r, IntRank::I8 | IntRank::I16 | IntRank::I32 | IntRank::I64) }
+
+fn is_signed(r: IntRank) -> bool {
+    matches!(r, IntRank::I8 | IntRank::I16 | IntRank::I32 | IntRank::I64)
+}
+
 fn rank_ord(r: IntRank) -> u32 {
-    match r { IntRank::I8|IntRank::U8 => 0, IntRank::I16|IntRank::U16 => 1, IntRank::I32|IntRank::U32 => 2, IntRank::I64|IntRank::U64 => 3 }
+    match r {
+        IntRank::I8 | IntRank::U8 => 0,
+        IntRank::I16 | IntRank::U16 => 1,
+        IntRank::I32 | IntRank::U32 => 2,
+        IntRank::I64 | IntRank::U64 => 3,
+    }
 }
 
 const INT_RANK: IntRank = IntRank::I32; // IDL long
@@ -111,49 +147,95 @@ fn can_int_represent_all(r: IntRank, int_r: IntRank) -> bool {
 
 fn promote_integer(r: IntRank) -> IntRank {
     if rank_bits(r) < rank_bits(INT_RANK) {
-        if can_int_represent_all(r, INT_RANK) { INT_RANK } else { IntRank::U32 }
-    } else { r }
+        if can_int_represent_all(r, INT_RANK) {
+            INT_RANK
+        } else {
+            IntRank::U32
+        }
+    } else {
+        r
+    }
 }
 
 fn unsigned_of_rank(rank_ord_val: u32) -> IntRank {
-    match rank_ord_val { 0 => IntRank::U8, 1 => IntRank::U16, 2 => IntRank::U32, _ => IntRank::U64 }
+    match rank_ord_val {
+        0 => IntRank::U8,
+        1 => IntRank::U16,
+        2 => IntRank::U32,
+        _ => IntRank::U64,
+    }
 }
 
 fn usual_int_conv(a: IntRank, b: IntRank) -> IntRank {
     let ap = promote_integer(a);
     let bp = promote_integer(b);
-    if ap == bp { return ap; }
-    let asgn = is_signed(ap); let bsgn = is_signed(bp);
-    let ar = rank_ord(ap); let br = rank_ord(bp);
+    if ap == bp {
+        return ap;
+    }
+    let asgn = is_signed(ap);
+    let bsgn = is_signed(bp);
+    let ar = rank_ord(ap);
+    let br = rank_ord(bp);
     match (asgn, bsgn) {
-        (true, true) | (false, false) => if ar >= br { ap } else { bp },
+        (true, true) | (false, false) => {
+            if ar >= br {
+                ap
+            } else {
+                bp
+            }
+        }
         (true, false) => {
             if ar > br {
-                if can_int_represent_all(bp, ap) { ap } else { unsigned_of_rank(ar) }
-            } else if ar < br { bp } else { unsigned_of_rank(ar) }
+                if can_int_represent_all(bp, ap) {
+                    ap
+                } else {
+                    unsigned_of_rank(ar)
+                }
+            } else if ar < br {
+                bp
+            } else {
+                unsigned_of_rank(ar)
+            }
         }
         (false, true) => {
             if br > ar {
-                if can_int_represent_all(ap, bp) { bp } else { unsigned_of_rank(br) }
-            } else if br < ar { ap } else { unsigned_of_rank(ar) }
+                if can_int_represent_all(ap, bp) {
+                    bp
+                } else {
+                    unsigned_of_rank(br)
+                }
+            } else if br < ar {
+                ap
+            } else {
+                unsigned_of_rank(ar)
+            }
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-enum TyTag { Int(IntRank, /*signed*/ bool), Float(FloatRank) }
+enum TyTag {
+    Int(IntRank, /*signed*/ bool),
+    Float(FloatRank),
+}
 
 fn float_rank_for(ty: FloatRank, other: FloatRank) -> FloatRank {
     use FloatRank::*;
-    match (ty, other) { (F128, _) | (_, F128) => F128, (F64, _) | (_, F64) => F64, _ => F32 }
+    match (ty, other) {
+        (F128, _) | (_, F128) => F128,
+        (F64, _) | (_, F64) => F64,
+        _ => F32,
+    }
 }
 
 fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
     use Value::*;
     match (a, b) {
         (Float(_, fa), Float(_, fb)) => Some(TyTag::Float(float_rank_for(*fa, *fb))),
-        (Float(_, fr), Int(_, _)) | (Float(_, fr), UInt(_, _))
-        | (Int(_, _), Float(_, fr)) | (UInt(_, _), Float(_, fr)) => Some(TyTag::Float(*fr)),
+        (Float(_, fr), Int(_, _))
+        | (Float(_, fr), UInt(_, _))
+        | (Int(_, _), Float(_, fr))
+        | (UInt(_, _), Float(_, fr)) => Some(TyTag::Float(*fr)),
         (Int(_, ra), Int(_, rb)) => Some(TyTag::Int(usual_int_conv(*ra, *rb), true)),
         (UInt(_, ra), UInt(_, rb)) => Some(TyTag::Int(usual_int_conv(*ra, *rb), false)),
         (Int(_, ra), UInt(_, rb)) | (UInt(_, rb), Int(_, ra)) => {
@@ -186,13 +268,25 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
     match (value, target) {
         (Int(v, _), TyTag::Int(r, sign)) => {
             let (min, max) = int_min_max(r);
-            if v < min || v > max { return Err(EvalError::RangeError); }
-            if sign { Ok(Int(v, r)) } else { Ok(UInt(v as u128, r)) }
+            if v < min || v > max {
+                return Err(EvalError::RangeError);
+            }
+            if sign {
+                Ok(Int(v, r))
+            } else {
+                Ok(UInt(v as u128, r))
+            }
         }
         (UInt(v, _), TyTag::Int(r, sign)) => {
             let max = int_min_max(r).1 as u128;
-            if v > max { return Err(EvalError::RangeError); }
-            if sign { Ok(Int(v as i128, r)) } else { Ok(UInt(v, r)) }
+            if v > max {
+                return Err(EvalError::RangeError);
+            }
+            if sign {
+                Ok(Int(v as i128, r))
+            } else {
+                Ok(UInt(v, r))
+            }
         }
         (Int(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
         (UInt(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
@@ -217,9 +311,14 @@ fn add_int(a: Value, b: Value) -> Result<Value, EvalError> {
         _ => Err(EvalError::TypeMismatch),
     }
 }
+
 fn add_float(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) { (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x + y, r)), _ => Err(EvalError::TypeMismatch) }
+    match (a, b) {
+        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x + y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
 }
+
 fn sub_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(x, r), Value::Int(y, _)) => match x.checked_sub(y) {
@@ -230,7 +329,14 @@ fn sub_int(a: Value, b: Value) -> Result<Value, EvalError> {
         _ => Err(EvalError::TypeMismatch),
     }
 }
-fn sub_float(a: Value, b: Value) -> Result<Value, EvalError> { match (a, b) { (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x - y, r)), _ => Err(EvalError::TypeMismatch) } }
+
+fn sub_float(a: Value, b: Value) -> Result<Value, EvalError> {
+    match (a, b) {
+        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x - y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
+}
+
 fn mul_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(x, r), Value::Int(y, _)) => match x.checked_mul(y) {
@@ -241,10 +347,19 @@ fn mul_int(a: Value, b: Value) -> Result<Value, EvalError> {
         _ => Err(EvalError::TypeMismatch),
     }
 }
-fn mul_float(a: Value, b: Value) -> Result<Value, EvalError> { match (a, b) { (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x * y, r)), _ => Err(EvalError::TypeMismatch) } }
+
+fn mul_float(a: Value, b: Value) -> Result<Value, EvalError> {
+    match (a, b) {
+        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x * y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
+}
+
 fn div_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
-        (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => Err(EvalError::DivByZero),
+        (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => {
+            Err(EvalError::DivByZero)
+        }
         (Value::Int(x, r), Value::Int(y, _)) => {
             // Detect MIN / -1 overflow and warn; result wraps to MIN
             let (min, _max) = int_min_max(r);
@@ -258,59 +373,121 @@ fn div_int(a: Value, b: Value) -> Result<Value, EvalError> {
         _ => Err(EvalError::TypeMismatch),
     }
 }
-fn div_float(a: Value, b: Value) -> Result<Value, EvalError> { match (a, b) { (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x / y, r)), _ => Err(EvalError::TypeMismatch) } }
+
+fn div_float(a: Value, b: Value) -> Result<Value, EvalError> {
+    match (a, b) {
+        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x / y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
+}
+
 fn mod_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
-        (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => Err(EvalError::DivByZero),
+        (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => {
+            Err(EvalError::DivByZero)
+        }
         (Value::Int(x, r), Value::Int(y, _)) => {
-            if y == -1 { Ok(Value::Int(0, r)) } else { Ok(Value::Int(x % y, r)) }
+            if y == -1 {
+                Ok(Value::Int(0, r))
+            } else {
+                Ok(Value::Int(x % y, r))
+            }
         }
         (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x % y, r)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
-fn bit_and(a: Value, b: Value) -> Result<Value, EvalError> { match (a, b) { (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x & y, r)), (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x & y, r)), _ => Err(EvalError::TypeMismatch) } }
-fn bit_or (a: Value, b: Value) -> Result<Value, EvalError> { match (a, b) { (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x | y, r)), (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x | y, r)), _ => Err(EvalError::TypeMismatch) } }
-fn bit_xor(a: Value, b: Value) -> Result<Value, EvalError> { match (a, b) { (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x ^ y, r)), (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x ^ y, r)), _ => Err(EvalError::TypeMismatch) } }
+
+fn bit_and(a: Value, b: Value) -> Result<Value, EvalError> {
+    match (a, b) {
+        (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x & y, r)),
+        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x & y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
+}
+
+fn bit_or(a: Value, b: Value) -> Result<Value, EvalError> {
+    match (a, b) {
+        (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x | y, r)),
+        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x | y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
+}
+
+fn bit_xor(a: Value, b: Value) -> Result<Value, EvalError> {
+    match (a, b) {
+        (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x ^ y, r)),
+        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x ^ y, r)),
+        _ => Err(EvalError::TypeMismatch),
+    }
+}
+
 fn shl(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(x, r), Value::Int(shift, _)) => {
-            if shift < 0 { return Err(EvalError::ShiftOutOfRange); }
-            let s = shift as u32; if s >= rank_bits(r) { return Err(EvalError::ShiftOutOfRange); }
+            if shift < 0 {
+                return Err(EvalError::ShiftOutOfRange);
+            }
+            let s = shift as u32;
+            if s >= rank_bits(r) {
+                return Err(EvalError::ShiftOutOfRange);
+            }
             match x.checked_shl(s) {
                 Some(v) => Ok(Value::Int(v, r)),
                 None => signed_overflow(Value::Int(x.wrapping_shl(s), r)),
             }
         }
         (Value::UInt(x, r), Value::Int(shift, _)) => {
-            if shift < 0 { return Err(EvalError::ShiftOutOfRange); }
-            let s = shift as u32; if s >= rank_bits(r) { return Err(EvalError::ShiftOutOfRange); }
+            if shift < 0 {
+                return Err(EvalError::ShiftOutOfRange);
+            }
+            let s = shift as u32;
+            if s >= rank_bits(r) {
+                return Err(EvalError::ShiftOutOfRange);
+            }
             Ok(Value::UInt(x.wrapping_shl(s), r))
         }
         (Value::UInt(x, r), Value::UInt(shift, _)) => {
-            let s = shift as u32; if s >= rank_bits(r) { return Err(EvalError::ShiftOutOfRange); }
+            let s = shift as u32;
+            if s >= rank_bits(r) {
+                return Err(EvalError::ShiftOutOfRange);
+            }
             Ok(Value::UInt(x.wrapping_shl(s), r))
         }
-        _ => Err(EvalError::TypeMismatch)
+        _ => Err(EvalError::TypeMismatch),
     }
 }
+
 fn shr(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Int(x, r), Value::Int(shift, _)) => {
-            if shift < 0 { return Err(EvalError::ShiftOutOfRange); }
-            let s = shift as u32; if s >= rank_bits(r) { return Err(EvalError::ShiftOutOfRange); }
+            if shift < 0 {
+                return Err(EvalError::ShiftOutOfRange);
+            }
+            let s = shift as u32;
+            if s >= rank_bits(r) {
+                return Err(EvalError::ShiftOutOfRange);
+            }
             Ok(Value::Int(x >> s, r))
         }
         (Value::UInt(x, r), Value::Int(shift, _)) => {
-            if shift < 0 { return Err(EvalError::ShiftOutOfRange); }
-            let s = shift as u32; if s >= rank_bits(r) { return Err(EvalError::ShiftOutOfRange); }
+            if shift < 0 {
+                return Err(EvalError::ShiftOutOfRange);
+            }
+            let s = shift as u32;
+            if s >= rank_bits(r) {
+                return Err(EvalError::ShiftOutOfRange);
+            }
             Ok(Value::UInt(x >> s, r))
         }
         (Value::UInt(x, r), Value::UInt(shift, _)) => {
-            let s = shift as u32; if s >= rank_bits(r) { return Err(EvalError::ShiftOutOfRange); }
+            let s = shift as u32;
+            if s >= rank_bits(r) {
+                return Err(EvalError::ShiftOutOfRange);
+            }
             Ok(Value::UInt(x >> s, r))
         }
-        _ => Err(EvalError::TypeMismatch)
+        _ => Err(EvalError::TypeMismatch),
     }
 }
 
@@ -326,10 +503,10 @@ fn impl_for(op: Op, tag: TyTag) -> fn(Value, Value) -> Result<Value, EvalError> 
         (Op::Div, TyTag::Float(_)) => div_float,
         (Op::Mod, TyTag::Int(_, _)) => mod_int,
         (Op::BitAnd, TyTag::Int(_, _)) => bit_and,
-        (Op::BitOr,  TyTag::Int(_, _)) => bit_or,
-        (Op::Xor,    TyTag::Int(_, _)) => bit_xor,
-        (Op::Shl,    TyTag::Int(_, _)) => shl,
-        (Op::Shr,    TyTag::Int(_, _)) => shr,
+        (Op::BitOr, TyTag::Int(_, _)) => bit_or,
+        (Op::Xor, TyTag::Int(_, _)) => bit_xor,
+        (Op::Shl, TyTag::Int(_, _)) => shl,
+        (Op::Shr, TyTag::Int(_, _)) => shr,
         // Default to int for unsupported combo (should be caught earlier)
         _ => add_int,
     }
@@ -369,8 +546,12 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
         Numeric::Float(v) => Some(Value::Float(*v as f64, FloatRank::F32)),
         Numeric::Double(v) => Some(Value::Float(*v, FloatRank::F64)),
         Numeric::String(s) => Some(Value::String(s.clone())),
-        Numeric::Const(_) | Numeric::Array { .. } | Numeric::Sequence { .. } | Numeric::Map { .. }
-        | Numeric::Struct { .. } | Numeric::Union { .. } => None,
+        Numeric::Const(_)
+        | Numeric::Array { .. }
+        | Numeric::Sequence { .. }
+        | Numeric::Map { .. }
+        | Numeric::Struct { .. }
+        | Numeric::Union { .. } => None,
     }
 }
 
@@ -399,7 +580,10 @@ fn numeric_from_value(v: &Value) -> Option<Numeric> {
             IntRank::U32 => Numeric::UInt32(*u as u32),
             IntRank::U64 => Numeric::UInt64(*u as u64),
         }),
-        Value::Float(f, fr) => Some(match fr { FloatRank::F32 => Numeric::Float(*f as f32), _ => Numeric::Double(*f) }),
+        Value::Float(f, fr) => Some(match fr {
+            FloatRank::F32 => Numeric::Float(*f as f32),
+            _ => Numeric::Double(*f),
+        }),
         Value::String(s) => Some(Numeric::String(s.clone())),
     }
 }
@@ -426,7 +610,12 @@ fn rank_for_primitive(prim: PrimitiveTy) -> Option<(bool, IntRank)> {
 
 fn float_rank_for_primitive(prim: PrimitiveTy) -> Option<FloatRank> {
     use PrimitiveTy::*;
-    Some(match prim { Float32 => FloatRank::F32, Float64 => FloatRank::F64, Float128 => FloatRank::F128, _ => return None })
+    Some(match prim {
+        Float32 => FloatRank::F32,
+        Float64 => FloatRank::F64,
+        Float128 => FloatRank::F128,
+        _ => return None,
+    })
 }
 
 fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
@@ -443,13 +632,18 @@ fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
                     }
                 }
                 PrimitiveTy::WChar => {
-                    // Cast to unsigned 16-bit, then to char (lossy if > 0x10FFFF but we range-check earlier)
+                    // Cast to unsigned 16-bit, then validate Unicode scalar (reject surrogates)
                     let vv = cast_to(v, TyTag::Int(IntRank::U16, false))?;
-                    match vv {
-                        Value::UInt(u, IntRank::U16) => Ok(Value::Char(char::from_u32(u as u32).unwrap_or('\u{FFFD}'))),
-                        Value::Int(i, IntRank::I16) => Ok(Value::Char(char::from_u32((i as u16) as u32).unwrap_or('\u{FFFD}'))),
-                        _ => Err(EvalError::TypeMismatch),
+                    let code = match vv {
+                        Value::UInt(u, IntRank::U16) => u as u32,
+                        Value::Int(i, IntRank::I16) => (i as u16) as u32,
+                        _ => return Err(EvalError::TypeMismatch),
+                    };
+                    if (0xD800..=0xDFFF).contains(&code) {
+                        return Err(EvalError::InvalidChar);
                     }
+                    // Safe: not a surrogate and within BMP
+                    Ok(Value::Char(char::from_u32(code).unwrap()))
                 }
                 _ => {
                     if let Some((signed, rank)) = rank_for_primitive(*p) {
@@ -469,7 +663,9 @@ fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
 }
 
 fn eval_bin(op: Op, lhs: Value, rhs: Value) -> Result<Value, EvalError> {
-    let Some(tag) = common_type(&lhs, &rhs) else { return Err(EvalError::TypeMismatch) };
+    let Some(tag) = common_type(&lhs, &rhs) else {
+        return Err(EvalError::TypeMismatch);
+    };
     let l = cast_to(lhs, tag)?;
     let r = cast_to(rhs, tag)?;
     let f = impl_for(op, tag);
@@ -485,9 +681,18 @@ fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, EvalError> {
         },
         (A::Sub, Value::UInt(u, r)) => {
             // -u for unsigned: apply in signed domain of same rank, warn on overflow
-            let signed = match r { IntRank::U8 => IntRank::I8, IntRank::U16 => IntRank::I16, IntRank::U32 => IntRank::I32, IntRank::U64 => IntRank::I64, _ => IntRank::I32 };
+            let signed = match r {
+                IntRank::U8 => IntRank::I8,
+                IntRank::U16 => IntRank::I16,
+                IntRank::U32 => IntRank::I32,
+                IntRank::U64 => IntRank::I64,
+                _ => IntRank::I32,
+            };
             let i = u as i128;
-            match i.checked_neg() { Some(v) => Ok(Value::Int(v, signed)), None => signed_overflow(Value::Int(i.wrapping_neg(), signed)) }
+            match i.checked_neg() {
+                Some(v) => Ok(Value::Int(v, signed)),
+                None => signed_overflow(Value::Int(i.wrapping_neg(), signed)),
+            }
         }
         (A::Not, Value::Int(i, r)) => Ok(Value::Int(!i, r)),
         (A::Not, Value::UInt(u, r)) => Ok(Value::UInt(!u, r)),
@@ -500,12 +705,11 @@ fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, EvalError> {
 pub struct ConstEvaluator<'a> {
     ctx: &'a mut LoweringContext,
     scope: ScopeId,
-    visiting: HashSet<crate::hir::DefId>,
 }
 
 impl<'a> ConstEvaluator<'a> {
     pub fn new(ctx: &'a mut LoweringContext, scope: ScopeId) -> Self {
-        Self { ctx, scope, visiting: HashSet::new() }
+        Self { ctx, scope }
     }
 
     /// Evaluate an expression to a HIR Numeric value (best-effort typing).
@@ -516,8 +720,31 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate an expression expecting a given target type (for constants declared with type).
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, expected_ty: &Ty) -> Option<Numeric> {
-        let v = self.eval_value(expr).and_then(|v| cast_value_to_type(v, expected_ty).ok())?;
-        numeric_from_value(&v)
+        let v = self.eval_value(expr)?;
+        match cast_value_to_type(v, expected_ty) {
+            Ok(v) => numeric_from_value(&v),
+            Err(EvalError::RangeError) => {
+                self.ctx.diagnostics.error(
+                    "value out of range for target type".to_string(),
+                    Label::new(expr.span()).message("out of range"),
+                );
+                None
+            }
+            Err(EvalError::InvalidChar) => {
+                self.ctx.diagnostics.error(
+                    "invalid Unicode scalar for character type".to_string(),
+                    Label::new(expr.span()).message("invalid character value"),
+                );
+                None
+            }
+            Err(_) => {
+                self.ctx.diagnostics.error(
+                    "cannot convert constant to expected type".to_string(),
+                    Label::new(expr.span()).message("type mismatch"),
+                );
+                None
+            }
+        }
     }
 
     /// Evaluate an expression to a simplified Value.
@@ -526,30 +753,21 @@ impl<'a> ConstEvaluator<'a> {
         match expr {
             Literal(lit) => value_from_numeric(&literal_to_numeric(&lit.value)),
             Path(path) => {
-                match self.ctx.scopes.resolve_path(&self.ctx.context, self.scope, path) {
+                match self
+                    .ctx
+                    .scopes
+                    .resolve_path(&self.ctx.context, self.scope, path)
+                {
                     Some(def_id) => {
                         // Constants, enumerators and flags are Const
                         let def = self.ctx.context.definitions.get(def_id);
                         match &def.kind {
-                            DefKind::Const(c) => {
-                                if self.visiting.contains(&def_id) {
-                                    // cycle
-                                    self.ctx.diagnostics.error(
-                                        "cyclic constant reference".to_string(),
-                                        Label::new(path_span(path)).message("cycle in constant evaluation"),
-                                    );
-                                    None
-                                } else {
-                                    self.visiting.insert(def_id);
-                                    let res = value_from_numeric(&c.value);
-                                    self.visiting.remove(&def_id);
-                                    res
-                                }
-                            }
+                            DefKind::Const(c) => value_from_numeric(&c.value),
                             _ => {
                                 self.ctx.diagnostics.error(
                                     format!("`{}` is not a constant value", path_to_string(path)),
-                                    Label::new(path_span(path)).message("expected constant, enumerator, or flag"),
+                                    Label::new(path_span(path))
+                                        .message("expected constant, enumerator, or flag"),
                                 );
                                 None
                             }
@@ -565,15 +783,27 @@ impl<'a> ConstEvaluator<'a> {
                 }
             }
             Binary(bin) => {
-                let op = match op_from_ast(bin.op.kind) { Some(o) => o, None => {
-                    self.ctx.diagnostics.error(
-                        "unsupported binary operation in constant expression".to_string(),
-                        Label::new(expr.span()).message("unsupported operation"),
-                    );
-                    return None;
-                }};
+                let op = match op_from_ast(bin.op.kind) {
+                    Some(o) => o,
+                    None => {
+                        self.ctx.diagnostics.error(
+                            "unsupported binary operation in constant expression".to_string(),
+                            Label::new(expr.span()).message("unsupported operation"),
+                        );
+                        return None;
+                    }
+                };
+
+                // Evaluate operands and track if the RHS is a division/modulo operation
                 let l = self.eval_value(&bin.lhs)?;
                 let r = self.eval_value(&bin.rhs)?;
+
+                // For division/modulo by zero errors, use the RHS span if available
+                let error_span = match op {
+                    Op::Div | Op::Mod => bin.rhs.span(),
+                    _ => expr.span(),
+                };
+
                 match eval_bin(op, l, r) {
                     Ok(v) => Some(v),
                     Err(EvalError::SignedOverflow(v)) => {
@@ -591,17 +821,25 @@ impl<'a> ConstEvaluator<'a> {
                         );
                         None
                     }
+                    Err(EvalError::InvalidChar) => {
+                        self.ctx.diagnostics.error(
+                            "invalid Unicode scalar for character type".to_string(),
+                            Label::new(expr.span()).message("invalid character value"),
+                        );
+                        None
+                    }
                     Err(EvalError::DivByZero) => {
                         self.ctx.diagnostics.error(
                             "division by zero in constant expression".to_string(),
-                            Label::new(expr.span()).message("division by zero"),
+                            Label::new(error_span).message("division by zero"),
                         );
                         None
                     }
                     Err(EvalError::ShiftOutOfRange) => {
-                        self.ctx.diagnostics.error(
-                            "shift amount out of range".to_string(),
-                            Label::new(expr.span()).message("invalid shift"),
+                        // Match C behavior: warn but continue with masked shift
+                        self.ctx.diagnostics.warn(
+                            "shift count >= width of type or negative".to_string(),
+                            Label::new(bin.rhs.span()).message("shift count overflow"),
                         );
                         None
                     }

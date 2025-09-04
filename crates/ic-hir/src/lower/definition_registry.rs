@@ -27,14 +27,14 @@
 
 //! Common functionality for registering and managing definitions during resolution.
 
-use ic_alloc::insensitive::CaseMap;
 use ic_alloc::arena::Id;
+use ic_alloc::insensitive::CaseMap;
 use ic_diagnostic::{Diag, Label, error_span};
 
 use crate::Context;
 use crate::hir::{Decl, DefId, DefKind};
-use crate::scope::ScopeId;
 use crate::lower::definition_builder::DefBuilder;
+use crate::scope::ScopeId;
 
 /// Helper for registering definitions and checking for duplicates.
 pub struct DefinitionRegistry<'a> {
@@ -76,10 +76,10 @@ impl<'a> DefinitionRegistry<'a> {
     /// Returns true if registration was successful, false if there was a conflict.
     pub fn register(&mut self, name: &str, id: DefId) -> bool {
         let qualified_name = self.qualified_name(name);
-        
+
         // Register in name map
         self.name_map.insert(qualified_name, id);
-        
+
         // Register in scope and check for duplicates
         self.register_in_scope(name.to_string(), id)
     }
@@ -185,7 +185,13 @@ impl<'a> DefinitionRegistry<'a> {
     }
 
     /// Reports a duplicate definition error for the given type.
-    pub fn report_duplicate(&mut self, name: &str, kind: &str, new_span: ic_syntax::Span, existing_id: DefId) {
+    pub fn report_duplicate(
+        &mut self,
+        name: &str,
+        kind: &str,
+        new_span: ic_syntax::Span,
+        existing_id: DefId,
+    ) {
         let existing = self.ctx.definitions.get(existing_id);
         self.errors.push(
             error_span(
@@ -195,14 +201,14 @@ impl<'a> DefinitionRegistry<'a> {
             .label(Label::new(existing.span).message(format!("{} first defined here", kind))),
         );
     }
-    
+
     /// Registers a definition builder and builds it with the allocated ID.
     pub fn register_and_build(&mut self, builder: DefBuilder) -> DefId {
         // Build a temporary definition to extract the ident
         let temp_def = builder.build_with_id(Id::_do_not_use());
         let ident = temp_def.ident.clone();
         let qualified_name = self.qualified_name(&ident.name);
-        
+
         // Rebuild the builder with the same parameters
         let builder = DefBuilder::new(ident.clone())
             .parent(temp_def.parent)
@@ -210,16 +216,21 @@ impl<'a> DefinitionRegistry<'a> {
             .span(temp_def.span)
             .kind(temp_def.kind)
             .flags(temp_def.flags);
-        
+
         // Allocate the definition
-        let id = self.ctx.definitions.alloc_with_id(|id| builder.build_with_id(id));
-        
+        let id = self
+            .ctx
+            .definitions
+            .alloc_with_id(|id| builder.build_with_id(id));
+
         // Register in name map
         self.name_map.insert(qualified_name, id);
-        
+
         // Register in scope
-        self.ctx.scopes.add_definition(self.current_scope, ident.name, id);
-        
+        self.ctx
+            .scopes
+            .add_definition(self.current_scope, ident.name, id);
+
         id
     }
 }

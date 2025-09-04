@@ -56,7 +56,7 @@ impl DefBuilder {
             flags: DefFlags::default(),
         }
     }
-    
+
     /// Sets the span.
     pub fn span(mut self, span: Span) -> Self {
         self.span = span;
@@ -106,7 +106,7 @@ impl DefBuilder {
     }
 
     /// Builds the definition.
-    /// 
+    ///
     /// # Panics
     /// Panics if no kind was set.
     pub fn build(self) -> Def {
@@ -120,7 +120,7 @@ impl DefBuilder {
             flags: self.flags,
         }
     }
-    
+
     /// Builds the definition with a specific ID.
     pub fn build_with_id(mut self, id: DefId) -> Def {
         self.id = id;

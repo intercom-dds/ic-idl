@@ -30,11 +30,10 @@
 use ic_diagnostic::Label;
 use ic_syntax::{Path, Type as AstType};
 
-use crate::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
-use crate::scope::ScopeId;
-
 use super::utils::{path_span, path_to_string};
 use super::{LoweringContext, ResolveMode};
+use crate::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use crate::scope::ScopeId;
 
 /// Resolves AST types to HIR types.
 pub struct TypeResolver<'ctx> {
@@ -46,7 +45,7 @@ impl<'ctx> TypeResolver<'ctx> {
     pub fn new(ctx: &'ctx mut LoweringContext, current_scope: ScopeId) -> Self {
         Self { ctx, current_scope }
     }
-    
+
     /// Resolve an AST type to a HIR type.
     pub fn resolve_type(&mut self, ast_type: &AstType) -> Option<Ty> {
         match ast_type {
@@ -89,15 +88,15 @@ impl<'ctx> TypeResolver<'ctx> {
             }),
         }
     }
-    
+
     /// Resolve a path type (could be a primitive or named type).
     pub fn resolve_path_type(&mut self, path: &Path) -> Option<Ty> {
         let span = path_span(path);
-        
+
         // Check if it's a single identifier that could be a primitive
         if path.segments.len() == 1 && path.leading_colons.is_none() {
             let name = &path.segments[0].name;
-            
+
             // Check if it's a primitive type
             if let Some(prim) = Self::resolve_primitive(name) {
                 return Some(Ty {
@@ -106,7 +105,7 @@ impl<'ctx> TypeResolver<'ctx> {
                 });
             }
         }
-        
+
         // Otherwise, resolve as a named type
         // Determine starting scope for resolution
         let start = if path.leading_colons.is_some() {
@@ -114,7 +113,7 @@ impl<'ctx> TypeResolver<'ctx> {
         } else {
             self.current_scope
         };
-        
+
         // Resolve the path
         match self.ctx.scopes.resolve_path(&self.ctx.context, start, path) {
             Some(def_id) => {
@@ -141,7 +140,7 @@ impl<'ctx> TypeResolver<'ctx> {
             }
         }
     }
-    
+
     /// Resolve a primitive type by name.
     fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
         Some(match name {
@@ -163,7 +162,7 @@ impl<'ctx> TypeResolver<'ctx> {
             _ => return None,
         })
     }
-    
+
     /// Evaluate a bound expression to a numeric value.
     fn evaluate_bound(&self, expr: &ic_syntax::Expr) -> Option<usize> {
         // TODO: Implement proper expression evaluation
@@ -176,7 +175,7 @@ impl<'ctx> TypeResolver<'ctx> {
             _ => None,
         }
     }
-    
+
     /// Check if a DefKind represents a type definition.
     fn is_type_definition(&self, kind: &DefKind) -> bool {
         matches!(
@@ -187,10 +186,10 @@ impl<'ctx> TypeResolver<'ctx> {
                 | DefKind::Valuetype(_)
                 | DefKind::Enum(_)
                 | DefKind::Bitmask(_)
-                | DefKind::Decl(_)  // Forward declarations are also types
+                | DefKind::Decl(_) // Forward declarations are also types
         )
     }
-    
+
     /// Resolve a type in the context of an interface (for inherited type visibility).
     pub fn resolve_in_interface_context(
         &mut self,

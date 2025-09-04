@@ -171,14 +171,12 @@ impl<'a> ParentValidator<'a> {
         child_name: &str,
         parent_path: &Path,
     ) {
-        self.errors.push(
-            error_span(
-                format!(
-                    "{} `{}` inherits from type that is not defined",
-                    child_type, child_name
-                ),
-                Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+        self.errors.push(error_span(
+            format!(
+                "{} `{}` inherits from type that is not defined",
+                child_type, child_name
             ),
-        );
+            Label::new(ic_syntax::util::path_span(parent_path)).message("undefined type"),
+        ));
     }
 }

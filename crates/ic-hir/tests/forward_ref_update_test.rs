@@ -341,7 +341,7 @@ fn test_inheritance_from_forward_declaration_error() {
 
     // This should produce an error about inheriting from incomplete type
     assert!(!result.errors.is_empty());
-    
+
     insta::assert_snapshot!(diagnostics);
 }
 

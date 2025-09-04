@@ -65,7 +65,6 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
     }
 }
 
-
 /// Get the span of a path.
 pub fn path_span(path: &Path) -> ic_syntax::Span {
     ic_syntax::util::path_span(path)
@@ -84,4 +83,3 @@ impl TyExt for crate::hir::Ty {
         }
     }
 }
-

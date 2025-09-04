@@ -463,7 +463,6 @@ impl<'a> Resolver<'a> {
         }
     }
 
-
     /// Registers a definition in the name map and current scope.
     fn register_definition(&mut self, qualified_name: String, name: String, id: DefId) {
         self.name_map.insert(qualified_name, id);
@@ -837,7 +836,6 @@ impl<'a> Resolver<'a> {
 
     /// Processes an enum definition.
     fn process_enum(&mut self, def: &ic_syntax::EnumDef) -> DefId {
-
         // Resolve annotations
         let annotations = self.resolve_ast_annotations(&def.annotations);
 
@@ -1744,7 +1742,6 @@ impl<'a> MemberResolver for Resolver<'a> {
     }
 }
 
-
 /// Resolves a declarator into (name, type).
 fn resolve_declarator(decl: &ic_syntax::Declarator, base_ty: Ty) -> (Ident, Ty) {
     match decl {
@@ -1824,4 +1821,3 @@ impl TyExt for Ty {
         }
     }
 }
-

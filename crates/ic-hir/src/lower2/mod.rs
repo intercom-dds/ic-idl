@@ -40,11 +40,11 @@ use crate::Context;
 use crate::hir::{DefId, DefKind, Ty, TyKind, TypeId};
 
 mod builder;
+mod eval;
 mod registry;
 mod scope_manager;
 mod type_items;
 mod type_resolver;
-mod eval;
 mod utils;
 mod validator;
 mod value_items;
@@ -76,19 +76,19 @@ where
     I: IntoIterator<Item = Item>,
 {
     let ast_items: Vec<Item> = ast.into_iter().collect();
-    
+
     // Phase 1: Build & Resolve
     let mut context = LoweringContext::new();
     let mut builder = builder::HirBuilder::new(&mut context);
     builder.build(&ast_items);
-    
+
     // Intermediate pass: Update forward references
     update_forward_references(&mut context);
-    
+
     // Phase 2: Validation
     let mut validator = validator::Validator::new(&context);
     validator.validate();
-    
+
     // Extract results
     let LoweringContext {
         context,
@@ -96,7 +96,7 @@ where
         diagnostics,
         ..
     } = context;
-    
+
     LoweringResult {
         context,
         order,
@@ -110,16 +110,16 @@ where
 pub(crate) struct LoweringContext {
     /// The HIR context being built.
     pub context: Context,
-    
+
     /// Scope tree for name resolution.
     pub scopes: ScopeTree,
-    
+
     /// Central registry for declarations and definitions.
     pub registry: DefinitionRegistry,
-    
+
     /// Diagnostics collected during lowering.
     pub diagnostics: Diagnostics,
-    
+
     /// Top-level type IDs in order.
     pub order: Vec<TypeId>,
 }
@@ -128,7 +128,7 @@ impl LoweringContext {
     fn new() -> Self {
         let context = Context::new();
         let root_scope = context.scopes.root();
-        
+
         Self {
             context,
             scopes: ScopeTree::new(root_scope),
@@ -154,17 +154,17 @@ impl Diagnostics {
             has_critical_error: false,
         }
     }
-    
+
     pub fn error(&mut self, message: String, label: ic_diagnostic::Label) {
         use ic_diagnostic::error_span;
         self.errors.push(error_span(message, label));
     }
-    
+
     pub fn warn(&mut self, message: String, label: ic_diagnostic::Label) {
         use ic_diagnostic::warn_span;
         self.warnings.push(warn_span(message, label));
     }
-    
+
     pub fn critical_error(&mut self, message: String, label: ic_diagnostic::Label) {
         self.error(message, label);
         self.has_critical_error = true;
@@ -175,23 +175,27 @@ impl Diagnostics {
 fn update_forward_references(ctx: &mut LoweringContext) {
     // Build mapping from forward decl DefIds to definition DefIds
     let mapping = ctx.registry.get_forward_to_def_mapping();
-    
+
     if mapping.is_empty() {
         return; // No forward references to update
     }
-    
+
     // Update all definitions to replace forward references
     let all_defs: Vec<DefId> = ctx.context.definitions.iter().map(|(id, _)| id).collect();
-    
+
     for def_id in all_defs {
         update_def_references(&mut ctx.context, def_id, &mapping);
     }
 }
 
 /// Update references in a single definition.
-fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std::collections::HashMap<DefId, DefId>) {
+fn update_def_references(
+    ctx: &mut crate::Context,
+    def_id: DefId,
+    mapping: &std::collections::HashMap<DefId, DefId>,
+) {
     let def = ctx.definitions.get_mut(def_id);
-    
+
     match &mut def.kind {
         DefKind::Struct(s) => {
             // Update parent reference if it points to a forward decl
@@ -200,7 +204,7 @@ fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std:
                     *parent = *new_id;
                 }
             }
-            
+
             // Update member types
             for member in &mut s.members {
                 update_type_references(&mut member.ty, mapping);
@@ -209,7 +213,7 @@ fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std:
         DefKind::Union(u) => {
             // Update discriminator type
             update_type_references(&mut u.disc, mapping);
-            
+
             // Update variant types
             for variant in &mut u.variants {
                 update_type_references(&mut variant.ty, mapping);
@@ -222,7 +226,7 @@ fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std:
                     *parent = *new_id;
                 }
             }
-            
+
             // Update prototypes
             for proto in &mut i.prototypes {
                 update_type_references(&mut proto.ty, mapping);
@@ -230,7 +234,7 @@ fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std:
                     update_type_references(&mut param.ty, mapping);
                 }
             }
-            
+
             // Update attributes
             for attr in &mut i.attributes {
                 update_type_references(&mut attr.ty, mapping);
@@ -243,19 +247,19 @@ fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std:
                     *parent = *new_id;
                 }
             }
-            
+
             // Update supports reference
             if let Some(supports) = &mut v.supports {
                 if let Some(new_id) = mapping.get(supports) {
                     *supports = *new_id;
                 }
             }
-            
+
             // Update members
             for member in &mut v.members {
                 update_type_references(&mut member.ty, mapping);
             }
-            
+
             // Update prototypes and attributes
             for proto in &mut v.prototypes {
                 update_type_references(&mut proto.ty, mapping);
@@ -263,7 +267,7 @@ fn update_def_references(ctx: &mut crate::Context, def_id: DefId, mapping: &std:
                     update_type_references(&mut param.ty, mapping);
                 }
             }
-            
+
             for attr in &mut v.attributes {
                 update_type_references(&mut attr.ty, mapping);
             }

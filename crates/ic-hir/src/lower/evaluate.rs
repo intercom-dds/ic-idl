@@ -1228,14 +1228,13 @@ impl<'a> ExpressionEvaluator<'a> {
                     );
                 }
                 TyKind::Sequence { ty, .. } => {
-                    return self.eval_sequence_init(init_list, ty.as_ref().clone(), parent_type_id);
+                    return self.eval_sequence_init(init_list, ty.as_ref().clone());
                 }
                 TyKind::Map { key, elem, .. } => {
                     return self.eval_map_init(
                         init_list,
                         key.as_ref().clone(),
                         elem.as_ref().clone(),
-                        parent_type_id,
                     );
                 }
                 _ => {
@@ -1375,18 +1374,13 @@ impl<'a> ExpressionEvaluator<'a> {
         }
 
         Numeric::Array {
-            ty: array_type_id,
+            ty: elem_ty.clone(),
             values: values.into_boxed_slice(),
         }
     }
 
     /// Evaluates a sequence initializer list.
-    fn eval_sequence_init(
-        &mut self,
-        init_list: &ic_syntax::InitList,
-        _elem_ty: Ty,
-        seq_type_id: DefId,
-    ) -> Numeric {
+    fn eval_sequence_init(&mut self, init_list: &ic_syntax::InitList, elem_ty: Ty) -> Numeric {
         let mut values = Vec::new();
 
         for named_expr in &init_list.values {
@@ -1404,7 +1398,7 @@ impl<'a> ExpressionEvaluator<'a> {
         }
 
         Numeric::Sequence {
-            ty: seq_type_id,
+            ty: elem_ty,
             values: values.into_boxed_slice(),
         }
     }
@@ -1413,9 +1407,8 @@ impl<'a> ExpressionEvaluator<'a> {
     fn eval_map_init(
         &mut self,
         init_list: &ic_syntax::InitList,
-        _key_ty: Ty,
-        _elem_ty: Ty,
-        map_type_id: DefId,
+        key_ty: Ty,
+        elem_ty: Ty,
     ) -> Numeric {
         let mut entries = Vec::new();
 
@@ -1458,8 +1451,9 @@ impl<'a> ExpressionEvaluator<'a> {
         }
 
         Numeric::Map {
-            ty: map_type_id,
-            values: entries.into_boxed_slice(),
+            key: key_ty,
+            value: elem_ty,
+            entries: entries.into_boxed_slice(),
         }
     }
 
@@ -1536,13 +1530,12 @@ impl<'a> ExpressionEvaluator<'a> {
                             ic_syntax::util::expr_span(&def.value),
                         ),
                         TyKind::Sequence { ty, .. } => {
-                            self.eval_sequence_init(init_list, ty.as_ref().clone(), id)
+                            self.eval_sequence_init(init_list, ty.as_ref().clone())
                         }
                         TyKind::Map { key, elem, .. } => self.eval_map_init(
                             init_list,
                             key.as_ref().clone(),
                             elem.as_ref().clone(),
-                            id,
                         ),
                         _ => {
                             self.errors.push(error_span(

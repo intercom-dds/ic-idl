@@ -458,7 +458,9 @@ impl<'a> TypeChecker<'a> {
 
             // Map values
             (
-                Numeric::Map { values, .. },
+                Numeric::Map {
+                    entries: values, ..
+                },
                 TyKind::Map {
                     key: expected_key_ty,
                     elem: expected_elem_ty,

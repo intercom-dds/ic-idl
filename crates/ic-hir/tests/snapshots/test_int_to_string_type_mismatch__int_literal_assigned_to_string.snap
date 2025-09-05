@@ -3,9 +3,9 @@ source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
 assertion_line: 37
 expression: diagnostics
 ---
-error: constant `myValue`: integer value cannot be assigned to type string
-   ┌ test.idl:2:9
+error: integer value cannot be assigned to type string
+   ┌ test.idl:2:32
    │
  2 │         const string myValue = 123;
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type string
+   ·                                ^^^ incompatible types
    └──

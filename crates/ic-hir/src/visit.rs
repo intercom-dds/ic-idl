@@ -349,7 +349,9 @@ where
                 visitor.visit_numeric(value);
             }
         }
-        Numeric::Map { values, .. } => {
+        Numeric::Map {
+            entries: values, ..
+        } => {
             for (key, value) in values {
                 visitor.visit_numeric(key);
                 visitor.visit_numeric(value);

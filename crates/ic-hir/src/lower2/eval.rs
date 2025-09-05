@@ -34,7 +34,7 @@ use ic_diagnostic::{Label, error_span, warn_span};
 
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_span, path_to_string};
-use crate::hir::{DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use crate::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
 /// Integer rank categories for promotions.
@@ -769,6 +769,13 @@ fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
                 }
             }
         }
+        TyKind::String { .. } => {
+            // String types only accept string values
+            match v {
+                Value::String(_) => Ok(v),
+                _ => Err(EvalError::TypeMismatch),
+            }
+        }
         // For non-primitive types (enums/bitmasks/etc), we rely on callers to interpret
         _ => Ok(v),
     }
@@ -868,6 +875,36 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate an expression expecting a given target type (for constants declared with type).
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, expected_ty: &Ty) -> Option<Numeric> {
+        // Handle initializer lists specially based on expected type
+        if let ic_syntax::Expr::InitList(init_list) = expr {
+            match &expected_ty.kind {
+                TyKind::Adt(def_id) => {
+                    let def = self.ctx.context.definitions.get(*def_id);
+                    if let DefKind::Struct(_) = &def.kind {
+                        return self.eval_struct_initializer(init_list, *def_id, expected_ty);
+                    }
+                }
+                TyKind::Array { ty, len, .. } => {
+                    return self.eval_array_initializer(init_list, ty, *len);
+                }
+                TyKind::Sequence { ty, .. } => {
+                    return self.eval_sequence_initializer(init_list, ty);
+                }
+                TyKind::Map { key, elem, .. } => {
+                    return self.eval_map_initializer(init_list, key, elem);
+                }
+                _ => {}
+            }
+
+            self.ctx.diagnostics.error(
+                "initializer lists can only be used to initialize structs, arrays, sequences, or \
+                 maps"
+                    .to_string(),
+                Label::new(expr.span()).message("invalid use of initializer list"),
+            );
+            return None;
+        }
+
         // If this is a direct integer literal assigned to an integer type, perform a strict
         // range check before we evaluate/cast. The goal is to error on obviously out-of-range
         // positive literals like `octet x = 9999;` while still allowing well-defined unsigned
@@ -966,10 +1003,8 @@ impl<'a> ConstEvaluator<'a> {
     }
 
     /// Evaluate an expression to a simplified Value.
-
-    /// Evaluate an expression to a simplified Value.
     fn eval_value(&mut self, expr: &ic_syntax::Expr) -> Option<Value> {
-        use ic_syntax::Expr::{Binary, Literal, Path, Unary};
+        use ic_syntax::Expr::{Binary, Group, InitList, Literal, Path, Unary};
         match expr {
             Literal(lit) => value_from_numeric(&literal_to_numeric(&lit.value)),
             Path(path) => {
@@ -1120,10 +1155,11 @@ impl<'a> ConstEvaluator<'a> {
                     None
                 }
             }
-            _ => {
+            Group(group) => self.eval_value(&group.expr),
+            InitList(_) => {
                 self.ctx.diagnostics.error(
-                    "complex expressions not yet supported in constants".to_string(),
-                    Label::new(expr.span()).message("unsupported expression"),
+                    "initializer lists cannot be used in arithmetic expressions".to_string(),
+                    Label::new(expr.span()).message("not allowed in arithmetic context"),
                 );
                 None
             }
@@ -1177,6 +1213,252 @@ impl<'a> ConstEvaluator<'a> {
             // eval_for_type already reported the error
             None
         }
+    }
+
+    /// Evaluate a struct initializer list.
+    fn eval_struct_initializer(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        struct_def_id: DefId,
+        _struct_ty: &Ty,
+    ) -> Option<Numeric> {
+        let (struct_name, struct_members) = {
+            let struct_def = self.ctx.context.definitions.get(struct_def_id);
+            let struct_ty_info = match &struct_def.kind {
+                DefKind::Struct(s) => s,
+                _ => return None,
+            };
+            (
+                struct_def.ident.name.clone(),
+                struct_ty_info.members.clone(),
+            )
+        };
+
+        // Build a map of field names to types from the struct definition
+        let mut field_map = std::collections::HashMap::new();
+        for member in &struct_members {
+            field_map.insert(member.ident.name.clone(), member.ty.clone());
+        }
+
+        // Process initializer list elements
+        let mut fields = Vec::new();
+
+        if init_list.values.is_empty() {
+            self.ctx.diagnostics.error(
+                "struct initializer cannot be empty".to_string(),
+                Label::new(ic_syntax::util::expr_span(&ic_syntax::Expr::InitList(
+                    init_list.clone(),
+                )))
+                .message("expected field values"),
+            );
+            return None;
+        }
+
+        // Handle both named and positional initialization
+        let is_named = init_list.values.iter().any(|v| v.ident.is_some());
+
+        if is_named {
+            // Named initialization: { .field1 = value1, .field2 = value2 }
+            for named_expr in &init_list.values {
+                if let Some(ref ident) = named_expr.ident {
+                    if let Some(field_ty) = field_map.get(&ident.name) {
+                        if let Some(value) = self.eval_for_type(&named_expr.value, field_ty) {
+                            fields.push((ident.clone(), value));
+                        }
+                    } else {
+                        self.ctx.diagnostics.error(
+                            format!(
+                                "struct `{}` has no field named `{}`",
+                                struct_name, ident.name
+                            ),
+                            Label::new(ident.span).message("unknown field"),
+                        );
+                    }
+                } else {
+                    self.ctx.diagnostics.error(
+                        "mixing named and positional initialization is not allowed".to_string(),
+                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                            .message("expected named field"),
+                    );
+                }
+            }
+        } else {
+            // Positional initialization: { value1, value2 }
+            if init_list.values.len() != struct_members.len() {
+                self.ctx.diagnostics.error(
+                    format!(
+                        "struct `{}` expects {} fields, but {} were provided",
+                        struct_name,
+                        struct_members.len(),
+                        init_list.values.len()
+                    ),
+                    Label::new(ic_syntax::util::expr_span(&ic_syntax::Expr::InitList(
+                        init_list.clone(),
+                    )))
+                    .message("incorrect number of fields"),
+                );
+                return None;
+            }
+
+            // Match values to fields in declaration order
+            for (i, named_expr) in init_list.values.iter().enumerate() {
+                let member = &struct_members[i];
+                if let Some(value) = self.eval_for_type(&named_expr.value, &member.ty) {
+                    fields.push((member.ident.clone(), value));
+                }
+            }
+        }
+
+        // Use the struct DefId as the type ID
+        Some(Numeric::Struct {
+            ty: struct_def_id,
+            fields: fields.into_boxed_slice(),
+        })
+    }
+
+    /// Evaluate an array initializer list.
+    fn eval_array_initializer(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        elem_ty: &Ty,
+        expected_len: usize,
+    ) -> Option<Numeric> {
+        let mut elements = Vec::new();
+
+        // Check that we have the correct number of elements
+        if init_list.values.len() != expected_len {
+            self.ctx.diagnostics.error(
+                format!(
+                    "array expects {} elements, but {} were provided",
+                    expected_len,
+                    init_list.values.len()
+                ),
+                Label::new(ic_syntax::util::expr_span(&ic_syntax::Expr::InitList(
+                    init_list.clone(),
+                )))
+                .message("incorrect number of elements"),
+            );
+            return None;
+        }
+
+        // Evaluate each element
+        for named_expr in &init_list.values {
+            if named_expr.ident.is_some() {
+                self.ctx.diagnostics.error(
+                    "array elements cannot have names".to_string(),
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("unexpected named element"),
+                );
+                return None;
+            }
+            if let Some(value) = self.eval_for_type(&named_expr.value, elem_ty) {
+                elements.push(value);
+            } else {
+                // eval_for_type already reported error
+                return None;
+            }
+        }
+
+        Some(Numeric::Array {
+            ty: elem_ty.clone(),
+            values: elements.into_boxed_slice(),
+        })
+    }
+
+    /// Evaluate a sequence initializer list.
+    fn eval_sequence_initializer(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        elem_ty: &Ty,
+    ) -> Option<Numeric> {
+        let mut elements = Vec::new();
+
+        // Evaluate each element
+        for named_expr in &init_list.values {
+            if named_expr.ident.is_some() {
+                self.ctx.diagnostics.error(
+                    "sequence elements cannot have names".to_string(),
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("unexpected named element"),
+                );
+                return None;
+            }
+            if let Some(value) = self.eval_for_type(&named_expr.value, elem_ty) {
+                elements.push(value);
+            } else {
+                // eval_for_type already reported error
+                return None;
+            }
+        }
+
+        Some(Numeric::Sequence {
+            ty: elem_ty.clone(),
+            values: elements.into_boxed_slice(),
+        })
+    }
+
+    /// Evaluate a map initializer list.
+    fn eval_map_initializer(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        key_ty: &Ty,
+        elem_ty: &Ty,
+    ) -> Option<Numeric> {
+        let mut pairs = Vec::new();
+
+        // Each element should be a pair initializer list {key, value}
+        for named_expr in &init_list.values {
+            if named_expr.ident.is_some() {
+                self.ctx.diagnostics.error(
+                    "map entries cannot have names".to_string(),
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("unexpected named element"),
+                );
+                return None;
+            }
+
+            // Each element must itself be an initializer list with 2 elements
+            if let ic_syntax::Expr::InitList(pair_init) = &named_expr.value {
+                if pair_init.values.len() != 2 {
+                    self.ctx.diagnostics.error(
+                        "map entry must have exactly 2 elements (key and value)".to_string(),
+                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                            .message("expected {key, value}"),
+                    );
+                    return None;
+                }
+
+                // Check no names in pair
+                if pair_init.values.iter().any(|v| v.ident.is_some()) {
+                    self.ctx.diagnostics.error(
+                        "map key and value cannot have names".to_string(),
+                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                            .message("unexpected named elements"),
+                    );
+                    return None;
+                }
+
+                // Evaluate key and value with their correct types
+                let key = self.eval_for_type(&pair_init.values[0].value, key_ty)?;
+                let value = self.eval_for_type(&pair_init.values[1].value, elem_ty)?;
+                pairs.push((key, value));
+            } else {
+                self.ctx.diagnostics.error(
+                    "map entry must be an initializer list {key, value}".to_string(),
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("expected initializer list"),
+                );
+                return None;
+            }
+        }
+
+        // For maps, we need a TypeId. For now, use 0 as a placeholder
+        // In a real implementation, this would need to be tracked properly
+        Some(Numeric::Map {
+            key: key_ty.clone(),
+            value: elem_ty.clone(),
+            entries: pairs.into_boxed_slice(),
+        })
     }
 }
 

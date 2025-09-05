@@ -192,13 +192,13 @@ pub enum Decl {
     Valuetype,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Ty {
     pub span: Span,
     pub kind: TyKind,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TyKind {
     /// The `any` type.
     Any,
@@ -298,15 +298,16 @@ pub enum Numeric {
     Const(DefId),
 
     /// Fixed-size array elements, e.g. `{1, 2, 3}`.
-    Array { ty: TypeId, values: Box<[Numeric]> },
+    Array { ty: Ty, values: Box<[Numeric]> },
 
     /// Sequence elements, e.g. `{1, 2, 3}`.
-    Sequence { ty: TypeId, values: Box<[Numeric]> },
+    Sequence { ty: Ty, values: Box<[Numeric]> },
 
     /// Map entries, eg. `{{key1, value1}, {key2, value2}}`.
     Map {
-        ty: TypeId,
-        values: Box<[(Numeric, Numeric)]>,
+        key: Ty,
+        value: Ty,
+        entries: Box<[(Numeric, Numeric)]>,
     },
 
     /// Struct initialization with named fields.
@@ -451,6 +452,7 @@ pub struct BitFlag {
 pub struct BitsetTy {
     /// Parent bitset for inheritance.
     pub parent: Option<DefId>,
+
     /// The bitset fields.
     pub fields: Vec<BitsetField>,
 }
@@ -459,10 +461,13 @@ pub struct BitsetTy {
 pub struct BitsetField {
     /// Name of the bitfield.
     pub ident: Ident,
+
     /// Size in bits (evaluated expression).
     pub size: usize,
+
     /// Type for the field.
     pub ty: Ty,
+
     /// Annotations on this field.
     pub annotations: Vec<Ann>,
 }

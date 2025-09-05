@@ -76,8 +76,11 @@ impl<'a> ic_hir::visit::Visitor<'a> for InitializerListSize<'a> {
 fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, span: Span) {
     match numeric {
         Numeric::Array { ty, values } => {
-            if let Some(expected_len) = array_len(context, *ty) {
-                if values.len() != expected_len {
+            if let TyKind::Array {
+                len: expected_len, ..
+            } = &ty.kind
+            {
+                if values.len() != *expected_len {
                     ctx.report(
                         InitializerListSize::name(),
                         InitializerListSize::category(),
@@ -129,7 +132,9 @@ fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, s
                 validate_init_list(ctx, context, value, span);
             }
         }
-        Numeric::Map { values, .. } => {
+        Numeric::Map {
+            entries: values, ..
+        } => {
             for (key, value) in values {
                 validate_init_list(ctx, context, key, span);
                 validate_init_list(ctx, context, value, span);
@@ -142,20 +147,6 @@ fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, s
     }
 }
 
-fn array_len(context: &Context, type_id: DefId) -> Option<usize> {
-    let def = context.definitions.get(type_id);
-
-    match &def.kind {
-        DefKind::Const(const_ty) => {
-            if let TyKind::Array { len, .. } = &const_ty.ty.kind {
-                Some(*len)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
-}
 //
 // impl<'a> Visitor<'a> for InitializerListSize<'a> {
 //     fn context(&self) -> &'a Context {

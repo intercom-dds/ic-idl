@@ -54,21 +54,18 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
     /// Process a constant definition.
     pub fn process_const(&mut self, c: &ConstDef) -> DefId {
-        // Get identifier from declarator
-        let ident = ic_syntax::Ident {
-            name: ic_syntax::util::decl_name(&c.decl).to_string(),
-            span: ic_syntax::util::decl_span(&c.decl),
-        };
-
-        // Resolve the type first
+        // Resolve the base type first
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let ty = resolver.resolve_type(&c.ty).unwrap_or_else(|| {
+        let base_ty = resolver.resolve_type(&c.ty).unwrap_or_else(|| {
             // Use a default type on error
             Ty {
                 span: ic_syntax::util::ty_span(&c.ty),
                 kind: TyKind::Primitive(PrimitiveTy::Int32),
             }
         });
+
+        // Process the declarator to get identifier and full type (including array dimensions)
+        let (ident, ty) = resolve_declarator(&c.decl, base_ty, self.ctx, self.current_scope);
 
         // Evaluate the value using the promotion-aware evaluator
         let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
@@ -555,4 +552,43 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     }
 
     // No local evaluators; constants are evaluated via ConstEvaluator
+}
+
+/// Resolves a declarator to produce an identifier and type.
+/// Handles array declarators by building array types from the base type.
+fn resolve_declarator(
+    decl: &ic_syntax::Declarator,
+    base_ty: Ty,
+    ctx: &mut LoweringContext,
+    scope: ScopeId,
+) -> (ic_syntax::Ident, Ty) {
+    match decl {
+        ic_syntax::Declarator::Simple(ident) => (ident.clone(), base_ty),
+        ic_syntax::Declarator::Array(arr) => {
+            // Build array type from innermost to outermost
+            let mut ty = base_ty;
+            for bound_expr in &arr.bounds {
+                // Evaluate the bound expression
+                let mut evaluator = ConstEvaluator::new(ctx, scope);
+                let len = evaluator.eval_nonneg_bound(bound_expr).unwrap_or_else(|| {
+                    ctx.diagnostics.error(
+                        "array bound must be a non-negative constant expression".to_string(),
+                        ic_diagnostic::Label::new(bound_expr.span())
+                            .message("expected constant expression"),
+                    );
+                    1 // Default to 1 on error
+                });
+
+                ty = Ty {
+                    span: ty.span,
+                    kind: TyKind::Array {
+                        ty: Box::new(ty.clone()),
+                        len,
+                        len_span: ic_syntax::util::expr_span(bound_expr),
+                    },
+                };
+            }
+            (arr.ident.clone(), ty)
+        }
+    }
 }

@@ -116,7 +116,9 @@ fn test_map_init() {
 
     match &ages.1.kind {
         DefKind::Const(const_ty) => match &const_ty.value {
-            Numeric::Map { values, .. } => {
+            Numeric::Map {
+                entries: values, ..
+            } => {
                 assert_eq!(values.len(), 3);
 
                 let expected = [("Alice", 30), ("Bob", 25), ("Charlie", 35)];
@@ -243,7 +245,9 @@ fn test_empty_collections() {
 
     match &empty_map.1.kind {
         DefKind::Const(const_ty) => match &const_ty.value {
-            Numeric::Map { values, .. } => {
+            Numeric::Map {
+                entries: values, ..
+            } => {
                 assert_eq!(values.len(), 0);
             }
             _ => panic!("Expected map"),

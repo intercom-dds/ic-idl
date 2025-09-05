@@ -1044,80 +1044,37 @@ impl HirMerger {
                     num.clone()
                 }
             }
-            Numeric::Array { ty, values } => {
-                // Map the type DefId, checking all graphs
-                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
-                    new_id
-                } else {
-                    // Check previous graphs
-                    let mut found = None;
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
-                            found = Some(new_id);
-                            break;
-                        }
-                    }
-                    found.unwrap_or(*ty)
-                };
-                Numeric::Array {
-                    ty: new_ty,
-                    values: values
-                        .iter()
-                        .map(|v| self.update_numeric(graph_index, v))
-                        .collect(),
-                }
-            }
-            Numeric::Sequence { ty, values } => {
-                // Map the type DefId, checking all graphs
-                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
-                    new_id
-                } else {
-                    // Check previous graphs
-                    let mut found = None;
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
-                            found = Some(new_id);
-                            break;
-                        }
-                    }
-                    found.unwrap_or(*ty)
-                };
-                Numeric::Sequence {
-                    ty: new_ty,
-                    values: values
-                        .iter()
-                        .map(|v| self.update_numeric(graph_index, v))
-                        .collect(),
-                }
-            }
-            Numeric::Map { ty, values } => {
-                // Map the type DefId, checking all graphs
-                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
-                    new_id
-                } else {
-                    // Check previous graphs
-                    let mut found = None;
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
-                            found = Some(new_id);
-                            break;
-                        }
-                    }
-                    found.unwrap_or(*ty)
-                };
-                Numeric::Map {
-                    ty: new_ty,
-                    values: values
-                        .iter()
-                        .map(|(k, v)| {
-                            (
-                                self.update_numeric(graph_index, k),
-                                self.update_numeric(graph_index, v),
-                            )
-                        })
-                        .collect(),
-                }
-            }
+            Numeric::Array { ty, values } => Numeric::Array {
+                ty: ty.clone(),
+                values: values
+                    .iter()
+                    .map(|v| self.update_numeric(graph_index, v))
+                    .collect(),
+            },
+            Numeric::Sequence { ty, values } => Numeric::Sequence {
+                ty: ty.clone(),
+                values: values
+                    .iter()
+                    .map(|v| self.update_numeric(graph_index, v))
+                    .collect(),
+            },
+            Numeric::Map {
+                key,
+                value,
+                entries: values,
+            } => Numeric::Map {
+                key: key.clone(),
+                value: value.clone(),
+                entries: values
+                    .iter()
+                    .map(|(k, v)| {
+                        (
+                            self.update_numeric(graph_index, k),
+                            self.update_numeric(graph_index, v),
+                        )
+                    })
+                    .collect(),
+            },
             Numeric::Struct { ty, fields } => {
                 // Map the type DefId, checking all graphs
                 let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {

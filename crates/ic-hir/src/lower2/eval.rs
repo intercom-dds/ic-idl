@@ -350,6 +350,49 @@ fn add_int(a: Value, b: Value) -> Result<Value, EvalError> {
     }
 }
 
+/// Check if assigning a float literal to an integer type will lose precision and warn if so.
+fn check_float_to_int_precision_loss(
+    expr: &ic_syntax::Expr,
+    expected_ty: &Ty,
+    diagnostics: &mut super::Diagnostics,
+) {
+    // Check if we have a float literal
+    if let ic_syntax::Expr::Literal(lit) = expr {
+        if let ic_syntax::LiteralValue::Float(float_val) = &lit.value {
+            // Check if target type is integer
+            if let TyKind::Primitive(prim) = &expected_ty.kind {
+                let is_int_type = matches!(
+                    prim,
+                    crate::hir::PrimitiveTy::Int8
+                        | crate::hir::PrimitiveTy::UInt8
+                        | crate::hir::PrimitiveTy::Int16
+                        | crate::hir::PrimitiveTy::UInt16
+                        | crate::hir::PrimitiveTy::Int32
+                        | crate::hir::PrimitiveTy::UInt32
+                        | crate::hir::PrimitiveTy::Int64
+                        | crate::hir::PrimitiveTy::UInt64
+                );
+
+                if is_int_type {
+                    let truncated = float_val.trunc();
+                    if *float_val != truncated {
+                        diagnostics.warnings.push(ic_diagnostic::warn_span(
+                            format!(
+                                "implicit conversion from 'double' to '{}' changes value from {} \
+                                 to {}",
+                                prim.name(),
+                                float_val,
+                                truncated as i64
+                            ),
+                            Label::new(expr.span()).message("precision loss here"),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn add_float(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
         (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x + y, r)),
@@ -745,6 +788,10 @@ impl<'a> ConstEvaluator<'a> {
     /// Evaluate an expression expecting a given target type (for constants declared with type).
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, expected_ty: &Ty) -> Option<Numeric> {
         let v = self.eval_value(expr)?;
+
+        // Warn about precision loss when assigning float literal to integer type
+        check_float_to_int_precision_loss(expr, expected_ty, &mut self.ctx.diagnostics);
+
         match cast_value_to_type(v, expected_ty) {
             Ok(v) => numeric_from_value(&v),
             Err(EvalError::RangeError) => {

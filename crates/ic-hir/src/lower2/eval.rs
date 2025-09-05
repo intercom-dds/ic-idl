@@ -1029,10 +1029,16 @@ impl<'a> ConstEvaluator<'a> {
                         bin.rhs.span()
                     };
 
-                    self.ctx.diagnostics.errors.push(error_span(
-                        "string literals cannot be used in arithmetic expressions",
-                        Label::new(string_span).message("string operand"),
-                    ));
+                    self.ctx.diagnostics.errors.push(
+                        error_span(
+                            "string literals cannot be used in arithmetic expressions",
+                            Label::new(string_span).message("string operand"),
+                        )
+                        .note(
+                            "string literals can only be used in struct initialization or string \
+                             constants",
+                        ),
+                    );
                     return None;
                 }
 

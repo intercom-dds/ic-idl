@@ -1,11 +1,10 @@
 ---
 source: crates/ic-hir/tests/typecheck_test.rs
-expression: output
+expression: diagnostics
 ---
-error: string literals cannot be used in arithmetic expressions
+error: string value cannot be assigned to type int32
    ┌ test.idl:3:18
    │
  3 │             case "string":  // String literal for int32 discriminator
-   ·                  ^^^^^^^^ evaluation error
+   ·                  ^^^^^^^^ incompatible types
    └──
- note: string literals can only be used in struct initialization or string constants

@@ -584,7 +584,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                             // Create an evaluator and evaluate the expression
                             let mut evaluator =
                                 super::eval::ConstEvaluator::new(self.ctx, self.current_scope);
-                            if let Some(numeric) = evaluator.eval_for_type(expr, disc) {
+                            if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
                                 labels.push(Label {
                                     value: numeric,
                                     span: expr.span(),
@@ -622,7 +622,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                             // Create an evaluator and evaluate the expression
                             let mut evaluator =
                                 super::eval::ConstEvaluator::new(self.ctx, self.current_scope);
-                            if let Some(numeric) = evaluator.eval_numeric(expr) {
+                            if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
                                 labels.push(Label {
                                     value: numeric,
                                     span: expr.span(),

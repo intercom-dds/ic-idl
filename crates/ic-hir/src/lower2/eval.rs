@@ -1145,6 +1145,39 @@ impl<'a> ConstEvaluator<'a> {
             }
         }
     }
+
+    /// Evaluate an expression to a Numeric, preserving Const references for union case labels.
+    pub fn eval_union_case_label(
+        &mut self,
+        expr: &ic_syntax::Expr,
+        disc_ty: &Ty,
+    ) -> Option<Numeric> {
+        use ic_syntax::Expr::Path;
+
+        // Try to evaluate using eval_for_type to get proper type checking
+        if let Some(numeric) = self.eval_for_type(expr, disc_ty) {
+            // Success! Now check if this is a Path expression to a constant
+            if let Path(path) = expr {
+                // For paths to constants, replace with Const reference
+                if let Some(def_id) =
+                    self.ctx
+                        .scopes
+                        .resolve_path(&self.ctx.context, self.scope, path)
+                {
+                    let def = self.ctx.context.definitions.get(def_id);
+                    if let DefKind::Const(_) = &def.kind {
+                        // Return a Const reference instead of the evaluated value
+                        return Some(Numeric::Const(def_id));
+                    }
+                }
+            }
+            // Return the evaluated numeric value
+            Some(numeric)
+        } else {
+            // eval_for_type already reported the error
+            None
+        }
+    }
 }
 
 /// Try to extract a direct integer literal from an expression.

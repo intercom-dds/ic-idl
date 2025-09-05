@@ -42,6 +42,7 @@ use crate::hir::{DefId, DefKind, Ty, TyKind, TypeId};
 mod builder;
 mod builtin;
 mod eval;
+mod initializers;
 mod registry;
 mod scope_manager;
 mod type_items;

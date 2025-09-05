@@ -565,9 +565,12 @@ fn resolve_declarator(
     match decl {
         ic_syntax::Declarator::Simple(ident) => (ident.clone(), base_ty),
         ic_syntax::Declarator::Array(arr) => {
-            // Build array type from innermost to outermost
+            // Build array type from rightmost to leftmost bound
+            // For int[2][3], we want Array<Array<int, 3>, 2>
             let mut ty = base_ty;
-            for bound_expr in &arr.bounds {
+
+            // Process bounds in reverse order
+            for bound_expr in arr.bounds.iter().rev() {
                 // Evaluate the bound expression
                 let mut evaluator = ConstEvaluator::new(ctx, scope);
                 let len = evaluator.eval_nonneg_bound(bound_expr).unwrap_or_else(|| {

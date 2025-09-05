@@ -27,7 +27,7 @@
 
 //! Type resolution for converting AST types to HIR types.
 
-use ic_diagnostic::Label;
+use ic_diagnostic::{Label, error_span, warn_span};
 use ic_syntax::{Path, Type as AstType};
 
 use super::eval::ConstEvaluator;
@@ -56,7 +56,7 @@ impl<'ctx> TypeResolver<'ctx> {
                 kind: TyKind::String {
                     wide: s.wide,
                     bound: s.bound.as_ref().and_then(|e| self.evaluate_bound(e)),
-                    bound_span: s.bound.as_ref().map(|e| e.span()),
+                    bound_span: s.bound.as_ref().map(ic_syntax::Expr::span),
                 },
             }),
             AstType::Sequence(seq) => {
@@ -66,7 +66,7 @@ impl<'ctx> TypeResolver<'ctx> {
                     kind: TyKind::Sequence {
                         ty: Box::new(elem_ty),
                         bound: seq.bound.as_ref().and_then(|e| self.evaluate_bound(e)),
-                        bound_span: seq.bound.as_ref().map(|e| e.span()),
+                        bound_span: seq.bound.as_ref().map(ic_syntax::Expr::span),
                     },
                 })
             }
@@ -79,7 +79,7 @@ impl<'ctx> TypeResolver<'ctx> {
                         key: Box::new(key_ty),
                         elem: Box::new(elem_ty),
                         bound: m.bound.as_ref().and_then(|e| self.evaluate_bound(e)),
-                        bound_span: m.bound.as_ref().map(|e| e.span()),
+                        bound_span: m.bound.as_ref().map(ic_syntax::Expr::span),
                     },
                 })
             }
@@ -124,31 +124,29 @@ impl<'ctx> TypeResolver<'ctx> {
         };
 
         // Resolve the path
-        match self.ctx.scopes.resolve_path(&self.ctx.context, start, path) {
-            Some(def_id) => {
-                let def = self.ctx.context.definitions.get(def_id);
-                if self.is_type_definition(&def.kind) {
-                    Some(Ty {
-                        span: (path_span(path)),
-                        kind: TyKind::Adt(def_id),
-                    })
-                } else {
-                    use ic_diagnostic::error_span;
-                    self.ctx.diagnostics.errors.push(error_span(
-                        format!("`{}` is not a type", path_to_string(path)),
-                        Label::new(path_span(path)).message("expected a type"),
-                    ));
-                    None
-                }
-            }
-            None => {
-                use ic_diagnostic::error_span;
+        if let Some(def_id) = self.ctx.scopes.resolve_path(&self.ctx.context, start, path) {
+            let def = self.ctx.context.definitions.get(def_id);
+            if self.is_type_definition(&def.kind) {
+                // Check for case sensitivity issues on the entire path
+                self.check_case_consistency(path, def_id);
+
+                Some(Ty {
+                    span: (path_span(path)),
+                    kind: TyKind::Adt(def_id),
+                })
+            } else {
                 self.ctx.diagnostics.errors.push(error_span(
-                    format!("unresolved type `{}`", path_to_string(path)),
-                    Label::new(path_span(path)).message("unknown type"),
+                    format!("`{}` is not a type", path_to_string(path)),
+                    Label::new(path_span(path)).message("expected a type"),
                 ));
                 None
             }
+        } else {
+            self.ctx.diagnostics.errors.push(error_span(
+                format!("unresolved type `{}`", path_to_string(path)),
+                Label::new(path_span(path)).message("unknown type"),
+            ));
+            None
         }
     }
 
@@ -181,7 +179,7 @@ impl<'ctx> TypeResolver<'ctx> {
         evaluator.eval_nonneg_bound(expr)
     }
 
-    /// Check if a DefKind represents a type definition.
+    /// Check if a `DefKind` represents a type definition.
     fn is_type_definition(&self, kind: &DefKind) -> bool {
         !matches!(
             kind,
@@ -201,5 +199,117 @@ impl<'ctx> TypeResolver<'ctx> {
             type_name,
             ResolveMode::InsideInterface(interface_id),
         )
+    }
+
+    /// Check if a path reference has consistent capitalization with the definition.
+    fn check_case_consistency(&mut self, path: &Path, _def_id: DefId) {
+        // We need to check each segment of the path for case consistency
+        // This requires resolving the path step by step
+
+        let start_scope = if path.leading_colons.is_some() {
+            self.ctx.scopes.root()
+        } else {
+            self.current_scope
+        };
+
+        // Call our custom path resolution that checks case consistency
+        self.resolve_path_with_case_check(start_scope, path);
+    }
+
+    /// Resolve a path while checking case consistency for each segment
+    fn resolve_path_with_case_check(&mut self, start_scope: ScopeId, path: &Path) -> Option<DefId> {
+        let segments: Vec<(&str, ic_syntax::Span)> = path
+            .segments
+            .iter()
+            .map(|s| (s.name.as_str(), s.span))
+            .collect();
+
+        if segments.is_empty() {
+            return None;
+        }
+
+        // Try resolving as a relative path first
+        let mut current = Some(start_scope);
+
+        while let Some(scope_id) = current {
+            if let Some(def_id) = self.resolve_path_from_scope_with_case_check(scope_id, &segments)
+            {
+                return Some(def_id);
+            }
+
+            // Move to parent scope
+            current = self.ctx.context.scopes.get_scope(scope_id).parent;
+        }
+
+        None
+    }
+
+    /// Resolve a path starting from a specific scope, checking case consistency
+    fn resolve_path_from_scope_with_case_check(
+        &mut self,
+        scope: ScopeId,
+        segments: &[(&str, ic_syntax::Span)],
+    ) -> Option<DefId> {
+        if segments.is_empty() {
+            return None;
+        }
+
+        let (name, span) = segments[0];
+
+        // First check if it's a single segment definition
+        if segments.len() == 1 {
+            let scope_data = self.ctx.context.scopes.get_scope(scope);
+            // Find the definition (case-insensitive)
+            let found = scope_data
+                .definitions
+                .iter()
+                .find(|(canonical_name, _)| canonical_name.eq_ignore_ascii_case(name))
+                .map(|(canonical_name, &def_id)| (canonical_name, def_id));
+
+            if let Some((canonical_name, def_id)) = found {
+                // Check case consistency
+                if canonical_name != name {
+                    self.ctx.diagnostics.warnings.push(
+                        warn_span(
+                            format!(
+                                "inconsistent capitalization: `{name}` should be \
+                                 `{canonical_name}`"
+                            ),
+                            Label::new(span).message("used here"),
+                        )
+                        .note(format!("the canonical name is `{canonical_name}`")),
+                    );
+                }
+                return Some(def_id);
+            }
+        }
+
+        // Multi-segment path or not found as definition - check child scopes
+        let scope_data = self.ctx.context.scopes.get_scope(scope);
+        let found_child = scope_data
+            .children
+            .iter()
+            .find(|(canonical_name, _)| canonical_name.eq_ignore_ascii_case(name))
+            .map(|(canonical_name, &child_scope)| (canonical_name, child_scope));
+
+        if let Some((canonical_name, child_scope)) = found_child {
+            // Check case consistency for module name
+            if canonical_name != name {
+                self.ctx.diagnostics.warnings.push(
+                    warn_span(
+                        format!(
+                            "inconsistent capitalization: `{name}` should be `{canonical_name}`"
+                        ),
+                        Label::new(span).message("module name used here"),
+                    )
+                    .note(format!("the canonical module name is `{canonical_name}`")),
+                );
+            }
+
+            // Recurse into child scope
+            return self.resolve_path_from_scope_with_case_check(child_scope, &segments[1..]);
+        }
+
+        None
     }
 }

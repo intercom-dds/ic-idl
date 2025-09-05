@@ -3,14 +3,10 @@ source: crates/ic-hir/tests/incomplete_type_inheritance.rs
 expression: output
 ---
 error: struct `A` cannot inherit from incomplete type `B`
-   ┌ test.idl:5:9
+   ┌ test.idl:5:20
    │
  5 │         struct A : B {
-   ·         ^^^^^^^^^^^^^^ inherits from incomplete type here
- 6 │             long x;
-   · 
- 7 │         };
-   · ^^^^^^^^^^
+   ·                    ^ invalid inheritance
  3 │         struct B;
    ·                ^ parent type is only forward declared
    └──

@@ -70,7 +70,7 @@ pub fn path_span(path: &Path) -> ic_syntax::Span {
     ic_syntax::util::path_span(path)
 }
 
-/// Extension trait for Ty to get ADT DefId.
+/// Extension trait for Ty to get ADT `DefId`.
 pub trait TyExt {
     fn as_adt(&self) -> Option<crate::hir::DefId>;
 }

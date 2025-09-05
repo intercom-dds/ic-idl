@@ -3,10 +3,10 @@ source: crates/ic-hir/tests/test_enum_duplicate.rs
 expression: diagnostics
 ---
 error: duplicate definition of `ZERO`
-   ┌ test.idl:6:1
+   ┌ test.idl:3:5
    │
- 6 │ const octet ZERO = 0;
-   · ^^^^^^^^^^^^^^^^^^^^^ redefined here
  3 │     ZERO
-   ·     ^^^^ first defined here
+   ·     ^^^^ originally defined here
+ 6 │ const octet ZERO = 0;
+   ·             ^^^^ redefined here
    └──

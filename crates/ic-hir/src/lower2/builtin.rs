@@ -42,7 +42,7 @@ where
     let user_items: Vec<Item> = user.into_iter().collect();
 
     // Process builtins first
-    let mut result = lower(builtin_items.into_iter());
+    let mut result = lower(builtin_items);
 
     // Mark all builtin definitions with IS_BUILTIN flag
     for &def_id in &result.order {
@@ -54,7 +54,7 @@ where
     let builtin_order = result.order.clone();
 
     // Process user items in the same context
-    let user_result = lower_in_context(user_items.into_iter(), result);
+    let user_result = lower_in_context(user_items, result);
 
     // Combine builtin and user orders
     let mut final_order = builtin_order.clone();
@@ -79,7 +79,7 @@ where
     let user_items: Vec<Item> = user.into_iter().collect();
 
     // Process builtins first
-    let mut result = lower(builtin_items.into_iter());
+    let mut result = lower(builtin_items);
 
     // Mark all builtin definitions with IS_BUILTIN flag
     for &def_id in &result.order {
@@ -91,7 +91,7 @@ where
     let builtin_order = result.order.clone();
 
     // Process user items in the same context
-    let user_result = lower_in_context(user_items.into_iter(), result);
+    let user_result = lower_in_context(user_items, result);
 
     // Only include user items in the output order
     LoweringResult {

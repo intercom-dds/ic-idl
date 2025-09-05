@@ -149,7 +149,7 @@ fn can_int_represent_all(r: IntRank, int_r: IntRank) -> bool {
 ///
 /// Values of types smaller than int are promoted when used in expressions:
 /// - If int (Int32) can represent all values of the original type, promote to int
-/// - Otherwise, promote to unsigned int (UInt32)
+/// - Otherwise, promote to unsigned int (`UInt32`)
 /// - Types already int-sized or larger are unchanged
 fn promote_integer(r: IntRank) -> IntRank {
     if rank_bits(r) < rank_bits(INT_RANK) {
@@ -246,7 +246,7 @@ enum TyTag {
 }
 
 fn float_rank_for(ty: FloatRank, other: FloatRank) -> FloatRank {
-    use FloatRank::*;
+    use FloatRank::{F32, F64, F128};
     match (ty, other) {
         (F128, _) | (_, F128) => F128,
         (F64, _) | (_, F64) => F64,
@@ -255,13 +255,12 @@ fn float_rank_for(ty: FloatRank, other: FloatRank) -> FloatRank {
 }
 
 fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
-    use Value::*;
+    use Value::{Bool, Float, Int, UInt};
     match (a, b) {
         (Float(_, fa), Float(_, fb)) => Some(TyTag::Float(float_rank_for(*fa, *fb))),
-        (Float(_, fr), Int(_, _))
-        | (Float(_, fr), UInt(_, _))
-        | (Int(_, _), Float(_, fr))
-        | (UInt(_, _), Float(_, fr)) => Some(TyTag::Float(*fr)),
+        (Float(_, fr), Int(_, _) | UInt(_, _)) | (Int(_, _) | UInt(_, _), Float(_, fr)) => {
+            Some(TyTag::Float(*fr))
+        }
         (Int(_, ra), Int(_, rb)) => Some(TyTag::Int(usual_int_conv(*ra, *rb), true)),
         (UInt(_, ra), UInt(_, rb)) => Some(TyTag::Int(usual_int_conv(*ra, *rb), false)),
         (Int(_, ra), UInt(_, rb)) | (UInt(_, rb), Int(_, ra)) => {
@@ -290,7 +289,7 @@ fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
 }
 
 fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
-    use Value::*;
+    use Value::{Bool, Float, Int, UInt};
     match (value, target) {
         (Int(v, _), TyTag::Int(r, sign)) => {
             let (min, max) = int_min_max(r);
@@ -317,7 +316,7 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
         (Int(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
         (UInt(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
         (Float(f, _), TyTag::Float(fr)) => Ok(Float(f, fr)),
-        (Bool(b), TyTag::Int(r, _)) => Ok(Int(if b { 1 } else { 0 }, r)),
+        (Bool(b), TyTag::Int(r, _)) => Ok(Int(i128::from(b), r)),
         other => {
             // Fallback for unsupported implicit casts
             let _ = other;
@@ -542,16 +541,16 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
         Numeric::Null => Some(Value::Null),
         Numeric::Bool(b) => Some(Value::Bool(*b)),
         // Treat char literals as integers for promotions (use unsigned 8-bit rank)
-        Numeric::Char(c) => Some(Value::UInt((*c as u32) as u128, IntRank::U8)),
-        Numeric::Int8(v) => Some(Value::Int(*v as i128, IntRank::I8)),
-        Numeric::Octet(v) => Some(Value::UInt(*v as u128, IntRank::U8)),
-        Numeric::Int16(v) => Some(Value::Int(*v as i128, IntRank::I16)),
-        Numeric::UInt16(v) => Some(Value::UInt(*v as u128, IntRank::U16)),
-        Numeric::Int32(v) => Some(Value::Int(*v as i128, IntRank::I32)),
-        Numeric::UInt32(v) => Some(Value::UInt(*v as u128, IntRank::U32)),
-        Numeric::Int64(v) => Some(Value::Int(*v as i128, IntRank::I64)),
-        Numeric::UInt64(v) => Some(Value::UInt(*v as u128, IntRank::U64)),
-        Numeric::Float(v) => Some(Value::Float(*v as f64, FloatRank::F32)),
+        Numeric::Char(c) => Some(Value::UInt(u128::from(*c as u32), IntRank::U8)),
+        Numeric::Int8(v) => Some(Value::Int(i128::from(*v), IntRank::I8)),
+        Numeric::Octet(v) => Some(Value::UInt(u128::from(*v), IntRank::U8)),
+        Numeric::Int16(v) => Some(Value::Int(i128::from(*v), IntRank::I16)),
+        Numeric::UInt16(v) => Some(Value::UInt(u128::from(*v), IntRank::U16)),
+        Numeric::Int32(v) => Some(Value::Int(i128::from(*v), IntRank::I32)),
+        Numeric::UInt32(v) => Some(Value::UInt(u128::from(*v), IntRank::U32)),
+        Numeric::Int64(v) => Some(Value::Int(i128::from(*v), IntRank::I64)),
+        Numeric::UInt64(v) => Some(Value::UInt(u128::from(*v), IntRank::U64)),
+        Numeric::Float(v) => Some(Value::Float(f64::from(*v), FloatRank::F32)),
         Numeric::Double(v) => Some(Value::Float(*v, FloatRank::F64)),
         Numeric::String(s) => Some(Value::String(s.clone())),
         Numeric::Const(_)
@@ -597,7 +596,10 @@ fn numeric_from_value(v: &Value) -> Option<Numeric> {
 }
 
 fn rank_for_primitive(prim: PrimitiveTy) -> Option<(bool, IntRank)> {
-    use PrimitiveTy::*;
+    use PrimitiveTy::{
+        Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
+        UInt64, Void, WChar,
+    };
     Some(match prim {
         Bool => return None,
         Char | WChar => return None,
@@ -617,7 +619,7 @@ fn rank_for_primitive(prim: PrimitiveTy) -> Option<(bool, IntRank)> {
 }
 
 fn float_rank_for_primitive(prim: PrimitiveTy) -> Option<FloatRank> {
-    use PrimitiveTy::*;
+    use PrimitiveTy::{Float32, Float64, Float128};
     Some(match prim {
         Float32 => FloatRank::F32,
         Float64 => FloatRank::F64,
@@ -644,7 +646,7 @@ fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
                     let vv = cast_to(v, TyTag::Int(IntRank::U16, false))?;
                     let code = match vv {
                         Value::UInt(u, IntRank::U16) => u as u32,
-                        Value::Int(i, IntRank::I16) => (i as u16) as u32,
+                        Value::Int(i, IntRank::I16) => u32::from(i as u16),
                         _ => return Err(EvalError::TypeMismatch),
                     };
                     if (0xD800..=0xDFFF).contains(&code) {
@@ -757,55 +759,50 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate an expression to a simplified Value.
     fn eval_value(&mut self, expr: &ic_syntax::Expr) -> Option<Value> {
-        use ic_syntax::Expr::*;
+        use ic_syntax::Expr::{Binary, Literal, Path, Unary};
         match expr {
             Literal(lit) => value_from_numeric(&literal_to_numeric(&lit.value)),
             Path(path) => {
-                match self
-                    .ctx
-                    .scopes
-                    .resolve_path(&self.ctx.context, self.scope, path)
+                if let Some(def_id) =
+                    self.ctx
+                        .scopes
+                        .resolve_path(&self.ctx.context, self.scope, path)
                 {
-                    Some(def_id) => {
-                        // Constants, enumerators and flags are Const
-                        let def = self.ctx.context.definitions.get(def_id);
-                        match &def.kind {
-                            DefKind::Const(c) => value_from_numeric(&c.value),
-                            _ => {
-                                self.ctx.diagnostics.errors.push(error_span(
-                                    format!("`{}` is not a constant value", path_to_string(path)),
-                                    Label::new(path_span(path))
-                                        .message("expected constant, enumerator, or flag"),
-                                ));
-                                None
-                            }
-                        }
-                    }
-                    None => {
-                        self.ctx.diagnostics.errors.push(
-                            error_span(
-                                format!(
-                                    "undefined constant or enum value `{}`",
-                                    path_to_string(path)
-                                ),
-                                Label::new(path_span(path)).message("evaluation error"),
-                            )
-                            .note("check that the name is spelled correctly"),
-                        );
+                    // Constants, enumerators and flags are Const
+                    let def = self.ctx.context.definitions.get(def_id);
+                    if let DefKind::Const(c) = &def.kind {
+                        value_from_numeric(&c.value)
+                    } else {
+                        self.ctx.diagnostics.errors.push(error_span(
+                            format!("`{}` is not a constant value", path_to_string(path)),
+                            Label::new(path_span(path))
+                                .message("expected constant, enumerator, or flag"),
+                        ));
                         None
                     }
+                } else {
+                    self.ctx.diagnostics.errors.push(
+                        error_span(
+                            format!(
+                                "undefined constant or enum value `{}`",
+                                path_to_string(path)
+                            ),
+                            Label::new(path_span(path)).message("evaluation error"),
+                        )
+                        .note("check that the name is spelled correctly"),
+                    );
+                    None
                 }
             }
             Binary(bin) => {
-                let op = match op_from_ast(bin.op.kind) {
-                    Some(o) => o,
-                    None => {
-                        self.ctx.diagnostics.errors.push(error_span(
-                            "unsupported binary operation in constant expression",
-                            Label::new(expr.span()).message("unsupported operation"),
-                        ));
-                        return None;
-                    }
+                let op = if let Some(o) = op_from_ast(bin.op.kind) {
+                    o
+                } else {
+                    self.ctx.diagnostics.errors.push(error_span(
+                        "unsupported binary operation in constant expression",
+                        Label::new(expr.span()).message("unsupported operation"),
+                    ));
+                    return None;
                 };
 
                 // Evaluate operands and track if the RHS is a division/modulo operation
@@ -883,15 +880,14 @@ impl<'a> ConstEvaluator<'a> {
             }
             Unary(un) => {
                 let v = self.eval_value(&un.expr)?;
-                match eval_unary(un.op.kind, v) {
-                    Ok(v) => Some(v),
-                    Err(_) => {
-                        self.ctx.diagnostics.error(
-                            "unsupported unary operation in constant expression".to_string(),
-                            Label::new(expr.span()).message("unsupported operation"),
-                        );
-                        None
-                    }
+                if let Ok(v) = eval_unary(un.op.kind, v) {
+                    Some(v)
+                } else {
+                    self.ctx.diagnostics.error(
+                        "unsupported unary operation in constant expression".to_string(),
+                        Label::new(expr.span()).message("unsupported operation"),
+                    );
+                    None
                 }
             }
             _ => {

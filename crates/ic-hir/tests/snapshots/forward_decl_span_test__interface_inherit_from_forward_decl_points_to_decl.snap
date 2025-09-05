@@ -3,14 +3,10 @@ source: crates/ic-hir/tests/forward_decl_span_test.rs
 expression: diagnostics
 ---
 error: interface `IDerived` cannot inherit from incomplete type `IBase`
-   ┌ test.idl:3:9
+   ┌ test.idl:3:30
    │
  3 │         interface IDerived : IBase {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
- 4 │             void method();
-   · 
- 5 │         };
-   · ^^^^^^^^^^
+   ·                              ^^^^^ invalid inheritance
  2 │         interface IBase;
    ·                   ^^^^^ parent type is only forward declared
    └──

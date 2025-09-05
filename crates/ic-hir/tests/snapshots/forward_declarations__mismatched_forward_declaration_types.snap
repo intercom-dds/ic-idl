@@ -1,17 +1,18 @@
 ---
 source: crates/ic-hir/tests/forward_declarations.rs
-assertion_line: 150
 expression: diagnostics
 ---
 error: forward declaration of `A` as struct conflicts with union definition
-   ┌ test.idl:2:9
+   ┌ test.idl:2:16
    │
  2 │         struct A;
-   ·         ^^^^^^^^^ forward declared here
+   ·                ^ forward declared as struct here
  3 │         union A switch (long) {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^ defined as union here
- 4 │             case 1: long x;
-   · 
- 5 │         };
-   · ^^^^^^^^^^
+   ·               ^ defined as union here
+   └──
+error: type `A` is declared but not defined
+   ┌ test.idl:2:16
+   │
+ 2 │         struct A;
+   ·                ^ declared here
    └──

@@ -157,6 +157,7 @@ pub enum DefKind {
 
 impl DefKind {
     /// Returns a human-readable name for the definition kind.
+    #[must_use]
     pub fn kind_name(&self) -> &'static str {
         match self {
             DefKind::Annotation(_) => "annotation",

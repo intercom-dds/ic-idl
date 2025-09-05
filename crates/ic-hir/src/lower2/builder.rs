@@ -65,55 +65,92 @@ impl<'ctx> HirBuilder<'ctx> {
             // Delegate type items to type_items.rs
             Item::StructValue(s) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_struct(s);
+                let def_id = processor.process_struct(s);
+                // Only add to order if at root scope
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::InterfaceValue(i) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_interface(i);
+                let def_id = processor.process_interface(i);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::UnionValue(u) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_union(u);
+                let def_id = processor.process_union(u);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::ValuetypeValue(v) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_valuetype(v);
+                let def_id = processor.process_valuetype(v);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::DeclValue(decl) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_forward_decl(decl);
+                let def_id = processor.process_forward_decl(decl);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
 
             // Delegate value items to value_items.rs
             Item::ConstValue(c) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_const(c);
+                let def_id = processor.process_const(c);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::EnumValue(e) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_enum(e);
+                let def_id = processor.process_enum(e);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::BitmaskValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_bitmask(b);
+                let def_id = processor.process_bitmask(b);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
 
             // Other items
             Item::AnnotationValue(a) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_annotation(a);
+                let def_id = processor.process_annotation(a);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::AliasValue(a) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_alias(a);
+                let def_ids = processor.process_alias(a);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.extend(def_ids);
+                }
             }
             Item::ExceptionValue(e) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_exception(e);
+                let def_id = processor.process_exception(e);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
             Item::BitsetValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
-                processor.process_bitset(b);
+                let def_id = processor.process_bitset(b);
+                if self.current_scope == self.ctx.scopes.root() {
+                    self.ctx.order.push(def_id);
+                }
             }
         }
     }
@@ -124,6 +161,7 @@ impl<'ctx> HirBuilder<'ctx> {
         let module_scope = self.ctx.scopes.find_or_create_module(
             self.current_scope,
             &m.ident.name,
+            m.ident.span,
             &mut self.ctx.context,
             &mut self.ctx.diagnostics,
         );
@@ -140,7 +178,7 @@ impl<'ctx> HirBuilder<'ctx> {
             .get_scope(module_scope)
             .definitions
             .values()
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
 
         // Process module contents
@@ -154,7 +192,7 @@ impl<'ctx> HirBuilder<'ctx> {
             .get_scope(module_scope)
             .definitions
             .values()
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
 
         let new_definitions: Vec<DefId> = all_definitions
@@ -174,16 +212,21 @@ impl<'ctx> HirBuilder<'ctx> {
             .alloc_with_id(|id| crate::hir::Def {
                 id,
                 ident: m.ident.clone(),
-                parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+                parent: self.ctx.context.scopes.get_scope(prev_scope).def_id,
                 annotations: Vec::new(), // TODO: Convert annotations
                 span: m.ident.span,
                 kind: crate::hir::DefKind::Module(module_ty),
                 flags: crate::hir::DefFlags::nil(),
             });
 
+        // Update the module scope's def_id so path resolution works
+        self.ctx.context.scopes.get_scope_mut(module_scope).def_id = Some(def_id);
+
         // Don't register in scope - module names are already handled by the scope mechanism
-        // Just record as a top-level item
-        self.ctx.order.push(def_id);
+        // Only record as a top-level item if we're at the root scope
+        if prev_scope == self.ctx.scopes.root() {
+            self.ctx.order.push(def_id);
+        }
 
         // Restore previous scope
         self.current_scope = prev_scope;

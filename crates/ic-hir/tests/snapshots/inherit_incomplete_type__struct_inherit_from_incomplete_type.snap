@@ -3,20 +3,16 @@ source: crates/ic-hir/tests/inherit_incomplete_type.rs
 expression: diagnostics
 ---
 error: struct `Derived` cannot inherit from incomplete type `Base`
-   ┌ test.idl:3:9
+   ┌ test.idl:3:26
    │
  3 │         struct Derived : Base {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
- 4 │             long field;
-   · 
- 5 │         };
-   · ^^^^^^^^^^
+   ·                          ^^^^ invalid inheritance
  2 │         struct Base;
    ·                ^^^^ parent type is only forward declared
    └──
 error: type `Base` is declared but not defined
-   ┌ test.idl:2:9
+   ┌ test.idl:2:16
    │
  2 │         struct Base;
-   ·         ^^^^^^^^^^^^ declared here
+   ·                ^^^^ declared here
    └──

@@ -37,7 +37,7 @@ use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::hir::{
     AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
-    DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
+    DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
 use crate::scope::ScopeId;
 
@@ -53,7 +53,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     }
 
     /// Process a constant definition.
-    pub fn process_const(&mut self, c: &ConstDef) {
+    pub fn process_const(&mut self, c: &ConstDef) -> DefId {
         // Get identifier from declarator
         let ident = ic_syntax::Ident {
             name: ic_syntax::util::decl_name(&c.decl).to_string(),
@@ -62,10 +62,13 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
         // Resolve the type first
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let ty = match resolver.resolve_type(&c.ty) {
-            Some(ty) => ty,
-            None => return, // Error already reported
-        };
+        let ty = resolver.resolve_type(&c.ty).unwrap_or_else(|| {
+            // Use a default type on error
+            Ty {
+                span: ic_syntax::util::ty_span(&c.ty),
+                kind: TyKind::Primitive(PrimitiveTy::Int32),
+            }
+        });
 
         // Evaluate the value using the promotion-aware evaluator
         let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
@@ -98,24 +101,22 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 DefKindTag::Const,
                 def_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
-            .is_none()
+            .is_some()
         {
-            return;
+            // Register in scope only if registry registration succeeded
+            self.ctx
+                .context
+                .scopes
+                .add_definition(self.current_scope, ident.name.clone(), def_id);
         }
 
-        // Register in scope
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, ident.name.clone(), def_id);
-
-        // Record as a top-level item
-        self.ctx.order.push(def_id);
+        def_id
     }
 
     /// Process an enum definition.
-    pub fn process_enum(&mut self, e: &EnumDef) {
+    pub fn process_enum(&mut self, e: &EnumDef) -> DefId {
         // Enums always have underlying type of long
         let underlying_type = Ty {
             span: (e.ident.span),
@@ -149,17 +150,17 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 DefKindTag::Enum,
                 enum_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
-            .is_none()
+            .is_some()
         {
-            return;
+            // Register in scope only if registry registration succeeded
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                e.ident.name.clone(),
+                enum_id,
+            );
         }
-
-        // Register in scope
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, e.ident.name.clone(), enum_id);
 
         // Process enumerators
         let mut fields = Vec::new();
@@ -171,9 +172,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
                 if let Some(num) = eval.eval_numeric(expr) {
                     match num {
-                        Numeric::Int32(v) => v as i64,
+                        Numeric::Int32(v) => i64::from(v),
                         Numeric::Int64(v) => v,
-                        Numeric::UInt32(v) => v as i64,
+                        Numeric::UInt32(v) => i64::from(v),
                         Numeric::UInt64(v) => v as i64,
                         _ => {
                             self.ctx.diagnostics.error(
@@ -212,12 +213,27 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 flags: DefFlags::nil(),
             });
 
-            // Register enumerator in parent scope (not enum scope)
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                enumerator.ident.name.clone(),
-                field_id,
-            );
+            // Register enumerator through the registry to check for duplicates
+            if self
+                .ctx
+                .registry
+                .register_definition(
+                    self.current_scope,
+                    &enumerator.ident,
+                    DefKindTag::Const,
+                    field_id,
+                    &mut self.ctx.diagnostics,
+                    &self.ctx.context,
+                )
+                .is_some()
+            {
+                // Also add to scope if registry registration succeeded
+                self.ctx.context.scopes.add_definition(
+                    self.current_scope,
+                    enumerator.ident.name.clone(),
+                    field_id,
+                );
+            }
 
             // Add to enum fields
             fields.push(field_id);
@@ -228,12 +244,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             enum_ty.fields = fields;
         }
 
-        // Record as a top-level type
-        self.ctx.order.push(enum_id);
+        enum_id
     }
 
     /// Process a bitmask definition.
-    pub fn process_bitmask(&mut self, b: &BitmaskDef) {
+    pub fn process_bitmask(&mut self, b: &BitmaskDef) -> DefId {
         // Default underlying type is unsigned long
         let underlying_type = Ty {
             span: (b.ident.span),
@@ -266,18 +281,17 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 DefKindTag::Bitmask,
                 bitmask_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
-            .is_none()
+            .is_some()
         {
-            return;
+            // Register in scope only if registry registration succeeded
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                b.ident.name.clone(),
+                bitmask_id,
+            );
         }
-
-        // Register in scope
-        self.ctx.context.scopes.add_definition(
-            self.current_scope,
-            b.ident.name.clone(),
-            bitmask_id,
-        );
 
         // Process flags
         let mut flags = Vec::new();
@@ -339,12 +353,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             bitmask_ty.flags = flags;
         }
 
-        // Record as a top-level type
-        self.ctx.order.push(bitmask_id);
+        bitmask_id
     }
 
     /// Process a bitset definition.
-    pub fn process_bitset(&mut self, b: &BitsetDef) {
+    pub fn process_bitset(&mut self, b: &BitsetDef) -> DefId {
         // Resolve parent bitset if present
         let parent = if let Some(ref parent_path) = b.parent {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -369,16 +382,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         for field in &b.fields {
             // Evaluate the size expression
             let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
-            let size = match evaluator.eval_nonneg_bound(&field.size) {
-                Some(size) => size,
-                None => {
-                    self.ctx.diagnostics.error(
-                        "bitfield size must be a non-negative constant expression".to_string(),
-                        ic_diagnostic::Label::new(field.size.span())
-                            .message("expected constant expression"),
-                    );
-                    continue;
-                }
+            let size = if let Some(size) = evaluator.eval_nonneg_bound(&field.size) {
+                size
+            } else {
+                self.ctx.diagnostics.error(
+                    "bitfield size must be a non-negative constant expression".to_string(),
+                    ic_diagnostic::Label::new(field.size.span())
+                        .message("expected constant expression"),
+                );
+                continue;
             };
 
             // Resolve the type if present, otherwise default to appropriate unsigned type
@@ -432,12 +444,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             .scopes
             .add_definition(self.current_scope, b.ident.name.clone(), def_id);
 
-        // Record as a top-level type
-        self.ctx.order.push(def_id);
+        def_id
     }
 
     /// Process an annotation definition.
-    pub fn process_annotation(&mut self, a: &AnnotationDef) {
+    pub fn process_annotation(&mut self, a: &AnnotationDef) -> DefId {
         // Create scope for the annotation
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
@@ -499,7 +510,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         // Collect all definitions from the annotation scope
         {
             let scope_def = self.ctx.context.scopes.get_scope(scope);
-            types = scope_def.definitions.values().cloned().collect();
+            types = scope_def.definitions.values().copied().collect();
         }
 
         // Create the annotation definition
@@ -528,6 +539,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 DefKindTag::Annotation,
                 def_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
             .is_some()
         {
@@ -537,10 +549,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 a.ident.name.clone(),
                 def_id,
             );
-
-            // Record as a top-level type
-            self.ctx.order.push(def_id);
         }
+
+        def_id
     }
 
     // No local evaluators; constants are evaluated via ConstEvaluator

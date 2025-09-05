@@ -29,6 +29,7 @@
 
 use std::collections::HashMap;
 
+use ic_alloc::insensitive::CaseMap;
 use ic_syntax::Path;
 
 use crate::hir::DefId;
@@ -50,9 +51,10 @@ pub struct ScopeTree {
     /// Root scope ID from the context.
     root: ScopeId,
 
-    /// Additional scope metadata (e.g., for module reopening).
-    /// Maps (parent_scope, module_name) to the module's scope.
-    module_scopes: HashMap<(ScopeId, String), ScopeId>,
+    /// Additional scope metadata for module reopening.
+    /// Maps from `parent_scope` to a `CaseMap` of module names to (`scope_id`, `original_span`).
+    /// `CaseMap` automatically handles case-insensitive lookups while preserving original names.
+    module_scopes: HashMap<ScopeId, CaseMap<(ScopeId, ic_syntax::Span)>>,
 }
 
 impl ScopeTree {
@@ -73,14 +75,33 @@ impl ScopeTree {
         &mut self,
         parent: ScopeId,
         name: &str,
+        span: ic_syntax::Span,
         ctx: &mut crate::Context,
-        _diagnostics: &mut super::Diagnostics,
+        diagnostics: &mut super::Diagnostics,
     ) -> ScopeId {
-        let key = (parent, name.to_ascii_lowercase());
+        // Get or create the CaseMap for this parent scope
+        let parent_modules = self
+            .module_scopes
+            .entry(parent)
+            .or_insert_with(CaseMap::new);
 
-        if let Some(&scope_id) = self.module_scopes.get(&key) {
-            // Module already exists - check capitalization
-            // TODO: Emit warning if capitalization differs
+        if let Some(&(scope_id, original_span)) = parent_modules.get(name) {
+            // Module already exists - check if the name differs in case
+            if let Some(canonical_name) = parent_modules.get_key(name) {
+                if canonical_name != name {
+                    use ic_diagnostic::{Label, warn_span};
+                    diagnostics.warnings.push(
+                        warn_span(
+                            format!(
+                                "inconsistent capitalization: module `{name}` was previously \
+                                 defined as `{canonical_name}`"
+                            ),
+                            Label::new(span).message("module reopened here"),
+                        )
+                        .label(Label::new(original_span).message("first defined here")),
+                    );
+                }
+            }
             return scope_id;
         }
 
@@ -88,7 +109,7 @@ impl ScopeTree {
         let scope_id = ctx
             .scopes
             .create_child_scope(parent, name.to_string(), None);
-        self.module_scopes.insert(key, scope_id);
+        parent_modules.insert(name, (scope_id, span));
         scope_id
     }
 
@@ -125,28 +146,14 @@ impl ScopeTree {
         }
 
         // Start from root for absolute paths
-        let mut current_scope = if path.leading_colons.is_some() {
+        let start_scope = if path.leading_colons.is_some() {
             self.root
         } else {
             start
         };
 
-        // Resolve all but the last segment as scopes
-        for segment in &segments[..segments.len() - 1] {
-            if let Some(def_id) = self.lookup_in_scope(ctx, current_scope, segment) {
-                // Get the scope of this definition
-                if let Some(scope) = ctx.scopes.find_scope_for_def(def_id) {
-                    current_scope = scope;
-                } else {
-                    return None;
-                }
-            } else {
-                return None;
-            }
-        }
-
-        // Resolve the final segment
-        self.lookup_in_scope(ctx, current_scope, segments.last().unwrap())
+        // Use the core ScopeTree's resolve_path which properly handles multi-segment paths
+        ctx.scopes.resolve_path(start_scope, &segments)
     }
 
     /// Look up a name in a specific scope only.

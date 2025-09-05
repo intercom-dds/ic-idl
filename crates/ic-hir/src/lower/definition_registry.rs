@@ -143,7 +143,7 @@ impl<'a> DefinitionRegistry<'a> {
         // Both are definitions - this is always an error
         self.errors.push(
             error_span(
-                format!("duplicate definition of `{}`", name),
+                format!("duplicate definition of `{name}`"),
                 Label::new(new_def.span).message("redefined here"),
             )
             .label(Label::new(existing.span).message("first defined here")),
@@ -168,10 +168,9 @@ impl<'a> DefinitionRegistry<'a> {
             (DefKind::Decl(decl_type), other) | (other, DefKind::Decl(decl_type)) => {
                 matches!(
                     (decl_type, other),
-                    (Decl::Struct, DefKind::Struct(_))
+                    (Decl::Struct | Decl::Valuetype, DefKind::Struct(_))
                         | (Decl::Union, DefKind::Union(_))
                         | (Decl::Interface, DefKind::Interface(_))
-                        | (Decl::Valuetype, DefKind::Struct(_))
                 )
             }
             _ => false,
@@ -179,7 +178,7 @@ impl<'a> DefinitionRegistry<'a> {
     }
 
     /// Checks if a definition with the given qualified name already exists.
-    /// Returns the existing DefId if found.
+    /// Returns the existing `DefId` if found.
     pub fn check_existing(&self, qualified_name: &str) -> Option<DefId> {
         self.name_map.get(qualified_name).copied()
     }
@@ -195,10 +194,10 @@ impl<'a> DefinitionRegistry<'a> {
         let existing = self.ctx.definitions.get(existing_id);
         self.errors.push(
             error_span(
-                format!("duplicate {} `{}`", kind, name),
-                Label::new(new_span).message(format!("{} redefined here", kind)),
+                format!("duplicate {kind} `{name}`"),
+                Label::new(new_span).message(format!("{kind} redefined here")),
             )
-            .label(Label::new(existing.span).message(format!("{} first defined here", kind))),
+            .label(Label::new(existing.span).message(format!("{kind} first defined here"))),
         );
     }
 

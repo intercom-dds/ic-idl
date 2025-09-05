@@ -14,6 +14,18 @@ error: conflicting definitions for `Point`
    ·        ^^^^^ redefined here
    └──
 
+error: conflicting definitions for `Color`
+   ┌ shapes.idl:3:6
+   │
+ 3 │ enum Color { RED, GREEN };
+   ·      ^^^^^ first defined here
+   └──
+   ┌ graphics.idl:3:6
+   │
+ 3 │ enum Color { RED, GREEN, BLUE };
+   ·      ^^^^^ redefined here
+   └──
+
 error: conflicting definitions for `RED`
    ┌ shapes.idl:3:14
    │
@@ -36,16 +48,4 @@ error: conflicting definitions for `GREEN`
    │
  3 │ enum Color { RED, GREEN, BLUE };
    ·                   ^^^^^ redefined here
-   └──
-
-error: conflicting definitions for `Color`
-   ┌ shapes.idl:3:6
-   │
- 3 │ enum Color { RED, GREEN };
-   ·      ^^^^^ first defined here
-   └──
-   ┌ graphics.idl:3:6
-   │
- 3 │ enum Color { RED, GREEN, BLUE };
-   ·      ^^^^^ redefined here
    └──

@@ -3,26 +3,18 @@ source: crates/ic-hir/tests/incomplete_type_inheritance.rs
 expression: output
 ---
 error: interface `A` cannot inherit from incomplete type `B`
-   ┌ test.idl:6:9
+   ┌ test.idl:6:23
    │
  6 │         interface A : B, C {
-   ·         ^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
- 7 │             void methodA();
-   · 
- 8 │         };
-   · ^^^^^^^^^^
+   ·                       ^ invalid inheritance
  3 │         interface B;
    ·                   ^ parent type is only forward declared
    └──
 error: interface `A` cannot inherit from incomplete type `C`
-   ┌ test.idl:6:9
+   ┌ test.idl:6:26
    │
  6 │         interface A : B, C {
-   ·         ^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
- 7 │             void methodA();
-   · 
- 8 │         };
-   · ^^^^^^^^^^
+   ·                          ^ invalid inheritance
  4 │         interface C;
    ·                   ^ parent type is only forward declared
    └──

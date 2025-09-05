@@ -137,7 +137,7 @@ impl HirMerger {
     }
 
     /// Maps an optional `DefId` from old to new using the graph's `DefId` map
-    /// Also checks previous graphs' mappings since a DefId might come from an earlier file
+    /// Also checks previous graphs' mappings since a `DefId` might come from an earlier file
     fn map_def_id(&self, graph_index: usize, def_id: Option<DefId>) -> Option<DefId> {
         def_id.and_then(|id| {
             // First check the current graph's mapping
@@ -887,7 +887,6 @@ impl HirMerger {
                     if let Some(new_id) = found {
                         TyKind::Adt(new_id)
                     } else {
-                        eprintln!("WARNING: Unmapped DefId in TyKind::Adt: {:?}", def_id);
                         TyKind::Adt(*def_id)
                     }
                 }

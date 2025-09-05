@@ -2,13 +2,13 @@ mod common;
 
 #[test]
 fn test_enum_duplicate_detection() {
-    let input = r#"
+    let input = r"
 enum MyEnum {
     ZERO
 };
 
 const octet ZERO = 0;
-"#;
+";
 
     let (result, _, diagnostics) = common::parse_and_resolve(input);
 
@@ -24,13 +24,13 @@ const octet ZERO = 0;
 
 #[test]
 fn test_enum_no_duplicate_different_case() {
-    let input = r#"
+    let input = r"
 enum MyEnum {
     ZERO
 };
 
 const octet zero = 0;
-"#;
+";
 
     let (result, _, diagnostics) = common::parse_and_resolve(input);
 

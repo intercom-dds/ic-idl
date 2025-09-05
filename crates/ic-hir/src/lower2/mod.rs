@@ -87,6 +87,9 @@ where
     // Intermediate pass: Update forward references
     update_forward_references(&mut context);
 
+    // Check for undefined forward declarations
+    check_undefined_forward_decls(&mut context);
+
     // Phase 2: Validation
     let mut validator = validator::Validator::new(&context);
     validator.validate();
@@ -320,7 +323,7 @@ fn update_def_references(
     }
 }
 
-/// Update type references to replace forward decl DefIds with definition DefIds.
+/// Update type references to replace forward decl `DefIds` with definition `DefIds`.
 fn update_type_references(ty: &mut Ty, mapping: &std::collections::HashMap<DefId, DefId>) {
     match &mut ty.kind {
         TyKind::Adt(def_id) => {
@@ -339,5 +342,27 @@ fn update_type_references(ty: &mut Ty, mapping: &std::collections::HashMap<DefId
             update_type_references(elem, mapping);
         }
         _ => {}
+    }
+}
+
+/// Check for undefined forward declarations.
+fn check_undefined_forward_decls(ctx: &mut LoweringContext) {
+    use ic_diagnostic::{Label, error_span};
+
+    // Get the mapping to see which forward declarations have definitions
+    let mapping = ctx.registry.get_forward_to_def_mapping();
+
+    // Check all forward declarations to see if they have definitions
+    for def_id in &ctx.order {
+        let def = ctx.context.definitions.get(*def_id);
+        if let DefKind::Decl(_) = &def.kind {
+            // This is a forward declaration - check if it has a matching definition
+            if !mapping.contains_key(def_id) {
+                ctx.diagnostics.errors.push(error_span(
+                    format!("type `{}` is declared but not defined", def.ident.name),
+                    Label::new(def.ident.span).message("declared here"),
+                ));
+            }
+        }
     }
 }

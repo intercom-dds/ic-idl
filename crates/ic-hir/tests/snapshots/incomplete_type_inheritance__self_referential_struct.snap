@@ -3,14 +3,10 @@ source: crates/ic-hir/tests/incomplete_type_inheritance.rs
 expression: output
 ---
 error: struct `SelfRef` cannot inherit from incomplete type `SelfRef`
-   ┌ test.idl:4:9
+   ┌ test.idl:4:26
    │
  4 │         struct SelfRef : SelfRef {
-   ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^ inherits from incomplete type here
- 5 │             long value;
-   · 
- 6 │         };
-   · ^^^^^^^^^^
+   ·                          ^^^^^^^ invalid inheritance
  2 │         struct SelfRef;
    ·                ^^^^^^^ parent type is only forward declared
    └──

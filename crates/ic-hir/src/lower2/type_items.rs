@@ -51,7 +51,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     /// Check if a parent type is valid for inheritance (not a forward declaration).
-    /// Returns Some(parent_id) if valid, None if invalid (error already reported).
+    /// Returns `Some(parent_id)` if valid, None if invalid (error already reported).
     fn validate_parent_inheritance(
         &mut self,
         parent_id: DefId,
@@ -72,7 +72,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 )
                 .label(
                     Label::new(parent_def.ident.span)
-                        .message("forward declaration here, but no definition found"),
+                        .message("parent type is only forward declared"),
                 ),
             );
             None
@@ -82,7 +82,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     /// Process a struct definition.
-    pub fn process_struct(&mut self, s: &StructDef) {
+    pub fn process_struct(&mut self, s: &StructDef) -> DefId {
         // Resolve parent type if present
         let parent = if let Some(ref parent_type) = s.parent {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -133,6 +133,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 DefKindTag::Struct,
                 def_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
             .is_some()
         {
@@ -142,14 +143,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 s.ident.name.clone(),
                 def_id,
             );
-
-            // Record as a top-level type
-            self.ctx.order.push(def_id);
         }
+
+        def_id
     }
 
     /// Process an interface definition.
-    pub fn process_interface(&mut self, i: &InterfaceDef) {
+    pub fn process_interface(&mut self, i: &InterfaceDef) -> DefId {
         // Resolve parent interfaces
         let mut parents = Vec::new();
 
@@ -186,7 +186,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         // Process interface members
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
-        let definitions;
 
         // Save current scope and switch to interface scope
         let prev_scope = self.current_scope;
@@ -217,7 +216,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Collect all definitions from the interface scope
         let scope_def = self.ctx.context.scopes.get_scope(scope);
-        definitions = scope_def.definitions.values().cloned().collect();
+        let definitions = scope_def.definitions.values().copied().collect();
 
         // Create the complete interface definition
         let interface_ty = InterfaceTy {
@@ -251,6 +250,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 DefKindTag::Interface,
                 def_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
             .is_some()
         {
@@ -260,14 +260,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 i.ident.name.clone(),
                 def_id,
             );
-
-            // Record as a top-level type
-            self.ctx.order.push(def_id);
         }
+
+        def_id
     }
 
     /// Process a union definition.
-    pub fn process_union(&mut self, u: &UnionDef) {
+    pub fn process_union(&mut self, u: &UnionDef) -> DefId {
         // Resolve discriminator type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         let disc = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| {
@@ -314,6 +313,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 DefKindTag::Union,
                 def_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
             .is_some()
         {
@@ -323,14 +323,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 u.ident.name.clone(),
                 def_id,
             );
-
-            // Record as a top-level type
-            self.ctx.order.push(def_id);
         }
+
+        def_id
     }
 
     /// Process a valuetype definition.
-    pub fn process_valuetype(&mut self, v: &ValuetypeDef) {
+    pub fn process_valuetype(&mut self, v: &ValuetypeDef) -> DefId {
         // Resolve parent type if present
         let parent = if let Some(ref parent_type) = v.inherits {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -385,7 +384,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut members = Vec::new();
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
-        let definitions;
 
         // Save current scope and switch to valuetype scope
         let prev_scope = self.current_scope;
@@ -417,15 +415,15 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Collect all definitions from the valuetype scope
         let scope_def = self.ctx.context.scopes.get_scope(scope);
-        definitions = scope_def.definitions.values().cloned().collect();
+        let definitions = scope_def.definitions.values().copied().collect();
 
         // Create the complete valuetype definition
         let value_ty = ValueTy {
             parent,
             supports,
-            members,
             prototypes,
             attributes,
+            members,
             definitions,
         };
 
@@ -449,6 +447,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 DefKindTag::Valuetype,
                 def_id,
                 &mut self.ctx.diagnostics,
+                &self.ctx.context,
             )
             .is_some()
         {
@@ -458,14 +457,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 v.ident.name.clone(),
                 def_id,
             );
-
-            // Record as a top-level type
-            self.ctx.order.push(def_id);
         }
+
+        def_id
     }
 
     /// Process a forward declaration.
-    pub fn process_forward_decl(&mut self, decl: &ic_syntax::Decl) {
+    pub fn process_forward_decl(&mut self, decl: &ic_syntax::Decl) -> DefId {
         let hir_decl_kind = match decl.kind {
             ic_syntax::DeclKind::Struct => Decl::Struct,
             ic_syntax::DeclKind::Union => Decl::Union,
@@ -474,10 +472,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ic_syntax::DeclKind::Native => Decl::Native,
         };
 
-        let def_id = self.create_forward_declaration(&decl.ident, hir_decl_kind);
-
-        // Record as a top-level type
-        self.ctx.order.push(def_id);
+        self.create_forward_declaration(&decl.ident, hir_decl_kind)
     }
 
     /// Create a forward declaration.
@@ -500,6 +495,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             kind,
             def_id,
             &mut self.ctx.diagnostics,
+            &self.ctx.context,
         ) {
             if registered_id != def_id {
                 // Return existing forward declaration
@@ -704,7 +700,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         attributes
     }
 
-    /// Resolve exception paths to DefIds.
+    /// Resolve exception paths to `DefIds`.
     fn resolve_exception_paths(&mut self, paths: &[ic_syntax::Path]) -> Vec<DefId> {
         paths
             .iter()
@@ -718,9 +714,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                             Some(def_id)
                         } else {
                             self.ctx.diagnostics.error(
-                                "expected exception type".to_string(),
+                                format!("'{}' is not an exception type", def.ident.name),
                                 ic_diagnostic::Label::new(super::utils::path_span(path))
-                                    .message("must be an exception"),
+                                    .message("not an exception"),
                             );
                             None
                         }
@@ -733,7 +729,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     /// Process a type alias definition.
-    pub fn process_alias(&mut self, a: &AliasDef) {
+    pub fn process_alias(&mut self, a: &AliasDef) -> Vec<DefId> {
+        let mut def_ids = Vec::new();
+
         // Type aliases can have multiple declarators, process each one
         for decl in &a.decl {
             let ident = ic_syntax::Ident {
@@ -768,13 +766,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 .scopes
                 .add_definition(self.current_scope, ident.name.clone(), def_id);
 
-            // Record as a top-level type
-            self.ctx.order.push(def_id);
+            def_ids.push(def_id);
         }
+
+        def_ids
     }
 
     /// Process an exception definition.
-    pub fn process_exception(&mut self, e: &ExceptDef) {
+    pub fn process_exception(&mut self, e: &ExceptDef) -> DefId {
         // Process exception members (similar to struct members)
         let (_scope, members) = self.process_members(&e.members);
 
@@ -797,8 +796,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .scopes
             .add_definition(self.current_scope, e.ident.name.clone(), def_id);
 
-        // Record as a top-level type
-        self.ctx.order.push(def_id);
+        def_id
     }
 
     /// Process valuetype state members.

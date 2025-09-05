@@ -522,12 +522,10 @@ impl<'a> Resolver<'a> {
                 (DefKind::Decl(decl_type), other) => {
                     // Existing is a forward declaration, new is something else
                     match (decl_type, other) {
-                        (Decl::Struct, DefKind::Struct(_))
+                        (Decl::Struct | Decl::Valuetype, DefKind::Struct(_))
                         | (Decl::Union, DefKind::Union(_))
-                        | (Decl::Interface, DefKind::Interface(_))
-                        | (Decl::Valuetype, DefKind::Struct(_)) => {
+                        | (Decl::Interface, DefKind::Interface(_)) => {
                             // Valid forward declaration + definition
-                            return;
                         }
                         (_, DefKind::Decl(_)) => {
                             // This case is handled above (both forward declarations)
@@ -536,23 +534,19 @@ impl<'a> Resolver<'a> {
                         _ => {
                             // Type mismatch will be caught by validation phase
                             // For now, just skip the duplicate error
-                            return;
                         }
                     }
                 }
                 (other, DefKind::Decl(decl_type)) => {
                     // Existing is a definition, new is a forward declaration
                     match (other, decl_type) {
-                        (DefKind::Struct(_), Decl::Struct)
+                        (DefKind::Struct(_), Decl::Struct | Decl::Valuetype)
                         | (DefKind::Union(_), Decl::Union)
-                        | (DefKind::Interface(_), Decl::Interface)
-                        | (DefKind::Struct(_), Decl::Valuetype) => {
+                        | (DefKind::Interface(_), Decl::Interface) => {
                             // Valid definition + forward declaration
-                            return;
                         }
                         _ => {
                             // Type mismatch will be caught by validation phase
-                            return;
                         }
                     }
                 }
@@ -560,7 +554,7 @@ impl<'a> Resolver<'a> {
                     // Both are definitions (not forward declarations)
                     self.errors.push(
                         error_span(
-                            format!("duplicate definition of `{}`", name),
+                            format!("duplicate definition of `{name}`"),
                             Label::new(new_def.span).message("redefined here"),
                         )
                         .label(Label::new(existing.span).message("first defined here")),
@@ -1732,7 +1726,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-impl<'a> MemberResolver for Resolver<'a> {
+impl MemberResolver for Resolver<'_> {
     fn resolve_type(&mut self, ty: &ic_syntax::Type) -> Ty {
         self.resolve_type(ty)
     }

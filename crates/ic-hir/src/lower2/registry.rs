@@ -61,7 +61,7 @@ pub enum DefKindTag {
 }
 
 impl DefKindTag {
-    /// Extract the tag from a DefKind.
+    /// Extract the tag from a `DefKind`.
     /// Returns None for forward declarations (Decl) and other non-definition kinds.
     pub fn from_def_kind(kind: &DefKind) -> Option<Self> {
         match kind {
@@ -84,11 +84,13 @@ impl DefKindTag {
 
 /// Registry for tracking forward declarations and definitions.
 pub struct DefinitionRegistry {
-    /// Map (scope, case-folded name, decl kind) → forward-decl DefId
-    forward_decls: HashMap<(ScopeId, NameKey, Decl), DefId>,
+    /// Map (scope, case-folded name) → forward declaration info
+    /// Multiple forward decls of different types are tracked here
+    forward_decls: HashMap<(ScopeId, NameKey), Vec<(Decl, DefId)>>,
 
-    /// Map (scope, case-folded name, def kind) → definition DefId
-    definitions: HashMap<(ScopeId, NameKey, DefKindTag), DefId>,
+    /// Map (scope, case-folded name) → definition `DefId`
+    /// Only one definition per name is allowed in a scope
+    definitions: HashMap<(ScopeId, NameKey), DefId>,
 }
 
 impl DefinitionRegistry {
@@ -100,7 +102,7 @@ impl DefinitionRegistry {
     }
 
     /// Register a forward declaration.
-    /// Returns DefId if successful, None if there's a conflict.
+    /// Returns `DefId` if successful, None if there's a conflict.
     pub fn register_forward_decl(
         &mut self,
         scope: ScopeId,
@@ -108,42 +110,57 @@ impl DefinitionRegistry {
         kind: Decl,
         def_id: DefId,
         diagnostics: &mut Diagnostics,
+        context: &crate::Context,
     ) -> Option<DefId> {
-        let key = (scope, NameKey::new(&name.name), kind);
+        let key = (scope, NameKey::new(&name.name));
 
-        // Check if forward decl already exists
-        if let Some(&existing_id) = self.forward_decls.get(&key) {
-            // Multiple forward declarations of the same kind are allowed
-            return Some(existing_id);
+        // Get or create the forward declaration list for this name
+        let forward_decls = self.forward_decls.entry(key.clone()).or_default();
+
+        // Check if we already have a forward declaration of this type
+        for (existing_kind, existing_id) in forward_decls.iter() {
+            if *existing_kind == kind {
+                // Multiple forward declarations of the same kind are allowed
+                return Some(*existing_id);
+            }
         }
 
-        // Check for definition conflict
-        let def_key = (
-            scope,
-            NameKey::new(&name.name),
-            def_kind_tag_from_decl(kind),
-        );
-        if let Some(&_existing_def_id) = self.definitions.get(&def_key) {
+        // Check if there's a forward declaration with a different type
+        if !forward_decls.is_empty() {
             use ic_diagnostic::{Label, error_span};
-            // This case should not happen in the old module's flow
-            // The old module handles this in the validate phase instead
-            diagnostics.errors.push(error_span(
-                format!(
-                    "forward declaration of `{}` conflicts with existing definition",
-                    name.name
+            let (existing_kind, existing_id) = &forward_decls[0];
+            let existing_def = context.definitions.get(*existing_id);
+            let existing_type_str = decl_type_str(*existing_kind);
+            let new_type_str = decl_type_str(kind);
+
+            diagnostics.errors.push(
+                error_span(
+                    format!(
+                        "`{}` forward declared as both {} and {}",
+                        name.name, existing_type_str, new_type_str
+                    ),
+                    Label::new(existing_def.ident.span).message(format!(
+                        "first forward declared as {existing_type_str} here"
+                    )),
+                )
+                .label(
+                    Label::new(name.span)
+                        .message(format!("forward declared as {new_type_str} here")),
                 ),
-                Label::new(name.span).message("forward declaration here"),
-            ));
+            );
             return None;
         }
 
+        // Forward declaration after definition is allowed - IDL supports this
+        // The validation phase will check for consistency
+
         // Register the forward declaration
-        self.forward_decls.insert(key, def_id);
+        forward_decls.push((kind, def_id));
         Some(def_id)
     }
 
     /// Register a definition.
-    /// Returns DefId if successful, None if there's a conflict.
+    /// Returns `DefId` if successful, None if there's a conflict.
     pub fn register_definition(
         &mut self,
         scope: ScopeId,
@@ -151,17 +168,51 @@ impl DefinitionRegistry {
         kind: DefKindTag,
         def_id: DefId,
         diagnostics: &mut Diagnostics,
+        context: &crate::Context,
     ) -> Option<DefId> {
-        let key = (scope, NameKey::new(&name.name), kind);
+        let key = (scope, NameKey::new(&name.name));
 
         // Check if definition already exists
-        if let Some(&_existing_id) = self.definitions.get(&key) {
+        if let Some(&existing_id) = self.definitions.get(&key) {
             use ic_diagnostic::{Label, error_span};
-            diagnostics.errors.push(error_span(
-                format!("duplicate definition of `{}`", name.name),
-                Label::new(name.span).message("redefined here"),
-            ));
+            let existing_def = context.definitions.get(existing_id);
+            diagnostics.errors.push(
+                error_span(
+                    format!("duplicate definition of `{}`", name.name),
+                    Label::new(existing_def.ident.span).message("originally defined here"),
+                )
+                .label(Label::new(name.span).message("redefined here")),
+            );
             return None;
+        }
+
+        // Check if there's a forward declaration with a mismatched type
+        if let Some(forward_decls) = self.forward_decls.get(&key) {
+            use ic_diagnostic::{Label, error_span};
+            for (decl_kind, forward_id) in forward_decls {
+                let expected_def_kind = def_kind_tag_from_decl(*decl_kind);
+                if expected_def_kind != kind {
+                    let forward_def = context.definitions.get(*forward_id);
+                    let decl_type_str = decl_type_str(*decl_kind);
+                    let def_type_str = def_kind_tag_str(kind);
+
+                    diagnostics.errors.push(
+                        error_span(
+                            format!(
+                                "forward declaration of `{}` as {} conflicts with {} definition",
+                                name.name, decl_type_str, def_type_str
+                            ),
+                            Label::new(forward_def.ident.span)
+                                .message(format!("forward declared as {decl_type_str} here")),
+                        )
+                        .label(
+                            Label::new(name.span)
+                                .message(format!("defined as {def_type_str} here")),
+                        ),
+                    );
+                    return None;
+                }
+            }
         }
 
         // Register the definition
@@ -171,13 +222,15 @@ impl DefinitionRegistry {
 
     /// Find a forward declaration for the given name and kind.
     pub fn find_forward_decl(&self, scope: ScopeId, name: &str, kind: Decl) -> Option<DefId> {
-        let key = (scope, NameKey::new(name), kind);
-        self.forward_decls.get(&key).copied()
+        let key = (scope, NameKey::new(name));
+        self.forward_decls
+            .get(&key)
+            .and_then(|decls| decls.iter().find(|(k, _)| *k == kind).map(|(_, id)| *id))
     }
 
-    /// Find a definition for the given name and kind.
-    pub fn find_definition(&self, scope: ScopeId, name: &str, kind: DefKindTag) -> Option<DefId> {
-        let key = (scope, NameKey::new(name), kind);
+    /// Find a definition for the given name.
+    pub fn find_definition(&self, scope: ScopeId, name: &str) -> Option<DefId> {
+        let key = (scope, NameKey::new(name));
         self.definitions.get(&key).copied()
     }
 
@@ -185,10 +238,12 @@ impl DefinitionRegistry {
     pub fn get_forward_to_def_mapping(&self) -> HashMap<DefId, DefId> {
         let mut mapping = HashMap::new();
 
-        for ((scope, name, decl_kind), &decl_id) in &self.forward_decls {
-            let def_kind = def_kind_tag_from_decl(*decl_kind);
-            if let Some(&def_id) = self.definitions.get(&(*scope, name.clone(), def_kind)) {
-                mapping.insert(decl_id, def_id);
+        for ((scope, name), forward_decls) in &self.forward_decls {
+            if let Some(&def_id) = self.definitions.get(&(*scope, name.clone())) {
+                // Map all forward declarations to the definition
+                for (_, decl_id) in forward_decls {
+                    mapping.insert(*decl_id, def_id);
+                }
             }
         }
 
@@ -204,5 +259,32 @@ fn def_kind_tag_from_decl(decl: Decl) -> DefKindTag {
         Decl::Interface => DefKindTag::Interface,
         Decl::Valuetype => DefKindTag::Valuetype,
         Decl::Native => DefKindTag::Native,
+    }
+}
+
+/// Get string representation of a declaration kind.
+fn decl_type_str(decl: Decl) -> &'static str {
+    match decl {
+        Decl::Struct => "struct",
+        Decl::Union => "union",
+        Decl::Interface => "interface",
+        Decl::Valuetype => "valuetype",
+        Decl::Native => "native",
+    }
+}
+
+/// Get string representation of a definition kind tag.
+fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
+    match kind {
+        DefKindTag::Struct => "struct",
+        DefKindTag::Union => "union",
+        DefKindTag::Interface => "interface",
+        DefKindTag::Valuetype => "valuetype",
+        DefKindTag::Native => "native",
+        DefKindTag::Enum => "enum",
+        DefKindTag::Const => "const",
+        DefKindTag::Annotation => "annotation",
+        DefKindTag::Bitmask => "bitmask",
+        DefKindTag::Module => "module",
     }
 }

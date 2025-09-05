@@ -277,6 +277,37 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             }
         });
 
+        // Validate that discriminator is an enum, integral type, boolean, or char
+        let is_valid_discriminator = match &disc.kind {
+            TyKind::Primitive(p) => matches!(
+                p,
+                PrimitiveTy::Bool
+                    | PrimitiveTy::Char
+                    | PrimitiveTy::WChar
+                    | PrimitiveTy::Int8
+                    | PrimitiveTy::UInt8
+                    | PrimitiveTy::Int16
+                    | PrimitiveTy::UInt16
+                    | PrimitiveTy::Int32
+                    | PrimitiveTy::UInt32
+                    | PrimitiveTy::Int64
+                    | PrimitiveTy::UInt64
+            ),
+            TyKind::Adt(def_id) => {
+                let def = self.ctx.context.definitions.get(*def_id);
+                matches!(&def.kind, DefKind::Enum(_))
+            }
+            _ => false,
+        };
+
+        if !is_valid_discriminator {
+            self.ctx.diagnostics.error(
+                format!("invalid discriminator type for union `{}`", u.ident.name),
+                ic_diagnostic::Label::new(ic_syntax::util::ty_span(&u.disc.ty))
+                    .message("discriminator must be an enum or integral type"),
+            );
+        }
+
         // Create scope and process branches
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,

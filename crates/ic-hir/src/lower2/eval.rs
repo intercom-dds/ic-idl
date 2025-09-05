@@ -832,12 +832,13 @@ fn get_type_name(ty: &Ty, ctx: &LoweringContext) -> String {
             PrimitiveTy::Float64 => "double",
             PrimitiveTy::Float128 => "float128",
             PrimitiveTy::Void => "void",
-        }.to_string(),
+        }
+        .to_string(),
         TyKind::Adt(def_id) => {
             // Get the actual type name from the definition
             let def = ctx.context.definitions.get(*def_id);
             def.ident.name.to_string()
-        },
+        }
         TyKind::String { wide, .. } => if *wide { "wstring" } else { "string" }.to_string(),
         TyKind::Array { .. } => "array".to_string(),
         TyKind::Sequence { .. } => "sequence".to_string(),
@@ -867,6 +868,59 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate an expression expecting a given target type (for constants declared with type).
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, expected_ty: &Ty) -> Option<Numeric> {
+        // If this is a direct integer literal assigned to an integer type, perform a strict
+        // range check before we evaluate/cast. The goal is to error on obviously out-of-range
+        // positive literals like `octet x = 9999;` while still allowing well-defined unsigned
+        // wraps for expressions or negative literals (e.g. `uint32 x = -1;`).
+        if let Some(lit) = extract_direct_int_literal(expr) {
+            if let TyKind::Primitive(p) = &expected_ty.kind {
+                use PrimitiveTy::*;
+                match p {
+                    Int8 | Int16 | Int32 | Int64 => {
+                        let rank = match p {
+                            Int8 => IntRank::I8,
+                            Int16 => IntRank::I16,
+                            Int32 => IntRank::I32,
+                            Int64 => IntRank::I64,
+                            _ => unreachable!(),
+                        };
+                        let (min, max) = int_min_max(rank);
+                        if lit < min || lit > max {
+                            let ty_name = get_type_name(expected_ty, &self.ctx);
+                            self.ctx.diagnostics.errors.push(error_span(
+                                format!("integer literal out of range for '{}'", ty_name),
+                                Label::new(expr.span()).message("out of range"),
+                            ));
+                            return None;
+                        }
+                    }
+                    UInt8 | UInt16 | UInt32 | UInt64 => {
+                        // For unsigned targets, only reject direct positive literals
+                        // that exceed the target's max. Negative literals are allowed
+                        // (they wrap), per IDL/C integer conversion rules.
+                        if lit >= 0 {
+                            let max_u: u128 = match p {
+                                UInt8 => u8::MAX as u128,
+                                UInt16 => u16::MAX as u128,
+                                UInt32 => u32::MAX as u128,
+                                UInt64 => u64::MAX as u128,
+                                _ => 0,
+                            };
+                            if (lit as u128) > max_u {
+                                let ty_name = get_type_name(expected_ty, &self.ctx);
+                                self.ctx.diagnostics.errors.push(error_span(
+                                    format!("integer literal out of range for '{}'", ty_name),
+                                    Label::new(expr.span()).message("out of range"),
+                                ));
+                                return None;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         let v = self.eval_value(expr)?;
 
         // Warn about precision loss when assigning float literal to integer type
@@ -901,7 +955,7 @@ impl<'a> ConstEvaluator<'a> {
             }
             Err(_) => {
                 let type_name = get_type_name(expected_ty, &self.ctx);
-                
+
                 self.ctx.diagnostics.errors.push(error_span(
                     format!("{} cannot be assigned to type {}", value_desc, type_name),
                     Label::new(expr.span()).message("incompatible types"),
@@ -910,6 +964,8 @@ impl<'a> ConstEvaluator<'a> {
             }
         }
     }
+
+    /// Evaluate an expression to a simplified Value.
 
     /// Evaluate an expression to a simplified Value.
     fn eval_value(&mut self, expr: &ic_syntax::Expr) -> Option<Value> {
@@ -964,20 +1020,19 @@ impl<'a> ConstEvaluator<'a> {
                 let r = self.eval_value(&bin.rhs)?;
 
                 // Check for string operands early for better error messages
-                let has_string_operand = matches!(l, Value::String(_)) || matches!(r, Value::String(_));
+                let has_string_operand =
+                    matches!(l, Value::String(_)) || matches!(r, Value::String(_));
                 if has_string_operand {
                     let string_span = if matches!(l, Value::String(_)) {
                         bin.lhs.span()
                     } else {
                         bin.rhs.span()
                     };
-                    
-                    self.ctx.diagnostics.errors.push(
-                        error_span(
-                            "string literals cannot be used in arithmetic expressions",
-                            Label::new(string_span).message("string operand"),
-                        )
-                    );
+
+                    self.ctx.diagnostics.errors.push(error_span(
+                        "string literals cannot be used in arithmetic expressions",
+                        Label::new(string_span).message("string operand"),
+                    ));
                     return None;
                 }
 
@@ -1083,5 +1138,27 @@ impl<'a> ConstEvaluator<'a> {
                 None
             }
         }
+    }
+}
+
+/// Try to extract a direct integer literal from an expression.
+/// Handles plain integer literals, parenthesized literals, and a single leading unary '-'.
+fn extract_direct_int_literal(expr: &ic_syntax::Expr) -> Option<i128> {
+    use ic_syntax::Expr as E;
+    match expr {
+        E::Literal(lit) => match &lit.value {
+            ic_syntax::LiteralValue::Int(i) => Some(*i as i128),
+            _ => None,
+        },
+        E::Group(g) => extract_direct_int_literal(&g.expr),
+        E::Unary(u) => {
+            if u.op.kind == ic_syntax::OpKind::Sub {
+                if let Some(v) = extract_direct_int_literal(&u.expr) {
+                    return v.checked_neg();
+                }
+            }
+            None
+        }
+        _ => None,
     }
 }

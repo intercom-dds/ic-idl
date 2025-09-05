@@ -1,26 +1,11 @@
 ---
 source: crates/ic-hir/tests/overflow_detection.rs
-assertion_line: 54
 expression: test_overflow(source)
 ---
-error: duplicate definition of `MIN`
-   ┌ test.idl:2:1
-   │
- 2 │ const int32 MIN = -2147483648;
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redefined here
-   └──
-     ┌ <builtin-annotations>:99:1
-     │
-  99 │ @annotation min {
-     · ^^^^^^^^^^^^^^^^^ first defined here
- 100 │     any value;
-     · 
- 101 │ };
-     · ^^
-     └──
-error: constant `OVERFLOW` value -2147483649 does not fit in type int32
-   ┌ test.idl:3:1
+warning: integer overflow in constant expression
+   ┌ test.idl:3:24
    │
  3 │ const int32 OVERFLOW = MIN - 1;
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ value out of range
+   ·                        ^^^^^^^ overflow detected
    └──
+ note: consider using a larger integer type if overflow was not intended

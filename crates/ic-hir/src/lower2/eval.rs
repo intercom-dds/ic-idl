@@ -292,24 +292,43 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
     use Value::{Bool, Float, Int, UInt};
     match (value, target) {
         (Int(v, _), TyTag::Int(r, sign)) => {
-            let (min, max) = int_min_max(r);
-            if v < min || v > max {
-                return Err(EvalError::RangeError);
-            }
             if sign {
+                let (min, max) = int_min_max(r);
+                if v < min || v > max {
+                    return Err(EvalError::RangeError);
+                }
                 Ok(Int(v, r))
             } else {
-                Ok(UInt(v as u128, r))
+                // For unsigned target, wrap negative values using two's complement
+                let bits = rank_bits(r);
+                let mask = if bits == 64 {
+                    u64::MAX as u128
+                } else {
+                    (1u128 << bits) - 1
+                };
+                let unsigned_val = (v as u128) & mask;
+                Ok(UInt(unsigned_val, r))
             }
         }
         (UInt(v, _), TyTag::Int(r, sign)) => {
-            let max = int_min_max(r).1 as u128;
-            if v > max {
-                return Err(EvalError::RangeError);
-            }
             if sign {
+                // Converting unsigned to signed - check if it fits in signed range
+                let max = int_min_max(r).1 as u128;
+                if v > max {
+                    return Err(EvalError::RangeError);
+                }
                 Ok(Int(v as i128, r))
             } else {
+                // Converting unsigned to unsigned - check against unsigned max
+                let max = match r {
+                    IntRank::U8 | IntRank::I8 => u8::MAX as u128,
+                    IntRank::U16 | IntRank::I16 => u16::MAX as u128,
+                    IntRank::U32 | IntRank::I32 => u32::MAX as u128,
+                    IntRank::U64 | IntRank::I64 => u64::MAX as u128,
+                };
+                if v > max {
+                    return Err(EvalError::RangeError);
+                }
                 Ok(UInt(v, r))
             }
         }
@@ -338,13 +357,46 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
     }
 }
 
+/// Helper function to handle signed integer overflow with proper wrapping
+fn handle_signed_overflow<F>(
+    x: i128,
+    y: i128,
+    r: IntRank,
+    op: F,
+    wrapping_op: fn(u128, u128) -> u128,
+) -> Result<Value, EvalError>
+where
+    F: FnOnce(i128, i128) -> Option<i128>,
+{
+    let (min, max) = int_min_max(r);
+    match op(x, y) {
+        Some(v) if v >= min && v <= max => Ok(Value::Int(v, r)),
+        _ => {
+            // Overflow occurred, wrap according to the rank's bit width
+            let bits = rank_bits(r);
+            let mask = if bits == 64 {
+                u64::MAX as i128
+            } else {
+                (1i128 << bits) - 1
+            };
+            let unsigned_result = wrapping_op(x as u128, y as u128) & (mask as u128);
+            let wrapped = if unsigned_result > (max as u128) {
+                // Wrapped to negative
+                (unsigned_result as i128) - ((mask + 1) as i128)
+            } else {
+                unsigned_result as i128
+            };
+            signed_overflow(Value::Int(wrapped, r))
+        }
+    }
+}
+
 // Per-class operation implementations after casting to common type
 fn add_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => match x.checked_add(y) {
-            Some(v) => Ok(Value::Int(v, r)),
-            None => signed_overflow(Value::Int(x.wrapping_add(y), r)),
-        },
+        (Value::Int(x, r), Value::Int(y, _)) => {
+            handle_signed_overflow(x, y, r, |a, b| a.checked_add(b), u128::wrapping_add)
+        }
         (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_add(y), r)),
         _ => Err(EvalError::TypeMismatch),
     }
@@ -402,10 +454,9 @@ fn add_float(a: Value, b: Value) -> Result<Value, EvalError> {
 
 fn sub_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => match x.checked_sub(y) {
-            Some(v) => Ok(Value::Int(v, r)),
-            None => signed_overflow(Value::Int(x.wrapping_sub(y), r)),
-        },
+        (Value::Int(x, r), Value::Int(y, _)) => {
+            handle_signed_overflow(x, y, r, |a, b| a.checked_sub(b), u128::wrapping_sub)
+        }
         (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_sub(y), r)),
         _ => Err(EvalError::TypeMismatch),
     }
@@ -420,10 +471,9 @@ fn sub_float(a: Value, b: Value) -> Result<Value, EvalError> {
 
 fn mul_int(a: Value, b: Value) -> Result<Value, EvalError> {
     match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => match x.checked_mul(y) {
-            Some(v) => Ok(Value::Int(v, r)),
-            None => signed_overflow(Value::Int(x.wrapping_mul(y), r)),
-        },
+        (Value::Int(x, r), Value::Int(y, _)) => {
+            handle_signed_overflow(x, y, r, |a, b| a.checked_mul(b), u128::wrapping_mul)
+        }
         (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_mul(y), r)),
         _ => Err(EvalError::TypeMismatch),
     }
@@ -746,19 +796,18 @@ fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, EvalError> {
             None => signed_overflow(Value::Int(i.wrapping_neg(), r)),
         },
         (A::Sub, Value::UInt(u, r)) => {
-            // -u for unsigned: apply in signed domain of same rank, warn on overflow
-            let signed = match r {
-                IntRank::U8 => IntRank::I8,
-                IntRank::U16 => IntRank::I16,
-                IntRank::U32 => IntRank::I32,
-                IntRank::U64 => IntRank::I64,
-                _ => IntRank::I32,
-            };
+            // -u for unsigned: compute in signed domain, then wrap back to unsigned
             let i = u as i128;
-            match i.checked_neg() {
-                Some(v) => Ok(Value::Int(v, signed)),
-                None => signed_overflow(Value::Int(i.wrapping_neg(), signed)),
-            }
+            let neg = i.wrapping_neg();
+            // Wrap back to unsigned without warnings
+            let bits = rank_bits(r);
+            let mask = if bits == 64 {
+                u64::MAX as u128
+            } else {
+                (1u128 << bits) - 1
+            };
+            let unsigned_val = (neg as u128) & mask;
+            Ok(Value::UInt(unsigned_val, r))
         }
         (A::Sub, Value::Float(f, r)) => Ok(Value::Float(-f, r)),
         (A::Not, Value::Int(i, r)) => Ok(Value::Int(!i, r)),
@@ -884,9 +933,6 @@ impl<'a> ConstEvaluator<'a> {
                             warn_span(
                                 "integer overflow in constant expression",
                                 Label::new(expr.span()).message("overflow detected"),
-                            )
-                            .note(
-                                "the value wrapped around according to two's complement arithmetic",
                             )
                             .note(
                                 "consider using a larger integer type if overflow was not intended",

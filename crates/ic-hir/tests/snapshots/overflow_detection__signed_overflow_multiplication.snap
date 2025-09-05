@@ -2,9 +2,10 @@
 source: crates/ic-hir/tests/overflow_detection.rs
 expression: test_overflow(source)
 ---
-error: integer overflow in constant expression: multiplication
+warning: integer overflow in constant expression
    ┌ test.idl:3:24
    │
  3 │ const int32 OVERFLOW = BIG * BIG;
    ·                        ^^^^^^^^^ overflow detected
    └──
+ note: consider using a larger integer type if overflow was not intended

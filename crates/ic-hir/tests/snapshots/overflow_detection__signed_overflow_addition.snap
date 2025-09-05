@@ -1,26 +1,11 @@
 ---
 source: crates/ic-hir/tests/overflow_detection.rs
-assertion_line: 44
 expression: test_overflow(source)
 ---
-error: duplicate definition of `MAX`
-   ┌ test.idl:2:1
-   │
- 2 │ const int32 MAX = 2147483647;
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redefined here
-   └──
-     ┌ <builtin-annotations>:103:1
-     │
- 103 │ @annotation max {
-     · ^^^^^^^^^^^^^^^^^ first defined here
- 104 │     any value;
-     · 
- 105 │ };
-     · ^^
-     └──
-error: integer overflow in constant expression: addition
+warning: integer overflow in constant expression
    ┌ test.idl:3:24
    │
  3 │ const int32 OVERFLOW = MAX + 1;
    ·                        ^^^^^^^ overflow detected
    └──
+ note: consider using a larger integer type if overflow was not intended

@@ -55,9 +55,15 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
         ic_syntax::LiteralValue::Bool(b) => Numeric::Bool(*b),
         ic_syntax::LiteralValue::Char(c) => Numeric::Char(*c),
         ic_syntax::LiteralValue::Int(i) => {
-            // Default to Int32 for untyped integers
-            #[allow(clippy::cast_possible_truncation)]
-            Numeric::Int32(*i as i32)
+            // Choose appropriate type based on value range
+            if *i <= i32::MAX as u64 {
+                Numeric::Int32(*i as i32)
+            } else if *i <= i64::MAX as u64 {
+                Numeric::Int64(*i as i64)
+            } else {
+                // Value fits in u64 but not i64
+                Numeric::UInt64(*i)
+            }
         }
         ic_syntax::LiteralValue::Float(f) => Numeric::Double(*f),
         ic_syntax::LiteralValue::String(s) => Numeric::String(s.clone()),

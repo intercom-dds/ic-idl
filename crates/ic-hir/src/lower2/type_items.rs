@@ -34,7 +34,7 @@ use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::hir::{
-    AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Member,
+    AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
     Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
@@ -285,7 +285,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         );
 
         // Process union variants
-        let variants = self.process_union_variants(&u.fields);
+        let variants = self.process_union_variants(&u.fields, &disc);
 
         // Create the complete union definition
         let union_ty = UnionTy { disc, variants };
@@ -548,7 +548,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     /// Process union variants.
-    fn process_union_variants(&mut self, fields: &[ic_syntax::UnionField]) -> Vec<Variant> {
+    fn process_union_variants(
+        &mut self,
+        fields: &[ic_syntax::UnionField],
+        disc: &Ty,
+    ) -> Vec<Variant> {
         let mut variants = Vec::new();
 
         for field in fields {
@@ -573,8 +577,22 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         .iter()
                         .any(|label| matches!(label, ic_syntax::Label::Default(_)));
 
-                    // Process case labels (will be evaluated later)
-                    let labels = Vec::new(); // Labels will be evaluated in the evaluation phase
+                    // Process and evaluate case labels
+                    let mut labels = Vec::new();
+                    for label in &field.labels {
+                        if let ic_syntax::Label::Case(expr) = label {
+                            // Create an evaluator and evaluate the expression
+                            let mut evaluator =
+                                super::eval::ConstEvaluator::new(self.ctx, self.current_scope);
+                            if let Some(numeric) = evaluator.eval_for_type(expr, disc) {
+                                labels.push(Label {
+                                    value: numeric,
+                                    span: expr.span(),
+                                });
+                            }
+                            // If evaluation fails, error was already reported
+                        }
+                    }
 
                     variants.push(Variant {
                         annotations: Vec::new(), // TODO: Convert annotations from field.annotations
@@ -597,8 +615,22 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         .iter()
                         .any(|label| matches!(label, ic_syntax::Label::Default(_)));
 
-                    // Process case labels (will be evaluated later)
-                    let labels = Vec::new(); // Labels will be evaluated in the evaluation phase
+                    // Process and evaluate case labels
+                    let mut labels = Vec::new();
+                    for label in &field.labels {
+                        if let ic_syntax::Label::Case(expr) = label {
+                            // Create an evaluator and evaluate the expression
+                            let mut evaluator =
+                                super::eval::ConstEvaluator::new(self.ctx, self.current_scope);
+                            if let Some(numeric) = evaluator.eval_numeric(expr) {
+                                labels.push(Label {
+                                    value: numeric,
+                                    span: expr.span(),
+                                });
+                            }
+                            // If evaluation fails, error was already reported
+                        }
+                    }
 
                     // Use a null type for null cases
                     let null_ty = Ty {

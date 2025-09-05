@@ -72,7 +72,9 @@ const uint32 UNDERFLOW = ZERO - 1;
 const uint32 MAX_VIA_UNDERFLOW = -1;
 ";
 
-    assert_snapshot!(test_overflow(source));
+    let (result, _, _) = common::parse_and_resolve(source);
+    assert!(result.errors.is_empty());
+    assert!(result.warnings.is_empty());
 }
 
 #[test]

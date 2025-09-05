@@ -158,6 +158,7 @@ impl<'ctx> TypeResolver<'ctx> {
             "char" => PrimitiveTy::Char,
             "wchar" => PrimitiveTy::WChar,
             "octet" | "uint8" => PrimitiveTy::UInt8,
+            "int8" => PrimitiveTy::Int8,
             "short" | "int16" => PrimitiveTy::Int16,
             "unsigned short" | "uint16" => PrimitiveTy::UInt16,
             "long" | "int32" => PrimitiveTy::Int32,
@@ -167,7 +168,6 @@ impl<'ctx> TypeResolver<'ctx> {
             "float" => PrimitiveTy::Float32,
             "double" => PrimitiveTy::Float64,
             "long double" => PrimitiveTy::Float128,
-            "int8" => PrimitiveTy::Int8,
             _ => return None,
         })
     }

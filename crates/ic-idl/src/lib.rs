@@ -364,7 +364,7 @@ impl Compiler {
             expansion_info: std::collections::HashMap::new(),
         };
 
-        for file in self.options.files.clone().iter() {
+        for file in &self.options.files.clone() {
             match self.compile_file_to_hir_without_builtins(file, true, &builtin_parsed.tree) {
                 Ok((hir, diag)) => {
                     hirs.push(hir);

@@ -301,12 +301,8 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
             } else {
                 // For unsigned target, wrap negative values using two's complement
                 let bits = rank_bits(r);
-                let mask = if bits == 64 {
-                    u64::MAX as u128
-                } else {
-                    (1u128 << bits) - 1
-                };
-                let unsigned_val = (v as u128) & mask;
+                let mask: u128 = if bits >= 128 { !0 } else { (1u128 << bits) - 1 };
+                let unsigned_val = (v as i128 as u128) & mask;
                 Ok(UInt(unsigned_val, r))
             }
         }
@@ -319,17 +315,10 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
                 }
                 Ok(Int(v as i128, r))
             } else {
-                // Converting unsigned to unsigned - check against unsigned max
-                let max = match r {
-                    IntRank::U8 | IntRank::I8 => u8::MAX as u128,
-                    IntRank::U16 | IntRank::I16 => u16::MAX as u128,
-                    IntRank::U32 | IntRank::I32 => u32::MAX as u128,
-                    IntRank::U64 | IntRank::I64 => u64::MAX as u128,
-                };
-                if v > max {
-                    return Err(EvalError::RangeError);
-                }
-                Ok(UInt(v, r))
+                // Converting unsigned to unsigned - apply modular reduction (wrap)
+                let bits = rank_bits(r);
+                let mask: u128 = if bits >= 128 { !0 } else { (1u128 << bits) - 1 };
+                Ok(UInt(v & mask, r))
             }
         }
         (Int(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
@@ -761,13 +750,20 @@ fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
                     // Safe: not a surrogate and within BMP
                     Ok(Value::Char(char::from_u32(code).unwrap()))
                 }
+                PrimitiveTy::Bool => {
+                    // Handle boolean type
+                    match v {
+                        Value::Bool(_) => Ok(v), // Already a bool, just return it
+                        _ => Err(EvalError::TypeMismatch),
+                    }
+                }
                 _ => {
                     if let Some((signed, rank)) = rank_for_primitive(*p) {
                         cast_to(v, TyTag::Int(rank, signed))
                     } else if let Some(fr) = float_rank_for_primitive(*p) {
                         cast_to(v, TyTag::Float(fr))
                     } else {
-                        // bool/void not supported here
+                        // void not supported here
                         Err(EvalError::TypeMismatch)
                     }
                 }
@@ -817,6 +813,41 @@ fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, EvalError> {
     }
 }
 
+/// Get a human-readable name for a type.
+fn get_type_name(ty: &Ty, ctx: &LoweringContext) -> String {
+    match &ty.kind {
+        TyKind::Primitive(p) => match p {
+            PrimitiveTy::Bool => "bool",
+            PrimitiveTy::Char => "char",
+            PrimitiveTy::WChar => "wchar",
+            PrimitiveTy::Int8 => "int8",
+            PrimitiveTy::UInt8 => "uint8",
+            PrimitiveTy::Int16 => "int16",
+            PrimitiveTy::UInt16 => "uint16",
+            PrimitiveTy::Int32 => "int32",
+            PrimitiveTy::UInt32 => "uint32",
+            PrimitiveTy::Int64 => "int64",
+            PrimitiveTy::UInt64 => "uint64",
+            PrimitiveTy::Float32 => "float",
+            PrimitiveTy::Float64 => "double",
+            PrimitiveTy::Float128 => "float128",
+            PrimitiveTy::Void => "void",
+        }.to_string(),
+        TyKind::Adt(def_id) => {
+            // Get the actual type name from the definition
+            let def = ctx.context.definitions.get(*def_id);
+            def.ident.name.to_string()
+        },
+        TyKind::String { wide, .. } => if *wide { "wstring" } else { "string" }.to_string(),
+        TyKind::Array { .. } => "array".to_string(),
+        TyKind::Sequence { .. } => "sequence".to_string(),
+        TyKind::Map { .. } => "map".to_string(),
+        TyKind::Fixed => "fixed".to_string(),
+        TyKind::Any => "any".to_string(),
+        TyKind::Null => "null".to_string(),
+    }
+}
+
 /// Table-driven constant evaluator with promotions.
 pub struct ConstEvaluator<'a> {
     ctx: &'a mut LoweringContext,
@@ -841,6 +872,17 @@ impl<'a> ConstEvaluator<'a> {
         // Warn about precision loss when assigning float literal to integer type
         check_float_to_int_precision_loss(expr, expected_ty, &mut self.ctx.diagnostics);
 
+        // Store value description before moving v
+        let value_desc = match &v {
+            Value::String(_) => "string value",
+            Value::Bool(_) => "boolean value",
+            Value::Char(_) => "character value",
+            Value::Int(_, _) => "integer value",
+            Value::UInt(_, _) => "unsigned integer value",
+            Value::Float(_, _) => "floating-point value",
+            Value::Null => "null value",
+        };
+
         match cast_value_to_type(v, expected_ty) {
             Ok(v) => numeric_from_value(&v),
             Err(EvalError::RangeError) => {
@@ -858,9 +900,11 @@ impl<'a> ConstEvaluator<'a> {
                 None
             }
             Err(_) => {
+                let type_name = get_type_name(expected_ty, &self.ctx);
+                
                 self.ctx.diagnostics.errors.push(error_span(
-                    "cannot convert constant to expected type",
-                    Label::new(expr.span()).message("type mismatch"),
+                    format!("{} cannot be assigned to type {}", value_desc, type_name),
+                    Label::new(expr.span()).message("incompatible types"),
                 ));
                 None
             }
@@ -918,6 +962,24 @@ impl<'a> ConstEvaluator<'a> {
                 // Evaluate operands and track if the RHS is a division/modulo operation
                 let l = self.eval_value(&bin.lhs)?;
                 let r = self.eval_value(&bin.rhs)?;
+
+                // Check for string operands early for better error messages
+                let has_string_operand = matches!(l, Value::String(_)) || matches!(r, Value::String(_));
+                if has_string_operand {
+                    let string_span = if matches!(l, Value::String(_)) {
+                        bin.lhs.span()
+                    } else {
+                        bin.rhs.span()
+                    };
+                    
+                    self.ctx.diagnostics.errors.push(
+                        error_span(
+                            "string literals cannot be used in arithmetic expressions",
+                            Label::new(string_span).message("string operand"),
+                        )
+                    );
+                    return None;
+                }
 
                 // For division/modulo by zero errors, use the RHS span if available
                 let op_span = match op {

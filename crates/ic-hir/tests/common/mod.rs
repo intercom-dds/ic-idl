@@ -31,6 +31,7 @@ use ic_hir::{AstInput, ResolvedGraph};
 use ic_vfs::SourceMap;
 
 /// Parse IDL input and return the HIR along with rendered diagnostics
+#[track_caller]
 pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
     let mut source_map = SourceMap::default();
     let file = source_map.embed_with_name("test.idl", input);
@@ -88,6 +89,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
 }
 
 /// Parse IDL input, expecting it to succeed without errors
+#[track_caller]
 #[allow(dead_code)]
 pub fn parse_and_resolve_successfully(input: &str) -> ResolvedGraph {
     let (result, _, diagnostics) = parse_and_resolve(input);
@@ -101,6 +103,7 @@ pub fn parse_and_resolve_successfully(input: &str) -> ResolvedGraph {
 }
 
 /// Parse IDL input, expecting it to fail with errors
+#[track_caller]
 #[allow(dead_code)]
 pub fn parse_and_expect_errors(input: &str) -> String {
     let (result, _, diagnostics) = parse_and_resolve(input);
@@ -111,6 +114,7 @@ pub fn parse_and_expect_errors(input: &str) -> String {
 }
 
 /// Parse IDL input and return the result with warnings (for testing warning cases)
+#[track_caller]
 #[allow(dead_code)]
 pub fn parse_and_get_warnings(input: &str) -> (ResolvedGraph, String) {
     let (result, _, diagnostics) = parse_and_resolve(input);
@@ -129,6 +133,7 @@ pub fn parse_and_get_warnings(input: &str) -> (ResolvedGraph, String) {
 }
 
 /// Parse IDL input and return only the diagnostics output (for snapshot testing)
+#[track_caller]
 #[allow(dead_code)]
 pub fn compile_idl_with_warnings(input: &str) -> String {
     let (_, _, diagnostics) = parse_and_resolve(input);
@@ -136,6 +141,7 @@ pub fn compile_idl_with_warnings(input: &str) -> String {
 }
 
 /// Parse IDL with custom builtins (for testing builtin behavior)
+#[track_caller]
 #[allow(dead_code)]
 pub fn parse_with_custom_builtins(
     builtins: &str,

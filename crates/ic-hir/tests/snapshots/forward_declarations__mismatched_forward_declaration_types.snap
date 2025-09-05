@@ -10,9 +10,3 @@ error: forward declaration of `A` as struct conflicts with union definition
  3 │         union A switch (long) {
    ·               ^ defined as union here
    └──
-error: type `A` is declared but not defined
-   ┌ test.idl:2:16
-   │
- 2 │         struct A;
-   ·                ^ declared here
-   └──

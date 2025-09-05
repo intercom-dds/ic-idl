@@ -148,13 +148,10 @@ impl DefinitionRegistry {
                         .message(format!("forward declared as {new_type_str} here")),
                 ),
             );
+            forward_decls.push((kind, def_id));
             return None;
         }
 
-        // Forward declaration after definition is allowed - IDL supports this
-        // The validation phase will check for consistency
-
-        // Register the forward declaration
         forward_decls.push((kind, def_id));
         Some(def_id)
     }
@@ -210,12 +207,10 @@ impl DefinitionRegistry {
                                 .message(format!("defined as {def_type_str} here")),
                         ),
                     );
-                    return None;
                 }
             }
         }
 
-        // Register the definition
         self.definitions.insert(key, def_id);
         Some(def_id)
     }

@@ -316,6 +316,19 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
         (Int(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
         (UInt(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
         (Float(f, _), TyTag::Float(fr)) => Ok(Float(f, fr)),
+        (Float(f, _), TyTag::Int(r, sign)) => {
+            // Truncate float to integer
+            let i = f.trunc() as i128;
+            let (min, max) = int_min_max(r);
+            if i < min || i > max {
+                return Err(EvalError::RangeError);
+            }
+            if sign {
+                Ok(Int(i, r))
+            } else {
+                Ok(UInt(i as u128, r))
+            }
+        }
         (Bool(b), TyTag::Int(r, _)) => Ok(Int(i128::from(b), r)),
         other => {
             // Fallback for unsupported implicit casts
@@ -704,6 +717,7 @@ fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, EvalError> {
                 None => signed_overflow(Value::Int(i.wrapping_neg(), signed)),
             }
         }
+        (A::Sub, Value::Float(f, r)) => Ok(Value::Float(-f, r)),
         (A::Not, Value::Int(i, r)) => Ok(Value::Int(!i, r)),
         (A::Not, Value::UInt(u, r)) => Ok(Value::UInt(!u, r)),
         (A::Add, v) => Ok(v),

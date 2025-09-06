@@ -5,6 +5,7 @@ expression: buf
 error: overlapping spans
    ┌ test.idl:2:1
    │
+ 1 │ struct Data {
  2 │     int field1;
    · ^^^^^^^^^^^^^^^ second overlap
    · └─ first overlap
@@ -12,4 +13,5 @@ error: overlapping spans
    · ^^^^^^^^^^
  4 │     int field3;
    · ^^^^^^^^
+ 5 │ }
    └──

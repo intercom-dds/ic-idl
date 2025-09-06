@@ -5,13 +5,22 @@ expression: test_lint(source)
 error[ascii]: identifiers can only consist of alphanumeric ASCII characters
    ┌ test.idl:5:9
    │
+ 3 │     enum Status {
+ 4 │         PENDING,
  5 │         ACTÍVE,     // Non-ASCII in enum value
    ·         ^^^^^^ non-ASCII identifier
+ 6 │         COMPLETED
+ 7 │     };
    └──
 
 error[ascii]: identifiers can only consist of alphanumeric ASCII characters
-   ┌ test.idl:9:15
-   │
- 9 │     interface Sërvice {  // Non-ASCII in interface name
-   ·               ^^^^^^^ non-ASCII identifier
-   └──
+    ┌ test.idl:9:15
+    │
+  6 │         COMPLETED
+  7 │     };
+  8 │ 
+  9 │     interface Sërvice {  // Non-ASCII in interface name
+    ·               ^^^^^^^ non-ASCII identifier
+ 10 │         void doSomething();
+ 11 │     };
+    └──

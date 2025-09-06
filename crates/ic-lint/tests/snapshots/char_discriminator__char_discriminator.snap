@@ -7,5 +7,7 @@ warning[char_discriminator]: char types should not be used as union discriminato
    │
  2 │         union CharUnion switch (char) {
    ·                                 ^^^^ char type
+ 3 │             case 'A':
+ 4 │                 long number;
    └──
  help: consider using an integer or enum value instead

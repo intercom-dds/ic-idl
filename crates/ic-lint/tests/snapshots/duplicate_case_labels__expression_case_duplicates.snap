@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'ExprUnion' has duplicate case label '6'
    ┌ test.idl:8:10
    │
+ 6 │     case X + 1: string x_plus_one;
+ 7 │     case 5: boolean five;  // Duplicate of X
  8 │     case 6: float six;     // Duplicate of X + 1
    ·          ^ duplicate case label
+ 9 │ };
    └──

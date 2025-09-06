@@ -5,16 +5,23 @@ expression: test_lint(source)
 warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:3:13
    │
+ 2 │         module Outer {
  3 │             module InnerEmpty {
    ·             ^^^^^^^^^^^^^^^^^^^ 
  4 │             };
    · ^^^^^^^^^^^^^^
+ 5 │ 
+ 6 │             struct Data {
+ 7 │                 long value;
    └──
  help: either remove the declaration or add an item to it
 
 warning[empty_mod]: empty module declarations are not standard
     ┌ test.idl:11:9
     │
+  8 │             };
+  9 │         };
+ 10 │ 
  11 │         module AnotherEmpty {
     ·         ^^^^^^^^^^^^^^^^^^^^^ 
  12 │         };

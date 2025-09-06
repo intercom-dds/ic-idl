@@ -7,8 +7,20 @@ error: multiple labels with different line number widths
      │
    1 │ line 1
      · ^^^^^^ on line 1
+   2 │ line 2
+   3 │ line 3
+ ··· │
+  48 │ line 48
+  49 │ line 49
   50 │ line 50
      · ^^^^^^^ on line 50
+  51 │ line 51
+  52 │ line 52
+ ··· │
+  98 │ line 98
+  99 │ line 99
  100 │ line 100
      · ^^^^^^^^ on line 100
+ 101 │ line 101
+ 102 │ line 102
      └──

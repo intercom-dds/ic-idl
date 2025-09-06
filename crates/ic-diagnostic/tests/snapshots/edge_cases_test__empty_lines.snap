@@ -8,11 +8,7 @@ error: span across empty lines
  1 │ interface Test {
    ·  includes empty lines
  2 │ 
-   · 
  3 │     void method();
-   · 
  4 │ 
-   · 
  5 │ }
-   · 
    └──

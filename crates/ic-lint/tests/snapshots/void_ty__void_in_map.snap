@@ -5,27 +5,40 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:17
    │
+ 2 │ struct MapStruct {
  3 │     map<string, void> stringToVoid;
    ·                 ^^^^ invalid use of `void`
+ 4 │     map<void, long> voidToLong;
+ 5 │     map<void, void> voidToVoid;
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:4:9
    │
+ 2 │ struct MapStruct {
+ 3 │     map<string, void> stringToVoid;
  4 │     map<void, long> voidToLong;
    ·         ^^^^ invalid use of `void`
+ 5 │     map<void, void> voidToVoid;
+ 6 │ };
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:5:9
    │
+ 3 │     map<string, void> stringToVoid;
+ 4 │     map<void, long> voidToLong;
  5 │     map<void, void> voidToVoid;
    ·         ^^^^ invalid use of `void`
+ 6 │ };
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:5:15
    │
+ 3 │     map<string, void> stringToVoid;
+ 4 │     map<void, long> voidToLong;
  5 │     map<void, void> voidToVoid;
    ·               ^^^^ invalid use of `void`
+ 6 │ };
    └──

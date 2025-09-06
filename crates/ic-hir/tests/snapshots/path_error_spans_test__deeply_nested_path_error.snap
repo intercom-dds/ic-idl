@@ -5,13 +5,20 @@ expression: output
 error: unresolved type `a::b::c::d::Invalid`
     ┌ test.idl:12:13
     │
+ 10 │         struct Test {
+ 11 │             a::b::c::Valid valid;           // Should work
  12 │             a::b::c::d::Invalid deep;       // Should highlight d
     ·             ^^^^^^^^^^^^^^^^^^^ unknown type
+ 13 │             a::b::missing::c::Valid other;  // Should highlight missing
+ 14 │         };
     └──
 
 error: unresolved type `a::b::missing::c::Valid`
     ┌ test.idl:13:13
     │
+ 11 │             a::b::c::Valid valid;           // Should work
+ 12 │             a::b::c::d::Invalid deep;       // Should highlight d
  13 │             a::b::missing::c::Valid other;  // Should highlight missing
     ·             ^^^^^^^^^^^^^^^^^^^^^^^ unknown type
+ 14 │         };
     └──

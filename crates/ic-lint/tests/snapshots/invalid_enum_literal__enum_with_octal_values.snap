@@ -5,20 +5,31 @@ expression: test_lint_hir(source)
 error[invalid_enum_literal]: `192` is not a valid `Permissions` value
     ┌ test.idl:10:19
     │
+  7 │ };
+  8 │ 
+  9 │ const Permissions PERM1 = 0400;  // Valid: USER_READ (256 in decimal)
  10 │ const Permissions PERM2 = 0300;  // Invalid: 192 in decimal is not defined
     ·                   ^^^^^ this constant evaluates to an invalid value
+ 11 │ const Permissions PERM3 = 070;   // Valid: GROUP_ALL (56 in decimal)
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'USER_READ' instead of numeric literal
-   ┌ test.idl:9:19
-   │
- 9 │ const Permissions PERM1 = 0400;  // Valid: USER_READ (256 in decimal)
-   ·                   ^^^^^ consider using 'USER_READ' instead of '256'
-   └──
+    ┌ test.idl:9:19
+    │
+  6 │     GROUP_ALL = 070
+  7 │ };
+  8 │ 
+  9 │ const Permissions PERM1 = 0400;  // Valid: USER_READ (256 in decimal)
+    ·                   ^^^^^ consider using 'USER_READ' instead of '256'
+ 10 │ const Permissions PERM2 = 0300;  // Invalid: 192 in decimal is not defined
+ 11 │ const Permissions PERM3 = 070;   // Valid: GROUP_ALL (56 in decimal)
+    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'GROUP_ALL' instead of numeric literal
     ┌ test.idl:11:19
     │
+  9 │ const Permissions PERM1 = 0400;  // Valid: USER_READ (256 in decimal)
+ 10 │ const Permissions PERM2 = 0300;  // Invalid: 192 in decimal is not defined
  11 │ const Permissions PERM3 = 070;   // Valid: GROUP_ALL (56 in decimal)
     ·                   ^^^^^ consider using 'GROUP_ALL' instead of '56'
     └──

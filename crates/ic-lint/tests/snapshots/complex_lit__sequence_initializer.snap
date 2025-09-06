@@ -5,6 +5,7 @@ expression: test_lint(source)
 warning[complex_lit]: complex literals are an InterCOM extension
    ┌ test.idl:3:35
    │
+ 2 │         typedef sequence<long> LongSeq;
  3 │         const LongSeq NUMBERS = { 1, 2, 3, 4, 5 };
    ·                       ^^^^^^^     ^^^^^^^^^^^^^ complex constants are an InterCOM extension
    ·                       └─ const defined here

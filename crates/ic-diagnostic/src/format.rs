@@ -35,10 +35,15 @@ use ic_vfs::SourceMap;
 
 use crate::{Color, Diag, Label};
 
-/// Maximum number of lines to show before and after in a diagnostic span
-const CONTEXT_LINES: usize = 2;
+/// Maximum number of lines to show before a diagnostic span
+const CONTEXT_LINES_BEFORE: usize = 2;
+
+/// Maximum number of lines to show after a diagnostic span
+const CONTEXT_LINES_AFTER: usize = 2;
+
 /// Maximum total lines to show for a single label span
 const MAX_LINES_PER_SPAN: usize = 10;
+
 /// Tab width for display purposes
 const TAB_WIDTH: usize = 4;
 
@@ -86,6 +91,17 @@ pub struct Line {
 /// Converts a byte offset in a buffer to the corresponding line number.
 fn line_number(input: &str, offset: usize) -> usize {
     input.bytes().take(offset).filter(|&v| v == b'\n').count() + 1
+}
+
+/// Returns the total number of lines in the source.
+fn total_lines(input: &str) -> usize {
+    if input.is_empty() {
+        0
+    } else if input.ends_with('\n') {
+        input.bytes().filter(|&v| v == b'\n').count()
+    } else {
+        input.bytes().filter(|&v| v == b'\n').count() + 1
+    }
 }
 
 /// Converts a byte offset in a buffer to the corresponding (line, column) pair.
@@ -279,46 +295,102 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
-        if diag.labels.is_empty() {
-            return Ok(());
+    fn is_line_empty(&self, line_num: usize) -> bool {
+        let line_start = self.line_start_offset(line_num);
+        let range = line_span(self.source, line_start as u32);
+        self.source[range].trim().is_empty()
+    }
+
+    fn find_context_start(&self, span_start: usize) -> usize {
+        let mut context_lines_found = 0;
+        let mut current_line = span_start;
+
+        // Walk backwards looking for non-empty lines
+        for line in (1..span_start).rev() {
+            if !self.is_line_empty(line) {
+                current_line = line;
+                context_lines_found += 1;
+                if context_lines_found >= CONTEXT_LINES_BEFORE {
+                    break;
+                }
+            }
         }
 
-        // First, collect all line ranges to determine what lines will be shown
+        current_line
+    }
+
+    fn find_context_end(&self, span_end: usize, total_lines: usize) -> usize {
+        // If no context lines after, just return the span end
+        if CONTEXT_LINES_AFTER == 0 {
+            return span_end;
+        }
+
+        let mut context_lines_found = 0;
+        let mut current_line = span_end;
+
+        // Walk forwards looking for non-empty lines
+        for line in (span_end + 1)..=total_lines {
+            if !self.is_line_empty(line) {
+                current_line = line;
+                context_lines_found += 1;
+                if context_lines_found >= CONTEXT_LINES_AFTER {
+                    break;
+                }
+            }
+        }
+
+        current_line
+    }
+
+    fn build_line_groups_for_labels(
+        &self,
+        labels: &[&Label],
+        total_source_lines: usize,
+    ) -> (Vec<Vec<usize>>, usize) {
         let mut line_groups = Vec::new();
         let mut seen_lines = std::collections::HashSet::new();
         let mut max_line = 0;
 
-        for label in &diag.labels {
+        for &label in labels {
             let start_line = line_number(self.source, label.span.start.offset as usize);
             let end_line = line_number(self.source, label.span.end.offset as usize);
 
             let mut group_lines = Vec::new();
 
-            // If the span is too large, only show context around start and end
-            let total_lines = end_line - start_line + 1;
+            // Find context boundaries (skipping empty lines for context)
+            let context_start = self.find_context_start(start_line);
+            let context_end = self.find_context_end(end_line, total_source_lines);
+
+            // If the span (with context) is too large, only show context around start and end
+            let total_lines = context_end - context_start + 1;
             if total_lines > MAX_LINES_PER_SPAN {
-                // Show first few lines
-                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
-                    if line <= end_line && seen_lines.insert(line) {
+                // Show context before + a few lines into the span
+                let first_part_end = self
+                    .find_context_end(start_line, total_source_lines)
+                    .min(end_line);
+                for line in context_start..=first_part_end {
+                    if seen_lines.insert(line) {
                         group_lines.push(line);
                         max_line = max_line.max(line);
                     }
                 }
 
                 // Add ellipsis marker (using line number 0 as a sentinel)
-                group_lines.push(0);
+                if !group_lines.is_empty() && first_part_end < end_line {
+                    group_lines.push(0);
+                }
 
-                // Show last few lines
-                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
-                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
+                // Show last few lines of span + context after
+                let last_part_start = self.find_context_start(end_line).max(first_part_end + 1);
+                for line in last_part_start..=context_end {
+                    if seen_lines.insert(line) {
                         group_lines.push(line);
                         max_line = max_line.max(line);
                     }
                 }
             } else {
-                // Show all lines for small spans
-                for line in start_line..=end_line {
+                // Show all lines including context
+                for line in context_start..=context_end {
                     if seen_lines.insert(line) {
                         group_lines.push(line);
                         max_line = max_line.max(line);
@@ -331,15 +403,60 @@ impl Formatter<'_> {
             }
         }
 
-        // Calculate proper indentation based on the maximum line number we'll display
-        let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
-        let indent = " ".repeat(indent);
+        (line_groups, max_line)
+    }
+
+    fn calculate_line_width_and_indent(max_line: usize, has_gaps: bool) -> (usize, String) {
+        // Calculate line width - at least 3 if we have ellipsis
+        let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
+        let line_width = if has_gaps {
+            line_width.max(3)
+        } else {
+            line_width
+        };
+
+        // Calculate proper indentation based on the line width we'll actually use
+        let indent = " ".repeat(line_width + 2);
+
+        (line_width, indent)
+    }
+
+    fn emit_frame_with_labels(&self, f: &mut dyn fmt::Write, labels: &[&Label]) -> fmt::Result {
+        if labels.is_empty() {
+            return Ok(());
+        }
+
+        // Get the total number of lines in the source
+        let total_source_lines = total_lines(self.source);
+
+        // Build line groups
+        let (line_groups, max_line) = self.build_line_groups_for_labels(labels, total_source_lines);
+
+        // Flatten all line groups into a single sorted list, removing duplicates and ellipsis markers
+        let all_lines: Vec<usize> = line_groups
+            .iter()
+            .flat_map(|group| group.iter())
+            .filter(|&&line| line != 0) // Remove ellipsis markers
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
+
+        // Check if we'll need ellipsis anywhere
+        let mut has_gaps = false;
+        if all_lines.len() > 1 {
+            for i in 1..all_lines.len() {
+                if all_lines[i] > all_lines[i - 1] + 1 {
+                    has_gaps = true;
+                    break;
+                }
+            }
+        }
+
+        let (line_width, indent) = Self::calculate_line_width_and_indent(max_line, has_gaps);
 
         // Get location info from the first label
-        let (first_line_number, col) = line_col(
-            self.source,
-            diag.labels.first().unwrap().span.start.offset as usize,
-        );
+        let (first_line_number, col) = line_col(self.source, labels[0].span.start.offset as usize);
 
         writeln!(
             f,
@@ -349,41 +466,52 @@ impl Formatter<'_> {
         )?;
         writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
 
-        // Display line groups in order
-        for group in line_groups {
-            for &line_num in &group {
-                if line_num == 0 {
-                    // Print ellipsis for skipped lines
-                    let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
+        // Display lines with ellipsis for gaps
+        let mut prev_line = None;
+        for &line_num in &all_lines {
+            // Check if we need to insert ellipsis
+            if let Some(prev) = prev_line {
+                if line_num > prev + 1 {
+                    // There's a gap, insert ellipsis
                     writeln!(
                         f,
-                        "{:>width$} {}",
+                        " {:>width$} {}",
                         "···".gray(),
                         self.chars.vertical.blue().bold(),
-                        width = line_width + 1
+                        width = line_width
                     )?;
-                    continue;
                 }
-
-                let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
-                write!(
-                    f,
-                    " {:>width$} {}",
-                    line_num.blue().bold(),
-                    self.chars.vertical.blue().bold(),
-                    width = line_width
-                )?;
-
-                let line_start = self.line_start_offset(line_num);
-                let range = line_span(self.source, line_start as u32);
-                let line_text = expand_tabs(self.source[range].trim_end());
-                writeln!(f, " {line_text}")?;
-
-                self.emit_labels_for_line(f, &indent, &diag.labels, line_num)?;
             }
+
+            write!(
+                f,
+                " {:>width$} {}",
+                line_num.blue().bold(),
+                self.chars.vertical.blue().bold(),
+                width = line_width
+            )?;
+
+            let line_start = self.line_start_offset(line_num);
+            let range = line_span(self.source, line_start as u32);
+            let line_text = expand_tabs(self.source[range].trim_end());
+            writeln!(f, " {line_text}")?;
+
+            // Always use the subset method since it handles both cases
+            self.emit_labels_for_line_with_subset(f, &indent, labels, line_num)?;
+
+            prev_line = Some(line_num);
         }
 
         writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
+    }
+
+    fn emit_frame(&self, f: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
+        if diag.labels.is_empty() {
+            return Ok(());
+        }
+
+        let label_refs: Vec<&Label> = diag.labels.iter().collect();
+        self.emit_frame_with_labels(f, &label_refs)
     }
 
     fn emit_frame_for_file(
@@ -398,143 +526,7 @@ impl Formatter<'_> {
 
         // Get only the labels for this file
         let file_labels: Vec<&Label> = label_indices.iter().map(|&idx| &diag.labels[idx]).collect();
-
-        // First, collect all line ranges to determine what lines will be shown
-        let mut line_groups = Vec::new();
-        let mut seen_lines = std::collections::HashSet::new();
-        let mut max_line = 0;
-
-        for &label in &file_labels {
-            let start_line = line_number(self.source, label.span.start.offset as usize);
-            let end_line = line_number(self.source, label.span.end.offset as usize);
-
-            let mut group_lines = Vec::new();
-
-            // If the span is too large, only show context around start and end
-            let total_lines = end_line - start_line + 1;
-            if total_lines > MAX_LINES_PER_SPAN {
-                // Show first few lines
-                for line in start_line..=start_line.saturating_add(CONTEXT_LINES) {
-                    if line <= end_line && seen_lines.insert(line) {
-                        group_lines.push(line);
-                        max_line = max_line.max(line);
-                    }
-                }
-
-                // Add ellipsis marker (using line number 0 as a sentinel)
-                group_lines.push(0);
-
-                // Show last few lines
-                for line in end_line.saturating_sub(CONTEXT_LINES)..=end_line {
-                    if line > start_line.saturating_add(CONTEXT_LINES) && seen_lines.insert(line) {
-                        group_lines.push(line);
-                        max_line = max_line.max(line);
-                    }
-                }
-            } else {
-                // Show all lines for small spans
-                for line in start_line..=end_line {
-                    if seen_lines.insert(line) {
-                        group_lines.push(line);
-                        max_line = max_line.max(line);
-                    }
-                }
-            }
-
-            if !group_lines.is_empty() {
-                line_groups.push(group_lines);
-            }
-        }
-
-        // Calculate proper indentation based on the maximum line number we'll display
-        let indent = max_line.checked_ilog10().unwrap_or(0) as usize + 3;
-        let indent = " ".repeat(indent);
-
-        // Get location info from the first label
-        let (first_line_number, col) =
-            line_col(self.source, file_labels[0].span.start.offset as usize);
-
-        writeln!(
-            f,
-            "{indent}{} {}:{first_line_number}:{col}",
-            self.chars.up_right.blue().bold(),
-            self.filename.unwrap_or("unknown"),
-        )?;
-        writeln!(f, "{indent}{}", self.chars.vertical.blue().bold())?;
-
-        // Display line groups in order
-        for group in line_groups {
-            for &line_num in &group {
-                if line_num == 0 {
-                    // Print ellipsis for skipped lines
-                    let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
-                    writeln!(
-                        f,
-                        "{:>width$} {}",
-                        "···".gray(),
-                        self.chars.vertical.blue().bold(),
-                        width = line_width + 1
-                    )?;
-                    continue;
-                }
-
-                let line_width = max_line.checked_ilog10().unwrap_or(0) as usize + 1;
-                write!(
-                    f,
-                    " {:>width$} {}",
-                    line_num.blue().bold(),
-                    self.chars.vertical.blue().bold(),
-                    width = line_width
-                )?;
-
-                let line_start = self.line_start_offset(line_num);
-                let range = line_span(self.source, line_start as u32);
-                let line_text = expand_tabs(self.source[range].trim_end());
-                writeln!(f, " {line_text}")?;
-
-                self.emit_labels_for_line_with_subset(f, &indent, &file_labels, line_num)?;
-            }
-        }
-
-        writeln!(f, "{indent}{}", self.chars.down_right.blue().bold())
-    }
-
-    fn emit_labels_for_line(
-        &self,
-        f: &mut dyn fmt::Write,
-        indent: &str,
-        labels: &[Label],
-        line_num: usize,
-    ) -> fmt::Result {
-        let labels_on_line = self.labels_on_line(labels, line_num);
-        if labels_on_line.is_empty() {
-            return Ok(());
-        }
-
-        let line_start_offset = self.line_start_offset(line_num) as u32;
-        let line_range = line_span(self.source, line_start_offset);
-        let line_len = self.source[line_range.clone()].trim_end().len();
-
-        write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
-
-        let col_labels =
-            self.build_column_label_map(&labels_on_line, line_start_offset, line_num, line_len);
-        self.draw_highlights(f, &col_labels)?;
-
-        let labels_starting_here = self.labels_starting_on_line(&labels_on_line, line_num);
-        if labels_starting_here.is_empty() {
-            writeln!(f)?;
-        } else {
-            self.draw_label_messages(
-                f,
-                indent,
-                &labels_starting_here,
-                line_start_offset,
-                &line_range,
-            )?;
-        }
-
-        Ok(())
+        self.emit_frame_with_labels(f, &file_labels)
     }
 
     fn emit_labels_for_line_with_subset(
@@ -562,13 +554,22 @@ impl Formatter<'_> {
         let line_range = line_span(self.source, line_start_offset);
         let line_len = self.source[line_range.clone()].trim_end().len();
 
-        write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
-
         let col_labels =
             self.build_column_label_map(&labels_on_line, line_start_offset, line_num, line_len);
-        self.draw_highlights(f, &col_labels)?;
+
+        // Check if we actually have any highlights to draw
+        let has_highlights = col_labels.iter().any(|labels| !labels.is_empty());
 
         let labels_starting_here = self.labels_starting_on_line(&labels_on_line, line_num);
+
+        // Only emit the label line if we have highlights or messages to show
+        if !has_highlights && labels_starting_here.is_empty() {
+            return Ok(());
+        }
+
+        write!(f, "{indent}{} ", self.chars.vertical_dx.blue().bold())?;
+        self.draw_highlights(f, &col_labels)?;
+
         if labels_starting_here.is_empty() {
             writeln!(f)?;
         } else {
@@ -582,17 +583,6 @@ impl Formatter<'_> {
         }
 
         Ok(())
-    }
-
-    fn labels_on_line<'a>(&self, labels: &'a [Label], line_num: usize) -> Vec<&'a Label> {
-        labels
-            .iter()
-            .filter(|label| {
-                let start_line = line_number(self.source, label.span.start.offset as usize);
-                let end_line = line_number(self.source, label.span.end.offset as usize);
-                start_line <= line_num && line_num <= end_line
-            })
-            .collect()
     }
 
     fn build_column_label_map<'a>(

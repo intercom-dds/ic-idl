@@ -5,6 +5,9 @@ expression: "common::test_lint_hir(idl)"
 error: supports must be an interface type
    ┌ test.idl:3:37
    │
+ 2 │         enum State { ON, OFF };
  3 │         valuetype BadValue supports State {
    ·                                     ^^^^^ expected interface type
+ 4 │             public long x;
+ 5 │         };
    └──

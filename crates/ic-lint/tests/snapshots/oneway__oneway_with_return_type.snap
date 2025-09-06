@@ -5,17 +5,23 @@ expression: test_lint(source)
 error[oneway]: oneway operations must have a `void` return type
    ┌ test.idl:3:12
    │
+ 2 │ interface Service {
  3 │     oneway string getMessage();  // oneway cannot return a value
    ·     ^^^^^^ ^^^^^^ non-void return type
    ·     └─ declared as oneway here
+ 4 │     oneway long calculate(in long x, in long y);
+ 5 │ };
    └──
  help: change the return type to `void`
 
 error[oneway]: oneway operations must have a `void` return type
    ┌ test.idl:4:12
    │
+ 2 │ interface Service {
+ 3 │     oneway string getMessage();  // oneway cannot return a value
  4 │     oneway long calculate(in long x, in long y);
    ·     ^^^^^^ ^^^^ non-void return type
    ·     └─ declared as oneway here
+ 5 │ };
    └──
  help: change the return type to `void`

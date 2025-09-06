@@ -5,6 +5,10 @@ expression: "common::test_lint_hir(idl)"
 error: supports must be an interface type
    ┌ test.idl:5:37
    │
+ 3 │             long x;
+ 4 │         };
  5 │         valuetype BadValue supports SomeStruct {
    ·                                     ^^^^^^^^^^ expected interface type
+ 6 │             public long y;
+ 7 │         };
    └──

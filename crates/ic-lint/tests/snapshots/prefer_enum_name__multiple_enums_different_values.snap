@@ -5,13 +5,20 @@ expression: test_lint_hir(source)
 warning[prefer_enum_name]: prefer using enum member name 'OFF' instead of numeric literal
     ┌ test.idl:12:14
     │
+  9 │     HIGH = 1
+ 10 │ };
+ 11 │ 
  12 │ const Status S = 0;  // Should warn: prefer OFF
     ·              ^ consider using 'OFF' instead of '0'
+ 13 │ const Level L = 0;   // Should warn: prefer LOW
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'LOW' instead of numeric literal
     ┌ test.idl:13:13
     │
+ 10 │ };
+ 11 │ 
+ 12 │ const Status S = 0;  // Should warn: prefer OFF
  13 │ const Level L = 0;   // Should warn: prefer LOW
     ·             ^ consider using 'LOW' instead of '0'
     └──

@@ -5,8 +5,11 @@ expression: diagnostics
 error: interface `Derived` cannot inherit from incomplete type `Base`
    ┌ test.idl:4:29
    │
- 4 │         interface Derived : Base {  // Should fail - inheriting from incomplete type
-   ·                             ^^^^ invalid inheritance
  2 │         interface Base;  // Forward declaration
    ·                   ^^^^ parent type is only forward declared
+ 3 │ 
+ 4 │         interface Derived : Base {  // Should fail - inheriting from incomplete type
+   ·                             ^^^^ invalid inheritance
+ 5 │             void method();
+ 6 │         };
    └──

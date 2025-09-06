@@ -5,9 +5,11 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate method `method` in method 'Test'
    ┌ test.idl:4:10
    │
- 4 │     long method();  // Should be caught by validate.rs, not this lint
-   ·          ^^^^^^ duplicate method
+ 2 │ interface Test {
  3 │     void method();
    ·          ^^^^^^ first defined here
+ 4 │     long method();  // Should be caught by validate.rs, not this lint
+   ·          ^^^^^^ duplicate method
+ 5 │ };
    └──
  note: names are case-insensitive

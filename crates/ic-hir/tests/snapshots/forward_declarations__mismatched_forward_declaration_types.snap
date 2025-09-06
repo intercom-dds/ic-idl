@@ -9,4 +9,6 @@ error: forward declaration of `A` as struct conflicts with union definition
    ·                ^ forward declared as struct here
  3 │         union A switch (long) {
    ·               ^ defined as union here
+ 4 │             case 1: long x;
+ 5 │         };
    └──

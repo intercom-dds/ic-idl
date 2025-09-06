@@ -5,6 +5,8 @@ expression: test_lint(source)
 warning[complex_lit]: complex literals are an InterCOM extension
    ┌ test.idl:7:40
    │
+ 5 │             boolean strict;
+ 6 │         };
  7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
    ·                      ^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^ complex constants are an InterCOM extension
    ·                      └─ const defined here
@@ -14,6 +16,8 @@ warning[complex_lit]: complex literals are an InterCOM extension
 warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
    ┌ test.idl:7:40
    │
+ 5 │             boolean strict;
+ 6 │         };
  7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
    ·                                        ^^^^ lowercase boolean literal
    └──
@@ -22,6 +26,8 @@ warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
 warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
    ┌ test.idl:7:46
    │
+ 5 │             boolean strict;
+ 6 │         };
  7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
    ·                                              ^^^^^ lowercase boolean literal
    └──

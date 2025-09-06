@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/unknown_annotation.rs
-assertion_line: 104
 expression: output
 ---
 warning[unknown_annotation]: unknown annotation `UnknownModule`
@@ -8,18 +7,29 @@ warning[unknown_annotation]: unknown annotation `UnknownModule`
    │
  2 │         @UnknownModule
    ·          ^^^^^^^^^^^^^ annotation not found
+ 3 │         module TestModule {
+ 4 │             @UnknownInner
    └──
 
 warning[unknown_annotation]: unknown annotation `UnknownInner`
    ┌ test.idl:4:14
    │
+ 2 │         @UnknownModule
+ 3 │         module TestModule {
  4 │             @UnknownInner
    ·              ^^^^^^^^^^^^ annotation not found
+ 5 │             struct InnerStruct {
+ 6 │                 long value;
    └──
 
 warning[unknown_annotation]: unknown annotation `UnknownEnum`
-   ┌ test.idl:9:14
-   │
- 9 │             @UnknownEnum
-   ·              ^^^^^^^^^^^ annotation not found
-   └──
+    ┌ test.idl:9:14
+    │
+  6 │                 long value;
+  7 │             };
+  8 │ 
+  9 │             @UnknownEnum
+    ·              ^^^^^^^^^^^ annotation not found
+ 10 │             enum Status {
+ 11 │                 @UnknownEnumerator
+    └──

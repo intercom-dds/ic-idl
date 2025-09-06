@@ -5,20 +5,32 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:23
    │
+ 2 │ struct NestedInvalid {
  3 │     sequence<sequence<void>> deeplyNested;
    ·                       ^^^^ invalid use of `void`
+ 4 │     map<string, sequence<void>> mapOfVoidSeq;
+ 5 │ };
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:4:26
    │
+ 2 │ struct NestedInvalid {
+ 3 │     sequence<sequence<void>> deeplyNested;
  4 │     map<string, sequence<void>> mapOfVoidSeq;
    ·                          ^^^^ invalid use of `void`
+ 5 │ };
+ 6 │ 
+ 7 │ interface NestedInterface {
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
     ┌ test.idl:12:33
     │
+  9 │     void process();
+ 10 │ 
+ 11 │     // Invalid void in nested parameter type
  12 │     void handleData(in sequence<void> data);
     ·                                 ^^^^ invalid use of `void`
+ 13 │ };
     └──

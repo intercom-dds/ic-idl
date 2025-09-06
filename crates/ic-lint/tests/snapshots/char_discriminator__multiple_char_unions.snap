@@ -7,13 +7,20 @@ warning[char_discriminator]: char types should not be used as union discriminato
    │
  2 │         union FirstCharUnion switch (char) {
    ·                                      ^^^^ char type
+ 3 │             case 'a':
+ 4 │                 long value;
    └──
  help: consider using an integer or enum value instead
 
 warning[char_discriminator]: char types should not be used as union discriminators
    ┌ test.idl:7:39
    │
+ 4 │                 long value;
+ 5 │         };
+ 6 │ 
  7 │         union SecondCharUnion switch (char) {
    ·                                       ^^^^ char type
+ 8 │             case 'b':
+ 9 │                 string text;
    └──
  help: consider using an integer or enum value instead

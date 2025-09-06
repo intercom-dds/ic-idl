@@ -5,29 +5,40 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `FLAG` in flag 'CaseSensitive'
    ┌ test.idl:4:5
    │
- 4 │     FLAG,     // Different case, not a duplicate
-   ·     ^^^^ duplicate flag
+ 2 │ bitmask CaseSensitive {
  3 │     flag,
    ·     ^^^^ first defined here
+ 4 │     FLAG,     // Different case, not a duplicate
+   ·     ^^^^ duplicate flag
+ 5 │     Flag,     // Another different case
+ 6 │     flag      // Duplicate of first one
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate flag `Flag` in flag 'CaseSensitive'
    ┌ test.idl:5:5
    │
- 5 │     Flag,     // Another different case
-   ·     ^^^^ duplicate flag
+ 2 │ bitmask CaseSensitive {
  3 │     flag,
    ·     ^^^^ first defined here
+ 4 │     FLAG,     // Different case, not a duplicate
+ 5 │     Flag,     // Another different case
+   ·     ^^^^ duplicate flag
+ 6 │     flag      // Duplicate of first one
+ 7 │ };
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate flag `flag` in flag 'CaseSensitive'
    ┌ test.idl:6:5
    │
- 6 │     flag      // Duplicate of first one
-   ·     ^^^^ duplicate flag
+ 2 │ bitmask CaseSensitive {
  3 │     flag,
    ·     ^^^^ first defined here
+ 4 │     FLAG,     // Different case, not a duplicate
+ 5 │     Flag,     // Another different case
+ 6 │     flag      // Duplicate of first one
+   ·     ^^^^ duplicate flag
+ 7 │ };
    └──
  note: names are case-insensitive

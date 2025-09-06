@@ -5,11 +5,15 @@ expression: test_lint(source)
 warning[complex_lit]: complex literals are an InterCOM extension
     ┌ test.idl:13:15
     │
+  9 │             string name;
+ 10 │         };
+ 11 │ 
+ 12 │         const Outer NESTED = {
+    ·                     ^^^^^^ const defined here
  13 │             { 1, 2 },
     ·               ^^^^^^^ complex constants are an InterCOM extension
  14 │             "test"
     · ^^^^^^^^^^^^^^^^^^
- 12 │         const Outer NESTED = {
-    ·                     ^^^^^^ const defined here
+ 15 │         };
     └──
  note: only literals of trivial types are allowed in standard IDL

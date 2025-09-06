@@ -5,14 +5,23 @@ expression: compile_idl_with_warnings(idl)
 warning: inconsistent capitalization: `mylong` should be `MyLong`
    ┌ test.idl:5:13
    │
+ 2 │         typedef long MyLong;
+ 3 │ 
+ 4 │         struct Test {
  5 │             mylong field1;
    ·             ^^^^^^ used here
+ 6 │             MYLONG field2;
+ 7 │             MyLong field3; // Correct
    └──
  note: the canonical name is `MyLong`
 warning: inconsistent capitalization: `MYLONG` should be `MyLong`
    ┌ test.idl:6:13
    │
+ 4 │         struct Test {
+ 5 │             mylong field1;
  6 │             MYLONG field2;
    ·             ^^^^^^ used here
+ 7 │             MyLong field3; // Correct
+ 8 │         };
    └──
  note: the canonical name is `MyLong`

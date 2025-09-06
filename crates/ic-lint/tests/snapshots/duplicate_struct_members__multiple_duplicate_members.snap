@@ -5,29 +5,45 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate member `name` in member 'Data'
    ┌ test.idl:5:12
    │
- 5 │     string name;   // First duplicate
-   ·            ^^^^ duplicate member
+ 2 │ struct Data {
  3 │     string name;
    ·            ^^^^ first defined here
+ 4 │     long value;
+ 5 │     string name;   // First duplicate
+   ·            ^^^^ duplicate member
+ 6 │     boolean flag;
+ 7 │     long value;    // Second duplicate
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate member `value` in member 'Data'
    ┌ test.idl:7:10
    │
- 7 │     long value;    // Second duplicate
-   ·          ^^^^^ duplicate member
+ 2 │ struct Data {
+ 3 │     string name;
  4 │     long value;
    ·          ^^^^^ first defined here
+ 5 │     string name;   // First duplicate
+ 6 │     boolean flag;
+ 7 │     long value;    // Second duplicate
+   ·          ^^^^^ duplicate member
+ 8 │     string name;   // Third occurrence
+ 9 │ };
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate member `name` in member 'Data'
    ┌ test.idl:8:12
    │
- 8 │     string name;   // Third occurrence
-   ·            ^^^^ duplicate member
+ 2 │ struct Data {
  3 │     string name;
    ·            ^^^^ first defined here
+ 4 │     long value;
+ 5 │     string name;   // First duplicate
+ 6 │     boolean flag;
+ 7 │     long value;    // Second duplicate
+ 8 │     string name;   // Third occurrence
+   ·            ^^^^ duplicate member
+ 9 │ };
    └──
  note: names are case-insensitive

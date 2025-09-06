@@ -5,6 +5,9 @@ expression: diagnostics
 error: string value cannot be assigned to type int32
    ┌ test.idl:3:18
    │
+ 2 │         union MyUnion switch (int32) {
  3 │             case "string":  // String literal for int32 discriminator
    ·                  ^^^^^^^^ incompatible types
+ 4 │                 string s;
+ 5 │             case 1:
    └──

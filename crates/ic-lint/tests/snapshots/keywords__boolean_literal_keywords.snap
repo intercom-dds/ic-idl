@@ -5,31 +5,45 @@ expression: test_lint(source)
 error[keywords]: `int32` is a keyword and may not be used as an identifier
    ┌ test.idl:3:13
    │
+ 2 │ struct BoolLiterals {
  3 │     boolean int32;          // 'int32' is a keyword
    ·             ^^^^^ this is an IDL keyword
+ 4 │     boolean uint8;          // 'uint8' is a keyword
+ 5 │     boolean octet;          // 'octet' is a keyword
    └──
  help: the keyword can be escaped by changing to `_int32`
 
 error[keywords]: `uint8` is a keyword and may not be used as an identifier
    ┌ test.idl:4:13
    │
+ 2 │ struct BoolLiterals {
+ 3 │     boolean int32;          // 'int32' is a keyword
  4 │     boolean uint8;          // 'uint8' is a keyword
    ·             ^^^^^ this is an IDL keyword
+ 5 │     boolean octet;          // 'octet' is a keyword
+ 6 │     boolean wchar;          // 'wchar' is a keyword
    └──
  help: the keyword can be escaped by changing to `_uint8`
 
 error[keywords]: `octet` is a keyword and may not be used as an identifier
    ┌ test.idl:5:13
    │
+ 3 │     boolean int32;          // 'int32' is a keyword
+ 4 │     boolean uint8;          // 'uint8' is a keyword
  5 │     boolean octet;          // 'octet' is a keyword
    ·             ^^^^^ this is an IDL keyword
+ 6 │     boolean wchar;          // 'wchar' is a keyword
+ 7 │ };
    └──
  help: the keyword can be escaped by changing to `_octet`
 
 error[keywords]: `wchar` is a keyword and may not be used as an identifier
    ┌ test.idl:6:13
    │
+ 4 │     boolean uint8;          // 'uint8' is a keyword
+ 5 │     boolean octet;          // 'octet' is a keyword
  6 │     boolean wchar;          // 'wchar' is a keyword
    ·             ^^^^^ this is an IDL keyword
+ 7 │ };
    └──
  help: the keyword can be escaped by changing to `_wchar`

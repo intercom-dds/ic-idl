@@ -3,15 +3,22 @@ source: crates/ic-hir/tests/path_error_spans_test.rs
 expression: output
 ---
 error: unresolved type `::foo::Baz`
-   ┌ test.idl:8:13
-   │
- 8 │             ::foo::Baz invalid;   // Should highlight Baz
-   ·             ^^^^^^^^^^ unknown type
-   └──
+    ┌ test.idl:8:13
+    │
+  6 │         struct Test {
+  7 │             ::foo::Bar valid;     // Should work
+  8 │             ::foo::Baz invalid;   // Should highlight Baz
+    ·             ^^^^^^^^^^ unknown type
+  9 │             ::missing::Bar other; // Should highlight missing
+ 10 │         };
+    └──
 
 error: unresolved type `::missing::Bar`
-   ┌ test.idl:9:13
-   │
- 9 │             ::missing::Bar other; // Should highlight missing
-   ·             ^^^^^^^^^^^^^^ unknown type
-   └──
+    ┌ test.idl:9:13
+    │
+  7 │             ::foo::Bar valid;     // Should work
+  8 │             ::foo::Baz invalid;   // Should highlight Baz
+  9 │             ::missing::Bar other; // Should highlight missing
+    ·             ^^^^^^^^^^^^^^ unknown type
+ 10 │         };
+    └──

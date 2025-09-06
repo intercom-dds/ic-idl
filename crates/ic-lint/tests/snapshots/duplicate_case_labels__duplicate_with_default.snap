@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'MyUnion' has duplicate case label '1'
    ┌ test.idl:6:10
    │
+ 4 │     case 2: string b;
+ 5 │     default: boolean c;
  6 │     case 1: octet d;  // Duplicate, even with default present
    ·          ^ duplicate case label
+ 7 │ };
    └──

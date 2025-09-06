@@ -5,8 +5,12 @@ expression: test_lint_hir(source)
 error[multiple_default_cases]: union `Response` has 2 default cases, but only one is allowed
    ┌ test.idl:4:19
    │
+ 2 │ union Response switch (long) {
+ 3 │     case 1: string success;
  4 │     default: long error_code;
    ·                   ^^^^^^^^^^ first default case here
+ 5 │     case 2: boolean retry;
  6 │     default: string error_message;  // Duplicate default
    ·                     ^^^^^^^^^^^^^ additional default case here
+ 7 │ };
    └──

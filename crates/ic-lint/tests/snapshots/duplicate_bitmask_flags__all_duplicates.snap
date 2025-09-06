@@ -5,29 +5,40 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
    ┌ test.idl:4:5
    │
- 4 │     SAME,
-   ·     ^^^^ duplicate flag
+ 2 │ bitmask AllDuplicates {
  3 │     SAME,
    ·     ^^^^ first defined here
+ 4 │     SAME,
+   ·     ^^^^ duplicate flag
+ 5 │     SAME,
+ 6 │     SAME
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
    ┌ test.idl:5:5
    │
- 5 │     SAME,
-   ·     ^^^^ duplicate flag
+ 2 │ bitmask AllDuplicates {
  3 │     SAME,
    ·     ^^^^ first defined here
+ 4 │     SAME,
+ 5 │     SAME,
+   ·     ^^^^ duplicate flag
+ 6 │     SAME
+ 7 │ };
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
    ┌ test.idl:6:5
    │
- 6 │     SAME
-   ·     ^^^^ duplicate flag
+ 2 │ bitmask AllDuplicates {
  3 │     SAME,
    ·     ^^^^ first defined here
+ 4 │     SAME,
+ 5 │     SAME,
+ 6 │     SAME
+   ·     ^^^^ duplicate flag
+ 7 │ };
    └──
  note: names are case-insensitive

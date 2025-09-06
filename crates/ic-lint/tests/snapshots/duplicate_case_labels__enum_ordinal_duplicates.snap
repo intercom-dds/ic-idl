@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'StatusData' has duplicate case label 'PENDING'
     ┌ test.idl:11:10
     │
+  9 │     case PENDING: long pending_data;
+ 10 │     case ACTIVE: string active_data;
  11 │     case PENDING: boolean dup_pending;  // Duplicate
     ·          ^^^^^^^ duplicate case label
+ 12 │ };
     └──

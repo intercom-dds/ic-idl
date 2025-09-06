@@ -5,23 +5,33 @@ expression: test_lint(source)
 warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:3:40
    │
+ 2 │         interface Test {
  3 │             void process_array(in long data[10]);
    ·                                        ^^^^ this parameter is an array
+ 4 │             void process_matrix(in double matrix[3][3]);
+ 5 │             void process_string_array(in string names[3]);
    └──
  note: standard IDL does not permit arrays as parameters
 
 warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:4:43
    │
+ 2 │         interface Test {
+ 3 │             void process_array(in long data[10]);
  4 │             void process_matrix(in double matrix[3][3]);
    ·                                           ^^^^^^ this parameter is an array
+ 5 │             void process_string_array(in string names[3]);
+ 6 │         };
    └──
  note: standard IDL does not permit arrays as parameters
 
 warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:5:49
    │
+ 3 │             void process_array(in long data[10]);
+ 4 │             void process_matrix(in double matrix[3][3]);
  5 │             void process_string_array(in string names[3]);
    ·                                                 ^^^^^ this parameter is an array
+ 6 │         };
    └──
  note: standard IDL does not permit arrays as parameters

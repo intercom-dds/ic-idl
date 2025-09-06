@@ -7,5 +7,7 @@ error[keywords]: `abstract` is a keyword and may not be used as an identifier
    │
  2 │ bitmask abstract {
    ·         ^^^^^^^^ this is an IDL keyword
+ 3 │     FLAG1,
+ 4 │     FLAG2
    └──
  help: the keyword can be escaped by changing to `_abstract`

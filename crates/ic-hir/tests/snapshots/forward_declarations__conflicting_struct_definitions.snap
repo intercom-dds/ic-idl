@@ -7,6 +7,10 @@ error: duplicate definition of `A`
    │
  2 │         struct A {
    ·                ^ originally defined here
+ 3 │             long field1;
+ 4 │         };
  5 │         struct A {
    ·                ^ redefined here
+ 6 │             long field2;
+ 7 │         };
    └──

@@ -7,12 +7,14 @@ error[keywords]: `Object` is a keyword and may not be used as an identifier
    │
  2 │ native Object;              // 'Object' is a keyword
    ·        ^^^^^^ this is an IDL keyword
+ 3 │ native ValueBase;           // 'ValueBase' is a keyword
    └──
  help: the keyword can be escaped by changing to `_Object`
 
 error[keywords]: `ValueBase` is a keyword and may not be used as an identifier
    ┌ test.idl:3:8
    │
+ 2 │ native Object;              // 'Object' is a keyword
  3 │ native ValueBase;           // 'ValueBase' is a keyword
    ·        ^^^^^^^^^ this is an IDL keyword
    └──

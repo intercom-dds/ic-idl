@@ -5,7 +5,11 @@ expression: test_lint_hir(source)
 warning[range_bound]: @max value 299 exceeds type maximum 255
    ┌ test.idl:4:10
    │
+ 2 │ module MyModule {
+ 3 │     struct BadMax {
  4 │         @max(299) octet value;  // octet max is 255
    ·          ^^^ value out of bounds
+ 5 │     };
+ 6 │ };
    └──
  help: valid range is 0..255

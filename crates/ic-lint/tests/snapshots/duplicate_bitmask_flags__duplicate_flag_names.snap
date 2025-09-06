@@ -5,9 +5,13 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `READONLY` in flag 'FileFlags'
    ┌ test.idl:6:5
    │
- 6 │     READONLY  // Duplicate flag
-   ·     ^^^^^^^^ duplicate flag
+ 2 │ bitmask FileFlags {
  3 │     READONLY,
    ·     ^^^^^^^^ first defined here
+ 4 │     HIDDEN,
+ 5 │     SYSTEM,
+ 6 │     READONLY  // Duplicate flag
+   ·     ^^^^^^^^ duplicate flag
+ 7 │ };
    └──
  note: names are case-insensitive

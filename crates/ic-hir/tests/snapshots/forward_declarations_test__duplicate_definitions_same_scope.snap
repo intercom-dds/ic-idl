@@ -7,6 +7,11 @@ error: duplicate definition of `Foo`
    │
  2 │         struct Foo {
    ·                ^^^ originally defined here
+ 3 │             long x;
+ 4 │         };
+ 5 │ 
  6 │         struct Foo {  // Duplicate!
    ·                ^^^ redefined here
+ 7 │             double y;
+ 8 │         };
    └──

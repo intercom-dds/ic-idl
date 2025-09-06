@@ -7,5 +7,7 @@ error[empty]: empty bitmasks are not allowed
    │
  2 │ bitmask EmptyBitmask {
    ·         ^^^^^^^^^^^^ defined here
+ 3 │     // No flags
+ 4 │ };
    └──
  note: all bitmasks must have at least one flag

@@ -5,8 +5,12 @@ expression: test_lint(source)
 warning[scoped_lit]: scoped enums are an InterCOM extension
    ┌ test.idl:8:37
    │
+ 5 │             BLUE
+ 6 │         };
+ 7 │ 
  8 │         const Color DEFAULT_COLOR = Color::RED;
    ·                                     ^^^^^ used here
+ 9 │         const Color SECONDARY = Color::GREEN;
    └──
  help: use `RED` instead of `Color::RED`
  note: enumerators are registered in the parent scope
@@ -14,6 +18,9 @@ warning[scoped_lit]: scoped enums are an InterCOM extension
 warning[scoped_lit]: scoped enums are an InterCOM extension
    ┌ test.idl:9:33
    │
+ 6 │         };
+ 7 │ 
+ 8 │         const Color DEFAULT_COLOR = Color::RED;
  9 │         const Color SECONDARY = Color::GREEN;
    ·                                 ^^^^^ used here
    └──

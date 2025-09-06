@@ -5,15 +5,22 @@ expression: test_lint(source)
 warning[null]: `null` variants are an InterCOM extension
    ┌ test.idl:3:21
    │
+ 2 │         union MultiNull switch(short) {
  3 │             case 0: null;
    ·                     ^^^^^ `null` is not standard
+ 4 │             case 1: long value;
+ 5 │             case 2: null;
    └──
  note: all case labels must map to a value
 
 warning[null]: `null` variants are an InterCOM extension
    ┌ test.idl:5:21
    │
+ 3 │             case 0: null;
+ 4 │             case 1: long value;
  5 │             case 2: null;
    ·                     ^^^^^ `null` is not standard
+ 6 │             default: string text;
+ 7 │         };
    └──
  note: all case labels must map to a value

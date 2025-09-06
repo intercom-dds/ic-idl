@@ -5,6 +5,8 @@ expression: test_lint_hir(source)
 error[zero_bound]: array size must be greater than zero
    ┌ test.idl:3:16
    │
+ 2 │ struct Foo {
  3 │     long field[0];
    ·                ^ invalid array size
+ 4 │ };
    └──

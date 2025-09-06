@@ -8,68 +8,107 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
  2 │ const long test1 = 0xFF & 0x0F + 1;
    ·                         ^ ^^^^^^^^ than this expression
    ·                         └─ this operator has lower precedence
+ 3 │ const long test2 = 0377 | 010 & 3;
+ 4 │ const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:3:25
    │
+ 2 │ const long test1 = 0xFF & 0x0F + 1;
  3 │ const long test2 = 0377 | 010 & 3;
    ·                         ^ ^^^^^^^ than this expression
    ·                         └─ this operator has lower precedence
+ 4 │ const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
+ 5 │ 
+ 6 │ const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:4:23
    │
+ 2 │ const long test1 = 0xFF & 0x0F + 1;
+ 3 │ const long test2 = 0377 | 010 & 3;
  4 │ const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
    ·                       ^ ^^^^^ than this expression
    ·                       └─ this operator has lower precedence
+ 5 │ 
+ 6 │ const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
+ 7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:31
    │
+ 3 │ const long test2 = 0377 | 010 & 3;
+ 4 │ const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
+ 5 │ 
  6 │ const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
    ·                               ^ ^^^^^^^^^^^^^^ than this expression
    ·                               └─ this operator has lower precedence
+ 7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
+ 8 │ 
+ 9 │ const long test6 = -1 & 2 + 3;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
-   ┌ test.idl:7:31
-   │
- 7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
-   ·                               ^ ^^^^^^^^^^^^^^^^^^^^ than this expression
-   ·                               └─ this operator has lower precedence
-   └──
+    ┌ test.idl:7:31
+    │
+  4 │ const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
+  5 │ 
+  6 │ const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
+  7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
+    ·                               ^ ^^^^^^^^^^^^^^^^^^^^ than this expression
+    ·                               └─ this operator has lower precedence
+  8 │ 
+  9 │ const long test6 = -1 & 2 + 3;
+ 10 │ const long test7 = 1 & -2 + 3;
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
-   ┌ test.idl:9:23
-   │
- 9 │ const long test6 = -1 & 2 + 3;
-   ·                       ^ ^^^^^ than this expression
-   ·                       └─ this operator has lower precedence
-   └──
+    ┌ test.idl:9:23
+    │
+  6 │ const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
+  7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
+  8 │ 
+  9 │ const long test6 = -1 & 2 + 3;
+    ·                       ^ ^^^^^ than this expression
+    ·                       └─ this operator has lower precedence
+ 10 │ const long test7 = 1 & -2 + 3;
+ 11 │ const long test8 = 1 & 2 + -3;
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:10:22
     │
+  7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
+  8 │ 
+  9 │ const long test6 = -1 & 2 + 3;
  10 │ const long test7 = 1 & -2 + 3;
     ·                      ^ ^^^^^^ than this expression
     ·                      └─ this operator has lower precedence
+ 11 │ const long test8 = 1 & 2 + -3;
+ 12 │ 
+ 13 │ const long test9 = (-1) & (2 + 3);
     └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:22
     │
+  9 │ const long test6 = -1 & 2 + 3;
+ 10 │ const long test7 = 1 & -2 + 3;
  11 │ const long test8 = 1 & 2 + -3;
     ·                      ^ ^^^^^^ than this expression
     ·                      └─ this operator has lower precedence
+ 12 │ 
+ 13 │ const long test9 = (-1) & (2 + 3);
+ 14 │ const long test10 = -(1 & 2) + 3;
     └──
  help: add parentheses to clarify the intended order of operations

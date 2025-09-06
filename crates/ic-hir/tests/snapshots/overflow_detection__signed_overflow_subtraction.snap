@@ -5,6 +5,7 @@ expression: test_overflow(source)
 warning: integer overflow in constant expression
    ┌ test.idl:3:24
    │
+ 2 │ const int32 INTMIN = -2147483648;
  3 │ const int32 OVERFLOW = INTMIN - 1;
    ·                        ^^^^^^^^^^ overflow detected
    └──

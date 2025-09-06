@@ -7,11 +7,13 @@ error[void_ty]: `void` is only allowed as a return type in prototypes
    │
  2 │ typedef void VoidAlias;
    ·         ^^^^ invalid use of `void`
+ 3 │ typedef sequence<void> VoidSequence;
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:18
    │
+ 2 │ typedef void VoidAlias;
  3 │ typedef sequence<void> VoidSequence;
    ·                  ^^^^ invalid use of `void`
    └──

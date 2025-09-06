@@ -5,23 +5,34 @@ expression: output
 error[recursive_type]: type `Tree` contains itself without indirection
    ┌ test.idl:4:18
    │
+ 2 │         struct Tree {
+ 3 │             long value;
  4 │             Tree left;   // Error
    ·                  ^^^^ recursive member here
+ 5 │             Tree right;  // Error
+ 6 │             @shared Tree parent;  // OK
    └──
  note: recursive types must use indirection through sequences, maps, or @external annotations
 
 error[recursive_type]: type `Tree` contains itself without indirection
    ┌ test.idl:5:18
    │
+ 3 │             long value;
+ 4 │             Tree left;   // Error
  5 │             Tree right;  // Error
    ·                  ^^^^^ recursive member here
+ 6 │             @shared Tree parent;  // OK
+ 7 │         };
    └──
  note: recursive types must use indirection through sequences, maps, or @external annotations
 
 warning[deprecated_ann]: use of deprecated annotation `@shared`
    ┌ test.idl:6:14
    │
+ 4 │             Tree left;   // Error
+ 5 │             Tree right;  // Error
  6 │             @shared Tree parent;  // OK
    ·              ^^^^^^ deprecated annotation used here
+ 7 │         };
    └──
  help: use `@external` instead

@@ -5,8 +5,12 @@ expression: output
 error: interface `Foo` cannot inherit from incomplete type `Bar`
    ┌ test.idl:5:25
    │
- 5 │         interface Foo : Bar {
-   ·                         ^^^ invalid inheritance
+ 2 │         interface Foo;
  3 │         interface Bar;
    ·                   ^^^ parent type is only forward declared
+ 4 │ 
+ 5 │         interface Foo : Bar {
+   ·                         ^^^ invalid inheritance
+ 6 │             void method1();
+ 7 │         };
    └──

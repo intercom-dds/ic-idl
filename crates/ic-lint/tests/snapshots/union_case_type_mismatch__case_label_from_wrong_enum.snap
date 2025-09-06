@@ -5,13 +5,20 @@ expression: test_lint_hir(source)
 error[disc_mismatch]: case label `SMALL` is from enum `Size`, but discriminator is of type `Color`
     ┌ test.idl:16:10
     │
+ 14 │ union MyUnion switch (Color) {
+ 15 │     case RED: long r;
  16 │     case SMALL: string s;  // SMALL is from Size enum (value 10)
     ·          ^^^^^ mismatched case label
+ 17 │     case GREEN: long g;
+ 18 │     case LARGE: float l;   // LARGE is from Size enum (value 12)
     └──
 
 error[disc_mismatch]: case label `LARGE` is from enum `Size`, but discriminator is of type `Color`
     ┌ test.idl:18:10
     │
+ 16 │     case SMALL: string s;  // SMALL is from Size enum (value 10)
+ 17 │     case GREEN: long g;
  18 │     case LARGE: float l;   // LARGE is from Size enum (value 12)
     ·          ^^^^^ mismatched case label
+ 19 │ };
     └──

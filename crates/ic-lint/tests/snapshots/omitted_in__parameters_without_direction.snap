@@ -5,39 +5,56 @@ expression: test_lint(source)
 warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:3:26
    │
+ 2 │         interface Service {
  3 │             void process(string data);
    ·                          ^^^^^^ expected parameter specifier before this type
+ 4 │             long calculate(double x, double y);
+ 5 │             string format(long value, boolean uppercase);
    └──
  help: prefix the parameter with `in`
 
 warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:4:28
    │
+ 2 │         interface Service {
+ 3 │             void process(string data);
  4 │             long calculate(double x, double y);
    ·                            ^^^^^^ expected parameter specifier before this type
+ 5 │             string format(long value, boolean uppercase);
+ 6 │         };
    └──
  help: prefix the parameter with `in`
 
 warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:4:38
    │
+ 2 │         interface Service {
+ 3 │             void process(string data);
  4 │             long calculate(double x, double y);
    ·                                      ^^^^^^ expected parameter specifier before this type
+ 5 │             string format(long value, boolean uppercase);
+ 6 │         };
    └──
  help: prefix the parameter with `in`
 
 warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:5:27
    │
+ 3 │             void process(string data);
+ 4 │             long calculate(double x, double y);
  5 │             string format(long value, boolean uppercase);
    ·                           ^^^^ expected parameter specifier before this type
+ 6 │         };
    └──
  help: prefix the parameter with `in`
 
 warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:5:39
    │
+ 3 │             void process(string data);
+ 4 │             long calculate(double x, double y);
  5 │             string format(long value, boolean uppercase);
    ·                                       ^^^^^^^ expected parameter specifier before this type
+ 6 │         };
    └──
  help: prefix the parameter with `in`

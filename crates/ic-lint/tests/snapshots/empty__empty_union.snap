@@ -7,5 +7,7 @@ error[empty]: empty unions are not allowed
    │
  2 │ union EmptyUnion switch (long) {
    ·       ^^^^^^^^^^ defined here
+ 3 │     // No cases
+ 4 │ };
    └──
  note: all unions must have at least one variant

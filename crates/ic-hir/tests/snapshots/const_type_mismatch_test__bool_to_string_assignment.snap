@@ -5,8 +5,8 @@ expression: output
 error: constant 'MY_BOOL' of type bool cannot be assigned to string
    ┌ test.idl:3:28
    │
- 3 │         const string FOO = MY_BOOL;
-   ·                            ^^^^^^^ incompatible types
  2 │         const boolean MY_BOOL = true;
    ·                       ^^^^^^^ 'MY_BOOL' declared as bool here
+ 3 │         const string FOO = MY_BOOL;
+   ·                            ^^^^^^^ incompatible types
    └──

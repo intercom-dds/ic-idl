@@ -5,15 +5,21 @@ expression: test_lint(source)
 warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:3:40
    │
+ 2 │         interface Buffer {
  3 │             void fill_buffer(out octet buffer[1024]);
    ·                                        ^^^^^^ this parameter is an array
+ 4 │             void process_buffer(inout octet buffer[512]);
+ 5 │         };
    └──
  note: standard IDL does not permit arrays as parameters
 
 warning[array_param]: using arrays as parameters in prototypes is not standard
    ┌ test.idl:4:45
    │
+ 2 │         interface Buffer {
+ 3 │             void fill_buffer(out octet buffer[1024]);
  4 │             void process_buffer(inout octet buffer[512]);
    ·                                             ^^^^^^ this parameter is an array
+ 5 │         };
    └──
  note: standard IDL does not permit arrays as parameters

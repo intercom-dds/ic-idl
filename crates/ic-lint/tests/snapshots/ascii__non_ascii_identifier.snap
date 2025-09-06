@@ -7,18 +7,29 @@ error[ascii]: identifiers can only consist of alphanumeric ASCII characters
    │
  2 │ module MóduloEspañol {
    ·        ^^^^^^^^^^^^^ non-ASCII identifier
+ 3 │     struct Coordenada {
+ 4 │         long x;
    └──
 
 error[ascii]: identifiers can only consist of alphanumeric ASCII characters
    ┌ test.idl:5:14
    │
+ 3 │     struct Coordenada {
+ 4 │         long x;
  5 │         long ÿ;  // Non-ASCII character
    ·              ^ non-ASCII identifier
+ 6 │     };
+ 7 │ 
+ 8 │     const string café = "coffee";
    └──
 
 error[ascii]: identifiers can only consist of alphanumeric ASCII characters
    ┌ test.idl:8:18
    │
+ 5 │         long ÿ;  // Non-ASCII character
+ 6 │     };
+ 7 │ 
  8 │     const string café = "coffee";
    ·                  ^^^^ non-ASCII identifier
+ 9 │ };
    └──

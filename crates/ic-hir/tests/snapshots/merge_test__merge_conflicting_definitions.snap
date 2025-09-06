@@ -12,4 +12,6 @@ error: conflicting definitions for `Foo`
    │
  1 │ struct Foo {
    ·        ^^^ redefined here
+ 2 │     string value;
+ 3 │ };
    └──

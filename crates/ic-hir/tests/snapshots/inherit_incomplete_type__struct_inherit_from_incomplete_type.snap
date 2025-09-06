@@ -5,14 +5,18 @@ expression: diagnostics
 error: struct `Derived` cannot inherit from incomplete type `Base`
    ┌ test.idl:3:26
    │
- 3 │         struct Derived : Base {
-   ·                          ^^^^ invalid inheritance
  2 │         struct Base;
    ·                ^^^^ parent type is only forward declared
+ 3 │         struct Derived : Base {
+   ·                          ^^^^ invalid inheritance
+ 4 │             long field;
+ 5 │         };
    └──
 error: type `Base` is declared but not defined
    ┌ test.idl:2:16
    │
  2 │         struct Base;
    ·                ^^^^ declared here
+ 3 │         struct Derived : Base {
+ 4 │             long field;
    └──

@@ -5,30 +5,45 @@ expression: test_lint(source)
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
    ┌ test.idl:3:20
    │
+ 2 │         bitmask Permissions {
  3 │             READ = 0x01,
    ·                    ^^^^ 
+ 4 │             WRITE = 0x02,
+ 5 │             EXECUTE = 0x04
    └──
  help: use the `@position` annotation instead
 
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
    ┌ test.idl:4:21
    │
+ 2 │         bitmask Permissions {
+ 3 │             READ = 0x01,
  4 │             WRITE = 0x02,
    ·                     ^^^^ 
+ 5 │             EXECUTE = 0x04
+ 6 │         };
    └──
  help: use the `@position` annotation instead
 
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
    ┌ test.idl:5:23
    │
+ 3 │             READ = 0x01,
+ 4 │             WRITE = 0x02,
  5 │             EXECUTE = 0x04
    ·                       ^^^^ 
+ 6 │         };
+ 7 │ 
+ 8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
    └──
  help: use the `@position` annotation instead
 
 warning[scoped_lit]: scoped bitmasks are an InterCOM extension
    ┌ test.idl:8:43
    │
+ 5 │             EXECUTE = 0x04
+ 6 │         };
+ 7 │ 
  8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
    ·                                           ^^^^^^^^^^^ used here
    └──
@@ -38,6 +53,9 @@ warning[scoped_lit]: scoped bitmasks are an InterCOM extension
 warning[scoped_lit]: scoped bitmasks are an InterCOM extension
    ┌ test.idl:8:63
    │
+ 5 │             EXECUTE = 0x04
+ 6 │         };
+ 7 │ 
  8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
    ·                                                               ^^^^^^^^^^^ used here
    └──

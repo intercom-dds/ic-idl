@@ -5,11 +5,13 @@ expression: test_lint_hir(source)
 warning[large_union_variant]: union variant `large_array` is 1024 bytes, which is significantly larger than the average of other variants (1 bytes)
    ┌ test.idl:5:18
    │
- 5 │     case 3: char large_array[1024];  // This is 1KB, much larger than others
-   ·                  ^^^^^^^^^^^ large variant (1024 bytes)
+ 2 │ union MyUnion switch (short) {
  3 │     case 1: char small_data;
    ·                  ^^^^^^^^^^ 1 bytes
  4 │     case 2: short another_small;
    ·                   ^^^^^^^^^^^^^ 2 bytes
+ 5 │     case 3: char large_array[1024];  // This is 1KB, much larger than others
+   ·                  ^^^^^^^^^^^ large variant (1024 bytes)
+ 6 │ };
    └──
  note: consider annotating large variants with `@shared` to heap allocate them

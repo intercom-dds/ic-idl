@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[invalid_enum_literal]: `-1` is not a valid `Priority` value
    ┌ test.idl:8:16
    │
+ 5 │     HIGH = 3
+ 6 │ };
+ 7 │ 
  8 │ const Priority MY_PRIORITY = -1;  // Invalid: -1 is not a valid Priority value
    ·                ^^^^^^^^^^^ this constant evaluates to an invalid value
    └──

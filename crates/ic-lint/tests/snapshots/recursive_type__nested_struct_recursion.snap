@@ -5,7 +5,11 @@ expression: output
 error[recursive_type]: type `Node` contains itself without indirection
    ┌ test.idl:5:22
    │
+ 3 │             struct Node {
+ 4 │                 long value;
  5 │                 Node next;  // Error: direct recursion in nested struct
    ·                      ^^^^ recursive member here
+ 6 │             };
+ 7 │         };
    └──
  note: recursive types must use indirection through sequences, maps, or @external annotations

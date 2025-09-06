@@ -7,5 +7,7 @@ error[keywords]: `abstract` is a keyword and may not be used as an identifier
    │
  2 │ interface abstract {
    ·           ^^^^^^^^ this is an IDL keyword
+ 3 │     void process();
+ 4 │ };
    └──
  help: the keyword can be escaped by changing to `_abstract`

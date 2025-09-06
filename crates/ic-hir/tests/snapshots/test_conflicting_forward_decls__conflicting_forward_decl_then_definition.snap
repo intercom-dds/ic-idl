@@ -9,10 +9,12 @@ error: `Foo` forward declared as both struct and union
    ·                ^^^ first forward declared as struct here
  3 │         union Foo;
    ·               ^^^ forward declared as union here
+ 4 │         struct Foo {};
    └──
 error: forward declaration of `Foo` as union conflicts with struct definition
    ┌ test.idl:3:15
    │
+ 2 │         struct Foo;
  3 │         union Foo;
    ·               ^^^ forward declared as union here
  4 │         struct Foo {};

@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'UnsignedUnion' has duplicate case label '4294967295'
    ┌ test.idl:6:10
    │
+ 4 │     case 4294967295: string max;
+ 5 │     case 1000: boolean thousand;
  6 │     case 4294967295: float dup_max;  // Duplicate
    ·          ^^^^^^^^^^ duplicate case label
+ 7 │ };
    └──

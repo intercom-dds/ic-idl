@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'BoolUnion' has duplicate case label 'true'
    ┌ test.idl:5:10
    │
+ 3 │     case TRUE: long true_val;
+ 4 │     case FALSE: string false_val;
  5 │     case TRUE: float another_true;  // Duplicate
    ·          ^^^^ duplicate case label
+ 6 │ };
    └──

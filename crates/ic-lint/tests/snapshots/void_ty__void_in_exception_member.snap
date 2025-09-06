@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:5
    │
+ 2 │ exception InvalidException {
  3 │     void errorField;
    ·     ^^^^ invalid use of `void`
+ 4 │     string message;
+ 5 │ };
    └──

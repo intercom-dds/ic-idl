@@ -5,8 +5,11 @@ expression: output
 error: interface `SelfRef` cannot inherit from incomplete type `SelfRef`
    ┌ test.idl:4:29
    │
- 4 │         interface SelfRef : SelfRef {
-   ·                             ^^^^^^^ invalid inheritance
  2 │         interface SelfRef;
    ·                   ^^^^^^^ parent type is only forward declared
+ 3 │ 
+ 4 │         interface SelfRef : SelfRef {
+   ·                             ^^^^^^^ invalid inheritance
+ 5 │             void method();
+ 6 │         };
    └──

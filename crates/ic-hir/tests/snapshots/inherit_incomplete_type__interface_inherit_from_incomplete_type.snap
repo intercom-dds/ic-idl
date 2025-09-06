@@ -5,14 +5,18 @@ expression: diagnostics
 error: interface `IDerived` cannot inherit from incomplete type `IBase`
    ┌ test.idl:3:30
    │
- 3 │         interface IDerived : IBase {
-   ·                              ^^^^^ invalid inheritance
  2 │         interface IBase;
    ·                   ^^^^^ parent type is only forward declared
+ 3 │         interface IDerived : IBase {
+   ·                              ^^^^^ invalid inheritance
+ 4 │             void method();
+ 5 │         };
    └──
 error: type `IBase` is declared but not defined
    ┌ test.idl:2:19
    │
  2 │         interface IBase;
    ·                   ^^^^^ declared here
+ 3 │         interface IDerived : IBase {
+ 4 │             void method();
    └──

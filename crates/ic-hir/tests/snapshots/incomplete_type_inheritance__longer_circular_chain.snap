@@ -5,16 +5,30 @@ expression: output
 error: struct `A` cannot inherit from incomplete type `B`
    ┌ test.idl:6:20
    │
- 6 │         struct A : B {
-   ·                    ^ invalid inheritance
+ 2 │         struct A;
  3 │         struct B;
    ·                ^ parent type is only forward declared
+ 4 │         struct C;
+ 5 │ 
+ 6 │         struct A : B {
+   ·                    ^ invalid inheritance
+ 7 │             long a;
+ 8 │         };
    └──
 error: struct `B` cannot inherit from incomplete type `C`
     ┌ test.idl:10:20
     │
- 10 │         struct B : C {
-    ·                    ^ invalid inheritance
+  2 │         struct A;
+  3 │         struct B;
   4 │         struct C;
     ·                ^ parent type is only forward declared
+  5 │ 
+  6 │         struct A : B {
+  7 │             long a;
+  8 │         };
+  9 │ 
+ 10 │         struct B : C {
+    ·                    ^ invalid inheritance
+ 11 │             long b;
+ 12 │         };
     └──

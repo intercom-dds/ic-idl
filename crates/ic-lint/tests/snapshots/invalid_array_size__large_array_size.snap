@@ -5,6 +5,8 @@ expression: test_lint_hir(source)
 warning[invalid_array_size]: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
    ┌ test.idl:3:15
    │
+ 2 │ struct LargeArrays {
  3 │     long huge[5000];  // 5000 × 4 bytes = 20000 bytes > 16KB
    ·               ^^^^ very large array
+ 4 │ };
    └──

@@ -3,10 +3,14 @@ source: crates/ic-diagnostic/tests/multiline_test.rs
 expression: buf2
 ---
 error: multiple parameters on different lines
-   ┌ test.idl:4:9
+   ┌ test.idl:4:10
    │
+ 2 │ interface MyInterface {
+ 3 │     void myMethod(
  4 │         int param1,
-   ·         ^^^^^^^^^^ first parameter
+   ·          ^^^^^^^^^^ first parameter
  5 │         string param2
-   ·         ^^^^^^^^^^^^^ second parameter
+   ·          ^^^^^^^^^^^^ second parameter
+ 6 │     );
+ 7 │ }
    └──

@@ -5,6 +5,8 @@ expression: test_lint_hir(source)
 warning[invalid_array_size]: array size 8000000 bytes exceeds reasonable limit of 16384 bytes (2000 elements × 4000 bytes each)
    ┌ test.idl:3:17
    │
+ 2 │ struct MultiDim {
  3 │     long matrix[2000][1000];  // 2 million total elements
    ·                 ^^^^ very large array
+ 4 │ };
    └──

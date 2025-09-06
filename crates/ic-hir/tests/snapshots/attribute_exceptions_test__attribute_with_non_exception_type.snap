@@ -5,6 +5,9 @@ expression: diagnostics
 error: 'NotAnException' is not an exception type
     ┌ test.idl:10:28
     │
+  8 │             attribute string value
+  9 │                 getraises (InvalidOperation)
  10 │                 setraises (NotAnException);
     ·                            ^^^^^^^^^^^^^^ not an exception
+ 11 │         };
     └──

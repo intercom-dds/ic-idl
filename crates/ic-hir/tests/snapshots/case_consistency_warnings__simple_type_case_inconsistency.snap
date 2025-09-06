@@ -5,14 +5,23 @@ expression: compile_idl_with_warnings(idl)
 warning: inconsistent capitalization: `mystruct` should be `MyStruct`
    ┌ test.idl:7:13
    │
+ 4 │         };
+ 5 │ 
+ 6 │         struct Test {
  7 │             mystruct field1;
    ·             ^^^^^^^^ used here
+ 8 │             MYSTRUCT field2;
+ 9 │             MyStruct field3; // Correct
    └──
  note: the canonical name is `MyStruct`
 warning: inconsistent capitalization: `MYSTRUCT` should be `MyStruct`
-   ┌ test.idl:8:13
-   │
- 8 │             MYSTRUCT field2;
-   ·             ^^^^^^^^ used here
-   └──
+    ┌ test.idl:8:13
+    │
+  6 │         struct Test {
+  7 │             mystruct field1;
+  8 │             MYSTRUCT field2;
+    ·             ^^^^^^^^ used here
+  9 │             MyStruct field3; // Correct
+ 10 │         };
+    └──
  note: the canonical name is `MyStruct`

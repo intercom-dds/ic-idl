@@ -5,7 +5,11 @@ expression: test_lint_hir(source)
 warning[range_bound]: @max value 200 exceeds type maximum 127
    ┌ test.idl:4:10
    │
+ 2 │ module MyModule {
+ 3 │     struct BadChar {
  4 │         @max(200) char value;  // char max is 127 (ASCII)
    ·          ^^^ value out of bounds
+ 5 │     };
+ 6 │ };
    └──
  help: valid range is 0..127

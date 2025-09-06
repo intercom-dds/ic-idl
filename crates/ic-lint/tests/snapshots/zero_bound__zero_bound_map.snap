@@ -5,6 +5,8 @@ expression: test_lint_hir(source)
 error[zero_bound]: map bound must be greater than zero
    ┌ test.idl:3:23
    │
+ 2 │ struct Foo {
  3 │     map<string, long, 0> field;
    ·                       ^ invalid map bound
+ 4 │ };
    └──

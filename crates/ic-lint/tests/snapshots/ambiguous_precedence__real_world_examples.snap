@@ -3,26 +3,40 @@ source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
-   ┌ test.idl:8:44
-   │
- 8 │ const long DEFAULT_PERMS = READ_PERMISSION | WRITE_PERMISSION & 0xFF;
-   ·                                            ^ ^^^^^^^^^^^^^^^^^^^^^^^ than this expression
-   ·                                            └─ this operator has lower precedence
-   └──
+    ┌ test.idl:8:44
+    │
+  5 │ const long EXEC_PERMISSION  = 1 << 2;
+  6 │ 
+  7 │ // This pattern is common but potentially confusing
+  8 │ const long DEFAULT_PERMS = READ_PERMISSION | WRITE_PERMISSION & 0xFF;
+    ·                                            ^ ^^^^^^^^^^^^^^^^^^^^^^^ than this expression
+    ·                                            └─ this operator has lower precedence
+  9 │ 
+ 10 │ // Bit masking operations
+ 11 │ const long MASKED_VALUE = 0xF0F0 & 0x1234 + 1;  // Arithmetic happens first!
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:34
     │
+  8 │ const long DEFAULT_PERMS = READ_PERMISSION | WRITE_PERMISSION & 0xFF;
+  9 │ 
+ 10 │ // Bit masking operations
  11 │ const long MASKED_VALUE = 0xF0F0 & 0x1234 + 1;  // Arithmetic happens first!
     ·                                  ^ ^^^^^^^^^^ than this expression
     ·                                  └─ this operator has lower precedence
+ 12 │ 
+ 13 │ // Flag checking patterns
+ 14 │ const long HAS_RW = READ_PERMISSION | WRITE_PERMISSION;
     └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:15:50
     │
+ 13 │ // Flag checking patterns
+ 14 │ const long HAS_RW = READ_PERMISSION | WRITE_PERMISSION;
  15 │ const long TEST_FLAGS = HAS_RW & READ_PERMISSION | EXEC_PERMISSION;
     ·                         ^^^^^^^^^^^^^^^^^^^^^^^^ ^ this operator has lower precedence
     ·                         └─ than this expression

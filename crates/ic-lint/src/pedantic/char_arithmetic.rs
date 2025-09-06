@@ -99,17 +99,16 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
             }
             Expr::Unary(unary) => {
                 // Check if this is an arithmetic operation (unary minus, plus, or bitwise NOT)
-                if matches!(unary.op.kind, OpKind::Not | OpKind::Sub | OpKind::Add) {
-                    if let Expr::Literal(lit) = &unary.expr
-                        && let LiteralValue::Char(_) = lit.value
-                    {
-                        let diag = warn_span(
-                            "char literal used in arithmetic expression",
-                            Label::new(lit.span).message("char literal"),
-                        )
-                        .help("consider converting to an integer value");
-                        Self::report(self.ctx, diag);
-                    }
+                if matches!(unary.op.kind, OpKind::Not | OpKind::Sub | OpKind::Add)
+                    && let Expr::Literal(lit) = &unary.expr
+                    && let LiteralValue::Char(_) = lit.value
+                {
+                    let diag = warn_span(
+                        "char literal used in arithmetic expression",
+                        Label::new(lit.span).message("char literal"),
+                    )
+                    .help("consider converting to an integer value");
+                    Self::report(self.ctx, diag);
                 }
             }
             _ => {}

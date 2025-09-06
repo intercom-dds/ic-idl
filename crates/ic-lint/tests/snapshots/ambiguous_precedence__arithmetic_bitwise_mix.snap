@@ -5,60 +5,87 @@ expression: test_lint(idl)
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:3:22
    │
+ 2 │ // Mixing arithmetic and bitwise operators
  3 │ const long test1 = 1 & 2 + 3;      // + binds tighter than &
    ·                      ^ ^^^^^ than this expression
    ·                      └─ this operator has lower precedence
+ 4 │ const long test2 = 1 | 2 * 3;      // * binds tighter than |
+ 5 │ const long test3 = 1 ^ 2 - 3;      // - binds tighter than ^
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `*`
    ┌ test.idl:4:22
    │
+ 2 │ // Mixing arithmetic and bitwise operators
+ 3 │ const long test1 = 1 & 2 + 3;      // + binds tighter than &
  4 │ const long test2 = 1 | 2 * 3;      // * binds tighter than |
    ·                      ^ ^^^^^ than this expression
    ·                      └─ this operator has lower precedence
+ 5 │ const long test3 = 1 ^ 2 - 3;      // - binds tighter than ^
+ 6 │ const long test4 = 1 + 2 & 3;      // + binds tighter than &
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `^` has lower precedence than `-`
    ┌ test.idl:5:22
    │
+ 3 │ const long test1 = 1 & 2 + 3;      // + binds tighter than &
+ 4 │ const long test2 = 1 | 2 * 3;      // * binds tighter than |
  5 │ const long test3 = 1 ^ 2 - 3;      // - binds tighter than ^
    ·                      ^ ^^^^^ than this expression
    ·                      └─ this operator has lower precedence
+ 6 │ const long test4 = 1 + 2 & 3;      // + binds tighter than &
+ 7 │ const long test5 = 1 * 2 | 3;      // * binds tighter than |
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:26
    │
+ 4 │ const long test2 = 1 | 2 * 3;      // * binds tighter than |
+ 5 │ const long test3 = 1 ^ 2 - 3;      // - binds tighter than ^
  6 │ const long test4 = 1 + 2 & 3;      // + binds tighter than &
    ·                    ^^^^^ ^ this operator has lower precedence
    ·                    └─ than this expression
+ 7 │ const long test5 = 1 * 2 | 3;      // * binds tighter than |
+ 8 │ 
+ 9 │ // Complex expressions
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `*`
-   ┌ test.idl:7:26
-   │
- 7 │ const long test5 = 1 * 2 | 3;      // * binds tighter than |
-   ·                    ^^^^^ ^ this operator has lower precedence
-   ·                    └─ than this expression
-   └──
+    ┌ test.idl:7:26
+    │
+  5 │ const long test3 = 1 ^ 2 - 3;      // - binds tighter than ^
+  6 │ const long test4 = 1 + 2 & 3;      // + binds tighter than &
+  7 │ const long test5 = 1 * 2 | 3;      // * binds tighter than |
+    ·                    ^^^^^ ^ this operator has lower precedence
+    ·                    └─ than this expression
+  8 │ 
+  9 │ // Complex expressions
+ 10 │ const long test6 = 1 | 2 + 3 * 4;  // Both + and * bind tighter than |
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `+`
     ┌ test.idl:10:22
     │
+  7 │ const long test5 = 1 * 2 | 3;      // * binds tighter than |
+  8 │ 
+  9 │ // Complex expressions
  10 │ const long test6 = 1 | 2 + 3 * 4;  // Both + and * bind tighter than |
     ·                      ^ ^^^^^^^^^ than this expression
     ·                      └─ this operator has lower precedence
+ 11 │ const long test7 = 1 & 2 * 3 + 4;  // Both * and + bind tighter than &
     └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:22
     │
+  9 │ // Complex expressions
+ 10 │ const long test6 = 1 | 2 + 3 * 4;  // Both + and * bind tighter than |
  11 │ const long test7 = 1 & 2 * 3 + 4;  // Both * and + bind tighter than &
     ·                      ^ ^^^^^^^^^ than this expression
     ·                      └─ this operator has lower precedence

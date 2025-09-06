@@ -5,16 +5,26 @@ expression: output
 error: interface `A` cannot inherit from incomplete type `B`
    ┌ test.idl:6:23
    │
- 6 │         interface A : B, C {
-   ·                       ^ invalid inheritance
+ 2 │         interface A;
  3 │         interface B;
    ·                   ^ parent type is only forward declared
+ 4 │         interface C;
+ 5 │ 
+ 6 │         interface A : B, C {
+   ·                       ^ invalid inheritance
+ 7 │             void methodA();
+ 8 │         };
    └──
 error: interface `A` cannot inherit from incomplete type `C`
    ┌ test.idl:6:26
    │
- 6 │         interface A : B, C {
-   ·                          ^ invalid inheritance
+ 2 │         interface A;
+ 3 │         interface B;
  4 │         interface C;
    ·                   ^ parent type is only forward declared
+ 5 │ 
+ 6 │         interface A : B, C {
+   ·                          ^ invalid inheritance
+ 7 │             void methodA();
+ 8 │         };
    └──

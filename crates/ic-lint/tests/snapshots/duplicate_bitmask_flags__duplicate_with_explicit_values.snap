@@ -5,9 +5,13 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `ACTIVE` in flag 'Status'
    ┌ test.idl:5:5
    │
- 5 │     ACTIVE = 2,  // Duplicate name, different value
-   ·     ^^^^^^ duplicate flag
+ 2 │ bitmask Status {
  3 │     ACTIVE = 0,
    ·     ^^^^^^ first defined here
+ 4 │     PENDING = 1,
+ 5 │     ACTIVE = 2,  // Duplicate name, different value
+   ·     ^^^^^^ duplicate flag
+ 6 │     COMPLETED = 3
+ 7 │ };
    └──
  note: names are case-insensitive

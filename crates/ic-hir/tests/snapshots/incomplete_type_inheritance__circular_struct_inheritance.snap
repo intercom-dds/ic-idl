@@ -5,8 +5,12 @@ expression: output
 error: struct `A` cannot inherit from incomplete type `B`
    ┌ test.idl:5:20
    │
- 5 │         struct A : B {
-   ·                    ^ invalid inheritance
+ 2 │         struct A;
  3 │         struct B;
    ·                ^ parent type is only forward declared
+ 4 │ 
+ 5 │         struct A : B {
+   ·                    ^ invalid inheritance
+ 6 │             long x;
+ 7 │         };
    └──

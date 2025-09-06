@@ -15,10 +15,12 @@ error: type `IFace` is declared but not defined
    │
  2 │         interface IFace;
    ·                   ^^^^^ declared here
+ 3 │         valuetype IFace;
    └──
 error: type `IFace` is declared but not defined
    ┌ test.idl:3:19
    │
+ 2 │         interface IFace;
  3 │         valuetype IFace;
    ·                   ^^^^^ declared here
    └──

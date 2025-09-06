@@ -5,7 +5,9 @@ expression: test_lint(source)
 error[oneway]: oneway operations cannot have `out` parameters
    ┌ test.idl:3:35
    │
+ 2 │ interface Service {
  3 │     oneway void update(inout long value);  // oneway cannot have inout parameters
    ·     ^^^^^^                        ^^^^^ `out` parameter
    ·     └─ declared as oneway here
+ 4 │ };
    └──

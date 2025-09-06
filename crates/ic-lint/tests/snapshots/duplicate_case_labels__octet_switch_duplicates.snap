@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'OctetUnion' has duplicate case label '0'
    ┌ test.idl:6:10
    │
+ 4 │     case 255: string max;
+ 5 │     case 128: boolean mid;
  6 │     case 0: float dup_zero;  // Duplicate
    ·          ^ duplicate case label
+ 7 │ };
    └──

@@ -1,17 +1,25 @@
 ---
 source: crates/ic-hir/tests/interface_visibility_test.rs
-assertion_line: 55
 expression: diagnostics
 ---
 error: unresolved type `InternalData`
     ┌ test.idl:15:13
     │
+ 13 │         // These should fail - unqualified access to interface types
+ 14 │         struct BadContainer1 {
  15 │             InternalData data;
     ·             ^^^^^^^^^^^^ unknown type
+ 16 │         };
+ 17 │ 
+ 18 │         struct BadContainer2 {
     └──
 error: unresolved type `Status`
     ┌ test.idl:19:13
     │
+ 16 │         };
+ 17 │ 
+ 18 │         struct BadContainer2 {
  19 │             Status status;
     ·             ^^^^^^ unknown type
+ 20 │         };
     └──

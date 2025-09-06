@@ -5,6 +5,9 @@ expression: "common::test_lint_hir(idl)"
 error[invalid_inheritance]: interface `BadInterface` cannot inherit from enum `Status`
    ┌ test.idl:3:19
    │
+ 2 │         enum Status { ACTIVE, INACTIVE };
  3 │         interface BadInterface : Status {
    ·                   ^^^^^^^^^^^^ interfaces can only inherit from other interfaces
+ 4 │             void method();
+ 5 │         };
    └──

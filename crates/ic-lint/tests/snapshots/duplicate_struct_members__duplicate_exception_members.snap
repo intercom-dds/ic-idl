@@ -5,9 +5,12 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate member `message` in member 'MyError'
    ┌ test.idl:5:12
    │
- 5 │     string message;  // Duplicate member in exception
-   ·            ^^^^^^^ duplicate member
+ 2 │ exception MyError {
  3 │     string message;
    ·            ^^^^^^^ first defined here
+ 4 │     long code;
+ 5 │     string message;  // Duplicate member in exception
+   ·            ^^^^^^^ duplicate member
+ 6 │ };
    └──
  note: names are case-insensitive

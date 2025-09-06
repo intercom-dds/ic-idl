@@ -5,12 +5,19 @@ expression: diagnostics
 error: unresolved type `UnknownException`
    ┌ test.idl:6:28
    │
+ 4 │         interface Foo {
+ 5 │             attribute string value
  6 │                 getraises (UnknownException)
    ·                            ^^^^^^^^^^^^^^^^ unknown type
+ 7 │                 setraises (InvalidOperation, AnotherUnknown);
+ 8 │         };
    └──
 error: unresolved type `AnotherUnknown`
    ┌ test.idl:7:46
    │
+ 5 │             attribute string value
+ 6 │                 getraises (UnknownException)
  7 │                 setraises (InvalidOperation, AnotherUnknown);
    ·                                              ^^^^^^^^^^^^^^ unknown type
+ 8 │         };
    └──

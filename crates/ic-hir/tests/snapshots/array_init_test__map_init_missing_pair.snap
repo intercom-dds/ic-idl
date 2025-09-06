@@ -5,6 +5,9 @@ expression: output
 error: map entry must have exactly 2 elements (key and value)
    ┌ test.idl:3:15
    │
+ 2 │         const map<string, int32> AGE_MAP = {
  3 │             { "Alice" },  // Missing value
    ·               ^^^^^^^ expected {key, value}
+ 4 │             { "Bob", 25 }
+ 5 │         };
    └──

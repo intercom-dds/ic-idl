@@ -5,13 +5,19 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:5
    │
+ 2 │ struct InvalidStruct {
  3 │     void invalidField;
    ·     ^^^^ invalid use of `void`
+ 4 │     long validField;
+ 5 │     void anotherInvalid;
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:5:5
    │
+ 3 │     void invalidField;
+ 4 │     long validField;
  5 │     void anotherInvalid;
    ·     ^^^^ invalid use of `void`
+ 6 │ };
    └──

@@ -5,9 +5,12 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate member `width` in member 'Rectangle'
    ┌ test.idl:5:10
    │
- 5 │     long width;  // Duplicate member
-   ·          ^^^^^ duplicate member
+ 2 │ struct Rectangle {
  3 │     long width;
    ·          ^^^^^ first defined here
+ 4 │     long height;
+ 5 │     long width;  // Duplicate member
+   ·          ^^^^^ duplicate member
+ 6 │ };
    └──
  note: names are case-insensitive

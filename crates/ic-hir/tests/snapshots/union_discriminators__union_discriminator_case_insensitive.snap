@@ -7,10 +7,17 @@ error: unresolved type `OCTET`
    │
  2 │         union Union1 switch (OCTET) {    // Uppercase
    ·                              ^^^^^ unknown type
+ 3 │             case 0: long x;
+ 4 │         };
    └──
 error: unresolved type `Octet`
    ┌ test.idl:6:30
    │
+ 3 │             case 0: long x;
+ 4 │         };
+ 5 │ 
  6 │         union Union2 switch (Octet) {    // Mixed case
    ·                              ^^^^^ unknown type
+ 7 │             case 1: string y;
+ 8 │         };
    └──

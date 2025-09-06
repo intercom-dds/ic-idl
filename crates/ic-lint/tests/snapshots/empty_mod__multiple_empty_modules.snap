@@ -9,22 +9,34 @@ warning[empty_mod]: empty module declarations are not standard
    ·         ^^^^^^^^^^^^^^^ 
  3 │         };
    · ^^^^^^^^^^
+ 4 │ 
+ 5 │         module Empty2 {
+ 6 │         };
    └──
  help: either remove the declaration or add an item to it
 
 warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:5:9
    │
+ 2 │         module Empty1 {
+ 3 │         };
+ 4 │ 
  5 │         module Empty2 {
    ·         ^^^^^^^^^^^^^^^ 
  6 │         };
    · ^^^^^^^^^^
+ 7 │ 
+ 8 │         module Empty3 {
+ 9 │         };
    └──
  help: either remove the declaration or add an item to it
 
 warning[empty_mod]: empty module declarations are not standard
    ┌ test.idl:8:9
    │
+ 5 │         module Empty2 {
+ 6 │         };
+ 7 │ 
  8 │         module Empty3 {
    ·         ^^^^^^^^^^^^^^^ 
  9 │         };

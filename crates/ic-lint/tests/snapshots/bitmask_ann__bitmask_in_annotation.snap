@@ -5,30 +5,45 @@ expression: test_lint(source)
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
    ┌ test.idl:4:26
    │
+ 2 │         @annotation MyAnnotation {
+ 3 │             bitmask Flags {
  4 │                 FLAG_A = 0x01,
    ·                          ^^^^ 
+ 5 │                 FLAG_B = 0x02,
+ 6 │                 FLAG_C = 0x04
    └──
  help: use the `@position` annotation instead
 
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
    ┌ test.idl:5:26
    │
+ 3 │             bitmask Flags {
+ 4 │                 FLAG_A = 0x01,
  5 │                 FLAG_B = 0x02,
    ·                          ^^^^ 
+ 6 │                 FLAG_C = 0x04
+ 7 │             };
    └──
  help: use the `@position` annotation instead
 
 warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
    ┌ test.idl:6:26
    │
+ 4 │                 FLAG_A = 0x01,
+ 5 │                 FLAG_B = 0x02,
  6 │                 FLAG_C = 0x04
    ·                          ^^^^ 
+ 7 │             };
+ 8 │             unsigned long default_flags;
    └──
  help: use the `@position` annotation instead
 
 warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
    ┌ test.idl:3:21
    │
+ 2 │         @annotation MyAnnotation {
  3 │             bitmask Flags {
    ·                     ^^^^^ defined here
+ 4 │                 FLAG_A = 0x01,
+ 5 │                 FLAG_B = 0x02,
    └──

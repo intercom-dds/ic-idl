@@ -5,13 +5,20 @@ expression: test_lint_hir(source)
 warning[invalid_array_size]: array size 8000000 bytes exceeds reasonable limit of 16384 bytes (2000000 elements × 4 bytes each)
    ┌ test.idl:5:16
    │
+ 3 │ const long TWO = 2;
+ 4 │ struct ConstArrays {
  5 │     long large[MILLION * TWO];  // 2 million
    ·                ^^^^^^^^^^^^^ very large array
+ 6 │     long small[MILLION / 10];   // 100k, should be fine
+ 7 │ };
    └──
 
 warning[invalid_array_size]: array size 400000 bytes exceeds reasonable limit of 16384 bytes (100000 elements × 4 bytes each)
    ┌ test.idl:6:16
    │
+ 4 │ struct ConstArrays {
+ 5 │     long large[MILLION * TWO];  // 2 million
  6 │     long small[MILLION / 10];   // 100k, should be fine
    ·                ^^^^^^^^^^^^ very large array
+ 7 │ };
    └──

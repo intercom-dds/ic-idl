@@ -5,7 +5,9 @@ expression: test_lint(source)
 error[oneway]: oneway operations cannot have `out` parameters
    ┌ test.idl:3:53
    │
+ 2 │ interface Service {
  3 │     oneway void process(in string input, out string result);  // oneway cannot have out parameters
    ·     ^^^^^^                                          ^^^^^^ `out` parameter
    ·     └─ declared as oneway here
+ 4 │ };
    └──

@@ -5,8 +5,12 @@ expression: test_lint_hir(source)
 error[multiple_default_cases]: union `ComplexUnion` has 2 default cases, but only one is allowed
     ┌ test.idl:10:22
     │
+  8 │     case 1: sequence<long> numbers;
+  9 │     case 2: string text;
  10 │     default: boolean fallback1;
     ·                      ^^^^^^^^^ first default case here
+ 11 │     case 3: float number;
  12 │     default: double fallback2;  // Error
     ·                     ^^^^^^^^^ additional default case here
+ 13 │ };
     └──

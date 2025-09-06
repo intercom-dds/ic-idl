@@ -5,8 +5,11 @@ expression: diagnostics
 error: duplicate definition of `ZERO`
    ┌ test.idl:3:5
    │
+ 2 │ enum MyEnum {
  3 │     ZERO
    ·     ^^^^ originally defined here
+ 4 │ };
+ 5 │ 
  6 │ const octet ZERO = 0;
    ·             ^^^^ redefined here
    └──

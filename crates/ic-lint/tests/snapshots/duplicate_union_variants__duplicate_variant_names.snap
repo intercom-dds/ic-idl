@@ -5,9 +5,12 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate variant `text` in variant 'MyValue'
    ┌ test.idl:5:20
    │
- 5 │     case 2: string text;  // Duplicate variant name
-   ·                    ^^^^ duplicate variant
+ 2 │ union MyValue switch (short) {
  3 │     case 0: string text;
    ·                    ^^^^ first defined here
+ 4 │     case 1: long number;
+ 5 │     case 2: string text;  // Duplicate variant name
+   ·                    ^^^^ duplicate variant
+ 6 │ };
    └──
  note: names are case-insensitive

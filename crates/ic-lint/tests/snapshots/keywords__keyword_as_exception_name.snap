@@ -7,5 +7,7 @@ error[keywords]: `uint16` is a keyword and may not be used as an identifier
    │
  2 │ exception uint16 {
    ·           ^^^^^^ this is an IDL keyword
+ 3 │     string message;
+ 4 │ };
    └──
  help: the keyword can be escaped by changing to `_uint16`

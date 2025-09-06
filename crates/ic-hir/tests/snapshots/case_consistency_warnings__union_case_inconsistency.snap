@@ -5,21 +5,35 @@ expression: compile_idl_with_warnings(idl)
 warning: inconsistent capitalization: `kind` should be `Kind`
    ┌ test.idl:7:31
    │
+ 4 │             STRING
+ 5 │         };
+ 6 │ 
  7 │         union MyUnion switch (kind) {  // Discriminator type wrong
    ·                               ^^^^ used here
+ 8 │             case INT: long intValue;
+ 9 │             case STRING: string strValue;
    └──
  note: the canonical name is `Kind`
 warning: inconsistent capitalization: `myunion` should be `MyUnion`
     ┌ test.idl:13:13
     │
+ 10 │         };
+ 11 │ 
+ 12 │         struct Test {
  13 │             myunion field1;
     ·             ^^^^^^^ used here
+ 14 │             MYUNION field2;
+ 15 │             MyUnion field3; // Correct
     └──
  note: the canonical name is `MyUnion`
 warning: inconsistent capitalization: `MYUNION` should be `MyUnion`
     ┌ test.idl:14:13
     │
+ 12 │         struct Test {
+ 13 │             myunion field1;
  14 │             MYUNION field2;
     ·             ^^^^^^^ used here
+ 15 │             MyUnion field3; // Correct
+ 16 │         };
     └──
  note: the canonical name is `MyUnion`

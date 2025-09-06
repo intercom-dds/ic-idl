@@ -7,4 +7,6 @@ warning[unknown_annotation]: unknown annotation `NonExistent`
    │
  2 │         @NonExistent
    ·          ^^^^^^^^^^^ annotation not found
+ 3 │         interface TestInterface {
+ 4 │             void doSomething();
    └──

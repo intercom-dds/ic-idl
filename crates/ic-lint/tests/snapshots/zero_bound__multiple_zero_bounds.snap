@@ -5,27 +5,41 @@ expression: test_lint_hir(source)
 error[zero_bound]: array size must be greater than zero
    ┌ test.idl:3:17
    │
+ 2 │ struct Foo {
  3 │     long field1[0];
    ·                 ^ invalid array size
+ 4 │     sequence<string, 0> field2;
+ 5 │     string<0> field3;
    └──
 
 error[zero_bound]: sequence bound must be greater than zero
    ┌ test.idl:4:22
    │
+ 2 │ struct Foo {
+ 3 │     long field1[0];
  4 │     sequence<string, 0> field2;
    ·                      ^ invalid sequence bound
+ 5 │     string<0> field3;
+ 6 │     map<long, string, 0> field4;
    └──
 
 error[zero_bound]: string bound must be greater than zero
    ┌ test.idl:5:12
    │
+ 3 │     long field1[0];
+ 4 │     sequence<string, 0> field2;
  5 │     string<0> field3;
    ·            ^ invalid string bound
+ 6 │     map<long, string, 0> field4;
+ 7 │ };
    └──
 
 error[zero_bound]: map bound must be greater than zero
    ┌ test.idl:6:23
    │
+ 4 │     sequence<string, 0> field2;
+ 5 │     string<0> field3;
  6 │     map<long, string, 0> field4;
    ·                       ^ invalid map bound
+ 7 │ };
    └──

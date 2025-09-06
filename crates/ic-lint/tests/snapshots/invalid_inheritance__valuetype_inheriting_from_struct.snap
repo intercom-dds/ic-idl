@@ -5,6 +5,10 @@ expression: "common::test_lint_hir(idl)"
 error[invalid_inheritance]: valuetype `BadValue` cannot inherit from struct `BaseStruct`
    ┌ test.idl:5:19
    │
+ 3 │             long x;
+ 4 │         };
  5 │         valuetype BadValue : BaseStruct {
    ·                   ^^^^^^^^ valuetypes can only inherit from other valuetypes
+ 6 │             public long y;
+ 7 │         };
    └──

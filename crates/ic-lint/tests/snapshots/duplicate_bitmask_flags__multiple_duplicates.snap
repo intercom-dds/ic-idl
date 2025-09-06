@@ -5,29 +5,45 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `ENABLE_A` in flag 'Options'
    ┌ test.idl:5:5
    │
- 5 │     ENABLE_A,  // First duplicate
-   ·     ^^^^^^^^ duplicate flag
+ 2 │ bitmask Options {
  3 │     ENABLE_A,
    ·     ^^^^^^^^ first defined here
+ 4 │     ENABLE_B,
+ 5 │     ENABLE_A,  // First duplicate
+   ·     ^^^^^^^^ duplicate flag
+ 6 │     ENABLE_C,
+ 7 │     ENABLE_B,  // Second duplicate
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate flag `ENABLE_B` in flag 'Options'
    ┌ test.idl:7:5
    │
- 7 │     ENABLE_B,  // Second duplicate
-   ·     ^^^^^^^^ duplicate flag
+ 2 │ bitmask Options {
+ 3 │     ENABLE_A,
  4 │     ENABLE_B,
    ·     ^^^^^^^^ first defined here
+ 5 │     ENABLE_A,  // First duplicate
+ 6 │     ENABLE_C,
+ 7 │     ENABLE_B,  // Second duplicate
+   ·     ^^^^^^^^ duplicate flag
+ 8 │     ENABLE_A   // Third occurrence
+ 9 │ };
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate flag `ENABLE_A` in flag 'Options'
    ┌ test.idl:8:5
    │
- 8 │     ENABLE_A   // Third occurrence
-   ·     ^^^^^^^^ duplicate flag
+ 2 │ bitmask Options {
  3 │     ENABLE_A,
    ·     ^^^^^^^^ first defined here
+ 4 │     ENABLE_B,
+ 5 │     ENABLE_A,  // First duplicate
+ 6 │     ENABLE_C,
+ 7 │     ENABLE_B,  // Second duplicate
+ 8 │     ENABLE_A   // Third occurrence
+   ·     ^^^^^^^^ duplicate flag
+ 9 │ };
    └──
  note: names are case-insensitive

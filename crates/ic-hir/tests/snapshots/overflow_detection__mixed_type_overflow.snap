@@ -5,6 +5,7 @@ expression: test_overflow(source)
 warning: integer overflow in constant expression
    ┌ test.idl:3:24
    │
+ 2 │ const int64 BIG = 9223372036854775807;
  3 │ const int64 OVERFLOW = BIG + 1;
    ·                        ^^^^^^^ overflow detected
    └──

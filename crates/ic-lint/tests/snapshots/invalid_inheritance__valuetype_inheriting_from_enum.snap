@@ -5,6 +5,9 @@ expression: "common::test_lint_hir(idl)"
 error[invalid_inheritance]: valuetype `BadValue` cannot inherit from enum `Priority`
    ┌ test.idl:3:19
    │
+ 2 │         enum Priority { LOW, MEDIUM, HIGH };
  3 │         valuetype BadValue : Priority {
    ·                   ^^^^^^^^ valuetypes can only inherit from other valuetypes
+ 4 │             public long x;
+ 5 │         };
    └──

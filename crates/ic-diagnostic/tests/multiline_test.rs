@@ -39,7 +39,7 @@ fn make_span(start: u32, end: u32) -> Span {
 #[test]
 fn test_multiline_span() {
     // Test with a multi-line span
-    let source = r"\
+    let source = r"
 interface MyInterface {
     void myMethod(
         int param1,

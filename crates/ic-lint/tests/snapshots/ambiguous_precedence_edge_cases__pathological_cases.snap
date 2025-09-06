@@ -8,102 +8,158 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
  2 │ const long test1 = (1) & (2) + (3);
    ·                        ^ ^^^^^^^^^ than this expression
    ·                        └─ this operator has lower precedence
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:3:26
    │
+ 2 │ const long test1 = (1) & (2) + (3);
  3 │ const long test2 = ((1)) & ((2)) + ((3));
    ·                          ^ ^^^^^^^^^^^^^ than this expression
    ·                          └─ this operator has lower precedence
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
+ 6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:4:28
    │
+ 2 │ const long test1 = (1) & (2) + (3);
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
  4 │ const long test3 = (((a))) | (((b))) & (((c)));
    ·                            ^ ^^^^^^^^^^^^^^^^^ than this expression
    ·                            └─ this operator has lower precedence
+ 5 │ 
+ 6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:6:33
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                    ^^^^^^^^^^^^ ^ this operator has lower precedence
    ·                    └─ than this expression
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:23
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                       ^ ^^^^^^^ than this expression
    ·                       └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
    ┌ test.idl:6:33
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                                 ^ ^^^^^^^^^^^^^^^^^ than this expression
    ·                                 └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
    ┌ test.idl:6:38
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                                      ^ ^^^^^^^^^^^^ than this expression
    ·                                      └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:43
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                                           ^ ^^^^^^^ than this expression
    ·                                           └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
    ┌ test.idl:6:53
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                                                     ^ ^^^^^^^^^^^^^^^^^^^ than this expression
    ·                                                     └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
    ┌ test.idl:6:58
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                                                          ^ ^^^^^^^^^^^^^^ than this expression
    ·                                                          └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:63
    │
+ 3 │ const long test2 = ((1)) & ((2)) + ((3));
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
  6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
    ·                                                               ^ ^^^^^^^^^ than this expression
    ·                                                               └─ this operator has lower precedence
+ 7 │ 
+ 8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:8:34
    │
+ 4 │ const long test3 = (((a))) | (((b))) & (((c)));
+ 5 │ 
+ 6 │ const long test5 = a1 & a2 + a3 | a4 ^ a5 & a6 + a7 | a8 ^ a9 & a10 + a11;
+ 7 │ 
  8 │ const long array_size = MAX_SIZE & ALIGN_MASK + 1;
    ·                                  ^ ^^^^^^^^^^^^^^ than this expression
    ·                                  └─ this operator has lower precedence

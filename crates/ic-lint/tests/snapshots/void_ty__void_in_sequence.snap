@@ -5,13 +5,19 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:14
    │
+ 2 │ struct SequenceStruct {
  3 │     sequence<void> voidSeq;
    ·              ^^^^ invalid use of `void`
+ 4 │     sequence<sequence<void>> nestedVoidSeq;
+ 5 │ };
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:4:23
    │
+ 2 │ struct SequenceStruct {
+ 3 │     sequence<void> voidSeq;
  4 │     sequence<sequence<void>> nestedVoidSeq;
    ·                       ^^^^ invalid use of `void`
+ 5 │ };
    └──

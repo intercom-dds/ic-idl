@@ -5,8 +5,8 @@ expression: diagnostics
 error: constant 'MY_STR' of type string cannot be assigned to int32
    ┌ test.idl:3:27
    │
- 3 │         const int32 FOO = MY_STR;
-   ·                           ^^^^^^ incompatible types
  2 │         const string MY_STR = "foo";
    ·                      ^^^^^^ 'MY_STR' declared as string here
+ 3 │         const int32 FOO = MY_STR;
+   ·                           ^^^^^^ incompatible types
    └──

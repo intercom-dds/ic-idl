@@ -5,6 +5,8 @@ expression: test_lint_hir(source)
 error[zero_bound]: string bound must be greater than zero
    ┌ test.idl:3:12
    │
+ 2 │ struct Foo {
  3 │     string<0> field;
    ·            ^ invalid string bound
+ 4 │ };
    └──

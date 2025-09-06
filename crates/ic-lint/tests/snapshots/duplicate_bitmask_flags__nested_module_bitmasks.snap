@@ -5,9 +5,14 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `FLAG` in flag 'OuterFlags'
    ┌ test.idl:5:9
    │
- 5 │         FLAG    // Duplicate
-   ·         ^^^^ duplicate flag
+ 2 │ module Outer {
+ 3 │     bitmask OuterFlags {
  4 │         FLAG,
    ·         ^^^^ first defined here
+ 5 │         FLAG    // Duplicate
+   ·         ^^^^ duplicate flag
+ 6 │     };
+ 7 │ 
+ 8 │     module Inner {
    └──
  note: names are case-insensitive

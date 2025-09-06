@@ -5,14 +5,17 @@ expression: diagnostics
 error: valuetype `Derived` cannot inherit from incomplete type `OnlyForward`
    ┌ test.idl:4:29
    │
- 4 │         valuetype Derived : OnlyForward {};
-   ·                             ^^^^^^^^^^^ invalid inheritance
  2 │         valuetype OnlyForward;
    ·                   ^^^^^^^^^^^ parent type is only forward declared
+ 3 │ 
+ 4 │         valuetype Derived : OnlyForward {};
+   ·                             ^^^^^^^^^^^ invalid inheritance
    └──
 error: type `OnlyForward` is declared but not defined
    ┌ test.idl:2:19
    │
  2 │         valuetype OnlyForward;
    ·                   ^^^^^^^^^^^ declared here
+ 3 │ 
+ 4 │         valuetype Derived : OnlyForward {};
    └──

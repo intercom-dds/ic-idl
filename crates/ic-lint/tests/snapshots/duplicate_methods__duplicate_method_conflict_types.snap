@@ -5,9 +5,14 @@ expression: test_lint_hir(source)
 error[duplicate_name]: interface `Derived` defines method `method` which conflicts with inherited method
    ┌ test.idl:7:10
    │
- 7 │     long method();  // Error: conflicting return type
-   ·          ^^^^^^ conflicting method definition
+ 2 │ interface Base {
  3 │     void method();
    ·          ^^^^^^ inherited from `Base`
+ 4 │ };
+ 5 │ 
+ 6 │ interface Derived : Base {
+ 7 │     long method();  // Error: conflicting return type
+   ·          ^^^^^^ conflicting method definition
+ 8 │ };
    └──
  note: method names are case-insensitive

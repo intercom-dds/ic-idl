@@ -5,23 +5,33 @@ expression: test_lint(source)
 error[keywords]: `int32` is a keyword and may not be used as an identifier
    ┌ test.idl:3:5
    │
+ 2 │ enum Type {
  3 │     int32,      // 'int32' is a keyword
    ·     ^^^^^ this is an IDL keyword
+ 4 │     uint64,     // 'uint64' is a keyword
+ 5 │     octet       // 'octet' is a keyword
    └──
  help: the keyword can be escaped by changing to `_int32`
 
 error[keywords]: `uint64` is a keyword and may not be used as an identifier
    ┌ test.idl:4:5
    │
+ 2 │ enum Type {
+ 3 │     int32,      // 'int32' is a keyword
  4 │     uint64,     // 'uint64' is a keyword
    ·     ^^^^^^ this is an IDL keyword
+ 5 │     octet       // 'octet' is a keyword
+ 6 │ };
    └──
  help: the keyword can be escaped by changing to `_uint64`
 
 error[keywords]: `octet` is a keyword and may not be used as an identifier
    ┌ test.idl:5:5
    │
+ 3 │     int32,      // 'int32' is a keyword
+ 4 │     uint64,     // 'uint64' is a keyword
  5 │     octet       // 'octet' is a keyword
    ·     ^^^^^ this is an IDL keyword
+ 6 │ };
    └──
  help: the keyword can be escaped by changing to `_octet`

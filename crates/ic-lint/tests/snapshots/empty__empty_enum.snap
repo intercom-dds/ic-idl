@@ -7,5 +7,7 @@ error[empty]: empty enums are not allowed
    │
  2 │ enum EmptyEnum {
    ·      ^^^^^^^^^ defined here
+ 3 │     // No values
+ 4 │ };
    └──
  note: all enums must have at least one enumerator

@@ -3,44 +3,65 @@ source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
 expression: test_lint(idl)
 ---
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
-   ┌ test.idl:9:38
-   │
- 9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
-   ·                   ^^^^^^^^^^^^^^^^^^ ^ this operator has lower precedence
-   ·                   └─ than this expression
-   └──
+    ┌ test.idl:9:38
+    │
+  6 │ const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
+  7 │ const long combined3 = (base + offset) & ~(alignment - 1);
+  8 │ 
+  9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
+    ·                   ^^^^^^^^^^^^^^^^^^ ^ this operator has lower precedence
+    ·                   └─ than this expression
+ 10 │ const long bad2 = flags & MASK_LOWER + 1;
+ 11 │ const long bad3 = base + offset & ~alignment - 1;
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
-   ┌ test.idl:9:38
-   │
- 9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
-   ·                                      ^ ^^^^^^^^^^^^^^^^^^^^^^^ than this expression
-   ·                                      └─ this operator has lower precedence
-   └──
+    ┌ test.idl:9:38
+    │
+  6 │ const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
+  7 │ const long combined3 = (base + offset) & ~(alignment - 1);
+  8 │ 
+  9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
+    ·                                      ^ ^^^^^^^^^^^^^^^^^^^^^^^ than this expression
+    ·                                      └─ this operator has lower precedence
+ 10 │ const long bad2 = flags & MASK_LOWER + 1;
+ 11 │ const long bad3 = base + offset & ~alignment - 1;
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
-   ┌ test.idl:9:51
-   │
- 9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
-   ·                                                   ^ ^^^^^^^^^^ than this expression
-   ·                                                   └─ this operator has lower precedence
-   └──
+    ┌ test.idl:9:51
+    │
+  6 │ const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
+  7 │ const long combined3 = (base + offset) & ~(alignment - 1);
+  8 │ 
+  9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
+    ·                                                   ^ ^^^^^^^^^^ than this expression
+    ·                                                   └─ this operator has lower precedence
+ 10 │ const long bad2 = flags & MASK_LOWER + 1;
+ 11 │ const long bad3 = base + offset & ~alignment - 1;
+    └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:10:25
     │
+  7 │ const long combined3 = (base + offset) & ~(alignment - 1);
+  8 │ 
+  9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
  10 │ const long bad2 = flags & MASK_LOWER + 1;
     ·                         ^ ^^^^^^^^^^^^^^ than this expression
     ·                         └─ this operator has lower precedence
+ 11 │ const long bad3 = base + offset & ~alignment - 1;
     └──
  help: add parentheses to clarify the intended order of operations
 
 warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:33
     │
+  9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
+ 10 │ const long bad2 = flags & MASK_LOWER + 1;
  11 │ const long bad3 = base + offset & ~alignment - 1;
     ·                   ^^^^^^^^^^^^^ ^ this operator has lower precedence
     ·                   └─ than this expression
@@ -50,6 +71,8 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
 warning[ambiguous_precedence]: operator `&` has lower precedence than `-`
     ┌ test.idl:11:33
     │
+  9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
+ 10 │ const long bad2 = flags & MASK_LOWER + 1;
  11 │ const long bad3 = base + offset & ~alignment - 1;
     ·                                 ^ ^^^^^^^^^^^^^^ than this expression
     ·                                 └─ this operator has lower precedence

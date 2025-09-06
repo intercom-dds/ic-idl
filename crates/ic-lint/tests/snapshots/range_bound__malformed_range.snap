@@ -5,6 +5,10 @@ expression: test_lint_hir(source)
 warning[range_bound]: invalid @range annotation: Field 'value' has wrong type, expected i64
    ┌ test.idl:4:10
    │
+ 2 │ module MyModule {
+ 3 │     struct MalformedRange {
  4 │         @range(min="not a number") long value;
    ·          ^^^^^ malformed annotation
+ 5 │     };
+ 6 │ };
    └──

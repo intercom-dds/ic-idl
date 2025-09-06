@@ -5,9 +5,14 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `FLAG_A` in flag 'FirstFlags'
    ┌ test.idl:5:5
    │
- 5 │     FLAG_A    // Duplicate in first bitmask
-   ·     ^^^^^^ duplicate flag
+ 2 │ bitmask FirstFlags {
  3 │     FLAG_A,
    ·     ^^^^^^ first defined here
+ 4 │     FLAG_B,
+ 5 │     FLAG_A    // Duplicate in first bitmask
+   ·     ^^^^^^ duplicate flag
+ 6 │ };
+ 7 │ 
+ 8 │ bitmask SecondFlags {
    └──
  note: names are case-insensitive

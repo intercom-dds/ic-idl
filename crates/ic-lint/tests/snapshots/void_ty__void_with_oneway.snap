@@ -5,6 +5,10 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:8:28
    │
+ 5 │     oneway void shutdown();
+ 6 │ 
+ 7 │     // Still invalid: void as parameter
  8 │     oneway void invalid(in void param);
    ·                            ^^^^ invalid use of `void`
+ 9 │ };
    └──

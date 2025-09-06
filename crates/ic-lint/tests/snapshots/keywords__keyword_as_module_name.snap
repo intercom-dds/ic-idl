@@ -7,5 +7,7 @@ error[keywords]: `uint32` is a keyword and may not be used as an identifier
    │
  2 │ module uint32 {  // 'uint32' is a primitive type keyword
    ·        ^^^^^^ this is an IDL keyword
+ 3 │     struct Point {
+ 4 │         long x;
    └──
  help: the keyword can be escaped by changing to `_uint32`

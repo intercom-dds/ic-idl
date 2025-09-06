@@ -5,6 +5,10 @@ expression: "common::test_lint_hir(idl)"
 error[invalid_inheritance]: interface `BadInterface` cannot inherit from struct `BaseStruct`
    ┌ test.idl:5:19
    │
+ 3 │             long x;
+ 4 │         };
  5 │         interface BadInterface : BaseStruct {
    ·                   ^^^^^^^^^^^^ interfaces can only inherit from other interfaces
+ 6 │             void method();
+ 7 │         };
    └──

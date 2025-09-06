@@ -5,6 +5,9 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:5
    │
+ 2 │ @annotation TestAnnotation {
  3 │     void invalidMember;
    ·     ^^^^ invalid use of `void`
+ 4 │     string validMember;
+ 5 │ };
    └──

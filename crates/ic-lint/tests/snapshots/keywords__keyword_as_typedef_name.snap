@@ -7,12 +7,14 @@ error[keywords]: `uint32` is a keyword and may not be used as an identifier
    │
  2 │ typedef long uint32;
    ·              ^^^^^^ this is an IDL keyword
+ 3 │ typedef boolean octet;
    └──
  help: the keyword can be escaped by changing to `_uint32`
 
 error[keywords]: `octet` is a keyword and may not be used as an identifier
    ┌ test.idl:3:17
    │
+ 2 │ typedef long uint32;
  3 │ typedef boolean octet;
    ·                 ^^^^^ this is an IDL keyword
    └──

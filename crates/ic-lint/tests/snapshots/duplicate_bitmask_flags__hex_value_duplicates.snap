@@ -5,9 +5,13 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate flag `FLAG_A` in flag 'HexFlags'
    ┌ test.idl:5:5
    │
- 5 │     FLAG_A = 0x04,  // Duplicate name
-   ·     ^^^^^^ duplicate flag
+ 2 │ bitmask HexFlags {
  3 │     FLAG_A = 0x01,
    ·     ^^^^^^ first defined here
+ 4 │     FLAG_B = 0x02,
+ 5 │     FLAG_A = 0x04,  // Duplicate name
+   ·     ^^^^^^ duplicate flag
+ 6 │     FLAG_C = 0x08
+ 7 │ };
    └──
  note: names are case-insensitive

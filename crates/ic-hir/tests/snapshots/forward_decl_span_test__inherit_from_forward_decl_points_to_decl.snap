@@ -5,8 +5,11 @@ expression: diagnostics
 error: struct `A` cannot inherit from incomplete type `B`
    ┌ test.idl:4:20
    │
- 4 │         struct A : B {};
-   ·                    ^ invalid inheritance
+ 2 │         struct A;
  3 │         struct B;
    ·                ^ parent type is only forward declared
+ 4 │         struct A : B {};
+   ·                    ^ invalid inheritance
+ 5 │ 
+ 6 │         struct B {};
    └──

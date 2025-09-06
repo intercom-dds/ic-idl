@@ -5,8 +5,12 @@ expression: test_lint_hir(source)
 error[duplicate_case]: union 'CharUnion' has duplicate case label ''a''
    ┌ test.idl:5:10
    │
+ 3 │     case 'a': long a_val;
+ 4 │     case 'b': string b_val;
  5 │     case 'a': boolean dup_a;  // Duplicate
    ·          ^^^ duplicate case label
+ 6 │     case 'c': float c_val;
+ 7 │ };
    └──
 
 warning[char_discriminator]: char types should not be used as union discriminators
@@ -14,5 +18,7 @@ warning[char_discriminator]: char types should not be used as union discriminato
    │
  2 │ union CharUnion switch (char) {
    ·                         ^^^^ char type
+ 3 │     case 'a': long a_val;
+ 4 │     case 'b': string b_val;
    └──
  help: consider using an integer or enum value instead

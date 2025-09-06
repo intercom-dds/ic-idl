@@ -3,29 +3,44 @@ source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
 warning[prefer_enum_name]: prefer using enum member name 'FREEZING' instead of numeric literal
-   ┌ test.idl:9:19
-   │
- 9 │ const Temperature T1 = -273;  // Should warn: prefer FREEZING
-   ·                   ^^ consider using 'FREEZING' instead of '-273'
-   └──
+    ┌ test.idl:9:19
+    │
+  6 │     HOT = 40
+  7 │ };
+  8 │ 
+  9 │ const Temperature T1 = -273;  // Should warn: prefer FREEZING
+    ·                   ^^ consider using 'FREEZING' instead of '-273'
+ 10 │ const Temperature T2 = -10;   // Should warn: prefer COLD
+ 11 │ const Temperature T3 = 20;    // Should warn: prefer NORMAL
+    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'COLD' instead of numeric literal
     ┌ test.idl:10:19
     │
+  7 │ };
+  8 │ 
+  9 │ const Temperature T1 = -273;  // Should warn: prefer FREEZING
  10 │ const Temperature T2 = -10;   // Should warn: prefer COLD
     ·                   ^^ consider using 'COLD' instead of '-10'
+ 11 │ const Temperature T3 = 20;    // Should warn: prefer NORMAL
+ 12 │ const Temperature T4 = 40;    // Should warn: prefer HOT
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'NORMAL' instead of numeric literal
     ┌ test.idl:11:19
     │
+  9 │ const Temperature T1 = -273;  // Should warn: prefer FREEZING
+ 10 │ const Temperature T2 = -10;   // Should warn: prefer COLD
  11 │ const Temperature T3 = 20;    // Should warn: prefer NORMAL
     ·                   ^^ consider using 'NORMAL' instead of '20'
+ 12 │ const Temperature T4 = 40;    // Should warn: prefer HOT
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'HOT' instead of numeric literal
     ┌ test.idl:12:19
     │
+ 10 │ const Temperature T2 = -10;   // Should warn: prefer COLD
+ 11 │ const Temperature T3 = 20;    // Should warn: prefer NORMAL
  12 │ const Temperature T4 = 40;    // Should warn: prefer HOT
     ·                   ^^ consider using 'HOT' instead of '40'
     └──

@@ -5,13 +5,20 @@ expression: output
 error: unresolved type `foo::bar::Invalid`
     ┌ test.idl:10:13
     │
+  8 │         struct Test {
+  9 │             foo::bar::Valid valid;      // This should work
  10 │             foo::bar::Invalid invalid;  // Should highlight Invalid
     ·             ^^^^^^^^^^^^^^^^^ unknown type
+ 11 │             foo::baz::Something other;   // Should highlight baz
+ 12 │         };
     └──
 
 error: unresolved type `foo::baz::Something`
     ┌ test.idl:11:13
     │
+  9 │             foo::bar::Valid valid;      // This should work
+ 10 │             foo::bar::Invalid invalid;  // Should highlight Invalid
  11 │             foo::baz::Something other;   // Should highlight baz
     ·             ^^^^^^^^^^^^^^^^^^^ unknown type
+ 12 │         };
     └──

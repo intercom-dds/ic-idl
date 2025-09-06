@@ -1,6 +1,5 @@
 ---
 source: crates/ic-hir/tests/float_precision_warning_test.rs
-assertion_line: 39
 expression: diagnostics
 ---
 warning: implicit conversion from 'double' to 'int32' changes value from 1.5 to 1
@@ -8,16 +7,22 @@ warning: implicit conversion from 'double' to 'int32' changes value from 1.5 to 
    │
  2 │         const int32 LOSES_PRECISION = 1.5;
    ·                                       ^^^ precision loss here
+ 3 │         const uint32 ALSO_LOSES = 3.7;
+ 4 │         const int64 TINY_LOSS = 1.00000001;
    └──
 warning: implicit conversion from 'double' to 'uint32' changes value from 3.7 to 3
    ┌ test.idl:3:35
    │
+ 2 │         const int32 LOSES_PRECISION = 1.5;
  3 │         const uint32 ALSO_LOSES = 3.7;
    ·                                   ^^^ precision loss here
+ 4 │         const int64 TINY_LOSS = 1.00000001;
    └──
 warning: implicit conversion from 'double' to 'int64' changes value from 1.00000001 to 1
    ┌ test.idl:4:33
    │
+ 2 │         const int32 LOSES_PRECISION = 1.5;
+ 3 │         const uint32 ALSO_LOSES = 3.7;
  4 │         const int64 TINY_LOSS = 1.00000001;
    ·                                 ^^^^^^^^^^ precision loss here
    └──

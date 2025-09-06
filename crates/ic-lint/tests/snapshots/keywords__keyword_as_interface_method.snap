@@ -5,15 +5,21 @@ expression: test_lint(source)
 error[keywords]: `context` is a keyword and may not be used as an identifier
    ┌ test.idl:3:12
    │
+ 2 │ interface Service {
  3 │     string context();
    ·            ^^^^^^^ this is an IDL keyword
+ 4 │     long abstract();
+ 5 │ };
    └──
  help: the keyword can be escaped by changing to `_context`
 
 error[keywords]: `abstract` is a keyword and may not be used as an identifier
    ┌ test.idl:4:10
    │
+ 2 │ interface Service {
+ 3 │     string context();
  4 │     long abstract();
    ·          ^^^^^^^^ this is an IDL keyword
+ 5 │ };
    └──
  help: the keyword can be escaped by changing to `_abstract`

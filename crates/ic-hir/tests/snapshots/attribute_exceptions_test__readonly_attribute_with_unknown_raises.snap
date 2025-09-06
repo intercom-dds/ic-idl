@@ -5,12 +5,20 @@ expression: diagnostics
 error: unresolved type `UnknownException`
    ┌ test.idl:5:53
    │
+ 2 │         exception InvalidOperation {};
+ 3 │ 
+ 4 │         interface Foo {
  5 │             readonly attribute string value raises (UnknownException);
    ·                                                     ^^^^^^^^^^^^^^^^ unknown type
+ 6 │             readonly attribute string value2 raises (InvalidOperation, AnotherUnknown);
+ 7 │         };
    └──
 error: unresolved type `AnotherUnknown`
    ┌ test.idl:6:72
    │
+ 4 │         interface Foo {
+ 5 │             readonly attribute string value raises (UnknownException);
  6 │             readonly attribute string value2 raises (InvalidOperation, AnotherUnknown);
    ·                                                                        ^^^^^^^^^^^^^^ unknown type
+ 7 │         };
    └──

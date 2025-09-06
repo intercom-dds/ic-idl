@@ -5,20 +5,31 @@ expression: test_lint_hir(source)
 error[invalid_enum_literal]: `3` is not a valid `Flags` value
     ┌ test.idl:10:13
     │
+  7 │ };
+  8 │ 
+  9 │ const Flags FLAG1 = 0x01;  // Valid: READ
  10 │ const Flags FLAG2 = 0x03;  // Invalid: 0x03 is not a defined flag
     ·             ^^^^^ this constant evaluates to an invalid value
+ 11 │ const Flags FLAG3 = 0x04;  // Valid: EXECUTE
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
-   ┌ test.idl:9:13
-   │
- 9 │ const Flags FLAG1 = 0x01;  // Valid: READ
-   ·             ^^^^^ consider using 'READ' instead of '1'
-   └──
+    ┌ test.idl:9:13
+    │
+  6 │     EXECUTE = 0x04
+  7 │ };
+  8 │ 
+  9 │ const Flags FLAG1 = 0x01;  // Valid: READ
+    ·             ^^^^^ consider using 'READ' instead of '1'
+ 10 │ const Flags FLAG2 = 0x03;  // Invalid: 0x03 is not a defined flag
+ 11 │ const Flags FLAG3 = 0x04;  // Valid: EXECUTE
+    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'EXECUTE' instead of numeric literal
     ┌ test.idl:11:13
     │
+  9 │ const Flags FLAG1 = 0x01;  // Valid: READ
+ 10 │ const Flags FLAG2 = 0x03;  // Invalid: 0x03 is not a defined flag
  11 │ const Flags FLAG3 = 0x04;  // Valid: EXECUTE
     ·             ^^^^^ consider using 'EXECUTE' instead of '4'
     └──

@@ -5,13 +5,19 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:13
    │
+ 2 │ union InvalidUnion switch (long) {
  3 │     case 1: void voidVariant;
    ·             ^^^^ invalid use of `void`
+ 4 │     case 2: string stringVariant;
+ 5 │     case 3: void anotherVoid;
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:5:13
    │
+ 3 │     case 1: void voidVariant;
+ 4 │     case 2: string stringVariant;
  5 │     case 3: void anotherVoid;
    ·             ^^^^ invalid use of `void`
+ 6 │ };
    └──

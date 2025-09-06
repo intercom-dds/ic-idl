@@ -5,29 +5,45 @@ expression: test_lint_hir(source)
 error[duplicate_name]: duplicate variant `name` in variant 'Data'
    ┌ test.idl:5:20
    │
- 5 │     case 2: string name;    // First duplicate
-   ·                    ^^^^ duplicate variant
+ 2 │ union Data switch (octet) {
  3 │     case 0: string name;
    ·                    ^^^^ first defined here
+ 4 │     case 1: long value;
+ 5 │     case 2: string name;    // First duplicate
+   ·                    ^^^^ duplicate variant
+ 6 │     case 3: boolean flag;
+ 7 │     case 4: long value;     // Second duplicate
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate variant `value` in variant 'Data'
    ┌ test.idl:7:18
    │
- 7 │     case 4: long value;     // Second duplicate
-   ·                  ^^^^^ duplicate variant
+ 2 │ union Data switch (octet) {
+ 3 │     case 0: string name;
  4 │     case 1: long value;
    ·                  ^^^^^ first defined here
+ 5 │     case 2: string name;    // First duplicate
+ 6 │     case 3: boolean flag;
+ 7 │     case 4: long value;     // Second duplicate
+   ·                  ^^^^^ duplicate variant
+ 8 │     case 5: string name;    // Third occurrence
+ 9 │ };
    └──
  note: names are case-insensitive
 
 error[duplicate_name]: duplicate variant `name` in variant 'Data'
    ┌ test.idl:8:20
    │
- 8 │     case 5: string name;    // Third occurrence
-   ·                    ^^^^ duplicate variant
+ 2 │ union Data switch (octet) {
  3 │     case 0: string name;
    ·                    ^^^^ first defined here
+ 4 │     case 1: long value;
+ 5 │     case 2: string name;    // First duplicate
+ 6 │     case 3: boolean flag;
+ 7 │     case 4: long value;     // Second duplicate
+ 8 │     case 5: string name;    // Third occurrence
+   ·                    ^^^^ duplicate variant
+ 9 │ };
    └──
  note: names are case-insensitive

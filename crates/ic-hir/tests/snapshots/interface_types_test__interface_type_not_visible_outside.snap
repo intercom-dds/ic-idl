@@ -5,6 +5,9 @@ expression: diagnostics
 error: unresolved type `InternalData`
     ┌ test.idl:10:13
     │
+  8 │         // This should fail - InternalData is not visible outside Service
+  9 │         struct Container {
  10 │             InternalData data;
     ·             ^^^^^^^^^^^^ unknown type
+ 11 │         };
     └──

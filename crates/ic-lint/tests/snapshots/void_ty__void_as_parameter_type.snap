@@ -5,20 +5,29 @@ expression: test_lint_hir(source)
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:25
    │
+ 2 │ interface TestInterface {
  3 │     void processVoid(in void param);
    ·                         ^^^^ invalid use of `void`
+ 4 │     long calculate(in void input, out void output);
+ 5 │ };
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:4:23
    │
+ 2 │ interface TestInterface {
+ 3 │     void processVoid(in void param);
  4 │     long calculate(in void input, out void output);
    ·                       ^^^^ invalid use of `void`
+ 5 │ };
    └──
 
 error[void_ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:4:39
    │
+ 2 │ interface TestInterface {
+ 3 │     void processVoid(in void param);
  4 │     long calculate(in void input, out void output);
    ·                                       ^^^^ invalid use of `void`
+ 5 │ };
    └──

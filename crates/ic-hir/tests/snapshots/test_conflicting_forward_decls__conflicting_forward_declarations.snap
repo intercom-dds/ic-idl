@@ -15,10 +15,12 @@ error: type `MyType` is declared but not defined
    │
  2 │         struct MyType;
    ·                ^^^^^^ declared here
+ 3 │         union MyType;
    └──
 error: type `MyType` is declared but not defined
    ┌ test.idl:3:15
    │
+ 2 │         struct MyType;
  3 │         union MyType;
    ·               ^^^^^^ declared here
    └──

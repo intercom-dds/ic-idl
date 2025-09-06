@@ -5,7 +5,10 @@ expression: test_lint(source)
 warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:6:25
    │
+ 4 │             void read(out octet data);
+ 5 │             void modify(inout string text);
  6 │             void broken(long size);  // Missing direction
    ·                         ^^^^ expected parameter specifier before this type
+ 7 │         };
    └──
  help: prefix the parameter with `in`

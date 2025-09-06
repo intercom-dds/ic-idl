@@ -8,9 +8,7 @@ warning[empty_mod]: empty module declarations are not standard
  2 │         module DocumentedButEmpty {
    ·         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
  3 │             // This module is reserved for future use
-   · 
  4 │             // TODO: Add types here
-   · 
  5 │         };
    · ^^^^^^^^^^
    └──

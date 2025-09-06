@@ -1,0 +1,18 @@
+---
+source: crates/ic-lint/tests/unknown_annotation.rs
+assertion_line: 81
+expression: output
+---
+warning[unknown_annotation]: unknown annotation `UnknownAnnotation`
+   ┌ test.idl:7:10
+   │
+ 7 │         @UnknownAnnotation
+   ·          ^^^^^^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownField`
+    ┌ test.idl:10:14
+    │
+ 10 │             @UnknownField
+    ·              ^^^^^^^^^^^^ annotation not found
+    └──

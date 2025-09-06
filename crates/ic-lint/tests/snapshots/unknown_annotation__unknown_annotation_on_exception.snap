@@ -1,0 +1,18 @@
+---
+source: crates/ic-lint/tests/unknown_annotation.rs
+assertion_line: 185
+expression: output
+---
+warning[unknown_annotation]: unknown annotation `UnknownException`
+   ┌ test.idl:2:10
+   │
+ 2 │         @UnknownException
+   ·          ^^^^^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownMember`
+   ┌ test.idl:4:14
+   │
+ 4 │             @UnknownMember
+   ·              ^^^^^^^^^^^^^ annotation not found
+   └──

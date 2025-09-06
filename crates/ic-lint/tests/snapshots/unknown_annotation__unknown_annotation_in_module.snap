@@ -1,0 +1,25 @@
+---
+source: crates/ic-lint/tests/unknown_annotation.rs
+assertion_line: 104
+expression: output
+---
+warning[unknown_annotation]: unknown annotation `UnknownModule`
+   ┌ test.idl:2:10
+   │
+ 2 │         @UnknownModule
+   ·          ^^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownInner`
+   ┌ test.idl:4:14
+   │
+ 4 │             @UnknownInner
+   ·              ^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownEnum`
+   ┌ test.idl:9:14
+   │
+ 9 │             @UnknownEnum
+   ·              ^^^^^^^^^^^ annotation not found
+   └──

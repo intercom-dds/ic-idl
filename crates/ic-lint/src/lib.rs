@@ -467,6 +467,7 @@ define_lints! {
     hir_lints: [
         annotation::deprecated_annotations::DeprecatedAnnotations,
         annotation::range_bound::RangeBound,
+        annotation::unknown::UnknownAnnotation,
         pedantic::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,

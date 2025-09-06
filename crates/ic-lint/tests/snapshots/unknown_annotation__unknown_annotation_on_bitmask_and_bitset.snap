@@ -1,0 +1,32 @@
+---
+source: crates/ic-lint/tests/unknown_annotation.rs
+assertion_line: 125
+expression: output
+---
+warning[unknown_annotation]: unknown annotation `UnknownBitmask`
+   ┌ test.idl:2:10
+   │
+ 2 │         @UnknownBitmask
+   ·          ^^^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownFlag`
+   ┌ test.idl:4:14
+   │
+ 4 │             @UnknownFlag
+   ·              ^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownBitset`
+   ┌ test.idl:9:10
+   │
+ 9 │         @UnknownBitset
+   ·          ^^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownField`
+    ┌ test.idl:11:14
+    │
+ 11 │             @UnknownField
+    ·              ^^^^^^^^^^^^ annotation not found
+    └──

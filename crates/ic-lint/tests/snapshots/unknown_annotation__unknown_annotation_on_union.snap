@@ -1,0 +1,25 @@
+---
+source: crates/ic-lint/tests/unknown_annotation.rs
+assertion_line: 170
+expression: output
+---
+warning[unknown_annotation]: unknown annotation `UnknownUnion`
+   ┌ test.idl:2:10
+   │
+ 2 │         @UnknownUnion
+   ·          ^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `UnknownVariant`
+   ┌ test.idl:5:18
+   │
+ 5 │                 @UnknownVariant
+   ·                  ^^^^^^^^^^^^^^ annotation not found
+   └──
+
+warning[unknown_annotation]: unknown annotation `AnotherUnknown`
+   ┌ test.idl:8:18
+   │
+ 8 │                 @AnotherUnknown
+   ·                  ^^^^^^^^^^^^^^ annotation not found
+   └──

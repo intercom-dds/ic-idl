@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/unknown_annotation.rs
+expression: output
+---
+warning[unknown_annotation]: unknown annotation `NonExistent`
+   ┌ test.idl:2:10
+   │
+ 2 │         @NonExistent
+   ·          ^^^^^^^^^^^ annotation not found
+   └──

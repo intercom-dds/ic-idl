@@ -974,6 +974,22 @@ impl<'a> ConstEvaluator<'a> {
             }
         }
 
+        // Check if this is a Path expression to a constant
+        if let ic_syntax::Expr::Path(path) = expr {
+            // Try to resolve the path
+            if let Some(def_id) = self
+                .ctx
+                .scopes
+                .resolve_path(&self.ctx.context, self.scope, path)
+            {
+                let def = self.ctx.context.definitions.get(def_id);
+                if let DefKind::Const(_) = &def.kind {
+                    // Return a Const reference instead of evaluating the value
+                    return Some(Numeric::Const(def_id));
+                }
+            }
+        }
+
         let v = self.eval_value(expr)?;
 
         // Warn about precision loss when assigning float literal to integer type

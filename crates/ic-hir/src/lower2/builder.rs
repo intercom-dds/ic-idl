@@ -51,16 +51,21 @@ impl<'ctx> HirBuilder<'ctx> {
     }
 
     /// Build HIR from AST items.
-    pub fn build(&mut self, items: &[Item]) {
+    pub fn build(&mut self, items: &[Item]) -> Vec<DefId> {
+        let mut definitions = Vec::new();
         for item in items {
-            self.process_item(item);
+            definitions.extend(self.process_item(item));
         }
+        definitions
     }
 
     /// Process a single AST item.
-    pub(super) fn process_item(&mut self, item: &Item) {
+    pub(super) fn process_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
-            Item::ModuleValue(m) => self.process_module(m),
+            Item::ModuleValue(m) => {
+                let def_id = self.process_module(m);
+                vec![def_id]
+            }
 
             // Delegate type items to type_items.rs
             Item::StructValue(s) => {
@@ -70,6 +75,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::InterfaceValue(i) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
@@ -77,6 +83,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::UnionValue(u) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
@@ -84,6 +91,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::ValuetypeValue(v) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
@@ -91,6 +99,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::DeclValue(decl) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
@@ -98,6 +107,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
 
             // Delegate value items to value_items.rs
@@ -107,6 +117,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::EnumValue(e) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
@@ -114,6 +125,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::BitmaskValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
@@ -121,6 +133,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
 
             // Other items
@@ -130,13 +143,15 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::AliasValue(a) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_ids = processor.process_alias(a);
                 if self.current_scope == self.ctx.scopes.root() {
-                    self.ctx.order.extend(def_ids);
+                    self.ctx.order.extend(&def_ids);
                 }
+                def_ids
             }
             Item::ExceptionValue(e) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
@@ -144,6 +159,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
             Item::BitsetValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
@@ -151,12 +167,13 @@ impl<'ctx> HirBuilder<'ctx> {
                 if self.current_scope == self.ctx.scopes.root() {
                     self.ctx.order.push(def_id);
                 }
+                vec![def_id]
             }
         }
     }
 
     /// Process a module definition.
-    fn process_module(&mut self, m: &ic_syntax::ModuleDef) {
+    fn process_module(&mut self, m: &ic_syntax::ModuleDef) -> DefId {
         // Find or create the module scope (handles reopening)
         let module_scope = self.ctx.scopes.find_or_create_module(
             self.current_scope,
@@ -170,39 +187,12 @@ impl<'ctx> HirBuilder<'ctx> {
         let prev_scope = self.current_scope;
         self.current_scope = module_scope;
 
-        // Record definitions before processing contents
-        let definitions_before = self
-            .ctx
-            .context
-            .scopes
-            .get_scope(module_scope)
-            .definitions
-            .values()
-            .copied()
-            .collect::<Vec<_>>();
-
-        // Process module contents
-        self.build(&m.definitions);
-
-        // Collect new definitions added by this module block
-        let all_definitions = self
-            .ctx
-            .context
-            .scopes
-            .get_scope(module_scope)
-            .definitions
-            .values()
-            .copied()
-            .collect::<Vec<_>>();
-
-        let new_definitions: Vec<DefId> = all_definitions
-            .into_iter()
-            .filter(|id| !definitions_before.contains(id))
-            .collect();
+        // Process module contents and collect the definitions
+        let module_block_definitions = self.build(&m.definitions);
 
         // Create a module definition in the HIR for this module block
         let module_ty = crate::hir::ModuleTy {
-            definitions: new_definitions,
+            definitions: module_block_definitions,
         };
 
         let def_id = self
@@ -222,7 +212,20 @@ impl<'ctx> HirBuilder<'ctx> {
         // Update the module scope's def_id so path resolution works
         self.ctx.context.scopes.get_scope_mut(module_scope).def_id = Some(def_id);
 
-        // Don't register in scope - module names are already handled by the scope mechanism
+        // Check if this is the first module block with this name in the parent scope
+        let parent_scope = self.ctx.context.scopes.get_scope(prev_scope);
+        let is_first_module = !parent_scope.definitions.contains_key(&m.ident.name);
+
+        if is_first_module {
+            // First module block with this name: register it in the parent scope's name map
+            self.ctx
+                .context
+                .scopes
+                .add_definition(prev_scope, m.ident.name.clone(), def_id);
+        }
+        // For module reopenings, we don't add to the name map (to avoid overwriting)
+        // but we still need to add the DefId to the parent module's definition list somehow
+
         // Only record as a top-level item if we're at the root scope
         if prev_scope == self.ctx.scopes.root() {
             self.ctx.order.push(def_id);
@@ -230,5 +233,7 @@ impl<'ctx> HirBuilder<'ctx> {
 
         // Restore previous scope
         self.current_scope = prev_scope;
+
+        def_id
     }
 }

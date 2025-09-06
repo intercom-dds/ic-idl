@@ -159,6 +159,13 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             );
         }
 
+        // Create a child scope for the enum to hold its enumerators
+        let enum_scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            e.ident.name.clone(),
+            Some(enum_id),
+        );
+
         // Process enumerators
         let mut fields = Vec::new();
         let mut last_value = -1i64;
@@ -224,9 +231,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 )
                 .is_some()
             {
-                // Also add to scope if registry registration succeeded
+                // Add to parent scope (for unscoped access like TWO)
                 self.ctx.context.scopes.add_definition(
                     self.current_scope,
+                    enumerator.ident.name.clone(),
+                    field_id,
+                );
+
+                // Also add to enum's own scope (for scoped access like MyEnum::TWO)
+                self.ctx.context.scopes.add_definition(
+                    enum_scope,
                     enumerator.ident.name.clone(),
                     field_id,
                 );

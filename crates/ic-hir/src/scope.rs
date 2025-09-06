@@ -281,10 +281,22 @@ impl ScopeTree {
             return scope_data.definitions.get(path[0]).copied();
         }
 
-        // Multi-segment path - first segment should be a child scope
+        // Multi-segment path - first segment might be a definition or a child scope
+
+        // First, check if it's a child scope
         if let Some(&child_scope) = scope_data.children.get(path[0]) {
             // Recurse into child scope
             return self.resolve_path_from_scope(child_scope, &path[1..]);
+        }
+
+        // If not a child scope, check if it's a definition (like an enum)
+        // whose own scope we should look into
+        if let Some(&def_id) = scope_data.definitions.get(path[0]) {
+            // Find the scope for this definition
+            if let Some(def_scope) = self.find_scope_for_def(def_id) {
+                // Continue resolution from the definition's scope
+                return self.resolve_path_from_scope(def_scope, &path[1..]);
+            }
         }
 
         None

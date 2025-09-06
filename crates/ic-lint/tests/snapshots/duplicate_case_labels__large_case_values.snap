@@ -9,9 +9,9 @@ error[duplicate_case]: union 'LargeUnion' has duplicate case label '922337203685
    ·          ^^^^^^^^^^^^^^^^^^^ duplicate case label
    └──
 
-error: integer overflow in constant expression: negation
+error: value out of range for target type
    ┌ test.idl:4:10
    │
  4 │     case -9223372036854775808: string min_val;
-   ·          ^^^^^^^^^^^^^^^^^^^^ overflow detected
+   ·          ^^^^^^^^^^^^^^^^^^^^ out of range
    └──

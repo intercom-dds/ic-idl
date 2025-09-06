@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Color, Diag, Label};
-use ic_hir::hir::{self, DefId, DefKind, Numeric, TyKind};
+use ic_hir::hir::{self, DefKind, Numeric, TyKind};
 use ic_hir::visit::walk_tree;
 use ic_hir::{Context, ResolvedGraph};
 use ic_syntax::Span;
@@ -63,22 +63,42 @@ impl<'a> ic_hir::visit::Visitor<'a> for InitializerListSize<'a> {
     }
 
     fn visit_const(&mut self, def: &'a hir::Def, data: &'a hir::ConstTy) {
-        validate_init_list(self.ctx, &self.hir.context, &data.value, def.ident.span);
+        validate_init_list(
+            self.ctx,
+            &self.hir.context,
+            &data.value,
+            &data.ty,
+            def.ident.span,
+        );
     }
 
     fn visit_ann_param(&mut self, param: &'a hir::AnnParam) {
         if let Some(num) = &param.default {
-            validate_init_list(self.ctx, &self.hir.context, num, param.ident.span);
+            validate_init_list(
+                self.ctx,
+                &self.hir.context,
+                num,
+                &param.ty,
+                param.ident.span,
+            );
         }
     }
 }
 
-fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, span: Span) {
+fn validate_init_list(
+    ctx: &LintCtx<'_>,
+    context: &Context,
+    numeric: &Numeric,
+    expected_ty: &hir::Ty,
+    span: Span,
+) {
     match numeric {
         Numeric::Array { ty, values } => {
             if let TyKind::Array {
-                len: expected_len, ..
-            } = &ty.kind
+                len: expected_len,
+                ty: elem_ty,
+                ..
+            } = &expected_ty.kind
             {
                 if values.len() != *expected_len {
                     ctx.report(
@@ -96,9 +116,15 @@ fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, s
                         ),
                     );
                 }
-            }
-            for value in values {
-                validate_init_list(ctx, context, value, span);
+                // Recursively validate nested arrays with their element type
+                for value in values {
+                    validate_init_list(ctx, context, value, elem_ty, span);
+                }
+            } else {
+                // For non-array elements, just recurse without type checking
+                for value in values {
+                    validate_init_list(ctx, context, value, ty, span);
+                }
             }
         }
         Numeric::Struct { ty, fields } => {
@@ -122,26 +148,63 @@ fn validate_init_list(ctx: &LintCtx<'_>, context: &Context, numeric: &Numeric, s
                         ),
                     );
                 }
-            }
-            for (_, value) in fields {
-                validate_init_list(ctx, context, value, span);
+                for (field_name, value) in fields {
+                    // Find the field type in the struct
+                    if let Some(member) = struct_ty
+                        .members
+                        .iter()
+                        .find(|m| m.ident.name == field_name.name)
+                    {
+                        validate_init_list(ctx, context, value, &member.ty, span);
+                    } else {
+                        validate_init_list(ctx, context, value, expected_ty, span);
+                    }
+                }
             }
         }
-        Numeric::Sequence { values, .. } => {
-            for value in values {
-                validate_init_list(ctx, context, value, span);
+        Numeric::Sequence {
+            ty: seq_elem_ty,
+            values,
+        } => {
+            if let TyKind::Sequence {
+                ty: expected_elem_ty,
+                ..
+            } = &expected_ty.kind
+            {
+                for value in values {
+                    validate_init_list(ctx, context, value, expected_elem_ty, span);
+                }
+            } else {
+                for value in values {
+                    validate_init_list(ctx, context, value, seq_elem_ty, span);
+                }
             }
         }
         Numeric::Map {
-            entries: values, ..
+            key: map_key_ty,
+            value: map_val_ty,
+            entries: values,
         } => {
-            for (key, value) in values {
-                validate_init_list(ctx, context, key, span);
-                validate_init_list(ctx, context, value, span);
+            if let TyKind::Map {
+                key: expected_key_ty,
+                elem: expected_val_ty,
+                ..
+            } = &expected_ty.kind
+            {
+                for (key, value) in values {
+                    validate_init_list(ctx, context, key, expected_key_ty, span);
+                    validate_init_list(ctx, context, value, expected_val_ty, span);
+                }
+            } else {
+                for (key, value) in values {
+                    validate_init_list(ctx, context, key, map_key_ty, span);
+                    validate_init_list(ctx, context, value, map_val_ty, span);
+                }
             }
         }
         Numeric::Union { value, .. } => {
-            validate_init_list(ctx, context, value, span);
+            // For unions, we don't have specific type info for the variant, so use the stored type
+            validate_init_list(ctx, context, value, expected_ty, span);
         }
         _ => {}
     }

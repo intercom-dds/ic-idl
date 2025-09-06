@@ -29,7 +29,7 @@
 
 use ic_syntax::Path;
 
-use crate::hir::Numeric;
+use crate::hir::{DefKind, Numeric};
 
 /// Convert a path to a string for error messages.
 pub fn path_to_string(path: &Path) -> String {

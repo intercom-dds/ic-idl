@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/invalid_inheritance.rs
+expression: "common::test_lint_hir(idl)"
+---
+error[invalid_inheritance]: struct `MyStruct` cannot inherit from enum `Color`
+   ┌ test.idl:3:16
+   │
+ 3 │         struct MyStruct : Color {
+   ·                ^^^^^^^^ structs can only inherit from other structs
+   └──

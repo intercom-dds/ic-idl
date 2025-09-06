@@ -31,7 +31,7 @@ use ic_diagnostic::Label;
 use ic_syntax::{Expr, InitList};
 
 use super::eval::ConstEvaluator;
-use crate::hir::{DefId, DefKind, Ident, Numeric, Ty};
+use crate::hir::{DefId, DefKind, Numeric, Ty};
 
 /// Handles evaluation of initializer lists for complex types.
 pub struct InitializerEvaluator<'a, 'b> {

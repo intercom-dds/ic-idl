@@ -481,6 +481,7 @@ define_lints! {
         semantic::initializer_list_size::InitializerListSize,
         semantic::invalid_annotation_target::InvalidAnnotationTarget,
         semantic::invalid_enum_literal::InvalidEnumLiteral,
+        semantic::invalid_inheritance::InvalidInheritance,
         semantic::invalid_enum_value::InvalidEnumValue,
         semantic::multiple_default_cases::MultipleDefaultCases,
         semantic::recursive_type::RecursiveType,

@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/invalid_inheritance.rs
+expression: "common::test_lint_hir(idl)"
+---
+error: supports must be an interface type
+   ┌ test.idl:5:37
+   │
+ 5 │         valuetype BadValue supports SomeStruct {
+   ·                                     ^^^^^^^^^^ expected interface type
+   └──

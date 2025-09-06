@@ -1,0 +1,10 @@
+---
+source: crates/ic-lint/tests/invalid_inheritance.rs
+expression: "common::test_lint_hir(idl)"
+---
+error[invalid_inheritance]: valuetype `BadValue` cannot inherit from struct `BaseStruct`
+   ┌ test.idl:5:19
+   │
+ 5 │         valuetype BadValue : BaseStruct {
+   ·                   ^^^^^^^^ valuetypes can only inherit from other valuetypes
+   └──

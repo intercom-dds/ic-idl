@@ -1,0 +1,45 @@
+---
+source: crates/ic-lint/tests/invalid_inheritance.rs
+expression: "common::test_lint_hir(idl)"
+---
+error[invalid_inheritance]: struct `BadStruct1` cannot inherit from enum `Color`
+   ┌ test.idl:6:16
+   │
+ 6 │         struct BadStruct1 : Color { long x; };
+   ·                ^^^^^^^^^^ structs can only inherit from other structs
+   └──
+
+error[invalid_inheritance]: struct `BadStruct2` cannot inherit from union `Status`
+   ┌ test.idl:7:16
+   │
+ 7 │         struct BadStruct2 : Status { long y; };
+   ·                ^^^^^^^^^^ structs can only inherit from other structs
+   └──
+
+error[invalid_inheritance]: interface `BadInterface` cannot inherit from enum `Color`
+   ┌ test.idl:9:19
+   │
+ 9 │         interface BadInterface : Color { void method(); };
+   ·                   ^^^^^^^^^^^^ interfaces can only inherit from other interfaces
+   └──
+
+error[invalid_inheritance]: valuetype `BadValue` cannot inherit from enum `Color`
+    ┌ test.idl:11:19
+    │
+ 11 │         valuetype BadValue : Color { public long z; };
+    ·                   ^^^^^^^^ valuetypes can only inherit from other valuetypes
+    └──
+
+error[invalid_inheritance]: bitset `BadBits` cannot inherit from union `Status`
+    ┌ test.idl:14:16
+    │
+ 14 │         bitset BadBits : Status { bitfield<1> BIT0; };
+    ·                ^^^^^^^ bitsets can only inherit from other bitsets
+    └──
+
+error: supports must be an interface type
+    ┌ test.idl:12:38
+    │
+ 12 │         valuetype BadValue2 supports Status { public long w; };
+    ·                                      ^^^^^^ expected interface type
+    └──

@@ -84,7 +84,37 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process a struct definition.
     pub fn process_struct(&mut self, s: &StructDef) -> DefId {
-        // Resolve parent type if present
+        // Create a placeholder definition first
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: s.ident.clone(),
+            parent: None,
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: (s.ident.span),
+            kind: DefKind::Struct(StructTy {
+                parent: None,
+                members: Vec::new(),
+            }), // Placeholder
+            flags: DefFlags::nil(),
+        });
+
+        // Register in scope immediately so self-references work
+        self.ctx
+            .context
+            .scopes
+            .add_definition(self.current_scope, s.ident.name.clone(), def_id);
+
+        // Register with the registry
+        self.ctx.registry.register_definition(
+            self.current_scope,
+            &s.ident,
+            DefKindTag::Struct,
+            def_id,
+            &mut self.ctx.diagnostics,
+            &self.ctx.context,
+        );
+
+        // Now resolve parent type if present
         let parent = if let Some(ref parent_type) = s.parent {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_type).and_then(|ty| {
@@ -108,42 +138,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None
         };
 
-        // Create scope and process members
+        // Create scope and process members (struct is now in scope)
         let (_scope, members) = self.process_members(&s.members);
 
-        // Create the complete struct definition
-        let struct_ty = StructTy { parent, members };
-
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: s.ident.clone(),
-            parent: None,
-            annotations: Vec::new(), // TODO: Convert annotations
-            span: (s.ident.span),
-            kind: DefKind::Struct(struct_ty),
-            flags: DefFlags::nil(),
-        });
-
-        // Register with the registry
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &s.ident,
-                DefKindTag::Struct,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            // Register in scope only if registry registration succeeded
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                s.ident.name.clone(),
-                def_id,
-            );
+        // Update the definition with the actual struct data
+        let def = self.ctx.context.definitions.get_mut(def_id);
+        if let DefKind::Struct(struct_ty) = &mut def.kind {
+            struct_ty.parent = parent;
+            struct_ty.members = members;
         }
 
         def_id

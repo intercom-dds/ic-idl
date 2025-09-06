@@ -17,15 +17,15 @@ error[invalid_enum_literal]: `2` is not a valid `Status` value
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'OK' instead of numeric literal
-   ┌ test.idl:8:5
+   ┌ test.idl:8:18
    │
  8 │     const Status S1 = 0;  // Valid: OK
-   ·     ^^^^^^^^^^^^^^^^^^^^ consider using 'OK' instead of '0'
+   ·                  ^^ consider using 'OK' instead of '0'
    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'PENDING' instead of numeric literal
-    ┌ test.idl:18:5
+    ┌ test.idl:18:18
     │
  18 │     const Status S1 = 0;  // Valid: PENDING
-    ·     ^^^^^^^^^^^^^^^^^^^^ consider using 'PENDING' instead of '0'
+    ·                  ^^ consider using 'PENDING' instead of '0'
     └──

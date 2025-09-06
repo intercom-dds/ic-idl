@@ -3,22 +3,22 @@ source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
 warning[prefer_enum_name]: prefer using enum member name 'PENDING' instead of numeric literal
-   ┌ test.idl:8:1
+   ┌ test.idl:8:14
    │
  8 │ const Status S1 = 0;  // Should warn: prefer PENDING
-   · ^^^^^^^^^^^^^^^^^^^^ consider using 'PENDING' instead of '0'
+   ·              ^^ consider using 'PENDING' instead of '0'
    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'ACTIVE' instead of numeric literal
-   ┌ test.idl:9:1
+   ┌ test.idl:9:14
    │
  9 │ const Status S2 = 1;  // Should warn: prefer ACTIVE
-   · ^^^^^^^^^^^^^^^^^^^^ consider using 'ACTIVE' instead of '1'
+   ·              ^^ consider using 'ACTIVE' instead of '1'
    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'COMPLETED' instead of numeric literal
-    ┌ test.idl:10:1
+    ┌ test.idl:10:14
     │
  10 │ const Status S3 = 2;  // Should warn: prefer COMPLETED
-    · ^^^^^^^^^^^^^^^^^^^^ consider using 'COMPLETED' instead of '2'
+    ·              ^^ consider using 'COMPLETED' instead of '2'
     └──

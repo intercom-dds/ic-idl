@@ -17,8 +17,8 @@ error[invalid_enum_literal]: `10` is not a valid `Status` value
    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'RUNNING' instead of numeric literal
-    ┌ test.idl:10:1
+    ┌ test.idl:10:14
     │
  10 │ const Status STATUS3 = 1;   // Valid: RUNNING
-    · ^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'RUNNING' instead of '1'
+    ·              ^^^^^^^ consider using 'RUNNING' instead of '1'
     └──

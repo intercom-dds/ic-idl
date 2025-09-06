@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_methods.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate method `method` in interface 'Test'
+error[duplicate_name]: duplicate method `method` in method 'Test'
    ┌ test.idl:4:10
    │
  4 │     long method();  // Should be caught by validate.rs, not this lint
@@ -10,4 +10,4 @@ error: duplicate method `method` in interface 'Test'
  3 │     void method();
    ·          ^^^^^^ first defined here
    └──
- note: method names are case-insensitive
+ note: names are case-insensitive

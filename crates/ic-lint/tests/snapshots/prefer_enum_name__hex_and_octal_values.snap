@@ -3,29 +3,29 @@ source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
 warning[prefer_enum_name]: prefer using enum member name 'NONE' instead of numeric literal
-   ┌ test.idl:9:1
+   ┌ test.idl:9:13
    │
  9 │ const Flags F1 = 0x00;  // Should warn: prefer NONE
-   · ^^^^^^^^^^^^^^^^^^^^^^ consider using 'NONE' instead of '0'
+   ·             ^^ consider using 'NONE' instead of '0'
    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
-    ┌ test.idl:10:1
+    ┌ test.idl:10:13
     │
  10 │ const Flags F2 = 0x01;  // Should warn: prefer READ
-    · ^^^^^^^^^^^^^^^^^^^^^^ consider using 'READ' instead of '1'
+    ·             ^^ consider using 'READ' instead of '1'
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
-    ┌ test.idl:11:1
+    ┌ test.idl:11:13
     │
  11 │ const Flags F3 = 1;     // Should warn: prefer READ (decimal form)
-    · ^^^^^^^^^^^^^^^^^^^ consider using 'READ' instead of '1'
+    ·             ^^ consider using 'READ' instead of '1'
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'EXECUTE' instead of numeric literal
-    ┌ test.idl:12:1
+    ┌ test.idl:12:13
     │
  12 │ const Flags F4 = 0x04;  // Should warn: prefer EXECUTE
-    · ^^^^^^^^^^^^^^^^^^^^^^ consider using 'EXECUTE' instead of '4'
+    ·             ^^ consider using 'EXECUTE' instead of '4'
     └──

@@ -72,19 +72,21 @@ impl<'a> DuplicateName<'a> {
         construct_type: &str,
         parent_name: &str,
         span: ic_syntax::Span,
+        first_span: ic_syntax::Span,
     ) {
         Self::report(
             self.ctx,
             ic_diagnostic::error_span(
                 format!(
-                    "duplicate {} `{}` in {} `{}`",
+                    "duplicate {} `{}` in {} '{}'",
                     construct_type,
                     name.yellow(),
-                    construct_type.replace('_', " "),
+                    construct_type,
                     parent_name
                 ),
-                Label::new(span).message("redefined here"),
+                Label::new(span).message(format!("duplicate {}", construct_type)),
             )
+            .label(Label::new(first_span).message("first defined here"))
             .note("names are case-insensitive"),
         );
     }
@@ -99,11 +101,30 @@ impl<'a> DuplicateName<'a> {
     ) where
         F: Fn(&'b T) -> &'b ic_hir::hir::Ident,
     {
-        let mut seen = CaseSet::default();
+        let mut seen = HashMap::new();
         for item in items {
             let ident = get_ident(item);
-            if !seen.insert(ident.name.as_str()) {
-                self.report_duplicate(&ident.name, construct_type, parent_name, ident.span);
+            let name_lower = CaseString::new(ident.name.as_str());
+
+            if let Some(&first_span) = seen.get(&name_lower) {
+                // Found a duplicate
+                Self::report(
+                    self.ctx,
+                    ic_diagnostic::error_span(
+                        format!(
+                            "duplicate {} `{}` in {} '{}'",
+                            construct_type,
+                            ident.name.yellow(),
+                            construct_type,
+                            parent_name
+                        ),
+                        Label::new(ident.span).message(format!("duplicate {}", construct_type)),
+                    )
+                    .label(Label::new(first_span).message("first defined here"))
+                    .note("names are case-insensitive"),
+                );
+            } else {
+                seen.insert(name_lower, ident.span);
             }
         }
     }
@@ -157,7 +178,7 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
     }
 
     fn visit_struct(&mut self, def: &'a Def, struct_ty: &'a StructTy) {
-        let mut seen = CaseSet::default();
+        let mut seen: HashMap<CaseString, ic_syntax::Span> = HashMap::new();
 
         // Check members from all parent structs first
         let mut parent_id = struct_ty.parent;
@@ -171,7 +192,10 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
             let parent_def = self.hir.context.definitions.get(parent);
             if let DefKind::Struct(parent_struct) = &parent_def.kind {
                 for member in &parent_struct.members {
-                    seen.insert(member.ident.name.as_str());
+                    seen.insert(
+                        CaseString::new(member.ident.name.as_str()),
+                        member.ident.span,
+                    );
                 }
                 parent_id = parent_struct.parent;
             } else {
@@ -181,13 +205,17 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
 
         // Check this struct's own members
         for member in &struct_ty.members {
-            if !seen.insert(member.ident.name.as_str()) {
+            let name = CaseString::new(member.ident.name.as_str());
+            if let Some(&first_span) = seen.get(&name) {
                 self.report_duplicate(
                     &member.ident.name,
                     "member",
                     &def.ident.name,
                     member.ident.span,
+                    first_span,
                 );
+            } else {
+                seen.insert(name, member.ident.span);
             }
         }
 
@@ -231,7 +259,15 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
             return;
         }
 
-        // First, collect inherited methods only (exclude methods from current interface)
+        // First check for duplicate methods within the same interface
+        self.check_names(
+            &interface.prototypes,
+            |p| &p.ident,
+            "method",
+            &def.ident.name,
+        );
+
+        // Then, collect inherited methods only (exclude methods from current interface)
         let mut visited = HashSet::new();
         visited.insert(def.id); // Mark current interface as visited to exclude its methods
 

@@ -10,15 +10,15 @@ error[invalid_enum_literal]: `3` is not a valid `Flags` value
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
-   ┌ test.idl:9:1
+   ┌ test.idl:9:13
    │
  9 │ const Flags FLAG1 = 0x01;  // Valid: READ
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'READ' instead of '1'
+   ·             ^^^^^ consider using 'READ' instead of '1'
    └──
 
 warning[prefer_enum_name]: prefer using enum member name 'EXECUTE' instead of numeric literal
-    ┌ test.idl:11:1
+    ┌ test.idl:11:13
     │
  11 │ const Flags FLAG3 = 0x04;  // Valid: EXECUTE
-    · ^^^^^^^^^^^^^^^^^^^^^^^^^ consider using 'EXECUTE' instead of '4'
+    ·             ^^^^^ consider using 'EXECUTE' instead of '4'
     └──

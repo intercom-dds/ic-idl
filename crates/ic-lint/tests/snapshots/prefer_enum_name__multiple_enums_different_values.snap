@@ -3,15 +3,15 @@ source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
 warning[prefer_enum_name]: prefer using enum member name 'OFF' instead of numeric literal
-    ┌ test.idl:12:1
+    ┌ test.idl:12:14
     │
  12 │ const Status S = 0;  // Should warn: prefer OFF
-    · ^^^^^^^^^^^^^^^^^^^ consider using 'OFF' instead of '0'
+    ·              ^ consider using 'OFF' instead of '0'
     └──
 
 warning[prefer_enum_name]: prefer using enum member name 'LOW' instead of numeric literal
-    ┌ test.idl:13:1
+    ┌ test.idl:13:13
     │
  13 │ const Level L = 0;   // Should warn: prefer LOW
-    · ^^^^^^^^^^^^^^^^^^ consider using 'LOW' instead of '0'
+    ·             ^ consider using 'LOW' instead of '0'
     └──

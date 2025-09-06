@@ -2,10 +2,12 @@
 source: crates/ic-lint/tests/duplicate_struct_members.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate member `values` in member `Arrays`
+error[duplicate_name]: duplicate member `values` in member 'Arrays'
    ┌ test.idl:5:10
    │
  5 │     long values[20];  // Duplicate member name, different array size
-   ·          ^^^^^^ redefined here
+   ·          ^^^^^^ duplicate member
+ 3 │     long values[10];
+   ·          ^^^^^^ first defined here
    └──
  note: names are case-insensitive

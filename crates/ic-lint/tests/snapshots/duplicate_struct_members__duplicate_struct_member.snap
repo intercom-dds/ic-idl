@@ -2,10 +2,12 @@
 source: crates/ic-lint/tests/duplicate_struct_members.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate member `width` in member `Rectangle`
+error[duplicate_name]: duplicate member `width` in member 'Rectangle'
    ┌ test.idl:5:10
    │
  5 │     long width;  // Duplicate member
-   ·          ^^^^^ redefined here
+   ·          ^^^^^ duplicate member
+ 3 │     long width;
+   ·          ^^^^^ first defined here
    └──
  note: names are case-insensitive

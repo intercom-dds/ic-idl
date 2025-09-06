@@ -2,26 +2,32 @@
 source: crates/ic-lint/tests/duplicate_struct_members.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate member `name` in member `Data`
+error[duplicate_name]: duplicate member `name` in member 'Data'
    ┌ test.idl:5:12
    │
  5 │     string name;   // First duplicate
-   ·            ^^^^ redefined here
+   ·            ^^^^ duplicate member
+ 3 │     string name;
+   ·            ^^^^ first defined here
    └──
  note: names are case-insensitive
 
-error[duplicate_name]: duplicate member `value` in member `Data`
+error[duplicate_name]: duplicate member `value` in member 'Data'
    ┌ test.idl:7:10
    │
  7 │     long value;    // Second duplicate
-   ·          ^^^^^ redefined here
+   ·          ^^^^^ duplicate member
+ 4 │     long value;
+   ·          ^^^^^ first defined here
    └──
  note: names are case-insensitive
 
-error[duplicate_name]: duplicate member `name` in member `Data`
+error[duplicate_name]: duplicate member `name` in member 'Data'
    ┌ test.idl:8:12
    │
  8 │     string name;   // Third occurrence
-   ·            ^^^^ redefined here
+   ·            ^^^^ duplicate member
+ 3 │     string name;
+   ·            ^^^^ first defined here
    └──
  note: names are case-insensitive

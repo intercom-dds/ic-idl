@@ -248,10 +248,6 @@
     PlacementKind placement default BEFORE_DECLARATION;
 };
 
-@annotation merge {
-    boolean value default TRUE;
-};
-
 @annotation static {
     boolean value default TRUE;
 };

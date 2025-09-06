@@ -185,7 +185,7 @@ fn valuetype_with_multiple_nested_types() {
 #[test]
 fn valuetype_operations_with_nested_types() {
     let idl = r"
-        valuetype Service {
+        valuetype MyService {
             struct Request {
                 string id;
                 long timestamp;
@@ -211,7 +211,7 @@ fn valuetype_operations_with_nested_types() {
         .iter()
         .find_map(|(_, def)| match &def.kind {
             DefKind::Valuetype(v) => {
-                if def.ident.name == "Service" {
+                if def.ident.name == "MyService" {
                     Some(v)
                 } else {
                     None
@@ -219,7 +219,7 @@ fn valuetype_operations_with_nested_types() {
             }
             _ => None,
         })
-        .expect("Should find Service valuetype");
+        .expect("Should find MyService valuetype");
 
     // Check operations
     assert_eq!(valuetype_def.prototypes.len(), 2);

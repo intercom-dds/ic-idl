@@ -81,7 +81,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (ident.span),
             kind: DefKind::Const(const_ty),
@@ -153,7 +153,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let enum_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: e.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (e.ident.span),
             kind: DefKind::Enum(enum_ty),
@@ -318,7 +318,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let bitmask_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: b.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (b.ident.span),
             kind: DefKind::Bitmask(bitmask_ty),
@@ -485,7 +485,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: b.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: b.ident.span,
             kind: DefKind::Bitset(bitset_ty),
@@ -510,9 +510,26 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             None,
         );
 
+        // Create a placeholder annotation definition first
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: a.ident.clone(),
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: a.ident.span,
+            kind: DefKind::Annotation(AnnotationTy {
+                params: Vec::new(),
+                types: Vec::new(),
+            }), // Placeholder
+            flags: DefFlags::nil(),
+        });
+
+        // Update the scope's def_id BEFORE processing contents
+        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+
         // Process annotation parameters and nested types
         let mut params = Vec::new();
-        let types;
+        let mut types = Vec::new();
 
         for field in &a.params {
             match field {
@@ -523,15 +540,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                         span: ic_syntax::util::decl_span(&member.decl),
                     };
 
-                    // Resolve the parameter type
-                    let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+                    // Resolve the parameter type using the annotation's scope
+                    let mut resolver = TypeResolver::new(self.ctx, scope);
                     let Some(ty) = resolver.resolve_type(&member.ty) else {
                         continue; // Error already reported
                     };
 
                     // Evaluate default value if present
                     let default = if let Some(ref default_expr) = member.default {
-                        let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
+                        let mut evaluator = ConstEvaluator::new(self.ctx, scope);
                         evaluator.eval_numeric(default_expr)
                     } else {
                         None
@@ -548,39 +565,25 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     let prev_scope = builder.current_scope;
                     builder.current_scope = scope;
 
-                    // Process the nested item
-                    builder.process_item(item);
+                    // Process the nested item and collect its DefIds
+                    let item_defs = builder.process_item(item);
 
                     // Restore previous scope
                     builder.current_scope = prev_scope;
 
-                    // Note: The nested type's DefId will be added to the annotation's scope
-                    // and we'll collect it when we query the scope
+                    // Add the returned DefIds to our types list
+                    types.extend(item_defs);
                 }
             }
         }
 
-        // Collect all definitions from the annotation scope
+        // Update the annotation definition with collected params and types
+        if let DefKind::Annotation(ref mut annotation_ty) =
+            self.ctx.context.definitions.get_mut(def_id).kind
         {
-            let scope_def = self.ctx.context.scopes.get_scope(scope);
-            types = scope_def.definitions.values().copied().collect();
+            annotation_ty.params = params;
+            annotation_ty.types = types;
         }
-
-        // Create the annotation definition
-        let annotation_ty = AnnotationTy { params, types };
-
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: a.ident.clone(),
-            parent: None,
-            annotations: Vec::new(), // TODO: Convert annotations
-            span: a.ident.span,
-            kind: DefKind::Annotation(annotation_ty),
-            flags: DefFlags::nil(),
-        });
-
-        // Update the scope's def_id
-        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
 
         // Register with the registry
         if self

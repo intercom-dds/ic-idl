@@ -185,16 +185,8 @@ impl<'ctx> HirBuilder<'ctx> {
 
         // Save current scope and switch to module scope
         let prev_scope = self.current_scope;
-        self.current_scope = module_scope;
 
-        // Process module contents and collect the definitions
-        let module_block_definitions = self.build(&m.definitions);
-
-        // Create a module definition in the HIR for this module block
-        let module_ty = crate::hir::ModuleTy {
-            definitions: module_block_definitions,
-        };
-
+        // Create a placeholder module definition first
         let def_id = self
             .ctx
             .context
@@ -205,12 +197,25 @@ impl<'ctx> HirBuilder<'ctx> {
                 parent: self.ctx.context.scopes.get_scope(prev_scope).def_id,
                 annotations: Vec::new(), // TODO: Convert annotations
                 span: m.ident.span,
-                kind: crate::hir::DefKind::Module(module_ty),
+                kind: crate::hir::DefKind::Module(crate::hir::ModuleTy {
+                    definitions: Vec::new(), // Will be updated later
+                }),
                 flags: crate::hir::DefFlags::nil(),
             });
 
-        // Update the module scope's def_id so path resolution works
+        // Update the module scope's def_id BEFORE processing contents
         self.ctx.context.scopes.get_scope_mut(module_scope).def_id = Some(def_id);
+
+        // NOW switch to module scope and process contents
+        self.current_scope = module_scope;
+        let module_block_definitions = self.build(&m.definitions);
+
+        // Update the module definition with the collected definitions
+        if let crate::hir::DefKind::Module(ref mut module_ty) =
+            self.ctx.context.definitions.get_mut(def_id).kind
+        {
+            module_ty.definitions = module_block_definitions;
+        }
 
         // Check if this is the first module block with this name in the parent scope
         let parent_scope = self.ctx.context.scopes.get_scope(prev_scope);

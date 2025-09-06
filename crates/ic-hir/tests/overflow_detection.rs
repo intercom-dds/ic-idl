@@ -37,8 +37,8 @@ fn test_overflow(source: &str) -> String {
 #[test]
 fn test_signed_overflow_addition() {
     let source = r"
-const int32 MAX = 2147483647;
-const int32 OVERFLOW = MAX + 1;
+const int32 INTMAX = 2147483647;
+const int32 OVERFLOW = INTMAX + 1;
 ";
 
     assert_snapshot!(test_overflow(source));
@@ -47,8 +47,8 @@ const int32 OVERFLOW = MAX + 1;
 #[test]
 fn test_signed_overflow_subtraction() {
     let source = r"
-const int32 MIN = -2147483648;
-const int32 OVERFLOW = MIN - 1;
+const int32 INTMIN = -2147483648;
+const int32 OVERFLOW = INTMIN - 1;
 ";
 
     assert_snapshot!(test_overflow(source));

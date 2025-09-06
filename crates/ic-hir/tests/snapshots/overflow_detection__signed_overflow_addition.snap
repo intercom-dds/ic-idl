@@ -5,7 +5,7 @@ expression: test_overflow(source)
 warning: integer overflow in constant expression
    ┌ test.idl:3:24
    │
- 3 │ const int32 OVERFLOW = MAX + 1;
-   ·                        ^^^^^^^ overflow detected
+ 3 │ const int32 OVERFLOW = INTMAX + 1;
+   ·                        ^^^^^^^^^^ overflow detected
    └──
  note: consider using a larger integer type if overflow was not intended

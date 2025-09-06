@@ -88,11 +88,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: s.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (s.ident.span),
             kind: DefKind::Struct(StructTy {
-                parent: None,
+                parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
                 members: Vec::new(),
             }), // Placeholder
             flags: DefFlags::nil(),
@@ -155,6 +155,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_interface(&mut self, i: &InterfaceDef) -> DefId {
         // Resolve parent interfaces
         let mut parents = Vec::new();
+        let mut definitions = Vec::new();
 
         for parent_path in &i.inherits {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -206,20 +207,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     // Process nested type definition
                     let mut builder = super::builder::HirBuilder::new(self.ctx);
                     builder.current_scope = scope;
-                    builder.process_item(item);
-
-                    // Collect the DefId - it will be added to the scope
-                    // We'll gather all definitions from the scope later
+                    let item_defs = builder.process_item(item);
+                    definitions.extend(item_defs);
                 }
             }
         }
 
         // Restore previous scope
         self.current_scope = prev_scope;
-
-        // Collect all definitions from the interface scope
-        let scope_def = self.ctx.context.scopes.get_scope(scope);
-        let definitions = scope_def.definitions.values().copied().collect();
 
         // Create the complete interface definition
         let interface_ty = InterfaceTy {
@@ -233,7 +228,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: i.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (i.ident.span),
             kind: DefKind::Interface(interface_ty),
@@ -327,7 +322,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: u.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (u.ident.span),
             kind: DefKind::Union(union_ty),
@@ -376,14 +371,17 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         );
 
         // Process valuetype elements
-        let elements = self.process_valuetype_elements(v, scope);
-
-        // Collect all definitions from the valuetype scope
-        let scope_def = self.ctx.context.scopes.get_scope(scope);
-        let definitions = scope_def.definitions.values().copied().collect();
+        let (members, prototypes, attributes, definitions) =
+            self.process_valuetype_elements(v, scope);
 
         // Create the valuetype definition
-        self.create_valuetype_definition(v, parent, supports, elements, definitions)
+        self.create_valuetype_definition(
+            v,
+            parent,
+            supports,
+            (members, prototypes, attributes),
+            definitions,
+        )
     }
 
     /// Resolve valuetype parent.
@@ -434,10 +432,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         &mut self,
         v: &ValuetypeDef,
         scope: ScopeId,
-    ) -> (Vec<Member>, Vec<ProtoTy>, Vec<Attribute>) {
+    ) -> (Vec<Member>, Vec<ProtoTy>, Vec<Attribute>, Vec<DefId>) {
         let mut members = Vec::new();
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
+        let mut definitions = Vec::new();
 
         // Save current scope and switch to valuetype scope
         let prev_scope = self.current_scope;
@@ -457,7 +456,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 ic_syntax::ValueElement::Item(item) => {
                     let mut builder = super::builder::HirBuilder::new(self.ctx);
                     builder.current_scope = scope;
-                    builder.process_item(item);
+                    let item_defs = builder.process_item(item);
+                    definitions.extend(item_defs);
                 }
             }
         }
@@ -465,7 +465,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         // Restore previous scope
         self.current_scope = prev_scope;
 
-        (members, prototypes, attributes)
+        (members, prototypes, attributes, definitions)
     }
 
     /// Create valuetype definition.
@@ -490,7 +490,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: v.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: (v.ident.span),
             kind: DefKind::Valuetype(value_ty),
@@ -540,7 +540,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(),
             span: (ident.span),
             kind: DefKind::Decl(kind),
@@ -835,7 +835,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
                 id,
                 ident: ident.clone(),
-                parent: None,
+                parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
                 annotations: Vec::new(), // TODO: Convert annotations
                 span: ic_syntax::util::decl_span(decl),
                 kind: DefKind::Alias(alias_ty),
@@ -866,7 +866,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: e.ident.clone(),
-            parent: None,
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations: Vec::new(), // TODO: Convert annotations
             span: e.ident.span,
             kind: DefKind::Except(except_ty),

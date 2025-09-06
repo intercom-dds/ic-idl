@@ -27,8 +27,6 @@
 
 mod common;
 
-// Test constant references to enumerators
-
 #[test]
 fn test_const_enum_reference() {
     let input = r"
@@ -52,24 +50,24 @@ fn test_const_enum_reference() {
         result.errors
     );
 
-    // Verify the constant values were resolved correctly
     let mut found_my_const = false;
     let mut found_int_const = false;
-
     for (_, def) in &result.context.definitions {
         if def.ident.name == "MY_CONST" {
-            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
-                if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
-                    assert_eq!(val, 0, "MY_CONST should have value 0 (ZERO)");
-                    found_my_const = true;
-                }
+            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
+                && let ic_hir::hir::Numeric::Const(ref_id) = const_ty.value
+            {
+                let ref_def = result.context.definitions.get(ref_id);
+                assert_eq!(ref_def.ident.name, "ZERO", "MY_CONST should reference ZERO");
+                found_my_const = true;
             }
         } else if def.ident.name == "INT_CONST" {
-            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
-                if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
-                    assert_eq!(val, 5, "INT_CONST should have value 5 (TWO)");
-                    found_int_const = true;
-                }
+            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
+                && let ic_hir::hir::Numeric::Const(ref_id) = const_ty.value
+            {
+                let ref_def = result.context.definitions.get(ref_id);
+                assert_eq!(ref_def.ident.name, "TWO", "INT_CONST should reference TWO");
+                found_int_const = true;
             }
         }
     }
@@ -98,9 +96,12 @@ fn test_const_ref_to_const() {
     for (_, def) in &result.context.definitions {
         if def.ident.name == "DERIVED" {
             if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
+                // DERIVED = BASE + 50 should be evaluated since it's an expression
                 if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
                     assert_eq!(val, 150, "DERIVED should have value 150 (BASE + 50)");
                     return;
+                } else {
+                    panic!("DERIVED should be Int32(150), but got {:?}", const_ty.value);
                 }
             }
         }

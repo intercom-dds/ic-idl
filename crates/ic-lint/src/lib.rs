@@ -450,6 +450,7 @@ define_lints! {
         pedantic::array_param::ArrayParam,
         pedantic::assign_expr::AssignExpr,
         pedantic::bitmask_ann::BitmaskAnn,
+        pedantic::char_arithmetic::CharArithmetic,
         pedantic::complex_lit::ComplexLit,
         pedantic::empty_mod::EmptyMod,
         pedantic::lowercase_bool::LowercaseBool,

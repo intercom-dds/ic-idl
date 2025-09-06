@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/char_arithmetic.rs
+expression: output
+---
+warning[char_arithmetic]: char literal used in arithmetic expression
+   ┌ test.idl:3:17
+   │
+ 3 │             @id('A' + 1)
+   ·                 ^^^ char literal
+   └──
+ help: consider converting to an integer value
+
+warning[char_arithmetic]: char literal used in arithmetic expression
+   ┌ test.idl:6:25
+   │
+ 6 │             @value(10 - 'B')
+   ·                         ^^^ char literal
+   └──
+ help: consider converting to an integer value

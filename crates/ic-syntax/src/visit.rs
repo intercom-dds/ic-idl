@@ -133,7 +133,9 @@ pub trait Visitor<'a> {
         walk_bitset(self, bitset);
     }
 
-    fn visit_bitfield(&mut self, bitfield: &'a Bitfield) {}
+    fn visit_bitfield(&mut self, bitfield: &'a Bitfield) {
+        walk_bitfield(self, bitfield);
+    }
 
     fn visit_const(&mut self, def: &'a ConstDef) {
         walk_const(self, def);
@@ -257,6 +259,9 @@ pub fn walk_module<'a, V>(visitor: &mut V, module: &'a ModuleDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &module.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&module.ident);
     for def in &module.definitions {
         visitor.visit_item(def);
@@ -267,6 +272,9 @@ pub fn walk_struct<'a, V>(visitor: &mut V, def: &'a StructDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     for mem in &def.members {
         visitor.visit_struct_field(mem);
@@ -277,6 +285,9 @@ pub fn walk_struct_field<'a, V>(visitor: &mut V, def: &'a Field)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_type(&def.ty);
     for decl in &def.names {
         visitor.visit_declarator(decl);
@@ -287,6 +298,9 @@ pub fn walk_union<'a, V>(visitor: &mut V, def: &'a UnionDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     visitor.visit_discriminant(&def.disc);
     for mem in &def.fields {
@@ -298,6 +312,9 @@ pub fn walk_discriminant<'a, V>(visitor: &mut V, def: &'a Discriminator)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_type(&def.ty);
 }
 
@@ -305,6 +322,9 @@ pub fn walk_union_variant<'a, V>(visitor: &mut V, def: &'a UnionField)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     for label in &def.labels {
         visitor.visit_union_label(label);
     }
@@ -327,6 +347,9 @@ pub fn walk_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     for var in &def.fields {
         visitor.visit_enum_variant(var);
@@ -337,6 +360,9 @@ pub fn walk_enum_variant<'a, V>(visitor: &mut V, def: &'a Enumerator)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     if let Some(expr) = &def.value {
         visitor.visit_expr(expr);
@@ -347,6 +373,9 @@ pub fn walk_exception<'a, V>(visitor: &mut V, def: &'a ExceptDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     for member in &def.members {
         visitor.visit_struct_field(member);
@@ -357,6 +386,9 @@ pub fn walk_interface<'a, V>(visitor: &mut V, def: &'a InterfaceDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
 
     for base in &def.inherits {
@@ -434,6 +466,9 @@ pub fn walk_bitmask<'a, V>(visitor: &mut V, def: &'a BitmaskDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     for bit in &def.bits {
         visitor.visit_bitmask_bit(bit);
@@ -444,6 +479,9 @@ pub fn walk_bitmask_bit<'a, V>(visitor: &mut V, def: &'a Bit)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     if let Some(expr) = &def.value {
         visitor.visit_expr(expr);
@@ -454,9 +492,26 @@ pub fn walk_bitset<'a, V>(visitor: &mut V, def: &'a BitsetDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&def.ident);
     for bitfield in &def.fields {
         visitor.visit_bitfield(bitfield);
+    }
+}
+
+pub fn walk_bitfield<'a, V>(visitor: &mut V, def: &'a Bitfield)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
+    visitor.visit_ident(&def.ident);
+    visitor.visit_expr(&def.size);
+    if let Some(ty) = &def.ty {
+        visitor.visit_type(ty);
     }
 }
 
@@ -464,6 +519,9 @@ pub fn walk_const<'a, V>(visitor: &mut V, def: &'a ConstDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_type(&def.ty);
     visitor.visit_declarator(&def.decl);
     visitor.visit_expr(&def.value);
@@ -473,6 +531,9 @@ pub fn walk_typedef<'a, V>(visitor: &mut V, def: &'a AliasDef)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &def.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_type(&def.ty);
     for decl in &def.decl {
         visitor.visit_declarator(decl);
@@ -580,5 +641,8 @@ pub fn walk_decl<'a, V>(visitor: &mut V, decl: &'a Decl)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &decl.annotations {
+        visitor.visit_annotation_appl(ann);
+    }
     visitor.visit_ident(&decl.ident);
 }

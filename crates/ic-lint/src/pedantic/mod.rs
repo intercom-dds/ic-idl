@@ -31,6 +31,7 @@ pub mod ambiguous_precedence;
 pub mod array_param;
 pub mod assign_expr;
 pub mod bitmask_ann;
+pub mod char_arithmetic;
 pub mod char_discriminator;
 pub mod complex_key;
 pub mod complex_lit;

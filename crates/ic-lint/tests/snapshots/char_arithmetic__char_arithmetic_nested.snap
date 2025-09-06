@@ -1,0 +1,27 @@
+---
+source: crates/ic-lint/tests/char_arithmetic.rs
+expression: output
+---
+warning[char_arithmetic]: char literal used in arithmetic expression
+   ┌ test.idl:2:25
+   │
+ 2 │         const long a = ('A' + 1) * 2;
+   ·                         ^^^ char literal
+   └──
+ help: consider converting to an integer value
+
+warning[char_arithmetic]: char literal used in arithmetic expression
+   ┌ test.idl:3:29
+   │
+ 3 │         const long b = 3 - ('B' & 0xFF);
+   ·                             ^^^ char literal
+   └──
+ help: consider converting to an integer value
+
+warning[char_arithmetic]: char literal used in arithmetic expression
+   ┌ test.idl:4:26
+   │
+ 4 │         const long c = ~('C' | 0x20);
+   ·                          ^^^ char literal
+   └──
+ help: consider converting to an integer value

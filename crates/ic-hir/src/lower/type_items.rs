@@ -724,19 +724,19 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .params
             .iter()
             .map(|param| {
-                let ident = ic_syntax::Ident {
-                    name: ic_syntax::util::decl_name(&param.decl).to_string(),
-                    span: ic_syntax::util::decl_span(&param.decl),
-                };
-
+                // Resolve the base type first
                 let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-                let param_ty = resolver.resolve_type(&param.ty).unwrap_or_else(|| {
+                let base_ty = resolver.resolve_type(&param.ty).unwrap_or_else(|| {
                     // Default type on error
                     Ty {
                         span: ic_syntax::util::ty_span(&param.ty),
                         kind: TyKind::Primitive(PrimitiveTy::Int32),
                     }
                 });
+
+                // Use resolve_declarator to handle array types and validate bounds
+                let (ident, param_ty) =
+                    resolve_declarator(&param.decl, base_ty, self.ctx, self.current_scope);
 
                 Parameter {
                     ident,
@@ -820,16 +820,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Type aliases can have multiple declarators, process each one
         for decl in &a.decl {
-            let ident = ic_syntax::Ident {
-                name: ic_syntax::util::decl_name(decl).to_string(),
-                span: ic_syntax::util::decl_span(decl),
-            };
-
-            // Resolve the aliased type
+            // Resolve the base type first
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            let Some(ty) = resolver.resolve_type(&a.ty) else {
+            let Some(base_ty) = resolver.resolve_type(&a.ty) else {
                 continue; // Error already reported
             };
+
+            // Use resolve_declarator to handle array types and validate bounds
+            let (ident, ty) = resolve_declarator(decl, base_ty, self.ctx, self.current_scope);
 
             // Create the alias definition
             let alias_ty = AliasTy { ty };

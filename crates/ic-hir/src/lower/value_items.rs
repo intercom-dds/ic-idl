@@ -549,17 +549,14 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         for field in &a.params {
             match field {
                 ic_syntax::AnnotationField::Member(member) => {
-                    // Process annotation parameter
-                    let ident = ic_syntax::Ident {
-                        name: ic_syntax::util::decl_name(&member.decl).to_string(),
-                        span: ic_syntax::util::decl_span(&member.decl),
-                    };
-
-                    // Resolve the parameter type using the annotation's scope
+                    // Resolve the base type first using the annotation's scope
                     let mut resolver = TypeResolver::new(self.ctx, scope);
-                    let Some(ty) = resolver.resolve_type(&member.ty) else {
+                    let Some(base_ty) = resolver.resolve_type(&member.ty) else {
                         continue; // Error already reported
                     };
+
+                    // Use resolve_declarator to handle array types and validate bounds
+                    let (ident, ty) = resolve_declarator(&member.decl, base_ty, self.ctx, scope);
 
                     // Evaluate default value if present
                     let default = if let Some(ref default_expr) = member.default {
@@ -647,14 +644,7 @@ pub(super) fn resolve_declarator(
             for bound_expr in arr.bounds.iter().rev() {
                 // Evaluate the bound expression
                 let mut evaluator = ConstEvaluator::new(ctx, scope);
-                let len = evaluator.eval_nonneg_bound(bound_expr).unwrap_or_else(|| {
-                    ctx.diagnostics.error(
-                        "array bound must be a non-negative constant expression".to_string(),
-                        ic_diagnostic::Label::new(bound_expr.span())
-                            .message("expected constant expression"),
-                    );
-                    1 // Default to 1 on error
-                });
+                let len = evaluator.eval_nonneg_bound(bound_expr).unwrap_or(1);
 
                 ty = Ty {
                     span: ty.span,

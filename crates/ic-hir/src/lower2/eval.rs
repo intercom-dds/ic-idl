@@ -974,19 +974,12 @@ impl<'a> ConstEvaluator<'a> {
             }
         }
 
-        // Check if this is a Path expression to a constant
+        // If assigning from a path to a constant, check compatibility and optionally reuse it
         if let ic_syntax::Expr::Path(path) = expr {
-            // Try to resolve the path
-            if let Some(def_id) = self
-                .ctx
-                .scopes
-                .resolve_path(&self.ctx.context, self.scope, path)
-            {
-                let def = self.ctx.context.definitions.get(def_id);
-                if let DefKind::Const(_) = &def.kind {
-                    // Return a Const reference instead of evaluating the value
-                    return Some(Numeric::Const(def_id));
-                }
+            match self.try_const_path_assignment(path, expected_ty, expr.span()) {
+                ConstAssignOutcome::Accepted(n) => return Some(n),
+                ConstAssignOutcome::Rejected => return None,
+                ConstAssignOutcome::NotApplicable => {}
             }
         }
 
@@ -1250,6 +1243,89 @@ impl<'a> ConstEvaluator<'a> {
         } else {
             // eval_for_type already reported the error
             None
+        }
+    }
+}
+
+/// Outcome of attempting to assign a constant path to a target type.
+enum ConstAssignOutcome {
+    /// Not a constant path (or not applicable) — caller should continue with normal evaluation.
+    NotApplicable,
+    /// Assignment accepted; use the returned numeric (typically a Const reference).
+    Accepted(Numeric),
+    /// Assignment rejected and a diagnostic was emitted; caller should stop.
+    Rejected,
+}
+
+impl<'a> ConstEvaluator<'a> {
+    /// If `path` resolves to a constant, verify it can be assigned to `expected_ty`.
+    /// Returns Accepted(Numeric::Const(...)) on success, Rejected on hard error,
+    /// or NotApplicable if the path is not a constant.
+    fn try_const_path_assignment(
+        &mut self,
+        path: &ic_syntax::Path,
+        expected_ty: &Ty,
+        use_span: ic_syntax::Span,
+    ) -> ConstAssignOutcome {
+        let Some(def_id) = self
+            .ctx
+            .scopes
+            .resolve_path(&self.ctx.context, self.scope, path)
+        else {
+            return ConstAssignOutcome::NotApplicable;
+        };
+
+        let def = self.ctx.context.definitions.get(def_id);
+        let DefKind::Const(c) = &def.kind else {
+            return ConstAssignOutcome::NotApplicable;
+        };
+
+        if let Some(val) = value_from_numeric(&c.value) {
+            match cast_value_to_type(val, expected_ty) {
+                Ok(_) => ConstAssignOutcome::Accepted(Numeric::Const(def_id)),
+                Err(EvalError::RangeError) => {
+                    self.ctx.diagnostics.error(
+                        "value out of range for target type".to_string(),
+                        Label::new(use_span).message("out of range"),
+                    );
+                    ConstAssignOutcome::Rejected
+                }
+                Err(_) => {
+                    // Provide a precise error mentioning both types and declaration site
+                    let from_ty = get_type_name(&c.ty, &self.ctx);
+                    let to_ty = get_type_name(expected_ty, &self.ctx);
+                    self.ctx.diagnostics.errors.push(
+                        error_span(
+                            format!(
+                                "constant '{}' of type {} cannot be assigned to {}",
+                                def.ident.name, from_ty, to_ty
+                            ),
+                            Label::new(use_span).message("incompatible types"),
+                        )
+                        .label(
+                            Label::new(def.ident.span).message(format!(
+                                "'{}' declared as {} here",
+                                def.ident.name, from_ty
+                            )),
+                        ),
+                    );
+                    ConstAssignOutcome::Rejected
+                }
+            }
+        } else {
+            // Non-scalar constant — not assignable here.
+            let to_ty = get_type_name(expected_ty, &self.ctx);
+            self.ctx.diagnostics.errors.push(
+                error_span(
+                    format!(
+                        "constant '{}' cannot be assigned to {}",
+                        def.ident.name, to_ty
+                    ),
+                    Label::new(use_span).message("incompatible types"),
+                )
+                .label(Label::new(def.ident.span).message("declared here")),
+            );
+            ConstAssignOutcome::Rejected
         }
     }
 }

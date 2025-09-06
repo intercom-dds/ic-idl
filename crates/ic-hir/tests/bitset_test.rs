@@ -214,3 +214,89 @@ fn test_bitset_automatic_types() {
         _ => panic!("Expected bitset definition"),
     }
 }
+
+#[test]
+fn test_bitfield_type_determination() {
+    let idl = r#"
+bitset TestBitset {
+    bitfield<1> flag1;         // Should be bool
+    bitfield<1, boolean> flag2; // Explicitly bool
+    bitfield<3> small_val;     // Should be uint8
+    bitfield<3, int8> small_int; // Explicitly int8
+    bitfield<9> medium_val;    // Should be uint16
+    bitfield<17> large_val;    // Should be uint32
+    bitfield<33> xlarge_val;   // Should be uint64
+};
+"#;
+
+    let (hir, _, _) = common::parse_and_resolve(idl);
+
+    assert!(
+        hir.errors.is_empty(),
+        "Expected no errors, but got: {:?}",
+        hir.errors
+    );
+
+    // Find the TestBitset definition
+    let bitset_def = hir
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "TestBitset")
+        .expect("TestBitset not found")
+        .1;
+
+    if let DefKind::Bitset(bitset) = &bitset_def.kind {
+        assert_eq!(bitset.fields.len(), 7, "Expected 7 fields");
+
+        // Check field types
+        assert_matches!(
+            &bitset.fields[0].ty.kind,
+            TyKind::Primitive(PrimitiveTy::Bool),
+            "flag1 should be bool"
+        );
+        assert_matches!(
+            &bitset.fields[1].ty.kind,
+            TyKind::Primitive(PrimitiveTy::Bool),
+            "flag2 should be bool"
+        );
+        assert_matches!(
+            &bitset.fields[2].ty.kind,
+            TyKind::Primitive(PrimitiveTy::UInt8),
+            "small_val should be uint8"
+        );
+        assert_matches!(
+            &bitset.fields[3].ty.kind,
+            TyKind::Primitive(PrimitiveTy::Int8),
+            "small_int should be int8"
+        );
+        assert_matches!(
+            &bitset.fields[4].ty.kind,
+            TyKind::Primitive(PrimitiveTy::UInt16),
+            "medium_val should be uint16"
+        );
+        assert_matches!(
+            &bitset.fields[5].ty.kind,
+            TyKind::Primitive(PrimitiveTy::UInt32),
+            "large_val should be uint32"
+        );
+        assert_matches!(
+            &bitset.fields[6].ty.kind,
+            TyKind::Primitive(PrimitiveTy::UInt64),
+            "xlarge_val should be uint64"
+        );
+    } else {
+        panic!("TestBitset is not a bitset");
+    }
+}
+
+// Helper macro for checking field types
+#[macro_export]
+macro_rules! assert_matches {
+    ($expr:expr, $pattern:pat, $msg:expr) => {
+        match $expr {
+            $pattern => {}
+            _ => panic!("{}", $msg),
+        }
+    };
+}

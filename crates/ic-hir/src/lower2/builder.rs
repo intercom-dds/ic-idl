@@ -223,8 +223,6 @@ impl<'ctx> HirBuilder<'ctx> {
                 .scopes
                 .add_definition(prev_scope, m.ident.name.clone(), def_id);
         }
-        // For module reopenings, we don't add to the name map (to avoid overwriting)
-        // but we still need to add the DefId to the parent module's definition list somehow
 
         // Only record as a top-level item if we're at the root scope
         if prev_scope == self.ctx.scopes.root() {

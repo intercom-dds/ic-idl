@@ -399,7 +399,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 }
             } else {
                 // Default type based on size
-                let prim_ty = if size <= 8 {
+                let prim_ty = if size == 1 {
+                    PrimitiveTy::Bool
+                } else if size <= 8 {
                     PrimitiveTy::UInt8
                 } else if size <= 16 {
                     PrimitiveTy::UInt16

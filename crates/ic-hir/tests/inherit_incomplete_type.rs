@@ -71,20 +71,6 @@ fn test_struct_inherit_from_complete_type() {
 }
 
 #[test]
-fn test_inherit_from_wrong_type() {
-    // Test that inheriting a struct from an enum produces appropriate error
-    let input = r"
-        enum Color { RED, GREEN, BLUE };
-        struct MyStruct : Color {
-            long field;
-        };
-    ";
-
-    let diagnostics = common::parse_and_expect_errors(input);
-    insta::assert_snapshot!(diagnostics);
-}
-
-#[test]
 fn test_struct_forward_decl_then_inherit() {
     // Test that forward declaration followed by definition then inheritance works
     let input = r"

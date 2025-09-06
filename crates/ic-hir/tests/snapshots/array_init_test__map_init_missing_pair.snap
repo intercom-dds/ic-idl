@@ -1,0 +1,10 @@
+---
+source: crates/ic-hir/tests/array_init_test.rs
+expression: output
+---
+error: map entry must have exactly 2 elements (key and value)
+   ┌ test.idl:3:15
+   │
+ 3 │             { "Alice" },  // Missing value
+   ·               ^^^^^^^ expected {key, value}
+   └──

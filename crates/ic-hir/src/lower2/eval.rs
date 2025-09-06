@@ -990,6 +990,12 @@ impl<'a> ConstEvaluator<'a> {
             }
         }
 
+        // Special case: if the expected type is void, don't try to evaluate or cast.
+        // Just return a dummy value and let the lint catch the invalid usage.
+        if let TyKind::Primitive(PrimitiveTy::Void) = &expected_ty.kind {
+            return Some(Numeric::Null);
+        }
+
         let v = self.eval_value(expr)?;
 
         // Warn about precision loss when assigning float literal to integer type

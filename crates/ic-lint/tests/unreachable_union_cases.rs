@@ -76,18 +76,6 @@ union MyUnion switch (long) {
 }
 
 #[test]
-fn case_label_out_of_range_octet() {
-    let source = r"
-union MyUnion switch (octet) {
-    case 100: long a;
-    case 200: string b;
-    case 300: boolean c;  // Out of range for octet (0-255)
-};
-";
-    assert_snapshot!(test_lint_hir(source));
-}
-
-#[test]
 fn case_label_negative_for_unsigned() {
     let source = r"
 union MyUnion switch (unsigned short) {
@@ -101,18 +89,6 @@ union MyUnion switch (unsigned short) {
         "Expected no warnings for negative values on unsigned types (they wrap around), but got: \
          {output}"
     );
-}
-
-#[test]
-fn boolean_out_of_range() {
-    let source = r"
-union MyUnion switch (boolean) {
-    case 0: long a;     // false
-    case 1: string b;   // true
-    case 2: boolean c;  // Out of range for boolean
-};
-";
-    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]

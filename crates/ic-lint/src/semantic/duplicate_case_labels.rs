@@ -63,7 +63,7 @@ impl DuplicateCaseLabels<'_> {
         let mut seen_labels = HashSet::new();
         for variant in &union_ty.variants {
             for label in &variant.labels {
-                let label_key = Self::numeric_to_string(&label.value);
+                let label_key = self.numeric_to_string(&label.value);
                 if !seen_labels.insert(label_key.clone()) {
                     if let Some(diag) = self.ctx.diag_span(
                         Self::name(),
@@ -78,7 +78,7 @@ impl DuplicateCaseLabels<'_> {
         }
     }
 
-    fn numeric_to_string(num: &Numeric) -> String {
+    fn numeric_to_string(&self, num: &Numeric) -> String {
         match num {
             Numeric::Bool(v) => v.to_string(),
             Numeric::Char(v) => format!("'{v}'"),
@@ -93,7 +93,10 @@ impl DuplicateCaseLabels<'_> {
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
             Numeric::String(v) => format!("\"{v}\""),
-            Numeric::Const(id) => format!("const_{id:?}"),
+            Numeric::Const(id) => {
+                let def = self.hir.context.definitions.get(*id);
+                def.ident.name.clone()
+            }
             _ => format!("{num:?}"),
         }
     }

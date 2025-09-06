@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'ColorData' has duplicate case label 'const_105'
+error[duplicate_case]: union 'ColorData' has duplicate case label 'RED'
    ┌ test.idl:7:10
    │
  7 │     case RED: long another_red;  // Duplicate

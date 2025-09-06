@@ -344,12 +344,12 @@ fn check_undefined_forward_decls(ctx: &mut LoweringContext) {
     // Get the mapping to see which forward declarations have definitions
     let mapping = ctx.registry.get_forward_to_def_mapping();
 
-    // Check all forward declarations to see if they have definitions
-    for def_id in &ctx.order {
-        let def = ctx.context.definitions.get(*def_id);
+    // Check ALL forward declarations in the context, not just top-level ones
+    // The registry tracks all forward declarations, including nested ones
+    for (def_id, def) in &ctx.context.definitions {
         if let DefKind::Decl(_) = &def.kind {
             // This is a forward declaration - check if it has a matching definition
-            if !mapping.contains_key(def_id) {
+            if !mapping.contains_key(&def_id) {
                 ctx.diagnostics.errors.push(error_span(
                     format!("type `{}` is declared but not defined", def.ident.name),
                     Label::new(def.ident.span).message("declared here"),

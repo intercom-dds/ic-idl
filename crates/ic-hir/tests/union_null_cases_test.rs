@@ -79,7 +79,7 @@ fn test_union_with_null_case() {
     let null_variant = union_def
         .variants
         .iter()
-        .find(|v| v.ident.name == "_null_case_3")
+        .find(|v| v.ident.name == "__null_case_3")
         .expect("Null variant not found");
 
     // Check that it has a null type

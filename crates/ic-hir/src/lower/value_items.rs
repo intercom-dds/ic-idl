@@ -381,11 +381,14 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 kind: TyKind::Adt(bitmask_id),
             };
 
+            // Convert annotations
+            let flag_annotations = self.convert_annotations(&flag.annotations, self.current_scope);
+
             let flag_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
                 id,
                 ident: flag.ident.clone(),
                 parent: Some(bitmask_id),
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations: flag_annotations,
                 span: (flag.ident.span),
                 kind: DefKind::Const(ConstTy {
                     ty: flag_ty,
@@ -401,11 +404,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 flag_id,
             );
 
+            // Convert annotations for the BitFlag
+            let bitflag_annotations =
+                self.convert_annotations(&flag.annotations, self.current_scope);
+
             // Add to bitmask flags
             flags.push(BitFlag {
                 ident: flag.ident.clone(),
                 value: value as usize,
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations: bitflag_annotations,
             });
         }
 
@@ -480,11 +487,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 }
             };
 
+            // Convert annotations for the field
+            let field_annotations =
+                self.convert_annotations(&field.annotations, self.current_scope);
+
             fields.push(BitsetField {
                 ident: field.ident.clone(),
                 size,
                 ty,
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations: field_annotations,
             });
         }
 

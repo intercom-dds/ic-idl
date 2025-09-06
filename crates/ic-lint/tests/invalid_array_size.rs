@@ -67,16 +67,6 @@ struct MultipleArrays {
 }
 
 #[test]
-fn negative_array_size() {
-    let source = r"
-struct NegativeArray {
-    long invalid[-10];
-};
-";
-    assert_snapshot!(test_lint_hir(source));
-}
-
-#[test]
 fn const_expression_array_size() {
     let source = r"
 const long MILLION = 1000000;

@@ -32,7 +32,7 @@ use ic_syntax::Item;
 use super::LoweringContext;
 use super::type_items::TypeItemProcessor;
 use super::value_items::ValueItemProcessor;
-use crate::hir::DefId;
+use crate::hir::{DefId, DefKind};
 use crate::scope::ScopeId;
 
 /// Main HIR builder that orchestrates the lowering process.
@@ -185,12 +185,8 @@ impl<'ctx> HirBuilder<'ctx> {
 
         // Save current scope and switch to module scope
         let prev_scope = self.current_scope;
-
-        // Convert annotations before the closure
-        let annotations = {
-            let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-            processor.convert_annotations(&m.annotations, self.current_scope)
-        };
+        let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
+        let annotations = processor.convert_annotations(&m.annotations, self.current_scope);
 
         // Create a placeholder module definition first
         let def_id = self
@@ -202,8 +198,8 @@ impl<'ctx> HirBuilder<'ctx> {
                 ident: m.ident.clone(),
                 parent: self.ctx.context.scopes.get_scope(prev_scope).def_id,
                 annotations,
-                span: m.ident.span,
-                kind: crate::hir::DefKind::Module(crate::hir::ModuleTy {
+                span: m.span,
+                kind: DefKind::Module(crate::hir::ModuleTy {
                     definitions: Vec::new(), // Will be updated later
                 }),
                 flags: crate::hir::DefFlags::nil(),
@@ -217,7 +213,7 @@ impl<'ctx> HirBuilder<'ctx> {
         let module_block_definitions = self.build(&m.definitions);
 
         // Update the module definition with the collected definitions
-        if let crate::hir::DefKind::Module(ref mut module_ty) =
+        if let DefKind::Module(ref mut module_ty) =
             self.ctx.context.definitions.get_mut(def_id).kind
         {
             module_ty.definitions = module_block_definitions;

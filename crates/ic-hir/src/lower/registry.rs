@@ -32,7 +32,7 @@ use std::collections::HashMap;
 use ic_syntax::Ident;
 
 use super::Diagnostics;
-use crate::hir::{Decl, DefId, DefKind};
+use crate::hir::{Decl, DefId};
 use crate::scope::ScopeId;
 
 /// Case-folded name for case-insensitive lookup.
@@ -47,7 +47,6 @@ impl NameKey {
 
 /// Tag to distinguish definition kinds in the registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[allow(dead_code)]
 pub enum DefKindTag {
     Struct,
     Union,
@@ -58,27 +57,6 @@ pub enum DefKindTag {
     Bitmask,
     Const,
     Annotation,
-    Module,
-}
-
-impl DefKindTag {
-    /// Extract the tag from a `DefKind`.
-    /// Returns None for forward declarations (Decl) and other non-definition kinds.
-    #[allow(dead_code)]
-    pub fn from_def_kind(kind: &DefKind) -> Option<Self> {
-        match kind {
-            DefKind::Struct(_) => Some(Self::Struct),
-            DefKind::Union(_) => Some(Self::Union),
-            DefKind::Interface(_) => Some(Self::Interface),
-            DefKind::Valuetype(_) => Some(Self::Valuetype),
-            DefKind::Enum(_) => Some(Self::Enum),
-            DefKind::Bitmask(_) => Some(Self::Bitmask),
-            DefKind::Const(_) => Some(Self::Const),
-            DefKind::Annotation(_) => Some(Self::Annotation),
-            DefKind::Module(_) => Some(Self::Module),
-            DefKind::Decl(_) | DefKind::Alias(_) | DefKind::Except(_) | DefKind::Bitset(_) => None,
-        }
-    }
 }
 
 /// Registry for tracking forward declarations and definitions.
@@ -214,22 +192,6 @@ impl DefinitionRegistry {
         Some(def_id)
     }
 
-    /// Find a forward declaration for the given name and kind.
-    #[allow(dead_code)]
-    pub fn find_forward_decl(&self, scope: ScopeId, name: &str, kind: Decl) -> Option<DefId> {
-        let key = (scope, NameKey::new(name));
-        self.forward_decls
-            .get(&key)
-            .and_then(|decls| decls.iter().find(|(k, _)| *k == kind).map(|(_, id)| *id))
-    }
-
-    /// Find a definition for the given name.
-    #[allow(dead_code)]
-    pub fn find_definition(&self, scope: ScopeId, name: &str) -> Option<DefId> {
-        let key = (scope, NameKey::new(name));
-        self.definitions.get(&key).copied()
-    }
-
     /// Get all forward declarations and their matching definitions.
     pub fn get_forward_to_def_mapping(&self) -> HashMap<DefId, DefId> {
         let mut mapping = HashMap::new();
@@ -281,6 +243,5 @@ fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
         DefKindTag::Const => "const",
         DefKindTag::Annotation => "annotation",
         DefKindTag::Bitmask => "bitmask",
-        DefKindTag::Module => "module",
     }
 }

@@ -269,6 +269,35 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     /// Process a union definition.
     pub fn process_union(&mut self, u: &UnionDef) -> DefId {
         let annotations = self.convert_annotations(&u.annotations, self.current_scope);
+
+        // Create a placeholder union declaration first
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: u.ident.clone(),
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+            annotations,
+            span: (u.ident.span),
+            kind: DefKind::Decl(Decl::Union),
+            flags: DefFlags::nil(),
+        });
+
+        // Register in scope immediately so self-references work
+        self.ctx
+            .context
+            .scopes
+            .add_definition(self.current_scope, u.ident.name.clone(), def_id);
+
+        // Register with the registry
+        self.ctx.registry.register_definition(
+            self.current_scope,
+            &u.ident,
+            DefKindTag::Union,
+            def_id,
+            &mut self.ctx.diagnostics,
+            &self.ctx.context,
+        );
+
+        // Now resolve discriminator type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         let disc = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| {
             // Use a default type on error
@@ -309,53 +338,19 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             );
         }
 
-        // Create scope and process branches
-        let scope = self.ctx.context.scopes.create_child_scope(
+        // Create scope for union members
+        let _scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             u.ident.name.clone(),
-            None,
+            Some(def_id),
         );
 
-        // Process union variants
+        // Process union variants (union is now in scope)
         let variants = self.process_union_variants(&u.fields, &disc);
 
-        // Create the complete union definition
-        let union_ty = UnionTy { disc, variants };
-
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: u.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: (u.ident.span),
-            kind: DefKind::Union(union_ty),
-            flags: DefFlags::nil(),
-        });
-
-        // Update the scope's def_id
-        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
-
-        // Register with the registry
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &u.ident,
-                DefKindTag::Union,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            // Register in scope only if registry registration succeeded
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                u.ident.name.clone(),
-                def_id,
-            );
-        }
+        // Update the definition with the actual union data
+        let def = self.ctx.context.definitions.get_mut(def_id);
+        def.kind = DefKind::Union(UnionTy { disc, variants });
 
         def_id
     }

@@ -29,7 +29,7 @@ use std::collections::HashSet;
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, Def, DefFlags, DefId, ExceptTy, StructTy, Ty, TyKind};
+use ic_hir::hir::{Ann, Def, DefFlags, DefId, ExceptTy, StructTy, Ty, TyKind, UnionTy};
 use ic_hir::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
@@ -180,6 +180,10 @@ impl<'a> Visitor<'a> for RecursiveType<'a> {
     fn visit_struct(&mut self, def: &'a Def, struct_ty: &'a StructTy) {
         self.check_struct(def, struct_ty);
         ic_hir::visit::walk_struct(self, struct_ty);
+    }
+
+    fn visit_union(&mut self, _def: &'a Def, union_ty: &'a UnionTy) {
+        ic_hir::visit::walk_union(self, union_ty);
     }
 
     fn visit_except(&mut self, def: &'a Def, except_ty: &'a ExceptTy) {

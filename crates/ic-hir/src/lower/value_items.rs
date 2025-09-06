@@ -25,18 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Processing for value items: constants, enums, bitmasks.
-
 use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
 
-// use super::utils::literal_to_numeric; // not used here; evaluation handled by ConstEvaluator
 use super::LoweringContext;
 use super::eval::ConstEvaluator;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::hir::{
-    Ann, AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
+    AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
     DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
 use crate::scope::ScopeId;

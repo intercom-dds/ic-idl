@@ -39,6 +39,7 @@ use ic_syntax::Item;
 use crate::Context;
 use crate::hir::{DefFlags, DefId, DefKind, Ty, TyKind, TypeId};
 
+mod annotations;
 mod builder;
 mod eval;
 mod initializers;

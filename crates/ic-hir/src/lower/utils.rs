@@ -33,20 +33,7 @@ use crate::hir::Numeric;
 
 /// Convert a path to a string for error messages.
 pub fn path_to_string(path: &Path) -> String {
-    let mut result = String::new();
-
-    if path.leading_colons.is_some() {
-        result.push_str("::");
-    }
-
-    for (i, segment) in path.segments.iter().enumerate() {
-        if i > 0 {
-            result.push_str("::");
-        }
-        result.push_str(&segment.name);
-    }
-
-    result
+    ic_syntax::util::path_name(path)
 }
 
 /// Convert AST literal to HIR numeric value.

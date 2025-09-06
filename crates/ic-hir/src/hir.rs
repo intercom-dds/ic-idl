@@ -339,8 +339,10 @@ pub struct AnnotationTy {
 pub struct AnnParam {
     /// Parameter name
     pub ident: Ident,
+
     /// Parameter type
     pub ty: Ty,
+
     /// Default value for the parameter
     pub default: Option<Numeric>,
 }
@@ -526,8 +528,10 @@ pub struct AliasTy {
 pub struct Ann {
     /// The annotation name
     pub ident: Ident,
+
     /// Reference to the @annotation definition
-    pub def_id: DefId,
+    pub def_id: Option<DefId>,
+
     /// Arguments passed to the annotation
     pub args: Vec<AnnArg>,
 }

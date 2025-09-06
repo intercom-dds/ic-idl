@@ -64,8 +64,9 @@ impl DuplicateAnnotations<'_> {
         let mut seen = HashSet::new();
 
         for ann in annotations {
-            let def = self.hir.context.type_of(ann.def_id);
-            if !(seen.insert(ann.def_id)
+            let Some(def_id) = ann.def_id else { continue };
+            let def = self.hir.context.type_of(def_id);
+            if !(seen.insert(def_id)
                 || def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc")
             {
                 if let Some(diag) = self.ctx.diag_span(

@@ -55,7 +55,7 @@ fn test_simple_annotation() {
     assert_eq!(struct_def.annotations[0].ident.name, "custom");
 
     // Verify the annotation resolves to the correct definition
-    let ann_def_id = struct_def.annotations[0].def_id;
+    let ann_def_id = struct_def.annotations[0].def_id.unwrap();
     let ann_def = result.context.definitions.get(ann_def_id);
     assert!(matches!(ann_def.kind, DefKind::Annotation(_)));
 }
@@ -116,7 +116,7 @@ fn test_qualified_annotation_path() {
     assert_eq!(struct_def.annotations[0].ident.name, "M::custom");
 
     // Verify it resolves to the annotation inside module M
-    let ann_def_id = struct_def.annotations[0].def_id;
+    let ann_def_id = struct_def.annotations[0].def_id.unwrap();
     let ann_def = result.context.definitions.get(ann_def_id);
     assert!(matches!(ann_def.kind, DefKind::Annotation(_)));
     assert_eq!(ann_def.ident.name, "custom");

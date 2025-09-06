@@ -77,10 +77,14 @@ impl RecursiveType<'_> {
             TyKind::Sequence { .. } | TyKind::Map { .. } => true,
             // Check if the field itself has @shared or @external
             _ => annotations.iter().any(|ann| {
-                let def = self.hir.context.type_of(ann.def_id);
-                // Check if it's a builtin annotation with the right name
-                def.flags.contains(DefFlags::IS_BUILTIN)
-                    && (def.ident.name == "shared" || def.ident.name == "external")
+                if let Some(def_id) = ann.def_id {
+                    let def = self.hir.context.type_of(def_id);
+                    // Check if it's a builtin annotation with the right name
+                    def.flags.contains(DefFlags::IS_BUILTIN)
+                        && (def.ident.name == "shared" || def.ident.name == "external")
+                } else {
+                    false
+                }
             }),
         }
     }

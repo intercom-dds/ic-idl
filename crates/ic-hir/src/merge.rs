@@ -1222,18 +1222,24 @@ impl HirMerger {
     fn update_annotation(&self, graph_index: usize, ann: &Ann) -> Ann {
         Ann {
             ident: ann.ident.clone(),
-            def_id: if let Some(&new_id) = self.def_id_maps[graph_index].get(&ann.def_id) {
-                new_id
-            } else {
-                // Check previous graphs
-                let mut found = None;
-                for i in 0..graph_index {
-                    if let Some(&new_id) = self.def_id_maps[i].get(&ann.def_id) {
-                        found = Some(new_id);
-                        break;
+            def_id: if let Some(def_id) = ann.def_id {
+                // Try to update the def_id if it exists
+                if let Some(&new_id) = self.def_id_maps[graph_index].get(&def_id) {
+                    Some(new_id)
+                } else {
+                    // Check previous graphs
+                    let mut found = None;
+                    for i in 0..graph_index {
+                        if let Some(&new_id) = self.def_id_maps[i].get(&def_id) {
+                            found = Some(new_id);
+                            break;
+                        }
                     }
+                    found.or(Some(def_id))
                 }
-                found.unwrap_or(ann.def_id)
+            } else {
+                // No def_id to update
+                None
             },
             args: ann
                 .args

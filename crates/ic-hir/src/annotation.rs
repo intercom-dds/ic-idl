@@ -943,7 +943,7 @@ mod tests {
                 name: name.to_string(),
                 span: ic_syntax::Span::default(),
             },
-            def_id: DefId::_do_not_use(),
+            def_id: None,
             args,
         }
     }

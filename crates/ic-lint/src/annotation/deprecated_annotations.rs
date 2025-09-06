@@ -62,7 +62,8 @@ impl<'a> Visitor<'a> for DeprecatedAnnotations<'a> {
     }
 
     fn visit_annotation(&mut self, ann: &'a Ann) {
-        let ann_def = self.hir.context.type_of(ann.def_id);
+        let Some(def_id) = ann.def_id else { return };
+        let ann_def = self.hir.context.type_of(def_id);
         if ann_def.flags.contains(DefFlags::IS_BUILTIN)
             && ann_def.ident.name == "shared"
             && let Some(diag) = self.ctx.diag_span(

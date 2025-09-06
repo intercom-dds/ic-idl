@@ -36,7 +36,7 @@ use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::hir::{
-    AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
+    Ann, AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
     DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
 use crate::scope::ScopeId;

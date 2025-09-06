@@ -48,6 +48,7 @@ mod type_items;
 mod type_resolver;
 mod utils;
 mod validator;
+mod value_annotations;
 mod value_items;
 
 pub use registry::DefinitionRegistry;

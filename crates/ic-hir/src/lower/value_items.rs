@@ -40,7 +40,7 @@ use crate::scope::ScopeId;
 
 /// Processes value items (constants, enums, bitmasks).
 pub struct ValueItemProcessor<'ctx> {
-    ctx: &'ctx mut LoweringContext,
+    pub(super) ctx: &'ctx mut LoweringContext,
     current_scope: ScopeId,
 }
 
@@ -74,12 +74,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             value: value.unwrap_or(Numeric::Null),
         };
 
+        // Convert annotations before the closure
+        let annotations = self.convert_annotations(&c.annotations, self.current_scope);
+
         // Now create the definition fully formed
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(), // TODO: Convert annotations
+            annotations,
             span: (ident.span),
             kind: DefKind::Const(const_ty),
             flags: DefFlags::nil(),
@@ -146,12 +149,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ty: underlying_type,
         };
 
+        // Convert annotations before the closure
+        let annotations = self.convert_annotations(&e.annotations, self.current_scope);
+
         // Create the enum definition
         let enum_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: e.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(), // TODO: Convert annotations
+            annotations,
             span: (e.ident.span),
             kind: DefKind::Enum(enum_ty),
             flags: DefFlags::nil(),
@@ -312,11 +318,14 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: Vec::new(), // Will be populated later
         };
 
+        // Convert annotations before the closure
+        let annotations = self.convert_annotations(&b.annotations, self.current_scope);
+
         let bitmask_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: b.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(), // TODO: Convert annotations
+            annotations,
             span: (b.ident.span),
             kind: DefKind::Bitmask(bitmask_ty),
             flags: DefFlags::nil(),
@@ -479,11 +488,14 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         // Create the bitset definition
         let bitset_ty = BitsetTy { parent, fields };
 
+        // Convert annotations before the closure
+        let annotations = self.convert_annotations(&b.annotations, self.current_scope);
+
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: b.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(), // TODO: Convert annotations
+            annotations,
             span: b.ident.span,
             kind: DefKind::Bitset(bitset_ty),
             flags: DefFlags::nil(),
@@ -507,12 +519,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             None,
         );
 
+        // Convert annotations before the closure
+        let annotations = self.convert_annotations(&a.annotations, self.current_scope);
+
         // Create a placeholder annotation definition first
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: a.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(), // TODO: Convert annotations
+            annotations,
             span: a.ident.span,
             kind: DefKind::Annotation(AnnotationTy {
                 params: Vec::new(),

@@ -64,10 +64,14 @@ fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {
     };
 
     let span = emit_span(&ann.ident.span);
+    let id = ann
+        .def_id
+        .map_or_else(|| "unknown".to_string(), |v| format!("{v:#02X?}"));
+
     leaf!(
         "{} adt(def={}) {span} {}",
         "ann".purple(),
-        format!("{:#02X?}", ann.def_id).blue(),
+        format!("{id}").blue(),
         ann_str.cyan(),
     )
 }

@@ -186,6 +186,12 @@ impl<'ctx> HirBuilder<'ctx> {
         // Save current scope and switch to module scope
         let prev_scope = self.current_scope;
 
+        // Convert annotations before the closure
+        let annotations = {
+            let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
+            processor.convert_annotations(&m.annotations, self.current_scope)
+        };
+
         // Create a placeholder module definition first
         let def_id = self
             .ctx
@@ -195,7 +201,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 id,
                 ident: m.ident.clone(),
                 parent: self.ctx.context.scopes.get_scope(prev_scope).def_id,
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations,
                 span: m.ident.span,
                 kind: crate::hir::DefKind::Module(crate::hir::ModuleTy {
                     definitions: Vec::new(), // Will be updated later

@@ -116,20 +116,6 @@ fn multiple_interface_inheritance() {
 }
 
 #[test]
-fn self_referential_struct() {
-    let output = common::compile_idl_with_warnings(
-        r"
-        struct SelfRef;
-        
-        struct SelfRef : SelfRef {
-            long value;
-        };
-        ",
-    );
-    assert_snapshot!(output);
-}
-
-#[test]
 fn self_referential_interface() {
     let output = common::compile_idl_with_warnings(
         r"

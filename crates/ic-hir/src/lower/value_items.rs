@@ -114,6 +114,29 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
     /// Process an enum definition.
     pub fn process_enum(&mut self, e: &EnumDef) -> DefId {
+        // Create and register the enum definition
+        let enum_id = self.create_enum_definition(e);
+
+        // Create a child scope for the enum to hold its enumerators
+        let enum_scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            e.ident.name.clone(),
+            Some(enum_id),
+        );
+
+        // Process enumerators
+        let fields = self.process_enumerators(e, enum_id, enum_scope);
+
+        // Update the enum definition with the collected fields
+        if let DefKind::Enum(ref mut enum_ty) = self.ctx.context.definitions.get_mut(enum_id).kind {
+            enum_ty.fields = fields;
+        }
+
+        enum_id
+    }
+
+    /// Create and register an enum definition.
+    fn create_enum_definition(&mut self, e: &EnumDef) -> DefId {
         // Enums always have underlying type of long
         let underlying_type = Ty {
             span: (e.ident.span),
@@ -159,103 +182,123 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             );
         }
 
-        // Create a child scope for the enum to hold its enumerators
-        let enum_scope = self.ctx.context.scopes.create_child_scope(
-            self.current_scope,
-            e.ident.name.clone(),
-            Some(enum_id),
-        );
+        enum_id
+    }
 
-        // Process enumerators
+    /// Process all enumerators in an enum.
+    fn process_enumerators(
+        &mut self,
+        e: &EnumDef,
+        enum_id: DefId,
+        enum_scope: ScopeId,
+    ) -> Vec<DefId> {
         let mut fields = Vec::new();
         let mut last_value = -1i64;
 
         for enumerator in &e.fields {
             // Calculate value
-            let value = if let Some(ref expr) = enumerator.value {
-                let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
-                if let Some(num) = eval.eval_numeric(expr) {
-                    match num {
-                        Numeric::Int32(v) => i64::from(v),
-                        Numeric::Int64(v) => v,
-                        Numeric::UInt32(v) => i64::from(v),
-                        Numeric::UInt64(v) => v as i64,
-                        _ => {
-                            self.ctx.diagnostics.error(
-                                "enum value must be an integer".to_string(),
-                                ic_diagnostic::Label::new(expr.span())
-                                    .message("expected integer value"),
-                            );
-                            0
-                        }
-                    }
-                } else {
-                    0
-                }
-            } else {
-                // Auto-increment
-                last_value += 1;
-                last_value
-            };
-
+            let value = self.calculate_enumerator_value(enumerator, &mut last_value);
             last_value = value;
 
-            // Create enumerator as a constant in the parent scope
-            let field_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-                id,
-                ident: enumerator.ident.clone(),
-                parent: Some(enum_id),
-                annotations: Vec::new(), // TODO: Convert annotations
-                span: (enumerator.ident.span),
-                kind: DefKind::Const(ConstTy {
-                    ty: Ty {
-                        span: (enumerator.ident.span),
-                        kind: TyKind::Adt(enum_id),
-                    },
-                    value: Numeric::Int32(value as i32),
-                }),
-                flags: DefFlags::nil(),
-            });
-
-            // Register enumerator through the registry to check for duplicates
-            if self
-                .ctx
-                .registry
-                .register_definition(
-                    self.current_scope,
-                    &enumerator.ident,
-                    DefKindTag::Const,
-                    field_id,
-                    &mut self.ctx.diagnostics,
-                    &self.ctx.context,
-                )
-                .is_some()
-            {
-                // Add to parent scope (for unscoped access like TWO)
-                self.ctx.context.scopes.add_definition(
-                    self.current_scope,
-                    enumerator.ident.name.clone(),
-                    field_id,
-                );
-
-                // Also add to enum's own scope (for scoped access like MyEnum::TWO)
-                self.ctx.context.scopes.add_definition(
-                    enum_scope,
-                    enumerator.ident.name.clone(),
-                    field_id,
-                );
+            // Create and register the enumerator
+            if let Some(field_id) = self.create_enumerator(enumerator, enum_id, value, enum_scope) {
+                fields.push(field_id);
             }
-
-            // Add to enum fields
-            fields.push(field_id);
         }
 
-        // Update the enum definition with the collected fields
-        if let DefKind::Enum(ref mut enum_ty) = self.ctx.context.definitions.get_mut(enum_id).kind {
-            enum_ty.fields = fields;
-        }
+        fields
+    }
 
-        enum_id
+    /// Calculate the value for an enumerator.
+    fn calculate_enumerator_value(
+        &mut self,
+        enumerator: &ic_syntax::Enumerator,
+        last_value: &mut i64,
+    ) -> i64 {
+        if let Some(ref expr) = enumerator.value {
+            let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
+            if let Some(num) = eval.eval_numeric(expr) {
+                match num {
+                    Numeric::Int32(v) => i64::from(v),
+                    Numeric::Int64(v) => v,
+                    Numeric::UInt32(v) => i64::from(v),
+                    Numeric::UInt64(v) => v as i64,
+                    _ => {
+                        self.ctx.diagnostics.error(
+                            "enum value must be an integer".to_string(),
+                            ic_diagnostic::Label::new(expr.span())
+                                .message("expected integer value"),
+                        );
+                        0
+                    }
+                }
+            } else {
+                0
+            }
+        } else {
+            // Auto-increment
+            *last_value += 1;
+            *last_value
+        }
+    }
+
+    /// Create an enumerator constant.
+    fn create_enumerator(
+        &mut self,
+        enumerator: &ic_syntax::Enumerator,
+        enum_id: DefId,
+        value: i64,
+        enum_scope: ScopeId,
+    ) -> Option<DefId> {
+        // Create enumerator as a constant
+        let field_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: enumerator.ident.clone(),
+            parent: Some(enum_id),
+            annotations: Vec::new(), // TODO: Convert annotations
+            span: (enumerator.ident.span),
+            kind: DefKind::Const(ConstTy {
+                ty: Ty {
+                    span: (enumerator.ident.span),
+                    kind: TyKind::Adt(enum_id),
+                },
+                value: Numeric::Int32(value as i32),
+            }),
+            flags: DefFlags::nil(),
+        });
+
+        // Register enumerator through the registry to check for duplicates
+        if self
+            .ctx
+            .registry
+            .register_definition(
+                self.current_scope,
+                &enumerator.ident,
+                DefKindTag::Const,
+                field_id,
+                &mut self.ctx.diagnostics,
+                &self.ctx.context,
+            )
+            .is_some()
+        {
+            // Add to parent scope (for unscoped access like TWO)
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                enumerator.ident.name.clone(),
+                field_id,
+            );
+
+            // Also add to enum's own scope (for scoped access like MyEnum::TWO)
+            self.ctx.context.scopes.add_definition(
+                enum_scope,
+                enumerator.ident.name.clone(),
+                field_id,
+            );
+
+            Some(field_id)
+        } else {
+            None
+        }
     }
 
     /// Process a bitmask definition.
@@ -393,9 +436,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         for field in &b.fields {
             // Evaluate the size expression
             let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
-            let size = if let Some(size) = evaluator.eval_nonneg_bound(&field.size) {
-                size
-            } else {
+            let Some(size) = evaluator.eval_nonneg_bound(&field.size) else {
                 self.ctx.diagnostics.error(
                     "bitfield size must be a non-negative constant expression".to_string(),
                     ic_diagnostic::Label::new(field.size.span())
@@ -484,9 +525,8 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
                     // Resolve the parameter type
                     let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-                    let ty = match resolver.resolve_type(&member.ty) {
-                        Some(ty) => ty,
-                        None => continue, // Error already reported
+                    let Some(ty) = resolver.resolve_type(&member.ty) else {
+                        continue; // Error already reported
                     };
 
                     // Evaluate default value if present

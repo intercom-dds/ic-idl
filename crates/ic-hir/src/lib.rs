@@ -26,6 +26,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! High-level Intermediate Representation (HIR) for IDL compilation.
+
+#![allow(clippy::cast_possible_truncation)] // We handle overflow appropriately
+#![allow(clippy::cast_possible_wrap)] // We handle overflow appropriately
+#![allow(clippy::cast_sign_loss)] // We handle sign conversion appropriately
+#![allow(clippy::cast_precision_loss)] // Expected for float conversions
+#![allow(clippy::cast_lossless)] // Explicit casts are clearer in this context
 //!
 //! This crate transforms the parse tree (AST) into a typed, resolved representation
 //! suitable for semantic analysis and code generation. The HIR resolves names,
@@ -63,7 +69,6 @@ pub use crate::ctx::Context;
 
 mod ctx;
 mod lower;
-mod lower2;
 
 /// Annotation processing and validation.
 pub mod annotation;
@@ -143,14 +148,14 @@ where
 {
     // For now, just skip builtins entirely
     let result = match input {
-        AstInput::User(ast) => lower2::lower(ast),
+        AstInput::User(ast) => lower::lower(ast),
         AstInput::WithBuiltins {
             builtins: _, // Skip builtins
             user,
             include_in_output: _,
         } => {
             // Just process user items only
-            lower2::lower(user)
+            lower::lower(user)
         }
     };
 

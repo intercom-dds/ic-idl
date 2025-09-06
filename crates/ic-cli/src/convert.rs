@@ -99,7 +99,7 @@ impl<T: Convert> Convert for Vec<T> {
     fn from_result(input: &[String]) -> Result<Self> {
         let mut values = vec![];
         for v in input {
-            values.push(Convert::from_result(&[v.to_string()])?);
+            values.push(Convert::from_result(std::slice::from_ref(v))?);
         }
         Ok(values)
     }

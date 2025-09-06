@@ -307,7 +307,7 @@ impl CommandLine {
                     if let Some(v) = sections.get_mut(v) {
                         v.push(opt);
                     } else {
-                        sections.insert(vec![v.to_string()], vec![opt]);
+                        sections.insert(vec![v.clone()], vec![opt]);
                     }
                 }
             }
@@ -356,7 +356,7 @@ impl CommandLine {
                 return stem.to_string_lossy().to_string();
             }
         }
-        self.name.to_string()
+        self.name.clone()
     }
 
     fn format_args<P>(&self, filter: P) -> Vec<String>

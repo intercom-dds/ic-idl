@@ -350,7 +350,7 @@ impl HirMerger {
                 // we need to find its parent through the scope hierarchy
                 if old_scope != graph.context.scopes.root() {
                     let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
-                    if let Some(scope_def_id) = old_scope_data.def_id {
+                    if let Some(_scope_def_id) = old_scope_data.def_id {
                         // This scope belongs to a definition, record for fixup
                         scope_parent_fixups.push((new_def_id, old_scope));
                     }
@@ -360,103 +360,19 @@ impl HirMerger {
 
         // Fix up parent relationships from scope hierarchy
         for (new_def_id, old_scope) in scope_parent_fixups {
-            let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
-            if let Some(old_parent_def_id) = old_scope_data.def_id {
-                if let Some(mapped_parent) = self.map_def_id(graph_index, Some(old_parent_def_id)) {
-                    // Update the child's parent pointer
-                    let def = self.new_context.definitions.get_mut(new_def_id);
-                    def.parent = Some(mapped_parent);
-
-                    // Add the child to the parent's definitions list
-                    match &mut self.new_context.definitions.get_mut(mapped_parent).kind {
-                        DefKind::Module(module) => {
-                            if !module.definitions.contains(&new_def_id) {
-                                module.definitions.push(new_def_id);
-                            }
-                        }
-                        DefKind::Interface(interface) => {
-                            if !interface.definitions.contains(&new_def_id) {
-                                interface.definitions.push(new_def_id);
-                            }
-                        }
-                        DefKind::Annotation(annotation) => {
-                            if !annotation.types.contains(&new_def_id) {
-                                annotation.types.push(new_def_id);
-                            }
-                        }
-                        DefKind::Valuetype(valuetype) => {
-                            if !valuetype.definitions.contains(&new_def_id) {
-                                valuetype.definitions.push(new_def_id);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
+            self.fix_scope_parent(graph_index, &graph.context, new_def_id, old_scope);
         }
 
         // Now fix up all parent relationships from parent field
         for (new_def_id, original_parent) in parent_fixups {
-            if let Some(mapped_parent) = self.map_def_id(graph_index, original_parent) {
-                // Update the child's parent pointer
-                let def = self.new_context.definitions.get_mut(new_def_id);
-                def.parent = Some(mapped_parent);
-
-                // Add the child to the parent's definitions list
-                match &mut self.new_context.definitions.get_mut(mapped_parent).kind {
-                    DefKind::Module(module) => {
-                        if !module.definitions.contains(&new_def_id) {
-                            module.definitions.push(new_def_id);
-                        }
-                    }
-                    DefKind::Interface(interface) => {
-                        if !interface.definitions.contains(&new_def_id) {
-                            interface.definitions.push(new_def_id);
-                        }
-                    }
-                    DefKind::Annotation(annotation) => {
-                        if !annotation.types.contains(&new_def_id) {
-                            annotation.types.push(new_def_id);
-                        }
-                    }
-                    DefKind::Valuetype(valuetype) => {
-                        if !valuetype.definitions.contains(&new_def_id) {
-                            valuetype.definitions.push(new_def_id);
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            self.fix_parent_relationship(graph_index, new_def_id, original_parent);
         }
 
         // Add top-level definitions to order
-        for &def_id in &graph.order {
-            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
-                // Only add to order if this definition wasn't deduplicated
-                // Check if this new_def_id was created in this graph or was mapped to an existing one
-                let was_deduplicated = self.def_id_maps[..graph_index]
-                    .iter()
-                    .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id));
-
-                if !was_deduplicated && !self.order.contains(&new_def_id) {
-                    self.order.push(new_def_id);
-                }
-            }
-        }
+        self.add_to_order(graph_index, &graph.order);
 
         // Add built-in definitions to builtin_order
-        for &def_id in &graph.builtin_order {
-            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
-                // Only add to builtin_order if this definition wasn't deduplicated
-                let was_deduplicated = self.def_id_maps[..graph_index]
-                    .iter()
-                    .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id));
-
-                if !was_deduplicated && !self.builtin_order.contains(&new_def_id) {
-                    self.builtin_order.push(new_def_id);
-                }
-            }
-        }
+        self.add_to_builtin_order(graph_index, &graph.builtin_order);
 
         // Third pass: update scope def_ids now that definitions are copied
         self.update_scope_def_ids(graph_index);
@@ -466,6 +382,94 @@ impl HirMerger {
 
         // Fifth pass: update all references in the copied definitions
         self.update_references(graph_index);
+    }
+
+    fn fix_scope_parent(
+        &mut self,
+        graph_index: usize,
+        old_context: &Context,
+        new_def_id: DefId,
+        old_scope: ScopeId,
+    ) {
+        let old_scope_data = &old_context.scopes.scopes[old_scope.0];
+        if let Some(old_parent_def_id) = old_scope_data.def_id {
+            if let Some(mapped_parent) = self.map_def_id(graph_index, Some(old_parent_def_id)) {
+                self.update_parent_child_relationship(new_def_id, mapped_parent);
+            }
+        }
+    }
+
+    fn fix_parent_relationship(
+        &mut self,
+        graph_index: usize,
+        new_def_id: DefId,
+        original_parent: Option<DefId>,
+    ) {
+        if let Some(mapped_parent) = self.map_def_id(graph_index, original_parent) {
+            self.update_parent_child_relationship(new_def_id, mapped_parent);
+        }
+    }
+
+    fn update_parent_child_relationship(&mut self, child_id: DefId, parent_id: DefId) {
+        // Update the child's parent pointer
+        let def = self.new_context.definitions.get_mut(child_id);
+        def.parent = Some(parent_id);
+
+        // Add the child to the parent's definitions list
+        match &mut self.new_context.definitions.get_mut(parent_id).kind {
+            DefKind::Module(module) => {
+                if !module.definitions.contains(&child_id) {
+                    module.definitions.push(child_id);
+                }
+            }
+            DefKind::Interface(interface) => {
+                if !interface.definitions.contains(&child_id) {
+                    interface.definitions.push(child_id);
+                }
+            }
+            DefKind::Annotation(annotation) => {
+                if !annotation.types.contains(&child_id) {
+                    annotation.types.push(child_id);
+                }
+            }
+            DefKind::Valuetype(valuetype) => {
+                if !valuetype.definitions.contains(&child_id) {
+                    valuetype.definitions.push(child_id);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn add_to_order(&mut self, graph_index: usize, order: &[DefId]) {
+        for &def_id in order {
+            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
+                if self.is_new_definition(graph_index, new_def_id)
+                    && !self.order.contains(&new_def_id)
+                {
+                    self.order.push(new_def_id);
+                }
+            }
+        }
+    }
+
+    fn add_to_builtin_order(&mut self, graph_index: usize, order: &[DefId]) {
+        for &def_id in order {
+            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
+                if self.is_new_definition(graph_index, new_def_id)
+                    && !self.builtin_order.contains(&new_def_id)
+                {
+                    self.builtin_order.push(new_def_id);
+                }
+            }
+        }
+    }
+
+    fn is_new_definition(&self, graph_index: usize, new_def_id: DefId) -> bool {
+        // Check if this new_def_id was created in this graph or was mapped to an existing one
+        !self.def_id_maps[..graph_index]
+            .iter()
+            .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id))
     }
 
     /// Copies a definition from an old context to the new merged context.
@@ -509,14 +513,12 @@ impl HirMerger {
                             if let Some(&mapped_parent) =
                                 self.def_id_maps[graph_index].get(&parent_def_id)
                             {
-                                match &mut self.new_context.definitions.get_mut(mapped_parent).kind
+                                if let DefKind::Module(module) =
+                                    &mut self.new_context.definitions.get_mut(mapped_parent).kind
                                 {
-                                    DefKind::Module(module) => {
-                                        if !module.definitions.contains(&existing_def_id) {
-                                            module.definitions.push(existing_def_id);
-                                        }
+                                    if !module.definitions.contains(&existing_def_id) {
+                                        module.definitions.push(existing_def_id);
                                     }
-                                    _ => {}
                                 }
                             }
                         }

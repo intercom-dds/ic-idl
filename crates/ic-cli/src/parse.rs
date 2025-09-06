@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
                     arg.yellow(),
                 )));
             }
-            arg.to_string()
+            arg.clone()
         };
 
         self.find_opt(name)?.insert_value(value);

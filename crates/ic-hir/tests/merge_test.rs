@@ -752,6 +752,7 @@ module TestModule {
 }
 
 #[test]
+#[allow(clippy::similar_names)]
 fn test_merge_complex_parent_relationships() {
     // Test more complex parent relationships with nested modules
     let mut source_map = SourceMap::default();

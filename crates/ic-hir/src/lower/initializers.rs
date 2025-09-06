@@ -58,9 +58,8 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
                 .context
                 .definitions
                 .get(struct_def_id);
-            let struct_ty_info = match &struct_def.kind {
-                DefKind::Struct(s) => s,
-                _ => return None,
+            let DefKind::Struct(struct_ty_info) = &struct_def.kind else {
+                return None;
             };
             (
                 struct_def.ident.name.clone(),

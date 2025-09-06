@@ -61,14 +61,13 @@ fn test_const_enum_reference() {
                 assert_eq!(ref_def.ident.name, "ZERO", "MY_CONST should reference ZERO");
                 found_my_const = true;
             }
-        } else if def.ident.name == "INT_CONST" {
-            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
-                && let ic_hir::hir::Numeric::Const(ref_id) = const_ty.value
-            {
-                let ref_def = result.context.definitions.get(ref_id);
-                assert_eq!(ref_def.ident.name, "TWO", "INT_CONST should reference TWO");
-                found_int_const = true;
-            }
+        } else if def.ident.name == "INT_CONST"
+            && let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
+            && let ic_hir::hir::Numeric::Const(ref_id) = const_ty.value
+        {
+            let ref_def = result.context.definitions.get(ref_id);
+            assert_eq!(ref_def.ident.name, "TWO", "INT_CONST should reference TWO");
+            found_int_const = true;
         }
     }
 
@@ -100,9 +99,8 @@ fn test_const_ref_to_const() {
                 if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
                     assert_eq!(val, 150, "DERIVED should have value 150 (BASE + 50)");
                     return;
-                } else {
-                    panic!("DERIVED should be Int32(150), but got {:?}", const_ty.value);
                 }
+                panic!("DERIVED should be Int32(150), but got {:?}", const_ty.value);
             }
         }
     }

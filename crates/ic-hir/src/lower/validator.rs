@@ -30,17 +30,16 @@
 use super::LoweringContext;
 
 /// Performs semantic validation on the resolved HIR.
-pub struct Validator<'ctx> {
-    ctx: &'ctx LoweringContext,
-}
+pub struct Validator {}
 
-impl<'ctx> Validator<'ctx> {
-    pub fn new(ctx: &'ctx LoweringContext) -> Self {
-        Self { ctx }
+impl Validator {
+    pub fn new(_ctx: &LoweringContext) -> Self {
+        Self {}
     }
 
     /// Run all validation checks.
-    pub fn validate(&mut self) {
+    #[allow(clippy::unused_self)]
+    pub fn validate(&self) {
         // TODO: Implement validation
         // - Circular interface inheritance
         // - Inheritance from incomplete or wrong-kind parents

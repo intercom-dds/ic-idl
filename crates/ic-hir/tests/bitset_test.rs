@@ -217,7 +217,7 @@ fn test_bitset_automatic_types() {
 
 #[test]
 fn test_bitfield_type_determination() {
-    let idl = r#"
+    let idl = r"
 bitset TestBitset {
     bitfield<1> flag1;         // Should be bool
     bitfield<1, boolean> flag2; // Explicitly bool
@@ -227,7 +227,7 @@ bitset TestBitset {
     bitfield<17> large_val;    // Should be uint32
     bitfield<33> xlarge_val;   // Should be uint64
 };
-"#;
+";
 
     let (hir, _, _) = common::parse_and_resolve(idl);
 

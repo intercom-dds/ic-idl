@@ -30,9 +30,9 @@
 use ic_diagnostic::{Label, error_span, warn_span};
 use ic_syntax::{Path, Type as AstType};
 
+use super::LoweringContext;
 use super::eval::ConstEvaluator;
 use super::utils::{path_span, path_to_string};
-use super::{LoweringContext, ResolveMode};
 use crate::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
@@ -126,7 +126,7 @@ impl<'ctx> TypeResolver<'ctx> {
         // Resolve the path
         if let Some(def_id) = self.ctx.scopes.resolve_path(&self.ctx.context, start, path) {
             let def = self.ctx.context.definitions.get(def_id);
-            if self.is_type_definition(&def.kind) {
+            if Self::is_type_definition(&def.kind) {
                 // Check for case sensitivity issues on the entire path
                 self.check_case_consistency(path, def_id);
 
@@ -180,24 +180,10 @@ impl<'ctx> TypeResolver<'ctx> {
     }
 
     /// Check if a `DefKind` represents a type definition.
-    fn is_type_definition(&self, kind: &DefKind) -> bool {
+    fn is_type_definition(kind: &DefKind) -> bool {
         !matches!(
             kind,
             DefKind::Annotation(_) | DefKind::Module(_) | DefKind::Const(_)
-        )
-    }
-
-    /// Resolve a type in the context of an interface (for inherited type visibility).
-    pub fn resolve_in_interface_context(
-        &mut self,
-        interface_id: DefId,
-        type_name: &str,
-    ) -> Option<DefId> {
-        self.ctx.scopes.resolve_name(
-            &self.ctx.context,
-            self.current_scope,
-            type_name,
-            ResolveMode::InsideInterface(interface_id),
         )
     }
 

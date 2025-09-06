@@ -53,10 +53,10 @@ fn test_string_to_int_assignment() {
 
 #[test]
 fn test_bool_to_string_assignment() {
-    let input = r#"
+    let input = r"
         const boolean MY_BOOL = true;
         const string FOO = MY_BOOL;
-    "#;
+    ";
 
     let (result, source_map, _) = common::parse_and_resolve(input);
 
@@ -77,11 +77,11 @@ fn test_bool_to_string_assignment() {
 
 #[test]
 fn test_valid_numeric_promotion() {
-    let input = r#"
+    let input = r"
         const int32 MY_INT = 100;
         const int64 BIG_INT = MY_INT;
         const double MY_DOUBLE = MY_INT;
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(input);
 
@@ -96,9 +96,9 @@ fn test_valid_numeric_promotion() {
 #[test]
 fn test_out_of_range_direct_literal() {
     // This tests direct literal out-of-range checking
-    let input = r#"
+    let input = r"
         const octet SMALL = 256;
-    "#;
+    ";
 
     let (result, source_map, _) = common::parse_and_resolve(input);
 
@@ -120,10 +120,10 @@ fn test_out_of_range_direct_literal() {
 #[test]
 fn test_const_to_smaller_type() {
     // This tests assigning a constant to a smaller type where the value fits
-    let input = r#"
+    let input = r"
         const int32 SMALL_NUM = 100;
         const octet BYTE = SMALL_NUM;
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(input);
 
@@ -138,10 +138,10 @@ fn test_const_to_smaller_type() {
 #[test]
 fn test_const_to_smaller_type_overflow() {
     // This tests assigning a constant that would wrap/overflow
-    let input = r#"
+    let input = r"
         const int32 BIG_NUM = 256;
         const octet SMALL = BIG_NUM;
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(input);
 

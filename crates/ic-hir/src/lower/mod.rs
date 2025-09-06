@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,107 +25,33 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Lowering from AST to HIR.
+//! New lowering implementation from AST to HIR.
 //!
-//! The lowering process uses a single-pass approach for resolution,
-//! followed by separate phases for evaluation, type checking, and validation.
+//! This module implements a simplified 2-phase lowering process:
+//! 1. Build & Resolve - Process items in order, creating definitions and resolving types
+//! 2. Validation - Semantic validation on the complete HIR
 //!
-//! ## Phases
-//!
-//! 1. **Resolution**: Processes items in order, creating HIR nodes and
-//!    resolving type references as they appear
-//! 2. **Evaluation**: Evaluates constant expressions and enum values
-//! 3. **Reference Update**: Updates type references from forward declarations to definitions
-//! 4. **Type Checking**: Validates that values match their declared types
-//! 5. **Validation**: Performs semantic validation and consistency checks
-//!
-//! ## Design Principles
-//!
-//! - The resolver processes definitions in order, allowing forward references
-//! - Errors are collected, not thrown, to provide comprehensive diagnostics
-//! - Each phase after collection/resolution can be tested independently
-//! - Parent relationships and cross-references are maintained during resolution
+//! A small intermediate pass updates forward declaration references to point to definitions.
 
 use ic_diagnostic::Diag;
 use ic_syntax::Item;
 
 use crate::Context;
-use crate::hir::{DefId, TypeId};
+use crate::hir::{DefId, DefKind, Ty, TyKind, TypeId};
 
-mod builtin;
-mod definition_builder;
-mod definition_registry;
-mod evaluate;
-mod member_builder;
-mod parent_validator;
-mod resolve;
-mod typecheck;
-mod update_refs;
-mod validate;
+mod builder;
+mod eval;
+mod initializers;
+mod registry;
+mod scope_manager;
+mod type_items;
+mod type_resolver;
+mod utils;
+mod validator;
+mod value_items;
 
-// pub use builtin::{lower_with_builtin_context, lower_with_builtins};
-
-/// Converts an annotation argument value (expression) to a Numeric value
-fn convert_annotation_value(
-    expr: &ic_syntax::Expr,
-    resolver: &mut resolve::Resolver,
-    annotation_def_id: Option<DefId>,
-) -> crate::hir::Numeric {
-    match expr {
-        ic_syntax::Expr::Literal(lit) => match &lit.value {
-            ic_syntax::LiteralValue::Bool(b) => crate::hir::Numeric::Bool(*b),
-            ic_syntax::LiteralValue::Int(i) =>
-            {
-                #[allow(clippy::cast_possible_truncation)]
-                crate::hir::Numeric::Int32(*i as i32)
-            }
-            ic_syntax::LiteralValue::Float(f) => crate::hir::Numeric::Double(*f),
-            ic_syntax::LiteralValue::String(s) => crate::hir::Numeric::String(s.clone()),
-            _ => crate::hir::Numeric::Null,
-        },
-        ic_syntax::Expr::Path(path) => {
-            // For annotation arguments, first try to resolve in the annotation's own scope
-            if let Some(ann_def_id) = annotation_def_id {
-                if let Some(def_id) = resolver.resolve_path_in_annotation_scope(path, ann_def_id) {
-                    return crate::hir::Numeric::Const(def_id);
-                }
-            }
-
-            // Then try to resolve in the current scope
-            if let Some(def_id) = resolver.resolve_path(path) {
-                // Return a reference to the constant - the actual value will be resolved
-                // during expression evaluation phase
-                crate::hir::Numeric::Const(def_id)
-            } else {
-                // Handle enum-qualified paths like foo::Status::NOT_FOUND
-                // where foo::Status is the enum type and NOT_FOUND is the enumerator
-                if path.segments.len() >= 2 {
-                    // Try to resolve all but the last segment as the enum type
-                    let enum_path = ic_syntax::Path {
-                        leading_colons: path.leading_colons,
-                        segments: path.segments[..path.segments.len() - 1].to_vec(),
-                    };
-
-                    if let Some(enum_def_id) = resolver.resolve_path(&enum_path) {
-                        let enum_def = resolver.get_definition(enum_def_id);
-                        if let crate::hir::DefKind::Enum(enum_ty) = &enum_def.kind {
-                            // Look for the enumerator in this enum
-                            let enumerator_name = &path.segments.last().unwrap().name;
-                            for &field_id in &enum_ty.fields {
-                                let field_def = resolver.get_definition(field_id);
-                                if field_def.ident.name == *enumerator_name {
-                                    return crate::hir::Numeric::Const(field_id);
-                                }
-                            }
-                        }
-                    }
-                }
-                crate::hir::Numeric::Null
-            }
-        }
-        _ => crate::hir::Numeric::Null, // Other expressions need evaluation
-    }
-}
+pub use registry::DefinitionRegistry;
+pub use scope_manager::ScopeTree;
 
 /// Result of the lowering process.
 pub struct LoweringResult {
@@ -145,42 +71,257 @@ pub struct LoweringResult {
     pub warnings: Vec<Diag>,
 }
 
-/// Lowers AST items to HIR through multiple phases.
+/// Lowers AST items to HIR through the new 2-phase process.
 pub fn lower<I>(ast: I) -> LoweringResult
 where
     I: IntoIterator<Item = Item>,
 {
     let ast_items: Vec<Item> = ast.into_iter().collect();
-    let mut errors = Vec::new();
-    let mut warnings = Vec::new();
 
-    // Resolution phase
-    let mut context = Context::new();
-    let lowerer = resolve::Resolver::new(&mut context);
-    let (order, mut phase_errors, mut phase_warnings) = lowerer.process(&ast_items);
-    errors.append(&mut phase_errors);
-    warnings.append(&mut phase_warnings);
+    // Phase 1: Build & Resolve
+    let mut context = LoweringContext::new();
+    let mut builder = builder::HirBuilder::new(&mut context);
+    builder.build(&ast_items);
 
-    // Evaluate constant expressions
-    let mut phase_errors = evaluate::evaluate_expressions(&mut context, &ast_items);
-    errors.append(&mut phase_errors);
+    // Intermediate pass: Update forward references
+    update_forward_references(&mut context);
 
-    // Update type references from forward declarations to definitions
-    update_refs::update_forward_references(&mut context);
+    // Check for undefined forward declarations
+    check_undefined_forward_decls(&mut context);
 
-    // Type check values against their declared types
-    let mut phase_errors = typecheck::typecheck_hir(&context, &order);
-    errors.append(&mut phase_errors);
+    // Phase 2: Validation
+    let validator = validator::Validator::new(&context);
+    validator.validate();
 
-    // Validate the HIR
-    let mut phase_errors = validate::validate_hir(&context, &order);
-    errors.append(&mut phase_errors);
+    // Extract results
+    let LoweringContext {
+        context,
+        order,
+        diagnostics,
+        ..
+    } = context;
 
     LoweringResult {
         context,
         order,
         builtin_order: Vec::new(),
-        errors,
-        warnings,
+        errors: diagnostics.errors,
+        warnings: diagnostics.warnings,
+    }
+}
+
+/// Core context for the lowering process.
+pub(crate) struct LoweringContext {
+    /// The HIR context being built.
+    pub context: Context,
+
+    /// Scope tree for name resolution.
+    pub scopes: ScopeTree,
+
+    /// Central registry for declarations and definitions.
+    pub registry: DefinitionRegistry,
+
+    /// Diagnostics collected during lowering.
+    pub diagnostics: Diagnostics,
+
+    /// Top-level type IDs in order.
+    pub order: Vec<TypeId>,
+}
+
+impl LoweringContext {
+    fn new() -> Self {
+        let context = Context::new();
+        let root_scope = context.scopes.root();
+
+        Self {
+            context,
+            scopes: ScopeTree::new(root_scope),
+            registry: DefinitionRegistry::new(),
+            diagnostics: Diagnostics::new(),
+            order: Vec::new(),
+        }
+    }
+}
+
+/// Diagnostics collection during lowering.
+pub(crate) struct Diagnostics {
+    pub errors: Vec<Diag>,
+    pub warnings: Vec<Diag>,
+}
+
+impl Diagnostics {
+    fn new() -> Self {
+        Self {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+        }
+    }
+
+    pub fn error(&mut self, message: String, label: ic_diagnostic::Label) {
+        use ic_diagnostic::error_span;
+        self.errors.push(error_span(message, label));
+    }
+}
+
+/// Updates forward declaration references to point to definitions.
+fn update_forward_references(ctx: &mut LoweringContext) {
+    // Build mapping from forward decl DefIds to definition DefIds
+    let mapping = ctx.registry.get_forward_to_def_mapping();
+
+    if mapping.is_empty() {
+        return; // No forward references to update
+    }
+
+    // Update all definitions to replace forward references
+    let all_defs: Vec<DefId> = ctx.context.definitions.iter().map(|(id, _)| id).collect();
+
+    for def_id in all_defs {
+        update_def_references(&mut ctx.context, def_id, &mapping);
+    }
+}
+
+/// Update references in a single definition.
+fn update_def_references(
+    ctx: &mut crate::Context,
+    def_id: DefId,
+    mapping: &std::collections::HashMap<DefId, DefId>,
+) {
+    let def = ctx.definitions.get_mut(def_id);
+
+    match &mut def.kind {
+        DefKind::Struct(s) => {
+            // Update parent reference if it points to a forward decl
+            if let Some(parent) = &mut s.parent {
+                if let Some(new_id) = mapping.get(parent) {
+                    *parent = *new_id;
+                }
+            }
+
+            // Update member types
+            for member in &mut s.members {
+                update_type_references(&mut member.ty, mapping);
+            }
+        }
+        DefKind::Union(u) => {
+            // Update discriminator type
+            update_type_references(&mut u.disc, mapping);
+
+            // Update variant types
+            for variant in &mut u.variants {
+                update_type_references(&mut variant.ty, mapping);
+            }
+        }
+        DefKind::Interface(i) => {
+            // Update parent interfaces
+            for parent in &mut i.parents {
+                if let Some(new_id) = mapping.get(parent) {
+                    *parent = *new_id;
+                }
+            }
+
+            // Update prototypes
+            for proto in &mut i.prototypes {
+                update_type_references(&mut proto.ty, mapping);
+                for param in &mut proto.params {
+                    update_type_references(&mut param.ty, mapping);
+                }
+            }
+
+            // Update attributes
+            for attr in &mut i.attributes {
+                update_type_references(&mut attr.ty, mapping);
+            }
+        }
+        DefKind::Valuetype(v) => {
+            // Update parent reference
+            if let Some(parent) = &mut v.parent {
+                if let Some(new_id) = mapping.get(parent) {
+                    *parent = *new_id;
+                }
+            }
+
+            // Update supports reference
+            if let Some(supports) = &mut v.supports {
+                if let Some(new_id) = mapping.get(supports) {
+                    *supports = *new_id;
+                }
+            }
+
+            // Update members
+            for member in &mut v.members {
+                update_type_references(&mut member.ty, mapping);
+            }
+
+            // Update prototypes and attributes
+            for proto in &mut v.prototypes {
+                update_type_references(&mut proto.ty, mapping);
+                for param in &mut proto.params {
+                    update_type_references(&mut param.ty, mapping);
+                }
+            }
+
+            for attr in &mut v.attributes {
+                update_type_references(&mut attr.ty, mapping);
+            }
+        }
+        DefKind::Alias(a) => {
+            update_type_references(&mut a.ty, mapping);
+        }
+        DefKind::Const(c) => {
+            update_type_references(&mut c.ty, mapping);
+        }
+        DefKind::Enum(e) => {
+            update_type_references(&mut e.ty, mapping);
+        }
+        DefKind::Bitmask(b) => {
+            update_type_references(&mut b.ty, mapping);
+        }
+        DefKind::Except(e) => {
+            for member in &mut e.members {
+                update_type_references(&mut member.ty, mapping);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Update type references to replace forward decl `DefIds` with definition `DefIds`.
+fn update_type_references(ty: &mut Ty, mapping: &std::collections::HashMap<DefId, DefId>) {
+    match &mut ty.kind {
+        TyKind::Adt(def_id) => {
+            if let Some(new_id) = mapping.get(def_id) {
+                *def_id = *new_id;
+            }
+        }
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
+            update_type_references(ty, mapping);
+        }
+        TyKind::Map { key, elem, .. } => {
+            update_type_references(key, mapping);
+            update_type_references(elem, mapping);
+        }
+        _ => {}
+    }
+}
+
+/// Check for undefined forward declarations.
+fn check_undefined_forward_decls(ctx: &mut LoweringContext) {
+    use ic_diagnostic::{Label, error_span};
+
+    // Get the mapping to see which forward declarations have definitions
+    let mapping = ctx.registry.get_forward_to_def_mapping();
+
+    // Check all forward declarations to see if they have definitions
+    for def_id in &ctx.order {
+        let def = ctx.context.definitions.get(*def_id);
+        if let DefKind::Decl(_) = &def.kind {
+            // This is a forward declaration - check if it has a matching definition
+            if !mapping.contains_key(def_id) {
+                ctx.diagnostics.errors.push(error_span(
+                    format!("type `{}` is declared but not defined", def.ident.name),
+                    Label::new(def.ident.span).message("declared here"),
+                ));
+            }
+        }
     }
 }

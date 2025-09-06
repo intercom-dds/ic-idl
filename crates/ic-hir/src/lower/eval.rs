@@ -203,37 +203,45 @@ fn usual_int_conv(lhs: IntRank, rhs: IntRank) -> IntRank {
         }
         // Mixed signedness: follow C rules
         (true, false) => {
-            if a_rank > b_rank {
-                if can_int_represent_all(rhs_prom, lhs_prom) {
-                    // Signed can represent all unsigned values
-                    lhs_prom
-                } else {
-                    // Convert to unsigned of signed's rank
+            match a_rank.cmp(&b_rank) {
+                std::cmp::Ordering::Greater => {
+                    if can_int_represent_all(rhs_prom, lhs_prom) {
+                        // Signed can represent all unsigned values
+                        lhs_prom
+                    } else {
+                        // Convert to unsigned of signed's rank
+                        unsigned_of_rank(a_rank)
+                    }
+                }
+                std::cmp::Ordering::Less => {
+                    // Unsigned has higher rank
+                    rhs_prom
+                }
+                std::cmp::Ordering::Equal => {
+                    // Same rank: use unsigned
                     unsigned_of_rank(a_rank)
                 }
-            } else if a_rank < b_rank {
-                // Unsigned has higher rank
-                rhs_prom
-            } else {
-                // Same rank: use unsigned
-                unsigned_of_rank(a_rank)
             }
         }
         (false, true) => {
-            if b_rank > a_rank {
-                if can_int_represent_all(lhs_prom, rhs_prom) {
-                    // Signed can represent all unsigned values
-                    rhs_prom
-                } else {
-                    // Convert to unsigned of signed's rank
-                    unsigned_of_rank(b_rank)
+            match b_rank.cmp(&a_rank) {
+                std::cmp::Ordering::Greater => {
+                    if can_int_represent_all(lhs_prom, rhs_prom) {
+                        // Signed can represent all unsigned values
+                        rhs_prom
+                    } else {
+                        // Convert to unsigned of signed's rank
+                        unsigned_of_rank(b_rank)
+                    }
                 }
-            } else if b_rank < a_rank {
-                // Unsigned has higher rank
-                lhs_prom
-            } else {
-                // Same rank: use unsigned
-                unsigned_of_rank(a_rank)
+                std::cmp::Ordering::Less => {
+                    // Unsigned has higher rank
+                    lhs_prom
+                }
+                std::cmp::Ordering::Equal => {
+                    // Same rank: use unsigned
+                    unsigned_of_rank(a_rank)
+                }
             }
         }
     }
@@ -268,19 +276,11 @@ fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
             Some(TyTag::Int(rank, is_signed(rank)))
         }
         (Bool(_), Bool(_)) => Some(TyTag::Int(INT_RANK, true)),
-        (Bool(_), Int(_, rb)) => {
+        (Bool(_), Int(_, rb) | UInt(_, rb)) => {
             let rank = usual_int_conv(INT_RANK, *rb);
             Some(TyTag::Int(rank, is_signed(rank)))
         }
-        (Int(_, ra), Bool(_)) => {
-            let rank = usual_int_conv(*ra, INT_RANK);
-            Some(TyTag::Int(rank, is_signed(rank)))
-        }
-        (Bool(_), UInt(_, rb)) => {
-            let rank = usual_int_conv(INT_RANK, *rb);
-            Some(TyTag::Int(rank, is_signed(rank)))
-        }
-        (UInt(_, ra), Bool(_)) => {
+        (Int(_, ra) | UInt(_, ra), Bool(_)) => {
             let rank = usual_int_conv(*ra, INT_RANK);
             Some(TyTag::Int(rank, is_signed(rank)))
         }
@@ -302,7 +302,7 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
                 // For unsigned target, wrap negative values using two's complement
                 let bits = rank_bits(r);
                 let mask: u128 = if bits >= 128 { !0 } else { (1u128 << bits) - 1 };
-                let unsigned_val = (v as i128 as u128) & mask;
+                let unsigned_val = (v as u128) & mask;
                 Ok(UInt(unsigned_val, r))
             }
         }
@@ -381,12 +381,12 @@ where
 }
 
 // Per-class operation implementations after casting to common type
-fn add_int(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => {
-            handle_signed_overflow(x, y, r, |a, b| a.checked_add(b), u128::wrapping_add)
+fn add_int(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(y, _)) => {
+            handle_signed_overflow(x, y, rank, i128::checked_add, u128::wrapping_add)
         }
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_add(y), r)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_add(y), rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
@@ -416,7 +416,8 @@ fn check_float_to_int_precision_loss(
 
                 if is_int_type {
                     let truncated = float_val.trunc();
-                    if *float_val != truncated {
+                    // Check if the fractional part is non-zero
+                    if (float_val - truncated).abs() > f64::EPSILON {
                         diagnostics.warnings.push(ic_diagnostic::warn_span(
                             format!(
                                 "implicit conversion from 'double' to '{}' changes value from {} \
@@ -434,110 +435,110 @@ fn check_float_to_int_precision_loss(
     }
 }
 
-fn add_float(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x + y, r)),
+fn add_float(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Float(x, rank), Value::Float(y, _)) => Ok(Value::Float(x + y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn sub_int(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => {
-            handle_signed_overflow(x, y, r, |a, b| a.checked_sub(b), u128::wrapping_sub)
+fn sub_int(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(y, _)) => {
+            handle_signed_overflow(x, y, rank, i128::checked_sub, u128::wrapping_sub)
         }
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_sub(y), r)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_sub(y), rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn sub_float(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x - y, r)),
+fn sub_float(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Float(x, rank), Value::Float(y, _)) => Ok(Value::Float(x - y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn mul_int(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => {
-            handle_signed_overflow(x, y, r, |a, b| a.checked_mul(b), u128::wrapping_mul)
+fn mul_int(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(y, _)) => {
+            handle_signed_overflow(x, y, rank, i128::checked_mul, u128::wrapping_mul)
         }
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_mul(y), r)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x.wrapping_mul(y), rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn mul_float(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x * y, r)),
+fn mul_float(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Float(x, rank), Value::Float(y, _)) => Ok(Value::Float(x * y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn div_int(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
+fn div_int(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
         (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => {
             Err(EvalError::DivByZero)
         }
-        (Value::Int(x, r), Value::Int(y, _)) => {
+        (Value::Int(x, rank), Value::Int(y, _)) => {
             // Detect MIN / -1 overflow and warn; result wraps to MIN
-            let (min, _max) = int_min_max(r);
+            let (min, _max) = int_min_max(rank);
             if y == -1 && x == min {
-                signed_overflow(Value::Int(x, r))
+                signed_overflow(Value::Int(x, rank))
             } else {
-                Ok(Value::Int(x / y, r))
+                Ok(Value::Int(x / y, rank))
             }
         }
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x / y, r)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x / y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn div_float(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Float(x, r), Value::Float(y, _)) => Ok(Value::Float(x / y, r)),
+fn div_float(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Float(x, rank), Value::Float(y, _)) => Ok(Value::Float(x / y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn mod_int(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
+fn mod_int(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
         (Value::Int(_, _), Value::Int(0, _)) | (Value::UInt(_, _), Value::UInt(0, _)) => {
             Err(EvalError::ModByZero)
         }
-        (Value::Int(x, r), Value::Int(y, _)) => {
+        (Value::Int(x, rank), Value::Int(y, _)) => {
             if y == -1 {
-                Ok(Value::Int(0, r))
+                Ok(Value::Int(0, rank))
             } else {
-                Ok(Value::Int(x % y, r))
+                Ok(Value::Int(x % y, rank))
             }
         }
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x % y, r)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x % y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn bit_and(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x & y, r)),
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x & y, r)),
+fn bit_and(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(y, _)) => Ok(Value::Int(x & y, rank)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x & y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn bit_or(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x | y, r)),
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x | y, r)),
+fn bit_or(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(y, _)) => Ok(Value::Int(x | y, rank)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x | y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn bit_xor(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(y, _)) => Ok(Value::Int(x ^ y, r)),
-        (Value::UInt(x, r), Value::UInt(y, _)) => Ok(Value::UInt(x ^ y, r)),
+fn bit_xor(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(y, _)) => Ok(Value::Int(x ^ y, rank)),
+        (Value::UInt(x, rank), Value::UInt(y, _)) => Ok(Value::UInt(x ^ y, rank)),
         _ => Err(EvalError::TypeMismatch),
     }
 }
@@ -554,40 +555,40 @@ fn validate_shift_amount(shift: i128, signed: bool, rank: IntRank) -> Result<u32
     Ok(s)
 }
 
-fn shl(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(shift, _)) => {
-            let s = validate_shift_amount(shift, true, r)?;
-            match x.checked_shl(s) {
-                Some(v) => Ok(Value::Int(v, r)),
-                None => signed_overflow(Value::Int(x.wrapping_shl(s), r)),
+fn shl(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(shift, _)) => {
+            let amount = validate_shift_amount(shift, true, rank)?;
+            match x.checked_shl(amount) {
+                Some(val) => Ok(Value::Int(val, rank)),
+                None => signed_overflow(Value::Int(x.wrapping_shl(amount), rank)),
             }
         }
-        (Value::UInt(x, r), Value::Int(shift, _)) => {
-            let s = validate_shift_amount(shift, true, r)?;
-            Ok(Value::UInt(x.wrapping_shl(s), r))
+        (Value::UInt(x, rank), Value::Int(shift, _)) => {
+            let amount = validate_shift_amount(shift, true, rank)?;
+            Ok(Value::UInt(x.wrapping_shl(amount), rank))
         }
-        (Value::UInt(x, r), Value::UInt(shift, _)) => {
-            let s = validate_shift_amount(shift as i128, false, r)?;
-            Ok(Value::UInt(x.wrapping_shl(s), r))
+        (Value::UInt(x, rank), Value::UInt(shift, _)) => {
+            let amount = validate_shift_amount(shift as i128, false, rank)?;
+            Ok(Value::UInt(x.wrapping_shl(amount), rank))
         }
         _ => Err(EvalError::TypeMismatch),
     }
 }
 
-fn shr(a: Value, b: Value) -> Result<Value, EvalError> {
-    match (a, b) {
-        (Value::Int(x, r), Value::Int(shift, _)) => {
-            let s = validate_shift_amount(shift, true, r)?;
-            Ok(Value::Int(x >> s, r))
+fn shr(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
+    match (lhs, rhs) {
+        (Value::Int(x, rank), Value::Int(shift, _)) => {
+            let amount = validate_shift_amount(shift, true, rank)?;
+            Ok(Value::Int(x >> amount, rank))
         }
-        (Value::UInt(x, r), Value::Int(shift, _)) => {
-            let s = validate_shift_amount(shift, true, r)?;
-            Ok(Value::UInt(x >> s, r))
+        (Value::UInt(x, rank), Value::Int(shift, _)) => {
+            let amount = validate_shift_amount(shift, true, rank)?;
+            Ok(Value::UInt(x >> amount, rank))
         }
-        (Value::UInt(x, r), Value::UInt(shift, _)) => {
-            let s = validate_shift_amount(shift as i128, false, r)?;
-            Ok(Value::UInt(x >> s, r))
+        (Value::UInt(x, rank), Value::UInt(shift, _)) => {
+            let amount = validate_shift_amount(shift as i128, false, rank)?;
+            Ok(Value::UInt(x >> amount, rank))
         }
         _ => Err(EvalError::TypeMismatch),
     }
@@ -595,7 +596,6 @@ fn shr(a: Value, b: Value) -> Result<Value, EvalError> {
 
 fn impl_for(op: Op, tag: TyTag) -> fn(Value, Value) -> Result<Value, EvalError> {
     match (op, tag) {
-        (Op::Add, TyTag::Int(_, _)) => add_int,
         (Op::Add, TyTag::Float(_)) => add_float,
         (Op::Sub, TyTag::Int(_, _)) => sub_int,
         (Op::Sub, TyTag::Float(_)) => sub_float,
@@ -609,7 +609,6 @@ fn impl_for(op: Op, tag: TyTag) -> fn(Value, Value) -> Result<Value, EvalError> 
         (Op::Xor, TyTag::Int(_, _)) => bit_xor,
         (Op::Shl, TyTag::Int(_, _)) => shl,
         (Op::Shr, TyTag::Int(_, _)) => shr,
-        // Default to int for unsupported combo (should be caught earlier)
         _ => add_int,
     }
 }
@@ -627,7 +626,7 @@ fn op_from_ast(op: ic_syntax::OpKind) -> Option<Op> {
         A::Xor => Op::Xor,
         A::Lshift => Op::Shl,
         A::Rshift => Op::Shr,
-        _ => return None,
+        A::Not => return None,
     })
 }
 
@@ -657,6 +656,7 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn numeric_from_value(v: &Value) -> Option<Numeric> {
     match v {
         Value::Null => Some(Numeric::Null),
@@ -695,22 +695,17 @@ fn rank_for_primitive(prim: PrimitiveTy) -> Option<(bool, IntRank)> {
         Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
         UInt64, Void, WChar,
     };
-    Some(match prim {
-        Bool => return None,
-        Char | WChar => return None,
-        Int8 => (true, IntRank::I8),
-        UInt8 => (false, IntRank::U8),
-        Int16 => (true, IntRank::I16),
-        UInt16 => (false, IntRank::U16),
-        Int32 => (true, IntRank::I32),
-        UInt32 => (false, IntRank::U32),
-        Int64 => (true, IntRank::I64),
-        UInt64 => (false, IntRank::U64),
-        Float32 => return None,
-        Float64 => return None,
-        Float128 => return None,
-        Void => return None,
-    })
+    match prim {
+        Int8 => Some((true, IntRank::I8)),
+        UInt8 => Some((false, IntRank::U8)),
+        Int16 => Some((true, IntRank::I16)),
+        UInt16 => Some((false, IntRank::U16)),
+        Int32 => Some((true, IntRank::I32)),
+        UInt32 => Some((false, IntRank::U32)),
+        Int64 => Some((true, IntRank::I64)),
+        UInt64 => Some((false, IntRank::U64)),
+        Bool | Char | WChar | Float32 | Float64 | Float128 | Void => None,
+    }
 }
 
 fn float_rank_for_primitive(prim: PrimitiveTy) -> Option<FloatRank> {
@@ -844,7 +839,7 @@ fn get_type_name(ty: &Ty, ctx: &LoweringContext) -> String {
         TyKind::Adt(def_id) => {
             // Get the actual type name from the definition
             let def = ctx.context.definitions.get(*def_id);
-            def.ident.name.to_string()
+            def.ident.name.clone()
         }
         TyKind::String { wide, .. } => if *wide { "wstring" } else { "string" }.to_string(),
         TyKind::Array { .. } => "array".to_string(),
@@ -887,97 +882,20 @@ impl<'a> ConstEvaluator<'a> {
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, expected_ty: &Ty) -> Option<Numeric> {
         // Handle initializer lists specially based on expected type
         if let ic_syntax::Expr::InitList(init_list) = expr {
-            use super::initializers::InitializerEvaluator;
-
-            match &expected_ty.kind {
-                TyKind::Adt(def_id) => {
-                    let def = self.ctx.context.definitions.get(*def_id);
-                    if let DefKind::Struct(_) = &def.kind {
-                        let mut init_eval = InitializerEvaluator::new(self);
-                        return init_eval.eval_struct(init_list, *def_id, expected_ty);
-                    }
-                }
-                TyKind::Array { ty, len, .. } => {
-                    let mut init_eval = InitializerEvaluator::new(self);
-                    return init_eval.eval_array(init_list, ty, *len);
-                }
-                TyKind::Sequence { ty, .. } => {
-                    let mut init_eval = InitializerEvaluator::new(self);
-                    return init_eval.eval_sequence(init_list, ty);
-                }
-                TyKind::Map { key, elem, .. } => {
-                    let mut init_eval = InitializerEvaluator::new(self);
-                    return init_eval.eval_map(init_list, key, elem);
-                }
-                _ => {}
-            }
-
-            self.ctx.diagnostics.error(
-                "initializer lists can only be used to initialize structs, arrays, sequences, or \
-                 maps"
-                    .to_string(),
-                Label::new(expr.span()).message("invalid use of initializer list"),
-            );
-            return None;
+            return self.eval_initializer_list(init_list, expected_ty, expr.span());
         }
 
-        // If this is a direct integer literal assigned to an integer type, perform a strict
-        // range check before we evaluate/cast. The goal is to error on obviously out-of-range
-        // positive literals like `octet x = 9999;` while still allowing well-defined unsigned
-        // wraps for expressions or negative literals (e.g. `uint32 x = -1;`).
+        // Perform literal range checks before evaluation
         if let Some(lit) = extract_direct_int_literal(expr) {
-            if let TyKind::Primitive(p) = &expected_ty.kind {
-                use PrimitiveTy::*;
-                match p {
-                    Int8 | Int16 | Int32 | Int64 => {
-                        let rank = match p {
-                            Int8 => IntRank::I8,
-                            Int16 => IntRank::I16,
-                            Int32 => IntRank::I32,
-                            Int64 => IntRank::I64,
-                            _ => unreachable!(),
-                        };
-                        let (min, max) = int_min_max(rank);
-                        if lit < min || lit > max {
-                            let ty_name = get_type_name(expected_ty, &self.ctx);
-                            self.ctx.diagnostics.errors.push(error_span(
-                                format!("integer literal out of range for '{}'", ty_name),
-                                Label::new(expr.span()).message("out of range"),
-                            ));
-                            return None;
-                        }
-                    }
-                    UInt8 | UInt16 | UInt32 | UInt64 => {
-                        // For unsigned targets, only reject direct positive literals
-                        // that exceed the target's max. Negative literals are allowed
-                        // (they wrap), per IDL/C integer conversion rules.
-                        if lit >= 0 {
-                            let max_u: u128 = match p {
-                                UInt8 => u8::MAX as u128,
-                                UInt16 => u16::MAX as u128,
-                                UInt32 => u32::MAX as u128,
-                                UInt64 => u64::MAX as u128,
-                                _ => 0,
-                            };
-                            if (lit as u128) > max_u {
-                                let ty_name = get_type_name(expected_ty, &self.ctx);
-                                self.ctx.diagnostics.errors.push(error_span(
-                                    format!("integer literal out of range for '{}'", ty_name),
-                                    Label::new(expr.span()).message("out of range"),
-                                ));
-                                return None;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
+            if !self.check_literal_range(lit, expected_ty, expr.span()) {
+                return None;
             }
         }
 
         // If assigning from a path to a constant, check compatibility and optionally reuse it
         if let ic_syntax::Expr::Path(path) = expr {
             match self.try_const_path_assignment(path, expected_ty, expr.span()) {
-                ConstAssignOutcome::Accepted(n) => return Some(n),
+                ConstAssignOutcome::Accepted(n) => return Some(*n),
                 ConstAssignOutcome::Rejected => return None,
                 ConstAssignOutcome::NotApplicable => {}
             }
@@ -994,6 +912,110 @@ impl<'a> ConstEvaluator<'a> {
         // Warn about precision loss when assigning float literal to integer type
         check_float_to_int_precision_loss(expr, expected_ty, &mut self.ctx.diagnostics);
 
+        self.cast_and_convert(v, expected_ty, expr.span())
+    }
+
+    /// Evaluate an initializer list for the expected type.
+    fn eval_initializer_list(
+        &mut self,
+        init_list: &ic_syntax::InitList,
+        expected_ty: &Ty,
+        span: ic_syntax::Span,
+    ) -> Option<Numeric> {
+        use super::initializers::InitializerEvaluator;
+
+        match &expected_ty.kind {
+            TyKind::Adt(def_id) => {
+                let def = self.ctx.context.definitions.get(*def_id);
+                if let DefKind::Struct(_) = &def.kind {
+                    let mut init_eval = InitializerEvaluator::new(self);
+                    return init_eval.eval_struct(init_list, *def_id, expected_ty);
+                }
+            }
+            TyKind::Array { ty, len, .. } => {
+                let mut init_eval = InitializerEvaluator::new(self);
+                return init_eval.eval_array(init_list, ty, *len);
+            }
+            TyKind::Sequence { ty, .. } => {
+                let mut init_eval = InitializerEvaluator::new(self);
+                return init_eval.eval_sequence(init_list, ty);
+            }
+            TyKind::Map { key, elem, .. } => {
+                let mut init_eval = InitializerEvaluator::new(self);
+                return init_eval.eval_map(init_list, key, elem);
+            }
+            _ => {}
+        }
+
+        self.ctx.diagnostics.error(
+            "initializer lists can only be used to initialize structs, arrays, sequences, or maps"
+                .to_string(),
+            Label::new(span).message("invalid use of initializer list"),
+        );
+        None
+    }
+
+    /// Check if an integer literal is within range for the expected type.
+    fn check_literal_range(&mut self, lit: i128, expected_ty: &Ty, span: ic_syntax::Span) -> bool {
+        let TyKind::Primitive(p) = &expected_ty.kind else {
+            return true;
+        };
+        match p {
+            PrimitiveTy::Int8 | PrimitiveTy::Int16 | PrimitiveTy::Int32 | PrimitiveTy::Int64 => {
+                let rank = match p {
+                    PrimitiveTy::Int8 => IntRank::I8,
+                    PrimitiveTy::Int16 => IntRank::I16,
+                    PrimitiveTy::Int32 => IntRank::I32,
+                    PrimitiveTy::Int64 => IntRank::I64,
+                    _ => unreachable!(),
+                };
+                let (min, max) = int_min_max(rank);
+                if lit < min || lit > max {
+                    let ty_name = get_type_name(expected_ty, self.ctx);
+                    self.ctx.diagnostics.errors.push(error_span(
+                        format!("integer literal out of range for '{ty_name}'"),
+                        Label::new(span).message("out of range"),
+                    ));
+                    return false;
+                }
+            }
+            PrimitiveTy::UInt8
+            | PrimitiveTy::UInt16
+            | PrimitiveTy::UInt32
+            | PrimitiveTy::UInt64 => {
+                // For unsigned targets, only reject direct positive literals
+                // that exceed the target's max. Negative literals are allowed
+                // (they wrap), per IDL/C integer conversion rules.
+                if lit >= 0 {
+                    let max_u: u128 = match p {
+                        PrimitiveTy::UInt8 => u8::MAX as u128,
+                        PrimitiveTy::UInt16 => u16::MAX as u128,
+                        PrimitiveTy::UInt32 => u32::MAX as u128,
+                        PrimitiveTy::UInt64 => u64::MAX as u128,
+                        _ => 0,
+                    };
+                    if (lit as u128) > max_u {
+                        let ty_name = get_type_name(expected_ty, self.ctx);
+                        self.ctx.diagnostics.errors.push(error_span(
+                            format!("integer literal out of range for '{ty_name}'"),
+                            Label::new(span).message("out of range"),
+                        ));
+                        return false;
+                    }
+                }
+            }
+            _ => {}
+        }
+        true
+    }
+
+    /// Cast a value to the expected type and convert to Numeric.
+    fn cast_and_convert(
+        &mut self,
+        v: Value,
+        expected_ty: &Ty,
+        span: ic_syntax::Span,
+    ) -> Option<Numeric> {
         // Store value description before moving v
         let value_desc = match &v {
             Value::String(_) => "string value",
@@ -1010,23 +1032,23 @@ impl<'a> ConstEvaluator<'a> {
             Err(EvalError::RangeError) => {
                 self.ctx.diagnostics.error(
                     "value out of range for target type".to_string(),
-                    Label::new(expr.span()).message("out of range"),
+                    Label::new(span).message("out of range"),
                 );
                 None
             }
             Err(EvalError::InvalidChar) => {
                 self.ctx.diagnostics.errors.push(error_span(
                     "invalid Unicode scalar for character type",
-                    Label::new(expr.span()).message("invalid character value"),
+                    Label::new(span).message("invalid character value"),
                 ));
                 None
             }
             Err(_) => {
-                let type_name = get_type_name(expected_ty, &self.ctx);
+                let type_name = get_type_name(expected_ty, self.ctx);
 
                 self.ctx.diagnostics.errors.push(error_span(
-                    format!("{} cannot be assigned to type {}", value_desc, type_name),
-                    Label::new(expr.span()).message("incompatible types"),
+                    format!("{value_desc} cannot be assigned to type {type_name}"),
+                    Label::new(span).message("incompatible types"),
                 ));
                 None
             }
@@ -1038,154 +1060,9 @@ impl<'a> ConstEvaluator<'a> {
         use ic_syntax::Expr::{Binary, Group, InitList, Literal, Path, Unary};
         match expr {
             Literal(lit) => value_from_numeric(&literal_to_numeric(&lit.value)),
-            Path(path) => {
-                if let Some(def_id) =
-                    self.ctx
-                        .scopes
-                        .resolve_path(&self.ctx.context, self.scope, path)
-                {
-                    // Constants, enumerators and flags are Const
-                    let def = self.ctx.context.definitions.get(def_id);
-                    if let DefKind::Const(c) = &def.kind {
-                        value_from_numeric(&c.value)
-                    } else {
-                        self.ctx.diagnostics.errors.push(error_span(
-                            format!("`{}` is not a constant value", path_to_string(path)),
-                            Label::new(path_span(path))
-                                .message("expected constant, enumerator, or flag"),
-                        ));
-                        None
-                    }
-                } else {
-                    self.ctx.diagnostics.errors.push(
-                        error_span(
-                            format!(
-                                "undefined constant or enum value `{}`",
-                                path_to_string(path)
-                            ),
-                            Label::new(path_span(path)).message("evaluation error"),
-                        )
-                        .note("check that the name is spelled correctly"),
-                    );
-                    None
-                }
-            }
-            Binary(bin) => {
-                let op = if let Some(o) = op_from_ast(bin.op.kind) {
-                    o
-                } else {
-                    self.ctx.diagnostics.errors.push(error_span(
-                        "unsupported binary operation in constant expression",
-                        Label::new(expr.span()).message("unsupported operation"),
-                    ));
-                    return None;
-                };
-
-                // Evaluate operands and track if the RHS is a division/modulo operation
-                let l = self.eval_value(&bin.lhs)?;
-                let r = self.eval_value(&bin.rhs)?;
-
-                // Check for string operands early for better error messages
-                let has_string_operand =
-                    matches!(l, Value::String(_)) || matches!(r, Value::String(_));
-                if has_string_operand {
-                    let string_span = if matches!(l, Value::String(_)) {
-                        bin.lhs.span()
-                    } else {
-                        bin.rhs.span()
-                    };
-
-                    self.ctx.diagnostics.errors.push(
-                        error_span(
-                            "string literals cannot be used in arithmetic expressions",
-                            Label::new(string_span).message("string operand"),
-                        )
-                        .note(
-                            "string literals can only be used in struct initialization or string \
-                             constants",
-                        ),
-                    );
-                    return None;
-                }
-
-                // For division/modulo by zero errors, use the RHS span if available
-                let op_span = match op {
-                    Op::Div | Op::Mod => bin.rhs.span(),
-                    _ => expr.span(),
-                };
-
-                match eval_bin(op, l, r) {
-                    Ok(v) => Some(v),
-                    Err(EvalError::SignedOverflow(v)) => {
-                        // Signed overflow: warn and continue with wrapped result
-                        self.ctx.diagnostics.warnings.push(
-                            warn_span(
-                                "integer overflow in constant expression",
-                                Label::new(expr.span()).message("overflow detected"),
-                            )
-                            .note(
-                                "consider using a larger integer type if overflow was not intended",
-                            ),
-                        );
-                        Some(v)
-                    }
-                    Err(EvalError::RangeError) => {
-                        self.ctx.diagnostics.errors.push(error_span(
-                            "value out of range for target type",
-                            Label::new(expr.span()).message("out of range"),
-                        ));
-                        None
-                    }
-                    Err(EvalError::InvalidChar) => {
-                        self.ctx.diagnostics.error(
-                            "invalid Unicode scalar for character type".to_string(),
-                            Label::new(expr.span()).message("invalid character value"),
-                        );
-                        None
-                    }
-                    Err(EvalError::DivByZero) => {
-                        self.ctx.diagnostics.errors.push(error_span(
-                            "division by zero in constant expression",
-                            Label::new(op_span).message("division by zero"),
-                        ));
-                        None
-                    }
-                    Err(EvalError::ModByZero) => {
-                        self.ctx.diagnostics.errors.push(error_span(
-                            "modulo by zero in constant expression",
-                            Label::new(op_span).message("modulo by zero"),
-                        ));
-                        None
-                    }
-                    Err(EvalError::ShiftOutOfRange) => {
-                        // The old module reports this as an error, not a warning
-                        self.ctx.diagnostics.errors.push(error_span(
-                            "invalid shift amount: shift count >= width of type or negative",
-                            Label::new(bin.rhs.span()).message("invalid shift"),
-                        ));
-                        None
-                    }
-                    Err(EvalError::TypeMismatch) => {
-                        self.ctx.diagnostics.error(
-                            "type mismatch in constant expression".to_string(),
-                            Label::new(expr.span()).message("invalid operand types"),
-                        );
-                        None
-                    }
-                }
-            }
-            Unary(un) => {
-                let v = self.eval_value(&un.expr)?;
-                if let Ok(v) = eval_unary(un.op.kind, v) {
-                    Some(v)
-                } else {
-                    self.ctx.diagnostics.error(
-                        "unsupported unary operation in constant expression".to_string(),
-                        Label::new(expr.span()).message("unsupported operation"),
-                    );
-                    None
-                }
-            }
+            Path(path) => self.eval_path_value(path),
+            Binary(bin) => self.eval_binary_value(bin, expr.span()),
+            Unary(un) => self.eval_unary_value(un, expr.span()),
             Group(group) => self.eval_value(&group.expr),
             InitList(_) => {
                 self.ctx.diagnostics.error(
@@ -1194,6 +1071,186 @@ impl<'a> ConstEvaluator<'a> {
                 );
                 None
             }
+        }
+    }
+
+    /// Evaluate a path to a constant value.
+    fn eval_path_value(&mut self, path: &ic_syntax::Path) -> Option<Value> {
+        if let Some(def_id) = self
+            .ctx
+            .scopes
+            .resolve_path(&self.ctx.context, self.scope, path)
+        {
+            // Constants, enumerators and flags are Const
+            let def = self.ctx.context.definitions.get(def_id);
+            if let DefKind::Const(c) = &def.kind {
+                value_from_numeric(&c.value)
+            } else {
+                self.ctx.diagnostics.errors.push(error_span(
+                    format!("`{}` is not a constant value", path_to_string(path)),
+                    Label::new(path_span(path)).message("expected constant, enumerator, or flag"),
+                ));
+                None
+            }
+        } else {
+            self.ctx.diagnostics.errors.push(
+                error_span(
+                    format!(
+                        "undefined constant or enum value `{}`",
+                        path_to_string(path)
+                    ),
+                    Label::new(path_span(path)).message("evaluation error"),
+                )
+                .note("check that the name is spelled correctly"),
+            );
+            None
+        }
+    }
+
+    /// Evaluate a binary expression.
+    fn eval_binary_value(
+        &mut self,
+        bin: &ic_syntax::Binary,
+        expr_span: ic_syntax::Span,
+    ) -> Option<Value> {
+        let Some(op) = op_from_ast(bin.op.kind) else {
+            self.ctx.diagnostics.errors.push(error_span(
+                "unsupported binary operation in constant expression",
+                Label::new(expr_span).message("unsupported operation"),
+            ));
+            return None;
+        };
+
+        // Evaluate operands
+        let l = self.eval_value(&bin.lhs)?;
+        let r = self.eval_value(&bin.rhs)?;
+
+        // Check for string operands early for better error messages
+        if self.check_string_operands_value(&l, &r, bin) {
+            return None;
+        }
+
+        // For division/modulo by zero errors, use the RHS span if available
+        let op_span = match op {
+            Op::Div | Op::Mod => bin.rhs.span(),
+            _ => expr_span,
+        };
+
+        self.handle_binary_result_value(eval_bin(op, l, r), expr_span, op_span, &bin.rhs)
+    }
+
+    /// Check if either operand is a string and report an error.
+    fn check_string_operands_value(
+        &mut self,
+        l: &Value,
+        r: &Value,
+        bin: &ic_syntax::Binary,
+    ) -> bool {
+        let has_string_operand = matches!(l, Value::String(_)) || matches!(r, Value::String(_));
+        if has_string_operand {
+            let string_span = if matches!(l, Value::String(_)) {
+                bin.lhs.span()
+            } else {
+                bin.rhs.span()
+            };
+
+            self.ctx.diagnostics.errors.push(
+                error_span(
+                    "string literals cannot be used in arithmetic expressions",
+                    Label::new(string_span).message("string operand"),
+                )
+                .note(
+                    "string literals can only be used in struct initialization or string constants",
+                ),
+            );
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Handle the result of a binary operation evaluation.
+    fn handle_binary_result_value(
+        &mut self,
+        result: Result<Value, EvalError>,
+        expr_span: ic_syntax::Span,
+        op_span: ic_syntax::Span,
+        rhs: &ic_syntax::Expr,
+    ) -> Option<Value> {
+        match result {
+            Ok(v) => Some(v),
+            Err(EvalError::SignedOverflow(v)) => {
+                // Signed overflow: warn and continue with wrapped result
+                self.ctx.diagnostics.warnings.push(
+                    warn_span(
+                        "integer overflow in constant expression",
+                        Label::new(expr_span).message("overflow detected"),
+                    )
+                    .note("consider using a larger integer type if overflow was not intended"),
+                );
+                Some(v)
+            }
+            Err(EvalError::RangeError) => {
+                self.ctx.diagnostics.errors.push(error_span(
+                    "value out of range for target type",
+                    Label::new(expr_span).message("out of range"),
+                ));
+                None
+            }
+            Err(EvalError::InvalidChar) => {
+                self.ctx.diagnostics.error(
+                    "invalid Unicode scalar for character type".to_string(),
+                    Label::new(expr_span).message("invalid character value"),
+                );
+                None
+            }
+            Err(EvalError::DivByZero) => {
+                self.ctx.diagnostics.errors.push(error_span(
+                    "division by zero in constant expression",
+                    Label::new(op_span).message("division by zero"),
+                ));
+                None
+            }
+            Err(EvalError::ModByZero) => {
+                self.ctx.diagnostics.errors.push(error_span(
+                    "modulo by zero in constant expression",
+                    Label::new(op_span).message("modulo by zero"),
+                ));
+                None
+            }
+            Err(EvalError::ShiftOutOfRange) => {
+                // The old module reports this as an error, not a warning
+                self.ctx.diagnostics.errors.push(error_span(
+                    "invalid shift amount: shift count >= width of type or negative",
+                    Label::new(rhs.span()).message("invalid shift"),
+                ));
+                None
+            }
+            Err(EvalError::TypeMismatch) => {
+                self.ctx.diagnostics.error(
+                    "type mismatch in constant expression".to_string(),
+                    Label::new(expr_span).message("invalid operand types"),
+                );
+                None
+            }
+        }
+    }
+
+    /// Evaluate a unary expression.
+    fn eval_unary_value(
+        &mut self,
+        un: &ic_syntax::Unary,
+        expr_span: ic_syntax::Span,
+    ) -> Option<Value> {
+        let v = self.eval_value(&un.expr)?;
+        if let Ok(v) = eval_unary(un.op.kind, v) {
+            Some(v)
+        } else {
+            self.ctx.diagnostics.error(
+                "unsupported unary operation in constant expression".to_string(),
+                Label::new(expr_span).message("unsupported operation"),
+            );
+            None
         }
     }
 
@@ -1252,15 +1309,15 @@ enum ConstAssignOutcome {
     /// Not a constant path (or not applicable) — caller should continue with normal evaluation.
     NotApplicable,
     /// Assignment accepted; use the returned numeric (typically a Const reference).
-    Accepted(Numeric),
+    Accepted(Box<Numeric>),
     /// Assignment rejected and a diagnostic was emitted; caller should stop.
     Rejected,
 }
 
-impl<'a> ConstEvaluator<'a> {
+impl ConstEvaluator<'_> {
     /// If `path` resolves to a constant, verify it can be assigned to `expected_ty`.
-    /// Returns Accepted(Numeric::Const(...)) on success, Rejected on hard error,
-    /// or NotApplicable if the path is not a constant.
+    /// Returns `Accepted(Numeric::Const`(...)) on success, Rejected on hard error,
+    /// or `NotApplicable` if the path is not a constant.
     fn try_const_path_assignment(
         &mut self,
         path: &ic_syntax::Path,
@@ -1282,7 +1339,7 @@ impl<'a> ConstEvaluator<'a> {
 
         if let Some(val) = value_from_numeric(&c.value) {
             match cast_value_to_type(val, expected_ty) {
-                Ok(_) => ConstAssignOutcome::Accepted(Numeric::Const(def_id)),
+                Ok(_) => ConstAssignOutcome::Accepted(Box::new(Numeric::Const(def_id))),
                 Err(EvalError::RangeError) => {
                     self.ctx.diagnostics.error(
                         "value out of range for target type".to_string(),
@@ -1292,8 +1349,8 @@ impl<'a> ConstEvaluator<'a> {
                 }
                 Err(_) => {
                     // Provide a precise error mentioning both types and declaration site
-                    let from_ty = get_type_name(&c.ty, &self.ctx);
-                    let to_ty = get_type_name(expected_ty, &self.ctx);
+                    let from_ty = get_type_name(&c.ty, self.ctx);
+                    let to_ty = get_type_name(expected_ty, self.ctx);
                     self.ctx.diagnostics.errors.push(
                         error_span(
                             format!(
@@ -1314,7 +1371,7 @@ impl<'a> ConstEvaluator<'a> {
             }
         } else {
             // Non-scalar constant — not assignable here.
-            let to_ty = get_type_name(expected_ty, &self.ctx);
+            let to_ty = get_type_name(expected_ty, self.ctx);
             self.ctx.diagnostics.errors.push(
                 error_span(
                     format!(

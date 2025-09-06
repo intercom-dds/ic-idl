@@ -28,7 +28,6 @@
 mod common;
 
 use common::{lint_hir, test_lint_hir};
-use insta::assert_snapshot;
 
 #[test]
 fn valid_union_with_default_last() {

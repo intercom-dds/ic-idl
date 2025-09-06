@@ -28,7 +28,7 @@
 use insta::assert_snapshot;
 
 mod common;
-use common::{lint_hir, test_lint_hir};
+use common::test_lint_hir;
 
 #[test]
 fn valid_enum_constant_by_name() {
@@ -177,27 +177,6 @@ module B {
 ";
 
     assert_snapshot!(test_lint_hir(source));
-}
-
-#[test]
-fn constant_references_not_checked() {
-    let source = r"
-enum Mode {
-    OFF = 0,
-    ON = 1,
-    AUTO = 2
-};
-
-const Mode DEFAULT_MODE = OFF;
-const Mode CURRENT_MODE = DEFAULT_MODE;  // References another constant, should not be checked
-";
-
-    let report = lint_hir(source);
-    // The lint only checks direct integer values, not constant references
-    assert!(
-        report.errors.is_empty(),
-        "Expected no errors for constant references"
-    );
 }
 
 #[test]

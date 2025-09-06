@@ -47,6 +47,7 @@ impl NameKey {
 
 /// Tag to distinguish definition kinds in the registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[allow(dead_code)]
 pub enum DefKindTag {
     Struct,
     Union,
@@ -63,6 +64,7 @@ pub enum DefKindTag {
 impl DefKindTag {
     /// Extract the tag from a `DefKind`.
     /// Returns None for forward declarations (Decl) and other non-definition kinds.
+    #[allow(dead_code)]
     pub fn from_def_kind(kind: &DefKind) -> Option<Self> {
         match kind {
             DefKind::Struct(_) => Some(Self::Struct),
@@ -74,10 +76,7 @@ impl DefKindTag {
             DefKind::Const(_) => Some(Self::Const),
             DefKind::Annotation(_) => Some(Self::Annotation),
             DefKind::Module(_) => Some(Self::Module),
-            DefKind::Decl(_) => None, // Forward declarations don't have a DefKindTag
-            DefKind::Alias(_) => None, // Aliases are handled separately
-            DefKind::Except(_) => None, // Exceptions aren't tracked this way
-            DefKind::Bitset(_) => None, // Bitsets aren't tracked this way
+            DefKind::Decl(_) | DefKind::Alias(_) | DefKind::Except(_) | DefKind::Bitset(_) => None,
         }
     }
 }
@@ -216,6 +215,7 @@ impl DefinitionRegistry {
     }
 
     /// Find a forward declaration for the given name and kind.
+    #[allow(dead_code)]
     pub fn find_forward_decl(&self, scope: ScopeId, name: &str, kind: Decl) -> Option<DefId> {
         let key = (scope, NameKey::new(name));
         self.forward_decls
@@ -224,6 +224,7 @@ impl DefinitionRegistry {
     }
 
     /// Find a definition for the given name.
+    #[allow(dead_code)]
     pub fn find_definition(&self, scope: ScopeId, name: &str) -> Option<DefId> {
         let key = (scope, NameKey::new(name));
         self.definitions.get(&key).copied()

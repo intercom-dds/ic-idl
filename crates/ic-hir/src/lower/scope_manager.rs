@@ -35,17 +35,6 @@ use ic_syntax::Path;
 use crate::hir::DefId;
 use crate::scope::ScopeId;
 
-/// Mode for name resolution.
-#[derive(Clone, Copy, Debug)]
-pub enum ResolveMode {
-    /// Regular unqualified name lookup.
-    Unqualified,
-    /// Qualified path lookup.
-    Qualified,
-    /// Augment search with parent interfaces.
-    InsideInterface(DefId),
-}
-
 /// Wrapper around the Context's scope tree to provide additional functionality.
 pub struct ScopeTree {
     /// Root scope ID from the context.
@@ -113,30 +102,6 @@ impl ScopeTree {
         scope_id
     }
 
-    /// Resolve a name in the given scope with the specified mode.
-    pub fn resolve_name(
-        &self,
-        ctx: &crate::Context,
-        start: ScopeId,
-        name: &str,
-        mode: ResolveMode,
-    ) -> Option<DefId> {
-        match mode {
-            ResolveMode::Unqualified => {
-                // Search current scope and parents
-                self.resolve_unqualified(ctx, start, name)
-            }
-            ResolveMode::Qualified => {
-                // Only search the specified scope
-                self.lookup_in_scope(ctx, start, name)
-            }
-            ResolveMode::InsideInterface(interface_id) => {
-                // Search current scope, parents, and inherited interfaces
-                self.resolve_in_interface_context(ctx, start, name, interface_id)
-            }
-        }
-    }
-
     /// Resolve a path starting from the given scope.
     pub fn resolve_path(&self, ctx: &crate::Context, start: ScopeId, path: &Path) -> Option<DefId> {
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
@@ -154,97 +119,5 @@ impl ScopeTree {
 
         // Use the core ScopeTree's resolve_path which properly handles multi-segment paths
         ctx.scopes.resolve_path(start_scope, &segments)
-    }
-
-    /// Look up a name in a specific scope only.
-    fn lookup_in_scope(&self, ctx: &crate::Context, scope: ScopeId, name: &str) -> Option<DefId> {
-        ctx.scopes.resolve_name(scope, name)
-    }
-
-    /// Resolve a name by searching current scope and parents.
-    fn resolve_unqualified(
-        &self,
-        ctx: &crate::Context,
-        start: ScopeId,
-        name: &str,
-    ) -> Option<DefId> {
-        let mut current = Some(start);
-
-        while let Some(scope_id) = current {
-            // Check current scope
-            if let Some(def_id) = self.lookup_in_scope(ctx, scope_id, name) {
-                return Some(def_id);
-            }
-
-            // Move to parent scope
-            current = ctx.scopes.get_scope(scope_id).parent;
-
-            // Skip interface scopes during unqualified lookup from outside
-            if let Some(parent_id) = current {
-                if self.is_interface_scope(ctx, parent_id) {
-                    // Skip to the interface's parent
-                    current = ctx.scopes.get_scope(parent_id).parent;
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Resolve in interface context, including inherited interfaces.
-    fn resolve_in_interface_context(
-        &self,
-        ctx: &crate::Context,
-        start: ScopeId,
-        name: &str,
-        interface_id: DefId,
-    ) -> Option<DefId> {
-        // First try normal unqualified resolution
-        if let Some(def_id) = self.resolve_unqualified(ctx, start, name) {
-            return Some(def_id);
-        }
-
-        // Then check inherited interfaces
-        self.search_inherited_interfaces(ctx, name, interface_id)
-    }
-
-    /// Search for a name in inherited interfaces.
-    fn search_inherited_interfaces(
-        &self,
-        ctx: &crate::Context,
-        name: &str,
-        interface_id: DefId,
-    ) -> Option<DefId> {
-        let def = ctx.definitions.get(interface_id);
-
-        if let crate::hir::DefKind::Interface(interface) = &def.kind {
-            // Check each parent interface
-            for &parent_id in &interface.parents {
-                // Check parent's scope
-                if let Some(parent_scope) = ctx.scopes.find_scope_for_def(parent_id) {
-                    if let Some(def_id) = self.lookup_in_scope(ctx, parent_scope, name) {
-                        return Some(def_id);
-                    }
-                }
-
-                // Recursively check parent's parents
-                if let Some(def_id) = self.search_inherited_interfaces(ctx, name, parent_id) {
-                    return Some(def_id);
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Check if a scope belongs to an interface.
-    fn is_interface_scope(&self, ctx: &crate::Context, scope_id: ScopeId) -> bool {
-        // Check if this scope has an interface as its definition
-        if let Some(def_id) = ctx.scopes.get_scope(scope_id).def_id {
-            let def = ctx.definitions.get(def_id);
-            matches!(def.kind, crate::hir::DefKind::Interface(_))
-        } else {
-            false
-        }
     }
 }

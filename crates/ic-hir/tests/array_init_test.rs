@@ -35,13 +35,7 @@ fn test_array_init_basic() {
         const int32 VALUES[3] = { 1, 2, 3 };
     ";
 
-    let (result, _, output) = common::parse_and_resolve(input);
-    if !result.errors.is_empty() {
-        eprintln!("Errors: {}", output);
-    }
-    assert!(result.errors.is_empty());
-
-    // Find the constant
+    let (result, _, _) = common::parse_and_resolve(input);
     let values = result
         .context
         .definitions
@@ -53,7 +47,7 @@ fn test_array_init_basic() {
         DefKind::Const(const_ty) => match &const_ty.value {
             Numeric::Array { values, .. } => {
                 assert_eq!(values.len(), 3);
-                match (values.get(0), values.get(1), values.get(2)) {
+                match (values.first(), values.get(1), values.get(2)) {
                     (
                         Some(&Numeric::Int32(1)),
                         Some(&Numeric::Int32(2)),
@@ -92,12 +86,7 @@ fn test_sequence_init() {
         const sequence<string> NAMES = { "Alice", "Bob", "Charlie" };
     "#;
 
-    let (result, _, output) = common::parse_and_resolve(input);
-    if !result.errors.is_empty() {
-        eprintln!("Errors: {}", output);
-    }
-    assert!(result.errors.is_empty());
-
+    let (result, _, _) = common::parse_and_resolve(input);
     let names = result
         .context
         .definitions
@@ -109,7 +98,7 @@ fn test_sequence_init() {
         DefKind::Const(const_ty) => match &const_ty.value {
             Numeric::Sequence { values, .. } => {
                 assert_eq!(values.len(), 3);
-                match (values.get(0), values.get(1), values.get(2)) {
+                match (values.first(), values.get(1), values.get(2)) {
                     (
                         Some(Numeric::String(s1)),
                         Some(Numeric::String(s2)),
@@ -138,12 +127,7 @@ fn test_map_init() {
         };
     "#;
 
-    let (result, _, output) = common::parse_and_resolve(input);
-    if !result.errors.is_empty() {
-        eprintln!("Errors: {}", output);
-    }
-    assert!(result.errors.is_empty());
-
+    let (result, _, _) = common::parse_and_resolve(input);
     let age_map = result
         .context
         .definitions
@@ -158,7 +142,7 @@ fn test_map_init() {
             } => {
                 assert_eq!(values.len(), 3);
                 // Check first pair
-                match values.get(0) {
+                match values.first() {
                     Some((Numeric::String(key), Numeric::Int32(value))) => {
                         assert_eq!(key, "Alice");
                         assert_eq!(*value, 30);

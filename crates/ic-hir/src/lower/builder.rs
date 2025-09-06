@@ -60,6 +60,7 @@ impl<'ctx> HirBuilder<'ctx> {
     }
 
     /// Process a single AST item.
+    #[allow(clippy::too_many_lines)]
     pub(super) fn process_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::ModuleValue(m) => {

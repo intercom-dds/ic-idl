@@ -29,7 +29,7 @@
 
 use ic_syntax::Path;
 
-use crate::hir::{DefKind, Numeric};
+use crate::hir::Numeric;
 
 /// Convert a path to a string for error messages.
 pub fn path_to_string(path: &Path) -> String {
@@ -56,9 +56,9 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
         ic_syntax::LiteralValue::Char(c) => Numeric::Char(*c),
         ic_syntax::LiteralValue::Int(i) => {
             // Choose appropriate type based on value range
-            if *i <= i32::MAX as u64 {
+            if i32::try_from(*i).is_ok() {
                 Numeric::Int32(*i as i32)
-            } else if *i <= i64::MAX as u64 {
+            } else if i64::try_from(*i).is_ok() {
                 Numeric::Int64(*i as i64)
             } else {
                 // Value fits in u64 but not i64

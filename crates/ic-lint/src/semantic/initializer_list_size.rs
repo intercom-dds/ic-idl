@@ -94,119 +94,165 @@ fn validate_init_list(
 ) {
     match numeric {
         Numeric::Array { ty, values } => {
-            if let TyKind::Array {
-                len: expected_len,
-                ty: elem_ty,
-                ..
-            } = &expected_ty.kind
-            {
-                if values.len() != *expected_len {
-                    ctx.report(
-                        InitializerListSize::name(),
-                        InitializerListSize::category(),
-                        Diag::error(format!(
-                            "array initializer has {} elements but array type expects {}",
-                            values.len(),
-                            expected_len
-                        ))
-                        .label(
-                            Label::new(span)
-                                .message(format!("expected {expected_len} elements"))
-                                .color(Color::Red),
-                        ),
-                    );
-                }
-                // Recursively validate nested arrays with their element type
-                for value in values {
-                    validate_init_list(ctx, context, value, elem_ty, span);
-                }
-            } else {
-                // For non-array elements, just recurse without type checking
-                for value in values {
-                    validate_init_list(ctx, context, value, ty, span);
-                }
-            }
+            validate_array_init(ctx, context, ty, values, expected_ty, span);
         }
         Numeric::Struct { ty, fields } => {
-            let struct_def = context.definitions.get(*ty);
-            if let DefKind::Struct(struct_ty) = &struct_def.kind {
-                let expected_count = struct_ty.members.len();
-                if fields.len() != expected_count {
-                    ctx.report(
-                        InitializerListSize::name(),
-                        InitializerListSize::category(),
-                        Diag::error(format!(
-                            "struct initializer has {} fields but struct '{}' has {} members",
-                            fields.len(),
-                            struct_def.ident.name,
-                            expected_count
-                        ))
-                        .label(
-                            Label::new(span)
-                                .message(format!("expected {expected_count} fields"))
-                                .color(Color::Red),
-                        ),
-                    );
-                }
-                for (field_name, value) in fields {
-                    // Find the field type in the struct
-                    if let Some(member) = struct_ty
-                        .members
-                        .iter()
-                        .find(|m| m.ident.name == field_name.name)
-                    {
-                        validate_init_list(ctx, context, value, &member.ty, span);
-                    } else {
-                        validate_init_list(ctx, context, value, expected_ty, span);
-                    }
-                }
-            }
+            validate_struct_init(ctx, context, *ty, fields, expected_ty, span);
         }
         Numeric::Sequence {
             ty: seq_elem_ty,
             values,
         } => {
-            if let TyKind::Sequence {
-                ty: expected_elem_ty,
-                ..
-            } = &expected_ty.kind
-            {
-                for value in values {
-                    validate_init_list(ctx, context, value, expected_elem_ty, span);
-                }
-            } else {
-                for value in values {
-                    validate_init_list(ctx, context, value, seq_elem_ty, span);
-                }
-            }
+            validate_sequence_init(ctx, context, seq_elem_ty, values, expected_ty, span);
         }
         Numeric::Map {
             key: map_key_ty,
             value: map_val_ty,
             entries: values,
         } => {
-            if let TyKind::Map {
-                key: expected_key_ty,
-                elem: expected_val_ty,
-                ..
-            } = &expected_ty.kind
-            {
-                for (key, value) in values {
-                    validate_init_list(ctx, context, key, expected_key_ty, span);
-                    validate_init_list(ctx, context, value, expected_val_ty, span);
-                }
-            } else {
-                for (key, value) in values {
-                    validate_init_list(ctx, context, key, map_key_ty, span);
-                    validate_init_list(ctx, context, value, map_val_ty, span);
-                }
-            }
+            validate_map_init(
+                ctx,
+                context,
+                map_key_ty,
+                map_val_ty,
+                values,
+                expected_ty,
+                span,
+            );
         }
         Numeric::Union { value, .. } => {
-            // For unions, we don't have specific type info for the variant, so use the stored type
             validate_init_list(ctx, context, value, expected_ty, span);
         }
         _ => {}
+    }
+}
+
+fn validate_array_init(
+    ctx: &LintCtx<'_>,
+    context: &Context,
+    ty: &hir::Ty,
+    values: &[Numeric],
+    expected_ty: &hir::Ty,
+    span: Span,
+) {
+    if let TyKind::Array {
+        len: expected_len,
+        ty: elem_ty,
+        ..
+    } = &expected_ty.kind
+    {
+        if values.len() != *expected_len {
+            ctx.report(
+                InitializerListSize::name(),
+                InitializerListSize::category(),
+                Diag::error(format!(
+                    "array initializer has {} elements but array type expects {}",
+                    values.len(),
+                    expected_len
+                ))
+                .label(
+                    Label::new(span)
+                        .message(format!("expected {expected_len} elements"))
+                        .color(Color::Red),
+                ),
+            );
+        }
+        for value in values {
+            validate_init_list(ctx, context, value, elem_ty, span);
+        }
+    } else {
+        for value in values {
+            validate_init_list(ctx, context, value, ty, span);
+        }
+    }
+}
+
+fn validate_struct_init(
+    ctx: &LintCtx<'_>,
+    context: &Context,
+    ty: hir::DefId,
+    fields: &[(ic_syntax::Ident, Numeric)],
+    expected_ty: &hir::Ty,
+    span: Span,
+) {
+    let struct_def = context.definitions.get(ty);
+    if let DefKind::Struct(struct_ty) = &struct_def.kind {
+        let expected_count = struct_ty.members.len();
+        if fields.len() != expected_count {
+            ctx.report(
+                InitializerListSize::name(),
+                InitializerListSize::category(),
+                Diag::error(format!(
+                    "struct initializer has {} fields but struct '{}' has {} members",
+                    fields.len(),
+                    struct_def.ident.name,
+                    expected_count
+                ))
+                .label(
+                    Label::new(span)
+                        .message(format!("expected {expected_count} fields"))
+                        .color(Color::Red),
+                ),
+            );
+        }
+        for (field_name, value) in fields {
+            let field_ty = struct_ty
+                .members
+                .iter()
+                .find(|m| m.ident.name == field_name.name)
+                .map_or(expected_ty, |m| &m.ty);
+            validate_init_list(ctx, context, value, field_ty, span);
+        }
+    }
+}
+
+fn validate_sequence_init(
+    ctx: &LintCtx<'_>,
+    context: &Context,
+    seq_elem_ty: &hir::Ty,
+    values: &[Numeric],
+    expected_ty: &hir::Ty,
+    span: Span,
+) {
+    let elem_ty = if let TyKind::Sequence {
+        ty: expected_elem_ty,
+        ..
+    } = &expected_ty.kind
+    {
+        expected_elem_ty
+    } else {
+        seq_elem_ty
+    };
+
+    for value in values {
+        validate_init_list(ctx, context, value, elem_ty, span);
+    }
+}
+
+fn validate_map_init(
+    ctx: &LintCtx<'_>,
+    context: &Context,
+    map_key_ty: &hir::Ty,
+    map_val_ty: &hir::Ty,
+    values: &[(Numeric, Numeric)],
+    expected_ty: &hir::Ty,
+    span: Span,
+) {
+    if let TyKind::Map {
+        key: expected_key_ty,
+        elem: expected_val_ty,
+        ..
+    } = &expected_ty.kind
+    {
+        for (key, value) in values {
+            validate_init_list(ctx, context, key, expected_key_ty, span);
+            validate_init_list(ctx, context, value, expected_val_ty, span);
+        }
+    } else {
+        for (key, value) in values {
+            validate_init_list(ctx, context, key, map_key_ty, span);
+            validate_init_list(ctx, context, value, map_val_ty, span);
+        }
     }
 }
 

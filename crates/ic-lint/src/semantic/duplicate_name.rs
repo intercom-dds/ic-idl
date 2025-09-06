@@ -27,7 +27,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ic_alloc::insensitive::{CaseSet, CaseString};
+use ic_alloc::insensitive::CaseString;
 use ic_cli::color::Colorize;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
@@ -84,7 +84,7 @@ impl<'a> DuplicateName<'a> {
                     construct_type,
                     parent_name
                 ),
-                Label::new(span).message(format!("duplicate {}", construct_type)),
+                Label::new(span).message(format!("duplicate {construct_type}")),
             )
             .label(Label::new(first_span).message("first defined here"))
             .note("names are case-insensitive"),
@@ -118,7 +118,7 @@ impl<'a> DuplicateName<'a> {
                             construct_type,
                             parent_name
                         ),
-                        Label::new(ident.span).message(format!("duplicate {}", construct_type)),
+                        Label::new(ident.span).message(format!("duplicate {construct_type}")),
                     )
                     .label(Label::new(first_span).message("first defined here"))
                     .note("names are case-insensitive"),

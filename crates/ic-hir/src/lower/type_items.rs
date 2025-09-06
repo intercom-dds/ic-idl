@@ -364,48 +364,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process a valuetype definition.
     pub fn process_valuetype(&mut self, v: &ValuetypeDef) -> DefId {
-        // Resolve parent type if present
-        let parent = if let Some(ref parent_type) = v.inherits {
-            let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            resolver
-                .resolve_path_type(parent_type)
-                .and_then(|ty| ty.as_adt())
-                .and_then(|parent_id| {
-                    self.validate_parent_inheritance(
-                        parent_id,
-                        "valuetype",
-                        &v.ident.name,
-                        super::utils::path_span(parent_type),
-                    )
-                })
-        } else {
-            None
-        };
-
-        // Process supports interface
-        let supports = if let Some(ref supports_type) = v.supports {
-            let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            resolver.resolve_path_type(supports_type).and_then(|ty| {
-                if let Some(supports_id) = ty.as_adt() {
-                    // Verify it's an interface type
-                    let def = self.ctx.context.definitions.get(supports_id);
-                    if matches!(&def.kind, DefKind::Interface(_)) {
-                        Some(supports_id)
-                    } else {
-                        self.ctx.diagnostics.error(
-                            "supports must be an interface type".to_string(),
-                            ic_diagnostic::Label::new(super::utils::path_span(supports_type))
-                                .message("expected interface type"),
-                        );
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        };
+        // Resolve parent and supports
+        let parent = self.resolve_valuetype_parent(v);
+        let supports = self.resolve_valuetype_supports(v);
 
         // Create scope for valuetype members
         let scope = self.ctx.context.scopes.create_child_scope(
@@ -415,6 +376,65 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         );
 
         // Process valuetype elements
+        let elements = self.process_valuetype_elements(v, scope);
+
+        // Collect all definitions from the valuetype scope
+        let scope_def = self.ctx.context.scopes.get_scope(scope);
+        let definitions = scope_def.definitions.values().copied().collect();
+
+        // Create the valuetype definition
+        self.create_valuetype_definition(v, parent, supports, elements, definitions)
+    }
+
+    /// Resolve valuetype parent.
+    fn resolve_valuetype_parent(&mut self, v: &ValuetypeDef) -> Option<DefId> {
+        let parent_type = v.inherits.as_ref()?;
+
+        let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+        resolver
+            .resolve_path_type(parent_type)
+            .and_then(|ty| ty.as_adt())
+            .and_then(|parent_id| {
+                self.validate_parent_inheritance(
+                    parent_id,
+                    "valuetype",
+                    &v.ident.name,
+                    super::utils::path_span(parent_type),
+                )
+            })
+    }
+
+    /// Resolve valuetype supports interface.
+    fn resolve_valuetype_supports(&mut self, v: &ValuetypeDef) -> Option<DefId> {
+        let supports_type = v.supports.as_ref()?;
+
+        let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+        resolver.resolve_path_type(supports_type).and_then(|ty| {
+            if let Some(supports_id) = ty.as_adt() {
+                // Verify it's an interface type
+                let def = self.ctx.context.definitions.get(supports_id);
+                if matches!(&def.kind, DefKind::Interface(_)) {
+                    Some(supports_id)
+                } else {
+                    self.ctx.diagnostics.error(
+                        "supports must be an interface type".to_string(),
+                        ic_diagnostic::Label::new(super::utils::path_span(supports_type))
+                            .message("expected interface type"),
+                    );
+                    None
+                }
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Process valuetype elements.
+    fn process_valuetype_elements(
+        &mut self,
+        v: &ValuetypeDef,
+        scope: ScopeId,
+    ) -> (Vec<Member>, Vec<ProtoTy>, Vec<Attribute>) {
         let mut members = Vec::new();
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
@@ -426,7 +446,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         for element in &v.elements {
             match element {
                 ic_syntax::ValueElement::State(member) => {
-                    // Process state members (fields)
                     members.extend(self.process_value_members(member));
                 }
                 ic_syntax::ValueElement::Proto(proto) => {
@@ -436,7 +455,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::ValueElement::Item(item) => {
-                    // Process nested type definition
                     let mut builder = super::builder::HirBuilder::new(self.ctx);
                     builder.current_scope = scope;
                     builder.process_item(item);
@@ -447,11 +465,19 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         // Restore previous scope
         self.current_scope = prev_scope;
 
-        // Collect all definitions from the valuetype scope
-        let scope_def = self.ctx.context.scopes.get_scope(scope);
-        let definitions = scope_def.definitions.values().copied().collect();
+        (members, prototypes, attributes)
+    }
 
-        // Create the complete valuetype definition
+    /// Create valuetype definition.
+    fn create_valuetype_definition(
+        &mut self,
+        v: &ValuetypeDef,
+        parent: Option<DefId>,
+        supports: Option<DefId>,
+        elements: (Vec<Member>, Vec<ProtoTy>, Vec<Attribute>),
+        definitions: Vec<DefId>,
+    ) -> DefId {
+        let (members, prototypes, attributes) = elements;
         let value_ty = ValueTy {
             parent,
             supports,
@@ -485,7 +511,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Register in scope only if registry registration succeeded
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 v.ident.name.clone(),
@@ -558,9 +583,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         for field in fields {
             // Resolve the type once for this field
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            let ty = match resolver.resolve_type(&field.ty) {
-                Some(ty) => ty,
-                None => continue, // Error already reported
+            let Some(ty) = resolver.resolve_type(&field.ty) else {
+                continue; // Error already reported
             };
 
             // Process each declarator in the field
@@ -593,9 +617,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 ic_syntax::UnionElement::Member(member) => {
                     // Resolve the type for this variant
                     let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-                    let ty = match resolver.resolve_type(&member.ty) {
-                        Some(ty) => ty,
-                        None => continue, // Error already reported
+                    let Some(ty) = resolver.resolve_type(&member.ty) else {
+                        continue; // Error already reported
                     };
 
                     // Use resolve_declarator to handle array types properly
@@ -735,9 +758,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Resolve the attribute type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let ty = match resolver.resolve_type(&attr.ty) {
-            Some(ty) => ty,
-            None => return attributes, // Error already reported
+        let Some(ty) = resolver.resolve_type(&attr.ty) else {
+            return attributes; // Error already reported
         };
 
         // Process raises clauses (for exceptions)
@@ -803,9 +825,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
             // Resolve the aliased type
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-            let ty = match resolver.resolve_type(&a.ty) {
-                Some(ty) => ty,
-                None => continue, // Error already reported
+            let Some(ty) = resolver.resolve_type(&a.ty) else {
+                continue; // Error already reported
             };
 
             // Create the alias definition
@@ -866,13 +887,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut result = Vec::new();
 
         // Process visibility (public/private)
-        let _is_public = members.is_public;
+        // Note: visibility is not stored in HIR, but could be added if needed
+        let _ = members.is_public;
 
         // Resolve the type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let ty = match resolver.resolve_type(&members.ty) {
-            Some(ty) => ty,
-            None => return result, // Error already reported
+        let Some(ty) = resolver.resolve_type(&members.ty) else {
+            return result; // Error already reported
         };
 
         // Process each declarator

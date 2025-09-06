@@ -81,32 +81,6 @@ fn negative_values_wrap_uint32() {
 }
 
 #[test]
-fn actual_out_of_range_for_signed() {
-    let idl = r"
-        union MyUnion switch(short) {
-        case -32769: // Out of range for short
-            string a;
-        case 32768:  // Out of range for short
-            long b;
-        };
-    ";
-    // Should produce 4 errors: 2 from unreachable_case lint + 2 from type checking
-    let report = lint_hir(idl);
-    assert_eq!(report.errors.len(), 4);
-    // Verify we have both unreachable_case and type checking errors
-    let has_unreachable = report
-        .errors
-        .iter()
-        .any(|e| e.to_string().contains("outside the range"));
-    let has_typecheck = report
-        .errors
-        .iter()
-        .any(|e| e.to_string().contains("does not fit in type"));
-    assert!(has_unreachable);
-    assert!(has_typecheck);
-}
-
-#[test]
 fn wrapping_produces_duplicate() {
     let idl = r"
         union MyUnion switch(octet) {

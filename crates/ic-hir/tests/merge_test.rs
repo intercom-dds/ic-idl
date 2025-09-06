@@ -198,7 +198,9 @@ fn test_merge_with_references() {
 
 #[test]
 fn test_merge_module_reopening() {
-    // Test that modules with the same name from different files get merged
+    // Test that modules with the same name from different files don't get deduplicated
+    let mut source_map = SourceMap::default();
+
     let input1 = r"
         module Shapes {
             struct Circle {
@@ -216,8 +218,15 @@ fn test_merge_module_reopening() {
         };
     ";
 
-    let (graph1, _, _) = common::parse_and_resolve(input1);
-    let (graph2, _, _) = common::parse_and_resolve(input2);
+    // Parse with different file names to simulate different files
+    let file1 = source_map.embed_with_name("shapes1.idl", input1);
+    let file2 = source_map.embed_with_name("shapes2.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
@@ -448,15 +457,32 @@ fn test_merge_module_with_include_deduplication() {
 
     // When the same module definition appears with the same span (from an include),
     // it should be deduplicated but all children should be preserved
-    let input = r"
+
+    // Use a shared source map to simulate the same file being included in two places
+    let mut source_map = SourceMap::default();
+
+    // Create a shared file that will be "included"
+    let shared_content = r"
 module abc {
     struct bar {};
 };
 ";
+    let shared_file = source_map.embed_with_name("shared.idl", shared_content);
 
-    // Parse the same input twice to simulate it appearing in two files
-    let (graph1, _, _) = common::parse_and_resolve(input);
-    let (graph2, _, _) = common::parse_and_resolve(input);
+    // Parse the shared file twice (simulating it being included in two different files)
+    let parsed1 = ic_parse::from_file(
+        shared_file,
+        ic_preproc::ProcArgs::default(),
+        &mut source_map,
+    );
+    let parsed2 = ic_parse::from_file(
+        shared_file,
+        ic_preproc::ProcArgs::default(),
+        &mut source_map,
+    );
+
+    let graph1 = ic_hir::from_ast(ic_hir::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir::from_ast(ic_hir::AstInput::User(parsed2.tree));
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());

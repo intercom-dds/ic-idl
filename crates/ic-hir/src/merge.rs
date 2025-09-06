@@ -328,6 +328,7 @@ impl HirMerger {
 
         // First, copy all definitions without mapping parents yet
         let mut parent_fixups: Vec<(DefId, Option<DefId>)> = Vec::new();
+        let mut scope_parent_fixups: Vec<(DefId, ScopeId)> = Vec::new();
 
         for old_def_id in all_def_ids {
             // Find which scope contains this definition
@@ -344,10 +345,57 @@ impl HirMerger {
             let old_def = graph.context.definitions.get(old_def_id);
             if old_def.parent.is_some() {
                 parent_fixups.push((new_def_id, old_def.parent));
+            } else {
+                // If the definition has no parent field but is in a non-root scope,
+                // we need to find its parent through the scope hierarchy
+                if old_scope != graph.context.scopes.root() {
+                    let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
+                    if let Some(scope_def_id) = old_scope_data.def_id {
+                        // This scope belongs to a definition, record for fixup
+                        scope_parent_fixups.push((new_def_id, old_scope));
+                    }
+                }
             }
         }
 
-        // Now fix up all parent relationships
+        // Fix up parent relationships from scope hierarchy
+        for (new_def_id, old_scope) in scope_parent_fixups {
+            let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
+            if let Some(old_parent_def_id) = old_scope_data.def_id {
+                if let Some(mapped_parent) = self.map_def_id(graph_index, Some(old_parent_def_id)) {
+                    // Update the child's parent pointer
+                    let def = self.new_context.definitions.get_mut(new_def_id);
+                    def.parent = Some(mapped_parent);
+
+                    // Add the child to the parent's definitions list
+                    match &mut self.new_context.definitions.get_mut(mapped_parent).kind {
+                        DefKind::Module(module) => {
+                            if !module.definitions.contains(&new_def_id) {
+                                module.definitions.push(new_def_id);
+                            }
+                        }
+                        DefKind::Interface(interface) => {
+                            if !interface.definitions.contains(&new_def_id) {
+                                interface.definitions.push(new_def_id);
+                            }
+                        }
+                        DefKind::Annotation(annotation) => {
+                            if !annotation.types.contains(&new_def_id) {
+                                annotation.types.push(new_def_id);
+                            }
+                        }
+                        DefKind::Valuetype(valuetype) => {
+                            if !valuetype.definitions.contains(&new_def_id) {
+                                valuetype.definitions.push(new_def_id);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Now fix up all parent relationships from parent field
         for (new_def_id, original_parent) in parent_fixups {
             if let Some(mapped_parent) = self.map_def_id(graph_index, original_parent) {
                 // Update the child's parent pointer
@@ -355,14 +403,28 @@ impl HirMerger {
                 def.parent = Some(mapped_parent);
 
                 // Add the child to the parent's definitions list
-                if let Def {
-                    kind: DefKind::Module(module),
-                    ..
-                } = self.new_context.definitions.get_mut(mapped_parent)
-                {
-                    if !module.definitions.contains(&new_def_id) {
-                        module.definitions.push(new_def_id);
+                match &mut self.new_context.definitions.get_mut(mapped_parent).kind {
+                    DefKind::Module(module) => {
+                        if !module.definitions.contains(&new_def_id) {
+                            module.definitions.push(new_def_id);
+                        }
                     }
+                    DefKind::Interface(interface) => {
+                        if !interface.definitions.contains(&new_def_id) {
+                            interface.definitions.push(new_def_id);
+                        }
+                    }
+                    DefKind::Annotation(annotation) => {
+                        if !annotation.types.contains(&new_def_id) {
+                            annotation.types.push(new_def_id);
+                        }
+                    }
+                    DefKind::Valuetype(valuetype) => {
+                        if !valuetype.definitions.contains(&new_def_id) {
+                            valuetype.definitions.push(new_def_id);
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -433,34 +495,94 @@ impl HirMerger {
         // Get the qualified name for deduplication
         let qualified_name = Self::get_qualified_name(old_context, old_def_id);
 
-        // Special handling for modules - check all existing module definitions
+        // For modules, check module_defs first for same-span deduplication
         if matches!(&old_def.kind, DefKind::Module(_)) {
-            if let Some(module_list) = self.module_defs.get(&qualified_name) {
-                // Check if we already have this exact module (same span)
-                for &(existing_def_id, existing_span) in module_list {
-                    if old_def.span == existing_span {
-                        // Same module definition (from include), deduplicate
+            if let Some(existing_modules) = self.module_defs.get(&qualified_name) {
+                // Check if any existing module has the same span
+                for &(existing_def_id, existing_span) in existing_modules {
+                    if old_def.ident.span == existing_span {
+                        // Same span = same module (from include), deduplicate
                         self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
 
-                        // IMPORTANT: Even though we're deduplicating the module,
-                        // we still need to ensure its children are in the merged context
-                        // Some children may have already been copied in an earlier graph
-                        if let DefKind::Module(_) = &old_def.kind {
-                            // We don't need to process children here because:
-                            // 1. If this module was included in an earlier file, its children were already processed
-                            // 2. The children will be mapped correctly by update_def_kind
+                        // Ensure children are registered in parent if needed
+                        if let Some(parent_def_id) = old_def.parent {
+                            if let Some(&mapped_parent) =
+                                self.def_id_maps[graph_index].get(&parent_def_id)
+                            {
+                                match &mut self.new_context.definitions.get_mut(mapped_parent).kind
+                                {
+                                    DefKind::Module(module) => {
+                                        if !module.definitions.contains(&existing_def_id) {
+                                            module.definitions.push(existing_def_id);
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
 
                         return existing_def_id;
                     }
                 }
+                // Different spans = module reopening, fall through to create new module
             }
-        } else if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
-            // For non-modules, use the existing deduplication logic
+        }
+
+        // Check for existing definition with same qualified name
+        if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
             let existing_def = self.new_context.definitions.get(existing_def_id);
 
-            // Different spans = different definitions = potential conflict
-            if old_def.ident.span != existing_def.ident.span {
+            // Same span = same definition (from include), deduplicate
+            if old_def.ident.span == existing_def.ident.span {
+                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+
+                // For modules, ensure children are registered
+                if matches!(&old_def.kind, DefKind::Module(_)) {
+                    // If this deduplicated definition has children in the new graph,
+                    // they will be handled by the parent fixup phase
+                }
+
+                // If this deduplicated definition has a parent, ensure it's in the parent's definitions list
+                // This handles the case where a module is deduplicated but its children need to be registered
+                if let Some(parent_def_id) = old_def.parent {
+                    if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
+                    {
+                        match &mut self.new_context.definitions.get_mut(mapped_parent).kind {
+                            DefKind::Module(module) => {
+                                if !module.definitions.contains(&existing_def_id) {
+                                    module.definitions.push(existing_def_id);
+                                }
+                            }
+                            DefKind::Interface(interface) => {
+                                if !interface.definitions.contains(&existing_def_id) {
+                                    interface.definitions.push(existing_def_id);
+                                }
+                            }
+                            DefKind::Annotation(annotation) => {
+                                if !annotation.types.contains(&existing_def_id) {
+                                    annotation.types.push(existing_def_id);
+                                }
+                            }
+                            DefKind::Valuetype(valuetype) => {
+                                if !valuetype.definitions.contains(&existing_def_id) {
+                                    valuetype.definitions.push(existing_def_id);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                return existing_def_id;
+            }
+
+            // Different spans = different definitions
+            // For modules, each reopening creates a separate DefId
+            if matches!(&old_def.kind, DefKind::Module(_)) {
+                // Module reopening - create a new definition
+                // Fall through to create new definition
+            } else {
+                // For non-modules, check for conflicts
                 // Check if they are compatible (forward declaration + full definition)
                 let compatible = match (&old_def.kind, &existing_def.kind) {
                     (DefKind::Decl(Decl::Struct), DefKind::Struct(_))
@@ -543,31 +665,6 @@ impl HirMerger {
                     return existing_def_id;
                 }
             }
-
-            // Check if this is the same span case (exact same definition from include)
-            if old_def.ident.span == existing_def.ident.span {
-                // Same span = same definition, deduplicate
-                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-
-                // If this deduplicated definition has a parent, ensure it's in the parent's definitions list
-                // This handles the case where a module is deduplicated but its children need to be registered
-                if let Some(parent_def_id) = old_def.parent {
-                    if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
-                    {
-                        if let Def {
-                            kind: DefKind::Module(module),
-                            ..
-                        } = self.new_context.definitions.get_mut(mapped_parent)
-                        {
-                            if !module.definitions.contains(&existing_def_id) {
-                                module.definitions.push(existing_def_id);
-                            }
-                        }
-                    }
-                }
-
-                return existing_def_id;
-            }
         }
 
         // Create a new definition - parent will be set later in the fixup phase
@@ -587,9 +684,9 @@ impl HirMerger {
         // For modules, add to module list; for others, add to dedup_map
         if matches!(&old_def.kind, DefKind::Module(_)) {
             self.module_defs
-                .entry(qualified_name)
+                .entry(qualified_name.clone())
                 .or_default()
-                .push((new_def_id, old_def.span));
+                .push((new_def_id, old_def.ident.span));
         } else {
             // Only add to dedup_map if it's not already there or if this is a full definition
             // replacing a forward declaration

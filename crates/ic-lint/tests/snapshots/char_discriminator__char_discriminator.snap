@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/char_discriminator.rs
+expression: output
+---
+warning[char_discriminator]: char types should not be used as union discriminators
+   ┌ test.idl:2:33
+   │
+ 2 │         union CharUnion switch (char) {
+   ·                                 ^^^^ char type
+   └──
+ help: consider using an integer or enum value instead

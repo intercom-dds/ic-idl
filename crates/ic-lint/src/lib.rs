@@ -445,6 +445,7 @@ macro_rules! define_lints {
 define_lints! {
     syntax_lints: [
         annotation::decl::AnnotatedDecl,
+        pedantic::char_discriminator::CharDiscriminator,
         pedantic::ambiguous_precedence::AmbiguousPrecedence,
         pedantic::array_param::ArrayParam,
         pedantic::assign_expr::AssignExpr,
@@ -468,6 +469,7 @@ define_lints! {
         annotation::deprecated_annotations::DeprecatedAnnotations,
         annotation::range_bound::RangeBound,
         annotation::unknown::UnknownAnnotation,
+        pedantic::char_discriminator::CharDiscriminator,
         pedantic::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,

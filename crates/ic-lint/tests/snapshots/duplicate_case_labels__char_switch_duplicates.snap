@@ -8,3 +8,11 @@ error[duplicate_case]: union 'CharUnion' has duplicate case label ''a''
  5 │     case 'a': boolean dup_a;  // Duplicate
    ·          ^^^ duplicate case label
    └──
+
+warning[char_discriminator]: char types should not be used as union discriminators
+   ┌ test.idl:2:25
+   │
+ 2 │ union CharUnion switch (char) {
+   ·                         ^^^^ char type
+   └──
+ help: consider using an integer or enum value instead

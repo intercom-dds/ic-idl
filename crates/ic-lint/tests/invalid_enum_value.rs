@@ -111,7 +111,7 @@ fn negative_values() {
 enum Temperature {
     FREEZING = -273,
     COLD = -10,
-    NORMAL = 20,
+    NORMAL = -10,
     HOT = 40
 };
 ";

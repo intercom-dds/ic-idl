@@ -2,22 +2,22 @@
 source: crates/ic-lint/tests/complex_lit.rs
 expression: test_lint(source)
 ---
-warning[complex_lit]: complex literals are an InterCOM extension
+warning[complex_lit]: complex literals are non-standard
    ┌ test.idl:2:34
    │
  2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };
-   ·                    ^^^^^^        ^^^^^^^^^^^^^^ complex constants are an InterCOM extension
+   ·                    ^^^^^^        ^^^^^^^^^^^^^^ complex constants are non-standard
    ·                    └─ const defined here
  3 │         const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
    └──
  note: only literals of trivial types are allowed in standard IDL
 
-warning[complex_lit]: complex literals are an InterCOM extension
+warning[complex_lit]: complex literals are non-standard
    ┌ test.idl:3:40
    │
  2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };
  3 │         const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
-   ·                      ^^^^^^            ^^^^^^^^^^^^^^^^^^^^ complex constants are an InterCOM extension
+   ·                      ^^^^^^            ^^^^^^^^^^^^^^^^^^^^ complex constants are non-standard
    ·                      └─ const defined here
    └──
  note: only literals of trivial types are allowed in standard IDL

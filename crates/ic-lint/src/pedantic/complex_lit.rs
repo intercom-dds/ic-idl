@@ -39,7 +39,7 @@ pub struct ComplexLit<'a> {
 
 impl ComplexLit<'_> {
     fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
-        let diag = Diag::warning("complex literals are an InterCOM extension")
+        let diag = Diag::warning("complex literals are non-standard")
             .label(Label::new(diag).message(msg).color(Color::Yellow))
             .label(Label::new(label_span).message(label).color(Color::Cyan))
             .note("only literals of trivial types are allowed in standard IDL");
@@ -53,10 +53,7 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
         for arg in &def.args {
             if let Expr::InitList(_) = &arg.value {
                 self.diagnose(
-                    (
-                        arg.value.span(),
-                        "complex default values are an InterCOM extension",
-                    ),
+                    (arg.value.span(), "complex default values are non-standard"),
                     (def.span, "in this annotation"),
                 );
             }
@@ -66,10 +63,7 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
     fn visit_const(&mut self, def: &'a ConstDef) {
         if let Expr::InitList(_) = &def.value {
             self.diagnose(
-                (
-                    def.value.span(),
-                    "complex constants are an InterCOM extension",
-                ),
+                (def.value.span(), "complex constants are non-standard"),
                 (util::decl_span(&def.decl), "const defined here"),
             );
         }
@@ -80,7 +74,7 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
     fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
         if let ic_syntax::Expr::InitList(_) = expr {
             let diag = warn_span(
-                "initializer lists are an InterCOM extension",
+                "initializer lists are non-standard",
                 Label::new(expr.span()),
             );
             Self::report(self.ctx, diag);

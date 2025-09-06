@@ -39,7 +39,7 @@ pub struct NullVariant<'a> {
 impl<'a> Visitor<'a> for NullVariant<'a> {
     fn visit_union_null(&mut self, def: &'a UnionNull) {
         let diag = warn_span(
-            "`null` variants are an InterCOM extension",
+            "`null` variants are non-standard",
             Label::new(def.span).message("`null` is not standard"),
         )
         .note("all case labels must map to a value");

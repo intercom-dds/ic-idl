@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/null.rs
 expression: test_lint(source)
 ---
-warning[null]: `null` variants are an InterCOM extension
+warning[null]: `null` variants are non-standard
    ┌ test.idl:3:21
    │
  2 │         union OptionalValue switch(long) {

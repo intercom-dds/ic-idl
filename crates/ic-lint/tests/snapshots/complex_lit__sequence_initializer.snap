@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/complex_lit.rs
 expression: test_lint(source)
 ---
-warning[complex_lit]: complex literals are an InterCOM extension
+warning[complex_lit]: complex literals are non-standard
    ┌ test.idl:3:35
    │
  2 │         typedef sequence<long> LongSeq;
  3 │         const LongSeq NUMBERS = { 1, 2, 3, 4, 5 };
-   ·                       ^^^^^^^     ^^^^^^^^^^^^^ complex constants are an InterCOM extension
+   ·                       ^^^^^^^     ^^^^^^^^^^^^^ complex constants are non-standard
    ·                       └─ const defined here
    └──
  note: only literals of trivial types are allowed in standard IDL

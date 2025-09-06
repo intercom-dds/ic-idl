@@ -12,7 +12,7 @@ error[ann_members]: only consts, typedefs and enums can be defined in annotation
  5 │             };
    └──
 
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:8:25
     │
   5 │             };
@@ -25,7 +25,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
     └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:9:25
     │
   7 │             bitmask Options {
@@ -38,7 +38,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
     └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:13:26
     │
  10 │             };
@@ -51,7 +51,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
     └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:14:26
     │
  12 │             bitmask MoreOptions {
@@ -63,7 +63,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
     └──
  help: use the `@position` annotation instead
 
-warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
+warning[bitmask_ann]: defining bitmasks in annotations is non-standard
    ┌ test.idl:7:21
    │
  4 │                 string name;
@@ -75,7 +75,7 @@ warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
  9 │                 OPT_B = 2
    └──
 
-warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
+warning[bitmask_ann]: defining bitmasks in annotations is non-standard
     ┌ test.idl:12:21
     │
   9 │                 OPT_B = 2

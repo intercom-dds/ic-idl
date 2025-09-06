@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[scoped_lit]: scoped enums are an InterCOM extension
+warning[scoped_lit]: scoped enums are non-standard
     ┌ test.idl:9:28
     │
   6 │         };
@@ -16,7 +16,7 @@ warning[scoped_lit]: scoped enums are an InterCOM extension
  help: use `FAST` instead of `Mode::FAST`
  note: enumerators are registered in the parent scope
 
-warning[scoped_lit]: scoped enums are an InterCOM extension
+warning[scoped_lit]: scoped enums are non-standard
     ┌ test.idl:11:28
     │
   9 │         const Mode MODE2 = Mode::FAST;

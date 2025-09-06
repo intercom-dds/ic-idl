@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[assign_expr]: assignment operator on enumerators is an InterCOM extension
+warning[assign_expr]: assignment operator on enumerators is non-standard
    ┌ test.idl:3:19
    │
  2 │         enum Level {
@@ -13,7 +13,7 @@ warning[assign_expr]: assignment operator on enumerators is an InterCOM extensio
    └──
  help: use the `@value` annotation instead
 
-warning[assign_expr]: assignment operator on enumerators is an InterCOM extension
+warning[assign_expr]: assignment operator on enumerators is non-standard
    ┌ test.idl:4:22
    │
  2 │         enum Level {
@@ -25,7 +25,7 @@ warning[assign_expr]: assignment operator on enumerators is an InterCOM extensio
    └──
  help: use the `@value` annotation instead
 
-warning[assign_expr]: assignment operator on enumerators is an InterCOM extension
+warning[assign_expr]: assignment operator on enumerators is non-standard
    ┌ test.idl:5:20
    │
  3 │             LOW = 1,
@@ -38,7 +38,7 @@ warning[assign_expr]: assignment operator on enumerators is an InterCOM extensio
    └──
  help: use the `@value` annotation instead
 
-warning[scoped_lit]: scoped enums are an InterCOM extension
+warning[scoped_lit]: scoped enums are non-standard
    ┌ test.idl:8:37
    │
  5 │             HIGH = 10
@@ -51,7 +51,7 @@ warning[scoped_lit]: scoped enums are an InterCOM extension
  help: use `MEDIUM` instead of `Level::MEDIUM`
  note: enumerators are registered in the parent scope
 
-warning[scoped_lit]: scoped enums are an InterCOM extension
+warning[scoped_lit]: scoped enums are non-standard
    ┌ test.idl:9:32
    │
  6 │         };

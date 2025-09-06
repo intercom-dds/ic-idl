@@ -40,7 +40,7 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
     fn visit_bitmask_bit(&mut self, flag: &'a ic_syntax::Bit) {
         if let Some(value) = &flag.value {
             let diag = warn_span(
-                "assignment operator on bitmask flags is an InterCOM extension",
+                "assignment operator on bitmask flags is non-standard",
                 Label::new(value.span()),
             )
             .help("use the `@position` annotation instead");
@@ -52,7 +52,7 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
     fn visit_enum_variant(&mut self, variant: &'a ic_syntax::Enumerator) {
         if let Some(value) = &variant.value {
             let diag = warn_span(
-                "assignment operator on enumerators is an InterCOM extension",
+                "assignment operator on enumerators is non-standard",
                 Label::new(value.span()),
             )
             .help("use the `@value` annotation instead");

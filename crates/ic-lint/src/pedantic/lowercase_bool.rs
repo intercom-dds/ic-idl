@@ -66,7 +66,7 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
                 if let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
-                    "lowercase boolean literals are an InterCOM extension",
+                    "lowercase boolean literals are non-standard",
                     Label::new(num.span).message("lowercase boolean literal"),
                 ) {
                     let diag = diag.help(format!("use `{fixed}` instead"));

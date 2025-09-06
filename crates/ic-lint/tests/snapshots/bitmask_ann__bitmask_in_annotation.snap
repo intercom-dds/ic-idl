@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/bitmask_ann.rs
 expression: test_lint(source)
 ---
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
    ┌ test.idl:4:26
    │
  2 │         @annotation MyAnnotation {
@@ -14,7 +14,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
    └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
    ┌ test.idl:5:26
    │
  3 │             bitmask Flags {
@@ -26,7 +26,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
    └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extension
+warning[assign_expr]: assignment operator on bitmask flags is non-standard
    ┌ test.idl:6:26
    │
  4 │                 FLAG_A = 0x01,
@@ -38,7 +38,7 @@ warning[assign_expr]: assignment operator on bitmask flags is an InterCOM extens
    └──
  help: use the `@position` annotation instead
 
-warning[bitmask_ann]: defining bitmasks in annotations is an InterCOM extension
+warning[bitmask_ann]: defining bitmasks in annotations is non-standard
    ┌ test.idl:3:21
    │
  2 │         @annotation MyAnnotation {

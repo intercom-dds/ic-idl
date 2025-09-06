@@ -83,7 +83,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                         path.segments.iter().map(|s| &s.name).join("::").green()
                     };
                     let label = warn_span(
-                        format!("scoped {ty}s are an InterCOM extension"),
+                        format!("scoped {ty}s are non-standard"),
                         Label::new(v.span).message("used here"),
                     )
                     .note(format!("{member} are registered in the parent scope"))

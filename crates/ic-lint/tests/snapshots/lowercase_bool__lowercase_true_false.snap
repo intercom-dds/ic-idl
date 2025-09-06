@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/lowercase_bool.rs
 expression: test_lint(source)
 ---
-warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
+warning[lowercase_bool]: lowercase boolean literals are non-standard
    ┌ test.idl:2:40
    │
  2 │         const boolean LOWERCASE_TRUE = true;
@@ -11,7 +11,7 @@ warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
    └──
  help: use `TRUE` instead
 
-warning[lowercase_bool]: lowercase boolean literals are an InterCOM extension
+warning[lowercase_bool]: lowercase boolean literals are non-standard
    ┌ test.idl:3:41
    │
  2 │         const boolean LOWERCASE_TRUE = true;

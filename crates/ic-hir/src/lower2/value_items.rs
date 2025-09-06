@@ -572,7 +572,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
 /// Resolves a declarator to produce an identifier and type.
 /// Handles array declarators by building array types from the base type.
-fn resolve_declarator(
+pub(super) fn resolve_declarator(
     decl: &ic_syntax::Declarator,
     base_ty: Ty,
     ctx: &mut LoweringContext,

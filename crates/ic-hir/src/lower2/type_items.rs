@@ -33,6 +33,7 @@ use super::LoweringContext;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
+use super::value_items::resolve_declarator;
 use crate::hir::{
     AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
     Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
@@ -562,14 +563,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
             // Process each declarator in the field
             for decl in &field.names {
-                let ident = ic_syntax::Ident {
-                    name: ic_syntax::util::decl_name(decl).to_string(),
-                    span: ic_syntax::util::decl_span(decl),
-                };
+                // Use resolve_declarator to handle array types properly
+                let (ident, member_ty) =
+                    resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
                 members.push(Member {
-                    ident: ident.clone(),
-                    ty: ty.clone(),
+                    ident,
+                    ty: member_ty,
                     annotations: Vec::new(), // TODO: Convert annotations from field.annotations
                 });
             }
@@ -596,11 +596,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         None => continue, // Error already reported
                     };
 
-                    // Get the name from the declarator
-                    let ident = ic_syntax::Ident {
-                        name: ic_syntax::util::decl_name(&member.decl).to_string(),
-                        span: ic_syntax::util::decl_span(&member.decl),
-                    };
+                    // Use resolve_declarator to handle array types properly
+                    let (ident, variant_ty) =
+                        resolve_declarator(&member.decl, ty, self.ctx, self.current_scope);
 
                     // Check if this is a default case
                     let is_default = field
@@ -628,7 +626,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     variants.push(Variant {
                         annotations: Vec::new(), // TODO: Convert annotations from field.annotations
                         ident,
-                        ty,
+                        ty: variant_ty,
                         labels,
                         is_default,
                     });
@@ -746,14 +744,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Process each declarator
         for decl in &attr.decl {
-            let ident = ic_syntax::Ident {
-                name: ic_syntax::util::decl_name(decl).to_string(),
-                span: ic_syntax::util::decl_span(decl),
-            };
+            // Use resolve_declarator to handle array types properly
+            let (ident, attr_ty) =
+                resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
             attributes.push(Attribute {
                 ident,
-                ty: ty.clone(),
+                ty: attr_ty,
                 is_readonly: attr.readonly.is_some(),
                 getraises: getraises.clone(),
                 setraises: setraises.clone(),
@@ -878,14 +875,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Process each declarator
         for decl in &members.decl {
-            let ident = ic_syntax::Ident {
-                name: ic_syntax::util::decl_name(decl).to_string(),
-                span: ic_syntax::util::decl_span(decl),
-            };
+            // Use resolve_declarator to handle array types properly
+            let (ident, member_ty) =
+                resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
             result.push(Member {
-                ident: ident.clone(),
-                ty: ty.clone(),
+                ident,
+                ty: member_ty,
                 annotations: Vec::new(), // TODO: Convert annotations
             });
         }

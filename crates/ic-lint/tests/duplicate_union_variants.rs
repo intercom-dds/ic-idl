@@ -50,7 +50,7 @@ union Result switch (long) {
 #[test]
 fn duplicate_variant_names() {
     let source = r"
-union Value switch (short) {
+union MyValue switch (short) {
     case 0: string text;
     case 1: long number;
     case 2: string text;  // Duplicate variant name

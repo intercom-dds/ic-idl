@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::util::path_name;
+use ic_syntax::util::{path_name, path_span};
 use ic_syntax::{AnnotationAppl, AnnotationArg};
 
 use crate::hir::{Ann, AnnArg, DefKind, Ident};
@@ -75,11 +75,10 @@ impl ValueItemProcessor<'_> {
 
         // Convert annotation arguments
         let args = self.convert_annotation_args(&ann_appl.args, scope);
+        let span = path_span(&ann_appl.ident);
+
         Ann {
-            ident: Ident {
-                name,
-                span: ann_appl.span,
-            },
+            ident: Ident { name, span },
             def_id,
             args,
         }

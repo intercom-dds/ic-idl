@@ -118,13 +118,13 @@ impl<'ctx> TypeResolver<'ctx> {
         // Otherwise, resolve as a named type
         // Determine starting scope for resolution
         let start = if path.leading_colons.is_some() {
-            self.ctx.scopes.root()
+            self.ctx.context.root_scope()
         } else {
             self.current_scope
         };
 
         // Resolve the path
-        if let Some(def_id) = self.ctx.scopes.resolve_path(&self.ctx.context, start, path) {
+        if let Some(def_id) = self.ctx.context.resolve_syntax_path(start, path) {
             let def = self.ctx.context.definitions.get(def_id);
             if Self::is_type_definition(&def.kind) {
                 // Check for case sensitivity issues on the entire path
@@ -193,7 +193,7 @@ impl<'ctx> TypeResolver<'ctx> {
         // This requires resolving the path step by step
 
         let start_scope = if path.leading_colons.is_some() {
-            self.ctx.scopes.root()
+            self.ctx.context.root_scope()
         } else {
             self.current_scope
         };

@@ -43,7 +43,7 @@ pub struct HirBuilder<'ctx> {
 
 impl<'ctx> HirBuilder<'ctx> {
     pub(super) fn new(ctx: &'ctx mut LoweringContext) -> Self {
-        let root_scope = ctx.scopes.root();
+        let root_scope = ctx.context.root_scope();
         Self {
             ctx,
             current_scope: root_scope,
@@ -73,7 +73,7 @@ impl<'ctx> HirBuilder<'ctx> {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_struct(s);
                 // Only add to order if at root scope
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -81,7 +81,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::InterfaceValue(i) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_interface(i);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -89,7 +89,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::UnionValue(u) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_union(u);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -97,7 +97,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::ValuetypeValue(v) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_valuetype(v);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -105,7 +105,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::DeclValue(decl) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_forward_decl(decl);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -115,7 +115,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::ConstValue(c) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_const(c);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -123,7 +123,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::EnumValue(e) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_enum(e);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -131,7 +131,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::BitmaskValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_bitmask(b);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -141,7 +141,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::AnnotationValue(a) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_annotation(a);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -149,7 +149,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::AliasValue(a) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_ids = processor.process_alias(a);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.extend(&def_ids);
                 }
                 def_ids
@@ -157,7 +157,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::ExceptionValue(e) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_exception(e);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -165,7 +165,7 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::BitsetValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_bitset(b);
-                if self.current_scope == self.ctx.scopes.root() {
+                if self.current_scope == self.ctx.context.root_scope() {
                     self.ctx.order.push(def_id);
                 }
                 vec![def_id]
@@ -176,11 +176,10 @@ impl<'ctx> HirBuilder<'ctx> {
     /// Process a module definition.
     fn process_module(&mut self, m: &ic_syntax::ModuleDef) -> DefId {
         // Find or create the module scope (handles reopening)
-        let module_scope = self.ctx.scopes.find_or_create_module(
+        let module_scope = self.ctx.context.scopes.find_or_create_module(
             self.current_scope,
             &m.ident.name,
             m.ident.span,
-            &mut self.ctx.context,
             &mut self.ctx.diagnostics,
         );
 
@@ -226,7 +225,7 @@ impl<'ctx> HirBuilder<'ctx> {
         }
 
         // Only record as a top-level item if we're at the root scope
-        if prev_scope == self.ctx.scopes.root() {
+        if prev_scope == self.ctx.context.root_scope() {
             self.ctx.order.push(def_id);
         }
 

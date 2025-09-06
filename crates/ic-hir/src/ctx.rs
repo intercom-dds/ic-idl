@@ -109,6 +109,55 @@ impl Context {
         }
     }
 
+    /// Returns the root scope ID.
+    #[must_use]
+    pub fn root_scope(&self) -> crate::scope::ScopeId {
+        self.scopes.root()
+    }
+
+    /// Resolves a name in the given scope.
+    #[must_use]
+    pub fn resolve_name(&self, scope: crate::scope::ScopeId, name: &str) -> Option<DefId> {
+        self.scopes.resolve_name(scope, name)
+    }
+
+    /// Resolves a path starting from the given scope.
+    #[must_use]
+    pub fn resolve_path(&self, scope: crate::scope::ScopeId, path: &[&str]) -> Option<DefId> {
+        self.scopes.resolve_path(scope, path)
+    }
+
+    /// Resolves a syntax path starting from the given scope.
+    #[must_use]
+    pub fn resolve_syntax_path(
+        &self,
+        scope: crate::scope::ScopeId,
+        path: &ic_syntax::Path,
+    ) -> Option<DefId> {
+        let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
+        self.scopes.resolve_path(scope, &segments)
+    }
+
+    /// Creates a child scope with the given name.
+    pub fn create_child_scope(
+        &mut self,
+        parent: crate::scope::ScopeId,
+        name: String,
+        def_id: Option<DefId>,
+    ) -> crate::scope::ScopeId {
+        self.scopes.create_child_scope(parent, name, def_id)
+    }
+
+    /// Adds a definition to a scope.
+    pub fn add_definition_to_scope(
+        &mut self,
+        scope: crate::scope::ScopeId,
+        name: String,
+        def_id: DefId,
+    ) {
+        self.scopes.add_definition(scope, name, def_id);
+    }
+
     /// Returns the `DefId` of the given type, if one exists. For arrays,
     /// sequences, and maps, this will return the element type if it points to
     /// a definition.

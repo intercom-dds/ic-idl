@@ -43,7 +43,6 @@ mod builder;
 mod eval;
 mod initializers;
 mod registry;
-mod scope_manager;
 mod type_items;
 mod type_resolver;
 mod utils;
@@ -51,7 +50,6 @@ mod validator;
 mod value_items;
 
 pub use registry::DefinitionRegistry;
-pub use scope_manager::ScopeTree;
 
 /// Result of the lowering process.
 pub struct LoweringResult {
@@ -115,9 +113,6 @@ pub(crate) struct LoweringContext {
     /// The HIR context being built.
     pub context: Context,
 
-    /// Scope tree for name resolution.
-    pub scopes: ScopeTree,
-
     /// Central registry for declarations and definitions.
     pub registry: DefinitionRegistry,
 
@@ -130,12 +125,8 @@ pub(crate) struct LoweringContext {
 
 impl LoweringContext {
     fn new() -> Self {
-        let context = Context::new();
-        let root_scope = context.scopes.root();
-
         Self {
-            context,
-            scopes: ScopeTree::new(root_scope),
+            context: Context::new(),
             registry: DefinitionRegistry::new(),
             diagnostics: Diagnostics::new(),
             order: Vec::new(),
@@ -144,7 +135,7 @@ impl LoweringContext {
 }
 
 /// Diagnostics collection during lowering.
-pub(crate) struct Diagnostics {
+pub struct Diagnostics {
     pub errors: Vec<Diag>,
     pub warnings: Vec<Diag>,
 }

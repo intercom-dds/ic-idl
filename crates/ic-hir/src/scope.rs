@@ -27,6 +27,8 @@
 
 //! Hierarchical scope management for name resolution.
 
+use std::collections::HashMap;
+
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
 
@@ -60,6 +62,11 @@ pub struct ScopeTree {
 
     /// The root scope (global scope).
     root: ScopeId,
+
+    /// Module reopening metadata for lowering.
+    /// Maps from `parent_scope` to a `CaseMap` of module names to (`scope_id`, `original_span`).
+    /// This is only used during lowering to track module reopening.
+    module_scopes: HashMap<ScopeId, CaseMap<(ScopeId, ic_syntax::Span)>>,
 }
 
 impl Default for ScopeTree {
@@ -82,6 +89,7 @@ impl ScopeTree {
         Self {
             scopes: vec![root_scope],
             root: ScopeId(0),
+            module_scopes: HashMap::new(),
         }
     }
 
@@ -386,5 +394,48 @@ impl ScopeTree {
         }
 
         results
+    }
+
+    /// Find or create a module scope.
+    /// This handles module reopening by returning the existing scope if found.
+    /// Used during lowering to support IDL's module reopening feature.
+    pub fn find_or_create_module(
+        &mut self,
+        parent: ScopeId,
+        name: &str,
+        span: ic_syntax::Span,
+        diagnostics: &mut crate::lower::Diagnostics,
+    ) -> ScopeId {
+        // Get or create the CaseMap for this parent scope
+        let parent_modules = self
+            .module_scopes
+            .entry(parent)
+            .or_insert_with(CaseMap::new);
+
+        if let Some(&(scope_id, original_span)) = parent_modules.get(name) {
+            // Module already exists - check if the name differs in case
+            if let Some(canonical_name) = parent_modules.get_key(name) {
+                if canonical_name != name {
+                    use ic_diagnostic::{Label, warn_span};
+                    diagnostics.warnings.push(
+                        warn_span(
+                            format!(
+                                "inconsistent capitalization: module `{name}` was previously \
+                                 defined as `{canonical_name}`"
+                            ),
+                            Label::new(span).message("module reopened here"),
+                        )
+                        .label(Label::new(original_span).message("first defined here")),
+                    );
+                }
+            }
+            return scope_id;
+        }
+
+        // Create new module scope
+        let scope_id = self.create_child_scope(parent, name.to_string(), None);
+        let parent_modules = self.module_scopes.entry(parent).or_insert_with(CaseMap::new);
+        parent_modules.insert(name, (scope_id, span));
+        scope_id
     }
 }

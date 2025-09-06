@@ -37,7 +37,7 @@ use ic_diagnostic::Diag;
 use ic_syntax::Item;
 
 use crate::Context;
-use crate::hir::{DefId, DefKind, Ty, TyKind, TypeId};
+use crate::hir::{DefFlags, DefId, DefKind, Ty, TyKind, TypeId};
 
 mod builder;
 mod eval;
@@ -74,12 +74,52 @@ pub fn lower<I>(ast: I) -> LoweringResult
 where
     I: IntoIterator<Item = Item>,
 {
-    let ast_items: Vec<Item> = ast.into_iter().collect();
+    lower_internal(None, ast, false)
+}
+
+/// Lowers AST items with builtins.
+pub fn lower_with_builtins<I>(builtins: I, user: I, include_in_output: bool) -> LoweringResult
+where
+    I: IntoIterator<Item = Item>,
+{
+    lower_internal(Some(builtins), user, include_in_output)
+}
+
+fn lower_internal<I>(builtins: Option<I>, user: I, include_in_output: bool) -> LoweringResult
+where
+    I: IntoIterator<Item = Item>,
+{
+    let user_items: Vec<Item> = user.into_iter().collect();
 
     // Phase 1: Build & Resolve
     let mut context = LoweringContext::new();
+
+    // Process builtins if provided
+    let builtin_order = if let Some(builtins) = builtins {
+        let builtin_items: Vec<Item> = builtins.into_iter().collect();
+        let mut builder = builder::HirBuilder::new(&mut context);
+        builder.build(&builtin_items);
+
+        // Save builtin def IDs from order
+        let builtin_ids = context.order.clone();
+
+        // Mark all builtins with IS_BUILTIN flag
+        for &def_id in &builtin_ids {
+            context.context.definitions.get_mut(def_id).flags |= DefFlags::IS_BUILTIN;
+        }
+
+        if !include_in_output {
+            context.order.clear();
+        }
+
+        builtin_ids
+    } else {
+        Vec::new()
+    };
+
+    // Process user items
     let mut builder = builder::HirBuilder::new(&mut context);
-    builder.build(&ast_items);
+    builder.build(&user_items);
 
     // Intermediate pass: Update forward references
     update_forward_references(&mut context);
@@ -102,7 +142,7 @@ where
     LoweringResult {
         context,
         order,
-        builtin_order: Vec::new(),
+        builtin_order,
         errors: diagnostics.errors,
         warnings: diagnostics.warnings,
     }

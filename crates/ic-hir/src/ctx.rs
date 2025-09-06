@@ -26,21 +26,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_alloc::arena::Arena;
-use ic_alloc::insensitive::CaseMap;
 
 use crate::hir::{self, Def, DefId, DefKind, Ty, TyKind};
 use crate::scope::ScopeTree;
 
 #[derive(Debug)]
-pub struct Type;
-
-#[derive(Debug)]
 pub struct Context {
-    pub types: Arena<Type>,
     pub definitions: Arena<hir::Def>,
-
-    // Fully qualified type name => DefId
-    pub registered: CaseMap<DefId>,
 
     // Scope hierarchy for name resolution
     pub scopes: ScopeTree,
@@ -57,9 +49,7 @@ impl Context {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            types: Arena::default(),
             definitions: Arena::default(),
-            registered: CaseMap::new(),
             scopes: ScopeTree::new(),
         }
     }

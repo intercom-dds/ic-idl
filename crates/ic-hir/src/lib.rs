@@ -146,16 +146,15 @@ pub fn from_ast<I>(input: AstInput<I>) -> ResolvedGraph
 where
     I: IntoIterator<Item = ic_syntax::Item>,
 {
-    // For now, just skip builtins entirely
     let result = match input {
         AstInput::User(ast) => lower::lower(ast),
         AstInput::WithBuiltins {
-            builtins: _, // Skip builtins
+            builtins,
             user,
-            include_in_output: _,
+            include_in_output,
         } => {
-            // Just process user items only
-            lower::lower(user)
+            // Process builtins and user AST together
+            lower::lower_with_builtins(builtins, user, include_in_output)
         }
     };
 

@@ -434,7 +434,10 @@ impl ScopeTree {
 
         // Create new module scope
         let scope_id = self.create_child_scope(parent, name.to_string(), None);
-        let parent_modules = self.module_scopes.entry(parent).or_insert_with(CaseMap::new);
+        let parent_modules = self
+            .module_scopes
+            .entry(parent)
+            .or_insert_with(CaseMap::new);
         parent_modules.insert(name, (scope_id, span));
         scope_id
     }

@@ -935,7 +935,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hir::{AnnArg, DefId, Ident};
+    use crate::hir::{AnnArg, Ident};
 
     fn make_ann(name: &str, args: Vec<AnnArg>) -> Ann {
         Ann {

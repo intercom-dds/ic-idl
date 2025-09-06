@@ -33,7 +33,7 @@ use crate::lower::eval::ConstEvaluator;
 use crate::lower::value_items::ValueItemProcessor;
 use crate::scope::ScopeId;
 
-impl<'ctx> ValueItemProcessor<'ctx> {
+impl ValueItemProcessor<'_> {
     /// Convert AST annotations to HIR annotations.
     pub fn convert_annotations(
         &mut self,
@@ -58,7 +58,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let def_id = self.ctx.context.resolve_syntax_path(start, &ann_appl.ident);
         let (def_id, name) = if let Some(id) = def_id {
             let def = self.ctx.context.definitions.get(id);
-            if !matches!(def.kind, DefKind::Annotation(_)) {
+            if matches!(def.kind, DefKind::Annotation(_)) {
+                (Some(id), path_name(&ann_appl.ident))
+            } else {
                 self.ctx.diagnostics.error(
                     format!("`{}` is not an annotation", path_name(&ann_appl.ident)),
                     ic_diagnostic::Label::new(ann_appl.span)
@@ -66,8 +68,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 );
                 // Still include it in HIR but without a valid def_id
                 (None, path_name(&ann_appl.ident))
-            } else {
-                (Some(id), def.ident.name.clone())
             }
         } else {
             (None, path_name(&ann_appl.ident))
@@ -96,7 +96,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         for arg in ast_args {
             // Evaluate the argument value expression
             let mut evaluator = ConstEvaluator::new(self.ctx, scope);
-            let value = evaluator.eval_numeric(&arg.value);
+            let value = evaluator.eval_annotation_arg(&arg.value);
 
             if let Some(val) = value {
                 let ident = if let Some(ref name) = arg.ident {

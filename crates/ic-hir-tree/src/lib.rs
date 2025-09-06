@@ -71,7 +71,7 @@ fn emit_ann_node(ann: &ic_hir::hir::Ann) -> Leaf<String> {
     leaf!(
         "{} adt(def={}) {span} {}",
         "ann".purple(),
-        format!("{id}").blue(),
+        id.clone().blue(),
         ann_str.cyan(),
     )
 }

@@ -878,6 +878,12 @@ impl<'a> ConstEvaluator<'a> {
         numeric_from_value(&v)
     }
 
+    /// Evaluate an expression to a Numeric for use in annotations.
+    /// This preserves symbolic references to constants (returns `Numeric::Const`).
+    pub fn eval_annotation_arg(&mut self, expr: &ic_syntax::Expr) -> Option<Numeric> {
+        self.eval_preserving_const_refs(expr, None)
+    }
+
     /// Evaluate an expression expecting a given target type (for constants declared with type).
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, expected_ty: &Ty) -> Option<Numeric> {
         // Handle initializer lists specially based on expected type
@@ -1272,27 +1278,42 @@ impl<'a> ConstEvaluator<'a> {
         expr: &ic_syntax::Expr,
         disc_ty: &Ty,
     ) -> Option<Numeric> {
+        self.eval_preserving_const_refs(expr, Some(disc_ty))
+    }
+
+    /// Common helper to evaluate an expression while preserving symbolic references to constants.
+    /// If `expected_ty` is provided, type checking is performed.
+    fn eval_preserving_const_refs(
+        &mut self,
+        expr: &ic_syntax::Expr,
+        expected_ty: Option<&Ty>,
+    ) -> Option<Numeric> {
         use ic_syntax::Expr::Path;
 
-        // Try to evaluate using eval_for_type to get proper type checking
-        if let Some(numeric) = self.eval_for_type(expr, disc_ty) {
-            // Success! Now check if this is a Path expression to a constant
-            if let Path(path) = expr {
-                // For paths to constants, replace with Const reference
-                if let Some(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
-                    let def = self.ctx.context.definitions.get(def_id);
-                    if let DefKind::Const(_) = &def.kind {
-                        // Return a Const reference instead of the evaluated value
-                        return Some(Numeric::Const(def_id));
-                    }
+        // First evaluate the expression (with type checking if requested)
+        let numeric = if let Some(ty) = expected_ty {
+            self.eval_for_type(expr, ty)?
+        } else {
+            // No type checking - just evaluate
+            let v = self.eval_value(expr)?;
+            numeric_from_value(&v)?
+        };
+
+        // If this is a path to a constant, return a Const reference instead of the evaluated value
+        if let Path(path) = expr {
+            if let Some(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
+                let def = self.ctx.context.definitions.get(def_id);
+                if let DefKind::Const(_) = &def.kind {
+                    // Note: eval_for_type already returns Numeric::Const for paths,
+                    // but only when type checking succeeds. This ensures we always
+                    // preserve the reference even without type checking.
+                    return Some(Numeric::Const(def_id));
                 }
             }
-            // Return the evaluated numeric value
-            Some(numeric)
-        } else {
-            // eval_for_type already reported the error
-            None
         }
+
+        // Return the evaluated numeric value
+        Some(numeric)
     }
 }
 

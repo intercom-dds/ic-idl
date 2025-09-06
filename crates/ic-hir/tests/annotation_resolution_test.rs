@@ -131,13 +131,9 @@ fn test_unknown_annotation_warning() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(input);
+    let result = common::parse_and_resolve_successfully(input);
 
-    // Should have a warning about unknown annotation
-    let diagnostics = common::compile_idl_with_warnings(input);
-    insta::assert_snapshot!(diagnostics);
-
-    // Struct should have no annotations (unknown ones are filtered out)
+    // Struct should have the unknown annotation with None def_id
     let struct_def = result
         .context
         .definitions
@@ -146,18 +142,20 @@ fn test_unknown_annotation_warning() {
         .map(|(_, def)| def)
         .unwrap();
 
-    assert_eq!(struct_def.annotations.len(), 0);
+    assert_eq!(struct_def.annotations.len(), 1);
+    assert_eq!(struct_def.annotations[0].ident.name, "unknown");
+    assert_eq!(struct_def.annotations[0].def_id, None);
 }
 
 #[test]
 fn test_annotation_with_arguments() {
     let input = r"
-        @annotation range {
+        @annotation value_range {
             long min;
             long max;
         };
         
-        @range(min = 0, max = 100)
+        @value_range(min = 0, max = 100)
         struct S {
             long value;
         };
@@ -174,7 +172,7 @@ fn test_annotation_with_arguments() {
         .unwrap();
 
     assert_eq!(struct_def.annotations.len(), 1);
-    assert_eq!(struct_def.annotations[0].ident.name, "range");
+    assert_eq!(struct_def.annotations[0].ident.name, "value_range");
     assert_eq!(struct_def.annotations[0].args.len(), 2);
 
     // Check arguments

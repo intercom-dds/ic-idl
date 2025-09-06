@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::annotation::*;
-use ic_hir::hir::{Ann, AnnArg, DefId, Ident, Numeric};
+use ic_hir::hir::{Ann, AnnArg, Ident, Numeric};
 
 fn make_ann(name: &str, args: Vec<AnnArg>) -> Ann {
     Ann {

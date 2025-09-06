@@ -253,12 +253,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         value: i64,
         enum_scope: ScopeId,
     ) -> Option<DefId> {
+        // Convert annotations before the closure
+        let annotations = self.convert_annotations(&enumerator.annotations, self.current_scope);
+
         // Create enumerator as a constant
         let field_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: enumerator.ident.clone(),
             parent: Some(enum_id),
-            annotations: Vec::new(), // TODO: Convert annotations
+            annotations,
             span: (enumerator.ident.span),
             kind: DefKind::Const(ConstTy {
                 ty: Ty {

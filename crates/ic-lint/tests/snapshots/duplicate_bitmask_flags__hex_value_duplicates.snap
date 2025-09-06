@@ -2,10 +2,12 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate flag `FLAG_A` in flag `HexFlags`
+error[duplicate_name]: duplicate flag `FLAG_A` in flag 'HexFlags'
    ┌ test.idl:5:5
    │
  5 │     FLAG_A = 0x04,  // Duplicate name
-   ·     ^^^^^^ redefined here
+   ·     ^^^^^^ duplicate flag
+ 3 │     FLAG_A = 0x01,
+   ·     ^^^^^^ first defined here
    └──
  note: names are case-insensitive

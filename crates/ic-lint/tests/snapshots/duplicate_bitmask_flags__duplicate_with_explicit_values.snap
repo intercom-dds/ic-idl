@@ -2,10 +2,12 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate flag `ACTIVE` in flag `Status`
+error[duplicate_name]: duplicate flag `ACTIVE` in flag 'Status'
    ┌ test.idl:5:5
    │
  5 │     ACTIVE = 2,  // Duplicate name, different value
-   ·     ^^^^^^ redefined here
+   ·     ^^^^^^ duplicate flag
+ 3 │     ACTIVE = 0,
+   ·     ^^^^^^ first defined here
    └──
  note: names are case-insensitive

@@ -2,10 +2,12 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate flag `READONLY` in flag `FileFlags`
+error[duplicate_name]: duplicate flag `READONLY` in flag 'FileFlags'
    ┌ test.idl:6:5
    │
  6 │     READONLY  // Duplicate flag
-   ·     ^^^^^^^^ redefined here
+   ·     ^^^^^^^^ duplicate flag
+ 3 │     READONLY,
+   ·     ^^^^^^^^ first defined here
    └──
  note: names are case-insensitive

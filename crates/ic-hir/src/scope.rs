@@ -127,6 +127,11 @@ impl ScopeTree {
         &self.scopes[scope.0]
     }
 
+    /// Gets a mutable scope by ID.
+    pub fn get_scope_mut(&mut self, scope: ScopeId) -> &mut Scope {
+        &mut self.scopes[scope.0]
+    }
+
     /// Resolves a single name segment in a scope (looks in this scope and parents).
     #[must_use]
     pub fn resolve_name(&self, scope: ScopeId, name: &str) -> Option<DefId> {

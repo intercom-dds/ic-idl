@@ -63,6 +63,7 @@ pub use crate::ctx::Context;
 
 mod ctx;
 mod lower;
+mod lower2;
 
 /// Annotation processing and validation.
 pub mod annotation;

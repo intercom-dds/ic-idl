@@ -163,13 +163,6 @@ impl<'a> DuplicateName<'a> {
 
         methods
     }
-
-    /// Check if two method signatures are compatible
-    fn methods_compatible(_method1: &ProtoTy, _method2: &ProtoTy) -> bool {
-        // TODO: Implement proper type comparison when TyKind implements PartialEq
-        // For now, we consider all methods with the same name as incompatible
-        false
-    }
 }
 
 impl<'a> Visitor<'a> for DuplicateName<'a> {
@@ -312,39 +305,55 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
             }
         }
 
-        // Also check for conflicting inherited methods from multiple parents
-        for (_, sources) in inherited_methods {
+        // Check for conflicting inherited methods from multiple parents
+        for sources in inherited_methods.values() {
             if sources.len() > 1 {
                 let first_method = sources[0].1;
-                let all_compatible = sources[1..]
-                    .iter()
-                    .all(|(_, method)| Self::methods_compatible(first_method, method));
+                let diag = ic_diagnostic::error_span(
+                    format!(
+                        "interface `{}` inherits conflicting definitions of method `{}`",
+                        def.ident.name,
+                        first_method.ident.name.yellow()
+                    ),
+                    Label::new(def.ident.span)
+                        .message("interface with conflicting inherited methods"),
+                );
 
-                if !all_compatible {
-                    let diag = ic_diagnostic::error_span(
-                        format!(
-                            "interface `{}` inherits conflicting definitions of method `{}`",
-                            def.ident.name,
-                            first_method.ident.name.yellow()
-                        ),
-                        Label::new(def.ident.span)
-                            .message("interface with conflicting inherited methods"),
+                let mut diag = diag;
+                for (source_id, source_method) in sources {
+                    let source_def = self.hir.context.definitions.get(source_id);
+                    diag = diag.label(
+                        Label::new(source_method.ident.span)
+                            .message(format!("defined in `{}`", source_def.ident.name)),
                     );
-
-                    let mut diag = diag;
-                    for (source_id, source_method) in sources {
-                        let source_def = self.hir.context.definitions.get(source_id);
-                        diag = diag.label(
-                            Label::new(source_method.ident.span)
-                                .message(format!("defined in `{}`", source_def.ident.name)),
-                        );
-                    }
-
-                    Self::report(self.ctx, diag.note("method names are case-insensitive"));
                 }
+
+                Self::report(self.ctx, diag.note("method names are case-insensitive"));
             }
         }
 
         ic_hir::visit::walk_interface(self, def, interface);
+    }
+
+    fn visit_proto(&mut self, proto: &'a ProtoTy) {
+        // Check for duplicate parameter names
+        let mut seen: HashMap<CaseString, ic_syntax::Span> = HashMap::new();
+
+        for param in &proto.params {
+            let name = CaseString::new(param.ident.name.as_str());
+            if let Some(&first_span) = seen.get(&name) {
+                self.report_duplicate(
+                    &param.ident.name,
+                    "parameter",
+                    &proto.ident.name,
+                    param.ident.span,
+                    first_span,
+                );
+            } else {
+                seen.insert(name, param.ident.span);
+            }
+        }
+
+        ic_hir::visit::walk_proto(self, proto);
     }
 }

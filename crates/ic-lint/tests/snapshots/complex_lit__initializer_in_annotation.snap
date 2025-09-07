@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/complex_lit.rs
+expression: test_lint(source)
+---
+warning[complex_lit]: complex literals are non-standard
+    ┌ test.idl:8:23
+    │
+  5 │         };
+  6 │ 
+  7 │         struct HasConfig {
+  8 │             @default({"default", 42})
+    ·              ^^^^^^^  ^^^^^^^^^^^^^ complex default values are non-standard
+    ·              └─ in this annotation
+  9 │             Config my_config;
+ 10 │         };
+    └──
+ note: only literals of trivial types are allowed in standard IDL

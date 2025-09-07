@@ -1303,19 +1303,22 @@ impl<'a> ConstEvaluator<'a> {
         expr: &ic_syntax::Expr,
         expected_ty: Option<&Ty>,
     ) -> Option<Numeric> {
-        use ic_syntax::Expr::Path;
-
         // First evaluate the expression (with type checking if requested)
         let numeric = if let Some(ty) = expected_ty {
             self.eval_for_type(expr, ty)?
         } else {
+            // Handle initializer lists without type - return Null for now
+            if let ic_syntax::Expr::InitList(_) = expr {
+                // TODO: Store the initializer list for later evaluation during annotation validation
+                return Some(Numeric::Null);
+            }
             // No type checking - just evaluate
             let v = self.eval_value(expr)?;
             numeric_from_value(&v)?
         };
 
         // If this is a path to a constant, return a Const reference instead of the evaluated value
-        if let Path(path) = expr {
+        if let ic_syntax::Expr::Path(path) = expr {
             if let Some(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
                 let def = self.ctx.context.definitions.get(def_id);
                 if let DefKind::Const(_) = &def.kind {

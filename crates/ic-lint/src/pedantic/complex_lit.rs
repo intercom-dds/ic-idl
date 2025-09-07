@@ -54,7 +54,7 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
             if let Expr::InitList(_) = &arg.value {
                 self.diagnose(
                     (arg.value.span(), "complex default values are non-standard"),
-                    (def.span, "in this annotation"),
+                    (util::path_span(&def.ident), "in this annotation"),
                 );
             }
         }

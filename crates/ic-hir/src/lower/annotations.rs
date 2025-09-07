@@ -95,7 +95,7 @@ impl TypeItemProcessor<'_> {
         for arg in ast_args {
             // Evaluate the argument value expression
             let mut evaluator = ConstEvaluator::new(self.ctx, scope);
-            let value = evaluator.eval_numeric(&arg.value);
+            let value = evaluator.eval_annotation_arg(&arg.value);
 
             if let Some(val) = value {
                 let ident = if let Some(ref name) = arg.ident {

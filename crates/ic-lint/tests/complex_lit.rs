@@ -68,8 +68,7 @@ fn test_initializer_in_annotation() {
         };
     "#;
 
-    let output = test_lint(source);
-    assert!(output.is_empty());
+    assert_snapshot!(test_lint(source));
 }
 
 #[test]

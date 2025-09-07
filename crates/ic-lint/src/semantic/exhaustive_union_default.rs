@@ -77,25 +77,18 @@ impl<'a> Visitor<'a> for ExhaustiveUnionDefaultLint<'a> {
             return;
         }
 
-        let non_default_variants: Vec<_> =
-            union_ty.variants.iter().filter(|v| !v.is_default).collect();
-
-        if non_default_variants.is_empty() {
-            return;
-        }
-
         match &union_ty.disc.ty.kind {
             TyKind::Adt(def_id) => {
                 let adt_def = self.hir.context.definitions.get(def_id);
                 if let DefKind::Enum(_) = &adt_def.kind {
-                    self.check_enum_exhaustiveness(*def_id, &non_default_variants, def);
+                    self.check_enum_exhaustiveness(*def_id, &union_ty.variants, def);
                 }
             }
             TyKind::Primitive(PrimitiveTy::Bool) => {
-                self.check_bool_exhaustiveness(&non_default_variants, def);
+                self.check_bool_exhaustiveness(&union_ty.variants, def);
             }
             TyKind::Primitive(prim) => {
-                self.check_integer_exhaustiveness(*prim, &non_default_variants, def);
+                self.check_integer_exhaustiveness(*prim, &union_ty.variants, def);
             }
             _ => {}
         }
@@ -123,7 +116,7 @@ impl ExhaustiveUnionDefaultLint<'_> {
     fn check_enum_exhaustiveness(
         &mut self,
         enum_id: DefId,
-        non_default_variants: &[&Variant],
+        non_default_variants: &[Variant],
         union_def: &Def,
     ) {
         let enum_def = self.hir.context.definitions.get(enum_id);
@@ -170,7 +163,7 @@ impl ExhaustiveUnionDefaultLint<'_> {
         }
     }
 
-    fn check_bool_exhaustiveness(&mut self, non_default_variants: &[&Variant], union_def: &Def) {
+    fn check_bool_exhaustiveness(&mut self, non_default_variants: &[Variant], union_def: &Def) {
         let mut has_true = false;
         let mut has_false = false;
 
@@ -196,7 +189,7 @@ impl ExhaustiveUnionDefaultLint<'_> {
     fn check_integer_exhaustiveness(
         &mut self,
         prim: PrimitiveTy,
-        non_default_variants: &[&Variant],
+        non_default_variants: &[Variant],
         union_def: &Def,
     ) {
         let (min, max, type_name) = match prim {

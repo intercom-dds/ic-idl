@@ -271,3 +271,17 @@ default:
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn test_exhaustive_boolean_default() {
+    let source = r"
+union BoolUnion switch(boolean) {
+case TRUE:
+case FALSE:
+default:
+    boolean my_value;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}

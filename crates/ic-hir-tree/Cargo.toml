@@ -39,3 +39,4 @@ workspace = true
 [dependencies]
 ic-cli = { path = "../ic-cli" }
 ic-hir = { path = "../ic-hir" }
+ic-vfs = { path = "../ic-vfs" }

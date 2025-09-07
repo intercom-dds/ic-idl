@@ -496,7 +496,25 @@ impl<'a> Visitor<'a> for DefCount<'a> {
 }
 
 #[must_use]
-pub fn emit_tree(result: &ResolvedGraph) -> String {
+pub fn emit_tree(result: &ResolvedGraph, vfs: &ic_vfs::SourceMap) -> String {
+    let mut buf = String::new();
+
+    // Print source files
+    let mut files = vfs.files().iter().collect::<Vec<_>>();
+    files.sort_by(|l, r| l.1.cmp(r.1));
+
+    _ = writeln!(&mut buf, "{}", "source files:".yellow());
+    for (source, file_id) in &files {
+        _ = writeln!(
+            &mut buf,
+            "  {}: {}",
+            format!("#{file_id:?}").gray(),
+            source.display(),
+        );
+    }
+    _ = writeln!(&mut buf);
+
+    // Print HIR tree
     let leaves = result.order.iter().map(|id| emit_def(&result.context, *id));
     let mut root = leaf!("{}", ".".gray());
     root.extend(leaves);
@@ -507,7 +525,6 @@ pub fn emit_tree(result: &ResolvedGraph) -> String {
     };
     visit::walk_tree(&mut counter, result);
 
-    let mut buf = String::new();
     _ = writeln!(&mut buf, "{root}");
     _ = write!(&mut buf, "{}", plural("definition", counter.count));
     buf

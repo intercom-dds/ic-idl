@@ -189,6 +189,11 @@ impl SourceMap {
         &self.file_info(id).path
     }
 
+    #[must_use]
+    pub fn files(&self) -> &BTreeMap<PathBuf, FileId> {
+        &self.files
+    }
+
     fn insert(
         &mut self,
         path: PathBuf,

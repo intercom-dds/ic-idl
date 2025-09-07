@@ -37,17 +37,18 @@ impl Bitset {
     /// Panics if if `bits == 0`.
     pub fn with_size(bits: usize) -> Self {
         assert!(bits > 0, "size cannot be zero");
-        Self(Vec::with_capacity(bits).into_boxed_slice())
+        let bytes = bits.div_ceil(8); // Round up to nearest byte
+        Self(vec![0u8; bytes].into_boxed_slice())
     }
 
     #[must_use]
     pub fn count(&self) -> usize {
-        self.iter().count()
+        self.iter().filter(|&bit| bit).count()
     }
 
     #[must_use]
     pub fn size(&self) -> usize {
-        self.0.len()
+        self.0.len() * 8
     }
 
     pub fn set(&mut self, pos: usize) {
@@ -111,5 +112,210 @@ impl<'a> IntoIterator for &'a Bitset {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_with_size() {
+        let bitset = Bitset::with_size(16);
+        assert_eq!(bitset.size(), 16); // Returns size in bits
+
+        let bitset = Bitset::with_size(1);
+        assert_eq!(bitset.size(), 8); // 1 bit allocated = 1 byte = 8 bits
+
+        let bitset = Bitset::with_size(17);
+        assert_eq!(bitset.size(), 24); // 17 bits = 3 bytes = 24 bits
+    }
+
+    #[test]
+    #[should_panic(expected = "size cannot be zero")]
+    fn test_with_size_zero_panics() {
+        let _ = Bitset::with_size(0);
+    }
+
+    #[test]
+    fn test_set_basic() {
+        let mut bitset = Bitset::with_size(8);
+        bitset.set(0);
+        bitset.set(7);
+
+        assert!(bitset.is_set(0));
+        assert!(bitset.is_set(7));
+        assert!(!bitset.is_set(1));
+    }
+
+    #[test]
+    fn test_set_and_is_set() {
+        let mut bitset = Bitset::with_size(16);
+
+        assert!(!bitset.is_set(0));
+        assert!(!bitset.is_set(7));
+        assert!(!bitset.is_set(8));
+        assert!(!bitset.is_set(15));
+
+        bitset.set(0);
+        bitset.set(7);
+        bitset.set(8);
+        bitset.set(15);
+
+        assert!(bitset.is_set(0));
+        assert!(bitset.is_set(7));
+        assert!(bitset.is_set(8));
+        assert!(bitset.is_set(15));
+
+        assert!(!bitset.is_set(1));
+        assert!(!bitset.is_set(6));
+        assert!(!bitset.is_set(9));
+        assert!(!bitset.is_set(14));
+    }
+
+    #[test]
+    fn test_count() {
+        let mut bitset = Bitset::with_size(32);
+        assert_eq!(bitset.count(), 0);
+
+        bitset.set(0);
+        bitset.set(5);
+        bitset.set(10);
+        bitset.set(15);
+        bitset.set(20);
+
+        assert_eq!(bitset.count(), 5);
+    }
+
+    #[test]
+    fn test_size() {
+        let bitset = Bitset::with_size(16);
+        assert_eq!(bitset.size(), 16); // Returns size in bits
+
+        let bitset = Bitset::with_size(17);
+        assert_eq!(bitset.size(), 24); // 17 bits = 3 bytes = 24 bits
+    }
+
+    #[test]
+    fn test_bitand() {
+        let mut bitset = Bitset::with_size(16);
+        bitset.set(5);
+        bitset.set(10);
+
+        assert!(bitset.clone() & 5);
+        assert!(bitset.clone() & 10);
+        assert!(!(bitset.clone() & 3));
+        assert!(!(bitset.clone() & 11));
+    }
+
+    #[test]
+    fn test_bitand_assign() {
+        let mut bitset = Bitset::with_size(16);
+
+        bitset &= 3;
+        bitset &= 7;
+        bitset &= 15;
+
+        assert!(bitset.is_set(3));
+        assert!(bitset.is_set(7));
+        assert!(bitset.is_set(15));
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut bitset = Bitset::with_size(8);
+        bitset.set(1);
+        bitset.set(3);
+        bitset.set(5);
+        bitset.set(7);
+
+        let bits: Vec<bool> = bitset.iter().collect();
+        assert_eq!(
+            bits,
+            vec![false, true, false, true, false, true, false, true]
+        );
+    }
+
+    #[test]
+    fn test_into_iter() {
+        let mut bitset = Bitset::with_size(4);
+        bitset.set(0);
+        bitset.set(2);
+
+        let bits: Vec<bool> = (&bitset).into_iter().collect();
+        // Bitset::with_size(4) allocates 1 byte = 8 bits
+        assert_eq!(
+            bits,
+            vec![true, false, true, false, false, false, false, false]
+        );
+    }
+
+    #[test]
+    fn test_clone() {
+        let mut bitset = Bitset::with_size(16);
+        bitset.set(5);
+        bitset.set(10);
+
+        let cloned = bitset.clone();
+        assert!(cloned.is_set(5));
+        assert!(cloned.is_set(10));
+        assert!(!cloned.is_set(3));
+    }
+
+    #[test]
+    fn test_debug() {
+        let bitset = Bitset::with_size(8);
+        let debug_str = format!("{bitset:?}");
+        assert!(debug_str.contains("Bitset"));
+    }
+
+    #[test]
+    fn test_large_bitset() {
+        let mut bitset = Bitset::with_size(1024);
+
+        bitset.set(0);
+        bitset.set(511);
+        bitset.set(1023);
+
+        assert!(bitset.is_set(0));
+        assert!(bitset.is_set(511));
+        assert!(bitset.is_set(1023));
+
+        assert!(!bitset.is_set(1));
+        assert!(!bitset.is_set(510));
+        assert!(!bitset.is_set(1022));
+    }
+
+    #[test]
+    fn test_all_bits_in_byte() {
+        let mut bitset = Bitset::with_size(8);
+
+        // Set all bits in the byte
+        for i in 0..8 {
+            bitset.set(i);
+        }
+
+        // Check all bits are set
+        for i in 0..8 {
+            assert!(bitset.is_set(i));
+        }
+
+        assert_eq!(bitset.count(), 8);
+    }
+
+    #[test]
+    fn test_cross_byte_boundary() {
+        let mut bitset = Bitset::with_size(16);
+
+        // Set bits around byte boundary
+        bitset.set(6);
+        bitset.set(7);
+        bitset.set(8);
+        bitset.set(9);
+
+        assert!(bitset.is_set(6));
+        assert!(bitset.is_set(7));
+        assert!(bitset.is_set(8));
+        assert!(bitset.is_set(9));
     }
 }

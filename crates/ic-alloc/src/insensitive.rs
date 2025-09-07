@@ -446,4 +446,334 @@ mod tests {
         assert_eq!(entries[1].0, "BETA");
         assert_eq!(entries[2].0, "gamma");
     }
+
+    #[test]
+    fn case_string_new() {
+        let cs = CaseString::new("Hello");
+        assert_eq!(cs.as_str(), "Hello");
+        assert_eq!(cs.as_ref(), "Hello");
+
+        let cs = CaseString::new(String::from("World"));
+        assert_eq!(cs.as_str(), "World");
+    }
+
+    #[test]
+    fn case_string_display() {
+        let cs = CaseString::new("FooBar");
+        assert_eq!(format!("{cs}"), "FooBar");
+    }
+
+    #[test]
+    fn case_string_hash_eq() {
+        use std::collections::HashSet;
+
+        let mut set = HashSet::new();
+        set.insert(CaseString::new("Hello"));
+        set.insert(CaseString::new("HELLO"));
+        set.insert(CaseString::new("world"));
+
+        // Only 2 unique strings (case-insensitive)
+        assert_eq!(set.len(), 2);
+
+        // Check equality
+        let cs1 = CaseString::new("Test");
+        let cs2 = CaseString::new("TEST");
+        let cs3 = CaseString::new("test");
+
+        assert_eq!(cs1, cs2);
+        assert_eq!(cs2, cs3);
+        assert_eq!(cs1, cs3);
+    }
+
+    #[test]
+    fn case_string_clone() {
+        let cs1 = CaseString::new("Original");
+        let cs2 = cs1.clone();
+
+        assert_eq!(cs1, cs2);
+        assert_eq!(cs1.as_str(), cs2.as_str());
+    }
+
+    #[test]
+    fn case_string_debug() {
+        let cs = CaseString::new("Test");
+        let debug_str = format!("{cs:?}");
+        assert!(debug_str.contains("CaseString"));
+        assert!(debug_str.contains("Test"));
+    }
+
+    #[test]
+    fn case_map_default() {
+        let map: CaseMap<i32> = CaseMap::default();
+        assert!(map.is_empty());
+        assert_eq!(map.len(), 0);
+    }
+
+    #[test]
+    fn case_map_get_mut() {
+        let mut map = CaseMap::new();
+        map.insert("key", 10);
+
+        if let Some(value) = map.get_mut("KEY") {
+            *value = 20;
+        }
+
+        assert_eq!(map.get("key"), Some(&20));
+    }
+
+    #[test]
+    fn case_map_contains_key() {
+        let mut map = CaseMap::new();
+        map.insert("Present", 42);
+
+        assert!(map.contains_key("present"));
+        assert!(map.contains_key("PRESENT"));
+        assert!(map.contains_key("Present"));
+        assert!(!map.contains_key("absent"));
+    }
+
+    #[test]
+    fn case_map_clear() {
+        let mut map = CaseMap::new();
+        map.insert("one", 1);
+        map.insert("two", 2);
+        map.insert("three", 3);
+
+        assert_eq!(map.len(), 3);
+
+        map.clear();
+        assert!(map.is_empty());
+        assert_eq!(map.len(), 0);
+    }
+
+    #[test]
+    fn case_map_iter_mut() {
+        let mut map = CaseMap::new();
+        map.insert("a", 1);
+        map.insert("B", 2);
+        map.insert("C", 3);
+
+        for (_, value) in map.iter_mut() {
+            *value *= 2;
+        }
+
+        assert_eq!(map.get("a"), Some(&2));
+        assert_eq!(map.get("b"), Some(&4));
+        assert_eq!(map.get("c"), Some(&6));
+    }
+
+    #[test]
+    fn case_map_values() {
+        let mut map = CaseMap::new();
+        map.insert("one", 1);
+        map.insert("two", 2);
+        map.insert("three", 3);
+
+        let mut values: Vec<_> = map.values().copied().collect();
+        values.sort_unstable();
+
+        assert_eq!(values, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn case_map_entry_key() {
+        let mut map: CaseMap<i32> = CaseMap::new();
+
+        let entry = map.entry("TestKey");
+        assert_eq!(entry.key(), "TestKey");
+        entry.or_insert(42);
+
+        let entry = map.entry("TESTKEY");
+        assert_eq!(entry.key(), "TestKey"); // Original casing preserved
+    }
+
+    #[test]
+    fn case_map_entry_or_insert_with() {
+        let mut map = CaseMap::new();
+        let mut counter = 0;
+
+        map.entry("key").or_insert_with(|| {
+            counter += 1;
+            100
+        });
+
+        assert_eq!(counter, 1);
+        assert_eq!(map.get("KEY"), Some(&100));
+
+        // Second call shouldn't execute the closure
+        map.entry("KEY").or_insert_with(|| {
+            counter += 1;
+            200
+        });
+
+        assert_eq!(counter, 1); // Counter unchanged
+        assert_eq!(map.get("key"), Some(&100));
+    }
+
+    #[test]
+    fn case_map_empty_string() {
+        let mut map = CaseMap::new();
+        map.insert("", 42);
+
+        assert_eq!(map.get(""), Some(&42));
+        assert!(map.contains_key(""));
+        assert_eq!(map.get_key(""), Some(""));
+    }
+
+    #[test]
+    fn case_map_unicode() {
+        let mut map = CaseMap::new();
+        // Note: Only ASCII case is handled
+        map.insert("café", 1);
+        map.insert("CAFÉ", 2);
+
+        // These are different because é doesn't have ASCII case conversion
+        assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn case_set_default() {
+        let set: CaseSet = CaseSet::default();
+        assert!(set.is_empty());
+        assert_eq!(set.len(), 0);
+    }
+
+    #[test]
+    fn case_set_clear() {
+        let mut set = CaseSet::new();
+        set.insert("one");
+        set.insert("two");
+        set.insert("three");
+
+        assert_eq!(set.len(), 3);
+
+        set.clear();
+        assert!(set.is_empty());
+        assert_eq!(set.len(), 0);
+    }
+
+    #[test]
+    fn case_set_iter() {
+        let mut set = CaseSet::new();
+        set.insert("Alpha");
+        set.insert("BETA");
+        set.insert("gamma");
+
+        let mut items: Vec<_> = set.iter().collect();
+        items.sort_unstable();
+
+        assert_eq!(items.len(), 3);
+        // Original casing preserved
+        assert!(items.contains(&"Alpha"));
+        assert!(items.contains(&"BETA"));
+        assert!(items.contains(&"gamma"));
+    }
+
+    #[test]
+    fn case_set_duplicate_different_case() {
+        let mut set = CaseSet::new();
+
+        assert!(set.insert("Test"));
+        assert!(!set.insert("test"));
+        assert!(!set.insert("TEST"));
+        assert!(!set.insert("TeSt"));
+
+        assert_eq!(set.len(), 1);
+        assert_eq!(set.get("test"), Some("Test")); // Original casing
+    }
+
+    #[test]
+    fn case_set_empty_string() {
+        let mut set = CaseSet::new();
+
+        assert!(set.insert(""));
+        assert!(set.contains(""));
+        assert_eq!(set.get(""), Some(""));
+
+        assert!(set.remove(""));
+        assert!(!set.contains(""));
+    }
+
+    #[test]
+    fn case_set_debug() {
+        let mut set = CaseSet::new();
+        set.insert("Test");
+
+        let debug_str = format!("{set:?}");
+        assert!(debug_str.contains("CaseSet"));
+    }
+
+    #[test]
+    fn case_insensitive_str_hash_eq() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let s1 = CaseInsensitiveStr("Hello");
+        let s2 = CaseInsensitiveStr("HELLO");
+        let s3 = CaseInsensitiveStr("hello");
+        let s4 = CaseInsensitiveStr("world");
+
+        assert_eq!(s1, s2);
+        assert_eq!(s2, s3);
+        assert_eq!(s1, s3);
+        assert_ne!(s1, s4);
+
+        // Hash should be the same for case-insensitive equal strings
+
+        let mut hasher1 = DefaultHasher::new();
+        let mut hasher2 = DefaultHasher::new();
+        let mut hasher3 = DefaultHasher::new();
+
+        s1.hash(&mut hasher1);
+        s2.hash(&mut hasher2);
+        s3.hash(&mut hasher3);
+
+        assert_eq!(hasher1.finish(), hasher2.finish());
+        assert_eq!(hasher2.finish(), hasher3.finish());
+    }
+
+    #[test]
+    fn case_insensitive_str_debug() {
+        let s = CaseInsensitiveStr("Test");
+        let debug_str = format!("{s:?}");
+        assert!(debug_str.contains("CaseInsensitiveStr"));
+        assert!(debug_str.contains("Test"));
+    }
+
+    #[test]
+    fn case_map_insert_returns_old_value() {
+        let mut map = CaseMap::new();
+
+        assert_eq!(map.insert("key", 10), None);
+        assert_eq!(map.insert("KEY", 20), Some(10));
+        assert_eq!(map.insert("Key", 30), Some(20));
+    }
+
+    #[test]
+    fn case_map_string_keys() {
+        let mut map = CaseMap::new();
+
+        let key1 = String::from("Dynamic");
+        let key2 = "Static";
+
+        map.insert(key1, 1);
+        map.insert(key2, 2);
+
+        assert_eq!(map.get("dynamic"), Some(&1));
+        assert_eq!(map.get("static"), Some(&2));
+    }
+
+    #[test]
+    fn case_set_string_values() {
+        let mut set = CaseSet::new();
+
+        let val1 = String::from("Dynamic");
+        let val2 = "Static";
+
+        assert!(set.insert(val1));
+        assert!(set.insert(val2));
+
+        assert!(set.contains("dynamic"));
+        assert!(set.contains("static"));
+    }
 }

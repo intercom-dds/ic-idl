@@ -109,6 +109,11 @@ where
         self.keys.is_empty()
     }
 
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.keys.len()
+    }
+
     pub fn iter(&self) -> IndexIter<'_, K, V> {
         IndexIter {
             inner: self,
@@ -201,5 +206,258 @@ where
 impl<T> Default for IndexSet<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_index_map_new() {
+        let map: IndexMap<String, i32> = IndexMap::new();
+        assert!(map.is_empty());
+        assert_eq!(map.values().len(), 0);
+    }
+
+    #[test]
+    fn test_index_map_default() {
+        let map: IndexMap<String, i32> = IndexMap::default();
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn test_index_map_insert() {
+        let mut map = IndexMap::new();
+
+        let idx1 = map.insert("first", 10);
+        let idx2 = map.insert("second", 20);
+        let idx3 = map.insert("third", 30);
+
+        assert_eq!(idx1, 0);
+        assert_eq!(idx2, 1);
+        assert_eq!(idx3, 2);
+
+        assert_eq!(map.get("first"), Some(&10));
+        assert_eq!(map.get("second"), Some(&20));
+        assert_eq!(map.get("third"), Some(&30));
+    }
+
+    #[test]
+    fn test_index_map_insert_duplicate() {
+        let mut map = IndexMap::new();
+
+        let idx1 = map.insert("key", 10);
+        let idx2 = map.insert("key", 20); // Should update value
+
+        assert_eq!(idx1, 0);
+        assert_eq!(idx2, 0); // Same index
+        assert_eq!(map.get("key"), Some(&20)); // Updated value
+        assert_eq!(map.values().len(), 1); // Still only one entry
+    }
+
+    #[test]
+    fn test_index_map_get() {
+        let mut map = IndexMap::new();
+        map.insert("exists", 42);
+
+        assert_eq!(map.get("exists"), Some(&42));
+        assert_eq!(map.get("not_exists"), None);
+
+        // Test with borrowed keys
+        let key = String::from("exists");
+        assert_eq!(map.get(key.as_str()), Some(&42));
+    }
+
+    #[test]
+    fn test_index_map_get_mut() {
+        let mut map = IndexMap::new();
+        map.insert("key", 10);
+
+        if let Some(value) = map.get_mut("key") {
+            *value = 20;
+        }
+
+        assert_eq!(map.get("key"), Some(&20));
+    }
+
+    #[test]
+    fn test_index_map_contains_key() {
+        let mut map = IndexMap::new();
+        map.insert("exists", 42);
+
+        assert!(map.contains_key("exists"));
+        assert!(!map.contains_key("not_exists"));
+    }
+
+    #[test]
+    fn test_index_map_values() {
+        let mut map = IndexMap::new();
+        map.insert("a", 1);
+        map.insert("b", 2);
+        map.insert("c", 3);
+
+        let values = map.values();
+        assert_eq!(values, &vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_index_map_values_mut() {
+        let mut map = IndexMap::new();
+        map.insert("a", 1);
+        map.insert("b", 2);
+        map.insert("c", 3);
+
+        let values = map.values_mut();
+        for v in values.iter_mut() {
+            *v *= 2;
+        }
+
+        assert_eq!(map.get("a"), Some(&2));
+        assert_eq!(map.get("b"), Some(&4));
+        assert_eq!(map.get("c"), Some(&6));
+    }
+
+    #[test]
+    fn test_index_map_iter() {
+        let mut map = IndexMap::new();
+        map.insert("a", 1);
+        map.insert("b", 2);
+        map.insert("c", 3);
+
+        let mut items: Vec<_> = map.iter().collect();
+        items.sort_by_key(|(_, v)| **v); // Sort by value for consistent ordering
+
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0].1, &1);
+        assert_eq!(items[1].1, &2);
+        assert_eq!(items[2].1, &3);
+    }
+
+    #[test]
+    fn test_index_map_into_iter() {
+        let mut map = IndexMap::new();
+        map.insert("a", 1);
+        map.insert("b", 2);
+
+        let items: Vec<_> = (&map).into_iter().collect();
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn test_index_map_clone() {
+        let mut map = IndexMap::new();
+        map.insert("a", 1);
+        map.insert("b", 2);
+
+        let cloned = map.clone();
+        assert_eq!(cloned.get("a"), Some(&1));
+        assert_eq!(cloned.get("b"), Some(&2));
+    }
+
+    #[test]
+    fn test_index_map_debug() {
+        let mut map = IndexMap::new();
+        map.insert("key", 42);
+
+        let debug_str = format!("{map:?}");
+        assert!(debug_str.contains("IndexMap"));
+    }
+
+    #[test]
+    fn test_index_set_new() {
+        let set: IndexSet<i32> = IndexSet::new();
+        assert!(set.is_empty());
+        assert_eq!(set.len(), 0);
+    }
+
+    #[test]
+    fn test_index_set_default() {
+        let set: IndexSet<i32> = IndexSet::default();
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn test_index_set_insert() {
+        let mut set = IndexSet::new();
+
+        let idx1 = set.insert(10);
+        let idx2 = set.insert(20);
+        let idx3 = set.insert(30);
+
+        assert_eq!(idx1, 0);
+        assert_eq!(idx2, 1);
+        assert_eq!(idx3, 2);
+
+        assert!(set.contains(&10));
+        assert!(set.contains(&20));
+        assert!(set.contains(&30));
+        assert!(!set.contains(&40));
+
+        assert_eq!(set.len(), 3);
+    }
+
+    #[test]
+    fn test_index_set_insert_duplicate() {
+        let mut set = IndexSet::new();
+
+        let idx1 = set.insert(42);
+        let idx2 = set.insert(42); // Should return same index
+
+        assert_eq!(idx1, 0);
+        assert_eq!(idx2, 0);
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn test_index_set_contains() {
+        let mut set = IndexSet::new();
+        set.insert(10);
+        set.insert(20);
+
+        assert!(set.contains(&10));
+        assert!(set.contains(&20));
+        assert!(!set.contains(&30));
+    }
+
+    #[test]
+    fn test_index_set_clone() {
+        let mut set = IndexSet::new();
+        set.insert(1);
+        set.insert(2);
+        set.insert(3);
+
+        let cloned = set.clone();
+        assert!(cloned.contains(&1));
+        assert!(cloned.contains(&2));
+        assert!(cloned.contains(&3));
+        assert_eq!(cloned.len(), 3);
+    }
+
+    #[test]
+    fn test_index_set_debug() {
+        let mut set = IndexSet::new();
+        set.insert(42);
+
+        let debug_str = format!("{set:?}");
+        assert!(debug_str.contains("IndexSet"));
+    }
+
+    #[test]
+    fn test_iter_bug() {
+        // The iterator implementation has a potential issue -
+        // it searches for keys by their index value on each iteration
+        let mut map = IndexMap::new();
+        map.insert("a", 1);
+        map.insert("b", 2);
+        map.insert("c", 3);
+
+        // If we update a value, it should still iterate correctly
+        map.insert("b", 20);
+
+        let items: Vec<_> = map.iter().map(|(_, v)| *v).collect();
+        assert!(items.contains(&1));
+        assert!(items.contains(&20));
+        assert!(items.contains(&3));
     }
 }

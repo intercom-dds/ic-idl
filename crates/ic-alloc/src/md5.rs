@@ -122,7 +122,7 @@ fn update(bytes: &[u8], len: usize, context: &mut Context) {
 
         i = part_len;
         while i + 63 < len {
-            context.buffer.copy_from_slice(&bytes[i..i + 64]);
+            context.buffer[..64].copy_from_slice(&bytes[i..i + 64]);
             transform(context);
             i += 64;
         }
@@ -265,7 +265,7 @@ impl Md5Builder {
 
 #[cfg(test)]
 mod tests {
-    use super::digest;
+    use super::*;
 
     #[test]
     fn test_md5() {
@@ -298,5 +298,243 @@ mod tests {
             &hash,
             b"\xc3\xfc\xd3\xd7\x61\x92\xe4\x00\x7d\xfb\x49\x6c\xca\x67\xe1\x3b"
         );
+    }
+
+    #[test]
+    fn test_digest_string() {
+        let hash = digest("hello world");
+        assert_eq!(
+            &hash,
+            b"\x5e\xb6\x3b\xbb\xe0\x1e\xee\xd0\x93\xcb\x22\xbb\x8f\x5a\xcd\xc3"
+        );
+
+        let hash = digest(String::from("test"));
+        assert_eq!(
+            &hash,
+            b"\x09\x8f\x6b\xcd\x46\x21\xd3\x73\xca\xde\x4e\x83\x26\x27\xb4\xf6"
+        );
+    }
+
+    #[test]
+    fn test_long_input() {
+        // Test with data longer than 64 bytes (one block)
+        let data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        let hash = digest(data);
+        assert_eq!(
+            &hash,
+            b"\xd1\x74\xab\x98\xd2\x77\xd9\xf5\xa5\x61\x1c\x2c\x9f\x41\x9d\x9f"
+        );
+    }
+
+    #[test]
+    fn test_exactly_64_bytes() {
+        // Test with exactly 64 bytes (one full block)
+        let data = b"0123456789012345678901234567890123456789012345678901234567890123";
+        assert_eq!(data.len(), 64);
+        let hash = digest(data);
+        assert_eq!(
+            &hash,
+            b"\x7f\x7b\xfd\x34\x87\x09\xde\xea\xac\xe1\x9e\x3f\x53\x5f\x8c\x54"
+        );
+    }
+
+    #[test]
+    fn test_55_bytes() {
+        // Test with 55 bytes (will require one padding block)
+        let data = b"0123456789012345678901234567890123456789012345678901234";
+        assert_eq!(data.len(), 55);
+        let hash = digest(data);
+        assert_eq!(
+            &hash,
+            b"\x6e\x7a\x4f\xc9\x2e\xb1\xc3\xf6\xe6\x52\x42\x5b\xcc\x8d\x44\xb5"
+        );
+    }
+
+    #[test]
+    fn test_56_bytes() {
+        // Test with 56 bytes (will require two padding blocks)
+        let data = b"01234567890123456789012345678901234567890123456789012345";
+        assert_eq!(data.len(), 56);
+        let hash = digest(data);
+        assert_eq!(
+            &hash,
+            b"\x8a\xf2\x70\xb2\x84\x76\x10\xe7\x42\xb0\x79\x1b\x53\x64\x8c\x09"
+        );
+    }
+
+    #[test]
+    fn test_multiple_blocks() {
+        // Test with multiple blocks (128 bytes = 2 blocks)
+        let data = b"0123456789abcdef".repeat(8);
+        assert_eq!(data.len(), 128);
+        let hash = digest(&data);
+        // Just verify it doesn't panic and produces a hash
+        assert_eq!(hash.len(), 16);
+    }
+
+    #[test]
+    fn test_builder_empty() {
+        let builder = Md5Builder::default();
+        let hash = builder.digest();
+        assert_eq!(
+            &hash,
+            b"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e"
+        );
+    }
+
+    #[test]
+    fn test_builder_single_append() {
+        let mut builder = Md5Builder::default();
+        builder.append("hello");
+        let hash = builder.digest();
+        assert_eq!(
+            &hash,
+            b"\x5d\x41\x40\x2a\xbc\x4b\x2a\x76\xb9\x71\x9d\x91\x10\x17\xc5\x92"
+        );
+    }
+
+    #[test]
+    fn test_builder_multiple_appends() {
+        let mut builder = Md5Builder::default();
+        builder.append("hello");
+        builder.append(" ");
+        builder.append("world");
+        let hash = builder.digest();
+        assert_eq!(
+            &hash,
+            b"\x5e\xb6\x3b\xbb\xe0\x1e\xee\xd0\x93\xcb\x22\xbb\x8f\x5a\xcd\xc3"
+        );
+    }
+
+    #[test]
+    fn test_builder_many_small_appends() {
+        let mut builder = Md5Builder::default();
+        for ch in "The quick brown fox jumps over the lazy dog".chars() {
+            builder.append(ch.to_string());
+        }
+        let hash = builder.digest();
+        assert_eq!(
+            &hash,
+            b"\x9e\x10\x7d\x9d\x37\x2b\xb6\x82\x6b\xd8\x1d\x35\x42\xa4\x19\xd6"
+        );
+    }
+
+    #[test]
+    fn test_builder_append_bytes() {
+        let mut builder = Md5Builder::default();
+        builder.append([0x01, 0x02, 0x03, 0x04]);
+        builder.append(vec![0x05, 0x06, 0x07, 0x08]);
+        let hash = builder.digest();
+        assert_eq!(
+            &hash,
+            b"\x0e\xe0\x64\x6c\x1c\x77\xd8\x13\x1c\xc8\xf4\xee\x65\xc7\x67\x3b"
+        );
+    }
+
+    #[test]
+    fn test_unicode() {
+        let hash = digest("hello 世界");
+        assert_eq!(
+            &hash,
+            b"\x1a\xaa\x8e\x80\x10\x64\x5f\xe4\xe3\xd4\x4a\xd9\x74\x5b\xb9\x4e"
+        );
+    }
+
+    #[test]
+    fn test_context_default() {
+        let ctx = Context::default();
+        assert_eq!(ctx.state[0], 0x6745_2301);
+        assert_eq!(ctx.state[1], 0xEFCD_AB89);
+        assert_eq!(ctx.state[2], 0x98BA_DCFE);
+        assert_eq!(ctx.state[3], 0x1032_5476);
+        assert_eq!(ctx.count, 0);
+        assert_eq!(ctx.buffer[0], 0);
+    }
+
+    #[test]
+    fn test_rol() {
+        assert_eq!(rol(0x1234_5678, 4), 0x2345_6781);
+        assert_eq!(rol(0x8000_0000, 1), 0x0000_0001);
+        assert_eq!(rol(0xFFFF_FFFF, 8), 0xFFFF_FFFF);
+        assert_eq!(rol(0x0000_0001, 31), 0x8000_0000);
+    }
+
+    #[test]
+    fn test_aux_functions() {
+        // Test aux_f: (x & y) | (!x & z)
+        // x=0xFF00FF00, y=0x0F0F0F0F, z=0xAAAAAAAA
+        // x & y = 0x0F000F00
+        // !x = 0x00FF00FF
+        // !x & z = 0x00AA00AA
+        // result = 0x0FAA0FAA
+        assert_eq!(aux_f(0xFF00_FF00, 0x0F0F_0F0F, 0xAAAA_AAAA), 0x0FAA_0FAA);
+
+        // Test aux_g: (x & z) | (y & !z)
+        // x=0xFF00FF00, y=0x0F0F0F0F, z=0xAAAAAAAA
+        // x & z = 0xAA00AA00
+        // !z = 0x55555555
+        // y & !z = 0x05050505
+        // result = 0xAF05AF05
+        assert_eq!(aux_g(0xFF00_FF00, 0x0F0F_0F0F, 0xAAAA_AAAA), 0xAF05_AF05);
+
+        // Test aux_h: x ^ y ^ z
+        // 0xFF00FF00 ^ 0x0F0F0F0F ^ 0xAAAAAAAA = 0x5AA55AA5
+        assert_eq!(aux_h(0xFF00_FF00, 0x0F0F_0F0F, 0xAAAA_AAAA), 0x5AA5_5AA5);
+
+        // Test aux_i: y ^ (x | !z)
+        // x=0xFF00FF00, y=0x0F0F0F0F, z=0xAAAAAAAA
+        // !z = 0x55555555
+        // x | !z = 0xFF55FF55
+        // y ^ (x | !z) = 0xF05AF05A
+        assert_eq!(aux_i(0xFF00_FF00, 0x0F0F_0F0F, 0xAAAA_AAAA), 0xF05A_F05A);
+    }
+
+    #[test]
+    fn test_decode_encode() {
+        let value = 0x1234_5678_u32;
+        let mut buffer = [0u8; 4];
+        encode(value, &mut buffer);
+        assert_eq!(buffer, [0x78, 0x56, 0x34, 0x12]); // Little endian
+
+        let decoded = decode(&buffer);
+        assert_eq!(decoded, value);
+    }
+
+    #[test]
+    fn test_zero_length_multiple_times() {
+        // Test that multiple zero-length inputs work correctly
+        let mut builder = Md5Builder::default();
+        builder.append("");
+        builder.append(b"");
+        builder.append(Vec::<u8>::new());
+        let hash = builder.digest();
+        assert_eq!(
+            &hash,
+            b"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e"
+        );
+    }
+
+    #[test]
+    fn test_known_vectors() {
+        // Additional test vectors
+        let test_cases = vec![
+            (
+                "The quick brown fox jumps over the lazy dog",
+                b"\x9e\x10\x7d\x9d\x37\x2b\xb6\x82\x6b\xd8\x1d\x35\x42\xa4\x19\xd6",
+            ),
+            (
+                "The quick brown fox jumps over the lazy dog.",
+                b"\xe4\xd9\x09\xc2\x90\xd0\xfb\x1c\xa0\x68\xff\xad\xdf\x22\xcb\xd0",
+            ),
+            (
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                b"\xd1\x74\xab\x98\xd2\x77\xd9\xf5\xa5\x61\x1c\x2c\x9f\x41\x9d\x9f",
+            ),
+        ];
+
+        for (input, expected) in test_cases {
+            let hash = digest(input);
+            assert_eq!(&hash, expected);
+        }
     }
 }

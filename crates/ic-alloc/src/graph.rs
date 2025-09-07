@@ -54,8 +54,8 @@ where
             entry.insert(v);
         } else {
             let mut set = IndexSet::new();
-            set.insert(u);
-            self.edges.insert(v, set);
+            set.insert(v);
+            self.edges.insert(u, set);
         }
     }
 
@@ -90,3 +90,156 @@ impl<T> Default for DiGraph<T> {
 pub fn post_order<T>(_graph: &DiGraph<T>) {}
 
 pub fn topological_sort<T>(_graph: &DiGraph<T>) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let graph: DiGraph<i32> = DiGraph::new();
+        assert_eq!(graph.len(), 0);
+        assert!(graph.is_empty());
+    }
+
+    #[test]
+    fn test_default() {
+        let graph: DiGraph<i32> = DiGraph::default();
+        assert_eq!(graph.len(), 0);
+        assert!(graph.is_empty());
+    }
+
+    #[test]
+    fn test_add_vertex() {
+        let mut graph = DiGraph::new();
+
+        let v1 = graph.add_vertex(10);
+        assert_eq!(graph.len(), 1);
+        assert!(!graph.is_empty());
+
+        let v2 = graph.add_vertex(20);
+        assert_eq!(graph.len(), 2);
+
+        let v3 = graph.add_vertex(30);
+        assert_eq!(graph.len(), 3);
+
+        // Verify IDs are sequential
+        assert_eq!(v1, VertexId(0));
+        assert_eq!(v2, VertexId(1));
+        assert_eq!(v3, VertexId(2));
+    }
+
+    #[test]
+    fn test_add_edge() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex("A");
+        let v2 = graph.add_vertex("B");
+
+        // Add edge from v1 to v2
+        graph.add_edge(v1, v2);
+
+        // v1 should be the key and v2 should be in the set
+        assert!(graph.edges.contains_key(&v1));
+        assert!(graph.edges.get(&v1).unwrap().contains(&v2));
+        assert!(!graph.edges.contains_key(&v2));
+    }
+
+    #[test]
+    fn test_vertex_id_traits() {
+        use std::collections::HashSet;
+
+        let id1 = VertexId(1);
+        let id2 = VertexId(2);
+        let id1_copy = VertexId(1);
+
+        // Test Eq and PartialEq
+        assert_eq!(id1, id1_copy);
+        assert_ne!(id1, id2);
+
+        // Test Clone
+        let cloned = id1;
+        assert_eq!(id1, cloned);
+
+        // Test Copy
+        let copied = id1;
+        assert_eq!(id1, copied);
+
+        // Test Debug
+        let debug_str = format!("{id1:?}");
+        assert!(debug_str.contains("VertexId"));
+        assert!(debug_str.contains('1'));
+
+        // Test Hash
+        let mut set = HashSet::new();
+        set.insert(id1);
+        set.insert(id2);
+        set.insert(id1_copy);
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_multiple_vertices() {
+        let mut graph = DiGraph::new();
+
+        let vertices: Vec<_> = (0..10).map(|i| graph.add_vertex(i * 10)).collect();
+
+        assert_eq!(graph.len(), 10);
+
+        for (i, &vid) in vertices.iter().enumerate() {
+            assert_eq!(vid, VertexId(i));
+        }
+    }
+
+    #[test]
+    fn test_add_multiple_edges() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex("A");
+        let v2 = graph.add_vertex("B");
+        let v3 = graph.add_vertex("C");
+
+        // Add edges
+        graph.add_edge(v1, v2);
+        graph.add_edge(v1, v3);
+        graph.add_edge(v2, v3);
+
+        // Check edges exist
+        assert_eq!(graph.edges.len(), 2); // v1 and v2 as keys
+        assert!(graph.edges.get(&v1).unwrap().contains(&v2));
+        assert!(graph.edges.get(&v1).unwrap().contains(&v3));
+        assert!(graph.edges.get(&v2).unwrap().contains(&v3));
+    }
+
+    #[test]
+    fn test_self_loop() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex("A");
+
+        // Add self-loop
+        graph.add_edge(v1, v1);
+
+        // v1 is both key and in the set
+        assert!(graph.edges.contains_key(&v1));
+        assert!(graph.edges.get(&v1).unwrap().contains(&v1));
+    }
+
+    #[test]
+    fn test_empty_graph_functions() {
+        let graph: DiGraph<i32> = DiGraph::new();
+
+        // These should not panic on empty graph
+        post_order(&graph);
+        topological_sort(&graph);
+    }
+
+    #[test]
+    fn test_graph_with_edges_functions() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex(1);
+        let v2 = graph.add_vertex(2);
+        graph.add_edge(v1, v2);
+
+        // These should not panic
+        post_order(&graph);
+        topological_sort(&graph);
+    }
+}

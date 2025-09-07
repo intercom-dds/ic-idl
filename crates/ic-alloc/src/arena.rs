@@ -317,3 +317,277 @@ impl<'a, T> IntoIterator for &'a mut Arena<T> {
         self.iter_mut()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_arena_new() {
+        let arena: Arena<i32> = Arena::new();
+        assert_eq!(arena.len(), 0);
+        assert!(arena.is_empty());
+    }
+
+    #[test]
+    fn test_arena_with_capacity() {
+        let arena: Arena<i32> = Arena::with_capacity(100);
+        assert_eq!(arena.len(), 0);
+        assert!(arena.is_empty());
+    }
+
+    #[test]
+    fn test_alloc() {
+        let mut arena = Arena::new();
+        let id1 = arena.alloc(42);
+        let id2 = arena.alloc(100);
+
+        assert_eq!(arena.len(), 2);
+        assert!(!arena.is_empty());
+        assert_eq!(*arena.get(id1), 42);
+        assert_eq!(*arena.get(id2), 100);
+    }
+
+    #[test]
+    fn test_alloc_with_id() {
+        let mut arena = Arena::new();
+        let id = arena.alloc_with_id(|id| format!("Item {}", usize::from(id)));
+
+        assert_eq!(*arena.get(id), "Item 0");
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut arena = Arena::new();
+        let id = arena.alloc(42);
+
+        *arena.get_mut(id) = 100;
+        assert_eq!(*arena.get(id), 100);
+    }
+
+    #[test]
+    fn test_fold() {
+        let mut arena = Arena::new();
+        let id = arena.alloc(10);
+
+        arena.fold(id, |x| x * 2);
+        assert_eq!(*arena.get(id), 20);
+
+        arena.fold(&id, |x| x + 5);
+        assert_eq!(*arena.get(id), 25);
+    }
+
+    #[test]
+    fn test_index_operators() {
+        let mut arena = Arena::new();
+        let id = arena.alloc(42);
+
+        assert_eq!(arena[id], 42);
+        arena[id] = 100;
+        assert_eq!(arena[id], 100);
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut arena = Arena::new();
+        let id1 = arena.alloc(1);
+        let id2 = arena.alloc(2);
+        let id3 = arena.alloc(3);
+
+        let items: Vec<_> = arena.iter().collect();
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0], (id1, &1));
+        assert_eq!(items[1], (id2, &2));
+        assert_eq!(items[2], (id3, &3));
+    }
+
+    #[test]
+    fn test_iter_mut() {
+        let mut arena = Arena::new();
+        let _ = arena.alloc(1);
+        let _ = arena.alloc(2);
+        let _ = arena.alloc(3);
+
+        for (_, value) in &mut arena {
+            *value *= 2;
+        }
+
+        let values: Vec<_> = arena.iter().map(|(_, v)| *v).collect();
+        assert_eq!(values, vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn test_deref() {
+        let mut arena = Arena::new();
+        let _ = arena.alloc(1);
+        let _ = arena.alloc(2);
+        let _ = arena.alloc(3);
+
+        let slice: &[i32] = &arena;
+        assert_eq!(slice, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_deref_mut() {
+        let mut arena = Arena::new();
+        let _ = arena.alloc(1);
+        let _ = arena.alloc(2);
+        let _ = arena.alloc(3);
+
+        let slice: &mut [i32] = &mut arena;
+        slice[1] = 20;
+        assert_eq!(slice, &[1, 20, 3]);
+    }
+
+    #[test]
+    fn test_id_equality() {
+        let mut arena = Arena::new();
+        let id1 = arena.alloc(42);
+        let id2 = arena.alloc(42);
+        let id1_copy = id1;
+
+        assert_eq!(id1, id1_copy);
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_id_ordering() {
+        let mut arena = Arena::new();
+        let id1 = arena.alloc(1);
+        let id2 = arena.alloc(2);
+        let id3 = arena.alloc(3);
+
+        assert!(id1 < id2);
+        assert!(id2 < id3);
+        assert!(id1 < id3);
+    }
+
+    #[test]
+    fn test_id_hash() {
+        use std::collections::HashSet;
+
+        let mut arena = Arena::new();
+        let id1 = arena.alloc(1);
+        let id2 = arena.alloc(2);
+
+        let mut set = HashSet::new();
+        set.insert(id1);
+        set.insert(id2);
+        set.insert(id1); // Duplicate
+
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&id1));
+        assert!(set.contains(&id2));
+    }
+
+    #[test]
+    fn test_id_debug() {
+        let mut arena = Arena::new();
+        let id = arena.alloc(42);
+
+        let debug_str = format!("{id:?}");
+        assert!(debug_str.contains('0')); // First allocation has id 0
+    }
+
+    #[test]
+    fn test_id_from_usize() {
+        let id: Id<i32> = 42usize.into();
+        assert_eq!(usize::from(id), 42);
+    }
+
+    #[test]
+    fn test_id_do_not_use() {
+        let id: Id<i32> = Id::_do_not_use();
+        assert_eq!(usize::from(id), usize::MAX);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion `left == right` failed")]
+    fn test_arena_id_mismatch() {
+        let mut arena1 = Arena::new();
+        let arena2 = Arena::new();
+
+        let id = arena1.alloc(42);
+        arena2.get(id); // Should panic due to arena ID mismatch
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion `left == right` failed")]
+    fn test_arena_id_mismatch_mut() {
+        let mut arena1 = Arena::new();
+        let mut arena2 = Arena::new();
+
+        let id = arena1.alloc(42);
+        arena2.get_mut(id); // Should panic due to arena ID mismatch
+    }
+
+    #[test]
+    fn test_into_iter_ref() {
+        let mut arena = Arena::new();
+        let id1 = arena.alloc(1);
+        let id2 = arena.alloc(2);
+
+        let items: Vec<_> = (&arena).into_iter().collect();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0], (id1, &1));
+        assert_eq!(items[1], (id2, &2));
+    }
+
+    #[test]
+    fn test_into_iter_mut() {
+        let mut arena = Arena::new();
+        let _ = arena.alloc(1);
+        let _ = arena.alloc(2);
+
+        for (_, value) in &mut arena {
+            *value *= 2;
+        }
+
+        let values: Vec<_> = arena.iter().map(|(_, v)| *v).collect();
+        assert_eq!(values, vec![2, 4]);
+    }
+
+    #[test]
+    fn test_iter_size_hint() {
+        let mut arena = Arena::new();
+        let _ = arena.alloc(1);
+        let _ = arena.alloc(2);
+        let _ = arena.alloc(3);
+
+        let iter = arena.iter();
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+    }
+
+    #[test]
+    fn test_default() {
+        let arena: Arena<i32> = Arena::default();
+        assert_eq!(arena.len(), 0);
+        assert!(arena.is_empty());
+    }
+
+    #[test]
+    fn test_clone() {
+        let mut arena = Arena::new();
+        let _ = arena.alloc(1);
+        let _ = arena.alloc(2);
+        let _ = arena.alloc(3);
+
+        let cloned = arena.clone();
+        assert_eq!(cloned.len(), 3);
+        assert_eq!(cloned[0.into()], 1);
+        assert_eq!(cloned[1.into()], 2);
+        assert_eq!(cloned[2.into()], 3);
+    }
+
+    #[test]
+    fn test_multiple_arenas() {
+        let mut arena1 = Arena::new();
+        let mut arena2 = Arena::new();
+
+        let id1 = arena1.alloc(10);
+        let id2 = arena2.alloc(20);
+
+        assert_eq!(*arena1.get(id1), 10);
+        assert_eq!(*arena2.get(id2), 20);
+    }
+}

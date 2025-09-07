@@ -30,7 +30,6 @@ mod common;
 use ic_hir::hir::{DefKind, Numeric};
 
 #[test]
-#[ignore = "Positional argument name mapping not yet supported"]
 fn test_annotation_with_enum_argument() {
     let idl = r"
         enum MyEnum {
@@ -86,7 +85,6 @@ fn test_annotation_with_enum_argument() {
 }
 
 #[test]
-#[ignore = "Positional argument name mapping not yet supported"]
 fn test_annotation_with_scoped_enum_argument() {
     let idl = r"
         module foo {

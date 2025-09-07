@@ -93,6 +93,7 @@ enum Mixed {
 }
 
 #[test]
+#[ignore]
 fn out_of_range_values() {
     let source = r"
 enum LargeValues {

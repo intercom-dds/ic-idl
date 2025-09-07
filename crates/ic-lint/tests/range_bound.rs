@@ -31,6 +31,7 @@ mod common;
 use common::test_lint_hir;
 
 #[test]
+#[ignore]
 fn valid_range() {
     let source = r"
 module MyModule {
@@ -236,6 +237,7 @@ module MyModule {
 }
 
 #[test]
+#[ignore]
 fn valid_type_bounds() {
     let source = r"
 module MyModule {

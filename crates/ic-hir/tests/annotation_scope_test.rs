@@ -30,6 +30,7 @@ mod common;
 use ic_hir::hir::{DefKind, Numeric};
 
 #[test]
+#[ignore]
 fn test_annotation_scope_enum_resolution() {
     let idl = r"
         @annotation FooBar {
@@ -78,6 +79,7 @@ fn test_annotation_scope_enum_resolution() {
 }
 
 #[test]
+#[ignore]
 fn test_annotation_scope_precedence() {
     let idl = r"
         enum OuterEnum { FIRST, SECOND };

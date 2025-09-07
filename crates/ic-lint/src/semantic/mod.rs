@@ -32,6 +32,7 @@ pub mod duplicate_annotations_hir;
 pub mod duplicate_case_labels;
 pub mod duplicate_enum_values;
 pub mod duplicate_name;
+pub mod exhaustive_union_default;
 pub mod initializer_list_size;
 pub mod invalid_annotation_target;
 pub mod invalid_enum_literal;

@@ -276,7 +276,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ident: u.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (u.ident.span),
+            span: u.span,
             kind: DefKind::Decl(Decl::Union),
             flags: DefFlags::nil(),
         });

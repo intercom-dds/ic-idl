@@ -1,0 +1,22 @@
+---
+source: crates/ic-lint/tests/exhaustive_union_default.rs
+expression: test_lint_hir(source)
+---
+error[exhaustive_union_default]: default case is not allowed when all enum values are covered in union `ResultData`
+     ┌ test.idl:8:1
+     │
+   5 │     PENDING
+   6 │ };
+   7 │ 
+   8 │ union ResultData switch(Result) {
+     · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exhausted all possible values
+   9 │ case SUCCESS:
+  10 │ case PENDING:
+ ··· │
+  14 │ default:
+  15 │     double data;  // Error: all enum values covered
+  16 │ };
+     · ^^
+     └──
+ help: all 3 enumerators of 'Result' are already handled by explicit cases
+ note: default cases are only allowed when some discriminator values are not explicitly handled

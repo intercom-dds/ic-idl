@@ -264,7 +264,7 @@ fn float_rank_for(ty: FloatRank, other: FloatRank) -> FloatRank {
 }
 
 fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
-    use Value::{Bool, Const, Float, Int, UInt};
+    use Value::{Bool, Float, Int, UInt};
 
     match (a, b) {
         (Float(_, fa), Float(_, fb)) => Some(TyTag::Float(float_rank_for(*fa, *fb))),
@@ -286,9 +286,6 @@ fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
             let rank = usual_int_conv(*ra, INT_RANK);
             Some(TyTag::Int(rank, is_signed(rank)))
         }
-
-        // Const values should be resolved before calling this function
-        (Const(_), _) | (_, Const(_)) => None,
         _ => None,
     }
 }
@@ -1346,7 +1343,7 @@ enum ConstAssignOutcome {
 }
 
 impl ConstEvaluator<'_> {
-    /// Resolve a Value::Const to its actual value by following the reference.
+    /// Resolve a `Value::Const` to its actual value by following the reference.
     fn resolve_const_value(&self, value: &Value) -> Option<Value> {
         match value {
             Value::Const(def_id) => {

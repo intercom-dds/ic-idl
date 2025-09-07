@@ -485,7 +485,7 @@ impl Formatter<'_> {
             write!(
                 f,
                 " {} {}",
-                format!("{:>line_width$}", line_num).blue().bold(),
+                format!("{line_num:>line_width$}").blue().bold(),
                 self.chars.vertical.blue().bold()
             )?;
 

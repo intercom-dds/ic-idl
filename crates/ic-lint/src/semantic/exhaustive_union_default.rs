@@ -25,6 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap
+)]
+
 use std::collections::HashSet;
 
 use ic_diagnostic::{Label, error_span};
@@ -66,7 +73,7 @@ impl<'a> Visitor<'a> for ExhaustiveUnionDefaultLint<'a> {
     }
 
     fn visit_union(&mut self, def: &'a Def, union_ty: &'a UnionTy) {
-        if union_ty.variants.iter().find(|v| v.is_default).is_none() {
+        if !union_ty.variants.iter().any(|v| v.is_default) {
             return;
         }
 
@@ -88,14 +95,14 @@ impl<'a> Visitor<'a> for ExhaustiveUnionDefaultLint<'a> {
                 self.check_bool_exhaustiveness(&non_default_variants, def);
             }
             TyKind::Primitive(prim) => {
-                self.check_integer_exhaustiveness(prim, &non_default_variants, def);
+                self.check_integer_exhaustiveness(*prim, &non_default_variants, def);
             }
             _ => {}
         }
     }
 }
 
-impl<'a> ExhaustiveUnionDefaultLint<'a> {
+impl ExhaustiveUnionDefaultLint<'_> {
     fn report_exhaustive_default(&self, union_def: &Def, count: &str, help: String) {
         let diag = error_span(
             format!(
@@ -124,7 +131,7 @@ impl<'a> ExhaustiveUnionDefaultLint<'a> {
 
         let mut enumerator_count = 0;
 
-        for (_, const_def) in self.hir.context.definitions.iter() {
+        for (_, const_def) in &self.hir.context.definitions {
             if let DefKind::Const(const_ty) = &const_def.kind {
                 match &const_ty.ty.kind {
                     TyKind::Adt(const_enum_id) if *const_enum_id == enum_id => {
@@ -138,18 +145,15 @@ impl<'a> ExhaustiveUnionDefaultLint<'a> {
         let mut referenced_enumerators = HashSet::new();
         for variant in non_default_variants {
             for label in &variant.labels {
-                match &label.value {
-                    Numeric::Const(const_id) => {
-                        let const_def = self.hir.context.definitions.get(*const_id);
-                        if let DefKind::Const(const_ty) = &const_def.kind {
-                            if let TyKind::Adt(const_enum_id) = &const_ty.ty.kind {
-                                if *const_enum_id == enum_id {
-                                    referenced_enumerators.insert(*const_id);
-                                }
+                if let Numeric::Const(const_id) = &label.value {
+                    let const_def = self.hir.context.definitions.get(*const_id);
+                    if let DefKind::Const(const_ty) = &const_def.kind {
+                        if let TyKind::Adt(const_enum_id) = &const_ty.ty.kind {
+                            if *const_enum_id == enum_id {
+                                referenced_enumerators.insert(*const_id);
                             }
                         }
                     }
-                    _ => {}
                 }
             }
         }
@@ -159,8 +163,8 @@ impl<'a> ExhaustiveUnionDefaultLint<'a> {
                 union_def,
                 "enum",
                 format!(
-                    "all {} enumerators of '{}' are already handled by explicit cases",
-                    enumerator_count, enum_name
+                    "all {enumerator_count} enumerators of '{enum_name}' are already handled by \
+                     explicit cases"
                 ),
             );
         }
@@ -191,7 +195,7 @@ impl<'a> ExhaustiveUnionDefaultLint<'a> {
 
     fn check_integer_exhaustiveness(
         &mut self,
-        prim: &PrimitiveTy,
+        prim: PrimitiveTy,
         non_default_variants: &[&Variant],
         union_def: &Def,
     ) {
@@ -239,7 +243,7 @@ impl<'a> ExhaustiveUnionDefaultLint<'a> {
                         covered_values.insert(*v);
                     }
                     Numeric::UInt64(v) => {
-                        if *v <= i64::MAX as u64 {
+                        if i64::try_from(*v).is_ok() {
                             covered_values.insert(*v as i64);
                         }
                     }
@@ -264,9 +268,8 @@ impl<'a> ExhaustiveUnionDefaultLint<'a> {
                     union_def,
                     type_name,
                     format!(
-                        "all {} possible values of '{}' ({} to {}) are already handled by \
-                         explicit cases",
-                        total_possible_values, type_name, min, max
+                        "all {total_possible_values} possible values of '{type_name}' ({min} to \
+                         {max}) are already handled by explicit cases"
                     ),
                 );
             }

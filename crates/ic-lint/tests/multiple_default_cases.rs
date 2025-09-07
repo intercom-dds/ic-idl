@@ -183,7 +183,7 @@ union ComplexUnion switch(unsigned long) {
 #[test]
 fn test_union_in_interface() {
     let source = r"
-interface Service {
+interface Service2 {
     union Result switch(long) {
         case 0: string success;
         default: long error1;

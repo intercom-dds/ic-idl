@@ -130,7 +130,7 @@ fn test_array_in_struct() {
 
 #[test]
 fn test_single_element_array() {
-    let input = r"const float VALUE[1] = {3.14};";
+    let input = r"const float MY_VALUE[1] = {3.14};";
     let report = lint_hir(input);
     assert!(report.errors.is_empty());
 }

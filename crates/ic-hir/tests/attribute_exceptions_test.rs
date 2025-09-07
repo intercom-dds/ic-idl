@@ -75,9 +75,7 @@ fn test_attribute_with_unknown_exception() {
         };
     ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    assert_eq!(result.errors.len(), 2);
+    let (_result, _, diagnostics) = common::parse_and_resolve(idl);
     insta::assert_snapshot!(diagnostics);
 }
 
@@ -96,9 +94,7 @@ fn test_attribute_with_non_exception_type() {
         };
     ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    assert_eq!(result.errors.len(), 1);
+    let (_result, _, diagnostics) = common::parse_and_resolve(idl);
     insta::assert_snapshot!(diagnostics);
 }
 
@@ -155,9 +151,7 @@ fn test_readonly_attribute_with_unknown_raises() {
         };
     ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    assert_eq!(result.errors.len(), 2);
+    let (_result, _, diagnostics) = common::parse_and_resolve(idl);
     insta::assert_snapshot!(diagnostics);
 }
 
@@ -173,8 +167,6 @@ fn test_readonly_attribute_with_non_exception_raises() {
         };
     ";
 
-    let (result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    assert_eq!(result.errors.len(), 1);
+    let (_result, _, diagnostics) = common::parse_and_resolve(idl);
     insta::assert_snapshot!(diagnostics);
 }

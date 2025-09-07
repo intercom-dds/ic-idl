@@ -536,33 +536,92 @@ impl<'a> Resolver<'a> {
             let existing = self.ctx.definitions.get(existing_id);
             let new_def = self.ctx.definitions.get(id);
 
-            // Check if both are forward declarations - if so, it's allowed
-            let both_forward_decls = matches!(existing.kind, DefKind::Decl(_))
-                && matches!(new_def.kind, DefKind::Decl(_));
+            // Check if both are forward declarations
+            if let (DefKind::Decl(existing_decl), DefKind::Decl(new_decl)) =
+                (&existing.kind, &new_def.kind)
+            {
+                // If they're different types, that's an error
+                if !matches!(
+                    (existing_decl, new_decl),
+                    (Decl::Struct, Decl::Struct)
+                        | (Decl::Union, Decl::Union)
+                        | (Decl::Interface, Decl::Interface)
+                        | (Decl::Valuetype, Decl::Valuetype)
+                        | (Decl::Native, Decl::Native)
+                ) {
+                    self.errors.push(
+                        error_span(
+                            format!(
+                                "`{}` forward declared as both {} and {}",
+                                name,
+                                decl_kind_name(existing_decl),
+                                decl_kind_name(new_decl)
+                            ),
+                            Label::new(new_def.span).message(format!(
+                                "forward declared as {} here",
+                                decl_kind_name(new_decl)
+                            )),
+                        )
+                        .label(Label::new(existing.span).message(format!(
+                            "first forward declared as {} here",
+                            decl_kind_name(existing_decl)
+                        ))),
+                    );
+                    return;
+                }
+                // Same type forward declarations are allowed
+                return;
+            }
 
-            // Check if one is a forward declaration and the other is a definition of the same type
-            let forward_and_definition = match (&existing.kind, &new_def.kind) {
-                (DefKind::Decl(decl_type), other) | (other, DefKind::Decl(decl_type)) => {
+            // Check if one is a forward declaration and the other is a definition
+            match (&existing.kind, &new_def.kind) {
+                (DefKind::Decl(decl_type), other) => {
+                    // Existing is a forward declaration, new is something else
                     match (decl_type, other) {
-                        (Decl::Struct, DefKind::Struct(_)) => true,
-                        (Decl::Union, DefKind::Union(_)) => true,
-                        (Decl::Interface, DefKind::Interface(_)) => true,
-                        (Decl::Valuetype, DefKind::Struct(_)) => true, // Valuetypes are structs
-                        _ => false,
+                        (Decl::Struct, DefKind::Struct(_))
+                        | (Decl::Union, DefKind::Union(_))
+                        | (Decl::Interface, DefKind::Interface(_))
+                        | (Decl::Valuetype, DefKind::Struct(_)) => {
+                            // Valid forward declaration + definition
+                            return;
+                        }
+                        (_, DefKind::Decl(_)) => {
+                            // This case is handled above (both forward declarations)
+                            unreachable!("Should have been handled in forward declaration check");
+                        }
+                        _ => {
+                            // Type mismatch will be caught by validation phase
+                            // For now, just skip the duplicate error
+                            return;
+                        }
                     }
                 }
-                _ => false,
-            };
-
-            // Only report an error if it's not allowed
-            if !both_forward_decls && !forward_and_definition {
-                self.errors.push(
-                    error_span(
-                        format!("duplicate definition of `{}`", name),
-                        Label::new(new_def.span).message("redefined here"),
-                    )
-                    .label(Label::new(existing.span).message("first defined here")),
-                );
+                (other, DefKind::Decl(decl_type)) => {
+                    // Existing is a definition, new is a forward declaration
+                    match (other, decl_type) {
+                        (DefKind::Struct(_), Decl::Struct)
+                        | (DefKind::Union(_), Decl::Union)
+                        | (DefKind::Interface(_), Decl::Interface)
+                        | (DefKind::Struct(_), Decl::Valuetype) => {
+                            // Valid definition + forward declaration
+                            return;
+                        }
+                        _ => {
+                            // Type mismatch will be caught by validation phase
+                            return;
+                        }
+                    }
+                }
+                _ => {
+                    // Both are definitions (not forward declarations)
+                    self.errors.push(
+                        error_span(
+                            format!("duplicate definition of `{}`", name),
+                            Label::new(new_def.span).message("redefined here"),
+                        )
+                        .label(Label::new(existing.span).message("first defined here")),
+                    );
+                }
             }
         }
     }
@@ -1854,6 +1913,17 @@ fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
         "long double" => PrimitiveTy::Float128,
         _ => return None,
     })
+}
+
+/// Gets the name of a declaration kind for error messages.
+fn decl_kind_name(decl: &Decl) -> &'static str {
+    match decl {
+        Decl::Struct => "struct",
+        Decl::Union => "union",
+        Decl::Interface => "interface",
+        Decl::Valuetype => "valuetype",
+        Decl::Native => "native",
+    }
 }
 
 /// Extension trait for Ty to extract ADT `DefId`.

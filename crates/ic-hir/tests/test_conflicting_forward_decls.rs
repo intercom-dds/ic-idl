@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -28,63 +28,49 @@
 mod common;
 
 #[test]
-fn valuetype_forward_declared_then_defined_then_inherited() {
-    let idl = r"
-        valuetype ForwardDeclared1;
-        
-        valuetype ForwardDeclared1 {
-            public string data;
-        };
-        
-        valuetype ForwardDeclared2 : ForwardDeclared1 {};
+fn test_conflicting_forward_declarations() {
+    let input = r"
+        struct MyType;
+        union MyType;
     ";
 
-    let (result, _, _) = common::parse_and_resolve(idl);
-    assert!(result.errors.is_empty());
-}
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
 
-#[test]
-fn valuetype_inherit_from_only_forward_declared() {
-    let idl = r"
-        valuetype OnlyForward;
-        
-        valuetype Derived : OnlyForward {};
-    ";
+    // Should have an error about conflicting forward declarations
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for conflicting forward declarations"
+    );
 
-    let (_result, _, diagnostics) = common::parse_and_resolve(idl);
-
-    // Should have errors - OnlyForward is never defined
     insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
-fn struct_forward_declared_then_defined_then_inherited() {
-    let idl = r"
-        struct ForwardDeclared1;
-        
-        struct ForwardDeclared1 {
-            string data;
-        };
-        
-        struct ForwardDeclared2 : ForwardDeclared1 {};
+fn test_conflicting_forward_decl_then_definition() {
+    let input = r"
+        struct Foo;
+        union Foo;
+        struct Foo {};
     ";
 
-    let (result, _, _) = common::parse_and_resolve(idl);
-    assert!(result.errors.is_empty());
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
+
+    // Should have errors
+    assert!(!result.errors.is_empty());
+
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
-fn interface_forward_declared_then_defined_then_inherited() {
-    let idl = r"
-        interface ForwardDeclared1;
-        
-        interface ForwardDeclared1 {
-            void doSomething();
-        };
-        
-        interface ForwardDeclared2 : ForwardDeclared1 {};
+fn test_interface_valuetype_conflict() {
+    let input = r"
+        interface IFace;
+        valuetype IFace;
     ";
 
-    let (result, _, _) = common::parse_and_resolve(idl);
-    assert!(result.errors.is_empty());
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
+
+    assert!(!result.errors.is_empty());
+
+    insta::assert_snapshot!(diagnostics);
 }

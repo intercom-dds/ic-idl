@@ -42,10 +42,8 @@ fn test_multi_param_annotation_warning() {
         };
     ";
 
-    let (_, warning_msg) = common::parse_and_get_warnings(input);
-
-    // Should have a warning about multiple parameters requiring named arguments
-    assert!(warning_msg.contains("@range has 2 parameters and requires named arguments"));
+    let diagnostics = common::compile_idl_with_warnings(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -103,10 +101,8 @@ fn test_mixed_named_positional_warning() {
         };
     ";
 
-    let (_, warning_msg) = common::parse_and_get_warnings(input);
-
-    // Should have a warning about multiple parameters requiring named arguments
-    assert!(warning_msg.contains("@test has 3 parameters and requires named arguments"));
+    let diagnostics = common::compile_idl_with_warnings(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -122,8 +118,6 @@ fn test_annotation_with_defaults() {
         struct BadConfig {};
     ";
 
-    let (_, warning_msg) = common::parse_and_get_warnings(input);
-
-    // Should have a warning about multiple parameters requiring named arguments
-    assert!(warning_msg.contains("@config has 2 parameters and requires named arguments"));
+    let diagnostics = common::compile_idl_with_warnings(input);
+    insta::assert_snapshot!(diagnostics);
 }

@@ -37,20 +37,8 @@ fn test_struct_inherit_from_incomplete_type() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should have errors
-    assert!(!hir.errors.is_empty());
-
-    // Should have an error mentioning incomplete type
-    let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{e:?}");
-        error_str.contains("cannot inherit from incomplete type")
-    });
-    assert!(
-        error_found,
-        "Expected error about inheriting from incomplete type"
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -63,20 +51,8 @@ fn test_interface_inherit_from_incomplete_type() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should have errors
-    assert!(!hir.errors.is_empty());
-
-    // Should have an error mentioning incomplete type
-    let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{e:?}");
-        error_str.contains("cannot inherit from incomplete type")
-    });
-    assert!(
-        error_found,
-        "Expected error about inheriting from incomplete type"
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -91,10 +67,7 @@ fn test_struct_inherit_from_complete_type() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -107,20 +80,8 @@ fn test_inherit_from_wrong_type() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should have errors
-    assert!(!hir.errors.is_empty());
-
-    // Should have an error mentioning non-struct type
-    let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{e:?}");
-        error_str.contains("cannot inherit from non-struct type")
-    });
-    assert!(
-        error_found,
-        "Expected error about inheriting from non-struct type"
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -136,10 +97,7 @@ fn test_struct_forward_decl_then_inherit() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -155,22 +113,6 @@ fn test_inherit_from_later_defined_type() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should have errors about incomplete type
-    assert!(
-        !hir.errors.is_empty(),
-        "Expected errors but got none. Warnings: {:?}",
-        hir.warnings
-    );
-
-    let error_found = hir.errors.iter().any(|e| {
-        let error_str = format!("{e:?}");
-        error_str.contains("incomplete") || error_str.contains("not defined")
-    });
-    assert!(
-        error_found,
-        "Expected error about incomplete type, got: {:?}",
-        hir.errors
-    );
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }

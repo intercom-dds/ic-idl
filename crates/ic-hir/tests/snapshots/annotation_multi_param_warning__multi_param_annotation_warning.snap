@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/annotation_multi_param_warning.rs
+assertion_line: 46
+expression: diagnostics
+---
+warning: @range has 2 parameters and requires named arguments
+   ┌ test.idl:8:10
+   │
+ 8 │         @range(0, 10)
+   ·          ^^^^^ use named arguments for annotations with multiple parameters
+   └──

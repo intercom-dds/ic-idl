@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/inherit_incomplete_type.rs
+assertion_line: 117
+expression: diagnostics
+---
+error: struct `Derived` inherits from type that is not defined
+   ┌ test.idl:2:26
+   │
+ 2 │         struct Derived : Base {
+   ·                          ^^^^ undefined type
+   └──

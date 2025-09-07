@@ -47,14 +47,6 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
 
     let (result, source_map, _) = common::parse_and_resolve(input);
 
-    // We expect exactly 2 errors
-    assert_eq!(
-        result.errors.len(),
-        2,
-        "Expected 2 errors, got: {:?}",
-        result.errors
-    );
-
     // Snapshot test the error messages
     let mut output = String::new();
     for error in &result.errors {
@@ -83,12 +75,6 @@ fn test_deeply_nested_path_error() {
     ";
 
     let (result, source_map, _) = common::parse_and_resolve(input);
-    assert_eq!(
-        result.errors.len(),
-        2,
-        "Expected 2 errors, got: {:?}",
-        result.errors
-    );
 
     // Snapshot test the error messages
     let mut output = String::new();
@@ -114,7 +100,6 @@ fn test_global_path_unresolved_segment() {
     ";
 
     let (result, source_map, _) = common::parse_and_resolve(input);
-    assert_eq!(result.errors.len(), 2);
 
     // Snapshot test the error messages
     let mut output = String::new();

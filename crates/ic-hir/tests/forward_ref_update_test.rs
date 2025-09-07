@@ -337,18 +337,12 @@ fn test_inheritance_from_forward_declaration_error() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(source);
+    let (result, _, diagnostics) = common::parse_and_resolve(source);
 
     // This should produce an error about inheriting from incomplete type
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error about inheriting from incomplete type"
-    );
-    assert!(
-        result.errors[0]
-            .to_string()
-            .contains("cannot inherit from incomplete type")
-    );
+    assert!(!result.errors.is_empty());
+    
+    insta::assert_snapshot!(diagnostics);
 }
 
 /// Test inheritance when base is defined first.

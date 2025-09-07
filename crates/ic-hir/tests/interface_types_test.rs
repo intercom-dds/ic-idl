@@ -62,7 +62,7 @@ fn test_interface_nested_types() {
 #[test]
 fn test_interface_nested_type_in_typedef() {
     let input = r"
-        interface Service {
+        interface IService {
             struct Request {
                 string method;
                 any params;
@@ -85,7 +85,7 @@ fn test_interface_nested_type_in_typedef() {
 #[test]
 fn test_interface_type_not_visible_outside() {
     let input = r"
-        interface Service {
+        interface IService {
             struct InternalData {
                 long value;
             };
@@ -97,15 +97,8 @@ fn test_interface_type_not_visible_outside() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(input);
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error for type not visible outside interface. Errors: {:?}",
-        result.errors
-    );
-    let error_msg = format!("{:?}", result.errors[0]);
-    assert!(
-        error_msg.contains("unresolved type") || error_msg.contains("undefined type"),
-        "Error message should contain 'unresolved type' or 'undefined type': {error_msg}"
-    );
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
+    assert!(!result.errors.is_empty());
+    
+    insta::assert_snapshot!(diagnostics);
 }

@@ -200,7 +200,7 @@ enum Color {
 #[test]
 fn non_enum_constants_not_warned() {
     let source = r#"
-const long VALUE = 42;
+const long MY_VALUE = 42;
 const string NAME = "test";
 const float PI = 3.14;
 

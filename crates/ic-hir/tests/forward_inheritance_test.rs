@@ -41,27 +41,12 @@ fn test_struct_inherit_from_forward_decl() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(input);
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
 
     // Should have an error about inheriting from incomplete type
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error for inheriting from forward-declared struct"
-    );
+    assert!(!result.errors.is_empty());
 
-    // Check that the error mentions forward declaration
-    let error_messages: Vec<String> = result
-        .errors
-        .iter()
-        .map(std::string::ToString::to_string)
-        .collect();
-
-    assert!(
-        error_messages
-            .iter()
-            .any(|msg| msg.contains("incomplete type")),
-        "Error should mention incomplete type, but got: {error_messages:?}"
-    );
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -100,25 +85,10 @@ fn test_interface_inherit_from_forward_decl() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(input);
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
 
     // Should have an error about inheriting from incomplete type
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error for inheriting from forward-declared interface"
-    );
+    assert!(!result.errors.is_empty());
 
-    // Check that the error mentions forward declaration
-    let error_messages: Vec<String> = result
-        .errors
-        .iter()
-        .map(std::string::ToString::to_string)
-        .collect();
-
-    assert!(
-        error_messages
-            .iter()
-            .any(|msg| msg.contains("incomplete type")),
-        "Error should mention incomplete type, but got: {error_messages:?}"
-    );
+    insta::assert_snapshot!(diagnostics);
 }

@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/annotation_multi_param_warning.rs
+assertion_line: 122
+expression: diagnostics
+---
+warning: @config has 2 parameters and requires named arguments
+   ┌ test.idl:8:10
+   │
+ 8 │         @config(30)
+   ·          ^^^^^^ use named arguments for annotations with multiple parameters
+   └──

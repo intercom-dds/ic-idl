@@ -30,7 +30,7 @@ mod common;
 #[test]
 fn test_interface_types_require_qualification() {
     let input = r"
-        interface Service {
+        interface IService {
             struct InternalData {
                 long value;
             };
@@ -51,28 +51,14 @@ fn test_interface_types_require_qualification() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(input);
-    assert_eq!(
-        result.errors.len(),
-        2,
-        "Expected 2 errors for unqualified access"
-    );
-
-    let error_msgs = result
-        .errors
-        .iter()
-        .map(|e| format!("{e:?}"))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    assert!(error_msgs.contains("InternalData"));
-    assert!(error_msgs.contains("Status"));
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
 fn test_qualified_interface_access_works() {
     let input = r"
-        interface Service {
+        interface IService {
             struct InternalData {
                 long value;
             };
@@ -85,8 +71,8 @@ fn test_qualified_interface_access_works() {
         
         // These should work - qualified access
         struct GoodContainer {
-            Service::InternalData data;
-            Service::Status status;
+            IService::InternalData data;
+            IService::Status status;
         };
     ";
 
@@ -97,7 +83,7 @@ fn test_qualified_interface_access_works() {
 #[test]
 fn test_visibility_within_interface() {
     let input = r"
-        interface Service {
+        interface IService {
             struct InternalData {
                 long value;
             };
@@ -121,19 +107,19 @@ fn test_visibility_within_interface() {
 fn test_nested_interface_visibility() {
     let input = r"
         module Outer {
-            interface Service {
+            interface IService {
                 struct InternalData {
                     long value;
                 };
             };
             
             struct Container {
-                Service::InternalData data; // Should work - qualified access
+                IService::InternalData data; // Should work - qualified access
             };
         };
         
         struct RootContainer {
-            Outer::Service::InternalData data; // Should work - fully qualified
+            Outer::IService::InternalData data; // Should work - fully qualified
         };
     ";
 

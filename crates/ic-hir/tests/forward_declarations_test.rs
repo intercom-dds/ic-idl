@@ -95,16 +95,10 @@ fn test_duplicate_definitions_same_scope() {
         };
     ";
 
-    let (result, _, _) = common::parse_and_resolve(input);
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error for duplicate struct"
-    );
-    let error_msg = format!("{:?}", result.errors[0]);
-    assert!(
-        error_msg.contains("duplicate definition"),
-        "Error message doesn't contain 'duplicate definition': {error_msg}"
-    );
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
+    assert!(!result.errors.is_empty());
+    
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]

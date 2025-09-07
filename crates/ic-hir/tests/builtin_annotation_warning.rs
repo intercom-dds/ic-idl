@@ -37,10 +37,8 @@ fn test_builtin_range_positional_warning() {
         };
     ";
 
-    let (_, warning_msg) = common::parse_and_get_warnings(input);
-
-    // Should have a warning about multiple parameters requiring named arguments
-    assert!(warning_msg.contains("@range has 2 parameters and requires named arguments"));
+    let diagnostics = common::compile_idl_with_warnings(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]

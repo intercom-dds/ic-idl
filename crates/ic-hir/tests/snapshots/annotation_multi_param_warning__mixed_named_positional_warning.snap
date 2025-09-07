@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/annotation_multi_param_warning.rs
+assertion_line: 105
+expression: diagnostics
+---
+warning: @test has 3 parameters and requires named arguments
+   ┌ test.idl:9:10
+   │
+ 9 │         @test(5, b=10, c=15)
+   ·          ^^^^ use named arguments for annotations with multiple parameters
+   └──

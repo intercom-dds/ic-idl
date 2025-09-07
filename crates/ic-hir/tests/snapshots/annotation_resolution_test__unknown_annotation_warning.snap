@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/annotation_resolution_test.rs
+assertion_line: 138
+expression: diagnostics
+---
+warning: annotation `@unknown` not found
+   ┌ test.idl:2:10
+   │
+ 2 │         @unknown
+   ·          ^^^^^^^ unknown annotation
+   └──

@@ -131,10 +131,11 @@ fn test_unknown_annotation_warning() {
         };
     ";
 
-    let (result, warning_msg) = common::parse_and_get_warnings(input);
+    let (result, _, _) = common::parse_and_resolve(input);
 
     // Should have a warning about unknown annotation
-    assert!(warning_msg.contains("unknown"));
+    let diagnostics = common::compile_idl_with_warnings(input);
+    insta::assert_snapshot!(diagnostics);
 
     // Struct should have no annotations (unknown ones are filtered out)
     let struct_def = result

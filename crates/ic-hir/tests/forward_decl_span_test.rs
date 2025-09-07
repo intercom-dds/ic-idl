@@ -38,17 +38,8 @@ fn test_inherit_from_forward_decl_points_to_decl() {
         struct B {};
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should have error about incomplete type
-    assert!(!hir.errors.is_empty());
-
-    // The error should exist
-    let has_incomplete_error = hir.errors.iter().any(|e| {
-        let error_str = format!("{e:?}");
-        error_str.contains("cannot inherit from incomplete type")
-    });
-    assert!(has_incomplete_error);
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -65,15 +56,6 @@ fn test_interface_inherit_from_forward_decl_points_to_decl() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should have error about incomplete type
-    assert!(!hir.errors.is_empty());
-
-    // The error should exist
-    let has_incomplete_error = hir.errors.iter().any(|e| {
-        let error_str = format!("{e:?}");
-        error_str.contains("cannot inherit from incomplete type")
-    });
-    assert!(has_incomplete_error);
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }

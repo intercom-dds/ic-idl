@@ -1,0 +1,17 @@
+---
+source: crates/ic-hir/tests/interface_visibility_test.rs
+assertion_line: 55
+expression: diagnostics
+---
+error: unresolved type `InternalData`
+    ┌ test.idl:15:13
+    │
+ 15 │             InternalData data;
+    ·             ^^^^^^^^^^^^ unknown type
+    └──
+error: unresolved type `Status`
+    ┌ test.idl:19:13
+    │
+ 19 │             Status status;
+    ·             ^^^^^^ unknown type
+    └──

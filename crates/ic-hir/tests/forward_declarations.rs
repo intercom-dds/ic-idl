@@ -37,10 +37,7 @@ fn test_forward_declaration_followed_by_definition() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let hir = common::parse_and_resolve_successfully(input);
 
     // Should have one struct definition (not two)
     let struct_count = hir
@@ -67,10 +64,7 @@ fn test_multiple_forward_declarations() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -83,10 +77,7 @@ fn test_forward_declaration_after_definition() {
         struct A;
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -101,10 +92,9 @@ fn test_conflicting_struct_definitions() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
     // Should have a conflicting definitions error
-    assert!(!hir.errors.is_empty());
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -117,10 +107,7 @@ fn test_union_forward_declaration() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -133,10 +120,7 @@ fn test_interface_forward_declaration() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -148,10 +132,7 @@ fn test_valuetype_forward_declaration() {
         valuetype V long;
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -164,10 +145,9 @@ fn test_mismatched_forward_declaration_types() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
     // Should have a conflicting definitions error
-    assert!(!hir.errors.is_empty());
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -185,10 +165,7 @@ fn test_forward_declaration_with_usage() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }
 
 #[test]
@@ -203,8 +180,5 @@ fn test_nested_forward_declarations() {
         };
     ";
 
-    let (hir, _, _) = common::parse_and_resolve(input);
-
-    // Should compile without errors
-    assert_eq!(hir.errors.len(), 0);
+    let _hir = common::parse_and_resolve_successfully(input);
 }

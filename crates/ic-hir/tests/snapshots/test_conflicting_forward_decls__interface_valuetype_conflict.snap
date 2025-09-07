@@ -1,0 +1,25 @@
+---
+source: crates/ic-hir/tests/test_conflicting_forward_decls.rs
+assertion_line: 75
+expression: diagnostics
+---
+error: `IFace` forward declared as both interface and valuetype
+   ┌ test.idl:3:9
+   │
+ 3 │         valuetype IFace;
+   ·         ^^^^^^^^^^^^^^^^ forward declared as valuetype here
+ 2 │         interface IFace;
+   ·         ^^^^^^^^^^^^^^^^ first forward declared as interface here
+   └──
+error: type `IFace` is declared but not defined
+   ┌ test.idl:2:9
+   │
+ 2 │         interface IFace;
+   ·         ^^^^^^^^^^^^^^^^ declared here
+   └──
+error: type `IFace` is declared but not defined
+   ┌ test.idl:3:9
+   │
+ 3 │         valuetype IFace;
+   ·         ^^^^^^^^^^^^^^^^ declared here
+   └──

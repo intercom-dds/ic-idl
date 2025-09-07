@@ -103,6 +103,7 @@ module_name_repetitions = "allow"
 struct_excessive_bools = "allow"
 ignored_unit_patterns = "allow"
 struct_field_names = "allow"
+ignore_without_reason = "allow"
 
 [profile.release]
 lto = "thin"

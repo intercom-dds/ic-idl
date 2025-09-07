@@ -58,7 +58,7 @@ impl<'a> Lint<'a> for ConflictingAnnotations<'a> {
     }
 }
 
-impl<'a> ConflictingAnnotations<'a> {
+impl ConflictingAnnotations<'_> {
     fn check_annotations(
         &self,
         annotations: &[ic_hir::hir::Ann],
@@ -85,7 +85,7 @@ impl<'a> ConflictingAnnotations<'a> {
                         item_type, ident.name
                     ),
                     Label::new(ident.span)
-                        .message(format!("conflicting annotations on {}", item_type)),
+                        .message(format!("conflicting annotations on {item_type}")),
                 )
                 .label(Label::new(optional_ann.ident.span).message("@optional annotation here"))
                 .label(Label::new(key_ann.ident.span).message("@key annotation here"))

@@ -326,7 +326,11 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         }
         DefKind::Union(v) => {
             let disc_ty = emit_ty(context, &v.disc.ty);
-            node.push(leaf!("{} {disc_ty}", "disc".purple()));
+            let mut disc_leaf = leaf!("{} {disc_ty}", "disc".purple());
+            for ann in &v.disc.annotations {
+                disc_leaf.push(emit_ann_node(ann));
+            }
+            node.push(disc_leaf);
 
             let variants = v.variants.iter().map(|v| emit_variant(context, v));
             node.extend(variants);

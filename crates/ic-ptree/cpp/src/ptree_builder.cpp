@@ -1197,13 +1197,7 @@ ptree* create_struct_start(parser_state* state, const char* ident, ptree* parent
         parent->flags |= OPT_HAS_CHILDREN;
         parents.push_back(parent);
     }
-
-    auto type = create_context_node(state, N_STRUCT, ident, parents);
-    if (parent && (parent->flags & OPT_DECLARATION) != 0) {
-        state->error() << "Structs can only inherit from previously defined types. Type " << type
-                       << " inherits from " << parent << " which has only been declared";
-    }
-    return type;
+    return create_context_node(state, N_STRUCT, ident, parents);
 }
 
 ptree* create_struct_finish(parser_state* state, ptree* members) {
@@ -1244,9 +1238,6 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                 c->type = discriminator->type;
                 // default:
                 if (c->flags & OPT_DEFAULT) {
-                    if (default_case) {
-                        state->error() << "union has multiple default cases";
-                    }
                     default_case = c;
                     default_label_group = label_group;
                     continue;
@@ -1258,14 +1249,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
                 }
                 if (c->value.kind() != PTREE_KIND) {
                     c->value = *expr_convert(state, &c->value, c->type->value.kind());
-                } else if (base_type_of(c->value.val.node()->type) != base_type_of(c->type)) {
-                    state->error() << fmt::format(
-                        "union case type ({}) differs from union's discriminator type ({})",
-                        idl_scoped_name(c->value.val.node()->type, nullptr),
-                        idl_scoped_name(c->type, nullptr)
-                    );
                 }
-
                 if (c->value.kind() != UNDEF_KIND) {
                     case_values.insert(integer_value(c->value));
                 }
@@ -1999,10 +1983,6 @@ create_valuetype_member(parser_state* state, declarator* declarators, ptree* typ
 declarator* append_array_size(parser_state* state, declarator* decl, const numeric* value) {
     if (!decl) {
         decl = create_decl(state, "", nullptr);
-    }
-    if (integer_value(*value) <= 0) {
-        state->error() << "Invalid array index";
-        return decl;
     }
     decl->bounds.push_back(*value);
     return decl;

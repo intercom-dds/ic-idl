@@ -277,7 +277,7 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics) {
             diagnostics.warnings.len(),
             warning_plural,
         );
-    } else if diagnostics.warnings.is_empty() {
+    } else if diagnostics.errors.is_empty() {
         error!(
             "aborting due to {} previous error{}",
             diagnostics.errors.len(),

@@ -2104,18 +2104,6 @@ void validate_node(parser_state* state, ptree* node) {
             state->error() << "Unexpected scope " << node->super << " for member " << node;
         }
 
-        // Anonymous structs or unions are not supported
-        if (is_anonymous(node)) {
-            state->error() << "Anonymous structs and unions are not supported";
-        }
-
-        if (is_key_member(node)) {
-            // Keys cannot be optional
-            if (is_optional(node)) {
-                state->error() << "Optional members cannot be used as keys";
-            }
-        }
-
         if (node->kind == N_CONST) {
             // All constants must have a defined value
             if (!(node->flags & OPT_DECLARATION) &&
@@ -2162,16 +2150,6 @@ void validate_node(parser_state* state, ptree* node) {
                                << ": derived types may not differ in extensibility. Parent is "
                                << get_extensibility(*parent) << ", child is "
                                << get_extensibility(node);
-            }
-        }
-
-        // Derived types may not define key fields
-        if (!node->parents.empty()) {
-            for (auto member : node->members) {
-                if (is_key_member(member)) {
-                    state->error() << "Derived types may not define any key fields: field "
-                                   << member << " in node " << node;
-                }
             }
         }
 

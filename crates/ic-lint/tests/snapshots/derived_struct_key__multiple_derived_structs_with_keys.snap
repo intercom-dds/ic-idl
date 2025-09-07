@@ -1,0 +1,45 @@
+---
+source: crates/ic-lint/tests/derived_struct_key.rs
+assertion_line: 100
+expression: test_lint_hir(source)
+---
+error[derived-struct-key]: derived struct 'FirstDerived' cannot define @key fields
+    ┌ test.idl:7:6
+    │
+  4 │ };
+  5 │ 
+  6 │ struct FirstDerived : Base {
+  7 │     @key string first_key;
+    ·      ^^^ @key not allowed in derived struct
+  8 │ };
+  9 │ 
+ 10 │ struct SecondDerived : Base {
+    └──
+ help: move @key fields to the base struct or remove inheritance
+ note: only base structs can define @key fields
+
+error[derived-struct-key]: derived struct 'SecondDerived' cannot define @key fields
+    ┌ test.idl:11:6
+    │
+  8 │ };
+  9 │ 
+ 10 │ struct SecondDerived : Base {
+ 11 │     @key long second_key;
+    ·      ^^^ @key not allowed in derived struct
+ 12 │     @key string third_key;
+ 13 │ };
+    └──
+ help: move @key fields to the base struct or remove inheritance
+ note: only base structs can define @key fields
+
+error[derived-struct-key]: derived struct 'SecondDerived' cannot define @key fields
+    ┌ test.idl:12:6
+    │
+ 10 │ struct SecondDerived : Base {
+ 11 │     @key long second_key;
+ 12 │     @key string third_key;
+    ·      ^^^ @key not allowed in derived struct
+ 13 │ };
+    └──
+ help: move @key fields to the base struct or remove inheritance
+ note: only base structs can define @key fields

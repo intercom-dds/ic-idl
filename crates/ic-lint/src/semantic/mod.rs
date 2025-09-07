@@ -28,6 +28,7 @@
 pub mod bit_bound;
 pub mod circular_inheritance;
 pub mod conflicting_annotations;
+pub mod derived_struct_key;
 pub mod duplicate_annotations_hir;
 pub mod duplicate_case_labels;
 pub mod duplicate_enum_values;

@@ -1,0 +1,31 @@
+---
+source: crates/ic-lint/tests/derived_struct_key.rs
+assertion_line: 134
+expression: test_lint_hir(source)
+---
+error[conflicting-annotations]: struct member `code` cannot be both @optional and @key
+   ┌ test.idl:7:27
+   │
+ 4 │ };
+ 5 │ 
+ 6 │ struct Derived : Base {
+ 7 │     @optional @key string code;  // Multiple issues: @key in derived struct
+   ·      ^^^^^^^^  ^^^        ^^^^ conflicting annotations on struct member
+   ·      │         └─ @key annotation here
+   ·      └─ @optional annotation here
+ 8 │ };
+   └──
+ help: remove either @optional or @key
+
+error[derived-struct-key]: derived struct 'Derived' cannot define @key fields
+   ┌ test.idl:7:16
+   │
+ 4 │ };
+ 5 │ 
+ 6 │ struct Derived : Base {
+ 7 │     @optional @key string code;  // Multiple issues: @key in derived struct
+   ·                ^^^ @key not allowed in derived struct
+ 8 │ };
+   └──
+ help: move @key fields to the base struct or remove inheritance
+ note: only base structs can define @key fields

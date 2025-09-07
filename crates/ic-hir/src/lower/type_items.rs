@@ -108,7 +108,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .add_definition(self.current_scope, s.ident.name.clone(), def_id);
 
         // Register with the registry
-        self.ctx.registry.register_definition(
+        _ = self.ctx.registry.register_definition(
             self.current_scope,
             &s.ident,
             DefKindTag::Struct,
@@ -549,7 +549,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         });
 
         // Register with the registry
-        if let Some(registered_id) = self.ctx.registry.register_forward_decl(
+        if let Some(existing_id) = self.ctx.registry.register_forward_decl(
             self.current_scope,
             ident,
             kind,
@@ -557,9 +557,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             &mut self.ctx.diagnostics,
             &self.ctx.context,
         ) {
-            if registered_id != def_id {
-                // Return existing forward declaration
-                return registered_id;
+            if existing_id != def_id {
+                return existing_id;
             }
         }
 

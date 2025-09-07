@@ -95,10 +95,12 @@ impl DefinitionRegistry {
         let forward_decls = self.forward_decls.entry(key.clone()).or_default();
 
         // Check if we already have a forward declaration of this type
-        for (existing_kind, existing_id) in forward_decls.iter() {
+        for (existing_kind, _existing_id) in forward_decls.iter() {
             if *existing_kind == kind {
                 // Multiple forward declarations of the same kind are allowed
-                return Some(*existing_id);
+                // Add this new forward declaration to the list
+                forward_decls.push((kind, def_id));
+                return Some(def_id);
             }
         }
 

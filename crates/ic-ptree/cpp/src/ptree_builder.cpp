@@ -1489,7 +1489,7 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
             for (auto m : ann->members) {
                 ptree* type_member = find_member(ann->type, m->name.c_str());
                 if (type_member && type_member->type == &any_type) {
-                    node_kind lookup_kinds[] = {N_CONST};
+                    node_kind lookup_kinds[] = {N_CONST, N_UNDEF};
                     if (m->value.kind() == STRING_KIND &&
                         try_lookup_node(state, m->value.val.str().c_str(), lookup_kinds)) {
                         m->value = *lookup_value(state, m->value.val.str().c_str());
@@ -1584,63 +1584,6 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
             ann = ann->next;
         }
 
-        // Remove duplicates
-        ann = annotations;
-        while (ann) {
-            ptree* maybe_append = ann;
-            ann = ann->next;
-            maybe_append->next = nullptr;
-            bool do_add = true;
-            // Old bitset has been changed to a bitmask, no need for annotation
-            if (maybe_append->type == annotation_type_bitset_old) {
-                do_add = false;
-            }
-            // Check for duplicates
-            for (ptree* existing = node->annotations; do_add && existing;
-                 existing = existing->next) {
-                if (existing == maybe_append) {
-                    do_add = false;
-                    break;
-                }
-                if (maybe_append->type != existing->type) {
-                    continue;
-                }
-                ptree* m1 = maybe_append->members;
-                ptree* m2 = existing->members;
-                while (m1 && m2 && m1->name == m2->name &&
-                       string_value(m1->value) == string_value(m2->value)) {
-                    m1 = m1->next;
-                    m2 = m2->next;
-                }
-                if ((m1 == nullptr) && (m2 == nullptr)) {
-                    do_add = false;
-                }
-            }
-            if (do_add) {
-                node->annotations = append_node(node->annotations, maybe_append);
-            }
-        }
-
-        {  // enforce default in [min, max]
-            ann = find_member(get_annotation(node, annotation_type_default), "value");
-            numeric& val = ann ? ann->value : num_undef;  // \NB: reference
-            numeric min = get_min_value(node);
-            numeric max = get_max_value(node);
-            bool lt = min.has_val() && double_value(val) < double_value(min);
-            bool gt = max.has_val() && double_value(val) > double_value(max);
-            if (lt || gt) {  // (lt && gt) is not handled correctly, but it causes an error during
-                             // ptree validation
-                numeric rpl = gt ? max : min;
-                if (val.has_val()) {
-                    val = rpl;
-                } else if (!is_optional(node)) {
-                    ptree* param = create_node(state, N_CONST, "value");
-                    param->value = rpl;
-                    create_annotation_start(state, "@default");
-                    annotate(state, node, create_annotation_finish(state, param));
-                }
-            }
-        }
         if (node->kind == N_ANNOTATION) {
             append_to_list(node, node->annotations);
             node->annotations = nullptr;
@@ -2186,17 +2129,18 @@ void validate_node(parser_state* state, ptree* node) {
             }
             if (has_all_type_values(node->discriminator->type, case_values) &&
                 has_default_case(node)) {
-                state->error()
-                    << "Default labels are not allowed when all possible discriminator values are "
-                       "covered in union "
-                    << node;
+                state->error(
+                ) << "Default labels are not allowed when all possible discriminator values are "
+                     "covered in union "
+                  << node;
             }
 
             // Discirminators may not be annotated with @id or @hashid
             if (get_annotation(node->discriminator, annotation_type_id) ||
                 get_annotation(node->discriminator, annotation_type_hashid)) {
-                state->error()
-                    << "Discriminators cannot be annotated with @id or @hashid for union " << node;
+                state->error(
+                ) << "Discriminators cannot be annotated with @id or @hashid for union "
+                  << node;
             }
         }
 

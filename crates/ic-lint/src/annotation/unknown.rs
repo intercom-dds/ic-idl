@@ -43,7 +43,7 @@ impl<'a> Lint<'a> for UnknownAnnotation<'a> {
     }
 
     fn description() -> &'static str {
-        "warns about annotations that could not be resolved"
+        "Annotations that could not be resolved"
     }
 
     fn category() -> Category {

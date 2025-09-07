@@ -45,10 +45,6 @@ pub struct Warnings {
     #[option(long)]
     annotation: bool,
 
-    /// Use of unknown annotations
-    #[option(long)]
-    unknown_annotation: bool,
-
     /// Language extensions or implementation-defined behavior
     #[option(long)]
     pedantic: bool,
@@ -64,8 +60,8 @@ pub struct Warnings {
     /// Show help for warning options
     pub help: bool,
 
-    // These fields don't have #[option] so they're not parsed by the derive macro
     specific_lints: HashMap<String, bool>,
+
     error_lints: HashMap<String, bool>,
 
     /// Unknown warnings that were encountered during parsing
@@ -93,7 +89,7 @@ impl Warnings {
         }
 
         // Enable specific categories if requested
-        if self.all || self.annotation || self.unknown_annotation {
+        if self.all || self.annotation {
             config.set_category_level(Category::Annotation, Level::Warning);
         }
 
@@ -377,7 +373,6 @@ impl convert::Convert for Warnings {
             match arg {
                 "all" => warnings.all = enabled,
                 "annotation" => warnings.annotation = enabled,
-                "unknown-annotation" => warnings.unknown_annotation = enabled,
                 "pedantic" => warnings.pedantic = enabled,
                 "preprocessor" => warnings.preprocessor = enabled,
                 "error" => warnings.error = enabled,

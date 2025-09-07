@@ -41,7 +41,7 @@ impl<'a> Lint<'a> for CharArithmetic<'a> {
     }
 
     fn description() -> &'static str {
-        "warns about using char literals in arithmetic expressions"
+        "Char literals in arithmetic expressions"
     }
 
     fn category() -> Category {

@@ -43,7 +43,7 @@ impl<'a> Lint<'a> for CharDiscriminator<'a> {
     }
 
     fn description() -> &'static str {
-        "warns about using char types as union discriminators or in case labels"
+        "Char types as union discriminators or in case labels"
     }
 
     fn category() -> Category {

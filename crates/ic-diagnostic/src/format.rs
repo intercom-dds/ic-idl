@@ -475,20 +475,18 @@ impl Formatter<'_> {
                     // There's a gap, insert ellipsis
                     writeln!(
                         f,
-                        " {:>width$} {}",
-                        "···".gray(),
-                        self.chars.vertical.blue().bold(),
-                        width = line_width
+                        " {} {}",
+                        format!("{:>line_width$}", "···").gray(),
+                        self.chars.vertical.blue().bold()
                     )?;
                 }
             }
 
             write!(
                 f,
-                " {:>width$} {}",
-                line_num.blue().bold(),
-                self.chars.vertical.blue().bold(),
-                width = line_width
+                " {} {}",
+                format!("{:>line_width$}", line_num).blue().bold(),
+                self.chars.vertical.blue().bold()
             )?;
 
             let line_start = self.line_start_offset(line_num);

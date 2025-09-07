@@ -69,7 +69,7 @@ fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Optio
                 }
                 crate::hir::DefKind::Union(union_ty) => {
                     // Union size = max of variant sizes + discriminator
-                    let disc_size = type_size_impl(&union_ty.disc, ctx, visited)?;
+                    let disc_size = type_size_impl(&union_ty.disc.ty, ctx, visited)?;
                     let mut max_variant_size = 0;
                     for variant in &union_ty.variants {
                         if let Some(size) = type_size_impl(&variant.ty, ctx, visited) {
@@ -128,7 +128,7 @@ mod tests {
 
     use super::*;
     use crate::hir::{
-        AliasTy, BitmaskTy, BitsetField, BitsetTy, Def, DefFlags, DefKind, EnumTy, Member,
+        AliasTy, BitmaskTy, BitsetField, BitsetTy, Def, DefFlags, DefKind, Disc, EnumTy, Member,
         StructTy, UnionTy, Variant,
     };
 
@@ -418,7 +418,10 @@ mod tests {
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Union(UnionTy {
-                disc: make_primitive_type(PrimitiveTy::Int32),
+                disc: Disc {
+                    annotations: vec![],
+                    ty: make_primitive_type(PrimitiveTy::Int32),
+                },
                 variants: vec![
                     Variant {
                         annotations: vec![],

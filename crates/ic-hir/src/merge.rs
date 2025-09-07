@@ -38,8 +38,8 @@ use ic_syntax::Span;
 
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitFlag, BitmaskTy, BitsetField, BitsetTy,
-    ConstTy, Decl, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Label, Member, ModuleTy,
-    Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    ConstTy, Decl, Def, DefId, DefKind, Disc, EnumTy, ExceptTy, InterfaceTy, Label, Member,
+    ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};
@@ -877,7 +877,15 @@ impl HirMerger {
                     .collect(),
             }),
             DefKind::Union(u) => DefKind::Union(UnionTy {
-                disc: self.update_type(graph_index, &u.disc),
+                disc: Disc {
+                    annotations: u
+                        .disc
+                        .annotations
+                        .iter()
+                        .map(|ann| self.update_annotation(graph_index, ann))
+                        .collect(),
+                    ty: self.update_type(graph_index, &u.disc.ty),
+                },
                 variants: u
                     .variants
                     .iter()

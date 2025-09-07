@@ -222,7 +222,7 @@ pub fn walk_union<'a, V>(visitor: &mut V, data: &'a UnionTy)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ty(&data.disc);
+    visitor.visit_ty(&data.disc.ty);
     for variant in &data.variants {
         visitor.visit_variant(variant);
     }

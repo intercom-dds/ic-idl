@@ -331,7 +331,7 @@ impl<'a> TreeBuilder<'a> {
                 let variants =
                     collect_with(sys::append_node, &v.variants, |var| self.lower_variant(var));
 
-                let ty = self.lower_ty(&v.disc);
+                let ty = self.lower_ty(&v.disc.ty);
                 let disc = sys::create_union_discriminator(self.state, ty, ptr::null_mut());
                 sys::create_union_finish(self.state, disc, variants)
             }

@@ -299,7 +299,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         // Now resolve discriminator type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let disc = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| {
+        let disc_ty = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| {
             // Use a default type on error
             Ty {
                 span: (ic_syntax::util::ty_span(&u.disc.ty)),
@@ -307,8 +307,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             }
         });
 
+        // Convert discriminator annotations
+        let disc_annotations = self.convert_annotations(&u.disc.annotations, self.current_scope);
+
         // Validate that discriminator is an enum, integral type, boolean, or char
-        let is_valid_discriminator = match &disc.kind {
+        let is_valid_discriminator = match &disc_ty.kind {
             TyKind::Primitive(p) => matches!(
                 p,
                 PrimitiveTy::Bool
@@ -346,7 +349,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         );
 
         // Process union variants (union is now in scope)
-        let variants = self.process_union_variants(&u.fields, &disc);
+        let variants = self.process_union_variants(&u.fields, &disc_ty);
+
+        // Create the Disc struct with annotations and type
+        let disc = crate::hir::Disc {
+            annotations: disc_annotations,
+            ty: disc_ty,
+        };
 
         // Update the definition with the actual union data
         let def = self.ctx.context.definitions.get_mut(def_id);

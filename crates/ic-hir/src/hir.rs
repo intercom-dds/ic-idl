@@ -375,9 +375,18 @@ pub struct ExceptTy {
 }
 
 #[derive(Debug, Clone)]
+pub struct Disc {
+    /// Annotations applied to the discriminator.
+    pub annotations: Vec<Ann>,
+
+    /// The type of the union's discriminator.
+    pub ty: Ty,
+}
+
+#[derive(Debug, Clone)]
 pub struct UnionTy {
     /// The type of the union's discriminator.
-    pub disc: Ty,
+    pub disc: Disc,
 
     /// The union's variants, i.e. its members.
     pub variants: Vec<Variant>,

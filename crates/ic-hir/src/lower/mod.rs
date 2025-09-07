@@ -237,7 +237,7 @@ fn update_def_references(
         }
         DefKind::Union(u) => {
             // Update discriminator type
-            update_type_references(&mut u.disc, mapping);
+            update_type_references(&mut u.disc.ty, mapping);
 
             // Update variant types
             for variant in &mut u.variants {

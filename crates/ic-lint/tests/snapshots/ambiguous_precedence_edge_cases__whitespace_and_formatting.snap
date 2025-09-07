@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_edge_cases.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:2:21
    │
  2 │ const long test1 = 1|2&3;
@@ -13,7 +13,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:3:22
    │
  2 │ const long test1 = 1|2&3;
@@ -25,7 +25,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:4:23
    │
  2 │ const long test1 = 1|2&3;
@@ -38,7 +38,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:6:5
     │
   4 │ const long test3 = 1  |  2  &  3;
@@ -54,7 +54,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:9:36
     │
   6 │     | 2
@@ -69,7 +69,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:10:22
     │
   7 │     & 3;

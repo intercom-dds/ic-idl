@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-warning[range_bound]: @range min value -1 is less than type minimum 0
+warning[range-bound]: @range min value -1 is less than type minimum 0
    ┌ test.idl:4:10
    │
  2 │ module MyModule {
@@ -14,7 +14,7 @@ warning[range_bound]: @range min value -1 is less than type minimum 0
    └──
  help: valid range is 0..255
 
-warning[range_bound]: @range max value 300 exceeds type maximum 255
+warning[range-bound]: @range max value 300 exceeds type maximum 255
    ┌ test.idl:4:10
    │
  2 │ module MyModule {

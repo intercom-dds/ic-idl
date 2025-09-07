@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error[zero_bound]: array size must be greater than zero
+error[zero-bound]: array size must be greater than zero
    ┌ test.idl:2:23
    │
  2 │ typedef long BadArray[0];
@@ -11,7 +11,7 @@ error[zero_bound]: array size must be greater than zero
  4 │ typedef string<0> BadString;
    └──
 
-error[zero_bound]: sequence bound must be greater than zero
+error[zero-bound]: sequence bound must be greater than zero
    ┌ test.idl:3:24
    │
  2 │ typedef long BadArray[0];
@@ -21,7 +21,7 @@ error[zero_bound]: sequence bound must be greater than zero
  5 │ typedef map<string, long, 0> BadMap;
    └──
 
-error[zero_bound]: string bound must be greater than zero
+error[zero-bound]: string bound must be greater than zero
    ┌ test.idl:4:16
    │
  2 │ typedef long BadArray[0];
@@ -33,7 +33,7 @@ error[zero_bound]: string bound must be greater than zero
  7 │ struct Foo {
    └──
 
-error[zero_bound]: map bound must be greater than zero
+error[zero-bound]: map bound must be greater than zero
    ┌ test.idl:5:27
    │
  3 │ typedef sequence<long, 0> BadSequence;

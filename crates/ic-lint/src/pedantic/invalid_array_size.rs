@@ -46,7 +46,7 @@ pub struct InvalidArraySize<'a> {
 
 impl<'a> Lint<'a> for InvalidArraySize<'a> {
     fn name() -> &'static str {
-        "invalid_array_size"
+        "invalid-array-size"
     }
 
     fn category() -> Category {

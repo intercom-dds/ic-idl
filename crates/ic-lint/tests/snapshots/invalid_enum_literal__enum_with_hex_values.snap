@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid_enum_literal]: `3` is not a valid `Flags` value
+error[invalid-enum-literal]: `3` is not a valid `Flags` value
     ┌ test.idl:10:13
     │
   7 │ };
@@ -13,7 +13,7 @@ error[invalid_enum_literal]: `3` is not a valid `Flags` value
  11 │ const Flags FLAG3 = 0x04;  // Valid: EXECUTE
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'READ' instead of numeric literal
     ┌ test.idl:9:13
     │
   6 │     EXECUTE = 0x04
@@ -25,7 +25,7 @@ warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numer
  11 │ const Flags FLAG3 = 0x04;  // Valid: EXECUTE
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'EXECUTE' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'EXECUTE' instead of numeric literal
     ┌ test.idl:11:13
     │
   9 │ const Flags FLAG1 = 0x01;  // Valid: READ

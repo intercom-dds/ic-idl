@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown_annotation]: unknown annotation `UnknownUnion`
+warning[unknown-annotation]: unknown annotation `UnknownUnion`
    ┌ test.idl:2:10
    │
  2 │         @UnknownUnion
@@ -11,7 +11,7 @@ warning[unknown_annotation]: unknown annotation `UnknownUnion`
  4 │             case 0:
    └──
 
-warning[unknown_annotation]: unknown annotation `UnknownVariant`
+warning[unknown-annotation]: unknown annotation `UnknownVariant`
    ┌ test.idl:5:18
    │
  3 │         union TestUnion switch (long) {
@@ -22,7 +22,7 @@ warning[unknown_annotation]: unknown annotation `UnknownVariant`
  7 │             case 1:
    └──
 
-warning[unknown_annotation]: unknown annotation `AnotherUnknown`
+warning[unknown-annotation]: unknown annotation `AnotherUnknown`
     ┌ test.idl:8:18
     │
   6 │                 string text;

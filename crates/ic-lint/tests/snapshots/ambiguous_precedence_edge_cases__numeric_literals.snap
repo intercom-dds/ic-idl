@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_edge_cases.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:2:25
    │
  2 │ const long test1 = 0xFF & 0x0F + 1;
@@ -13,7 +13,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:3:25
    │
  2 │ const long test1 = 0xFF & 0x0F + 1;
@@ -26,7 +26,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:4:23
    │
  2 │ const long test1 = 0xFF & 0x0F + 1;
@@ -40,7 +40,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:6:31
    │
  3 │ const long test2 = 0377 | 010 & 3;
@@ -55,7 +55,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:7:31
     │
   4 │ const long test3 = 15 & 3 + 1;  // 0b1111 & 0b0011 + 1
@@ -70,7 +70,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:9:23
     │
   6 │ const long test4 = 0xFFFFFFFF & 0x12345678 + 1;
@@ -84,7 +84,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:10:22
     │
   7 │ const long test5 = 4294967295 | 2147483647 & 1000000;
@@ -99,7 +99,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:22
     │
   9 │ const long test6 = -1 & 2 + 3;

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/exhaustive_union_default.rs
 expression: test_lint_hir(source)
 ---
-error[exhaustive_union_default]: default case is not allowed when all enum values are covered in union `ColorData`
+error[exhaustive-union-default]: default case is not allowed when all enum values are covered in union `ColorData`
      ┌ test.idl:8:1
      │
    5 │     BLUE

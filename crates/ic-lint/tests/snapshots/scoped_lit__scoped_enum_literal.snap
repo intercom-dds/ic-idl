@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[scoped_lit]: scoped enums are non-standard
+warning[scoped-lit]: scoped enums are non-standard
    ┌ test.idl:8:37
    │
  5 │             BLUE
@@ -15,7 +15,7 @@ warning[scoped_lit]: scoped enums are non-standard
  help: use `RED` instead of `Color::RED`
  note: enumerators are registered in the parent scope
 
-warning[scoped_lit]: scoped enums are non-standard
+warning[scoped-lit]: scoped enums are non-standard
    ┌ test.idl:9:33
    │
  6 │         };

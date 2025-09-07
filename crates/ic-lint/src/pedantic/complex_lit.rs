@@ -84,7 +84,7 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
 
 impl<'a> Lint<'a> for ComplexLit<'a> {
     fn name() -> &'static str {
-        "complex_lit"
+        "complex-lit"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-error[recursive_type]: type `Tree` contains itself without indirection
+error[recursive-type]: type `Tree` contains itself without indirection
    ┌ test.idl:4:18
    │
  2 │         struct Tree {
@@ -14,7 +14,7 @@ error[recursive_type]: type `Tree` contains itself without indirection
    └──
  note: recursive types must use indirection through sequences, maps, or @external annotations
 
-error[recursive_type]: type `Tree` contains itself without indirection
+error[recursive-type]: type `Tree` contains itself without indirection
    ┌ test.idl:5:18
    │
  3 │             long value;
@@ -26,7 +26,7 @@ error[recursive_type]: type `Tree` contains itself without indirection
    └──
  note: recursive types must use indirection through sequences, maps, or @external annotations
 
-warning[deprecated_ann]: use of deprecated annotation `@shared`
+warning[deprecated-ann]: use of deprecated annotation `@shared`
    ┌ test.idl:6:14
    │
  4 │             Tree left;   // Error

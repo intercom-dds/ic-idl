@@ -42,7 +42,7 @@ pub struct DuplicateAnnotations<'a> {
 
 impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
     fn name() -> &'static str {
-        "duplicate_ann"
+        "duplicate-ann"
     }
 
     fn category() -> Category {

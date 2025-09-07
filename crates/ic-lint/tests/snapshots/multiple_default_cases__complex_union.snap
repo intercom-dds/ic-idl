@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error[multiple_default_cases]: union `ComplexUnion` has 2 default cases, but only one is allowed
+error[multiple-default-cases]: union `ComplexUnion` has 2 default cases, but only one is allowed
     ┌ test.idl:10:22
     │
   8 │     case 1: sequence<long> numbers;

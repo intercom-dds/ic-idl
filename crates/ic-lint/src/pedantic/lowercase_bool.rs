@@ -40,7 +40,7 @@ pub struct LowercaseBool<'a> {
 
 impl<'a> Lint<'a> for LowercaseBool<'a> {
     fn name() -> &'static str {
-        "lowercase_bool"
+        "lowercase-bool"
     }
 
     fn category() -> Category {

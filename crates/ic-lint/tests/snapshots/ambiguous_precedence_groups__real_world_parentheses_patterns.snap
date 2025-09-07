@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:9:38
     │
   6 │ const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
@@ -16,7 +16,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:9:38
     │
   6 │ const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
@@ -30,7 +30,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
     ┌ test.idl:9:51
     │
   6 │ const long combined2 = (flags & MASK_LOWER);  // Simplified - comparison not supported
@@ -44,7 +44,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:10:25
     │
   7 │ const long combined3 = (base + offset) & ~(alignment - 1);
@@ -57,7 +57,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:33
     │
   9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;
@@ -68,7 +68,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `-`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `-`
     ┌ test.idl:11:33
     │
   9 │ const long bad1 = MASK_LOWER & value | MASK_UPPER & value << 8;

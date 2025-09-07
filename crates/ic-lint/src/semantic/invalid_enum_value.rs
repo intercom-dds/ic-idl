@@ -39,7 +39,7 @@ pub struct InvalidEnumValue<'a> {
 
 impl<'a> Lint<'a> for InvalidEnumValue<'a> {
     fn name() -> &'static str {
-        "invalid_enum_value"
+        "invalid-enum-value"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
-warning[prefer_enum_name]: prefer using enum member name 'NONE' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'NONE' instead of numeric literal
     ┌ test.idl:9:13
     │
   6 │     EXECUTE = 0x04
@@ -14,7 +14,7 @@ warning[prefer_enum_name]: prefer using enum member name 'NONE' instead of numer
  11 │ const Flags F3 = 1;     // Should warn: prefer READ (decimal form)
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'READ' instead of numeric literal
     ┌ test.idl:10:13
     │
   7 │ };
@@ -26,7 +26,7 @@ warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numer
  12 │ const Flags F4 = 0x04;  // Should warn: prefer EXECUTE
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'READ' instead of numeric literal
     ┌ test.idl:11:13
     │
   9 │ const Flags F1 = 0x00;  // Should warn: prefer NONE
@@ -36,7 +36,7 @@ warning[prefer_enum_name]: prefer using enum member name 'READ' instead of numer
  12 │ const Flags F4 = 0x04;  // Should warn: prefer EXECUTE
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'EXECUTE' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'EXECUTE' instead of numeric literal
     ┌ test.idl:12:13
     │
  10 │ const Flags F2 = 0x01;  // Should warn: prefer READ

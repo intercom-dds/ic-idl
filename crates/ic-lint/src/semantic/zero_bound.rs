@@ -41,7 +41,7 @@ pub struct ZeroBound<'a> {
 
 impl<'a> Lint<'a> for ZeroBound<'a> {
     fn name() -> &'static str {
-        "zero_bound"
+        "zero-bound"
     }
 
     fn category() -> Category {

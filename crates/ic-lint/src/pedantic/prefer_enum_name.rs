@@ -39,7 +39,7 @@ pub struct PreferEnumName<'a> {
 
 impl<'a> Lint<'a> for PreferEnumName<'a> {
     fn name() -> &'static str {
-        "prefer_enum_name"
+        "prefer-enum-name"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'OuterUnion' has duplicate case label '1'
+error[duplicate-case]: union 'OuterUnion' has duplicate case label '1'
    ┌ test.idl:5:14
    │
  3 │     union OuterUnion switch (long) {
@@ -14,7 +14,7 @@ error[duplicate_case]: union 'OuterUnion' has duplicate case label '1'
  8 │     module Inner {
    └──
 
-error[duplicate_case]: union 'InnerUnion' has duplicate case label '1'
+error[duplicate-case]: union 'InnerUnion' has duplicate case label '1'
     ┌ test.idl:12:18
     │
  10 │             case 1: long c;    // Same value as outer, but different union

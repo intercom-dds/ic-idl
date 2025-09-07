@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate flag `FLAG_A` in flag 'HexFlags'
+error[duplicate-name]: duplicate flag `FLAG_A` in flag 'HexFlags'
    ┌ test.idl:5:5
    │
  2 │ bitmask HexFlags {

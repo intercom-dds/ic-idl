@@ -40,7 +40,7 @@ pub struct InitializerListSize<'a> {
 
 impl<'a> Lint<'a> for InitializerListSize<'a> {
     fn name() -> &'static str {
-        "initializer_list_size"
+        "initializer-list-size"
     }
 
     fn category() -> Category {

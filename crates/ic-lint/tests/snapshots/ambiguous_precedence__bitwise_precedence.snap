@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:3:22
    │
  2 │ // Different bitwise operators with confusing precedence
@@ -14,7 +14,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
    ┌ test.idl:4:22
    │
  2 │ // Different bitwise operators with confusing precedence
@@ -27,7 +27,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
    ┌ test.idl:5:22
    │
  3 │ const long test1 = 1 | 2 & 3;      // & binds tighter than |
@@ -41,7 +41,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
    ┌ test.idl:6:22
    │
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
@@ -55,7 +55,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
    ┌ test.idl:6:26
    │
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |

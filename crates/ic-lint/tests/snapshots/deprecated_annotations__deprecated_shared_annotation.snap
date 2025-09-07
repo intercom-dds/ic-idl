@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/deprecated_annotations.rs
 expression: output
 ---
-warning[deprecated_ann]: use of deprecated annotation `@shared`
+warning[deprecated-ann]: use of deprecated annotation `@shared`
    ┌ test.idl:3:14
    │
  2 │         struct SharedStruct {
@@ -14,7 +14,7 @@ warning[deprecated_ann]: use of deprecated annotation `@shared`
    └──
  help: use `@external` instead
 
-warning[deprecated_ann]: use of deprecated annotation `@shared`
+warning[deprecated-ann]: use of deprecated annotation `@shared`
     ┌ test.idl:12:18
     │
  10 │         module test_module {

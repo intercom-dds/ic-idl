@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error[multiple_default_cases]: union `Union2` has 2 default cases, but only one is allowed
+error[multiple-default-cases]: union `Union2` has 2 default cases, but only one is allowed
     ┌ test.idl:9:19
     │
   7 │ union Union2 switch(boolean) {
@@ -16,7 +16,7 @@ error[multiple_default_cases]: union `Union2` has 2 default cases, but only one 
  13 │ union Union3 switch(char) {
     └──
 
-warning[char_discriminator]: char types should not be used as union discriminators
+warning[char-discriminator]: char types should not be used as union discriminators
     ┌ test.idl:13:21
     │
  10 │     default: long f2;  // Error

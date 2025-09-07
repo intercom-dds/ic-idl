@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/null.rs
 expression: test_lint(source)
 ---
-warning[null]: `null` variants are non-standard
+warning[null-variant]: `null` variants are non-standard
    ┌ test.idl:4:25
    │
  2 │         union Inner switch(boolean) {
@@ -15,7 +15,7 @@ warning[null]: `null` variants are non-standard
    └──
  note: all case labels must map to a value
 
-warning[null]: `null` variants are non-standard
+warning[null-variant]: `null` variants are non-standard
     ┌ test.idl:9:21
     │
   7 │         union Outer switch(long) {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:2:28
    │
  2 │ const long test1 = (1 | 2) & 3 + 4;
@@ -13,7 +13,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:3:22
    │
  2 │ const long test1 = (1 | 2) & 3 + 4;
@@ -25,7 +25,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
    ┌ test.idl:4:26
    │
  2 │ const long test1 = (1 | 2) & 3 + 4;
@@ -39,7 +39,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:5:32
    │
  3 │ const long test2 = 1 | 2 & (3 + 4);
@@ -53,7 +53,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
     ┌ test.idl:10:22
     │
   7 │ const long test5 = (1 + 2) & 3;
@@ -66,7 +66,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
     ┌ test.idl:10:30
     │
   7 │ const long test5 = (1 + 2) & 3;
@@ -79,7 +79,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
     ┌ test.idl:11:32
     │
   8 │ const long test6 = 1 & (2 + 3);

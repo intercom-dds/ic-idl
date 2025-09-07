@@ -45,7 +45,7 @@ pub struct DuplicateEnumValues<'a> {
 
 impl<'a> Lint<'a> for DuplicateEnumValues<'a> {
     fn name() -> &'static str {
-        "duplicate_enum_values"
+        "duplicate-enum-values"
     }
 
     fn category() -> Category {

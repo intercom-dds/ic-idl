@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/char_arithmetic.rs
 expression: output
 ---
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:2:24
    │
  2 │         const long a = 'A' + 1;
@@ -12,7 +12,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:3:28
    │
  2 │         const long a = 'A' + 1;
@@ -23,7 +23,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:4:24
    │
  2 │         const long a = 'A' + 1;
@@ -35,7 +35,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:5:30
    │
  3 │         const long b = 2 - 'B';
@@ -47,7 +47,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:6:24
    │
  4 │         const long c = 'C' * 3;
@@ -59,7 +59,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:7:24
    │
  5 │         const long d = 100 / 'D';
@@ -71,7 +71,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
     ┌ test.idl:8:24
     │
   6 │         const long e = 'E' % 10;
@@ -83,7 +83,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
     └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
     ┌ test.idl:9:24
     │
   7 │         const long f = 'F' & 0xFF;
@@ -95,7 +95,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
     └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
     ┌ test.idl:10:24
     │
   8 │         const long g = 'G' | 0x20;
@@ -106,7 +106,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
     └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
     ┌ test.idl:11:24
     │
   9 │         const long h = 'H' ^ 0x01;

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:6:25
    │
  4 │             void read(out octet data);

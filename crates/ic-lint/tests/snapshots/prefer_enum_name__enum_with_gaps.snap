@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
-warning[prefer_enum_name]: prefer using enum member name 'OK' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'OK' instead of numeric literal
     ┌ test.idl:8:18
     │
   5 │     SERVER_ERROR = 500
@@ -14,7 +14,7 @@ warning[prefer_enum_name]: prefer using enum member name 'OK' instead of numeric
  10 │ const HttpStatus S3 = 500;  // Should warn: prefer SERVER_ERROR
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'NOT_FOUND' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'NOT_FOUND' instead of numeric literal
     ┌ test.idl:9:18
     │
   6 │ };
@@ -25,7 +25,7 @@ warning[prefer_enum_name]: prefer using enum member name 'NOT_FOUND' instead of 
  10 │ const HttpStatus S3 = 500;  // Should warn: prefer SERVER_ERROR
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'SERVER_ERROR' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'SERVER_ERROR' instead of numeric literal
     ┌ test.idl:10:18
     │
   8 │ const HttpStatus S1 = 200;  // Should warn: prefer OK

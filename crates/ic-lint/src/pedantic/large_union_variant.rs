@@ -47,7 +47,7 @@ pub struct LargeUnionVariant<'a> {
 
 impl<'a> Lint<'a> for LargeUnionVariant<'a> {
     fn name() -> &'static str {
-        "large_union_variant"
+        "large-union-variant"
     }
 
     fn category() -> Category {

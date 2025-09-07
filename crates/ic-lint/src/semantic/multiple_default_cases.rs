@@ -41,7 +41,7 @@ pub struct MultipleDefaultCases<'a> {
 
 impl<'a> Lint<'a> for MultipleDefaultCases<'a> {
     fn name() -> &'static str {
-        "multiple_default_cases"
+        "multiple-default-cases"
     }
 
     fn category() -> Category {

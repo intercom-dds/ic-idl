@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate flag `FLAG` in flag 'OuterFlags'
+error[duplicate-name]: duplicate flag `FLAG` in flag 'OuterFlags'
    ┌ test.idl:5:9
    │
  2 │ module Outer {

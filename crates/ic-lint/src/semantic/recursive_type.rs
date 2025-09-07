@@ -48,7 +48,7 @@ pub struct RecursiveType<'a> {
 
 impl<'a> Lint<'a> for RecursiveType<'a> {
     fn name() -> &'static str {
-        "recursive_type"
+        "recursive-type"
     }
 
     fn category() -> Category {

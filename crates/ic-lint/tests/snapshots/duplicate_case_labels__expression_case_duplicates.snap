@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'ExprUnion' has duplicate case label '6'
+error[duplicate-case]: union 'ExprUnion' has duplicate case label '6'
    ┌ test.idl:8:10
    │
  6 │     case X + 1: string x_plus_one;

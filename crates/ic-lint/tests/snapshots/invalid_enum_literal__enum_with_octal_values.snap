@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid_enum_literal]: `192` is not a valid `Permissions` value
+error[invalid-enum-literal]: `192` is not a valid `Permissions` value
     ┌ test.idl:10:19
     │
   7 │ };
@@ -13,7 +13,7 @@ error[invalid_enum_literal]: `192` is not a valid `Permissions` value
  11 │ const Permissions PERM3 = 070;   // Valid: GROUP_ALL (56 in decimal)
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'USER_READ' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'USER_READ' instead of numeric literal
     ┌ test.idl:9:19
     │
   6 │     GROUP_ALL = 070
@@ -25,7 +25,7 @@ warning[prefer_enum_name]: prefer using enum member name 'USER_READ' instead of 
  11 │ const Permissions PERM3 = 070;   // Valid: GROUP_ALL (56 in decimal)
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'GROUP_ALL' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'GROUP_ALL' instead of numeric literal
     ┌ test.idl:11:19
     │
   9 │ const Permissions PERM1 = 0400;  // Valid: USER_READ (256 in decimal)

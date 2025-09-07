@@ -99,7 +99,7 @@ impl<'a> Visitor<'a> for AmbiguousPrecedence<'a> {
 
 impl<'a> Lint<'a> for AmbiguousPrecedence<'a> {
     fn name() -> &'static str {
-        "ambiguous_precedence"
+        "ambiguous-precedence"
     }
 
     fn category() -> Category {

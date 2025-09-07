@@ -39,7 +39,7 @@ pub struct UnionCaseTypeMismatch<'a> {
 
 impl<'a> Lint<'a> for UnionCaseTypeMismatch<'a> {
     fn name() -> &'static str {
-        "disc_mismatch"
+        "disc-mismatch"
     }
 
     fn category() -> Category {

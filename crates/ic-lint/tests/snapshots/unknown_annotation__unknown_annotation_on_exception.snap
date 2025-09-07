@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown_annotation]: unknown annotation `UnknownException`
+warning[unknown-annotation]: unknown annotation `UnknownException`
    ┌ test.idl:2:10
    │
  2 │         @UnknownException
@@ -11,7 +11,7 @@ warning[unknown_annotation]: unknown annotation `UnknownException`
  4 │             @UnknownMember
    └──
 
-warning[unknown_annotation]: unknown annotation `UnknownMember`
+warning[unknown-annotation]: unknown annotation `UnknownMember`
    ┌ test.idl:4:14
    │
  2 │         @UnknownException

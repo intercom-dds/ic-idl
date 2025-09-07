@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/union_case_type_mismatch.rs
 expression: test_lint_hir(source)
 ---
-error[disc_mismatch]: case label `SMALL` is from enum `Size`, but discriminator is of type `Color`
+error[disc-mismatch]: case label `SMALL` is from enum `Size`, but discriminator is of type `Color`
     ┌ test.idl:16:10
     │
  14 │ union MyUnion switch (Color) {
@@ -13,7 +13,7 @@ error[disc_mismatch]: case label `SMALL` is from enum `Size`, but discriminator 
  18 │     case LARGE: float l;   // LARGE is from Size enum (value 12)
     └──
 
-error[disc_mismatch]: case label `LARGE` is from enum `Size`, but discriminator is of type `Color`
+error[disc-mismatch]: case label `LARGE` is from enum `Size`, but discriminator is of type `Color`
     ┌ test.idl:18:10
     │
  16 │     case SMALL: string s;  // SMALL is from Size enum (value 10)

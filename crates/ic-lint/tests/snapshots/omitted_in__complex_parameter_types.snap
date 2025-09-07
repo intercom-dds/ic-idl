@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
     ┌ test.idl:8:24
     │
   5 │         };
@@ -15,7 +15,7 @@ warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
     └──
  help: prefix the parameter with `in`
 
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
     ┌ test.idl:9:27
     │
   7 │         interface DataService {
@@ -27,7 +27,7 @@ warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
     └──
  help: prefix the parameter with `in`
 
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
     ┌ test.idl:10:25
     │
   8 │             void store(Data item);
@@ -38,7 +38,7 @@ warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
     └──
  help: prefix the parameter with `in`
 
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
     ┌ test.idl:10:34
     │
   8 │             void store(Data item);

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/null.rs
 expression: test_lint(source)
 ---
-warning[null]: `null` variants are non-standard
+warning[null-variant]: `null` variants are non-standard
    ┌ test.idl:5:22
    │
  3 │             case 1: string name;

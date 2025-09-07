@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_edge_cases.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:2:22
    │
  2 │ const long test1 = a | b & c;
@@ -13,7 +13,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
    ┌ test.idl:3:22
    │
  2 │ const long test1 = a | b & c;
@@ -25,7 +25,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
    ┌ test.idl:4:22
    │
  2 │ const long test1 = a | b & c;
@@ -38,7 +38,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
    ┌ test.idl:5:26
    │
  3 │ const long test2 = a | b ^ c;
@@ -51,7 +51,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
    ┌ test.idl:6:26
    │
  4 │ const long test3 = a ^ b & c;
@@ -65,7 +65,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
     ┌ test.idl:7:26
     │
   5 │ const long test4 = a & b | c;
@@ -79,7 +79,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
     ┌ test.idl:9:22
     │
   6 │ const long test5 = a ^ b | c;
@@ -93,7 +93,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
     ┌ test.idl:9:26
     │
   6 │ const long test5 = a ^ b | c;
@@ -107,7 +107,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:10:26
     │
   7 │ const long test6 = a & b ^ c;
@@ -122,7 +122,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
     ┌ test.idl:10:26
     │
   7 │ const long test6 = a & b ^ c;
@@ -137,7 +137,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
     ┌ test.idl:11:30
     │
   9 │ const long test7 = a | b ^ c & d;
@@ -151,7 +151,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
     ┌ test.idl:11:22
     │
   9 │ const long test7 = a | b ^ c & d;

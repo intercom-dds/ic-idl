@@ -47,7 +47,7 @@ pub struct DuplicateName<'a> {
 
 impl<'a> Lint<'a> for DuplicateName<'a> {
     fn name() -> &'static str {
-        "duplicate_name"
+        "duplicate-name"
     }
 
     fn category() -> Category {

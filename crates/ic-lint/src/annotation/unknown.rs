@@ -39,7 +39,7 @@ pub struct UnknownAnnotation<'a> {
 
 impl<'a> Lint<'a> for UnknownAnnotation<'a> {
     fn name() -> &'static str {
-        "unknown_annotation"
+        "unknown-annotation"
     }
 
     fn description() -> &'static str {

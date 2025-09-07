@@ -104,7 +104,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
 
 impl<'a> Lint<'a> for ScopedLit<'_> {
     fn name() -> &'static str {
-        "scoped_lit"
+        "scoped-lit"
     }
 
     fn category() -> Category {

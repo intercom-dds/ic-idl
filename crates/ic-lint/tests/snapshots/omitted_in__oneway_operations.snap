@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:3:32
    │
  2 │         interface Async {
@@ -13,7 +13,7 @@ warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    └──
  help: prefix the parameter with `in`
 
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:4:29
    │
  2 │         interface Async {
@@ -24,7 +24,7 @@ warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
    └──
  help: prefix the parameter with `in`
 
-warning[omitted_in]: parameters must be declared with `in`, `out`, or `inout`
+warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
    ┌ test.idl:4:41
    │
  2 │         interface Async {

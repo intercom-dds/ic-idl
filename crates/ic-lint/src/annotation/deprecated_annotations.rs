@@ -39,7 +39,7 @@ pub struct DeprecatedAnnotations<'a> {
 
 impl<'a> Lint<'a> for DeprecatedAnnotations<'a> {
     fn name() -> &'static str {
-        "deprecated_ann"
+        "deprecated-ann"
     }
 
     fn category() -> Category {
@@ -47,7 +47,7 @@ impl<'a> Lint<'a> for DeprecatedAnnotations<'a> {
     }
 
     fn description() -> &'static str {
-        "Warns when deprecated annotations are used"
+        "Detects deprecated annotations"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {

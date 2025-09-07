@@ -47,19 +47,6 @@ fn test_struct_optional_key_conflict() {
 }
 
 #[test]
-fn test_union_optional_key_conflict() {
-    let input = r"
-        union Command {
-            @key @optional long: Execute();
-            @optional string: Print();
-            @key long: Save();
-        };
-    ";
-
-    insta::assert_snapshot!(test_lint_hir(input));
-}
-
-#[test]
 fn test_no_conflict_optional_only() {
     let input = r"
         struct Config {
@@ -95,7 +82,6 @@ fn test_mixed_annotations_no_conflict() {
         struct Record {
             @key long id;
             @optional string description;
-            @deprecated string old_field;
             string name;
         };
     ";

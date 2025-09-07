@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid_enum_literal]: `200` is not a valid `ErrorCode` value
+error[invalid-enum-literal]: `200` is not a valid `ErrorCode` value
    ┌ test.idl:8:17
    │
  5 │     SERVER_ERROR = 500
@@ -13,7 +13,7 @@ error[invalid_enum_literal]: `200` is not a valid `ErrorCode` value
  9 │ const ErrorCode CODE2 = 403;  // Invalid: 403 is not defined
    └──
 
-error[invalid_enum_literal]: `403` is not a valid `ErrorCode` value
+error[invalid-enum-literal]: `403` is not a valid `ErrorCode` value
    ┌ test.idl:9:17
    │
  6 │ };

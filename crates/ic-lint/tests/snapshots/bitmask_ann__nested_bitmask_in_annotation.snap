@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/bitmask_ann.rs
 expression: test_lint(source)
 ---
-error[ann_members]: only consts, typedefs and enums can be defined in annotations
+error[ann-members]: only consts, typedefs and enums can be defined in annotations
    ┌ test.idl:3:20
    │
  2 │         @annotation ComplexAnnotation {
@@ -12,7 +12,7 @@ error[ann_members]: only consts, typedefs and enums can be defined in annotation
  5 │             };
    └──
 
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:8:25
     │
   5 │             };
@@ -25,7 +25,7 @@ warning[assign_expr]: assignment operator on bitmask flags is non-standard
     └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:9:25
     │
   7 │             bitmask Options {
@@ -38,7 +38,7 @@ warning[assign_expr]: assignment operator on bitmask flags is non-standard
     └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:13:26
     │
  10 │             };
@@ -51,7 +51,7 @@ warning[assign_expr]: assignment operator on bitmask flags is non-standard
     └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
     ┌ test.idl:14:26
     │
  12 │             bitmask MoreOptions {

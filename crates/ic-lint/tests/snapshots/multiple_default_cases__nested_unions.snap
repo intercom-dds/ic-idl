@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error[multiple_default_cases]: union `Inner` has 2 default cases, but only one is allowed
+error[multiple-default-cases]: union `Inner` has 2 default cases, but only one is allowed
     ┌ test.idl:9:21
     │
   7 │ union Inner switch(long) {

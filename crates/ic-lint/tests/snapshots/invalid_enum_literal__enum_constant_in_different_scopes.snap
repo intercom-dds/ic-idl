@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid_enum_literal]: `2` is not a valid `Status` value
+error[invalid-enum-literal]: `2` is not a valid `Status` value
     ┌ test.idl:9:18
     │
   6 │     };
@@ -15,7 +15,7 @@ error[invalid_enum_literal]: `2` is not a valid `Status` value
  12 │ module B {
     └──
 
-error[invalid_enum_literal]: `2` is not a valid `Status` value
+error[invalid-enum-literal]: `2` is not a valid `Status` value
     ┌ test.idl:19:18
     │
  16 │     };
@@ -26,7 +26,7 @@ error[invalid_enum_literal]: `2` is not a valid `Status` value
  20 │ };
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'OK' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'OK' instead of numeric literal
     ┌ test.idl:8:18
     │
   5 │         ERROR = 1
@@ -38,7 +38,7 @@ warning[prefer_enum_name]: prefer using enum member name 'OK' instead of numeric
  10 │ };
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'PENDING' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'PENDING' instead of numeric literal
     ┌ test.idl:18:18
     │
  15 │         DONE = 1

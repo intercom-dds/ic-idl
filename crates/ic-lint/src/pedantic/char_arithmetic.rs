@@ -37,7 +37,7 @@ pub struct CharArithmetic<'a> {
 
 impl<'a> Lint<'a> for CharArithmetic<'a> {
     fn name() -> &'static str {
-        "char_arithmetic"
+        "char-arithmetic"
     }
 
     fn description() -> &'static str {

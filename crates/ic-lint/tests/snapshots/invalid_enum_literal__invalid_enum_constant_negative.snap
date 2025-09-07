@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid_enum_literal]: `-1` is not a valid `Priority` value
+error[invalid-enum-literal]: `-1` is not a valid `Priority` value
    ┌ test.idl:8:16
    │
  5 │     HIGH = 3

@@ -54,7 +54,7 @@ impl<'a> Visitor<'a> for OmittedIn<'a> {
 
 impl<'a> Lint<'a> for OmittedIn<'a> {
     fn name() -> &'static str {
-        "omitted_in"
+        "omitted-in"
     }
 
     fn category() -> Category {

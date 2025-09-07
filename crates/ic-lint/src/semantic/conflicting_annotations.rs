@@ -41,7 +41,7 @@ pub struct ConflictingAnnotations<'a> {
 
 impl<'a> Lint<'a> for ConflictingAnnotations<'a> {
     fn name() -> &'static str {
-        "conflicting_annotations"
+        "conflicting-annotations"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/complex_lit.rs
 expression: test_lint(source)
 ---
-warning[complex_lit]: complex literals are non-standard
+warning[complex-lit]: complex literals are non-standard
    ┌ test.idl:2:34
    │
  2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };
@@ -12,7 +12,7 @@ warning[complex_lit]: complex literals are non-standard
    └──
  note: only literals of trivial types are allowed in standard IDL
 
-warning[complex_lit]: complex literals are non-standard
+warning[complex-lit]: complex literals are non-standard
    ┌ test.idl:3:40
    │
  2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };

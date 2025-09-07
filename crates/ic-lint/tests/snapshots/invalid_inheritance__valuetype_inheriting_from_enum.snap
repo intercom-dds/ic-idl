@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid_inheritance]: valuetype `BadValue` cannot inherit from enum `Priority`
+error[invalid-inheritance]: valuetype `BadValue` cannot inherit from enum `Priority`
    ┌ test.idl:3:19
    │
  2 │         enum Priority { LOW, MEDIUM, HIGH };

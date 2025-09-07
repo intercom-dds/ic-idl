@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_methods.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate method `method` in method 'Test'
+error[duplicate-name]: duplicate method `method` in method 'Test'
    ┌ test.idl:4:10
    │
  2 │ interface Test {

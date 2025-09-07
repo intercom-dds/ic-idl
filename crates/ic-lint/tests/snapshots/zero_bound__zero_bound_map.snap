@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error[zero_bound]: map bound must be greater than zero
+error[zero-bound]: map bound must be greater than zero
    ┌ test.idl:3:23
    │
  2 │ struct Foo {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'StatusData' has duplicate case label 'PENDING'
+error[duplicate-case]: union 'StatusData' has duplicate case label 'PENDING'
     ┌ test.idl:11:10
     │
   9 │     case PENDING: long pending_data;

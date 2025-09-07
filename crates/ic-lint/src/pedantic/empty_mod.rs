@@ -52,7 +52,7 @@ impl<'a> Visitor<'a> for EmptyMod<'a> {
 
 impl<'a> Lint<'a> for EmptyMod<'a> {
     fn name() -> &'static str {
-        "empty_mod"
+        "empty-mod"
     }
 
     fn category() -> Category {

@@ -41,7 +41,7 @@ pub struct RangeBound<'a> {
 
 impl<'a> Lint<'a> for RangeBound<'a> {
     fn name() -> &'static str {
-        "range_bound"
+        "range-bound"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/char_arithmetic.rs
 expression: output
 ---
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:2:25
    │
  2 │         const long a = ('A' + 1) * 2;
@@ -12,7 +12,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:3:29
    │
  2 │         const long a = ('A' + 1) * 2;
@@ -22,7 +22,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:4:26
    │
  2 │         const long a = ('A' + 1) * 2;

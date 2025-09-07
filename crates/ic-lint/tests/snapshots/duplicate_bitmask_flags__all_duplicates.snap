@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
+error[duplicate-name]: duplicate flag `SAME` in flag 'AllDuplicates'
    ┌ test.idl:4:5
    │
  2 │ bitmask AllDuplicates {
@@ -15,7 +15,7 @@ error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
    └──
  note: names are case-insensitive
 
-error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
+error[duplicate-name]: duplicate flag `SAME` in flag 'AllDuplicates'
    ┌ test.idl:5:5
    │
  2 │ bitmask AllDuplicates {
@@ -29,7 +29,7 @@ error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
    └──
  note: names are case-insensitive
 
-error[duplicate_name]: duplicate flag `SAME` in flag 'AllDuplicates'
+error[duplicate-name]: duplicate flag `SAME` in flag 'AllDuplicates'
    ┌ test.idl:6:5
    │
  2 │ bitmask AllDuplicates {

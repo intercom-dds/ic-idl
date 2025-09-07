@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid_enum_literal]: `10001` is not a valid `LargeEnum` value
+error[invalid-enum-literal]: `10001` is not a valid `LargeEnum` value
     ┌ test.idl:9:17
     │
   6 │ };
@@ -13,7 +13,7 @@ error[invalid_enum_literal]: `10001` is not a valid `LargeEnum` value
  10 │ const LargeEnum VAL3 = 1000000;  // Valid: LARGE
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'SMALL' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'SMALL' instead of numeric literal
     ┌ test.idl:8:17
     │
   5 │     LARGE = 1000000
@@ -25,7 +25,7 @@ warning[prefer_enum_name]: prefer using enum member name 'SMALL' instead of nume
  10 │ const LargeEnum VAL3 = 1000000;  // Valid: LARGE
     └──
 
-warning[prefer_enum_name]: prefer using enum member name 'LARGE' instead of numeric literal
+warning[prefer-enum-name]: prefer using enum member name 'LARGE' instead of numeric literal
     ┌ test.idl:10:17
     │
   8 │ const LargeEnum VAL1 = 100;      // Valid: SMALL

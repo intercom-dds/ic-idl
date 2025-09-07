@@ -59,7 +59,7 @@ impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
 
 impl<'a> Lint<'a> for AnnotatedDecl<'_> {
     fn name() -> &'static str {
-        "annotated_decl"
+        "annotated-decl"
     }
 
     fn category() -> Category {

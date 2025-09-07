@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_array_size.rs
 expression: test_lint_hir(source)
 ---
-warning[invalid_array_size]: array size 8000000 bytes exceeds reasonable limit of 16384 bytes (2000000 elements × 4 bytes each)
+warning[invalid-array-size]: array size 8000000 bytes exceeds reasonable limit of 16384 bytes (2000000 elements × 4 bytes each)
    ┌ test.idl:5:16
    │
  3 │ const long TWO = 2;
@@ -13,7 +13,7 @@ warning[invalid_array_size]: array size 8000000 bytes exceeds reasonable limit o
  7 │ };
    └──
 
-warning[invalid_array_size]: array size 400000 bytes exceeds reasonable limit of 16384 bytes (100000 elements × 4 bytes each)
+warning[invalid-array-size]: array size 400000 bytes exceeds reasonable limit of 16384 bytes (100000 elements × 4 bytes each)
    ┌ test.idl:6:16
    │
  4 │ struct ConstArrays {

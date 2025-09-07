@@ -39,7 +39,7 @@ pub struct CharDiscriminator<'a> {
 
 impl<'a> Lint<'a> for CharDiscriminator<'a> {
     fn name() -> &'static str {
-        "char_discriminator"
+        "char-discriminator"
     }
 
     fn description() -> &'static str {

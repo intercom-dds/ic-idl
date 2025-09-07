@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/complex_lit.rs
 expression: test_lint(source)
 ---
-warning[complex_lit]: complex literals are non-standard
+warning[complex-lit]: complex literals are non-standard
     ┌ test.idl:8:23
     │
   5 │         };

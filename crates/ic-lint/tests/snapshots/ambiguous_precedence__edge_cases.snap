@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:14:25
     │
  12 │ const long MASK = 0xFF;

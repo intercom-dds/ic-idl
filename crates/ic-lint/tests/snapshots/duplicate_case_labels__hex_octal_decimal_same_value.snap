@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'NumberUnion' has duplicate case label '10'
+error[duplicate-case]: union 'NumberUnion' has duplicate case label '10'
    ┌ test.idl:4:10
    │
  2 │ union NumberUnion switch (short) {
@@ -13,7 +13,7 @@ error[duplicate_case]: union 'NumberUnion' has duplicate case label '10'
  6 │ };
    └──
 
-error[duplicate_case]: union 'NumberUnion' has duplicate case label '10'
+error[duplicate-case]: union 'NumberUnion' has duplicate case label '10'
    ┌ test.idl:5:10
    │
  3 │     case 10: long decimal;

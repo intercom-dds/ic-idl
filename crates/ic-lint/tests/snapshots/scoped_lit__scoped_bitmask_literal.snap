@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
    ┌ test.idl:3:20
    │
  2 │         bitmask Permissions {
@@ -13,7 +13,7 @@ warning[assign_expr]: assignment operator on bitmask flags is non-standard
    └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
    ┌ test.idl:4:21
    │
  2 │         bitmask Permissions {
@@ -25,7 +25,7 @@ warning[assign_expr]: assignment operator on bitmask flags is non-standard
    └──
  help: use the `@position` annotation instead
 
-warning[assign_expr]: assignment operator on bitmask flags is non-standard
+warning[assign-expr]: assignment operator on bitmask flags is non-standard
    ┌ test.idl:5:23
    │
  3 │             READ = 0x01,
@@ -38,7 +38,7 @@ warning[assign_expr]: assignment operator on bitmask flags is non-standard
    └──
  help: use the `@position` annotation instead
 
-warning[scoped_lit]: scoped bitmasks are non-standard
+warning[scoped-lit]: scoped bitmasks are non-standard
    ┌ test.idl:8:43
    │
  5 │             EXECUTE = 0x04
@@ -50,7 +50,7 @@ warning[scoped_lit]: scoped bitmasks are non-standard
  help: use `READ` instead of `Permissions::READ`
  note: bitmask flags are registered in the parent scope
 
-warning[scoped_lit]: scoped bitmasks are non-standard
+warning[scoped-lit]: scoped bitmasks are non-standard
    ┌ test.idl:8:63
    │
  5 │             EXECUTE = 0x04

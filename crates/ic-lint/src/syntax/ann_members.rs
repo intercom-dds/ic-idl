@@ -64,7 +64,7 @@ impl<'a> Visitor<'a> for AnnMembers<'_> {
 
 impl<'a> Lint<'a> for AnnMembers<'a> {
     fn name() -> &'static str {
-        "ann_members"
+        "ann-members"
     }
 
     fn category() -> crate::Category {

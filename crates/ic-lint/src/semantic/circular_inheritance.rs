@@ -44,7 +44,7 @@ pub struct CircularInheritance<'a> {
 
 impl<'a> Lint<'a> for CircularInheritance<'a> {
     fn name() -> &'static str {
-        "circular_inheritance"
+        "circular-inheritance"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/large_union_variant.rs
 expression: test_lint_hir(source)
 ---
-warning[large_union_variant]: union variant `large` is 768 bytes, which is significantly larger than the average of other variants (1 bytes)
+warning[large-union-variant]: union variant `large` is 768 bytes, which is significantly larger than the average of other variants (1 bytes)
     ┌ test.idl:13:25
     │
   9 │ };

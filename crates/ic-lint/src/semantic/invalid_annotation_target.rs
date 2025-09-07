@@ -40,7 +40,7 @@ pub struct InvalidAnnotationTarget<'a> {
 
 impl<'a> Lint<'a> for InvalidAnnotationTarget<'a> {
     fn name() -> &'static str {
-        "invalid_annotation_target"
+        "invalid-annotation-target"
     }
 
     fn category() -> Category {

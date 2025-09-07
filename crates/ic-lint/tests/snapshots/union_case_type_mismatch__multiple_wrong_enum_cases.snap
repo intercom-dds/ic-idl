@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/union_case_type_mismatch.rs
 expression: test_lint_hir(source)
 ---
-error[disc_mismatch]: case label `X` is from enum `Secondary`, but discriminator is of type `Primary`
+error[disc-mismatch]: case label `X` is from enum `Secondary`, but discriminator is of type `Primary`
     ┌ test.idl:8:10
     │
   6 │ union Mixed switch (Primary) {
@@ -13,7 +13,7 @@ error[disc_mismatch]: case label `X` is from enum `Secondary`, but discriminator
  10 │     case B: string b;
     └──
 
-error[disc_mismatch]: case label `Y` is from enum `Secondary`, but discriminator is of type `Primary`
+error[disc-mismatch]: case label `Y` is from enum `Secondary`, but discriminator is of type `Primary`
     ┌ test.idl:9:10
     │
   7 │     case A: string a;
@@ -24,7 +24,7 @@ error[disc_mismatch]: case label `Y` is from enum `Secondary`, but discriminator
  11 │     case P: string p;  // Wrong: from Tertiary
     └──
 
-error[disc_mismatch]: case label `P` is from enum `Tertiary`, but discriminator is of type `Primary`
+error[disc-mismatch]: case label `P` is from enum `Tertiary`, but discriminator is of type `Primary`
     ┌ test.idl:11:10
     │
   9 │     case Y: string y;  // Wrong: from Secondary

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_shift_operators.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
    ┌ test.idl:2:22
    │
  2 │ const long test1 = 1 & 2 << 3;
@@ -13,7 +13,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
    ┌ test.idl:3:27
    │
  2 │ const long test1 = 1 & 2 << 3;
@@ -25,7 +25,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `>>`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `>>`
    ┌ test.idl:4:22
    │
  2 │ const long test1 = 1 & 2 << 3;
@@ -39,7 +39,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `>>`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `>>`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `>>`
    ┌ test.idl:5:27
    │
  3 │ const long test2 = 1 << 2 & 3;
@@ -53,7 +53,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `>>`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `<<`
     ┌ test.idl:7:22
     │
   4 │ const long test3 = 1 | 2 >> 3;
@@ -68,7 +68,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `<<`
     ┌ test.idl:8:27
     │
   5 │ const long test4 = 1 >> 2 | 3;
@@ -83,7 +83,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:10:22
     │
   7 │ const long test5 = 1 ^ 2 << 3;
@@ -98,7 +98,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
     ┌ test.idl:10:26
     │
   7 │ const long test5 = 1 ^ 2 << 3;
@@ -113,7 +113,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
     ┌ test.idl:11:31
     │
   8 │ const long test6 = 1 << 2 ^ 3;
@@ -128,7 +128,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `<<` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `<<` has lower precedence than `+`
     ┌ test.idl:11:22
     │
   8 │ const long test6 = 1 << 2 ^ 3;

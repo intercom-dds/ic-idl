@@ -50,7 +50,7 @@ pub struct ExhaustiveUnionDefaultLint<'a> {
 
 impl<'a> Lint<'a> for ExhaustiveUnionDefaultLint<'a> {
     fn name() -> &'static str {
-        "exhaustive_union_default"
+        "exhaustive-union-default"
     }
 
     fn category() -> Category {

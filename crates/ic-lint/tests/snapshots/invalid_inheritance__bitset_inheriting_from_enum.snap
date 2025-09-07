@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid_inheritance]: bitset `BadBits` cannot inherit from enum `Color`
+error[invalid-inheritance]: bitset `BadBits` cannot inherit from enum `Color`
    ┌ test.idl:3:16
    │
  2 │         enum Color { RED, GREEN, BLUE };

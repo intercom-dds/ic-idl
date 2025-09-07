@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/large_union_variant.rs
 expression: test_lint_hir(source)
 ---
-warning[large_union_variant]: union variant `large` is 512 bytes, which is significantly larger than the average of other variants (1 bytes)
+warning[large-union-variant]: union variant `large` is 512 bytes, which is significantly larger than the average of other variants (1 bytes)
    ┌ test.idl:4:22
    │
  2 │ union InnerUnion switch (boolean) {
@@ -16,7 +16,7 @@ warning[large_union_variant]: union variant `large` is 512 bytes, which is signi
    └──
  note: consider annotating large variants with `@shared` to heap allocate them
 
-warning[large_union_variant]: union variant `nested` is 513 bytes, which is significantly larger than the average of other variants (1 bytes)
+warning[large-union-variant]: union variant `nested` is 513 bytes, which is significantly larger than the average of other variants (1 bytes)
     ┌ test.idl:8:24
     │
   5 │ };

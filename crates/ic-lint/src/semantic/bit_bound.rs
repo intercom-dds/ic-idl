@@ -39,7 +39,7 @@ pub struct BitBound<'a> {
 
 impl<'a> Lint<'a> for BitBound<'a> {
     fn name() -> &'static str {
-        "bit_bound"
+        "bit-bound"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_value.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_enum_values]: duplicate value 1 in enum `Priority`
+error[duplicate-enum-values]: duplicate value 1 in enum `Priority`
    ┌ test.idl:3:5
    │
  2 │ enum Priority {

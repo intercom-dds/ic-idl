@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:8:20
     │
   5 │ };
@@ -17,7 +17,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:21:27
     │
  19 │ // In module
@@ -31,7 +31,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
     ┌ test.idl:37:24
     │
  34 │ };
@@ -43,7 +43,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `^`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
     ┌ test.idl:37:32
     │
  34 │ };
@@ -55,7 +55,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `^` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `^` has lower precedence than `+`
     ┌ test.idl:37:32
     │
  34 │ };
@@ -67,7 +67,7 @@ warning[ambiguous_precedence]: operator `^` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[complex_lit]: complex literals are non-standard
+warning[complex-lit]: complex literals are non-standard
     ┌ test.idl:8:33
     │
   5 │ };

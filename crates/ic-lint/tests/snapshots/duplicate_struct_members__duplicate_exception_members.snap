@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_struct_members.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_name]: duplicate member `message` in member 'MyError'
+error[duplicate-name]: duplicate member `message` in member 'MyError'
    ┌ test.idl:5:12
    │
  2 │ exception MyError {

@@ -41,7 +41,7 @@ pub struct DuplicateCaseLabels<'a> {
 
 impl<'a> Lint<'a> for DuplicateCaseLabels<'a> {
     fn name() -> &'static str {
-        "duplicate_case"
+        "duplicate-case"
     }
 
     fn category() -> Category {

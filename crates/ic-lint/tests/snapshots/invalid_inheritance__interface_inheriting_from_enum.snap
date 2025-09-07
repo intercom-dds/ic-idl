@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid_inheritance]: interface `BadInterface` cannot inherit from enum `Status`
+error[invalid-inheritance]: interface `BadInterface` cannot inherit from enum `Status`
    ┌ test.idl:3:19
    │
  2 │         enum Status { ACTIVE, INACTIVE };

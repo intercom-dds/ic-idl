@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid_inheritance]: struct `BadStruct` cannot inherit from union `MyUnion`
+error[invalid-inheritance]: struct `BadStruct` cannot inherit from union `MyUnion`
    ┌ test.idl:6:16
    │
  4 │             case 2: long y;

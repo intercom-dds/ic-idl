@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown_annotation]: unknown annotation `UnknownModule`
+warning[unknown-annotation]: unknown annotation `UnknownModule`
    ┌ test.idl:2:10
    │
  2 │         @UnknownModule
@@ -11,7 +11,7 @@ warning[unknown_annotation]: unknown annotation `UnknownModule`
  4 │             @UnknownInner
    └──
 
-warning[unknown_annotation]: unknown annotation `UnknownInner`
+warning[unknown-annotation]: unknown annotation `UnknownInner`
    ┌ test.idl:4:14
    │
  2 │         @UnknownModule
@@ -22,7 +22,7 @@ warning[unknown_annotation]: unknown annotation `UnknownInner`
  6 │                 long value;
    └──
 
-warning[unknown_annotation]: unknown annotation `UnknownEnum`
+warning[unknown-annotation]: unknown annotation `UnknownEnum`
     ┌ test.idl:9:14
     │
   6 │                 long value;

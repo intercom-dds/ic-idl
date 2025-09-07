@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/invalid_enum_value.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_enum_values]: duplicate value -10 in enum `Temperature`
+error[duplicate-enum-values]: duplicate value -10 in enum `Temperature`
    ┌ test.idl:4:5
    │
  2 │ enum Temperature {

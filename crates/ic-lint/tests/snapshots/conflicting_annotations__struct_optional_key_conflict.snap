@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/conflicting_annotations.rs
 expression: test_lint_hir(input)
 ---
-error[conflicting_annotations]: struct member `id` cannot be both @optional and @key
+error[conflicting-annotations]: struct member `id` cannot be both @optional and @key
    ┌ test.idl:5:18
    │
  2 │         struct User {
@@ -19,7 +19,7 @@ error[conflicting_annotations]: struct member `id` cannot be both @optional and 
    └──
  help: remove either @optional or @key
 
-error[conflicting_annotations]: struct member `username` cannot be both @optional and @key
+error[conflicting-annotations]: struct member `username` cannot be both @optional and @key
     ┌ test.idl:7:35
     │
   4 │             @optional

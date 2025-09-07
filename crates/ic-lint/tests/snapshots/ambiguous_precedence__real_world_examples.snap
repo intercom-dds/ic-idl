@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:8:44
     │
   5 │ const long EXEC_PERMISSION  = 1 << 2;
@@ -17,7 +17,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
     ┌ test.idl:11:34
     │
   8 │ const long DEFAULT_PERMS = READ_PERMISSION | WRITE_PERMISSION & 0xFF;
@@ -32,7 +32,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `+`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `&`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:15:50
     │
  13 │ // Flag checking patterns

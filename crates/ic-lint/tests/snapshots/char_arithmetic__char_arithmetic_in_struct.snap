@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/char_arithmetic.rs
 expression: output
 ---
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:3:17
    │
  2 │         struct Data {
@@ -14,7 +14,7 @@ warning[char_arithmetic]: char literal used in arithmetic expression
    └──
  help: consider converting to an integer value
 
-warning[char_arithmetic]: char literal used in arithmetic expression
+warning[char-arithmetic]: char literal used in arithmetic expression
    ┌ test.idl:6:25
    │
  3 │             @id('A' + 1)

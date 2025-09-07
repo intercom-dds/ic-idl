@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-error[recursive_type]: type `Node` contains itself without indirection
+error[recursive-type]: type `Node` contains itself without indirection
    ┌ test.idl:5:22
    │
  3 │             struct Node {

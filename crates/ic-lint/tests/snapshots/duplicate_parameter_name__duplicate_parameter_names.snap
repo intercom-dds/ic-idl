@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_parameter_name.rs
 expression: test_lint_hir(input)
 ---
-error[duplicate_name]: duplicate parameter `x` in parameter 'methodA'
+error[duplicate-name]: duplicate parameter `x` in parameter 'methodA'
    ┌ test.idl:3:45
    │
  2 │         interface TestInterface {
@@ -14,7 +14,7 @@ error[duplicate_name]: duplicate parameter `x` in parameter 'methodA'
    └──
  note: names are case-insensitive
 
-error[duplicate_name]: duplicate parameter `name` in parameter 'methodB'
+error[duplicate-name]: duplicate parameter `name` in parameter 'methodB'
    ┌ test.idl:4:71
    │
  2 │         interface TestInterface {
@@ -27,7 +27,7 @@ error[duplicate_name]: duplicate parameter `name` in parameter 'methodB'
    └──
  note: names are case-insensitive
 
-error[duplicate_name]: duplicate parameter `param1` in parameter 'methodC'
+error[duplicate-name]: duplicate parameter `param1` in parameter 'methodC'
    ┌ test.idl:5:70
    │
  3 │             void methodA(in long x, in long x);

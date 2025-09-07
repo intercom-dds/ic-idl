@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown_annotation]: unknown annotation `UnknownBitmask`
+warning[unknown-annotation]: unknown annotation `UnknownBitmask`
    ┌ test.idl:2:10
    │
  2 │         @UnknownBitmask
@@ -11,7 +11,7 @@ warning[unknown_annotation]: unknown annotation `UnknownBitmask`
  4 │             @UnknownFlag
    └──
 
-warning[unknown_annotation]: unknown annotation `UnknownFlag`
+warning[unknown-annotation]: unknown annotation `UnknownFlag`
    ┌ test.idl:4:14
    │
  2 │         @UnknownBitmask
@@ -22,7 +22,7 @@ warning[unknown_annotation]: unknown annotation `UnknownFlag`
  6 │             FLAG_B
    └──
 
-warning[unknown_annotation]: unknown annotation `UnknownBitset`
+warning[unknown-annotation]: unknown annotation `UnknownBitset`
     ┌ test.idl:9:10
     │
   6 │             FLAG_B
@@ -34,7 +34,7 @@ warning[unknown_annotation]: unknown annotation `UnknownBitset`
  11 │             @UnknownField
     └──
 
-warning[unknown_annotation]: unknown annotation `UnknownField`
+warning[unknown-annotation]: unknown annotation `UnknownField`
     ┌ test.idl:11:14
     │
   9 │         @UnknownBitset

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-warning[range_bound]: @max value 200 exceeds type maximum 127
+warning[range-bound]: @max value 200 exceeds type maximum 127
    ┌ test.idl:4:10
    │
  2 │ module MyModule {

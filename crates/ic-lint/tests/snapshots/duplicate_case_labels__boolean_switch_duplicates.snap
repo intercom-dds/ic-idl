@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate_case]: union 'BoolUnion' has duplicate case label 'true'
+error[duplicate-case]: union 'BoolUnion' has duplicate case label 'true'
    ┌ test.idl:5:10
    │
  3 │     case TRUE: long true_val;

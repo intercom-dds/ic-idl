@@ -39,7 +39,7 @@ pub struct InvalidInheritance<'a> {
 
 impl<'a> Lint<'a> for InvalidInheritance<'a> {
     fn name() -> &'static str {
-        "invalid_inheritance"
+        "invalid-inheritance"
     }
 
     fn category() -> Category {

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/ambiguous_precedence_shift_operators.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous_precedence]: operator `&` has lower precedence than `>>`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `>>`
    ┌ test.idl:5:36
    │
  2 │ const long BITS_PER_WORD = 32;
@@ -16,7 +16,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `>>`
    └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
     ┌ test.idl:7:26
     │
   5 │ const long test1 = value >> offset & mask;
@@ -30,7 +30,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `|` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `|` has lower precedence than `<<`
     ┌ test.idl:10:26
     │
   7 │ const long test3 = value & mask << offset;
@@ -44,7 +44,7 @@ warning[ambiguous_precedence]: operator `|` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `<<`
     ┌ test.idl:13:26
     │
  11 │ const long test6 = flags | (1 << bit);
@@ -58,7 +58,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `<<`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `>>`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `>>`
     ┌ test.idl:15:34
     │
  12 │ const long test7 = flags & ~(1 << bit);
@@ -71,7 +71,7 @@ warning[ambiguous_precedence]: operator `&` has lower precedence than `>>`
     └──
  help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous_precedence]: operator `&` has lower precedence than `-`
+warning[ambiguous-precedence]: operator `&` has lower precedence than `-`
     ┌ test.idl:15:34
     │
  12 │ const long test7 = flags & ~(1 << bit);

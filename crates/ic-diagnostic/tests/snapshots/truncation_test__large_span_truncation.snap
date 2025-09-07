@@ -1,0 +1,22 @@
+---
+source: crates/ic-diagnostic/tests/truncation_test.rs
+expression: buf
+---
+error: struct member `value` cannot be both @optional and @key
+     ┌ test.idl:2:5
+     │
+   1 │ struct Foo {
+   2 │     @optional
+     ·     ^^^^^^^^^ @optional annotation here
+   3 │     @key
+     ·     ^^^^ @key annotation here
+   4 │ 
+   5 │ 
+ ··· │
+  32 │ 
+  33 │ 
+  34 │     string value;
+     ·            ^^^^^ conflicting annotations on struct member
+  35 │ };
+     └──
+ help: remove either @optional or @key

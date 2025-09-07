@@ -433,7 +433,7 @@ impl Formatter<'_> {
         let (line_groups, max_line) = self.build_line_groups_for_labels(labels, total_source_lines);
 
         // Flatten all line groups into a single sorted list, removing duplicates and ellipsis markers
-        let all_lines: Vec<usize> = line_groups
+        let mut all_lines: Vec<usize> = line_groups
             .iter()
             .flat_map(|group| group.iter())
             .filter(|&&line| line != 0) // Remove ellipsis markers
@@ -441,6 +441,63 @@ impl Formatter<'_> {
             .collect::<std::collections::BTreeSet<_>>()
             .into_iter()
             .collect();
+
+        // Apply truncation if we have too many lines between the first and last
+        if all_lines.len() > 2 {
+            let first_line = all_lines[0];
+            let last_line = all_lines[all_lines.len() - 1];
+            let total_span = last_line - first_line + 1;
+
+            if total_span > MAX_LINES_PER_SPAN && all_lines.len() > MAX_LINES_PER_SPAN {
+                // Identify lines that have labels on them - we must keep these
+                let mut label_lines = std::collections::HashSet::new();
+                for &label in labels {
+                    let start_line = line_number(self.source, label.span.start.offset as usize);
+                    let end_line = line_number(self.source, label.span.end.offset as usize);
+
+                    // Add the start and end lines of each label, plus context
+                    for line in start_line.saturating_sub(CONTEXT_LINES_BEFORE)
+                        ..=end_line.min(total_source_lines)
+                    {
+                        label_lines.insert(line);
+                    }
+                    for line in end_line..=(end_line + CONTEXT_LINES_AFTER).min(total_source_lines)
+                    {
+                        label_lines.insert(line);
+                    }
+                }
+
+                // Keep lines around the start and end, plus all lines with labels
+                let mut truncated_lines = Vec::new();
+
+                // Keep first few lines
+                let keep_start = 3;
+                for &line in all_lines.iter().take(keep_start) {
+                    truncated_lines.push(line);
+                }
+
+                // Keep any lines with labels that aren't already included
+                for &line in &all_lines {
+                    if label_lines.contains(&line) && !truncated_lines.contains(&line) {
+                        truncated_lines.push(line);
+                    }
+                }
+
+                // Keep last few lines
+                let keep_end = 3;
+                let start_idx = all_lines.len().saturating_sub(keep_end);
+                for &line in all_lines.iter().skip(start_idx) {
+                    if !truncated_lines.contains(&line) {
+                        truncated_lines.push(line);
+                    }
+                }
+
+                // Sort the final list
+                truncated_lines.sort_unstable();
+
+                all_lines = truncated_lines;
+            }
+        }
 
         // Check if we'll need ellipsis anywhere
         let mut has_gaps = false;

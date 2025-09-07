@@ -16,19 +16,15 @@ error: struct `A` cannot inherit from incomplete type `B`
  8 │         };
    └──
 error: struct `B` cannot inherit from incomplete type `C`
-    ┌ test.idl:10:20
-    │
-  2 │         struct A;
-  3 │         struct B;
-  4 │         struct C;
-    ·                ^ parent type is only forward declared
-  5 │ 
-  6 │         struct A : B {
-  7 │             long a;
-  8 │         };
-  9 │ 
- 10 │         struct B : C {
-    ·                    ^ invalid inheritance
- 11 │             long b;
- 12 │         };
-    └──
+     ┌ test.idl:10:20
+     │
+   2 │         struct A;
+   3 │         struct B;
+   4 │         struct C;
+     ·                ^ parent type is only forward declared
+ ··· │
+  10 │         struct B : C {
+     ·                    ^ invalid inheritance
+  11 │             long b;
+  12 │         };
+     └──

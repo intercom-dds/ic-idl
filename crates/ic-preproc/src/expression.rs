@@ -214,7 +214,7 @@ pub fn infix_precedence(kind: Kind) -> Option<u8> {
         Kind::BitAnd => Some(6),
         Kind::EqEq | Kind::NotEq => Some(7),
         Kind::Gt | Kind::GtEq | Kind::Lt | Kind::LtEq => Some(8),
-        Kind::LShift | Kind::RShift => Some(9),
+        // Note: Shift operators are handled specially in binary_expr by checking consecutive tokens
         Kind::Plus | Kind::Minus => Some(10),
         Kind::Star | Kind::Slash | Kind::Modulo => Some(11),
         _ => None,
@@ -250,8 +250,6 @@ pub fn expr_op(tok: Token) -> Result<Op, Error> {
         Kind::LtEq => Ok(Op::LtEq),
         Kind::Gt => Ok(Op::Gt),
         Kind::GtEq => Ok(Op::GtEq),
-        Kind::LShift => Ok(Op::LShift),
-        Kind::RShift => Ok(Op::RShift),
         _ => Err(Error::Syntax {
             message: "expected operator",
             span: tok.span,

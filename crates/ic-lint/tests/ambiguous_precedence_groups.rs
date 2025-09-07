@@ -47,9 +47,7 @@ fn check_ambiguous_precedence(idl_code: &str) -> String {
     let precedence_warnings: Vec<_> = report
         .warnings
         .into_iter()
-        .filter(|diag| {
-            format!("{diag}").contains("precedence")
-        })
+        .filter(|diag| format!("{diag}").contains("precedence"))
         .collect();
 
     for (i, diag) in precedence_warnings.iter().enumerate() {

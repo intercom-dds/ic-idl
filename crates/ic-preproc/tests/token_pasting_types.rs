@@ -135,12 +135,18 @@ fn token_pasting_produces_correct_types() {
     assert_eq!(tokens[i].kind, Kind::GtEq);
     i += 1;
 
-    // << - operator
-    assert_eq!(tokens[i].kind, Kind::LShift);
+    assert_eq!(tokens[i].kind, Kind::Ident);
+    assert_eq!(
+        &vfs.source_str(tokens[i].span.start.file_id)[tokens[i].span.range()],
+        "<<"
+    );
     i += 1;
 
-    // >> - operator
-    assert_eq!(tokens[i].kind, Kind::RShift);
+    assert_eq!(tokens[i].kind, Kind::Ident);
+    assert_eq!(
+        &vfs.source_str(tokens[i].span.start.file_id)[tokens[i].span.range()],
+        ">>"
+    );
     i += 1;
 
     // && - operator

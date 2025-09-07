@@ -449,20 +449,12 @@ impl Cursor {
                             self.chars.next();
                             Kind::GtEq
                         }
-                        '>' => {
-                            self.chars.next();
-                            Kind::RShift
-                        }
                         _ => Kind::Gt,
                     },
                     '<' => match self.chars.peek() {
                         '=' => {
                             self.chars.next();
                             Kind::LtEq
-                        }
-                        '<' => {
-                            self.chars.next();
-                            Kind::LShift
                         }
                         _ => Kind::Lt,
                     },

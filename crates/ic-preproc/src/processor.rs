@@ -33,7 +33,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use ic_expr::{Binary, Ternary, Unary};
+use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
@@ -519,20 +519,34 @@ where
     fn binary_expr(&mut self, min_prec: u8, context_span: Span) -> Result<Expr, Error> {
         let mut lhs = self.unary_expr(context_span)?;
 
-        while let Some(op) = self.next() {
-            // We require a lookahead of 1 here, but doing so involves expanding
-            // and consuming the next token in the sequence. So if this is not
-            // an operator, or an operator of lower precedence, we push it back
-            // on the queue.
-            let prec = match infix_precedence(op.kind) {
+        while let Some(op_token) = self.next() {
+            let (actual_op, prec) = if op_token.kind == Kind::Lt || op_token.kind == Kind::Gt {
+                if let Some(next) = self.next() {
+                    if op_token.kind == Kind::Lt && next.kind == Kind::Lt {
+                        (Ok(Op::LShift), Some(9))
+                    } else if op_token.kind == Kind::Gt && next.kind == Kind::Gt {
+                        (Ok(Op::RShift), Some(9))
+                    } else {
+                        self.state().queue.push_front(next);
+                        (expr_op(op_token), infix_precedence(op_token.kind))
+                    }
+                } else {
+                    (expr_op(op_token), infix_precedence(op_token.kind))
+                }
+            } else {
+                (expr_op(op_token), infix_precedence(op_token.kind))
+            };
+
+            // Check precedence
+            let prec = match prec {
                 Some(prec) if prec >= min_prec => prec,
                 _ => {
-                    self.state().queue.push_front(op);
+                    self.state().queue.push_front(op_token);
                     break;
                 }
             };
 
-            lhs = if op.kind == Kind::Question {
+            lhs = if op_token.kind == Kind::Question {
                 let then = self.expr(context_span)?;
                 // Check for colon without consuming the line on error
                 match self.next() {
@@ -554,12 +568,12 @@ where
                     None => {
                         return Err(Error::Expr {
                             message: "unexpected end of expression, expected ':'",
-                            span: op.span,
+                            span: op_token.span,
                         });
                     }
                 }
             } else {
-                let op = expr_op(op)?;
+                let op = actual_op?;
                 let rhs = self.binary_expr(prec + 1, context_span)?;
                 Expr::Binary(Box::new(Binary { lhs, op, rhs }))
             }
@@ -1068,8 +1082,6 @@ where
             "!=" => return Kind::NotEq,
             "<=" => return Kind::LtEq,
             ">=" => return Kind::GtEq,
-            "<<" => return Kind::LShift,
-            ">>" => return Kind::RShift,
             "&&" => return Kind::And,
             "||" => return Kind::Or,
             "::" => return Kind::DColon,

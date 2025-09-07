@@ -242,7 +242,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                     found: None,
                     expected: None,
                     reason: Reason::Custom((*message).to_string()),
-                    label: Some("preprocessor error"),
+                    label: None,
                     span: *span,
                 });
             }
@@ -254,7 +254,9 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     for preproc_warning in state.warnings() {
         match preproc_warning {
             ic_preproc::Error::Note { span, tokens } => {
-                warnings.push(build_directive_error("warning", *span, tokens));
+                let mut warning = build_directive_error("warning", *span, tokens);
+                warning.label = Some("preprocessor warning");
+                warnings.push(warning);
             }
             ic_preproc::Error::Extraneous {
                 directive, span, ..

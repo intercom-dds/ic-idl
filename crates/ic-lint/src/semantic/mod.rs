@@ -27,6 +27,7 @@
 
 pub mod bit_bound;
 pub mod circular_inheritance;
+pub mod conflicting_annotations;
 pub mod deprecated;
 pub mod duplicate_annotations_hir;
 pub mod duplicate_case_labels;

@@ -124,6 +124,7 @@ use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
 
 mod annotation;
+mod deprecated;
 mod pedantic;
 mod semantic;
 mod syntax;
@@ -477,6 +478,7 @@ define_lints! {
         pedantic::prefer_enum_name::PreferEnumName,
         semantic::bit_bound::BitBound,
         semantic::circular_inheritance::CircularInheritance,
+        semantic::conflicting_annotations::ConflictingAnnotations,
         semantic::deprecated::Deprecated,
         semantic::duplicate_annotations_hir::DuplicateAnnotations,
         semantic::duplicate_case_labels::DuplicateCaseLabels,

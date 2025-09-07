@@ -1,0 +1,36 @@
+---
+source: crates/ic-lint/tests/conflicting_annotations.rs
+expression: test_lint_hir(input)
+---
+error[conflicting_annotations]: struct member `id` cannot be both @optional and @key
+   ┌ test.idl:5:18
+   │
+ 2 │         struct User {
+ 3 │             @key
+   ·              ^^^ @key annotation here
+ 4 │             @optional
+   ·              ^^^^^^^^ @optional annotation here
+ 5 │             long id;
+   ·                  ^^ conflicting annotations on struct member
+ 6 │ 
+ 7 │             @optional @key string username;
+ 8 │ 
+ 9 │             @key
+   └──
+ help: remove either @optional or @key
+
+error[conflicting_annotations]: struct member `username` cannot be both @optional and @key
+    ┌ test.idl:7:35
+    │
+  4 │             @optional
+  5 │             long id;
+  6 │ 
+  7 │             @optional @key string username;
+    ·              ^^^^^^^^  ^^^        ^^^^^^^^ conflicting annotations on struct member
+    ·              │         └─ @key annotation here
+    ·              └─ @optional annotation here
+  8 │ 
+  9 │             @key
+ 10 │             string email;
+    └──
+ help: remove either @optional or @key

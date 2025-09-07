@@ -34,7 +34,7 @@ use ic_diagnostic::{Label, error_span, warn_span};
 
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_span, path_to_string};
-use crate::hir::{DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use crate::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
 /// Integer rank categories for promotions.
@@ -68,6 +68,7 @@ enum Value {
     Char(char),
     String(String),
     Null,
+    Const(DefId),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -263,7 +264,8 @@ fn float_rank_for(ty: FloatRank, other: FloatRank) -> FloatRank {
 }
 
 fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
-    use Value::{Bool, Float, Int, UInt};
+    use Value::{Bool, Const, Float, Int, UInt};
+
     match (a, b) {
         (Float(_, fa), Float(_, fb)) => Some(TyTag::Float(float_rank_for(*fa, *fb))),
         (Float(_, fr), Int(_, _) | UInt(_, _)) | (Int(_, _) | UInt(_, _), Float(_, fr)) => {
@@ -284,6 +286,9 @@ fn common_type(a: &Value, b: &Value) -> Option<TyTag> {
             let rank = usual_int_conv(*ra, INT_RANK);
             Some(TyTag::Int(rank, is_signed(rank)))
         }
+
+        // Const values should be resolved before calling this function
+        (Const(_), _) | (_, Const(_)) => None,
         _ => None,
     }
 }
@@ -338,6 +343,9 @@ fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
             }
         }
         (Bool(b), TyTag::Int(r, _)) => Ok(Int(i128::from(b), r)),
+
+        // Const values should be resolved before calling this function
+        (Value::Const(_), _) => Err(EvalError::TypeMismatch),
         other => {
             // Fallback for unsupported implicit casts
             let _ = other;
@@ -647,8 +655,8 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
         Numeric::Float(v) => Some(Value::Float(f64::from(*v), FloatRank::F32)),
         Numeric::Double(v) => Some(Value::Float(*v, FloatRank::F64)),
         Numeric::String(s) => Some(Value::String(s.clone())),
-        Numeric::Const(_)
-        | Numeric::Array { .. }
+        Numeric::Const(def_id) => Some(Value::Const(*def_id)),
+        Numeric::Array { .. }
         | Numeric::Sequence { .. }
         | Numeric::Map { .. }
         | Numeric::Struct { .. }
@@ -687,6 +695,7 @@ fn numeric_from_value(v: &Value) -> Option<Numeric> {
             _ => Numeric::Double(*f),
         }),
         Value::String(s) => Some(Numeric::String(s.clone())),
+        Value::Const(def_id) => Some(Numeric::Const(*def_id)),
     }
 }
 
@@ -1031,6 +1040,7 @@ impl<'a> ConstEvaluator<'a> {
             Value::UInt(_, _) => "unsigned integer value",
             Value::Float(_, _) => "floating-point value",
             Value::Null => "null value",
+            Value::Const(_) => "constant reference",
         };
 
         match cast_value_to_type(v, expected_ty) {
@@ -1086,7 +1096,12 @@ impl<'a> ConstEvaluator<'a> {
             // Constants, enumerators and flags are Const
             let def = self.ctx.context.definitions.get(def_id);
             if let DefKind::Const(c) = &def.kind {
-                value_from_numeric(&c.value)
+                // Always resolve to the actual value - only eval_for_type preserves references
+                if let Some(v) = value_from_numeric(&c.value) {
+                    self.resolve_const_value(&v)
+                } else {
+                    None
+                }
             } else {
                 self.ctx.diagnostics.errors.push(error_span(
                     format!("`{}` is not a constant value", path_to_string(path)),
@@ -1328,6 +1343,26 @@ enum ConstAssignOutcome {
 }
 
 impl ConstEvaluator<'_> {
+    /// Resolve a Value::Const to its actual value by following the reference.
+    fn resolve_const_value(&self, value: &Value) -> Option<Value> {
+        match value {
+            Value::Const(def_id) => {
+                let def = self.ctx.context.definitions.get(*def_id);
+                if let DefKind::Const(c) = &def.kind {
+                    // Recursively resolve in case of chained references
+                    if let Some(v) = value_from_numeric(&c.value) {
+                        self.resolve_const_value(&v)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => Some(value.clone()),
+        }
+    }
+
     /// If `path` resolves to a constant, verify it can be assigned to `expected_ty`.
     /// Returns `Accepted(Numeric::Const`(...)) on success, Rejected on hard error,
     /// or `NotApplicable` if the path is not a constant.

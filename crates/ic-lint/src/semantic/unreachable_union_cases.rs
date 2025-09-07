@@ -59,15 +59,16 @@ impl<'a> Lint<'a> for UnreachableUnionCases<'a> {
 impl UnreachableUnionCases<'_> {
     fn check_union(&mut self, union_ty: &UnionTy, _union_name: &str) {
         // Check for out-of-range case labels
-        if let Some((min, max)) = Self::get_discriminator_range(&union_ty.disc.kind) {
+        if let Some((min, max)) = Self::get_discriminator_range(&union_ty.disc.ty.kind) {
             for variant in &union_ty.variants {
                 for label in &variant.labels {
                     if let Some(value) = Self::numeric_to_i64(&label.value) {
                         // For unsigned discriminators, negative values wrap around
                         let effective_value =
-                            if Self::is_unsigned_discriminator(&union_ty.disc.kind) && value < 0 {
+                            if Self::is_unsigned_discriminator(&union_ty.disc.ty.kind) && value < 0
+                            {
                                 // Apply wrapping conversion for negative values on unsigned types
-                                Self::wrap_to_unsigned(value, &union_ty.disc.kind)
+                                Self::wrap_to_unsigned(value, &union_ty.disc.ty.kind)
                             } else {
                                 value
                             };

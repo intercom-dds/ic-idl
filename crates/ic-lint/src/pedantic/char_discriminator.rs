@@ -92,10 +92,10 @@ impl<'a> ic_hir::visit::Visitor<'a> for CharDiscriminator<'a> {
     }
 
     fn visit_union(&mut self, _def: &'a Def, union_ty: &'a UnionTy) {
-        if let TyKind::Primitive(PrimitiveTy::Char) = &union_ty.disc.kind {
+        if let TyKind::Primitive(PrimitiveTy::Char) = &union_ty.disc.ty.kind {
             let diag = warn_span(
                 "char types should not be used as union discriminators".to_string(),
-                Label::new(union_ty.disc.span).message("char type"),
+                Label::new(union_ty.disc.ty.span).message("char type"),
             )
             .help("consider using an integer or enum value instead");
             Self::report(self.ctx, diag);

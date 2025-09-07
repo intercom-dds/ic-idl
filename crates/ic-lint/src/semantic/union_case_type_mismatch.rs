@@ -59,11 +59,11 @@ impl<'a> Lint<'a> for UnionCaseTypeMismatch<'a> {
 impl UnionCaseTypeMismatch<'_> {
     fn check_union(&mut self, union_ty: &UnionTy) {
         // Get the discriminator type
-        let disc_enum_id = match &union_ty.disc.kind {
+        let disc_enum_id = match &union_ty.disc.ty.kind {
             TyKind::Adt(def_id) => {
-                let def = self.context().definitions.get(*def_id);
+                let def = self.context().definitions.get(def_id);
                 match &def.kind {
-                    DefKind::Enum(_) => Some(*def_id),
+                    DefKind::Enum(_) => Some(def_id),
                     _ => None,
                 }
             }
@@ -89,7 +89,7 @@ impl UnionCaseTypeMismatch<'_> {
 
                         // Check if the parent is an enum and if it matches the discriminator
                         if matches!(parent_def.kind, DefKind::Enum(_))
-                            && parent_id != expected_enum_id
+                            && parent_id != *expected_enum_id
                         {
                             if let Some(diag) = self.ctx.diag_span(
                                 Self::name(),

@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/union_key.rs
+expression: test_lint_hir(source)
+---
+error[union-key]: union discriminator for 'StatusData' cannot be @optional
+   ┌ test.idl:7:26
+   │
+ 4 │     ERROR
+ 5 │ };
+ 6 │ 
+ 7 │ union StatusData switch(@optional Status) {
+   ·                          ^^^^^^^^ @optional not allowed on discriminator
+ 8 │ case OK:
+ 9 │     string message;
+   └──
+ help: remove @optional from the discriminator
+ note: union discriminators must always be present

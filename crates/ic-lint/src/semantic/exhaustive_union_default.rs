@@ -84,9 +84,9 @@ impl<'a> Visitor<'a> for ExhaustiveUnionDefaultLint<'a> {
             return;
         }
 
-        match &union_ty.disc.kind {
+        match &union_ty.disc.ty.kind {
             TyKind::Adt(def_id) => {
-                let adt_def = self.hir.context.definitions.get(*def_id);
+                let adt_def = self.hir.context.definitions.get(def_id);
                 if let DefKind::Enum(_) = &adt_def.kind {
                     self.check_enum_exhaustiveness(*def_id, &non_default_variants, def);
                 }

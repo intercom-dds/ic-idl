@@ -2116,34 +2116,6 @@ void validate_node(parser_state* state, ptree* node) {
             }
         }
 
-        // Default labels are only allowed when the non-default labels do not cover the
-        // entire range of the union's discriminator.
-        if (node->kind == N_UNION && node->discriminator) {
-            std::set<int> case_values;
-            for (auto mem : node->members) {
-                for (auto cas : mem->members) {
-                    if ((cas->flags & OPT_DEFAULT) == 0) {
-                        case_values.insert(integer_value(cas->value));
-                    }
-                }
-            }
-            if (has_all_type_values(node->discriminator->type, case_values) &&
-                has_default_case(node)) {
-                state->error(
-                ) << "Default labels are not allowed when all possible discriminator values are "
-                     "covered in union "
-                  << node;
-            }
-
-            // Discirminators may not be annotated with @id or @hashid
-            if (get_annotation(node->discriminator, annotation_type_id) ||
-                get_annotation(node->discriminator, annotation_type_hashid)) {
-                state->error(
-                ) << "Discriminators cannot be annotated with @id or @hashid for union "
-                  << node;
-            }
-        }
-
         if (node->kind == N_CONST) {
             // All constants must have a defined value
             if (!(node->flags & OPT_DECLARATION) &&

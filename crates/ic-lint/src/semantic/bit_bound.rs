@@ -83,7 +83,7 @@ impl BitBound<'_> {
             Numeric::UInt32(v) => Some(*v),
             Numeric::Int64(v) if u32::try_from(*v).is_ok() =>
             {
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 Some(*v as u32)
             }
             Numeric::UInt64(v) if u32::try_from(*v).is_ok() =>

@@ -56,6 +56,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     /// Checks if a numeric value is compatible with a type.
+    #[allow(clippy::too_many_lines, clippy::match_same_arms)]
     fn check_numeric_type(&mut self, value: &Numeric, ty: &Ty, value_desc: &str) -> bool {
         // Special case for struct values first
         if let Numeric::Struct {
@@ -168,10 +169,13 @@ impl<'a> TypeChecker<'a> {
             }
 
             // Float values
-            (Numeric::Float(_), TyKind::Primitive(PrimitiveTy::Float32)) => true,
-            (Numeric::Float(_v), TyKind::Primitive(PrimitiveTy::Float64)) => true, // float promotes to double
-            (Numeric::Double(_), TyKind::Primitive(PrimitiveTy::Float64)) => true,
-            (Numeric::Double(_), TyKind::Primitive(PrimitiveTy::Float128)) => true, // double promotes to long double
+            (Numeric::Float(_), TyKind::Primitive(PrimitiveTy::Float32 | PrimitiveTy::Float64)) => {
+                true
+            } // float promotes to double
+            (
+                Numeric::Double(_),
+                TyKind::Primitive(PrimitiveTy::Float64 | PrimitiveTy::Float128),
+            ) => true, // double promotes to long double
             (Numeric::Float(_) | Numeric::Double(_), _) => {
                 self.errors.push(error_span(
                     format!("{value_desc} has floating-point value but type is not float/double"),

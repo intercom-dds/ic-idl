@@ -58,6 +58,7 @@ impl ResolvedGraph {
     /// Returns an iterator of the definitions, iterating over all top-level
     /// definitions in the order they were defined.
     #[must_use]
+    #[allow(clippy::iter_without_into_iter)]
     pub fn iter(&self) -> DefIter<'_> {
         DefIter::new(self)
     }

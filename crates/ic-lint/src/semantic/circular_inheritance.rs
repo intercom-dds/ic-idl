@@ -108,6 +108,7 @@ impl CircularInheritance<'_> {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn has_cycle(
         &self,
         current_id: DefId,

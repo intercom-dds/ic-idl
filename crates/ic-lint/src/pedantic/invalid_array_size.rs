@@ -102,7 +102,6 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                     }
                 }
             }
-            TyKind::Sequence { .. } => {}
             TyKind::String {
                 bound: Some(b),
                 wide,
@@ -123,7 +122,6 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                     }
                 }
             }
-            TyKind::String { .. } => {}
             _ => {}
         }
 

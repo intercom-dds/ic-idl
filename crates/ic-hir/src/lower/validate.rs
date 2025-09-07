@@ -145,6 +145,7 @@ impl<'a> Validator<'a> {
     }
 
     /// Validates a union definition.
+    #[allow(clippy::match_same_arms)]
     fn validate_union(&mut self, id: DefId, union_ty: &UnionTy) {
         let (def_name, _def_span) = {
             let def = self.get_def(id);
@@ -416,10 +417,9 @@ impl<'a> Validator<'a> {
                     }
                 }
             }
-            DefKind::Decl(_) => {
+            _ => {
                 // Forward declarations are checked for completion elsewhere
             }
-            _ => {}
         }
 
         self.validated.insert(id);
@@ -442,6 +442,7 @@ impl<'a> Validator<'a> {
     }
 
     /// Validates that forward declarations match their definitions.
+    #[allow(clippy::too_many_lines)]
     fn validate_forward_declarations(&mut self, order: &[DefId]) {
         // Group definitions by name AND parent scope
         let mut definitions_by_name_and_scope: HashMap<(String, Option<DefId>), Vec<DefId>> =

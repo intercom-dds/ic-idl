@@ -1007,6 +1007,7 @@ impl<'a> ExpressionEvaluator<'a> {
     }
 
     /// Evaluates an array initializer list.
+    #[allow(clippy::needless_pass_by_value)]
     fn eval_array_init(
         &mut self,
         init_list: &ic_syntax::InitList,

@@ -168,12 +168,12 @@ impl<'a> TreeBuilder<'a> {
                 let numeric = sys::create_numeric_node(self.state, node);
                 sys::create_value_node(self.state, numeric, ptr::null_mut())
             }
-            Numeric::Null => NUM_UNDEF,
-            Numeric::Array { .. } => NUM_UNDEF,
-            Numeric::Sequence { .. } => NUM_UNDEF,
-            Numeric::Map { .. } => NUM_UNDEF,
-            Numeric::Struct { .. } => NUM_UNDEF,
-            Numeric::Union { .. } => NUM_UNDEF,
+            Numeric::Null
+            | Numeric::Array { .. }
+            | Numeric::Sequence { .. }
+            | Numeric::Map { .. }
+            | Numeric::Struct { .. }
+            | Numeric::Union { .. } => NUM_UNDEF,
         }
     }
 

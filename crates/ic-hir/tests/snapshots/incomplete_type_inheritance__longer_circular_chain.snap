@@ -22,7 +22,11 @@ error: struct `B` cannot inherit from incomplete type `C`
    3 │         struct B;
    4 │         struct C;
      ·                ^ parent type is only forward declared
+   5 │ 
+   6 │         struct A : B {
  ··· │
+   8 │         };
+   9 │ 
   10 │         struct B : C {
      ·                    ^ invalid inheritance
   11 │             long b;

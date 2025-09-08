@@ -66,7 +66,7 @@ cargo run
 Run all tests:
 
 ```sh
-cargo test --workspace --all-targets
+cargo nextest --workspace --all-targets
 ```
 
 Development documentation can be generated with:

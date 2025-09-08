@@ -63,10 +63,6 @@ type ScopeIdMap = HashMap<ScopeId, ScopeId>;
 /// This function takes multiple resolved HIR graphs and merges them into a single
 /// graph, deduplicating identical definitions while preserving distinct modules.
 ///
-/// # Arguments
-///
-/// * `graphs` - A slice of resolved HIR graphs to merge
-///
 /// # Returns
 ///
 /// A new `MergedGraph` containing the unified HIR tree.
@@ -866,6 +862,7 @@ impl HirMerger {
         def_mut.kind = updated_data.1;
     }
 
+    #[allow(clippy::too_many_lines)]
     fn update_def_kind(&self, graph_index: usize, kind: &DefKind) -> DefKind {
         match kind {
             DefKind::Struct(s) => DefKind::Struct(StructTy {

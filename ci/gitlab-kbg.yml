@@ -89,4 +89,5 @@ test:stable:
     - job: build:stable
       artifacts: true
   script:
-    - cargo test --workspace
+    - cargo install --locked cargo-nextest
+    - cargo nextest run --workspace --all-targets

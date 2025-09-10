@@ -514,74 +514,14 @@ const ptree* original_node(const ptree* node) {
     return node;
 }
 
-bool is_signed(const ptree* node) {
-    node = base_type_of(node);
-    return node == &int8_type || node == &char_type || node == &wchar_type || node == &short_type ||
-           node == &long_type || node == &ulonglong_type || node == &float_type ||
-           node == &double_type || node == &ldouble_type;
-}
-
 bool is_unsigned(const ptree* node) {
     node = base_type_of(node);
     return node == &octet_type || node == &ushort_type || node == &ulong_type ||
            node == &ulonglong_type;
 }
 
-size_t list_len(const ptree* list) {
-    size_t len = 0U;
-    while (list) {
-        len++;
-        list = list->next;
-    }
-    return len;
-}
-
 size_t exception_count(const ptree* node) {
     return node->getraises.size() + node->setraises.size();
-}
-
-size_t type_dimensions(const ptree* node) {
-    const ptree* base_type = base_type_of(node);
-    size_t size = 0U;
-    switch (base_type->kind) {
-    case N_ARRAY:
-        size = node->bounds.size();
-        break;
-    case N_SEQUENCE:
-        for (const ptree* element_type = base_type;
-             element_type && element_type->kind == base_type->kind;
-             element_type = base_type_of(element_type->element_type)) {
-            size++;
-        }
-        break;
-    case N_MAP:     // value_type is always a pair, never a map
-    case N_STRING:  // value_type is always a char, never a string
-        size = 1U;
-        break;
-    default:
-        break;
-    }
-    return size;
-}
-
-size_t value_len(const ptree* node) {
-    const ptree* base_type = base_type_of(node);
-    size_t size = 0U;
-    switch (base_type->kind) {
-    case N_STRING:
-        size = node->value.val.str().size();
-        break;
-    case N_SEQUENCE:
-    case N_ARRAY:
-    case N_MAP:
-        if (node->value.kind() == PTREE_KIND) {
-            size = list_len(node->value->node()->members);
-        }
-        break;
-    default:
-        break;
-    }
-    return size;
 }
 
 const ptree* base_value_of(const ptree* node) {
@@ -598,39 +538,6 @@ numeric base_value_of(numeric value) {
         value = value.val.node()->value;
     }
     return value;
-}
-
-size_t value_dimensions(const ptree* node) {
-    if (!node) {
-        return 0U;
-    }
-    const ptree* base_type = base_type_of(node);
-    node = base_value_of(node);
-    if (node->value.kind() == STRING_KIND || !node->members /* emtpy {} */) {
-        return 1U;
-    }
-    size_t depth = 0U;
-    node = node->members;
-    while (node) {
-        depth++;
-        if (base_type_of(node)->kind != base_type->kind || node->value.kind() != PTREE_KIND ||
-            !node->value.val.node()) {
-            break;
-        }
-        node = base_value_of(node->value.val.node());
-        node = node->members;
-    }
-    return depth;
-}
-
-size_t value_dimensions(const numeric& value) {
-    if (value.kind() == STRING_KIND) {
-        return 1U;
-    }
-    if (value.kind() != PTREE_KIND) {
-        return 0U;
-    }
-    return value_dimensions(value.val.node());
 }
 
 int get_bit_size_of_type(const ptree* node) {

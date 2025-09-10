@@ -60,8 +60,6 @@ bool is_non_serialized(const ptree* node, AnnotationGetter get = get_annotation)
 bool is_ignored(const ptree* ann);
 bool is_wstring(const ptree* node);
 bool is_decl(const ptree* node);
-bool is_signed(const ptree* node);
-bool is_unsigned(const ptree* node);
 
 bool has_default_value(const ptree* node);
 bool has_max_value(const ptree* node, AnnotationGetter get = get_annotation);
@@ -105,9 +103,6 @@ void include_dependencies(
     std::set<ptree*>& includes
 );
 
-/// \returns #nodes in linked list
-size_t list_len(const ptree* list);
-
 size_t exception_count(const ptree* node);
 
 int get_bit_size(const ptree* elem);
@@ -124,17 +119,7 @@ const ptree* base_value_of(const ptree* node);
 /// skips past all nested references, to the base value
 numeric base_value_of(numeric value);
 
-/// returns #dimensions of node's type (e.g. sequence<sequence<int>> returns 2)
-size_t type_dimensions(const ptree* node);
-
-/// returns #elements in node->value (e.g. #elements from \@default annotation)
-size_t value_len(const ptree* node);
-
-/// returns #dimensions in node->value (e.g. #dimensions from \@default annotation)
-size_t value_dimensions(const ptree* node);
-
-/// returns #dimensions in value \verbatim (e.g. #dimensions from \@default annotation)
-size_t value_dimensions(const numeric& value);
+bool is_unsigned(const ptree* node);
 
 /// entire path from first \@merge to final non \@merge member
 using MergeTrace = std::vector<const ptree*>;

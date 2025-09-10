@@ -137,15 +137,6 @@ extern struct numeric num_undef;  // NOLINT
 const struct numeric*
 expr_convert(struct parser_state* state, const struct numeric* value, enum numeric_kind kind);
 
-const struct numeric* expr_unary(struct parser_state* state, char op, const struct numeric* v);
-
-const struct numeric* expr_binary(
-    struct parser_state* state,
-    char op,
-    const struct numeric* v1,
-    const struct numeric* v2
-);
-
 // NOLINTBEGIN(readability-identifier-naming)
 extern struct ptree boolean_type;
 extern struct ptree int8_type;

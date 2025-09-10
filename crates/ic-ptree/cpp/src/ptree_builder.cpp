@@ -1980,8 +1980,6 @@ void validate_node(parser_state* state, ptree* node) {
     node_kind is_member[] = {N_MEMBER, N_CASE, N_PROTOTYPE, N_UNDEF};
     node_kind illegal_types[] = {N_MODULE, N_INCLUDE, N_CONST, N_MEMBER, N_CASE, N_UNDEF};
     if (node) {
-        const ptree* base_type = base_type_of(node);
-
         // All nodes have names
         if (node->name.empty()) {
             state->error() << "Unnamed node in scope " << node->super;
@@ -2050,13 +2048,6 @@ void validate_node(parser_state* state, ptree* node) {
                 (node->value.kind() == UNDEF_KIND ||
                  (node->value.kind() == PTREE_KIND && node->value.val.node() == nullptr))) {
                 state->error() << "Undefined constant value " << node;
-            }
-            // Bounded type must not exceed bound
-            if (!base_type->bounds.empty()) {
-                unsigned long bound = unsigned_value(base_type->bounds.back());
-                if (value_len(node) > bound) {
-                    state->error() << "Value for " << node << " exceeds bound of " << bound;
-                }
             }
         }
 

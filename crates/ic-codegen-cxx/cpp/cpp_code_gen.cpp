@@ -170,7 +170,7 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
                 out << "::std::vector<" << cpp_type_name(node->element_type, context)
                     << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ">";
             } else {
-                out << "::intercom::bounded_vector<" << cpp_type_name(node->element_type, context)
+                out << "::ic_cts::bounded_vector<" << cpp_type_name(node->element_type, context)
                     << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ", "
                     << unsigned_value(node->bounds[0]) << ">";
             }
@@ -192,7 +192,7 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
             if (node->bounds.empty()) {
                 out << "::std::";
             } else {
-                out << "::intercom::bounded_";
+                out << "::ic_cts::bounded_";
             }
             if (is_wstring(node)) {
                 out << (CommandLineOption::use_wstring() ? "w" : "u16");
@@ -209,7 +209,7 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
                 << cpp_type_name(node->element_type, context)
                 << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ">";
         } else {
-            out << "::intercom::bounded_map<" << cpp_type_name(node->key_type, context)
+            out << "::ic_cts::bounded_map<" << cpp_type_name(node->key_type, context)
                 << (base_type_of(node->key_type)->kind == N_INTERFACE ? "*" : "") << ", "
                 << cpp_type_name(node->element_type, context)
                 << (base_type_of(node->element_type)->kind == N_INTERFACE ? "*" : "") << ", "
@@ -228,8 +228,7 @@ std::string intercom::cidl::cpp_type_name(const ptree* node, const ptree* contex
 
 static std::string cpp_string_view_type_name(const ptree* node) {
     if (is_wstring(base_type_of(node))) {
-        return CommandLineOption::use_wstring() ? "::intercom::wstring_view"
-                                                : "::intercom::u16string_view";
+        return CommandLineOption::use_wstring() ? "::std::wstring_view" : "::std::u16string_view";
     }
     return "::std::string_view";
 }
@@ -3281,5 +3280,4 @@ void ic_codegen_cpp(
 
     intercom::cidl::code_gen_dds_cplpl(result, config, list);
 }
-
 }

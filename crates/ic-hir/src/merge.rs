@@ -1260,6 +1260,7 @@ impl HirMerger {
                 .map(|arg| AnnArg {
                     ident: arg.ident.clone(),
                     value: self.update_numeric(graph_index, &arg.value),
+                    ty: arg.ty.as_ref().map(|ty| self.update_type(graph_index, ty)),
                 })
                 .collect(),
         }

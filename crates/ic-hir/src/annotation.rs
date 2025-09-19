@@ -961,6 +961,7 @@ mod tests {
                 },
             ),
             value,
+            ty: None,
         }
     }
 

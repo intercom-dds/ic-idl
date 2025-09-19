@@ -785,7 +785,11 @@ unsafe extern "C" {
     ) -> *mut ptree;
 }
 unsafe extern "C" {
-    pub fn create_annotation_start(arg1: *mut parser_state, ident: *const ::std::os::raw::c_char, annotation_def: *mut ptree);
+    pub fn create_annotation_start(
+        arg1: *mut parser_state,
+        ident: *const ::std::os::raw::c_char,
+        annotation_def: *mut ptree,
+    );
 }
 unsafe extern "C" {
     pub fn create_annotation_finish(arg1: *mut parser_state, params: *mut ptree) -> *mut ptree;

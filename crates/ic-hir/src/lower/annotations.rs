@@ -25,12 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::util::{path_name, path_span};
-use ic_syntax::{AnnotationAppl, AnnotationArg};
+use ic_syntax::AnnotationAppl;
 
-use crate::hir::{Ann, AnnArg, DefKind, Ident};
-use crate::lower::eval::ConstEvaluator;
+use crate::hir::Ann;
 use crate::lower::type_items::TypeItemProcessor;
+use crate::lower::value_items::ValueItemProcessor;
 use crate::scope::ScopeId;
 
 impl TypeItemProcessor<'_> {
@@ -40,79 +39,17 @@ impl TypeItemProcessor<'_> {
         ast_annotations: &[AnnotationAppl],
         scope: ScopeId,
     ) -> Vec<Ann> {
-        ast_annotations
-            .iter()
-            .map(|ann_appl| self.convert_annotation(ann_appl, scope))
-            .collect()
+        super::annotation_common::convert_annotations(self.ctx, ast_annotations, scope)
     }
+}
 
-    /// Convert a single AST annotation to HIR annotation.
-    fn convert_annotation(&mut self, ann_appl: &AnnotationAppl, scope: ScopeId) -> Ann {
-        let start = if ann_appl.ident.leading_colons.is_some() {
-            self.ctx.context.root_scope()
-        } else {
-            scope
-        };
-
-        // Try to resolve the annotation path
-        let def_id = self.ctx.context.resolve_syntax_path(start, &ann_appl.ident);
-        let (def_id, name) = if let Some(id) = def_id {
-            let def = self.ctx.context.definitions.get(id);
-            if matches!(def.kind, DefKind::Annotation(_)) {
-                (Some(id), path_name(&ann_appl.ident))
-            } else {
-                self.ctx.diagnostics.error(
-                    format!("`{}` is not an annotation", path_name(&ann_appl.ident)),
-                    ic_diagnostic::Label::new(ann_appl.span)
-                        .message("expected an annotation definition"),
-                );
-                // Still include it in HIR but without a valid def_id
-                (None, path_name(&ann_appl.ident))
-            }
-        } else {
-            (None, path_name(&ann_appl.ident))
-        };
-
-        // Convert annotation arguments
-        let args = self.convert_annotation_args(&ann_appl.args, scope);
-        let span = path_span(&ann_appl.ident);
-
-        Ann {
-            ident: Ident { name, span },
-            def_id,
-            args,
-        }
-    }
-
-    /// Convert annotation arguments.
-    fn convert_annotation_args(
+impl ValueItemProcessor<'_> {
+    /// Convert AST annotations to HIR annotations.
+    pub fn convert_annotations(
         &mut self,
-        ast_args: &[AnnotationArg],
+        ast_annotations: &[AnnotationAppl],
         scope: ScopeId,
-    ) -> Vec<AnnArg> {
-        let mut args = Vec::new();
-
-        for arg in ast_args {
-            // Evaluate the argument value expression
-            let mut evaluator = ConstEvaluator::new(self.ctx, scope);
-            let value = evaluator.eval_annotation_arg(&arg.value);
-
-            if let Some(val) = value {
-                let ident = if let Some(ref name) = arg.ident {
-                    // Named argument
-                    name.clone()
-                } else {
-                    // Positional argument - use empty name
-                    Ident {
-                        name: String::new(),
-                        span: arg.span,
-                    }
-                };
-
-                args.push(AnnArg { ident, value: val });
-            }
-        }
-
-        args
+    ) -> Vec<Ann> {
+        super::annotation_common::convert_annotations(self.ctx, ast_annotations, scope)
     }
 }

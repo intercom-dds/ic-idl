@@ -39,6 +39,7 @@ use ic_syntax::Item;
 use crate::Context;
 use crate::hir::{DefFlags, DefId, DefKind, Ty, TyKind, TypeId};
 
+mod annotation_common;
 mod annotations;
 mod builder;
 mod eval;
@@ -48,7 +49,6 @@ mod type_items;
 mod type_resolver;
 mod utils;
 mod validator;
-mod value_annotations;
 mod value_items;
 
 pub use registry::DefinitionRegistry;

@@ -172,11 +172,6 @@ impl SourceMap {
         &self.file_info(id).source
     }
 
-    // #[must_use]
-    // pub fn source_of(&self, span: FileId) -> &str {
-    //     &self.file_info(id).source[id]
-    // }
-
     /// Returns the name of the specified file.
     #[must_use]
     pub fn name(&self, id: FileId) -> &Path {

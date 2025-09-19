@@ -1879,25 +1879,6 @@ void validate_tree(parser_state* state, ptree* node) {
         node = node->next;
     }
 }
-
-void format_doxy_comments(parser_state* state, ptree* tree) {
-    while (tree) {
-        format_doxy_comments(state, tree->members);
-        for (auto ann : tree->annotations) {
-            if (ann->type == annotation_type_doc) {
-                for (auto text : ann->members) {
-                    if (std::string_view(text->name) == "text") {
-                        text->value.val.str(format_docstring(
-                            text->value.val.str().c_str(),
-                            value<int32_t>(get_annotation_value(ann, "placement"))
-                        ));
-                    }
-                }
-            }
-        }
-        tree = tree->next;
-    }
-}
 }
 
 ptree* parser_state::lookup_node(const char* a_name) const {

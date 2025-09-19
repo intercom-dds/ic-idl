@@ -777,6 +777,10 @@ fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
                 _ => Err(EvalError::TypeMismatch),
             }
         }
+        TyKind::Any => {
+            // 'any' type accepts any value
+            Ok(v)
+        }
         // For non-primitive types (enums/bitmasks/etc), we rely on callers to interpret
         _ => Ok(v),
     }

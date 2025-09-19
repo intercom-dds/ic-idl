@@ -52,6 +52,7 @@ fn make_arg(name: Option<&str>, value: Numeric) -> AnnArg {
             },
         ),
         value,
+        ty: None,
     }
 }
 

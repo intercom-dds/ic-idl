@@ -551,6 +551,8 @@ pub struct AnnArg {
     pub ident: Ident,
     /// The argument value
     pub value: Numeric,
+    /// The resolved type of the parameter (from the annotation definition)
+    pub ty: Option<Ty>,
 }
 
 macro_rules! numeric_from {

@@ -53,8 +53,6 @@ int register_node_dcl(struct parser_state*, struct ptree* p);
 
 struct ptree* lookup_node(struct parser_state*, const char* ident);
 
-struct ptree* lookup_type(struct parser_state*, const char* ident);
-
 struct ptree* pop_context(struct parser_state*);
 
 struct ptree* duplicate_node(struct parser_state*, const struct ptree* node);
@@ -145,10 +143,8 @@ struct ptree* create_default_case(struct parser_state*);
 
 struct ptree* create_null_node(struct parser_state*);
 
-struct ptree* create_enum(struct parser_state*, const char* ident, struct ptree* values);
-
 struct ptree*
-create_enum_value(struct parser_state*, const char* ident, const struct numeric* value);
+create_enum(struct parser_state*, const char* ident, struct ptree* type, struct ptree* values);
 
 struct ptree* create_type(struct parser_state*, struct declarator* declarators, struct ptree* type);
 
@@ -214,7 +210,8 @@ struct ptree* create_bitfield(
     struct ptree* type
 );
 
-struct ptree* create_bitmask(struct parser_state*, const char* ident, struct ptree* values);
+struct ptree*
+create_bitmask(struct parser_state*, const char* ident, struct ptree* type, struct ptree* values);
 
 struct ptree*
 create_bitmask_value(struct parser_state*, const char* ident, const struct numeric* value);

@@ -621,6 +621,7 @@ unsafe extern "C" {
     pub fn create_enum(
         arg1: *mut parser_state,
         ident: *const ::std::os::raw::c_char,
+        type_: *mut ptree,
         values: *mut ptree,
     ) -> *mut ptree;
 }
@@ -754,6 +755,7 @@ unsafe extern "C" {
     pub fn create_bitmask(
         arg1: *mut parser_state,
         ident: *const ::std::os::raw::c_char,
+        type_: *mut ptree,
         values: *mut ptree,
     ) -> *mut ptree;
 }

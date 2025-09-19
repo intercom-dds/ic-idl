@@ -340,6 +340,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_union_finish(self.state, disc, variants)
             }
             DefKind::Enum(v) => {
+                let ty = self.lower_ty(&v.ty);
                 let values = collect_with(sys::append_node, &v.fields, |&var| {
                     let var_def = self.ctx.type_of(var);
                     let name = create_ident(&var_def.ident.name);
@@ -352,7 +353,7 @@ impl<'a> TreeBuilder<'a> {
                         std::ptr::null_mut()
                     }
                 });
-                sys::create_enum(self.state, ident, values)
+                sys::create_enum(self.state, ident, ty, values)
             }
             DefKind::Const(v) => {
                 let ty = self.lower_ty(&v.ty);
@@ -361,13 +362,14 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_const_node(self.state, decl, ty, value)
             }
             DefKind::Bitmask(v) => {
+                let ty = self.lower_ty(&v.ty);
                 let values = collect_with(sys::append_node, &v.flags, |flag| {
                     let name = create_ident(&flag.ident.name);
                     let value = sys::create_u64(self.state, flag.value as u64, 10);
                     let node = sys::create_bitmask_value(self.state, name.as_ptr(), value);
                     self.annotate(node, &flag.annotations)
                 });
-                sys::create_bitmask(self.state, ident, values)
+                sys::create_bitmask(self.state, ident, ty, values)
             }
             DefKind::Alias(v) => {
                 let ty = self.lower_ty(&v.ty);

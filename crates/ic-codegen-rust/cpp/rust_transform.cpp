@@ -249,7 +249,7 @@ static void replace_native(parser_state* state) {
     // since it's already defined in the API (and it's not really a bitmask).
     auto to_bitmask = [&](const char* name, const char* new_name) {
         if (auto node = state->lookup_node(name)) {
-            auto handle = create_bitmask(state, new_name, nullptr);
+            auto handle = create_bitmask(state, new_name, &ulong_type, nullptr);
             create_annotation_start(state, "@ext::suppress", annotation_type_ext_suppress);
             annotate(state, handle, create_annotation_finish(state, nullptr));
 

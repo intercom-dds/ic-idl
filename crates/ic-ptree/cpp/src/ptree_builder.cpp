@@ -118,16 +118,6 @@ static const node_kind TYPE_KIND[] = {
     N_UNDEF,
 };
 
-static ptree*
-update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem);
-
-static void update_value_type_array_rec(
-    parser_state* state,
-    numeric& value,
-    const ptree* array,
-    size_t depth = 0
-);
-
 static ptree* value_type(const numeric& value) {
     switch (value.kind()) {
     case BOOLEAN_KIND:
@@ -477,122 +467,6 @@ static bool is_ref(const numeric& value) {
            !value.val.node()->name.empty();
 }
 
-static void update_value_type(parser_state* state, numeric& value, const ptree* type) {
-    if (is_ref(value)) {
-        return;  // type updated in annotate(...)
-    }
-    type = base_type_of(type);
-    if (type->kind == N_ENUM && value.kind() != PTREE_KIND) {
-        value = lookup_member_value(state, value, type);
-    } else if (type->kind == N_STRING) {
-        value = *expr_convert(state, &value, STRING_KIND);
-    } else if (value.kind() != PTREE_KIND) {
-        value = *expr_convert(state, &value, type->value.kind());
-    } else if (value.kind() == PTREE_KIND) {
-        const_cast<ptree*>(value.val.node())->type = const_cast<ptree*>(type);
-        // update nested types
-        if (type->kind == N_ARRAY) {
-            update_value_type_array_rec(state, value, type);
-        } else if (type->kind == N_MAP) {
-            for (ptree* pair : value.val.node()->members) {
-                if (pair->value.kind() != PTREE_KIND || !pair->value.val.node()->members) {
-                    state->error()
-                        << "Missing key value in map initializer. Expected {key, elem} pair";
-                    return;
-                }
-                ptree* key = pair->value.val.node()->members;
-                ptree* elem = key->next;
-                if (!elem) {
-                    state->error()
-                        << "Missing element value in map initializer. Expected {key, elem} pair";
-                    return;
-                }
-                if (elem->next) {
-                    state->error()
-                        << "Too many values in map initializer. Expected {key, elem} pair";
-                    return;
-                }
-                key->type = type->key_type;
-                update_value_type(state, key->value, type->key_type);
-                elem->type = type->element_type;
-                update_value_type(state, elem->value, type->element_type);
-            }
-        } else if (type->element_type) {
-            for (ptree* elem : value.val.node()->members) {
-                elem->type = type->element_type;
-                update_value_type(state, elem->value, type->element_type);
-            }
-        }
-
-        if (type->kind == N_STRUCT) {
-            ptree* value_elem = value.val.node()->members;
-            value_elem = update_value_type_struct_rec(state, type, value_elem);
-            if (value_elem != nullptr) {
-                state->error() << "Too many values supplied for type \""
-                               << idl_scoped_name(type, nullptr) << "\"";
-            }
-        }
-    }
-}
-
-static ptree*
-update_value_type_struct_rec(parser_state* state, const ptree* type, ptree* value_elem) {
-    for (auto parent : type->parents) {
-        value_elem = update_value_type_struct_rec(state, parent, value_elem);
-    }
-    ptree* type_elem = type->members;
-    std::set<std::string> type_names;
-    for (auto member : type->members) {
-        type_names.insert(member->name);
-    }
-    while (type_elem && value_elem) {
-        if (value_elem->name.empty()) {
-            value_elem->name = type_elem->name;
-        }
-        value_elem->type = type_elem->type;
-        update_value_type(state, value_elem->value, type_elem->type);
-        type_elem = type_elem->next;
-        value_elem = value_elem->next;
-    }
-    if (type_elem != nullptr) {
-        state->error() << "Not enough values supplied for type \"" << type << "\"";
-    }
-    return value_elem;
-}
-
-static void
-update_value_type_array_rec(parser_state* state, numeric& value, const ptree* array, size_t depth) {
-    if (value.kind() != PTREE_KIND) {
-        return;
-    }
-    unsigned long bound = unsigned_value(array->bounds[depth]);
-    ptree* array_members = base_value_of(value.val.node())->members;
-    if (depth + 1U < array->bounds.size()) {  // nested array
-        ptree* sub_array_type = create_sub_array_value_type(state, array, depth + 1U);
-        unsigned long sub_arrays = 0UL;
-        for (ptree* member : array_members) {
-            update_value_type_array_rec(state, member->value, array, depth + 1U);
-            member->type = sub_array_type;
-            sub_arrays++;
-        }
-        if (sub_arrays != bound) {
-            state->error() << "Expected " << bound << " subarray" << (bound > 1U ? "s" : "")
-                           << ", but got " << sub_arrays;
-        }
-    } else {  // base element
-        unsigned long members = 0UL;
-        for (ptree* member : array_members) {
-            update_value_type(state, member->value, array->element_type);
-            member->type = array->element_type;
-            members++;
-        }
-        if (members != bound) {
-            state->error() << "Expected " << bound << ' ' << array->element_type
-                           << (bound > 1U ? "s" : "") << " in array, but got " << members;
-        }
-    }
-}
-
 template <typename T, typename Pred>
 static bool all_in_range(T begin, const T& end, const Pred& pred) {
     for (; begin != end; begin++) {
@@ -635,53 +509,6 @@ static ptree* assign_members(parser_state* state, ptree* node, ptree* members) {
         annotate(state, node, ann);
     }
     return node;
-}
-
-static void update_enum_values(parser_state* state, ptree* node) {
-    if (node->members) {
-        std::vector<ptree*> member_vec;
-        for (auto m : node->members) {
-            member_vec.push_back(m);
-        }
-        std::sort(member_vec.begin(), member_vec.end(), [](ptree* lhs, ptree* rhs) {
-            return long_long_value(lhs->value) < long_long_value(rhs->value);
-        });
-        for (size_t i = 1; i < member_vec.size(); ++i) {
-            member_vec[i - 1]->next = member_vec[i];
-        }
-        member_vec.back()->next = nullptr;
-        node->members = member_vec.front();
-    }
-    long long enum_value = 0;
-    for (auto m : node->members) {
-        if (long_long_value(m->value) != enum_value) {
-            m->flags |= OPT_ENUMERATED;
-            node->flags |= OPT_ENUMERATED;
-        }
-        m->type = node;
-        if (long_long_value(m->value) > std::numeric_limits<int32_t>::max()) {
-            node->element_type = &ulong_type;
-        }
-        enum_value = long_long_value(m->value) + 1;
-    }
-    for (auto m : node->members) {
-        auto new_value = *expr_convert(state, &m->value, node->element_type->value.kind());
-        if (string_value(new_value) == string_value(m->value)) {
-            m->value = new_value;
-        }
-    }
-}
-
-static void update_bitmask_values(ptree* node) {
-    node->flags |= OPT_ENUMERATED;
-    for (auto m : node->members) {
-        auto bit_value = integer_value(m->value);
-        numeric v = num_undef;
-        v.base = 16;
-        v.val.ull(bit_value);
-        m->value = v;
-        m->flags |= OPT_ENUMERATED;
-    }
 }
 
 extern "C" {
@@ -833,14 +660,6 @@ ptree* lookup_node(parser_state* state, const char* ident) {
     ptree* type = try_lookup_node(state, ident, ANY_KIND);
     if (!type) {
         state->error() << "unknown node \"" << ident << "\"";
-    }
-    return type;
-}
-
-ptree* lookup_type(parser_state* state, const char* ident) {
-    ptree* type = try_lookup_node(state, ident, TYPE_KIND);
-    if (!type) {
-        state->error() << "unknown type \"" << ident << "\"";
     }
     return type;
 }
@@ -1020,11 +839,8 @@ ptree* create_const_node(parser_state* state, declarator* decl, ptree* type, con
         ident = decl->ident.c_str();
     }
     ptree* p = create_node(state, N_CONST, ident);
-    if (type) {
-        if (decl && !decl->bounds.empty()) {
-            type = create_array_type(state, decl, type);
-        }
-        update_value_type(state, num, type);
+    if (type && decl && !decl->bounds.empty()) {
+        type = create_array_type(state, decl, type);
     }
     p->type = type ? type : value_type(num);
     p->value = num;
@@ -1451,13 +1267,6 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                     node->flags |= OPT_EMIT_CODE;
                 }
             }
-            if (ann->type == annotation_type_bitset_old) {
-                if (node->kind == N_ENUM) {
-                    node->kind = N_BITMASK;
-                    node->element_type = &ulong_type;
-                    update_bitmask_values(node);
-                }
-            }
             if (ann->type == annotation_type_bit_bound) {
                 int bits = integer_value(ann->value);
                 if (node->kind == N_ENUM) {
@@ -1518,7 +1327,6 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
                 }
             }
             if (ann->type == annotation_type_default) {
-                update_value_type(state, ann->value, base_type_of(node));
                 ann->members->value = ann->value;
             }
             ann->super = ann->scope = node;
@@ -1666,11 +1474,11 @@ ptree* create_bitfield(parser_state* state, const char* ident, const numeric* bi
     return node;
 }
 
-ptree* create_enum(parser_state* state, const char* ident, ptree* values) {
+ptree* create_enum(parser_state* state, const char* ident, ptree* type, ptree* values) {
     ptree* node = create_node(state, N_ENUM, ident);
     register_node(state, node);
 
-    node->element_type = &long_type;
+    node->element_type = type;
     node->value = ulong_type.value;
     for (ptree* val : values) {
         val->super = node;
@@ -1681,7 +1489,6 @@ ptree* create_enum(parser_state* state, const char* ident, ptree* values) {
         register_node(state, val);
     }
     assign_members(state, node, values);
-    update_enum_values(state, node);
     return node;
 }
 
@@ -1692,7 +1499,7 @@ ptree* create_enum_value(parser_state* state, const char* ident, const numeric* 
     return p;
 }
 
-ptree* create_bitmask(parser_state* state, const char* ident, ptree* values) {
+ptree* create_bitmask(parser_state* state, const char* ident, ptree* type, ptree* values) {
     ptree* node = create_node(state, N_BITMASK, ident);
     register_node(state, node);
     for (ptree* val : values) {
@@ -1701,10 +1508,8 @@ ptree* create_bitmask(parser_state* state, const char* ident, ptree* values) {
         register_node(state, val);
     }
     assign_members(state, node, values);
-    node->element_type = &ulong_type;
+    node->element_type = type;
     node->value = ulong_type.value;
-    update_enum_values(state, node);
-    update_bitmask_values(node);
     return node;
 }
 

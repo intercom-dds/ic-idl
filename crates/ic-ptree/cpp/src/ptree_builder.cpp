@@ -1483,6 +1483,7 @@ ptree* create_enum(parser_state* state, const char* ident, ptree* type, ptree* v
     for (ptree* val : values) {
         val->super = node;
         val->scope = node->scope;
+        val->type = node->element_type;
         // Register value inside enum scope too. IDL spec says register it
         // outside (and we do in create_enum_value), but this is consistent
         // with bitset and languages with scoped enums.
@@ -1502,9 +1503,13 @@ ptree* create_enum_value(parser_state* state, const char* ident, const numeric* 
 ptree* create_bitmask(parser_state* state, const char* ident, ptree* type, ptree* values) {
     ptree* node = create_node(state, N_BITMASK, ident);
     register_node(state, node);
+    node->element_type = type;
+    node->value = ulong_type.value;
+
     for (ptree* val : values) {
         val->super = node;
         val->scope = node->scope;
+        val->type = node->element_type;
         register_node(state, val);
     }
     assign_members(state, node, values);

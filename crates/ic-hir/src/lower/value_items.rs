@@ -33,6 +33,7 @@ use super::eval::ConstEvaluator;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
+use crate::Context;
 use crate::hir::{
     AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
     DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
@@ -210,6 +211,8 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             }
         }
 
+        // Sort enumerators by their assigned values
+        fields.sort_by_key(|&field| enum_key(&self.ctx.context, field));
         fields
     }
 
@@ -415,6 +418,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 annotations: bitflag_annotations,
             });
         }
+
+        // Sort flags by their assigned values
+        flags.sort_by_key(|flag| flag.value);
 
         // Update the bitmask definition with the collected flags
         if let DefKind::Bitmask(ref mut bitmask_ty) =
@@ -660,5 +666,37 @@ pub(super) fn resolve_declarator(
             }
             (arr.ident.clone(), ty)
         }
+    }
+}
+
+fn enum_key(ctx: &Context, field: DefId) -> i64 {
+    let def = ctx.definitions.get(field);
+    if let DefKind::Const(ref const_ty) = def.kind {
+        resolve_numeric_value(ctx, &const_ty.value)
+    } else {
+        0
+    }
+}
+
+/// Recursively resolve a numeric value, following constant references
+fn resolve_numeric_value(ctx: &Context, value: &Numeric) -> i64 {
+    match value {
+        Numeric::Int8(v) => i64::from(*v),
+        Numeric::Int16(v) => i64::from(*v),
+        Numeric::Int32(v) => i64::from(*v),
+        Numeric::Int64(v) => *v,
+        Numeric::Octet(v) => i64::from(*v),
+        Numeric::UInt16(v) => i64::from(*v),
+        Numeric::UInt32(v) => i64::from(*v),
+        Numeric::UInt64(v) => *v as i64,
+        Numeric::Const(def_id) => {
+            let def = ctx.definitions.get(*def_id);
+            if let DefKind::Const(ref const_ty) = def.kind {
+                resolve_numeric_value(ctx, &const_ty.value)
+            } else {
+                0
+            }
+        }
+        _ => 0,
     }
 }

@@ -41,4 +41,3 @@ const char* ic_parse_error(const parse_result* result) {
 void ic_parse_free(parse_result* result) {
     delete result;
 }
-

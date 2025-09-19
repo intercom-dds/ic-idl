@@ -89,15 +89,3 @@ impl std::fmt::Display for Error {
         }
     }
 }
-
-/// Takes a set of individual parse trees and merges them into one. Once
-/// merged, any duplicate types will be removed, and pointers throughout the
-/// tree will be updated to point to the same types.
-pub fn merge_trees(input: &[ParseResult]) -> ParseResult {
-    let mut trees: Vec<_> = input.iter().map(|v| v.inner.cast_const()).collect();
-    trees.push(std::ptr::null_mut());
-
-    let inner = unsafe { sys::ic_ptree_merge(trees.as_mut_ptr()) };
-    debug_assert!(!inner.is_null());
-    ParseResult { inner }
-}

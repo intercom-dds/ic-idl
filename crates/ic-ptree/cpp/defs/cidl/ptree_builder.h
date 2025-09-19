@@ -91,9 +91,6 @@ struct ptree* create_string(struct parser_state*, const struct numeric* bound);
 
 struct ptree* create_wstring(struct parser_state*, const struct numeric* bound);
 
-struct ptree*
-create_fixed(struct parser_state*, const struct numeric* bound1, const struct numeric* bound2);
-
 struct numeric* new_numeric(struct parser_state*, enum numeric_kind kind);
 
 const struct numeric* create_bool(struct parser_state*, int value);
@@ -247,38 +244,14 @@ create_valuetype_start(struct parser_state*, const char* ident, struct ptree* pa
 
 struct ptree* create_valuetype_finish(struct parser_state*, struct ptree* members);
 
-struct ptree* create_valuetype_factory(
-    struct parser_state*,
-    const char* ident,
-    struct ptree* params,
-    struct declarator* raises
-);
-
-struct ptree*
-create_valuetype_factory_param(struct parser_state*, struct declarator* decl, struct ptree* type);
-
-struct ptree* create_valuetype_member(
-    struct parser_state*,
-    struct declarator* declarators,
-    struct ptree* type,
-    int is_public
-);
-
 struct declarator*
 append_array_size(struct parser_state*, struct declarator* decl, const struct numeric* value);
 
-struct declarator*
-set_array_bounds(struct parser_state*, struct declarator* decl, struct declarator* bounds);
-
 void validate_tree(struct parser_state*, struct ptree* node);
-
-void format_doxy_comments(struct parser_state*, struct ptree* tree);
 
 struct ptree* try_lookup_node(struct parser_state*, const char* name, const enum node_kind kind[]);
 
 struct ptree* create_node(struct parser_state*, enum node_kind kind, const char* ident);
-
-struct ptree* create_doc(struct parser_state*, const char* ident, int post_comment);
 
 #ifdef __cplusplus
 }

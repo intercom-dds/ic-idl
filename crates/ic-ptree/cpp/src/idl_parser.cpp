@@ -27,7 +27,6 @@
 
 #include "cidl/idl_parser.h"
 
-#include <algorithm>
 #include <cassert>
 #include <filesystem>
 #include <functional>
@@ -423,32 +422,10 @@ static void tree_includes(const ptree* tree, std::set<const ptree*>& includes) {
     }
 }
 
-static void register_node_in_scope(parser_state* state, ptree* node, ptree* scp) {
-    std::swap(node->super, scp);
-    register_node(state, node);
-    std::swap(node->super, scp);
-}
-
-static void register_inherited_nodes(parser_state* state, ptree* node) {
-    if (node->type || (node->kind != N_STRUCT && node->kind != N_INTERFACE)) {
-        return;
-    }
-    for (ptree* parent = node; !parent->parents.empty();) {
-        parent = base_type_of(parent->parents.front());
-        for (ptree* elem : parent->members) {
-            register_node_in_scope(state, elem, node);
-        }
-    }
-}
-
 static parse_result get_parse_result(parser_state* state) {
     resolve_incomplete_types(state, state->top_level.next);
     state->top_level.next = prune_annotations(state->top_level.next);
-    format_doxy_comments(state, state->top_level.next);
     generate_code(state, state->top_level.next);
-    for (std::shared_ptr<ptree>& node : state->allocated_nodes) {
-        register_inherited_nodes(state, node.get());
-    }
     validate_tree(state, state->top_level.next);
 
     if (state->top_level.next) {
@@ -469,28 +446,6 @@ static parse_result get_parse_result(parser_state* state) {
     tree_modules(state->top_level.next, result.modules);
     tree_includes(state->top_level.next, result.includes);
     return result;
-}
-
-static void suppress_content_from_includes(parse_result& result, const FileList& input_files) {
-    std::set<std::string> input_file_set;
-    for (auto& file : input_files) {
-        input_file_set.insert(std::filesystem::canonical(file.first).string());
-    }
-    std::function<void(ptree*)> filter = [&](ptree* tree) {
-        if (!tree) {
-            return;
-        }
-        for (auto node : tree) {
-            if (input_file_set.find(node->file_name) == input_file_set.end()) {
-                node->flags &= ~OPT_EMIT_CODE;
-            }
-            filter(node->members);
-        }
-    };
-    filter(const_cast<ptree*>(result.tree));
-    result.includes.clear();
-    tree_includes(result.tree, result.includes);
-    tree_modules(result.tree, result.modules);
 }
 
 static void update_include_paths(parse_result& result, const FileList& input_files) {
@@ -557,184 +512,6 @@ static void validate_consistent_types(
     }
 }
 
-// Update type pointers in tree to point into the main
-// tree structure if they are defined there
-void update_ptree_types_after_merge(parse_result& result) {
-    // Update type map with pointers from merged tree
-    std::function<void(ptree*)> update_type_map = [&](ptree* tree) {
-        for (auto node : tree) {
-            auto name = lc_scoped_name(node);
-            auto& map = (node->flags & OPT_DECLARATION) != 0 ? result.state->type_dcl_map
-                                                             : result.state->type_map;
-            auto it = map.find(name);
-            if (it != map.end() && it->second->kind == node->kind) {
-                it->second = node;
-            }
-            update_type_map(node->members);
-            update_type_map(node->generated);
-        }
-    };
-
-    // Return node from type map if it exists, otherwise return input argument
-    std::function<ptree*(ptree*)> lookup_type = [&](ptree* node) {
-        if (node) {
-            auto it = result.state->type_map.find(lc_scoped_name(node));
-            if (it != result.state->type_map.end()) {
-                return it->second;
-            }
-        }
-        return node;
-    };
-
-    // Update tree with type pointers from type map if they exist
-    std::set<const ptree*> seen;
-    std::function<void(ptree*)> update_types = [&](ptree* tree) {
-        if (seen.find(tree) != seen.end()) {
-            return;
-        }
-        for (auto node : tree) {
-            seen.insert(node);
-            node->type = lookup_type(node->type);
-            node->key_type = lookup_type(node->key_type);
-            node->element_type = lookup_type(node->element_type);
-            for (auto& parent : node->parents) {
-                parent = lookup_type(parent);
-                update_types(parent);
-            }
-            for (auto& getraise : node->getraises) {
-                getraise = lookup_type(getraise);
-                update_types(getraise);
-            }
-            for (auto& setraise : node->setraises) {
-                setraise = lookup_type(setraise);
-                update_types(setraise);
-            }
-            for (auto& bound : node->bounds) {
-                if (bound->_d() == PTREE_KIND) {
-                    bound.val.node(lookup_type(const_cast<ptree*>(bound.val.node())));
-                }
-            }
-            update_types(node->type);
-            update_types(node->key_type);
-            update_types(node->element_type);
-
-            update_types(node->members);
-            update_types(node->generated);
-            update_types(node->discriminator);
-            update_types(node->annotations);
-            if (node->value->_d() == PTREE_KIND) {
-                auto updated = const_cast<ptree*>(node->value->node());
-                if (updated->kind != N_CONST || (updated->flags & OPT_CONST_VALUE) == 0) {
-                    updated = lookup_type(updated);
-                }
-                update_types(updated);
-                node->value.val.node(updated);
-            }
-            std::for_each(node->parents.begin(), node->parents.end(), update_types);
-            std::for_each(node->getraises.begin(), node->getraises.end(), update_types);
-            std::for_each(node->setraises.begin(), node->setraises.end(), update_types);
-        }
-    };
-
-    auto tree = const_cast<ptree*>(result.tree);
-    update_type_map(tree);
-    update_types(tree);
-
-    // Check that there is only a single definition for each type in the tree.
-    // Errors here should never happen and could be asserted, but add it to user error messages
-    // to help debug any follow-on errors in the backend in release builds.
-    std::map<std::string, const ptree*> type_map;
-    validate_consistent_types(tree, type_map, result);
-}
-
-namespace intercom::cidl {
-
-parse_result merge_results(std::vector<parse_result>& to_merge) {
-    parse_result out;
-    out.state = std::make_shared<parser_state>();
-    ptree* new_tree = nullptr;
-
-    // Inject the current built-in annotations into the new state. There may be
-    // multiple definitions of the same type, so we resort to using the
-    // last-registered definitions.
-    for (auto node : g_builtin_annotation_map) {
-        auto name = lc_scoped_name(*node.second);
-        out.state->type_map[name] = *node.second;
-    }
-
-    std::map<std::string, const ptree*> seen_includes;
-
-    // Filter nodes so that a file is only defined once
-    std::function<ptree*(ptree*)> filter_includes = [&](ptree* node) -> ptree* {
-        if (!node) {
-            return nullptr;
-        }
-        ptree* prev = nullptr;
-        for (auto n : node) {
-            if (seen_includes.find(n->file_name) == seen_includes.end()) {
-                seen_includes[n->file_name] = n->included_from;
-            }
-            if (seen_includes[n->file_name] != n->included_from) {
-                if (prev) {
-                    prev->next = n->next;
-                } else {
-                    node = n->next;
-                }
-            } else {
-                prev = n;
-            }
-        }
-        for (auto n : node) {
-            n->members = filter_includes(n->members);
-        }
-        return node;
-    };
-
-    for (auto& to_merge_result : to_merge) {
-        if (to_merge_result.tree) {
-            // Take ownership of nodes
-            out.state->allocated_nodes.insert(
-                out.state->allocated_nodes.end(),
-                to_merge_result.state->allocated_nodes.begin(),
-                to_merge_result.state->allocated_nodes.end()
-            );
-            out.state->allocated_decl.insert(
-                out.state->allocated_decl.end(),
-                to_merge_result.state->allocated_decl.begin(),
-                to_merge_result.state->allocated_decl.end()
-            );
-            out.state->type_map.insert(
-                to_merge_result.state->type_map.begin(), to_merge_result.state->type_map.end()
-            );
-            out.state->type_dcl_map.insert(
-                to_merge_result.state->type_dcl_map.begin(),
-                to_merge_result.state->type_dcl_map.end()
-            );
-
-            // Update ptree and add it to the merged tree
-            auto to_merge_tree = const_cast<ptree*>(to_merge_result.tree);
-            to_merge_tree = filter_includes(to_merge_tree);
-            new_tree = append_node(to_merge_tree, new_tree);
-        }
-
-        // Merge errors
-        out.error_count += to_merge_result.error_count;
-        if (!to_merge_result.msg.empty()) {
-            if (!out.msg.empty()) {
-                out.msg += "\n";
-            }
-            out.msg += to_merge_result.msg;
-        }
-    }
-    out.tree = new_tree;
-    tree_modules(out.tree, out.modules);
-    tree_includes(out.tree, out.includes);
-
-    to_merge.clear();
-    return out;
-}
-}  // namespace intercom::cidl
-
 parser_state* ic_parser_create() {
     auto state = new parser_state();
     init_parser_state(state);
@@ -744,19 +521,4 @@ parser_state* ic_parser_create() {
 parse_result* ic_parser_result(parser_state* state, ptree* tree) {
     state->top_level.next = tree;
     return new parse_result(get_parse_result(state));
-}
-
-parse_result* ic_ptree_merge(const parse_result** result) {
-    std::vector<parse_result> to_merge;
-    for (auto tree = result; *tree; ++tree) {
-        to_merge.emplace_back(**tree);
-    }
-
-    auto merged = new parse_result(intercom::cidl::merge_results(to_merge));
-    // TODO(idarcar):
-    // if (no_header_follow != 0) {
-    //     suppress_content_from_includes(result, expanded_files);
-    // }
-    update_ptree_types_after_merge(*merged);
-    return merged;
 }

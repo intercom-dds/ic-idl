@@ -930,12 +930,6 @@ static std::string string_name(ptree* element_type, const numeric& bound) {
     return str.str();
 }
 
-static std::string fixed_name(const numeric& bound1, const numeric& bound2) {
-    std::stringstream str;
-    str << "fixed<" << integer_value(bound1) << "," << integer_value(bound2) << ">";
-    return str.str();
-}
-
 void create_include_start(parser_state* state, const char* ident, int is_system_include) {
     ptree* p = nullptr;
     std::string scoped_name = std::string("::<") + ident;
@@ -1902,54 +1896,11 @@ ptree* create_valuetype_finish(parser_state* state, ptree* members) {
     return node;
 }
 
-ptree* create_valuetype_factory(
-    parser_state* state,
-    const char* ident,
-    ptree* params,
-    declarator* raises
-) {
-    ptree* node = create_node(state, N_PROTOTYPE, ident);
-    register_node(state, node);
-    assign_members(state, node, params);
-    if (raises) {
-        node->getraises = create_node_list(state, raises, N_EXCEPTION);
-    }
-    return node;
-}
-
-ptree* create_valuetype_factory_param(parser_state* state, declarator* decl, ptree* type) {
-    ptree* node = create_node(state, N_MEMBER, decl->ident.c_str());
-    node->flags |= OPT_IN;
-    node->type = type;
-    return node;
-}
-
-ptree*
-create_valuetype_member(parser_state* state, declarator* declarators, ptree* type, int is_public) {
-    ptree* res = nullptr;
-    while (declarators) {
-        ptree* node = create_node(state, N_MEMBER, declarators->ident.c_str());
-        register_node(state, node);
-        node->type =
-            !declarators->bounds.empty() ? create_array_type(state, declarators, type) : type;
-        node->flags |= is_public ? 0 : OPT_PRIVATE;
-        node->annotations = declarators->annotations;
-        res = append_node(res, node);
-        declarators = declarators->next;
-    }
-    return res;
-}
-
 declarator* append_array_size(parser_state* state, declarator* decl, const numeric* value) {
     if (!decl) {
         decl = create_decl(state, "", nullptr);
     }
     decl->bounds.push_back(*value);
-    return decl;
-}
-
-declarator* set_array_bounds(parser_state*, declarator* decl, declarator* bounds) {
-    decl->bounds = bounds->bounds;
     return decl;
 }
 

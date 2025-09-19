@@ -44,8 +44,6 @@ const char* ic_parse_error(const struct parse_result* result);
 
 void ic_parse_free(struct parse_result* result);
 
-struct parse_result* ic_ptree_merge(const struct parse_result** result);
-
 void ic_push_source(struct ic_list_t* list, const char* path, const char* src);
 
 struct parser_state* ic_parser_create();

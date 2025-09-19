@@ -109,8 +109,6 @@ std::string json_value(const numeric& value, const ptree* context = nullptr, int
 
 std::string json_value(const ptree* value);
 
-parse_result merge_results(std::vector<parse_result>& to_merge);
-
 enum ParserFlagBits : uint32_t {
     SUPPRESS_CONTENTS_FROM_INCLUDES = 1,
     PREPROCESS_ONLY = 2,

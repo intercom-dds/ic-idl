@@ -157,21 +157,6 @@ unsafe extern "C" {
     ) -> *const numeric;
 }
 unsafe extern "C" {
-    pub fn expr_unary(
-        state: *mut parser_state,
-        op: ::std::os::raw::c_char,
-        v: *const numeric,
-    ) -> *const numeric;
-}
-unsafe extern "C" {
-    pub fn expr_binary(
-        state: *mut parser_state,
-        op: ::std::os::raw::c_char,
-        v1: *const numeric,
-        v2: *const numeric,
-    ) -> *const numeric;
-}
-unsafe extern "C" {
     pub static mut boolean_type: ptree;
 }
 unsafe extern "C" {
@@ -528,13 +513,6 @@ unsafe extern "C" {
     pub fn create_wstring(arg1: *mut parser_state, bound: *const numeric) -> *mut ptree;
 }
 unsafe extern "C" {
-    pub fn create_fixed(
-        arg1: *mut parser_state,
-        bound1: *const numeric,
-        bound2: *const numeric,
-    ) -> *mut ptree;
-}
-unsafe extern "C" {
     pub fn new_numeric(arg1: *mut parser_state, kind: numeric_kind) -> *mut numeric;
 }
 unsafe extern "C" {
@@ -835,29 +813,6 @@ unsafe extern "C" {
     pub fn create_valuetype_finish(arg1: *mut parser_state, members: *mut ptree) -> *mut ptree;
 }
 unsafe extern "C" {
-    pub fn create_valuetype_factory(
-        arg1: *mut parser_state,
-        ident: *const ::std::os::raw::c_char,
-        params: *mut ptree,
-        raises: *mut declarator,
-    ) -> *mut ptree;
-}
-unsafe extern "C" {
-    pub fn create_valuetype_factory_param(
-        arg1: *mut parser_state,
-        decl: *mut declarator,
-        type_: *mut ptree,
-    ) -> *mut ptree;
-}
-unsafe extern "C" {
-    pub fn create_valuetype_member(
-        arg1: *mut parser_state,
-        declarators: *mut declarator,
-        type_: *mut ptree,
-        is_public: ::std::os::raw::c_int,
-    ) -> *mut ptree;
-}
-unsafe extern "C" {
     pub fn append_array_size(
         arg1: *mut parser_state,
         decl: *mut declarator,
@@ -865,17 +820,7 @@ unsafe extern "C" {
     ) -> *mut declarator;
 }
 unsafe extern "C" {
-    pub fn set_array_bounds(
-        arg1: *mut parser_state,
-        decl: *mut declarator,
-        bounds: *mut declarator,
-    ) -> *mut declarator;
-}
-unsafe extern "C" {
     pub fn validate_tree(arg1: *mut parser_state, node: *mut ptree);
-}
-unsafe extern "C" {
-    pub fn format_doxy_comments(arg1: *mut parser_state, tree: *mut ptree);
 }
 unsafe extern "C" {
     pub fn try_lookup_node(
@@ -889,13 +834,6 @@ unsafe extern "C" {
         arg1: *mut parser_state,
         kind: node_kind,
         ident: *const ::std::os::raw::c_char,
-    ) -> *mut ptree;
-}
-unsafe extern "C" {
-    pub fn create_doc(
-        arg1: *mut parser_state,
-        ident: *const ::std::os::raw::c_char,
-        post_comment: ::std::os::raw::c_int,
     ) -> *mut ptree;
 }
 #[repr(C)]
@@ -916,9 +854,6 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn ic_parse_free(result: *mut parse_result);
-}
-unsafe extern "C" {
-    pub fn ic_ptree_merge(result: *mut *const parse_result) -> *mut parse_result;
 }
 unsafe extern "C" {
     pub fn ic_push_source(

@@ -693,43 +693,6 @@ ptree* duplicate_node(parser_state* state, const ptree* node) {
     return p.get();
 }
 
-ptree* create_doc(parser_state* state, const char* ident, int post_doc) {
-    auto doc_ident = "@doc";
-    auto text_ident = "text";
-    create_annotation_start(state, doc_ident);
-    ptree* param = create_node(state, N_CONST, text_ident);
-    param->type = &unbounded_string_type;
-    param->value.val.str(ident);
-    int placement_value = post_doc ? AFTER_DECLARATION : BEFORE_DECLARATION;
-    // if (placement_value == BEFORE_DECLARATION && ident.pos.line <= 1) {
-    //     placement_value = BEGIN_FILE;
-    // }
-    auto placement_ident = "placement";
-    ptree* placement = create_node(state, N_CONST, placement_ident);
-    ptree* placement_kind = nullptr;
-    auto placement_type =
-        try_lookup_node(state, "::intercom::annotations::doc::PlacementKind", ANY_KIND);
-    if (placement_type) {
-        for (auto p : placement_type->members) {
-            if (value<int>(p->value) == placement_value) {
-                placement_kind = p;
-                break;
-            }
-        }
-    }
-    if (placement_kind) {
-        placement->type = placement_kind->type;
-        placement->value.val.node(placement_kind);
-    } else {
-        placement->value.val.l(placement_value);
-        placement->type = &long_type;
-    }
-    param = append_node(param, placement);
-
-    auto ann = create_annotation_finish(state, param);
-    return ann;
-}
-
 ptree* create_node(parser_state* state, node_kind kind, const char* ident) {
     std::shared_ptr<ptree> p(new ptree);
     p->kind = kind;
@@ -1229,7 +1192,7 @@ ptree* create_union_finish(parser_state* state, ptree* discriminator, ptree* mem
         int label_group = 0;
         int default_label_group = 0;
 
-        create_annotation_start(state, "@must_understand");
+        create_annotation_start(state, "@must_understand", annotation_type_must_understand);
         discriminator = annotate(state, discriminator, create_annotation_finish(state, nullptr));
         std::set<int> case_values;
 
@@ -1568,6 +1531,8 @@ ptree* annotate(parser_state* state, ptree* node, ptree* annotations) {
             ann = ann->next;
         }
 
+        node->annotations = append_node(node->annotations, annotations);
+
         if (node->kind == N_ANNOTATION) {
             append_to_list(node, node->annotations);
             node->annotations = nullptr;
@@ -1782,21 +1747,16 @@ ptree* create_annotation_member(
     return node;
 }
 
-void create_annotation_start(parser_state* state, const char* ident) {
+void create_annotation_start(parser_state* state, const char* ident, ptree* annotation_def) {
     ptree* node;
-    ptree* type = try_lookup_node(
-        state, (std::string("::intercom::annotations::") + (ident + 1)).c_str(), ANY_KIND
-    );
-    if (!type) {
-        type = try_lookup_node(state, ident + 1, ANY_KIND);
-    }
-    if (type && type->kind == N_ANNOTATION_DEF) {
-        node = create_node(state, N_ANNOTATION, type->name.c_str());
-        node->type = type;
-        node->super = type->super;
-        node->scope = type->scope;
+    if (annotation_def && annotation_def->kind == N_ANNOTATION_DEF) {
+        node = create_node(state, N_ANNOTATION, annotation_def->name.c_str());
+        node->type = annotation_def;
+        node->super = annotation_def->super;
+        node->scope = annotation_def->scope;
     } else {
-        node = create_node(state, N_ANNOTATION, ident + 1);
+        node = create_node(state, N_ANNOTATION, ident + 1);  // +1 to skip '@'
+        node->type = annotation_def;
     }
     push_context(state, node);
 }

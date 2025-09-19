@@ -185,7 +185,8 @@ std::string idl_name(const ptree* node) {
     if (!node) {
         return {};
     }
-    if (node->kind == N_PRIMITIVE || node->kind == N_STRING || node->kind == N_ANNOTATION) {
+    if (node->kind == N_PRIMITIVE || node->kind == N_STRING || node->kind == N_ANNOTATION ||
+        node->kind == N_ANNOTATION_DEF) {
         if (CommandLineOption::legacy_idl()) {
             if (node->name == "int16") {
                 return "short";

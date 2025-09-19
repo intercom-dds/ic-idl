@@ -233,7 +233,7 @@ struct ptree* create_annotation_member(
     const struct numeric* default_value
 );
 
-void create_annotation_start(struct parser_state*, const char* ident);
+void create_annotation_start(struct parser_state*, const char* ident, struct ptree* annotation_def);
 
 struct ptree* create_annotation_finish(struct parser_state*, struct ptree* params);
 

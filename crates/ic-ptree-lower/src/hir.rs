@@ -237,8 +237,12 @@ impl<'a> TreeBuilder<'a> {
     unsafe fn lower_annotation(&mut self, ann: &Ann) -> *mut sys::ptree {
         let name = format!("@{}", ann.ident.name);
         let ident = create_ident(&name);
+        let annotation_def = ann
+            .def_id
+            .and_then(|v| self.lowered.get(&v))
+            .map_or(std::ptr::null_mut(), |v| *v);
 
-        sys::create_annotation_start(self.state, ident.as_ptr());
+        sys::create_annotation_start(self.state, ident.as_ptr(), annotation_def);
         let params = collect_with(sys::append_node, &ann.args, |arg| {
             let decl = create_ident(&arg.ident.name);
             let val = self.lower_numeric(&arg.value);

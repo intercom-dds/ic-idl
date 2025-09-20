@@ -342,6 +342,9 @@ pub fn transform(mut hir: ResolvedGraph, target: Target) -> ResolvedGraph {
     // Then recursively process each module's contents
     process_module_contents(&mut hir, &target);
 
+    // Process enum constants separately
+    process_enum_constants(&mut hir, &target);
+
     hir
 }
 
@@ -369,7 +372,46 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
     }
 }
 
+/// Process enum constants
+fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
+    // Only process if we have a target for enumerators
+    if let Some(case) = target.enumerator {
+        // Collect all enum constants
+        let enum_constants: Vec<_> = hir
+            .context
+            .definitions
+            .iter()
+            .filter_map(|(id, def)| {
+                if let hir::DefKind::Enum(e) = &def.kind {
+                    Some((id, e.fields.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Process each enum's constants
+        for (enum_id, const_ids) in enum_constants {
+            if !const_ids.is_empty() {
+                rename_breadth(hir, &const_ids, Some(enum_id), target);
+            }
+        }
+    }
+}
+
 /// Rename all definitions at the current breadth level with collision handling
+/// Check if a constant is an enum constant by checking all enums
+fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
+    for (_, def) in hir.context.definitions.iter() {
+        if let hir::DefKind::Enum(enum_ty) = &def.kind {
+            if enum_ty.fields.contains(&const_id) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn rename_breadth(
     hir: &mut ResolvedGraph,
     def_ids: &[hir::DefId],
@@ -385,13 +427,8 @@ fn rename_breadth(
         // Determine the appropriate case for this definition
         let case = if matches!(def.kind, hir::DefKind::Const(_)) {
             // Check if this is an enum constant
-            if let Some(parent_id) = def.parent {
-                let parent_def = hir.context.type_of(parent_id);
-                if matches!(parent_def.kind, hir::DefKind::Enum(_)) {
-                    target.enumerator
-                } else {
-                    target.constant
-                }
+            if is_enum_constant(hir, id) {
+                target.enumerator
             } else {
                 target.constant
             }
@@ -444,260 +481,140 @@ fn rename_breadth(
     }
 }
 
+/// Helper to rename a list of items with collision detection
+fn rename_items<T, F>(items: &mut [T], case: Option<Case>, mut get_ident: F)
+where
+    F: FnMut(&mut T) -> &mut hir::Ident,
+{
+    if let Some(case) = case {
+        // Collect existing names for collision detection
+        let mut occupied: HashSet<String> = items
+            .iter_mut()
+            .map(|item| get_ident(item).name.clone())
+            .collect();
+
+        rename_items_with_occupied(items, Some(case), get_ident, &mut occupied);
+    }
+}
+
+/// Helper to rename items using an existing occupied set (for shared namespaces)
+fn rename_items_with_occupied<T, F>(
+    items: &mut [T],
+    case: Option<Case>,
+    mut get_ident: F,
+    occupied: &mut HashSet<String>,
+) where
+    F: FnMut(&mut T) -> &mut hir::Ident,
+{
+    if let Some(case) = case {
+        for item in items {
+            let ident = get_ident(item);
+            let original = ident.name.clone();
+            let mut desired = case::convert(&original, case);
+
+            // Handle collisions
+            while occupied.contains(&desired) && desired != original {
+                desired.push('_');
+            }
+
+            if desired != original {
+                occupied.remove(&original);
+                occupied.insert(desired.clone());
+                ident.name = desired;
+            }
+        }
+    }
+}
+
 /// Rename members, variants, parameters, etc. within a definition
 fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     match &mut def.kind {
         hir::DefKind::Struct(s) => {
-            // Collect existing member names for collision detection
-            let mut occupied: HashSet<String> =
-                s.members.iter().map(|m| m.ident.name.clone()).collect();
-
-            for member in &mut s.members {
-                if let Some(case) = target.member {
-                    let original = member.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    // Handle collisions
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        member.ident.name = desired;
-                    }
-                }
-            }
+            rename_items(&mut s.members, target.member, |m| &mut m.ident);
         }
         hir::DefKind::Except(e) => {
-            let mut occupied: HashSet<String> =
-                e.members.iter().map(|m| m.ident.name.clone()).collect();
-
-            for member in &mut e.members {
-                if let Some(case) = target.member {
-                    let original = member.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        member.ident.name = desired;
-                    }
-                }
-            }
+            rename_items(&mut e.members, target.member, |m| &mut m.ident);
         }
         hir::DefKind::Union(u) => {
-            let mut occupied: HashSet<String> =
-                u.variants.iter().map(|v| v.ident.name.clone()).collect();
-
-            for variant in &mut u.variants {
-                if let Some(case) = target.variant {
-                    let original = variant.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        variant.ident.name = desired;
-                    }
-                }
-            }
+            rename_items(&mut u.variants, target.variant, |v| &mut v.ident);
         }
         hir::DefKind::Interface(i) => {
+            // Operations and attributes share the same namespace
+            let mut occupied: HashSet<String> = i
+                .prototypes
+                .iter()
+                .map(|p| p.ident.name.clone())
+                .chain(i.attributes.iter().map(|a| a.ident.name.clone()))
+                .collect();
+
             // Rename operations
-            let mut occupied: HashSet<String> = HashSet::new();
-            for proto in &i.prototypes {
-                occupied.insert(proto.ident.name.clone());
-            }
-            for attr in &i.attributes {
-                occupied.insert(attr.ident.name.clone());
-            }
-
-            for proto in &mut i.prototypes {
-                if let Some(case) = target.operation {
-                    let original = proto.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        proto.ident.name = desired;
-                    }
-                }
-
-                // Rename parameters
-                for param in &mut proto.params {
-                    if let Some(case) = target.parameter {
-                        param.ident.name = case::convert(&param.ident.name, case);
-                    }
-                }
-            }
+            rename_items_with_occupied(
+                &mut i.prototypes,
+                target.operation,
+                |p| &mut p.ident,
+                &mut occupied,
+            );
 
             // Rename attributes
-            for attr in &mut i.attributes {
-                if let Some(case) = target.attribute {
-                    let original = attr.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
+            rename_items_with_occupied(
+                &mut i.attributes,
+                target.attribute,
+                |a| &mut a.ident,
+                &mut occupied,
+            );
 
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        attr.ident.name = desired;
-                    }
-                }
+            // Rename parameters (no collision detection needed)
+            for proto in &mut i.prototypes {
+                rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
             }
         }
         hir::DefKind::Valuetype(v) => {
-            // Similar to interface, handle members, operations, and attributes
-            let mut occupied: HashSet<String> = HashSet::new();
-            for member in &v.members {
-                occupied.insert(member.ident.name.clone());
-            }
-            for proto in &v.prototypes {
-                occupied.insert(proto.ident.name.clone());
-            }
-            for attr in &v.attributes {
-                occupied.insert(attr.ident.name.clone());
-            }
+            // Members, operations, and attributes share the same namespace
+            let mut occupied: HashSet<String> = v
+                .members
+                .iter()
+                .map(|m| m.ident.name.clone())
+                .chain(v.prototypes.iter().map(|p| p.ident.name.clone()))
+                .chain(v.attributes.iter().map(|a| a.ident.name.clone()))
+                .collect();
 
             // Rename members
-            for member in &mut v.members {
-                if let Some(case) = target.member {
-                    let original = member.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
+            rename_items_with_occupied(
+                &mut v.members,
+                target.member,
+                |m| &mut m.ident,
+                &mut occupied,
+            );
 
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
+            // Rename operations
+            rename_items_with_occupied(
+                &mut v.prototypes,
+                target.operation,
+                |p| &mut p.ident,
+                &mut occupied,
+            );
 
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        member.ident.name = desired;
-                    }
-                }
-            }
+            // Rename attributes
+            rename_items_with_occupied(
+                &mut v.attributes,
+                target.attribute,
+                |a| &mut a.ident,
+                &mut occupied,
+            );
 
-            // Rename operations and attributes (similar to interface)
+            // Rename parameters (no collision detection needed)
             for proto in &mut v.prototypes {
-                if let Some(case) = target.operation {
-                    let original = proto.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        proto.ident.name = desired;
-                    }
-                }
-
-                for param in &mut proto.params {
-                    if let Some(case) = target.parameter {
-                        param.ident.name = case::convert(&param.ident.name, case);
-                    }
-                }
-            }
-
-            for attr in &mut v.attributes {
-                if let Some(case) = target.attribute {
-                    let original = attr.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        attr.ident.name = desired;
-                    }
-                }
+                rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
             }
         }
         hir::DefKind::Bitmask(b) => {
-            let mut occupied: HashSet<String> =
-                b.flags.iter().map(|f| f.ident.name.clone()).collect();
-
-            for flag in &mut b.flags {
-                if let Some(case) = target.bit_flag {
-                    let original = flag.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        flag.ident.name = desired;
-                    }
-                }
-            }
+            rename_items(&mut b.flags, target.bit_flag, |f| &mut f.ident);
         }
         hir::DefKind::Bitset(b) => {
-            let mut occupied: HashSet<String> =
-                b.fields.iter().map(|f| f.ident.name.clone()).collect();
-
-            for field in &mut b.fields {
-                if let Some(case) = target.bitset_field {
-                    let original = field.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        field.ident.name = desired;
-                    }
-                }
-            }
+            rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident);
         }
         hir::DefKind::Annotation(a) => {
-            let mut occupied: HashSet<String> =
-                a.params.iter().map(|p| p.ident.name.clone()).collect();
-
-            for param in &mut a.params {
-                if let Some(case) = target.annotation_param {
-                    let original = param.ident.name.clone();
-                    let mut desired = case::convert(&original, case);
-
-                    while occupied.contains(&desired) && desired != original {
-                        desired.push('_');
-                    }
-
-                    if desired != original {
-                        occupied.remove(&original);
-                        occupied.insert(desired.clone());
-                        param.ident.name = desired;
-                    }
-                }
-            }
+            rename_items(&mut a.params, target.annotation_param, |p| &mut p.ident);
         }
         _ => {}
     }

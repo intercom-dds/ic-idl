@@ -150,6 +150,10 @@ fn try_compile(options: CompilerOptions) {
     // Apply HIR transformations
     let hir = ic_hir_xform::value_annotation::transform(hir);
     let hir = ic_hir_xform::position_annotation::transform(hir);
+
+    // Strip prefixes from enumerators
+    let hir = ic_hir_xform::enum_prefix::transform(hir);
+
     let hir = ic_hir_xform::rename::transform(
         hir,
         ic_hir_xform::rename::Target {

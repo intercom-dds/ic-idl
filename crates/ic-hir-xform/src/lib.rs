@@ -34,6 +34,7 @@
 #![allow(unused, dead_code)]
 
 // pub mod nested;
+pub mod enum_prefix;
 pub mod position_annotation;
 pub mod rename;
 pub mod value_annotation;

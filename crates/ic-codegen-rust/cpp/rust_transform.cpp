@@ -414,20 +414,6 @@ static void strip_prefix(const ptree* node) {
     }
 }
 
-static void enum_prefix(const ptree* node) {
-    if (CommandLineOption::no_rename()) {
-        return;
-    }
-
-    for (; node; node = node->next) {
-        if ((node->kind == N_ENUM || node->kind == N_BITMASK) && node->members) {
-            strip_prefix(node);
-        } else if (node->members) {
-            enum_prefix(node->members);
-        }
-    }
-}
-
 static void dump_names(const ptree* node) {
     for (; node; node = node->next) {
         std::cout << idl_scoped_name(node, nullptr) << std::endl;
@@ -457,9 +443,6 @@ void intercom::rust::transform_rust(parse_result* result) {
     std::map<std::string, ptree*> modules;
     result->tree = tree = squash_modules(state, tree, modules);
 
-    // Strip prefixes from enumerators
-    enum_prefix(tree);
-
     // Replace some DDS types with their native Rust equivalents
     replace_native(state);
 
@@ -467,5 +450,5 @@ void intercom::rust::transform_rust(parse_result* result) {
     rescope_dds(state, tree);
 
     // Rename nodes so they conform with Rust's naming convention
-    rename_tree(tree, moved);
+    // rename_tree(tree, moved);
 }

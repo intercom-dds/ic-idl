@@ -435,3 +435,47 @@ fn test_custom_preprocessor() {
         }
     }
 }
+
+#[test]
+fn test_enum_constant_vs_regular_constant() {
+    let idl = r#"
+        enum Color {
+            COLOR_RED,
+            COLOR_GREEN,
+            COLOR_BLUE
+        };
+        
+        const long MY_CONSTANT = 42;
+        const string ANOTHER_CONST = "hello";
+    "#;
+
+    let hir = common::parse_and_resolve(idl);
+    let target = rust_target();
+    let transformed = rename::transform(hir, target);
+
+    for def in transformed.iter() {
+        match &def.ident.name[..] {
+            "Color" => {
+                if let DefKind::Enum(e) = &def.kind {
+                    let mut const_names: Vec<_> = e
+                        .fields
+                        .iter()
+                        .map(|&id| transformed.context.type_of(id).ident.name.clone())
+                        .collect();
+                    const_names.sort();
+                    // Enum constants should be PascalCase
+                    assert_eq!(const_names, vec!["ColorBlue", "ColorGreen", "ColorRed"]);
+                }
+            }
+            "MY_CONSTANT" => {
+                // Regular constants should be UPPER_SNAKE_CASE
+                assert!(matches!(def.kind, DefKind::Const(_)));
+            }
+            "ANOTHER_CONST" => {
+                // Regular constants should be UPPER_SNAKE_CASE
+                assert!(matches!(def.kind, DefKind::Const(_)));
+            }
+            _ => {}
+        }
+    }
+}

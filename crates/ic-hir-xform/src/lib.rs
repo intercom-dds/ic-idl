@@ -35,6 +35,7 @@
 
 // pub mod nested;
 pub mod enum_prefix;
+pub mod move_nested;
 pub mod position_annotation;
 pub mod rename;
 pub mod squash_modules;

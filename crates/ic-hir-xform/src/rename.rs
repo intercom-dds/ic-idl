@@ -122,6 +122,10 @@ pub struct Target {
     /// Optional preprocessor function to apply to names before case conversion
     /// If None, names are used as-is
     pub name_preprocessor: Option<NamePreprocessor>,
+
+    /// Set of DefIds that were moved by previous transformations
+    /// These will have lower priority in collision resolution
+    pub moved_defs: HashSet<hir::DefId>,
 }
 
 /// Represents a node that needs renaming
@@ -486,7 +490,7 @@ fn rename_breadth(
                 def_id: id,
                 original,
                 desired,
-                is_moved: false,
+                is_moved: target.moved_defs.contains(&id),
             });
         }
     }
@@ -649,13 +653,15 @@ fn apply_renames_with_collision_handling(
     renames: &[NodeRename],
     module_groups: &HashMap<String, Vec<hir::DefId>>,
 ) {
-    // Nodes that want to keep their original name
-    let mut priority1 = Vec::new();
-    // Nodes that want to change their name
-    let mut priority2 = Vec::new();
+    // Categorize nodes by priority
+    let mut priority1 = Vec::new(); // Nodes that want to keep their original name
+    let mut priority2 = Vec::new(); // Nodes that want to change their name  
+    let mut moved_nodes = Vec::new(); // Moved nodes (lowest priority)
 
     for rename in renames {
-        if rename.desired == rename.original {
+        if rename.is_moved {
+            moved_nodes.push(rename);
+        } else if rename.desired == rename.original {
             priority1.push(rename);
         } else {
             priority2.push(rename);
@@ -669,6 +675,16 @@ fn apply_renames_with_collision_handling(
     for rename in &priority1 {
         final_assignments.insert(rename.def_id, rename.original.clone());
         occupied.insert(rename.original.clone());
+    }
+
+    // Process moved nodes: they must get unique names
+    for rename in &moved_nodes {
+        let mut name = rename.desired.clone();
+        while occupied.contains(&name) {
+            name.push('_');
+        }
+        final_assignments.insert(rename.def_id, name.clone());
+        occupied.insert(name);
     }
 
     // Determine which priority2 nodes should keep their original names

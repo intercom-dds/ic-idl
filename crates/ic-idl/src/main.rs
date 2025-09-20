@@ -151,6 +151,11 @@ fn try_compile(options: CompilerOptions) {
     let hir = ic_hir_xform::value_annotation::transform(hir);
     let hir = ic_hir_xform::position_annotation::transform(hir);
 
+    // Move nested types into modules. Keep track of the moved nodes to
+    // properly escape their names later on to ensure the correct node gets
+    // precedence.
+    let (hir, moved_defs) = ic_hir_xform::move_nested::transform(hir);
+
     // Squash reopened modules into single definitions
     let hir = ic_hir_xform::squash_modules::transform(hir);
 
@@ -183,6 +188,7 @@ fn try_compile(options: CompilerOptions) {
             parameter: Some(Case::Snake),
             annotation_param: Some(Case::Snake),
             name_preprocessor: Some(ic_hir_xform::rename::strip_common_suffixes),
+            moved_defs,
         },
     );
 

@@ -25,108 +25,794 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::{HashMap, HashSet};
+
 use ic_emit::case::{self, Case};
 use ic_hir::fold::Fold;
-use ic_hir::{ResolvedGraph, hir};
+use ic_hir::visit::Visitor;
+use ic_hir::{Context, ResolvedGraph, hir};
+
+/// Function type for preprocessing names before case conversion
+pub type NamePreprocessor = fn(&str) -> String;
+
+/// Preprocessor that strips common suffixes like _t and _e
+pub fn strip_common_suffixes(name: &str) -> String {
+    if name.len() > 2 {
+        let lower = name.to_lowercase();
+        if lower.ends_with("_t") || lower.ends_with("_e") {
+            name[..name.len() - 2].to_string()
+        } else {
+            name.to_string()
+        }
+    } else {
+        name.to_string()
+    }
+}
 
 /// Defines the naming convention to use for types of a specific kind.
 ///
 /// If there are specific language items that should not be renamed, setting
 /// the corresponding field to `None` will prevent the transformation from
 /// renaming them.
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct Target {
-    /// Algebraic data types like structs, unions and enums.
-    pub adt: Option<Case>,
+    /// Structs
+    pub struct_type: Option<Case>,
 
-    /// Member of a struct or union.
+    /// Unions
+    pub union_type: Option<Case>,
+
+    /// Enums
+    pub enum_type: Option<Case>,
+
+    /// Interfaces
+    pub interface: Option<Case>,
+
+    /// Value types
+    pub valuetype: Option<Case>,
+
+    /// Type aliases
+    pub alias: Option<Case>,
+
+    /// Bitmasks
+    pub bitmask: Option<Case>,
+
+    /// Bitsets
+    pub bitset: Option<Case>,
+
+    /// Exceptions
+    pub exception: Option<Case>,
+
+    /// Annotations
+    pub annotation: Option<Case>,
+
+    /// Members of structs, exceptions, and value types
     pub member: Option<Case>,
 
-    /// Value of a C-like enumerator.
+    /// Members of unions (variants)
+    pub variant: Option<Case>,
+
+    /// Enum constants
     pub enumerator: Option<Case>,
 
+    /// Bitmask flags
+    pub bit_flag: Option<Case>,
+
+    /// Bitset fields
+    pub bitset_field: Option<Case>,
+
+    /// Constants
     pub constant: Option<Case>,
+
+    /// Modules
     pub module: Option<Case>,
-    pub prototype: Option<Case>,
+
+    /// Interface methods/operations (prototypes)
+    pub operation: Option<Case>,
+
+    /// Interface attributes
+    pub attribute: Option<Case>,
+
+    /// Parameters for operations
+    pub parameter: Option<Case>,
+
+    /// Annotation parameters
+    pub annotation_param: Option<Case>,
+
+    /// Optional preprocessor function to apply to names before case conversion
+    /// If None, names are used as-is
+    pub name_preprocessor: Option<NamePreprocessor>,
 }
 
-#[derive(Default)]
+/// Represents a node that needs renaming
+#[derive(Debug)]
+struct NodeRename {
+    def_id: hir::DefId,
+    original: String,
+    desired: String,
+    is_moved: bool,
+}
+
+/// Check if original is a natural fallback for desired (e.g., FooBar_ for FooBar)
+fn is_natural_fallback(original: &str, desired: &str) -> bool {
+    if original.len() <= desired.len() {
+        return false;
+    }
+
+    if !original.starts_with(desired) {
+        return false;
+    }
+
+    // Check if the remainder is all underscores
+    original[desired.len()..].chars().all(|c| c == '_')
+}
+
 struct Renamer {
     target: Target,
+    renamed_idents: HashMap<String, String>,
+}
+
+impl Renamer {
+    fn new(target: Target) -> Self {
+        Self {
+            target,
+            renamed_idents: HashMap::new(),
+        }
+    }
+
+    fn rename_ident(&mut self, ident: &mut hir::Ident, case: Option<Case>) {
+        if let Some(case) = case {
+            let old_name = ident.name.clone();
+            let new_name = case::convert(&old_name, case);
+            if old_name != new_name {
+                self.renamed_idents.insert(old_name, new_name.clone());
+                ident.name = new_name;
+            }
+        }
+    }
+
+    /// Get the desired case for a definition
+    fn get_def_case(&self, def: &hir::Def) -> Option<Case> {
+        match &def.kind {
+            hir::DefKind::Module(_) => self.target.module,
+            hir::DefKind::Const(_) => {
+                // For now, we'll handle enum constants separately
+                // by checking the parent when we have access to the context
+                self.target.constant
+            }
+            hir::DefKind::Struct(_) => self.target.struct_type,
+            hir::DefKind::Union(_) => self.target.union_type,
+            hir::DefKind::Enum(_) => self.target.enum_type,
+            hir::DefKind::Interface(_) => self.target.interface,
+            hir::DefKind::Valuetype(_) => self.target.valuetype,
+            hir::DefKind::Alias(_) => self.target.alias,
+            hir::DefKind::Bitmask(_) => self.target.bitmask,
+            hir::DefKind::Bitset(_) => self.target.bitset,
+            hir::DefKind::Except(_) => self.target.exception,
+            hir::DefKind::Annotation(_) => self.target.annotation,
+            hir::DefKind::Decl(_) => None, // Don't rename forward declarations
+        }
+    }
 }
 
 impl Fold for Renamer {
-    fn fold_def(&mut self, mut def: hir::Def) -> hir::Def {
-        let case = match def.kind {
-            hir::DefKind::Module(_) => self.target.module,
-            hir::DefKind::Const(_) => self.target.constant,
-            _ => self.target.adt,
-        };
+    fn fold_def(&mut self, def: hir::Def) -> hir::Def {
+        // Don't rename the def itself here - that's handled by the collision-aware rename
+        // Just fold the contents
+        ic_hir::fold::fold_def(self, def)
+    }
 
-        if let Some(case) = case {
-            def.ident.name = case::convert(&def.ident.name, case);
-        }
+    fn fold_struct_ty(&mut self, mut s: hir::StructTy) -> hir::StructTy {
+        s.members = s.members.into_iter().map(|m| self.fold_member(m)).collect();
+        s
+    }
 
-        match &mut def.kind {
-            hir::DefKind::Struct(data) => {
-                for mem in &mut data.members {
-                    // TODO: impl a trait for all data types in the HIR
-                    // instead, and then use that? probably easier.
-                    mem.ident.name = case::convert(&mem.ident.name, Case::Snake);
-                }
-            }
-            // NOTE: This transformation is incomplete and not currently used.
-            // The remaining DefKind variants would need implementation if this
-            // transformation is needed in the future.
-            hir::DefKind::Annotation(_)
-            | hir::DefKind::Module(_)
-            | hir::DefKind::Except(_)
-            | hir::DefKind::Union(_)
-            | hir::DefKind::Enum(_)
-            | hir::DefKind::Const(_)
-            | hir::DefKind::Bitmask(_)
-            | hir::DefKind::Bitset(_)
-            | hir::DefKind::Alias(_)
-            | hir::DefKind::Interface(_)
-            | hir::DefKind::Valuetype(_)
-            | hir::DefKind::Decl(_) => {
-                // Not implemented - this transformation is not currently used
-            }
+    fn fold_except_ty(&mut self, mut e: hir::ExceptTy) -> hir::ExceptTy {
+        e.members = e.members.into_iter().map(|m| self.fold_member(m)).collect();
+        e
+    }
+
+    fn fold_union_ty(&mut self, mut u: hir::UnionTy) -> hir::UnionTy {
+        u.variants = u
+            .variants
+            .into_iter()
+            .map(|v| self.fold_variant(v))
+            .collect();
+        u
+    }
+
+    fn fold_enum_ty(&mut self, e: hir::EnumTy) -> hir::EnumTy {
+        // Enum constants are separate definitions that will be renamed
+        // when we process all definitions in the transform function
+        ic_hir::fold::fold_enum_ty(self, e)
+    }
+
+    fn fold_bitmask_ty(&mut self, mut b: hir::BitmaskTy) -> hir::BitmaskTy {
+        for flag in &mut b.flags {
+            self.rename_ident(&mut flag.ident, self.target.bit_flag);
         }
-        def
+        ic_hir::fold::fold_bitmask_ty(self, b)
+    }
+
+    fn fold_bitset_ty(&mut self, mut b: hir::BitsetTy) -> hir::BitsetTy {
+        for field in &mut b.fields {
+            self.rename_ident(&mut field.ident, self.target.bitset_field);
+        }
+        ic_hir::fold::fold_bitset_ty(self, b)
+    }
+
+    fn fold_interface_ty(&mut self, mut i: hir::InterfaceTy) -> hir::InterfaceTy {
+        i.prototypes = i
+            .prototypes
+            .into_iter()
+            .map(|p| self.fold_proto_ty(p))
+            .collect();
+        i.attributes = i
+            .attributes
+            .into_iter()
+            .map(|a| self.fold_attribute(a))
+            .collect();
+        ic_hir::fold::fold_interface_ty(self, i)
+    }
+
+    fn fold_valuetype(&mut self, mut v: hir::ValueTy) -> hir::ValueTy {
+        v.members = v.members.into_iter().map(|m| self.fold_member(m)).collect();
+        v.prototypes = v
+            .prototypes
+            .into_iter()
+            .map(|p| self.fold_proto_ty(p))
+            .collect();
+        v.attributes = v
+            .attributes
+            .into_iter()
+            .map(|a| self.fold_attribute(a))
+            .collect();
+        ic_hir::fold::fold_valuetype(self, v)
+    }
+
+    fn fold_annotation_ty(&mut self, mut a: hir::AnnotationTy) -> hir::AnnotationTy {
+        for param in &mut a.params {
+            self.rename_ident(&mut param.ident, self.target.annotation_param);
+        }
+        ic_hir::fold::fold_annotation_ty(self, a)
+    }
+
+    fn fold_member(&mut self, mut m: hir::Member) -> hir::Member {
+        self.rename_ident(&mut m.ident, self.target.member);
+        ic_hir::fold::fold_member(self, m)
+    }
+
+    fn fold_variant(&mut self, mut v: hir::Variant) -> hir::Variant {
+        self.rename_ident(&mut v.ident, self.target.variant);
+        ic_hir::fold::fold_variant(self, v)
+    }
+
+    fn fold_proto_ty(&mut self, mut p: hir::ProtoTy) -> hir::ProtoTy {
+        self.rename_ident(&mut p.ident, self.target.operation);
+        p.params = p
+            .params
+            .into_iter()
+            .map(|param| self.fold_parameter(param))
+            .collect();
+        ic_hir::fold::fold_proto_ty(self, p)
+    }
+
+    fn fold_parameter(&mut self, mut p: hir::Parameter) -> hir::Parameter {
+        self.rename_ident(&mut p.ident, self.target.parameter);
+        ic_hir::fold::fold_parameter(self, p)
+    }
+
+    fn fold_attribute(&mut self, mut a: hir::Attribute) -> hir::Attribute {
+        self.rename_ident(&mut a.ident, self.target.attribute);
+        ic_hir::fold::fold_attribute(self, a)
+    }
+
+    fn fold_const_ty(&mut self, c: hir::ConstTy) -> hir::ConstTy {
+        // We need to fold the constant type to handle any references
+        // to renamed identifiers in the constant value
+        ic_hir::fold::fold_const_ty(self, c)
+    }
+
+    fn fold_numeric(&mut self, n: hir::Numeric) -> hir::Numeric {
+        // Handle Numeric::Const references that might point to renamed definitions
+        match n {
+            hir::Numeric::Const(def_id) => {
+                // The def_id itself doesn't change, but when the constant is
+                // evaluated, it will use the renamed identifier
+                hir::Numeric::Const(def_id)
+            }
+            _ => ic_hir::fold::fold_numeric(self, n),
+        }
     }
 }
 
+/// Transform HIR to use the specified naming conventions with collision handling
 #[must_use]
-pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
-    let mut renamer = Renamer {
-        target: Target {
-            adt: Some(Case::Pascal),
-            member: Some(Case::Snake),
-            enumerator: Some(Case::Snake),
-            constant: Some(Case::Snake),
-            module: Some(Case::Snake),
-            prototype: Some(Case::Snake),
-        },
-    };
+pub fn transform(mut hir: ResolvedGraph, target: Target) -> ResolvedGraph {
+    // Process top-level definitions first
+    let top_level_ids: Vec<_> = hir
+        .order
+        .iter()
+        .chain(hir.builtin_order.iter())
+        .copied()
+        .collect();
 
-    for id in &hir.order {
-        hir.context
-            .definitions
-            .fold(id, |def| renamer.fold_def(def));
-    }
+    rename_breadth(&mut hir, &top_level_ids, None, &target);
+
+    // Then recursively process each module's contents
+    process_module_contents(&mut hir, &target);
+
     hir
 }
 
-// Logic for renaming items in the HIR to conform to a specific naming
-// convention. This can be used to e.g. make all types in a data model follow
-// the PEP-8 style guide for Python.
-// pub fn rename_all<I>(items: I, target: Target)
-// where
-//     I: IntoIterator<Item = Item>,
-// {
-//     let mut renamer = Renamer { target };
-//     for item in items {
-//         renamer.fold_item(item);
-//     }
-// }
+/// Recursively process all modules and their contents
+fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
+    // Collect all module IDs to process
+    let module_ids: Vec<_> = hir
+        .context
+        .definitions
+        .iter()
+        .filter_map(|(id, def)| {
+            if let hir::DefKind::Module(m) = &def.kind {
+                Some((id, m.definitions.clone()))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Process each module's children
+    for (module_id, child_ids) in module_ids {
+        if !child_ids.is_empty() {
+            rename_breadth(hir, &child_ids, Some(module_id), target);
+        }
+    }
+}
+
+/// Rename all definitions at the current breadth level with collision handling
+fn rename_breadth(
+    hir: &mut ResolvedGraph,
+    def_ids: &[hir::DefId],
+    parent_id: Option<hir::DefId>,
+    target: &Target,
+) {
+    let mut renames = Vec::new();
+
+    // Collect all definitions at this breadth level
+    for &id in def_ids {
+        let def = hir.context.type_of(id);
+
+        // Determine the appropriate case for this definition
+        let case = if matches!(def.kind, hir::DefKind::Const(_)) {
+            // Check if this is an enum constant
+            if let Some(parent_id) = def.parent {
+                let parent_def = hir.context.type_of(parent_id);
+                if matches!(parent_def.kind, hir::DefKind::Enum(_)) {
+                    target.enumerator
+                } else {
+                    target.constant
+                }
+            } else {
+                target.constant
+            }
+        } else {
+            match &def.kind {
+                hir::DefKind::Module(_) => target.module,
+                hir::DefKind::Const(_) => target.constant,
+                hir::DefKind::Struct(_) => target.struct_type,
+                hir::DefKind::Union(_) => target.union_type,
+                hir::DefKind::Enum(_) => target.enum_type,
+                hir::DefKind::Interface(_) => target.interface,
+                hir::DefKind::Valuetype(_) => target.valuetype,
+                hir::DefKind::Alias(_) => target.alias,
+                hir::DefKind::Bitmask(_) => target.bitmask,
+                hir::DefKind::Bitset(_) => target.bitset,
+                hir::DefKind::Except(_) => target.exception,
+                hir::DefKind::Annotation(_) => target.annotation,
+                hir::DefKind::Decl(_) => None,
+            }
+        };
+
+        if let Some(case) = case {
+            let original = def.ident.name.clone();
+
+            // Apply preprocessor before case conversion if provided
+            let preprocessed = if let Some(preprocessor) = target.name_preprocessor {
+                preprocessor(&original)
+            } else {
+                original.clone()
+            };
+            let desired = case::convert(&preprocessed, case);
+
+            renames.push(NodeRename {
+                def_id: id,
+                original,
+                desired,
+                is_moved: false,
+            });
+        }
+    }
+
+    // Apply collision-aware renaming at this breadth level
+    apply_renames_with_collision_handling(hir, &renames);
+
+    // Rename members within each definition at this level
+    for &id in def_ids {
+        hir.context
+            .definitions
+            .fold(id, |def| rename_members(&target, def));
+    }
+}
+
+/// Rename members, variants, parameters, etc. within a definition
+fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
+    match &mut def.kind {
+        hir::DefKind::Struct(s) => {
+            // Collect existing member names for collision detection
+            let mut occupied: HashSet<String> =
+                s.members.iter().map(|m| m.ident.name.clone()).collect();
+
+            for member in &mut s.members {
+                if let Some(case) = target.member {
+                    let original = member.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    // Handle collisions
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        member.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Except(e) => {
+            let mut occupied: HashSet<String> =
+                e.members.iter().map(|m| m.ident.name.clone()).collect();
+
+            for member in &mut e.members {
+                if let Some(case) = target.member {
+                    let original = member.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        member.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Union(u) => {
+            let mut occupied: HashSet<String> =
+                u.variants.iter().map(|v| v.ident.name.clone()).collect();
+
+            for variant in &mut u.variants {
+                if let Some(case) = target.variant {
+                    let original = variant.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        variant.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Interface(i) => {
+            // Rename operations
+            let mut occupied: HashSet<String> = HashSet::new();
+            for proto in &i.prototypes {
+                occupied.insert(proto.ident.name.clone());
+            }
+            for attr in &i.attributes {
+                occupied.insert(attr.ident.name.clone());
+            }
+
+            for proto in &mut i.prototypes {
+                if let Some(case) = target.operation {
+                    let original = proto.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        proto.ident.name = desired;
+                    }
+                }
+
+                // Rename parameters
+                for param in &mut proto.params {
+                    if let Some(case) = target.parameter {
+                        param.ident.name = case::convert(&param.ident.name, case);
+                    }
+                }
+            }
+
+            // Rename attributes
+            for attr in &mut i.attributes {
+                if let Some(case) = target.attribute {
+                    let original = attr.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        attr.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Valuetype(v) => {
+            // Similar to interface, handle members, operations, and attributes
+            let mut occupied: HashSet<String> = HashSet::new();
+            for member in &v.members {
+                occupied.insert(member.ident.name.clone());
+            }
+            for proto in &v.prototypes {
+                occupied.insert(proto.ident.name.clone());
+            }
+            for attr in &v.attributes {
+                occupied.insert(attr.ident.name.clone());
+            }
+
+            // Rename members
+            for member in &mut v.members {
+                if let Some(case) = target.member {
+                    let original = member.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        member.ident.name = desired;
+                    }
+                }
+            }
+
+            // Rename operations and attributes (similar to interface)
+            for proto in &mut v.prototypes {
+                if let Some(case) = target.operation {
+                    let original = proto.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        proto.ident.name = desired;
+                    }
+                }
+
+                for param in &mut proto.params {
+                    if let Some(case) = target.parameter {
+                        param.ident.name = case::convert(&param.ident.name, case);
+                    }
+                }
+            }
+
+            for attr in &mut v.attributes {
+                if let Some(case) = target.attribute {
+                    let original = attr.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        attr.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Bitmask(b) => {
+            let mut occupied: HashSet<String> =
+                b.flags.iter().map(|f| f.ident.name.clone()).collect();
+
+            for flag in &mut b.flags {
+                if let Some(case) = target.bit_flag {
+                    let original = flag.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        flag.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Bitset(b) => {
+            let mut occupied: HashSet<String> =
+                b.fields.iter().map(|f| f.ident.name.clone()).collect();
+
+            for field in &mut b.fields {
+                if let Some(case) = target.bitset_field {
+                    let original = field.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        field.ident.name = desired;
+                    }
+                }
+            }
+        }
+        hir::DefKind::Annotation(a) => {
+            let mut occupied: HashSet<String> =
+                a.params.iter().map(|p| p.ident.name.clone()).collect();
+
+            for param in &mut a.params {
+                if let Some(case) = target.annotation_param {
+                    let original = param.ident.name.clone();
+                    let mut desired = case::convert(&original, case);
+
+                    while occupied.contains(&desired) && desired != original {
+                        desired.push('_');
+                    }
+
+                    if desired != original {
+                        occupied.remove(&original);
+                        occupied.insert(desired.clone());
+                        param.ident.name = desired;
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    def
+}
+
+/// Apply renames to top-level definitions with collision handling
+fn apply_renames_with_collision_handling(hir: &mut ResolvedGraph, renames: &[NodeRename]) {
+    // Nodes that want to keep their original name
+    let mut priority1 = Vec::new();
+    // Nodes that want to change their name
+    let mut priority2 = Vec::new();
+
+    for rename in renames {
+        if rename.desired == rename.original {
+            priority1.push(rename);
+        } else {
+            priority2.push(rename);
+        }
+    }
+
+    let mut final_assignments: HashMap<hir::DefId, String> = HashMap::new();
+    let mut occupied: HashSet<String> = HashSet::new();
+
+    // Process priority 1: nodes that want to keep their original name
+    for rename in &priority1 {
+        final_assignments.insert(rename.def_id, rename.original.clone());
+        occupied.insert(rename.original.clone());
+    }
+
+    // Determine which priority2 nodes should keep their original names
+    let mut will_keep_original: HashSet<String> = HashSet::new();
+    for rename in &priority2 {
+        if occupied.contains(&rename.desired) && !occupied.contains(&rename.original) {
+            if is_natural_fallback(&rename.original, &rename.desired) {
+                will_keep_original.insert(rename.original.clone());
+            }
+        }
+    }
+
+    // Mark natural fallback names as occupied
+    for name in &will_keep_original {
+        occupied.insert(name.clone());
+    }
+
+    // Process priority2 nodes with chain substitution support
+    let mut to_process: Vec<&NodeRename> = priority2.clone();
+    let mut vacated: HashSet<String> = HashSet::new();
+
+    while !to_process.is_empty() {
+        let mut deferred = Vec::new();
+        let mut made_progress = false;
+
+        for rename in to_process {
+            if final_assignments.contains_key(&rename.def_id) {
+                continue;
+            }
+
+            // Check if this node should keep its original name
+            if will_keep_original.contains(&rename.original) {
+                final_assignments.insert(rename.def_id, rename.original.clone());
+                made_progress = true;
+                continue;
+            }
+
+            let target = &rename.desired;
+
+            // Try to get desired name if it's available
+            if !occupied.contains(target) && !will_keep_original.contains(target) {
+                final_assignments.insert(rename.def_id, target.clone());
+                occupied.insert(target.clone());
+                if target != &rename.original && !will_keep_original.contains(&rename.original) {
+                    vacated.insert(rename.original.clone());
+                }
+                made_progress = true;
+            }
+            // Try to use a vacated name
+            else if vacated.contains(target) {
+                final_assignments.insert(rename.def_id, target.clone());
+                occupied.insert(target.clone());
+                vacated.remove(target);
+                if target != &rename.original && !will_keep_original.contains(&rename.original) {
+                    vacated.insert(rename.original.clone());
+                }
+                made_progress = true;
+            } else {
+                deferred.push(rename);
+            }
+        }
+
+        // If no progress, escape one node to break deadlock
+        if !made_progress && !deferred.is_empty() {
+            let rename = deferred[0];
+            let mut name = rename.desired.clone();
+
+            // Find an available escaped name
+            while occupied.contains(&name) || will_keep_original.contains(&name) {
+                name.push('_');
+            }
+
+            final_assignments.insert(rename.def_id, name.clone());
+            occupied.insert(name);
+            if !will_keep_original.contains(&rename.original) {
+                vacated.insert(rename.original.clone());
+            }
+
+            deferred.remove(0);
+        }
+
+        to_process = deferred;
+    }
+
+    // Apply all the renames
+    for (def_id, new_name) in final_assignments {
+        hir.context.definitions.get_mut(def_id).ident.name = new_name;
+    }
+}

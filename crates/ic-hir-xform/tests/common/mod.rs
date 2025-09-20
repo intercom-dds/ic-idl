@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,18 +25,27 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Provides a generic set of HIR transformations. These can be individually
-//! performed on a HIR to modify the representation of the graph, e.g. for
-//! renaming all types to conform to a specific standard.
-//!
-//! Each transformation will consume the HIR and construct a new one.
+//! Common test utilities for HIR transformation tests
 
-#![allow(unused, dead_code)]
+use ic_hir::{AstInput, ResolvedGraph};
+use ic_vfs::SourceMap;
 
-// pub mod nested;
-pub mod position_annotation;
-pub mod rename;
-pub mod value_annotation;
+/// Parse IDL input and return the HIR
+#[track_caller]
+pub fn parse_and_resolve(input: &str) -> ResolvedGraph {
+    let mut source_map = SourceMap::default();
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
 
-// Re-export commonly used items
-pub use rename::{NamePreprocessor, Target, strip_common_suffixes};
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
+    let result = ic_hir::from_ast(AstInput::User(parsed.tree));
+
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
+
+    result
+}

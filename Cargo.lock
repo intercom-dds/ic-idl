@@ -221,11 +221,13 @@ dependencies = [
 name = "ic-hir-xform"
 version = "0.1.0"
 dependencies = [
+ "ic-diagnostic",
  "ic-emit",
  "ic-hir",
  "ic-idl",
  "ic-parse",
  "ic-preproc",
+ "ic-syntax",
  "ic-vfs",
 ]
 

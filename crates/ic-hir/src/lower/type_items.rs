@@ -36,8 +36,8 @@ use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use super::value_items::resolve_declarator;
 use crate::hir::{
-    AliasTy, Ann, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label,
-    Member, Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
+    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 
@@ -190,7 +190,27 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None,
         );
 
-        // Process interface members
+        // Create the interface definition first with empty collections
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: i.ident.clone(),
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+            annotations,
+            span: (i.ident.span),
+            kind: DefKind::Interface(InterfaceTy {
+                parents,
+                prototypes: Vec::new(),
+                attributes: Vec::new(),
+                is_local: i.local.is_some(),
+                definitions: Vec::new(),
+            }),
+            flags: DefFlags::nil(),
+        });
+
+        // Update the scope's def_id so nested items can find their parent
+        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+
+        // Process interface members now that the interface exists
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
 
@@ -219,27 +239,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         // Restore previous scope
         self.current_scope = prev_scope;
 
-        // Create the complete interface definition
-        let interface_ty = InterfaceTy {
-            parents,
-            prototypes,
-            attributes,
-            is_local: i.local.is_some(),
-            definitions,
-        };
-
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: i.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: (i.ident.span),
-            kind: DefKind::Interface(interface_ty),
-            flags: DefFlags::nil(),
-        });
-
-        // Update the scope's def_id
-        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+        // Update the interface with the collected members
+        let interface_def = self.ctx.context.definitions.get_mut(def_id);
+        if let DefKind::Interface(ref mut interface_ty) = interface_def.kind {
+            interface_ty.prototypes = prototypes;
+            interface_ty.attributes = attributes;
+            interface_ty.definitions = definitions;
+        }
 
         // Register with the registry
         if self
@@ -378,19 +384,62 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None,
         );
 
-        // Process valuetype elements
+        // Create the valuetype definition first with empty collections
+        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: v.ident.clone(),
+            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+            annotations,
+            span: (v.ident.span),
+            kind: DefKind::Valuetype(ValueTy {
+                parent,
+                supports,
+                prototypes: Vec::new(),
+                attributes: Vec::new(),
+                members: Vec::new(),
+                definitions: Vec::new(),
+            }),
+            flags: DefFlags::nil(),
+        });
+
+        // Update the scope's def_id so nested items can find their parent
+        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+
+        // Process valuetype elements now that the valuetype exists
         let (members, prototypes, attributes, definitions) =
             self.process_valuetype_elements(v, scope);
 
-        // Create the valuetype definition
-        self.create_valuetype_definition(
-            v,
-            parent,
-            supports,
-            annotations,
-            (members, prototypes, attributes),
-            definitions,
-        )
+        // Update the valuetype with the collected members
+        let valuetype_def = self.ctx.context.definitions.get_mut(def_id);
+        if let DefKind::Valuetype(ref mut value_ty) = valuetype_def.kind {
+            value_ty.prototypes = prototypes;
+            value_ty.attributes = attributes;
+            value_ty.members = members;
+            value_ty.definitions = definitions;
+        }
+
+        // Register with the registry
+        if self
+            .ctx
+            .registry
+            .register_definition(
+                self.current_scope,
+                &v.ident,
+                DefKindTag::Valuetype,
+                def_id,
+                &mut self.ctx.diagnostics,
+                &self.ctx.context,
+            )
+            .is_some()
+        {
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                v.ident.name.clone(),
+                def_id,
+            );
+        }
+
+        def_id
     }
 
     /// Resolve valuetype parent.
@@ -475,60 +524,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         self.current_scope = prev_scope;
 
         (members, prototypes, attributes, definitions)
-    }
-
-    /// Create valuetype definition.
-    fn create_valuetype_definition(
-        &mut self,
-        v: &ValuetypeDef,
-        parent: Option<DefId>,
-        supports: Option<DefId>,
-        annotations: Vec<Ann>,
-        elements: (Vec<Member>, Vec<ProtoTy>, Vec<Attribute>),
-        definitions: Vec<DefId>,
-    ) -> DefId {
-        let (members, prototypes, attributes) = elements;
-        let value_ty = ValueTy {
-            parent,
-            supports,
-            prototypes,
-            attributes,
-            members,
-            definitions,
-        };
-
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: v.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: (v.ident.span),
-            kind: DefKind::Valuetype(value_ty),
-            flags: DefFlags::nil(),
-        });
-
-        // Register with the registry
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &v.ident,
-                DefKindTag::Valuetype,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                v.ident.name.clone(),
-                def_id,
-            );
-        }
-
-        def_id
     }
 
     /// Process a forward declaration.

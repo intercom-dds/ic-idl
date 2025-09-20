@@ -151,9 +151,13 @@ fn try_compile(options: CompilerOptions) {
     let hir = ic_hir_xform::value_annotation::transform(hir);
     let hir = ic_hir_xform::position_annotation::transform(hir);
 
+    // Squash reopened modules into single definitions
+    let hir = ic_hir_xform::squash_modules::transform(hir);
+
     // Strip prefixes from enumerators
     let hir = ic_hir_xform::enum_prefix::transform(hir);
 
+    // Rename all nodes to conform to Rust's naming convention
     let hir = ic_hir_xform::rename::transform(
         hir,
         ic_hir_xform::rename::Target {

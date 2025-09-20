@@ -28,7 +28,6 @@
 #include <iostream>
 #include <optional>
 
-#include "cidl/commandline.h"
 #include "cidl/idl_parser.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
@@ -136,37 +135,6 @@ static void annotate_any(parser_state* state, ptree* node) {
             annotate_any(state, node->members);
         }
     }
-}
-
-/// Removes duplicate modules and squashes them into one. This will also remove
-/// any non-emit modules from the tree.
-static ptree*
-squash_modules(parser_state* state, ptree* node, std::map<std::string, ptree*>& modules) {
-    ptree* list = node;
-    while (node) {
-        ptree* next = node->next;
-        if (node->kind == N_MODULE && is_emit(node, LANG_RUST)) {
-            node->members = squash_modules(state, node->members, modules);
-
-            auto it = modules.find(lc_scoped_name(node));
-            if (it == modules.end()) {
-                modules.emplace(lc_scoped_name(node), node);
-            } else {
-                list = remove_node(list, node);
-                ptree* next_mem = nullptr;
-                auto target = it->second;
-
-                for (auto mem = node->members; mem; mem = next_mem) {
-                    next_mem = mem->next;
-                    mem->next = nullptr;
-                    mem->scope = mem->super = target;
-                    target->members = append_node(target->members, mem);
-                }
-            }
-        }
-        node = next;
-    }
-    return list;
 }
 
 static void move_nested(parser_state* state, ptree* node, ptree* scope, std::set<ptree*>& moved) {
@@ -438,10 +406,6 @@ void intercom::rust::transform_rust(parse_result* result) {
     for (auto node = tree; node; node = node->next) {
         move_nested(state, node, tree, moved);
     }
-
-    // Squash duplicate modules into one
-    std::map<std::string, ptree*> modules;
-    result->tree = tree = squash_modules(state, tree, modules);
 
     // Replace some DDS types with their native Rust equivalents
     replace_native(state);

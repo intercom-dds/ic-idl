@@ -419,10 +419,31 @@ fn rename_breadth(
     target: &Target,
 ) {
     let mut renames = Vec::new();
+    let mut module_groups: HashMap<String, Vec<hir::DefId>> = HashMap::new();
 
-    // Collect all definitions at this breadth level
+    // First, group modules by their original name
     for &id in def_ids {
         let def = hir.context.type_of(id);
+        if matches!(def.kind, hir::DefKind::Module(_)) {
+            module_groups
+                .entry(def.ident.name.clone())
+                .or_default()
+                .push(id);
+        }
+    }
+
+    // Collect all definitions at this breadth level, but only one representative per module group
+    for &id in def_ids {
+        let def = hir.context.type_of(id);
+
+        // Skip non-representative modules
+        if let hir::DefKind::Module(_) = &def.kind {
+            if let Some(group) = module_groups.get(&def.ident.name) {
+                if group[0] != id {
+                    continue; // Skip non-representative modules
+                }
+            }
+        }
 
         // Determine the appropriate case for this definition
         let case = if matches!(def.kind, hir::DefKind::Const(_)) {
@@ -471,7 +492,7 @@ fn rename_breadth(
     }
 
     // Apply collision-aware renaming at this breadth level
-    apply_renames_with_collision_handling(hir, &renames);
+    apply_renames_with_collision_handling(hir, &renames, &module_groups);
 
     // Rename members within each definition at this level
     for &id in def_ids {
@@ -623,7 +644,11 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
 }
 
 /// Apply renames to top-level definitions with collision handling
-fn apply_renames_with_collision_handling(hir: &mut ResolvedGraph, renames: &[NodeRename]) {
+fn apply_renames_with_collision_handling(
+    hir: &mut ResolvedGraph,
+    renames: &[NodeRename],
+    module_groups: &HashMap<String, Vec<hir::DefId>>,
+) {
     // Nodes that want to keep their original name
     let mut priority1 = Vec::new();
     // Nodes that want to change their name
@@ -729,7 +754,25 @@ fn apply_renames_with_collision_handling(hir: &mut ResolvedGraph, renames: &[Nod
     }
 
     // Apply all the renames
-    for (def_id, new_name) in final_assignments {
-        hir.context.definitions.get_mut(def_id).ident.name = new_name;
+    for (def_id, new_name) in &final_assignments {
+        // Check if this is a module and apply to all instances in its group
+        let def = hir.context.type_of(*def_id);
+        if let hir::DefKind::Module(_) = &def.kind {
+            // Find the original name to look up the group
+            let original_name = renames
+                .iter()
+                .find(|r| r.def_id == *def_id)
+                .map(|r| &r.original)
+                .unwrap();
+
+            if let Some(group_ids) = module_groups.get(original_name) {
+                // Apply the same name to all modules in the group
+                for &module_id in group_ids {
+                    hir.context.definitions.get_mut(module_id).ident.name = new_name.clone();
+                }
+            }
+        } else {
+            hir.context.definitions.get_mut(*def_id).ident.name = new_name.clone();
+        }
     }
 }

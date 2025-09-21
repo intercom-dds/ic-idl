@@ -1745,9 +1745,7 @@ static void emit_crate(ic_list_t* list, const ptree* node, P predicate) {
 }
 
 void intercom::cidl::code_gen_rust(const parse_result* result, ic_list_t* list) {
-    auto cloned = clone_tree(result);
-    transform_rust(&cloned);
-    emit_crate(list, cloned.tree, [&](const ptree* node) { return is_emit(node, LANG_RUST); });
+    emit_crate(list, result->tree, [&](const ptree* node) { return is_emit(node, LANG_RUST); });
 }
 
 extern "C" {

@@ -66,17 +66,6 @@ impl Context {
         self.definitions.get(id)
     }
 
-    /// Try to get a definition without panicking.
-    #[must_use]
-    pub fn try_get(&self, id: DefId) -> Option<&Def> {
-        let index: usize = id.into();
-        if index < self.definitions.len() {
-            Some(self.definitions.get(id))
-        } else {
-            None
-        }
-    }
-
     /// Similar to `type_of`, but will resolve the underlying type.
     ///
     /// # Panics
@@ -197,5 +186,45 @@ impl Context {
 
         parts.reverse();
         parts.join("::")
+    }
+
+    /// Looks up a symbol by its qualified name (e.g., "DDS::XTypes").
+    /// Starts from the root scope.
+    #[must_use]
+    pub fn lookup_symbol(&self, qualified_name: &str) -> Option<DefId> {
+        let parts: Vec<&str> = qualified_name.split("::").collect();
+        if parts.is_empty() {
+            return None;
+        }
+
+        let mut current_scope = self.root_scope();
+        let mut result = None;
+
+        for (i, part) in parts.iter().enumerate() {
+            // Resolve the current part in the current scope
+            if let Some(def_id) = self.scopes.resolve_name(current_scope, part) {
+                result = Some(def_id);
+
+                // If this isn't the last part, find the scope for this definition
+                if i < parts.len() - 1 {
+                    // Find the scope associated with this definition
+                    if let Some(scope_id) = self
+                        .scopes
+                        .scopes
+                        .iter()
+                        .position(|s| s.def_id == Some(def_id))
+                        .map(|idx| crate::scope::ScopeId(idx))
+                    {
+                        current_scope = scope_id;
+                    } else {
+                        return None;
+                    }
+                }
+            } else {
+                return None;
+            }
+        }
+
+        result
     }
 }

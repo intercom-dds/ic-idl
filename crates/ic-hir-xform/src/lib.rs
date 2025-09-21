@@ -34,6 +34,7 @@
 #![allow(unused, dead_code)]
 
 // pub mod nested;
+pub mod coalesce_null_variants;
 pub mod enum_prefix;
 pub mod move_nested;
 pub mod normalize;

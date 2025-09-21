@@ -198,6 +198,9 @@ fn try_compile(options: CompilerOptions) {
         },
     );
 
+    // Coalesce multiple null variants in unions
+    let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
+
     // Final normalization after all transformations
     let hir = ic_hir_xform::normalize::normalize(hir);
 

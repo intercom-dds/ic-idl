@@ -60,7 +60,6 @@ fn move_nested_from_list(
     moved_defs: &mut HashSet<hir::DefId>,
 ) -> Vec<hir::DefId> {
     let mut result = Vec::new();
-    let mut new_modules = Vec::new();
 
     for def_id in def_ids {
         let def = hir.context.type_of(def_id);
@@ -69,6 +68,7 @@ fn move_nested_from_list(
             hir::DefKind::Interface(interface) => {
                 // Check if interface has nested definitions
                 let nested_defs = interface.definitions.clone();
+                result.push(def_id);
 
                 if !nested_defs.is_empty() {
                     // Recursively process nested definitions
@@ -83,7 +83,9 @@ fn move_nested_from_list(
                         parent_scope,
                         moved_defs,
                     );
-                    new_modules.push(module_def);
+
+                    // Insert module directly after the interface
+                    result.push(module_def);
 
                     // Clear the nested definitions from the interface
                     if let hir::DefKind::Interface(interface) =
@@ -97,12 +99,11 @@ fn move_nested_from_list(
                         moved_defs.insert(nested_id);
                     }
                 }
-
-                result.push(def_id);
             }
             hir::DefKind::Valuetype(valuetype) => {
                 // Check if valuetype has nested definitions
                 let nested_defs = valuetype.definitions.clone();
+                result.push(def_id);
 
                 if !nested_defs.is_empty() {
                     // Recursively process nested definitions
@@ -117,7 +118,9 @@ fn move_nested_from_list(
                         parent_scope,
                         moved_defs,
                     );
-                    new_modules.push(module_def);
+
+                    // Insert module directly after the valuetype
+                    result.push(module_def);
 
                     // Clear the nested definitions from the valuetype
                     if let hir::DefKind::Valuetype(valuetype) =
@@ -131,8 +134,6 @@ fn move_nested_from_list(
                         moved_defs.insert(nested_id);
                     }
                 }
-
-                result.push(def_id);
             }
             hir::DefKind::Module(module) => {
                 // Recursively process module members
@@ -158,8 +159,6 @@ fn move_nested_from_list(
         }
     }
 
-    // Add new modules to the result
-    result.extend(new_modules);
     result
 }
 
@@ -188,7 +187,7 @@ fn create_module_for_parent(
             name: module_name,
             span: parent_ident_span,
         },
-        parent: parent_scope, // The module goes in the same scope as the parent interface/valuetype
+        parent: parent_scope,
         annotations: Vec::new(),
         span: parent_span,
         flags: hir::DefFlags::nil(),
@@ -200,7 +199,6 @@ fn create_module_for_parent(
     // Update parent references for extracted types
     for &type_id in &extracted_types {
         hir.context.definitions.get_mut(type_id).parent = Some(module_id);
-        // moved_defs.insert(type_id); // Already marked as moved above
     }
 
     module_id

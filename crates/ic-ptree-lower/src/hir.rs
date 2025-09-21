@@ -432,6 +432,10 @@ impl<'a> TreeBuilder<'a> {
 
         // Apply annotations
         self.annotate(node, &def.annotations);
+
+        // Apply HIR flags to ptree node
+        lower_flags(node, def.flags);
+
         self.lowered.insert(id, node);
         node
     }
@@ -440,6 +444,29 @@ impl<'a> TreeBuilder<'a> {
 #[must_use]
 fn create_ident(name: &str) -> CString {
     CString::new(name).unwrap()
+}
+
+/// Convert HIR DefFlags to corresponding ptree flags
+fn ptree_flags(def_flags: ic_hir::hir::DefFlags) -> sys::ptree_opts {
+    let mut flags = 0;
+    if def_flags.contains(ic_hir::hir::DefFlags::IS_TRIVIAL) {
+        flags |= sys::OPT_RUST_TRIVIAL;
+    }
+    if def_flags.contains(ic_hir::hir::DefFlags::TOTAL_ORDER) {
+        flags |= sys::OPT_RUST_TOTAL_ORDER;
+    }
+    if def_flags.contains(ic_hir::hir::DefFlags::IS_CIRCULAR) {
+        flags |= sys::OPT_CIRCULAR;
+    }
+    flags
+}
+
+/// Apply HIR definition flags to a ptree node
+unsafe fn lower_flags(node: *mut sys::ptree, def_flags: ic_hir::hir::DefFlags) {
+    let ptree_flags = ptree_flags(def_flags);
+    unsafe {
+        sys::set_node_flags(node, ptree_flags);
+    }
 }
 
 #[allow(clippy::cast_possible_wrap)]

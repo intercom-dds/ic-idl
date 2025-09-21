@@ -162,6 +162,9 @@ fn try_compile(options: CompilerOptions) {
     // Strip prefixes from enumerators
     let hir = ic_hir_xform::enum_prefix::transform(hir);
 
+    // Mark types with IS_TRIVIAL and TOTAL_ORDER flags
+    let hir = ic_hir_xform::type_flags::transform(hir);
+
     // Rename all nodes to conform to Rust's naming convention
     let hir = ic_hir_xform::rename::transform(
         hir,

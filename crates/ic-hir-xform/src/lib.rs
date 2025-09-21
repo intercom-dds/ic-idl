@@ -40,6 +40,7 @@ pub mod normalize;
 pub mod position_annotation;
 pub mod rename;
 pub mod squash_modules;
+pub mod type_flags;
 pub mod value_annotation;
 
 // Re-export commonly used items

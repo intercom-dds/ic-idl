@@ -430,4 +430,3 @@ impl Normalizer {
 pub fn normalize(hir: ResolvedGraph) -> ResolvedGraph {
     Normalizer::normalize(hir)
 }
-

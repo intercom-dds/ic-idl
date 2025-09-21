@@ -192,6 +192,9 @@ fn try_compile(options: CompilerOptions) {
         },
     );
 
+    // Final normalization after all transformations
+    let hir = ic_hir_xform::normalize::normalize(hir);
+
     // Dump HIR if requested (after transformations)
     if compiler.options().unstable.hir_dump {
         let tree = ic_hir_tree::emit_tree(&hir, compiler.source_map());

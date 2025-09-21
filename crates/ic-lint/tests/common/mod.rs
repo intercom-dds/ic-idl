@@ -161,6 +161,7 @@ pub fn test_lint_hir(source: &str) -> String {
     config.set_category_level(Category::Semantic, Level::Error);
     config.set_category_level(Category::Pedantic, Level::Warning);
     config.set_category_level(Category::Annotation, Level::Warning);
+    config.set_category_level(Category::Unsupported, Level::Warning);
 
     // Run HIR lints
     let mut report = ic_lint::lint_hir_with_config(&hir, &vfs, &config);

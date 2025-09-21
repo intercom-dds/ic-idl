@@ -124,6 +124,7 @@ use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
 
 mod annotation;
+mod any_type;
 mod deprecated;
 mod pedantic;
 mod semantic;
@@ -471,6 +472,7 @@ define_lints! {
         annotation::deprecated_annotations::DeprecatedAnnotations,
         annotation::range_bound::RangeBound,
         annotation::unknown::UnknownAnnotation,
+        any_type::AnyType,
         pedantic::char_discriminator::CharDiscriminator,
         pedantic::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,

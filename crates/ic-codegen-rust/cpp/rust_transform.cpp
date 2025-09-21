@@ -29,11 +29,9 @@
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "rust_common.h"
 #include "utils/string_utils.h"
 
 using namespace intercom::cidl;
-using namespace intercom::rust;
 
 static void flag_trivial_ord(ptree* node, std::set<ptree*>& seen) {
     if (!node || !seen.insert(node).second) {
@@ -135,45 +133,7 @@ static void rescope_dds(parser_state* state, ptree* node) {
     }
 }
 
-static void replace_native(parser_state* state) {
-    // `InstanceHandle` in Rust is a tuple struct. Since bitmasks are also
-    // tuple structs, we can transform `InstanceHandle_t` into a bitmask so
-    // that the generated code treats it accordingly. The node is then suppressed
-    // since it's already defined in the API (and it's not really a bitmask).
-    auto to_bitmask = [&](const char* name, const char* new_name) {
-        if (auto node = state->lookup_node(name)) {
-            auto handle = create_bitmask(state, new_name, &ulong_type, nullptr);
-            create_annotation_start(state, "@ext::suppress", annotation_type_ext_suppress);
-            annotate(state, handle, create_annotation_finish(state, nullptr));
-
-            auto next = node->next;
-            auto orig = duplicate_node(state, node);
-            *node = *handle;
-            node->original = orig;
-            node->next = next;
-        }
-    };
-    (void)&to_bitmask;
-
-    // create_module_start(state, "core");
-    // to_bitmask("DDS::InstanceHandle_t", "InstanceHandle");
-    // to_bitmask("DDS::SampleStateKind", "SampleState");
-    // to_bitmask("DDS::SampleStateMask", "SampleState");
-    // to_bitmask("DDS::InstanceStateKind", "InstanceState");
-    // to_bitmask("DDS::InstanceStateMask", "InstanceState");
-    // to_bitmask("DDS::ViewStateKind", "ViewState");
-    // to_bitmask("DDS::ViewStateMask", "ViewState");
-    // create_module_finish(state, nullptr);
-
-    if (auto node = state->lookup_node("intercom::wire::LOCATOR_KIND_UDPv4")) {
-        node->name.replace(node->name.length() - 5, 5, "UDP_V4");
-    }
-    if (auto node = state->lookup_node("intercom::wire::LOCATOR_KIND_UDPv6")) {
-        node->name.replace(node->name.length() - 5, 5, "UDP_V6");
-    }
-}
-
-void intercom::rust::transform_rust(parse_result* result) {
+void transform_rust(parse_result* result) {
     auto tree = const_cast<ptree*>(result->tree);
     auto state = result->state.get();
 
@@ -182,9 +142,6 @@ void intercom::rust::transform_rust(parse_result* result) {
 
     // Annotate all members whose type is any/Object with @non_serialized
     annotate_any(state, tree);
-
-    // Replace some DDS types with their native Rust equivalents
-    replace_native(state);
 
     // Give select modules more suitable names
     rescope_dds(state, tree);

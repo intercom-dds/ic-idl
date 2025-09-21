@@ -41,7 +41,7 @@
 #include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
 #include "cidl/symbols.h"
-#include "rust_common.h"
+#include "icgen/template/casing.h"
 #include "utils/string_utils.h"
 
 // TODO(idarcar): fix before release
@@ -49,7 +49,6 @@
 #define INTERCOM_VERSION_MINOR 1
 #define INTERCOM_VERSION_PATCH 0
 
-using namespace intercom::rust;
 using namespace intercom::cidl;
 
 namespace {
@@ -238,8 +237,6 @@ static void recurse_node(Twine&, const ptree*);
 
 static void emit_complex(Twine&, const numeric&, const ptree*, const ptree*);
 
-static void emit_builder(Twine&, const ptree*);
-
 static std::string rust_type(const ptree*, const ptree*);
 
 static std::vector<const ptree*> struct_members(const ptree*);
@@ -270,15 +267,38 @@ std::string intercom::cidl::rust_name(const ptree* node) {
     case N_MAP:
     case N_ARRAY:
         return rust_type(node, node);
-    case N_STRUCT:
-        if (get_annotation(node, annotation_type_ext_builder)) {
-            return str(type_name(node), "Inner");
-        }
-        break;
     default:
         break;
     }
     return node->name;
+}
+
+static std::string seri_name(const ptree* node) {
+    if (auto rename = get_annotation(node, annotation_type_ext_rename)) {
+        return string_value(get_annotation_value(rename, "name"));
+    }
+    return original_node(node)->name;
+}
+
+static std::string conv_name(const ptree* node, intercom::icgen::Case casing) {
+    std::string name = node->name;
+
+    // Strip "_t" and "_e" suffixes, then convert the name
+    if (!CommandLineOption::no_rename()) {
+        std::string lower = tolower(name);
+        std::string_view view(lower);
+        if (view.length() > 2 &&
+            (string_utils::ends_with(view, "_t") || string_utils::ends_with(view, "_e"))) {
+            name = name.substr(0, name.length() - 2);
+        }
+        intercom::icgen::CaseConverter conv(casing);
+        name = conv.convert(name);
+    }
+    return safe_name(node, name, LANG_RUST);
+}
+
+static std::string type_name(const ptree* node) {
+    return conv_name(node, intercom::icgen::Case::Pascal);
 }
 
 static std::string value(const ptree* node, const ptree* ctx) {
@@ -536,16 +556,6 @@ static std::string seri_accesor(const ptree* node, std::string body, bool is_mut
         }
     }
     return apply_bounds(node, body, is_mutable);
-}
-
-static std::string builder_name(const ptree* node) {
-    if (auto ann = get_annotation(node, annotation_type_ext_builder)) {
-        auto value = string_value(get_annotation_value(ann, "name"));
-        if (!value.empty()) {
-            return value;
-        }
-    }
-    return type_name(node);
 }
 
 static std::string member_type(const ptree* node, const ptree* ctx) {
@@ -919,10 +929,6 @@ static void emit_struct_impl(Twine& out, const ptree* node) {
 
         out("impl ::std::error::Error for ", node, " {}\n\n");
     }
-
-    if (get_annotation(node, annotation_type_ext_builder)) {
-        emit_builder(out, node);
-    }
 }
 
 static void emit_union_def(Twine& out, const ptree* node) {
@@ -1217,35 +1223,6 @@ static void emit_const_def(Twine& out, const ptree* node) {
     out(";\n");
 }
 
-static void emit_builder(Twine& out, const ptree* node) {
-    emit_derives(out, node);
-    out("#[derive(Default)]\n");
-    out("pub struct ", builder_name(node), "(pub ", node, ");\n\n");
-
-    out("impl ", builder_name(node), " {\n");
-    out("#[must_use]\n");
-    out("pub fn new() -> Self {\n");
-    out("Self::default()\n");
-    out("}\n\n");
-
-    auto members = struct_members(node);
-    for (auto mem : members) {
-        emit_docs(out, mem);
-        out("#[must_use]\n");
-        out("pub fn ", mem, "(mut self, ", mem, ": ", member_type(mem, node), ") -> Self {\n");
-        out("self.0.", mem, " = ", mem, ";\n");
-        out("self\n");
-        out("}\n\n");
-
-        auto ref = is_trivial(mem) ? "" : "&";
-        out("#[must_use]\n");
-        out("pub fn get_", mem, "(&self) -> ", ref, member_type(mem, node), " {\n");
-        out(ref, "self.0.", mem, "\n");
-        out("}\n\n");
-    }
-    out("}\n\n");
-}
-
 static std::string type_flags(const ptree* node) {
     Twine out;
 
@@ -1508,17 +1485,6 @@ static void emit_marshal(Twine& out, const ptree* node) {
     }
     out("}\n");
     out("}\n\n");
-
-    if (get_annotation(node, annotation_type_ext_builder)) {
-        out("impl ", cts_prefix, "::Marshal for ", type_name(node), " {\n");
-        out("fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
-        out("where\n");
-        out("\tS: ", cts_prefix, "::encode::Serializer,\n");
-        out("{\n");
-        out("self.0.marshal(ar)\n");
-        out("}\n");
-        out("}\n\n");
-    }
 }
 
 static void emit_unmarshal(Twine& out, const ptree* node) {
@@ -1605,18 +1571,6 @@ static void emit_unmarshal(Twine& out, const ptree* node) {
     }
     out("}\n");
     out("}\n");
-
-    if (get_annotation(node, annotation_type_ext_builder)) {
-        out("impl ", cts_prefix, "::Unmarshal for ", type_name(node), " {\n");
-        out("fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
-        out("where\n");
-        out("\tD: ", cts_prefix, "::decode::Deserializer,\n");
-        out("{\n");
-        out("self.0 = ", node, "::unmarshal(ar)?;\n");
-        out("Ok(())\n");
-        out("}\n");
-        out("}\n");
-    }
 }
 
 static void emit_visitor(Twine& out, const ptree* node) {

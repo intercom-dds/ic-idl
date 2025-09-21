@@ -49,7 +49,7 @@ fn test_move_types_from_interface() {
     "#;
 
     let hir = common::parse_and_resolve(idl);
-    let (transformed, moved_defs) = move_nested::transform(hir);
+    let (transformed, _moved_defs) = move_nested::transform(hir);
 
     // Find the interface
     let interface = transformed
@@ -109,7 +109,7 @@ fn test_move_types_from_valuetype() {
     "#;
 
     let hir = common::parse_and_resolve(idl);
-    let (transformed, moved_defs) = move_nested::transform(hir);
+    let (transformed, _moved_defs) = move_nested::transform(hir);
 
     // Find the valuetype
     let valuetype = transformed
@@ -173,7 +173,7 @@ fn test_nested_interface_in_module() {
     "#;
 
     let hir = common::parse_and_resolve(idl);
-    let (transformed, moved_defs) = move_nested::transform(hir);
+    let (transformed, _moved_defs) = move_nested::transform(hir);
 
     // Find MyModule
     let my_module = transformed
@@ -223,7 +223,7 @@ fn test_no_nested_types() {
 
     let hir = common::parse_and_resolve(idl);
     let original_count = hir.context.definitions.len();
-    let (transformed, moved_defs) = move_nested::transform(hir);
+    let (transformed, _moved_defs) = move_nested::transform(hir);
 
     assert!(
         moved_defs.is_empty(),

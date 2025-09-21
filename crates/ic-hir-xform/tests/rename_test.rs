@@ -57,6 +57,7 @@ fn rust_target() -> Target {
         parameter: Some(Case::Snake),
         annotation_param: Some(Case::Snake),
         name_preprocessor: Some(strip_common_suffixes),
+        moved_defs: std::collections::HashSet::new(),
     }
 }
 
@@ -85,6 +86,7 @@ fn python_target() -> Target {
         parameter: Some(Case::Snake),
         annotation_param: Some(Case::Snake),
         name_preprocessor: Some(strip_common_suffixes),
+        moved_defs: std::collections::HashSet::new(),
     }
 }
 

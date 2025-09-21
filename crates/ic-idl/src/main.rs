@@ -198,6 +198,9 @@ fn try_compile(options: CompilerOptions) {
         },
     );
 
+    // Add implicit default cases to incomplete unions
+    let hir = ic_hir_xform::implicit_default::transform(hir);
+
     // Coalesce multiple null variants in unions
     let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
 

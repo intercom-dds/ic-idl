@@ -36,6 +36,7 @@
 // pub mod nested;
 pub mod coalesce_null_variants;
 pub mod enum_prefix;
+pub mod implicit_default;
 pub mod move_nested;
 pub mod normalize;
 pub mod position_annotation;

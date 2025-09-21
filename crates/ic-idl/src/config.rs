@@ -289,9 +289,8 @@ impl convert::Convert for Warnings {
         for arg in input {
             // Handle error=lint_name syntax
             if let Some(lint_name) = arg.strip_prefix("error=") {
-                let normalized = normalize_lint_name(lint_name);
-                if known_lints.contains(&normalized.as_str()) {
-                    warnings.error_lints.insert(normalized, true);
+                if known_lints.contains(&lint_name) {
+                    warnings.error_lints.insert(lint_name.to_string(), true);
                 } else {
                     warnings
                         .unknown_warnings
@@ -318,9 +317,8 @@ impl convert::Convert for Warnings {
                 }
                 _ => {
                     // Check if it's a specific lint name
-                    let normalized = normalize_lint_name(arg);
-                    if known_lints.contains(&normalized.as_str()) {
-                        warnings.specific_lints.insert(normalized, enabled);
+                    if known_lints.contains(&arg) {
+                        warnings.specific_lints.insert(arg.to_string(), enabled);
                     } else {
                         warnings.unknown_warnings.push(format!("-W{arg}"));
                     }
@@ -330,8 +328,4 @@ impl convert::Convert for Warnings {
 
         Ok(warnings)
     }
-}
-
-fn normalize_lint_name(name: &str) -> String {
-    name.replace('-', "_")
 }

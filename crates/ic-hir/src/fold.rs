@@ -37,7 +37,31 @@ use crate::hir::{
     TyKind, UnionTy, ValueTy, Variant,
 };
 
-/// Trait for folding (transforming) HIR nodes at the type level.
+/// Trait for folding (transforming) HIR nodes.
+///
+/// The fold pattern allows mutation of HIR nodes by consuming them and producing
+/// new ones. This is used for transforming the HIR tree.
+///
+/// ## Important: Nested Definition Handling
+///
+/// The fold trait does NOT traverse nested definitions (`DefId`s). Types that contain
+/// references to other definitions will not have those references followed. This is by design:
+///
+/// 1. It avoids infinite recursion in circular type references
+/// 2. It prevents processing the same definition multiple times
+/// 3. It keeps the fold functions focused on transforming the structure of a single node
+///
+/// Instead, HIR transformations should iterate through all definitions in the graph
+/// using `Context.definitions.fold()` on each `DefId`. This ensures each definition
+/// is processed exactly once.
+///
+/// Example:
+/// ```ignore
+/// // Transform all definitions in the graph
+/// for id in def_ids {
+///     context.definitions.fold(id, |def| folder.fold_def(def));
+/// }
+/// ```
 pub trait Fold {
     /// Transform a definition. Override to modify definitions.
     fn fold_def(&mut self, def: Def) -> Def {
@@ -287,13 +311,10 @@ pub fn fold_struct_ty<F: Fold + ?Sized>(folder: &mut F, mut s: StructTy) -> Stru
         .into_iter()
         .map(|m| folder.fold_member(m))
         .collect();
-    s.parent = s.parent.map(|id| id);
     s
 }
 
 pub fn fold_enum_ty<F: Fold + ?Sized>(_folder: &mut F, e: EnumTy) -> EnumTy {
-    // Enum fields are DefIds - they will be folded when their definitions are processed
-    // in the main transform loop. We don't need to fold them here.
     e
 }
 
@@ -319,14 +340,10 @@ pub fn fold_alias_ty<F: Fold + ?Sized>(folder: &mut F, mut a: AliasTy) -> AliasT
 }
 
 pub fn fold_bitmask_ty<F: Fold + ?Sized>(_folder: &mut F, b: BitmaskTy) -> BitmaskTy {
-    // Bitmask flags are DefIds - they will be folded when their definitions are processed
-    // in the main transform loop. We don't need to fold them here.
-    // The ty field is PrimitiveTy which doesn't need folding
     b
 }
 
 pub fn fold_bitset_ty<F: Fold + ?Sized>(folder: &mut F, mut b: BitsetTy) -> BitsetTy {
-    b.parent = b.parent.map(|id| id);
     for field in &mut b.fields {
         field.ty = folder.fold_ty(field.ty.clone());
         field.annotations = field
@@ -346,8 +363,6 @@ pub fn fold_const_ty<F: Fold + ?Sized>(folder: &mut F, mut c: ConstTy) -> ConstT
 }
 
 pub fn fold_interface_ty<F: Fold + ?Sized>(folder: &mut F, mut i: InterfaceTy) -> InterfaceTy {
-    // Interface definitions are DefIds - they will be folded when their definitions are processed
-    // in the main transform loop. We don't need to fold them here.
     i.prototypes = i
         .prototypes
         .into_iter()
@@ -362,10 +377,6 @@ pub fn fold_interface_ty<F: Fold + ?Sized>(folder: &mut F, mut i: InterfaceTy) -
 }
 
 pub fn fold_valuetype<F: Fold + ?Sized>(folder: &mut F, mut v: ValueTy) -> ValueTy {
-    // Valuetype definitions are DefIds - they will be folded when their definitions are processed
-    // in the main transform loop. We don't need to fold them here.
-    v.parent = v.parent.map(|id| id);
-    v.supports = v.supports.map(|id| id);
     v.prototypes = v
         .prototypes
         .into_iter()
@@ -394,8 +405,6 @@ pub fn fold_except_ty<F: Fold + ?Sized>(folder: &mut F, mut e: ExceptTy) -> Exce
 }
 
 pub fn fold_module_ty<F: Fold + ?Sized>(_folder: &mut F, m: ModuleTy) -> ModuleTy {
-    // Module definitions are DefIds - they will be folded when their definitions are processed
-    // in the main transform loop. We don't need to fold them here.
     m
 }
 
@@ -448,7 +457,6 @@ pub fn fold_proto_ty<F: Fold + ?Sized>(folder: &mut F, mut p: ProtoTy) -> ProtoT
 }
 
 pub fn fold_annotation<F: Fold + ?Sized>(folder: &mut F, mut a: Ann) -> Ann {
-    a.def_id = a.def_id.map(|id| id);
     for arg in &mut a.args {
         arg.value = folder.fold_numeric(arg.value.clone());
         if let Some(ref mut ty) = arg.ty {

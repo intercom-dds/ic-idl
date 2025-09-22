@@ -49,6 +49,12 @@ pub struct Normalizer {
 
 impl Normalizer {
     /// Normalize the HIR, fixing any inconsistencies.
+    ///
+    /// # Panics
+    ///
+    /// Panics if HIR validation fails after normalization, indicating a bug in the
+    /// normalization process.
+    #[must_use]
     pub fn normalize(mut hir: ResolvedGraph) -> ResolvedGraph {
         let mut normalizer = Normalizer {
             changes_made: false,
@@ -67,7 +73,7 @@ impl Normalizer {
             );
 
             // Run validation to ensure we're in a good state
-            if let Err(errors) = normalizer.validate(&hir) {
+            if let Err(errors) = Self::validate_hir(&hir) {
                 panic!(
                     "HIR validation failed after normalization:\n{}",
                     errors.join("\n")
@@ -79,14 +85,13 @@ impl Normalizer {
     }
 
     /// Validate the HIR without making changes.
+    ///
+    /// # Errors
+    ///
+    /// Returns a vector of validation error messages if the HIR is invalid.
     #[cfg(debug_assertions)]
     pub fn validate_only(hir: &ResolvedGraph) -> Result<(), Vec<String>> {
-        let normalizer = Normalizer {
-            changes_made: false,
-            errors: Vec::new(),
-            changes: Vec::new(),
-        };
-        normalizer.validate(hir)
+        Self::validate_hir(hir)
     }
 
     fn normalize_impl(&mut self, hir: &mut ResolvedGraph) {
@@ -97,20 +102,20 @@ impl Normalizer {
         self.fix_definition_lists(hir);
 
         // Verify and fix scope relationships
-        self.fix_scope_relationships(hir);
+        Self::fix_scope_relationships(hir);
     }
 
-    fn validate(&self, hir: &ResolvedGraph) -> Result<(), Vec<String>> {
+    fn validate_hir(hir: &ResolvedGraph) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
         // Validate parent relationships
-        self.validate_parent_relationships(hir, &mut errors);
+        Self::validate_parent_relationships(hir, &mut errors);
 
         // Validate definition lists
-        self.validate_definition_lists(hir, &mut errors);
+        Self::validate_definition_lists(hir, &mut errors);
 
         // Validate scope relationships
-        self.validate_scope_relationships(hir, &mut errors);
+        Self::validate_scope_relationships(hir, &mut errors);
 
         if errors.is_empty() {
             Ok(())
@@ -125,7 +130,7 @@ impl Normalizer {
         let mut containment: HashMap<DefId, Vec<DefId>> = HashMap::new();
 
         // First pass: collect all containment relationships
-        for (def_id, def) in hir.context.definitions.iter() {
+        for (def_id, def) in &hir.context.definitions {
             match &def.kind {
                 DefKind::Module(m) => {
                     for &child_id in &m.definitions {
@@ -172,8 +177,8 @@ impl Normalizer {
                 if child_def.parent != Some(parent_id) {
                     self.changes_made = true;
                     self.changes.push(format!(
-                        "Set parent of '{}' (def_id={:?}) to '{}' (def_id={:?})",
-                        child_name, child_id, parent_name, parent_id
+                        "Set parent of '{child_name}' (def_id={child_id:?}) to '{parent_name}' \
+                         (def_id={parent_id:?})"
                     ));
                     child_def.parent = Some(parent_id);
                 }
@@ -205,8 +210,8 @@ impl Normalizer {
                     if child_def.parent.is_none() && !name.starts_with('@') {
                         self.changes_made = true;
                         self.changes.push(format!(
-                            "Set parent of '{}' (def_id={:?}) in scope to '{}' (def_id={:?})",
-                            child_name, child_id, parent_name, def_id
+                            "Set parent of '{child_name}' (def_id={child_id:?}) in scope to \
+                             '{parent_name}' (def_id={def_id:?})"
                         ));
                         child_def.parent = Some(def_id);
                     }
@@ -220,7 +225,7 @@ impl Normalizer {
         // Build a map of parent -> children based on parent pointers
         let mut actual_children: HashMap<DefId, Vec<DefId>> = HashMap::new();
 
-        for (def_id, def) in hir.context.definitions.iter() {
+        for (def_id, def) in &hir.context.definitions {
             if let Some(parent_id) = def.parent {
                 // Check if this is a bitmask flag constant
                 if let DefKind::Const(c) = &def.kind {
@@ -334,7 +339,7 @@ impl Normalizer {
     }
 
     /// Fix scope relationships to match definition hierarchy.
-    fn fix_scope_relationships(&mut self, hir: &mut ResolvedGraph) {
+    fn fix_scope_relationships(hir: &mut ResolvedGraph) {
         // This function was incorrectly setting scope def_ids based on what definitions
         // a scope contains, rather than what definition created the scope.
         // Disabling for now as it causes incorrect behavior.
@@ -343,8 +348,9 @@ impl Normalizer {
 
     // Validation methods
 
-    fn validate_parent_relationships(&self, hir: &ResolvedGraph, errors: &mut Vec<String>) {
-        for (def_id, def) in hir.context.definitions.iter() {
+    #[allow(clippy::ptr_arg)] // We need Vec to push errors
+    fn validate_parent_relationships(hir: &ResolvedGraph, errors: &mut Vec<String>) {
+        for (def_id, def) in &hir.context.definitions {
             // Check parent exists
             if let Some(parent_id) = def.parent {
                 let parent_def = hir.context.definitions.get(parent_id);
@@ -388,8 +394,9 @@ impl Normalizer {
         }
     }
 
-    fn validate_definition_lists(&self, hir: &ResolvedGraph, errors: &mut Vec<String>) {
-        for (def_id, def) in hir.context.definitions.iter() {
+    #[allow(clippy::ptr_arg)] // We need Vec to push errors
+    fn validate_definition_lists(hir: &ResolvedGraph, errors: &mut Vec<String>) {
+        for (def_id, def) in &hir.context.definitions {
             let children = match &def.kind {
                 DefKind::Module(m) => &m.definitions[..],
                 DefKind::Interface(i) => &i.definitions[..],
@@ -416,7 +423,8 @@ impl Normalizer {
         }
     }
 
-    fn validate_scope_relationships(&self, hir: &ResolvedGraph, errors: &mut Vec<String>) {
+    #[allow(clippy::ptr_arg)] // We need Vec to push errors
+    fn validate_scope_relationships(hir: &ResolvedGraph, errors: &mut Vec<String>) {
         for scope in &hir.context.scopes.scopes {
             if let Some(def_id) = scope.def_id {
                 // Verify the definition exists
@@ -427,6 +435,7 @@ impl Normalizer {
 }
 
 /// Run normalization on a HIR graph.
+#[must_use]
 pub fn normalize(hir: ResolvedGraph) -> ResolvedGraph {
     Normalizer::normalize(hir)
 }

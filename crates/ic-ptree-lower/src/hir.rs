@@ -455,7 +455,7 @@ fn create_ident(name: &str) -> CString {
     CString::new(name).unwrap()
 }
 
-/// Convert HIR DefFlags to corresponding ptree flags
+/// Convert HIR `DefFlags` to corresponding ptree flags
 fn ptree_flags(def_flags: ic_hir::hir::DefFlags) -> sys::ptree_opts {
     let mut flags = 0;
     if def_flags.contains(ic_hir::hir::DefFlags::IS_TRIVIAL) {

@@ -314,6 +314,81 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     }
 
     /// Process a bitmask definition.
+    fn process_bitmask_flag(
+        &mut self,
+        flag: &ic_syntax::Bit,
+        i: usize,
+        last_bit: &mut u32,
+        bitmask_id: DefId,
+    ) -> Option<DefId> {
+        // Check if this flag has an explicit position
+        let is_explicit = flag.value.is_some();
+
+        // Calculate bit position
+        let bit_pos = if let Some(ref expr) = flag.value {
+            let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
+            eval.eval_nonneg_bound(expr).unwrap_or(0) as u32
+        } else {
+            // Auto-increment bit position
+            if i == 0 { 0 } else { *last_bit + 1 }
+        };
+
+        *last_bit = bit_pos;
+
+        // Calculate value (1 << bit_pos)
+        let value = 1u64 << bit_pos;
+
+        // Create flag as a constant in the parent scope
+        let flag_ty = Ty {
+            span: (flag.ident.span),
+            kind: TyKind::Adt(bitmask_id),
+        };
+
+        // Convert annotations
+        let flag_annotations = self.convert_annotations(&flag.annotations, self.current_scope);
+
+        let flag_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
+            id,
+            ident: flag.ident.clone(),
+            parent: Some(bitmask_id),
+            annotations: flag_annotations,
+            span: (flag.ident.span),
+            kind: DefKind::Const(ConstTy {
+                ty: flag_ty,
+                value: Numeric::UInt64(value),
+            }),
+            flags: if is_explicit {
+                DefFlags::IS_ENUMERATED
+            } else {
+                DefFlags::nil()
+            },
+        });
+
+        // Register flag in parent scope (not bitmask scope)
+        if self
+            .ctx
+            .registry
+            .register_definition(
+                self.current_scope,
+                &flag.ident,
+                DefKindTag::Const,
+                flag_id,
+                &mut self.ctx.diagnostics,
+                &self.ctx.context,
+            )
+            .is_some()
+        {
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                flag.ident.name.clone(),
+                flag_id,
+            );
+            Some(flag_id)
+        } else {
+            None
+        }
+    }
+
     pub fn process_bitmask(&mut self, b: &BitmaskDef) -> DefId {
         let bitmask_ty = BitmaskTy {
             ty: PrimitiveTy::UInt32,
@@ -357,70 +432,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let mut flag_ids = Vec::new();
         let mut last_bit = 0u32;
         for (i, flag) in b.bits.iter().enumerate() {
-            // Check if this flag has an explicit position
-            let is_explicit = flag.value.is_some();
-
-            // Calculate bit position
-            let bit_pos = if let Some(ref expr) = flag.value {
-                let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
-                eval.eval_nonneg_bound(expr).unwrap_or(0) as u32
-            } else {
-                // Auto-increment bit position
-                if i == 0 { 0 } else { last_bit + 1 }
-            };
-
-            last_bit = bit_pos;
-
-            // Calculate value (1 << bit_pos)
-            let value = 1u64 << bit_pos;
-
-            // Create flag as a constant in the parent scope
-            let flag_ty = Ty {
-                span: (flag.ident.span),
-                kind: TyKind::Adt(bitmask_id),
-            };
-
-            // Convert annotations
-            let flag_annotations = self.convert_annotations(&flag.annotations, self.current_scope);
-
-            let flag_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-                id,
-                ident: flag.ident.clone(),
-                parent: Some(bitmask_id),
-                annotations: flag_annotations,
-                span: (flag.ident.span),
-                kind: DefKind::Const(ConstTy {
-                    ty: flag_ty,
-                    value: Numeric::UInt64(value),
-                }),
-                flags: if is_explicit {
-                    DefFlags::IS_ENUMERATED
-                } else {
-                    DefFlags::nil()
-                },
-            });
-
-            // Register flag in parent scope (not bitmask scope)
-            if self
-                .ctx
-                .registry
-                .register_definition(
-                    self.current_scope,
-                    &flag.ident,
-                    DefKindTag::Const,
-                    flag_id,
-                    &mut self.ctx.diagnostics,
-                    &self.ctx.context,
-                )
-                .is_some()
-            {
-                self.ctx.context.scopes.add_definition(
-                    self.current_scope,
-                    flag.ident.name.clone(),
-                    flag_id,
-                );
-
-                // Add to list of flag IDs
+            if let Some(flag_id) = self.process_bitmask_flag(flag, i, &mut last_bit, bitmask_id) {
                 flag_ids.push(flag_id);
             }
         }

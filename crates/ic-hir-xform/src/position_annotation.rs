@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+
 //! Transforms `@position` annotations on bitmask flags into direct bit position values.
 //!
 //! This transformation:

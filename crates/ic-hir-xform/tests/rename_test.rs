@@ -121,21 +121,20 @@ impl RenameVerifier {
     }
 
     fn assert_case(&mut self, name: &str, expected_case: Case, item_type: &str) {
-        if !self.check_case(name, expected_case) {
+        if !Self::check_case(name, expected_case) {
             self.errors.push(format!(
-                "{} '{}' does not follow {:?} convention",
-                item_type, name, expected_case
+                "{item_type} '{name}' does not follow {expected_case:?} convention"
             ));
         }
     }
 
-    fn check_case(&self, name: &str, case: Case) -> bool {
+    fn check_case(name: &str, case: Case) -> bool {
         match case {
             Case::Snake => name
                 .chars()
                 .all(|c| c.is_lowercase() || c.is_numeric() || c == '_'),
-            Case::Pascal => name.chars().next().map_or(false, |c| c.is_uppercase()),
-            Case::Camel => name.chars().next().map_or(false, |c| c.is_lowercase()),
+            Case::Pascal => name.chars().next().is_some_and(char::is_uppercase),
+            Case::Camel => name.chars().next().is_some_and(char::is_lowercase),
             Case::Kebab => name
                 .chars()
                 .all(|c| c.is_lowercase() || c.is_numeric() || c == '-'),
@@ -204,7 +203,7 @@ impl RenameVerifier {
 
 #[test]
 fn test_rust_naming_conventions() {
-    let idl = r#"
+    let idl = r"
         module test_module {
             struct MyStruct {
                 long myField;
@@ -230,12 +229,12 @@ fn test_rust_naming_conventions() {
             
             const long MY_CONSTANT = 42;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
     // Apply Rust naming conventions
-    let renamed = rename::transform(hir, rust_target());
+    let renamed = rename::transform(hir, &rust_target());
 
     // Verify the renaming
     let mut verifier = RenameVerifier::new();
@@ -243,17 +242,16 @@ fn test_rust_naming_conventions() {
         verifier.visit_def(def);
     }
 
-    if !verifier.errors.is_empty() {
-        panic!(
-            "Naming convention violations:\n{}",
-            verifier.errors.join("\n")
-        );
-    }
+    assert!(
+        verifier.errors.is_empty(),
+        "Naming convention violations:\n{}",
+        verifier.errors.join("\n")
+    );
 }
 
 #[test]
 fn test_python_naming_conventions() {
-    let idl = r#"
+    let idl = r"
         struct myStruct {
             long MyField;
             string AnotherField;
@@ -268,12 +266,12 @@ fn test_python_naming_conventions() {
             case 1: long IntValue;
             case 2: string StringValue;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
     // Apply Python naming conventions
-    let renamed = rename::transform(hir, python_target());
+    let renamed = rename::transform(hir, &python_target());
 
     // Verify Python conventions
     for def in renamed.iter() {
@@ -298,11 +296,11 @@ fn test_python_naming_conventions() {
 
 #[test]
 fn test_custom_naming_target() {
-    let idl = r#"
+    let idl = r"
         struct test_struct {
             long test_field;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
@@ -313,7 +311,7 @@ fn test_custom_naming_target() {
         ..Default::default()
     };
 
-    let renamed = rename::transform(hir, target);
+    let renamed = rename::transform(hir, &target);
 
     // Verify kebab-case
     for def in renamed.iter() {
@@ -326,15 +324,15 @@ fn test_custom_naming_target() {
 
 #[test]
 fn test_preserve_unchanged() {
-    let idl = r#"
+    let idl = r"
         struct AlreadyPascal {
             long already_snake;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
-    let renamed = rename::transform(hir, rust_target());
+    let renamed = rename::transform(hir, &rust_target());
 
     // Verify names are preserved when already correct
     for def in renamed.iter() {
@@ -347,16 +345,16 @@ fn test_preserve_unchanged() {
 
 #[test]
 fn test_interface_members() {
-    let idl = r#"
+    let idl = r"
         interface testInterface {
             void DoOperation(in long InputParam);
             readonly attribute long SomeAttribute;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
-    let renamed = rename::transform(hir, rust_target());
+    let renamed = rename::transform(hir, &rust_target());
 
     for def in renamed.iter() {
         if let DefKind::Interface(i) = &def.kind {
@@ -370,13 +368,13 @@ fn test_interface_members() {
 
 #[test]
 fn test_no_suffix_stripping() {
-    let idl = r#"
+    let idl = r"
         struct property_t {};
         enum my_enum_e {
             value_1,
             value_2
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
@@ -388,7 +386,7 @@ fn test_no_suffix_stripping() {
         ..Default::default()
     };
 
-    let renamed = rename::transform(hir, target);
+    let renamed = rename::transform(hir, &target);
 
     for def in renamed.iter() {
         match &def.kind {
@@ -405,22 +403,19 @@ fn test_no_suffix_stripping() {
     }
 }
 
+// Custom preprocessor that removes "foo_" prefix
+fn remove_foo_prefix(name: &str) -> String {
+    name.strip_prefix("foo_")
+        .map_or_else(|| name.to_string(), ToString::to_string)
+}
+
 #[test]
 fn test_custom_preprocessor() {
-    let idl = r#"
+    let idl = r"
         struct foo_bar_baz {};
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
-
-    // Custom preprocessor that removes "foo_" prefix
-    fn remove_foo_prefix(name: &str) -> String {
-        if name.starts_with("foo_") {
-            name[4..].to_string()
-        } else {
-            name.to_string()
-        }
-    }
 
     let target = Target {
         struct_type: Some(Case::Pascal),
@@ -428,7 +423,7 @@ fn test_custom_preprocessor() {
         ..Default::default()
     };
 
-    let renamed = rename::transform(hir, target);
+    let renamed = rename::transform(hir, &target);
 
     for def in renamed.iter() {
         if let DefKind::Struct(_) = &def.kind {
@@ -453,7 +448,7 @@ fn test_enum_constant_vs_regular_constant() {
 
     let hir = common::parse_and_resolve(idl);
     let target = rust_target();
-    let transformed = rename::transform(hir, target);
+    let transformed = rename::transform(hir, &target);
 
     for def in transformed.iter() {
         match &def.ident.name[..] {
@@ -469,11 +464,7 @@ fn test_enum_constant_vs_regular_constant() {
                     assert_eq!(const_names, vec!["ColorBlue", "ColorGreen", "ColorRed"]);
                 }
             }
-            "MY_CONSTANT" => {
-                // Regular constants should be UPPER_SNAKE_CASE
-                assert!(matches!(def.kind, DefKind::Const(_)));
-            }
-            "ANOTHER_CONST" => {
+            "MY_CONSTANT" | "ANOTHER_CONST" => {
                 // Regular constants should be UPPER_SNAKE_CASE
                 assert!(matches!(def.kind, DefKind::Const(_)));
             }

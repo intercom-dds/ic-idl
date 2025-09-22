@@ -32,7 +32,7 @@ use ic_hir_xform::move_nested;
 
 #[test]
 fn test_move_types_from_interface() {
-    let idl = r#"
+    let idl = r"
         interface MyInterface {
             struct NestedStruct {
                 long value;
@@ -46,7 +46,7 @@ fn test_move_types_from_interface() {
             string getName();
             void setName(string name);
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let (transformed, moved_defs) = move_nested::transform(hir);
@@ -97,7 +97,7 @@ fn test_move_types_from_interface() {
 
 #[test]
 fn test_move_types_from_valuetype() {
-    let idl = r#"
+    let idl = r"
         valuetype MyValueType {
             struct Inner {
                 string name;
@@ -106,7 +106,7 @@ fn test_move_types_from_valuetype() {
             public long x;
             private float y;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let (transformed, moved_defs) = move_nested::transform(hir);
@@ -162,7 +162,7 @@ fn test_move_types_from_valuetype() {
 
 #[test]
 fn test_nested_interface_in_module() {
-    let idl = r#"
+    let idl = r"
         module MyModule {
             interface MyInterface {
                 struct Data {
@@ -170,10 +170,13 @@ fn test_nested_interface_in_module() {
                 };
             };
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let (transformed, moved_defs) = move_nested::transform(hir);
+
+    // Verify that nested types were moved
+    assert!(!moved_defs.is_empty(), "Some types should have been moved");
 
     // Find MyModule
     let my_module = transformed
@@ -211,7 +214,7 @@ fn test_nested_interface_in_module() {
 
 #[test]
 fn test_no_nested_types() {
-    let idl = r#"
+    let idl = r"
         interface SimpleInterface {
             void doSomething();
         };
@@ -219,7 +222,7 @@ fn test_no_nested_types() {
         valuetype SimpleValue {
             public long value;
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let original_count = hir.context.definitions.len();

@@ -36,7 +36,7 @@ use std::collections::HashSet;
 use ic_hir::{ResolvedGraph, hir};
 
 /// Transform HIR to move nested types out of interfaces and valuetypes
-/// Returns the transformed HIR and a set of DefIds that were moved
+/// Returns the transformed HIR and a set of `DefIds` that were moved
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> (ResolvedGraph, HashSet<hir::DefId>) {
     let mut moved_defs = HashSet::new();
@@ -79,7 +79,7 @@ fn move_nested_from_list(
                     let module_def = create_module_for_parent(
                         hir,
                         def_id,
-                        processed_defs,
+                        &processed_defs,
                         parent_scope,
                         moved_defs,
                     );
@@ -114,7 +114,7 @@ fn move_nested_from_list(
                     let module_def = create_module_for_parent(
                         hir,
                         def_id,
-                        processed_defs,
+                        &processed_defs,
                         parent_scope,
                         moved_defs,
                     );
@@ -166,7 +166,7 @@ fn move_nested_from_list(
 fn create_module_for_parent(
     hir: &mut ResolvedGraph,
     parent_id: hir::DefId,
-    extracted_types: Vec<hir::DefId>,
+    extracted_types: &[hir::DefId],
     parent_scope: Option<hir::DefId>,
     moved_defs: &mut HashSet<hir::DefId>,
 ) -> hir::DefId {
@@ -192,12 +192,12 @@ fn create_module_for_parent(
         span: parent_span,
         flags: hir::DefFlags::nil(),
         kind: hir::DefKind::Module(hir::ModuleTy {
-            definitions: extracted_types.clone(),
+            definitions: extracted_types.to_vec(),
         }),
     });
 
     // Update parent references for extracted types
-    for &type_id in &extracted_types {
+    for &type_id in extracted_types {
         hir.context.definitions.get_mut(type_id).parent = Some(module_id);
     }
 

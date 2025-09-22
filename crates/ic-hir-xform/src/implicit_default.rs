@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+
 //! Add implicit default case with null member for incomplete unions
 //!
 //! This transformation adds a default case with a null member to unions that
@@ -49,7 +51,7 @@ impl ImplicitDefault {
         let mut const_values = HashMap::new();
 
         // Pre-compute all enum values and const values
-        for (def_id, def) in context.definitions.iter() {
+        for (def_id, def) in &context.definitions {
             match &def.kind {
                 DefKind::Enum(enum_ty) => {
                     let mut values = Vec::new();
@@ -63,8 +65,8 @@ impl ImplicitDefault {
                                 const_values.insert(field_id, v);
                                 next_value = v as i32 + 1;
                             } else {
-                                values.push((next_value as i64, Numeric::Int32(next_value)));
-                                const_values.insert(field_id, next_value as i64);
+                                values.push((i64::from(next_value), Numeric::Int32(next_value)));
+                                const_values.insert(field_id, i64::from(next_value));
                                 next_value += 1;
                             }
                         }
@@ -101,9 +103,7 @@ impl ImplicitDefault {
         match disc_ty {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveTy::Bool => label_count >= 2,
-                PrimitiveTy::UInt8 => label_count >= 256,
-                PrimitiveTy::Int8 => label_count >= 256,
-                PrimitiveTy::Char => label_count >= 256,
+                PrimitiveTy::UInt8 | PrimitiveTy::Int8 | PrimitiveTy::Char => label_count >= 256,
                 _ => false, // For larger types, assume not exhaustive
             },
             TyKind::Adt(def_id) => {
@@ -121,26 +121,27 @@ impl ImplicitDefault {
     /// Convert Numeric to i64 for comparison
     fn numeric_to_i64(numeric: &Numeric) -> Option<i64> {
         match numeric {
-            Numeric::Null => None,
-            Numeric::Bool(b) => Some(if *b { 1 } else { 0 }),
+            Numeric::Bool(b) => Some(i64::from(*b)),
             Numeric::Char(c) => Some(*c as i64),
-            Numeric::Int8(v) => Some(*v as i64),
-            Numeric::Octet(v) => Some(*v as i64),
-            Numeric::Int16(v) => Some(*v as i64),
-            Numeric::UInt16(v) => Some(*v as i64),
-            Numeric::Int32(v) => Some(*v as i64),
-            Numeric::UInt32(v) => Some(*v as i64),
+            Numeric::Int8(v) => Some(i64::from(*v)),
+            Numeric::Octet(v) => Some(i64::from(*v)),
+            Numeric::Int16(v) => Some(i64::from(*v)),
+            Numeric::UInt16(v) => Some(i64::from(*v)),
+            Numeric::Int32(v) => Some(i64::from(*v)),
+            Numeric::UInt32(v) => Some(i64::from(*v)),
             Numeric::Int64(v) => Some(*v),
             Numeric::UInt64(v) => {
-                if *v <= i64::MAX as u64 {
+                if i64::try_from(*v).is_ok() {
                     Some(*v as i64)
                 } else {
                     None
                 }
             }
-            Numeric::Float(_) | Numeric::Double(_) => None,
-            Numeric::String(_) => None,
-            Numeric::Const(_)
+            Numeric::Null
+            | Numeric::Float(_)
+            | Numeric::Double(_)
+            | Numeric::String(_)
+            | Numeric::Const(_)
             | Numeric::Array { .. }
             | Numeric::Sequence { .. }
             | Numeric::Map { .. }
@@ -182,25 +183,25 @@ impl ImplicitDefault {
                     }
                 }
                 PrimitiveTy::UInt8 => (0u8..=255)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(Numeric::Octet),
                 PrimitiveTy::Char => (0u8..=255)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(|v| Numeric::Char(v as char)),
                 PrimitiveTy::Int8 => (-128i8..=127)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(Numeric::Int8),
                 PrimitiveTy::UInt16 => (0u16..=1000)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(Numeric::UInt16),
                 PrimitiveTy::Int16 => (0i16..=1000)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(Numeric::Int16),
                 PrimitiveTy::UInt32 => (0u32..=1000)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(Numeric::UInt32),
                 PrimitiveTy::Int32 => (0i32..=1000)
-                    .find(|v| !used_values.contains(&(*v as i64)))
+                    .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(Numeric::Int32),
                 PrimitiveTy::UInt64 => (0u64..=1000)
                     .find(|v| !used_values.contains(&(*v as i64)))

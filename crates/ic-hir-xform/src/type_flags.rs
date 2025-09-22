@@ -25,11 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Marks types with IS_TRIVIAL and TOTAL_ORDER flags.
+//! Marks types with `IS_TRIVIAL` and `TOTAL_ORDER` flags.
 //!
 //! This transformation analyzes types to determine:
-//! - IS_TRIVIAL: Types that consist only of primitive types and arrays
-//! - TOTAL_ORDER: Types whose members can form a well-ordered set
+//! - `IS_TRIVIAL`: Types that consist only of primitive types and arrays
+//! - `TOTAL_ORDER`: Types whose members can form a well-ordered set
 
 use std::collections::{HashMap, HashSet};
 
@@ -60,7 +60,7 @@ impl TypeFlags {
     }
 }
 
-/// Analyzes and marks types with IS_TRIVIAL and TOTAL_ORDER flags
+/// Analyzes and marks types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
 pub struct TypeFlagsAnalyzer {
     /// Cache of already analyzed types to handle recursion
     cache: HashMap<DefId, TypeFlags>,
@@ -161,14 +161,6 @@ impl TypeFlagsAnalyzer {
                 }
             }
 
-            DefKind::Enum(_) => {
-                // Enums are trivial and have total order by default
-            }
-
-            DefKind::Bitmask(_) => {
-                // Bitmasks are trivial and have total order by default
-            }
-
             DefKind::Alias(a) => {
                 // An alias has the same properties as its target type
                 flags = self.analyze_type(&a.ty, context);
@@ -182,8 +174,13 @@ impl TypeFlagsAnalyzer {
                 }
             }
 
-            DefKind::Const(_) | DefKind::Annotation(_) | DefKind::Decl(_) | DefKind::Bitset(_) => {
-                // These don't affect triviality or ordering
+            DefKind::Enum(_)
+            | DefKind::Bitmask(_)
+            | DefKind::Const(_)
+            | DefKind::Annotation(_)
+            | DefKind::Decl(_)
+            | DefKind::Bitset(_) => {
+                // These are trivial and/or don't affect type properties
             }
         }
 
@@ -257,7 +254,8 @@ impl TypeFlagsAnalyzer {
     }
 }
 
-/// Analyzes and marks types with IS_TRIVIAL and TOTAL_ORDER flags.
+/// Analyzes and marks types with `IS_TRIVIAL` and `TOTAL_ORDER` flags.
+#[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     let analyzer = TypeFlagsAnalyzer::new();
     analyzer.analyze(&mut hir.context);

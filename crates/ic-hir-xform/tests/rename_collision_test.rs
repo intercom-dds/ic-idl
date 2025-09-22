@@ -55,24 +55,11 @@ fn test_namespace_aware_collision_handling() {
     "#;
 
     let hir = common::parse_and_resolve(idl);
-    let renamed = rename::transform(hir, test_rust_target());
+    let renamed = rename::transform(hir, &test_rust_target());
 
     // Find the definitions
     let mut struct_name = None;
     let mut module_name = None;
-
-    println!("All definitions:");
-    for def in renamed.iter() {
-        println!(
-            "  {} ({:?})",
-            def.ident.name,
-            match &def.kind {
-                DefKind::Module(_) => "Module",
-                DefKind::Struct(_) => "Struct",
-                _ => "Other",
-            }
-        );
-    }
 
     // Now look in the test module specifically
     for def in renamed.iter() {
@@ -120,22 +107,9 @@ fn test_same_namespace_collision() {
     "#;
 
     let hir = common::parse_and_resolve(idl);
-    let renamed = rename::transform(hir, test_rust_target());
+    let renamed = rename::transform(hir, &test_rust_target());
 
     let mut struct_names = Vec::new();
-
-    println!("All definitions:");
-    for def in renamed.iter() {
-        println!(
-            "  {} ({:?})",
-            def.ident.name,
-            match &def.kind {
-                DefKind::Module(_) => "Module",
-                DefKind::Struct(_) => "Struct",
-                _ => "Other",
-            }
-        );
-    }
 
     // Look in the test module for structs
     for def in renamed.iter() {

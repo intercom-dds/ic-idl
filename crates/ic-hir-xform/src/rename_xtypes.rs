@@ -25,15 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Rename DDS::XTypes module to DDS::xtypes
+//! Rename `DDS::XTypes` module to `DDS::xtypes`
 //!
-//! This transformation renames the DDS::XTypes module (if present) to DDS::xtypes
+//! This transformation renames the `DDS::XTypes` module (if present) to `DDS::xtypes`
 //! to match Rust naming conventions.
 
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefId, DefKind};
 
-/// Transform HIR to rename DDS::XTypes module to DDS::xtypes
+/// Transform HIR to rename `DDS::XTypes` module to `DDS::xtypes`
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     // Use the new helper to lookup DDS::XTypes

@@ -33,7 +33,7 @@ use ic_hir_xform::{Target, rename};
 
 #[test]
 fn test_reopened_modules_keep_same_name() {
-    let idl = r#"
+    let idl = r"
         module FooBar {
             struct Baz {};
         };
@@ -41,7 +41,7 @@ fn test_reopened_modules_keep_same_name() {
         module FooBar {
             struct Qux {};
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
@@ -52,7 +52,7 @@ fn test_reopened_modules_keep_same_name() {
         ..Default::default()
     };
 
-    let transformed = rename::transform(hir, target);
+    let transformed = rename::transform(hir, &target);
 
     // Both foo_bar modules should remain as foo_bar (not foo_bar and foo_bar_)
     let module_names: Vec<_> = transformed
@@ -68,20 +68,16 @@ fn test_reopened_modules_keep_same_name() {
         })
         .collect();
 
-    // Debug: print what we got
-    eprintln!("Module names after rename: {:?}", module_names);
-
     assert_eq!(module_names.len(), 2, "Should have two module instances");
     assert!(
         module_names.iter().all(|name| name == "foo_bar"),
-        "Both modules should be named 'foo_bar', but got: {:?}",
-        module_names
+        "Both modules should be named 'foo_bar', but got: {module_names:?}"
     );
 }
 
 #[test]
 fn test_nested_reopened_modules() {
-    let idl = r#"
+    let idl = r"
         module A {
             module B {
                 struct Foo {};
@@ -93,7 +89,7 @@ fn test_nested_reopened_modules() {
                 struct Bar {};
             };
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
@@ -104,7 +100,7 @@ fn test_nested_reopened_modules() {
         ..Default::default()
     };
 
-    let transformed = rename::transform(hir, target);
+    let transformed = rename::transform(hir, &target);
 
     // Check that all A modules are still named A
     let a_modules: Vec<_> = transformed
@@ -123,8 +119,7 @@ fn test_nested_reopened_modules() {
     assert_eq!(a_modules.len(), 2, "Should have two A module instances");
     assert!(
         a_modules.iter().all(|name| name == "A"),
-        "All A modules should remain named 'A', but got: {:?}",
-        a_modules
+        "All A modules should remain named 'A', but got: {a_modules:?}"
     );
 
     // Check that all B modules are still named B
@@ -144,14 +139,13 @@ fn test_nested_reopened_modules() {
     assert_eq!(b_modules.len(), 2, "Should have two B module instances");
     assert!(
         b_modules.iter().all(|name| name == "B"),
-        "All B modules should remain named 'B', but got: {:?}",
-        b_modules
+        "All B modules should remain named 'B', but got: {b_modules:?}"
     );
 }
 
 #[test]
 fn test_module_with_similar_name_not_blocked() {
-    let idl = r#"
+    let idl = r"
         module A {
             struct Foo {};
         };
@@ -163,7 +157,7 @@ fn test_module_with_similar_name_not_blocked() {
         module A__ {
             struct Baz {};
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
 
@@ -174,7 +168,7 @@ fn test_module_with_similar_name_not_blocked() {
         ..Default::default()
     };
 
-    let transformed = rename::transform(hir, target);
+    let transformed = rename::transform(hir, &target);
 
     // Collect all module names
     let module_names: Vec<_> = transformed
@@ -191,7 +185,6 @@ fn test_module_with_similar_name_not_blocked() {
         .collect();
 
     // Debug: print what we got
-    eprintln!("All modules: {:?}", module_names);
 
     // Count occurrences
     let a_count = module_names.iter().filter(|(name, _)| name == "a").count();

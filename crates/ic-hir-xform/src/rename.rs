@@ -36,6 +36,7 @@ use ic_hir::{Context, ResolvedGraph, hir};
 pub type NamePreprocessor = fn(&str) -> String;
 
 /// Preprocessor that strips common suffixes like _t and _e
+#[must_use]
 pub fn strip_common_suffixes(name: &str) -> String {
     if name.len() > 2 {
         let lower = name.to_lowercase();
@@ -123,7 +124,7 @@ pub struct Target {
     /// If None, names are used as-is
     pub name_preprocessor: Option<NamePreprocessor>,
 
-    /// Set of DefIds that were moved by previous transformations
+    /// Set of `DefIds` that were moved by previous transformations
     /// These will have lower priority in collision resolution
     pub moved_defs: HashSet<hir::DefId>,
 }
@@ -137,7 +138,7 @@ struct NodeRename {
     is_moved: bool,
 }
 
-/// Check if original is a natural fallback for desired (e.g., FooBar_ for FooBar)
+/// Check if original is a natural fallback for desired (e.g., `FooBar`_ for `FooBar`)
 fn is_natural_fallback(original: &str, desired: &str) -> bool {
     if original.len() <= desired.len() {
         return false;
@@ -331,7 +332,7 @@ impl Fold for Renamer {
 
 /// Transform HIR to use the specified naming conventions with collision handling
 #[must_use]
-pub fn transform(mut hir: ResolvedGraph, target: Target) -> ResolvedGraph {
+pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
     // Process top-level definitions first
     let top_level_ids: Vec<_> = hir
         .order
@@ -340,13 +341,13 @@ pub fn transform(mut hir: ResolvedGraph, target: Target) -> ResolvedGraph {
         .copied()
         .collect();
 
-    rename_breadth(&mut hir, &top_level_ids, None, &target);
+    rename_breadth(&mut hir, &top_level_ids, None, target);
 
     // Then recursively process each module's contents
-    process_module_contents(&mut hir, &target);
+    process_module_contents(&mut hir, target);
 
     // Process enum constants separately
-    process_enum_constants(&mut hir, &target);
+    process_enum_constants(&mut hir, target);
 
     hir
 }
@@ -405,7 +406,7 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
 /// Rename all definitions at the current breadth level with collision handling
 /// Check if a constant is an enum constant by checking all enums
 fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
-    for (_, def) in hir.context.definitions.iter() {
+    for (_, def) in &hir.context.definitions {
         if let hir::DefKind::Enum(enum_ty) = &def.kind {
             if enum_ty.fields.contains(&const_id) {
                 return true;
@@ -501,7 +502,7 @@ fn rename_breadth(
     for &id in def_ids {
         hir.context
             .definitions
-            .fold(id, |def| rename_members(&target, def));
+            .fold(id, |def| rename_members(target, def));
     }
 }
 
@@ -631,28 +632,25 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
             }
         }
-        hir::DefKind::Bitmask(_) => {
-            // Bitmask flags are DefIds - handled separately
-        }
         hir::DefKind::Bitset(b) => {
             rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident);
         }
         hir::DefKind::Annotation(a) => {
             rename_items(&mut a.params, target.annotation_param, |p| &mut p.ident);
         }
-        _ => {}
+        _ => {
+            // Bitmask flags are DefIds - handled separately
+            // Other def kinds don't have renameable members
+        }
     }
 
     def
 }
 
-/// Apply renames to top-level definitions with collision handling
-fn apply_renames_with_collision_handling(
-    hir: &mut ResolvedGraph,
+/// Categorize nodes by their rename priority
+fn categorize_renames(
     renames: &[NodeRename],
-    module_groups: &HashMap<String, Vec<hir::DefId>>,
-) {
-    // Categorize nodes by priority
+) -> (Vec<&NodeRename>, Vec<&NodeRename>, Vec<&NodeRename>) {
     let mut priority1 = Vec::new(); // Nodes that want to keep their original name
     let mut priority2 = Vec::new(); // Nodes that want to change their name  
     let mut moved_nodes = Vec::new(); // Moved nodes (lowest priority)
@@ -667,42 +665,17 @@ fn apply_renames_with_collision_handling(
         }
     }
 
-    let mut final_assignments: HashMap<hir::DefId, String> = HashMap::new();
-    let mut occupied: HashSet<String> = HashSet::new();
+    (priority1, priority2, moved_nodes)
+}
 
-    // Process priority 1: nodes that want to keep their original name
-    for rename in &priority1 {
-        final_assignments.insert(rename.def_id, rename.original.clone());
-        occupied.insert(rename.original.clone());
-    }
-
-    // Process moved nodes: they must get unique names
-    for rename in &moved_nodes {
-        let mut name = rename.desired.clone();
-        while occupied.contains(&name) {
-            name.push('_');
-        }
-        final_assignments.insert(rename.def_id, name.clone());
-        occupied.insert(name);
-    }
-
-    // Determine which priority2 nodes should keep their original names
-    let mut will_keep_original: HashSet<String> = HashSet::new();
-    for rename in &priority2 {
-        if occupied.contains(&rename.desired) && !occupied.contains(&rename.original) {
-            if is_natural_fallback(&rename.original, &rename.desired) {
-                will_keep_original.insert(rename.original.clone());
-            }
-        }
-    }
-
-    // Mark natural fallback names as occupied
-    for name in &will_keep_original {
-        occupied.insert(name.clone());
-    }
-
-    // Process priority2 nodes with chain substitution support
-    let mut to_process: Vec<&NodeRename> = priority2.clone();
+/// Process priority 2 renames with chain substitution
+fn process_priority2_renames(
+    priority2: &[&NodeRename],
+    final_assignments: &mut HashMap<hir::DefId, String>,
+    occupied: &mut HashSet<String>,
+    will_keep_original: &HashSet<String>,
+) {
+    let mut to_process: Vec<&NodeRename> = priority2.to_vec();
     let mut vacated: HashSet<String> = HashSet::new();
 
     while !to_process.is_empty() {
@@ -757,7 +730,7 @@ fn apply_renames_with_collision_handling(
             }
 
             final_assignments.insert(rename.def_id, name.clone());
-            occupied.insert(name);
+            occupied.insert(name.clone());
             if !will_keep_original.contains(&rename.original) {
                 vacated.insert(rename.original.clone());
             }
@@ -767,10 +740,16 @@ fn apply_renames_with_collision_handling(
 
         to_process = deferred;
     }
+}
 
-    // Apply all the renames
-    for (def_id, new_name) in &final_assignments {
-        // Check if this is a module and apply to all instances in its group
+/// Apply computed renames to definitions
+fn apply_final_renames(
+    hir: &mut ResolvedGraph,
+    final_assignments: &HashMap<hir::DefId, String>,
+    renames: &[NodeRename],
+    module_groups: &HashMap<String, Vec<hir::DefId>>,
+) {
+    for (def_id, new_name) in final_assignments {
         let def = hir.context.type_of(*def_id);
         if let hir::DefKind::Module(_) = &def.kind {
             // Find the original name to look up the group
@@ -783,11 +762,77 @@ fn apply_renames_with_collision_handling(
             if let Some(group_ids) = module_groups.get(original_name) {
                 // Apply the same name to all modules in the group
                 for &module_id in group_ids {
-                    hir.context.definitions.get_mut(module_id).ident.name = new_name.clone();
+                    hir.context
+                        .definitions
+                        .get_mut(module_id)
+                        .ident
+                        .name
+                        .clone_from(new_name);
                 }
             }
         } else {
-            hir.context.definitions.get_mut(*def_id).ident.name = new_name.clone();
+            hir.context
+                .definitions
+                .get_mut(*def_id)
+                .ident
+                .name
+                .clone_from(new_name);
         }
     }
+}
+
+/// Apply renames to top-level definitions with collision handling
+fn apply_renames_with_collision_handling(
+    hir: &mut ResolvedGraph,
+    renames: &[NodeRename],
+    module_groups: &HashMap<String, Vec<hir::DefId>>,
+) {
+    // Categorize nodes by priority
+    let (priority1, priority2, moved_nodes) = categorize_renames(renames);
+
+    let mut final_assignments: HashMap<hir::DefId, String> = HashMap::new();
+    let mut occupied: HashSet<String> = HashSet::new();
+
+    // Process priority 1: nodes that want to keep their original name
+    for rename in &priority1 {
+        final_assignments.insert(rename.def_id, rename.original.clone());
+        occupied.insert(rename.original.clone());
+    }
+
+    // Process moved nodes: they must get unique names
+    for rename in &moved_nodes {
+        let mut name = rename.desired.clone();
+        while occupied.contains(&name) {
+            name.push('_');
+        }
+        final_assignments.insert(rename.def_id, name.clone());
+        occupied.insert(name);
+    }
+
+    // Determine which priority2 nodes should keep their original names
+    let mut will_keep_original: HashSet<String> = HashSet::new();
+    for rename in &priority2 {
+        if occupied.contains(&rename.desired)
+            && !occupied.contains(&rename.original)
+            && is_natural_fallback(&rename.original, &rename.desired)
+        {
+            will_keep_original.insert(rename.original.clone());
+        }
+    }
+
+    // Mark natural fallback names as occupied
+    for name in &will_keep_original {
+        occupied.insert(name.clone());
+    }
+
+    // Process priority2 nodes with chain substitution support
+    process_priority2_renames(
+        &priority2,
+        &mut final_assignments,
+        &mut occupied,
+        &will_keep_original,
+    );
+
+    // Apply all the renames
+    apply_final_renames(hir, &final_assignments, renames, module_groups);
 }

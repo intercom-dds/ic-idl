@@ -49,12 +49,12 @@ fn parse_and_transform(idl: &str) -> ic_hir::ResolvedGraph {
 
 #[test]
 fn test_incomplete_boolean_union() {
-    let idl = r#"
+    let idl = r"
         union BoolUnion switch (boolean) {
         case TRUE:
             long value;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -63,9 +63,8 @@ fn test_incomplete_boolean_union() {
         .iter()
         .find(|def| def.ident.name == "BoolUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have 2 variants: original + implicit default
@@ -84,7 +83,7 @@ fn test_incomplete_boolean_union() {
 
 #[test]
 fn test_incomplete_octet_union() {
-    let idl = r#"
+    let idl = r"
         union OctetUnion switch (octet) {
         case 0:
             string zero;
@@ -93,7 +92,7 @@ fn test_incomplete_octet_union() {
         case 255:
             string max;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -101,9 +100,8 @@ fn test_incomplete_octet_union() {
         .iter()
         .find(|def| def.ident.name == "OctetUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have 4 variants: 3 original + implicit default
@@ -122,14 +120,14 @@ fn test_incomplete_octet_union() {
 
 #[test]
 fn test_complete_boolean_union() {
-    let idl = r#"
+    let idl = r"
         union CompleteUnion switch (boolean) {
         case TRUE:
             long value;
         case FALSE:
             string text;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -137,9 +135,8 @@ fn test_complete_boolean_union() {
         .iter()
         .find(|def| def.ident.name == "CompleteUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have only 2 variants - no implicit default needed
@@ -154,14 +151,14 @@ fn test_complete_boolean_union() {
 
 #[test]
 fn test_union_with_default() {
-    let idl = r#"
+    let idl = r"
         union WithDefault switch (long) {
         case 0:
             string zero;
         default:
             double value;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -169,9 +166,8 @@ fn test_union_with_default() {
         .iter()
         .find(|def| def.ident.name == "WithDefault")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have only 2 variants - no implicit default needed
@@ -186,7 +182,7 @@ fn test_union_with_default() {
 
 #[test]
 fn test_enum_discriminator() {
-    let idl = r#"
+    let idl = r"
         enum Color { RED, GREEN, BLUE };
 
         union ColorUnion switch (Color) {
@@ -195,7 +191,7 @@ fn test_enum_discriminator() {
         case GREEN:
             string green_value;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -203,9 +199,8 @@ fn test_enum_discriminator() {
         .iter()
         .find(|def| def.ident.name == "ColorUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have 3 variants: 2 original + implicit default
@@ -225,14 +220,14 @@ fn test_enum_discriminator() {
 
 #[test]
 fn test_char_discriminator() {
-    let idl = r#"
+    let idl = r"
         union CharUnion switch (char) {
         case 'a':
             string a_value;
         case 'b':
             string b_value;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -240,9 +235,8 @@ fn test_char_discriminator() {
         .iter()
         .find(|def| def.ident.name == "CharUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have 3 variants: 2 original + implicit default
@@ -264,8 +258,9 @@ fn test_char_discriminator() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_complete_octet_union() {
-    let idl = r#"
+    let idl = r"
         union CompleteOctetUnion switch (octet) {
         case 0: string s0;
         case 1: string s1;
@@ -524,7 +519,7 @@ fn test_complete_octet_union() {
         case 254: string s254;
         case 255: string s255;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -532,9 +527,8 @@ fn test_complete_octet_union() {
         .iter()
         .find(|def| def.ident.name == "CompleteOctetUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have exactly 256 variants - no implicit default needed
@@ -549,7 +543,7 @@ fn test_complete_octet_union() {
 
 #[test]
 fn test_multiple_label_variants() {
-    let idl = r#"
+    let idl = r"
         union MultiLabelUnion switch (short) {
         case 1:
         case 2:
@@ -559,7 +553,7 @@ fn test_multiple_label_variants() {
         case 200:
             string large;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -567,9 +561,8 @@ fn test_multiple_label_variants() {
         .iter()
         .find(|def| def.ident.name == "MultiLabelUnion")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have 3 variants: 2 original + implicit default
@@ -589,7 +582,7 @@ fn test_multiple_label_variants() {
 
 #[test]
 fn test_int8_discriminator() {
-    let idl = r#"
+    let idl = r"
         union Int8Union switch (int8) {
         case -128:
             string min;
@@ -598,7 +591,7 @@ fn test_int8_discriminator() {
         case 127:
             string max;
         };
-    "#;
+    ";
 
     let hir = parse_and_transform(idl);
 
@@ -606,9 +599,8 @@ fn test_int8_discriminator() {
         .iter()
         .find(|def| def.ident.name == "Int8Union")
         .unwrap();
-    let union_ty = match &union_def.kind {
-        DefKind::Union(u) => u,
-        _ => panic!("Expected union"),
+    let DefKind::Union(union_ty) = &union_def.kind else {
+        panic!("Expected union")
     };
 
     // Should have 4 variants: 3 original + implicit default

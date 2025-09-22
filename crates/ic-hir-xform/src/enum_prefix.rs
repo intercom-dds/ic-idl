@@ -110,7 +110,7 @@ fn strip_prefix_from_enum(enum_def: &hir::Def, context: &Context) -> Vec<(hir::D
 
     // Get the first constant's name to find potential prefixes
     let first_name = &constants[0].1;
-    let mut prefix = if let Some(pos) = rfind_delimiter(&first_name) {
+    let mut prefix = if let Some(pos) = rfind_delimiter(first_name) {
         first_name[..pos].to_string()
     } else {
         // No delimiter found, use empty prefix
@@ -187,7 +187,7 @@ fn strip_prefix_from_bitmask(
 
     // Similar logic as enums
     let first_name = &flags[0].1;
-    let mut prefix = if let Some(pos) = rfind_delimiter(&first_name) {
+    let mut prefix = if let Some(pos) = rfind_delimiter(first_name) {
         first_name[..pos].to_string()
     } else {
         return renames;

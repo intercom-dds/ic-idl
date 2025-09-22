@@ -113,6 +113,9 @@ struct HirMerger {
     /// The final order of built-in definitions
     builtin_order: Vec<DefId>,
 
+    /// Maps definition `DefIds` to their forward declaration `DefIds`
+    def_to_forward_decls: HashMap<DefId, Vec<DefId>>,
+
     /// Errors collected during merging
     errors: Vec<Diag>,
 }
@@ -126,6 +129,7 @@ impl HirMerger {
             dedup_map: HashMap::new(),
             module_defs: HashMap::new(),
             def_to_scope_map: HashMap::new(),
+            def_to_forward_decls: HashMap::new(),
             order: Vec::new(),
             builtin_order: Vec::new(),
             errors: Vec::new(),

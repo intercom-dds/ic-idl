@@ -32,7 +32,7 @@ use ic_hir_xform::enum_prefix;
 
 #[test]
 fn test_enum_prefix_stripping() {
-    let idl = r#"
+    let idl = r"
         enum Color {
             COLOR_RED,
             COLOR_GREEN,
@@ -58,7 +58,7 @@ fn test_enum_prefix_stripping() {
             OTHER_TWO,
             MIXED_THREE
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let transformed = enum_prefix::transform(hir);
@@ -121,7 +121,7 @@ fn test_enum_prefix_stripping() {
 
 #[test]
 fn test_bitmask_prefix_stripping() {
-    let idl = r#"
+    let idl = r"
         bitmask Flags {
             FLAGS_READABLE,
             FLAGS_WRITABLE,
@@ -132,7 +132,7 @@ fn test_bitmask_prefix_stripping() {
             OPTIONS_VERBOSE,
             OPTIONS_DEBUG
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let transformed = enum_prefix::transform(hir);
@@ -141,16 +141,22 @@ fn test_bitmask_prefix_stripping() {
         match &def.ident.name[..] {
             "Flags" => {
                 if let DefKind::Bitmask(b) = &def.kind {
-                    let mut flag_names: Vec<_> =
-                        b.flags.iter().map(|f| f.ident.name.clone()).collect();
+                    let mut flag_names: Vec<_> = b
+                        .flags
+                        .iter()
+                        .map(|&f_id| transformed.context.definitions.get(f_id).ident.name.clone())
+                        .collect();
                     flag_names.sort();
                     assert_eq!(flag_names, vec!["EXECUTABLE", "READABLE", "WRITABLE"]);
                 }
             }
             "Options" => {
                 if let DefKind::Bitmask(b) = &def.kind {
-                    let mut flag_names: Vec<_> =
-                        b.flags.iter().map(|f| f.ident.name.clone()).collect();
+                    let mut flag_names: Vec<_> = b
+                        .flags
+                        .iter()
+                        .map(|&f_id| transformed.context.definitions.get(f_id).ident.name.clone())
+                        .collect();
                     flag_names.sort();
                     assert_eq!(flag_names, vec!["DEBUG", "VERBOSE"]);
                 }
@@ -162,7 +168,7 @@ fn test_bitmask_prefix_stripping() {
 
 #[test]
 fn test_camel_case_prefix_stripping() {
-    let idl = r#"
+    let idl = r"
         enum ColorType {
             ColorTypeRed,
             ColorTypeGreen,
@@ -174,7 +180,7 @@ fn test_camel_case_prefix_stripping() {
             ColorTypeAlpha,
             ColorTypeBeta
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let transformed = enum_prefix::transform(hir);

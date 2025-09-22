@@ -106,7 +106,7 @@ fn squash_modules_list(
     result
 }
 
-/// Build a scoped name for a module (similar to lc_scoped_name in C++)
+/// Build a scoped name for a module (similar to `lc_scoped_name` in C++)
 fn build_qualified_name(hir: &ResolvedGraph, module_id: hir::DefId) -> String {
     let def = hir.context.type_of(module_id);
     let mut parts = vec![def.ident.name.clone()];

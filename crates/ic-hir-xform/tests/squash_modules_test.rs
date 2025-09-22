@@ -32,7 +32,7 @@ use ic_hir_xform::squash_modules;
 
 #[test]
 fn test_simple_module_squashing() {
-    let idl = r#"
+    let idl = r"
         module A {
             struct Foo {
                 long x;
@@ -44,7 +44,7 @@ fn test_simple_module_squashing() {
                 string y;
             };
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let transformed = squash_modules::transform(hir);
@@ -96,7 +96,7 @@ fn test_simple_module_squashing() {
 
 #[test]
 fn test_nested_module_squashing() {
-    let idl = r#"
+    let idl = r"
         module A {
             module B {
                 struct Foo {};
@@ -110,7 +110,7 @@ fn test_nested_module_squashing() {
             
             struct Baz {};
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let transformed = squash_modules::transform(hir);
@@ -143,21 +143,6 @@ fn test_nested_module_squashing() {
         .expect("Module A should be in order");
 
     if let DefKind::Module(module_a_ty) = &module_a.kind {
-        // Debug: print what's in module A
-        eprintln!("Module A contains:");
-        for &id in &module_a_ty.definitions {
-            let def = transformed.context.type_of(id);
-            eprintln!(
-                "  - {} ({})",
-                def.ident.name,
-                match &def.kind {
-                    DefKind::Module(_) => "module",
-                    DefKind::Struct(_) => "struct",
-                    _ => "other",
-                }
-            );
-        }
-
         // Module A should contain module B and struct Baz
         assert_eq!(
             module_a_ty.definitions.len(),
@@ -198,7 +183,7 @@ fn test_nested_module_squashing() {
 
 #[test]
 fn test_multiple_reopened_modules() {
-    let idl = r#"
+    let idl = r"
         module A {
             struct One {};
         };
@@ -214,23 +199,23 @@ fn test_multiple_reopened_modules() {
         module B {
             struct Four {};
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let transformed = squash_modules::transform(hir);
 
     // There should be only one module A and one module B in the order list
-    let module_a_count = transformed
+    let a_modules = transformed
         .iter()
         .filter(|def| matches!(def.kind, DefKind::Module(_)) && def.ident.name == "A")
         .count();
-    assert_eq!(module_a_count, 1, "Should have exactly one module A");
+    assert_eq!(a_modules, 1, "Should have exactly one module A");
 
-    let module_b_count = transformed
+    let b_modules = transformed
         .iter()
         .filter(|def| matches!(def.kind, DefKind::Module(_)) && def.ident.name == "B")
         .count();
-    assert_eq!(module_b_count, 1, "Should have exactly one module B");
+    assert_eq!(b_modules, 1, "Should have exactly one module B");
 
     // Check module A contents
     let (_, module_a) = transformed
@@ -260,7 +245,7 @@ fn test_multiple_reopened_modules() {
 
 #[test]
 fn test_preserve_single_modules() {
-    let idl = r#"
+    let idl = r"
         module A {
             struct Foo {};
             struct Bar {};
@@ -269,7 +254,7 @@ fn test_preserve_single_modules() {
         module B {
             struct Baz {};
         };
-    "#;
+    ";
 
     let hir = common::parse_and_resolve(idl);
     let original_module_count = hir

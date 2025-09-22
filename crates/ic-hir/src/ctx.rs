@@ -188,7 +188,7 @@ impl Context {
         parts.join("::")
     }
 
-    /// Looks up a symbol by its qualified name (e.g., "DDS::XTypes").
+    /// Looks up a symbol by its qualified name (e.g., "`DDS::XTypes`").
     /// Starts from the root scope.
     #[must_use]
     pub fn lookup_symbol(&self, qualified_name: &str) -> Option<DefId> {
@@ -213,7 +213,7 @@ impl Context {
                         .scopes
                         .iter()
                         .position(|s| s.def_id == Some(def_id))
-                        .map(|idx| crate::scope::ScopeId(idx))
+                        .map(crate::scope::ScopeId)
                     {
                         current_scope = scope_id;
                     } else {

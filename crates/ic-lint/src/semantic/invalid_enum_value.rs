@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefKind, EnumTy, Numeric, PrimitiveTy, TyKind};
+use ic_hir::hir::{Def, DefKind, EnumTy, Numeric, PrimitiveTy};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -59,17 +59,14 @@ impl<'a> Lint<'a> for InvalidEnumValue<'a> {
 impl InvalidEnumValue<'_> {
     fn check_enum(&mut self, enum_ty: &EnumTy, _enum_name: &str) {
         // Get the underlying type's range
-        let (min, max) = match &enum_ty.ty.kind {
-            TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::Int8 => (i64::from(i8::MIN), i64::from(i8::MAX)),
-                PrimitiveTy::Int16 => (i64::from(i16::MIN), i64::from(i16::MAX)),
-                PrimitiveTy::Int64 => (i64::MIN, i64::MAX),
-                PrimitiveTy::UInt8 => (0, i64::from(u8::MAX)),
-                PrimitiveTy::UInt16 => (0, i64::from(u16::MAX)),
-                PrimitiveTy::UInt32 => (0, i64::from(u32::MAX)),
-                PrimitiveTy::UInt64 => (0, i64::MAX), // Limited by i64
-                _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
-            },
+        let (min, max) = match &enum_ty.ty {
+            PrimitiveTy::Int8 => (i64::from(i8::MIN), i64::from(i8::MAX)),
+            PrimitiveTy::Int16 => (i64::from(i16::MIN), i64::from(i16::MAX)),
+            PrimitiveTy::Int64 => (i64::MIN, i64::MAX),
+            PrimitiveTy::UInt8 => (0, i64::from(u8::MAX)),
+            PrimitiveTy::UInt16 => (0, i64::from(u16::MAX)),
+            PrimitiveTy::UInt32 => (0, i64::from(u32::MAX)),
+            PrimitiveTy::UInt64 => (0, i64::MAX), // Limited by i64
             _ => (i64::from(i32::MIN), i64::from(i32::MAX)), // Default to int32
         };
 

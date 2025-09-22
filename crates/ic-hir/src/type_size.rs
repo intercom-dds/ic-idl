@@ -78,14 +78,9 @@ fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Optio
                     }
                     Some(disc_size + max_variant_size)
                 }
-                crate::hir::DefKind::Enum(enum_ty) => {
-                    // Enum size = underlying type size
-                    type_size_impl(&enum_ty.ty, ctx, visited)
-                }
-                crate::hir::DefKind::Bitmask(bitmask_ty) => {
-                    // Bitmask size = underlying type size
-                    type_size_impl(&bitmask_ty.ty, ctx, visited)
-                }
+                crate::hir::DefKind::Alias(alias_ty) => type_size_impl(&alias_ty.ty, ctx, visited),
+                crate::hir::DefKind::Enum(enum_ty) => primitive_size(enum_ty.ty),
+                crate::hir::DefKind::Bitmask(bitmask_ty) => primitive_size(bitmask_ty.ty),
                 crate::hir::DefKind::Bitset(bitset_ty) => {
                     // Bitset size = sum of field sizes (bits) / 8 (rounded up)
                     let mut total_bits = 0;
@@ -93,10 +88,6 @@ fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Optio
                         total_bits += field.size;
                     }
                     Some(total_bits.div_ceil(8))
-                }
-                crate::hir::DefKind::Alias(alias_ty) => {
-                    // Alias size = aliased type size
-                    type_size_impl(&alias_ty.ty, ctx, visited)
                 }
                 _ => None,
             };

@@ -213,9 +213,10 @@ pub fn walk_enum<'a, V>(visitor: &mut V, data: &'a EnumTy)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ty(&data.ty);
-    // Enum fields are now DefIds pointing to constants
-    // The visitor should visit those definitions separately
+    for &def_id in &data.fields {
+        let field = visitor.context().type_of(def_id);
+        visitor.visit_def(field);
+    }
 }
 
 pub fn walk_union<'a, V>(visitor: &mut V, data: &'a UnionTy)
@@ -239,8 +240,6 @@ pub fn walk_bitmask<'a, V>(visitor: &mut V, data: &'a BitmaskTy)
 where
     V: Visitor<'a> + ?Sized,
 {
-    visitor.visit_ty(&data.ty);
-    // Flags are now DefIds pointing to constants - visit those defs
     for &flag_id in &data.flags {
         let flag_def = visitor.context().type_of(flag_id);
         visitor.visit_def(flag_def);

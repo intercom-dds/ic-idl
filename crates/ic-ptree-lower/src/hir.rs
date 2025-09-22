@@ -63,28 +63,31 @@ impl<'a> TreeBuilder<'a> {
             sys::create_u64(self.state, bound as u64, 10)
         })
     }
+    unsafe fn lower_prim_ty(ty: PrimitiveTy) -> *mut sys::ptree {
+        match ty {
+            PrimitiveTy::Void => std::ptr::null_mut(),
+            PrimitiveTy::Bool => ptr::addr_of_mut!(sys::boolean_type),
+            PrimitiveTy::Char => ptr::addr_of_mut!(sys::char_type),
+            PrimitiveTy::WChar => ptr::addr_of_mut!(sys::wchar_type),
+            PrimitiveTy::Int8 => ptr::addr_of_mut!(sys::int8_type),
+            PrimitiveTy::UInt8 => ptr::addr_of_mut!(sys::octet_type),
+            PrimitiveTy::Int16 => ptr::addr_of_mut!(sys::short_type),
+            PrimitiveTy::UInt16 => ptr::addr_of_mut!(sys::ushort_type),
+            PrimitiveTy::Int32 => ptr::addr_of_mut!(sys::long_type),
+            PrimitiveTy::UInt32 => ptr::addr_of_mut!(sys::ulong_type),
+            PrimitiveTy::Int64 => ptr::addr_of_mut!(sys::longlong_type),
+            PrimitiveTy::UInt64 => ptr::addr_of_mut!(sys::ulonglong_type),
+            PrimitiveTy::Float32 => ptr::addr_of_mut!(sys::float_type),
+            PrimitiveTy::Float64 => ptr::addr_of_mut!(sys::double_type),
+            PrimitiveTy::Float128 => ptr::addr_of_mut!(sys::ldouble_type),
+        }
+    }
 
     unsafe fn lower_ty(&mut self, ty: &Ty) -> *mut sys::ptree {
         match &ty.kind {
             TyKind::Any => ptr::addr_of_mut!(sys::any_type),
             TyKind::Fixed => ptr::addr_of_mut!(sys::fixed_type),
-            TyKind::Primitive(kind) => match kind {
-                PrimitiveTy::Void => std::ptr::null_mut(),
-                PrimitiveTy::Bool => ptr::addr_of_mut!(sys::boolean_type),
-                PrimitiveTy::Char => ptr::addr_of_mut!(sys::char_type),
-                PrimitiveTy::WChar => ptr::addr_of_mut!(sys::wchar_type),
-                PrimitiveTy::Int8 => ptr::addr_of_mut!(sys::int8_type),
-                PrimitiveTy::UInt8 => ptr::addr_of_mut!(sys::octet_type),
-                PrimitiveTy::Int16 => ptr::addr_of_mut!(sys::short_type),
-                PrimitiveTy::UInt16 => ptr::addr_of_mut!(sys::ushort_type),
-                PrimitiveTy::Int32 => ptr::addr_of_mut!(sys::long_type),
-                PrimitiveTy::UInt32 => ptr::addr_of_mut!(sys::ulong_type),
-                PrimitiveTy::Int64 => ptr::addr_of_mut!(sys::longlong_type),
-                PrimitiveTy::UInt64 => ptr::addr_of_mut!(sys::ulonglong_type),
-                PrimitiveTy::Float32 => ptr::addr_of_mut!(sys::float_type),
-                PrimitiveTy::Float64 => ptr::addr_of_mut!(sys::double_type),
-                PrimitiveTy::Float128 => ptr::addr_of_mut!(sys::ldouble_type),
-            },
+            TyKind::Primitive(kind) => Self::lower_prim_ty(*kind),
             TyKind::Array { ty, len, .. } => {
                 let ty = self.lower_ty(ty);
                 let bound = sys::create_u64(self.state, *len as u64, 10);

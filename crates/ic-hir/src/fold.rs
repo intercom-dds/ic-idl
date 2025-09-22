@@ -292,7 +292,6 @@ pub fn fold_struct_ty<F: Fold + ?Sized>(folder: &mut F, mut s: StructTy) -> Stru
 }
 
 pub fn fold_enum_ty<F: Fold + ?Sized>(folder: &mut F, mut e: EnumTy) -> EnumTy {
-    e.ty = folder.fold_ty(e.ty);
     e.fields = e.fields.into_iter().map(|id| id).collect();
     e
 }
@@ -318,8 +317,7 @@ pub fn fold_alias_ty<F: Fold + ?Sized>(folder: &mut F, mut a: AliasTy) -> AliasT
     a
 }
 
-pub fn fold_bitmask_ty<F: Fold + ?Sized>(folder: &mut F, mut b: BitmaskTy) -> BitmaskTy {
-    b.ty = folder.fold_ty(b.ty);
+pub fn fold_bitmask_ty<F: Fold + ?Sized>(folder: &mut F, b: BitmaskTy) -> BitmaskTy {
     b
 }
 

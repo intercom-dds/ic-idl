@@ -314,12 +314,6 @@ fn update_def_references(
         DefKind::Const(c) => {
             update_type_references(&mut c.ty, mapping);
         }
-        DefKind::Enum(e) => {
-            update_type_references(&mut e.ty, mapping);
-        }
-        DefKind::Bitmask(b) => {
-            update_type_references(&mut b.ty, mapping);
-        }
         DefKind::Except(e) => {
             for member in &mut e.members {
                 update_type_references(&mut member.ty, mapping);

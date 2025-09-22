@@ -898,7 +898,7 @@ impl HirMerger {
                     .collect(),
             }),
             DefKind::Enum(e) => DefKind::Enum(EnumTy {
-                ty: self.update_type(graph_index, &e.ty),
+                ty: e.ty,
                 fields: self.map_def_ids(graph_index, &e.fields),
             }),
             DefKind::Interface(i) => DefKind::Interface(InterfaceTy {
@@ -935,7 +935,7 @@ impl HirMerger {
                 value: self.update_numeric(graph_index, &c.value),
             }),
             DefKind::Bitmask(b) => DefKind::Bitmask(BitmaskTy {
-                ty: self.update_type(graph_index, &b.ty),
+                ty: b.ty,
                 flags: b
                     .flags
                     .iter()

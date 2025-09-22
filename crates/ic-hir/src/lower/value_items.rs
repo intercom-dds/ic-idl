@@ -139,16 +139,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
     /// Create and register an enum definition.
     fn create_enum_definition(&mut self, e: &EnumDef) -> DefId {
-        // Enums always have underlying type of long
-        let underlying_type = Ty {
-            span: (e.ident.span),
-            kind: TyKind::Primitive(PrimitiveTy::Int32),
-        };
-
-        // Create the enum definition with empty fields list initially
         let enum_ty = EnumTy {
-            fields: Vec::new(), // Will be populated as we process enumerators
-            ty: underlying_type,
+            fields: Vec::new(),
+            ty: PrimitiveTy::Int32,
         };
 
         // Convert annotations before the closure
@@ -322,21 +315,12 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
     /// Process a bitmask definition.
     pub fn process_bitmask(&mut self, b: &BitmaskDef) -> DefId {
-        // Default underlying type is unsigned long
-        let underlying_type = Ty {
-            span: (b.ident.span),
-            kind: TyKind::Primitive(PrimitiveTy::UInt32),
-        };
-
-        // Create the bitmask definition upfront
         let bitmask_ty = BitmaskTy {
-            ty: underlying_type,
-            flags: Vec::new(), // Will be populated later
+            ty: PrimitiveTy::UInt32,
+            flags: Vec::new(),
         };
 
-        // Convert annotations before the closure
         let annotations = self.convert_annotations(&b.annotations, self.current_scope);
-
         let bitmask_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: b.ident.clone(),

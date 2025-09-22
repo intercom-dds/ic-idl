@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, Def, Numeric, PrimitiveTy, TyKind};
+use ic_hir::hir::{Ann, Def, Numeric, PrimitiveTy};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -99,19 +99,12 @@ impl BitBound<'_> {
         })
     }
 
-    fn get_type_bits(ty: &TyKind) -> Option<u32> {
+    fn get_type_bits(ty: PrimitiveTy) -> Option<u32> {
         match ty {
-            TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::UInt8 | PrimitiveTy::Int8 => Some(8),
-                PrimitiveTy::UInt16 | PrimitiveTy::Int16 => Some(16),
-                PrimitiveTy::UInt32 | PrimitiveTy::Int32 => Some(32),
-                PrimitiveTy::UInt64 | PrimitiveTy::Int64 => Some(64),
-                _ => None,
-            },
-            TyKind::Adt(_) => {
-                // TODO: Follow typedef/alias to get underlying type
-                None
-            }
+            PrimitiveTy::UInt8 | PrimitiveTy::Int8 => Some(8),
+            PrimitiveTy::UInt16 | PrimitiveTy::Int16 => Some(16),
+            PrimitiveTy::UInt32 | PrimitiveTy::Int32 => Some(32),
+            PrimitiveTy::UInt64 | PrimitiveTy::Int64 => Some(64),
             _ => None,
         }
     }
@@ -124,7 +117,7 @@ impl<'a> Visitor<'a> for BitBound<'a> {
 
     fn visit_bitmask(&mut self, _def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
         // Check bit positions in bitmask flags
-        if let Some(type_bits) = Self::get_type_bits(&data.ty.kind) {
+        if let Some(type_bits) = Self::get_type_bits(data.ty) {
             for &flag_id in &data.flags {
                 let flag_def = self.hir.context.definitions.get(flag_id);
                 // Check if the flag has a @bit annotation

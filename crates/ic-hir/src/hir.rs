@@ -245,8 +245,6 @@ pub enum TyKind {
     },
 
     /// The null type.
-    /// - Used in union cases with no data
-    /// - Used as a placeholder for unresolved types during HIR construction
     Null,
 
     /// An algebraic data type.
@@ -428,7 +426,7 @@ pub struct EnumTy {
     pub fields: Vec<DefId>,
 
     /// Underlying primitive type of the enum.
-    pub ty: Ty,
+    pub ty: PrimitiveTy,
 }
 
 #[derive(Debug, Clone)]
@@ -446,8 +444,7 @@ pub struct BitmaskTy {
     pub flags: Vec<DefId>,
 
     /// Underlying primitive type of the bitmask.
-    // TODO: consider replacing with `PrimitiveTy`
-    pub ty: Ty,
+    pub ty: PrimitiveTy,
 }
 
 #[derive(Debug, Clone)]

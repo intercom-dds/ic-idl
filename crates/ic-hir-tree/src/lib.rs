@@ -31,7 +31,8 @@ use std::fmt::Write;
 
 use ic_cli::color::Colorize;
 use ic_hir::hir::{
-    Decl, DefFlags, DefId, DefKind, Label, Member, Numeric, ParamKind, Span, Ty, TyKind, Variant,
+    Decl, DefFlags, DefId, DefKind, Label, Member, Numeric, ParamKind, PrimitiveTy, Span, Ty,
+    TyKind, Variant,
 };
 use ic_hir::visit::{self, Visitor};
 use ic_hir::{Context, ResolvedGraph};
@@ -113,13 +114,17 @@ fn emit_flags(flags: DefFlags) -> String {
     buf.join(" ")
 }
 
+fn prim_ty(ty: PrimitiveTy) -> String {
+    ty.to_string().to_ascii_lowercase().cyan()
+}
+
 fn emit_ty(context: &Context, ty: &Ty) -> String {
     let kind = match &ty.kind {
         TyKind::Any => "any",
         TyKind::Fixed => "fixed",
         TyKind::Null => "null",
         TyKind::Primitive(kind) => {
-            return kind.to_string().to_ascii_lowercase().cyan();
+            return prim_ty(*kind);
         }
         TyKind::String { wide, bound, .. } => {
             let prefix = if *wide { "w" } else { "" };
@@ -339,7 +344,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             node.extend(variants);
         }
         DefKind::Enum(v) => {
-            let ty = emit_ty(context, &v.ty);
+            let ty = prim_ty(v.ty);
             node.push(leaf!("{} {ty}", "type".purple()));
             let fields = v.fields.iter().map(|v| emit_def(context, *v));
             node.extend(fields);
@@ -352,7 +357,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             node.push(leaf!("{} {}", "value".purple(), value));
         }
         DefKind::Bitmask(v) => {
-            let ty = emit_ty(context, &v.ty);
+            let ty = prim_ty(v.ty);
             node.push(leaf!("{} {ty} builtin", "type".purple()));
             let flags = v.flags.iter().map(|v| emit_def(context, *v));
             node.extend(flags);

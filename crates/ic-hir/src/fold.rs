@@ -406,7 +406,6 @@ pub fn fold_annotation_ty<F: Fold + ?Sized>(folder: &mut F, mut a: AnnotationTy)
             *default = folder.fold_numeric(default.clone());
         }
     }
-    a.types = a.types.into_iter().map(|id| id).collect();
     a
 }
 

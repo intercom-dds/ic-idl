@@ -291,8 +291,9 @@ pub fn fold_struct_ty<F: Fold + ?Sized>(folder: &mut F, mut s: StructTy) -> Stru
     s
 }
 
-pub fn fold_enum_ty<F: Fold + ?Sized>(folder: &mut F, mut e: EnumTy) -> EnumTy {
-    e.fields = e.fields.into_iter().map(|id| id).collect();
+pub fn fold_enum_ty<F: Fold + ?Sized>(_folder: &mut F, e: EnumTy) -> EnumTy {
+    // Enum fields are DefIds - they will be folded when their definitions are processed
+    // in the main transform loop. We don't need to fold them here.
     e
 }
 
@@ -317,7 +318,10 @@ pub fn fold_alias_ty<F: Fold + ?Sized>(folder: &mut F, mut a: AliasTy) -> AliasT
     a
 }
 
-pub fn fold_bitmask_ty<F: Fold + ?Sized>(folder: &mut F, b: BitmaskTy) -> BitmaskTy {
+pub fn fold_bitmask_ty<F: Fold + ?Sized>(_folder: &mut F, b: BitmaskTy) -> BitmaskTy {
+    // Bitmask flags are DefIds - they will be folded when their definitions are processed
+    // in the main transform loop. We don't need to fold them here.
+    // The ty field is PrimitiveTy which doesn't need folding
     b
 }
 
@@ -342,7 +346,8 @@ pub fn fold_const_ty<F: Fold + ?Sized>(folder: &mut F, mut c: ConstTy) -> ConstT
 }
 
 pub fn fold_interface_ty<F: Fold + ?Sized>(folder: &mut F, mut i: InterfaceTy) -> InterfaceTy {
-    i.parents = i.parents.into_iter().map(|id| id).collect();
+    // Interface definitions are DefIds - they will be folded when their definitions are processed
+    // in the main transform loop. We don't need to fold them here.
     i.prototypes = i
         .prototypes
         .into_iter()
@@ -353,11 +358,12 @@ pub fn fold_interface_ty<F: Fold + ?Sized>(folder: &mut F, mut i: InterfaceTy) -
         .into_iter()
         .map(|a| folder.fold_attribute(a))
         .collect();
-    i.definitions = i.definitions.into_iter().map(|id| id).collect();
     i
 }
 
 pub fn fold_valuetype<F: Fold + ?Sized>(folder: &mut F, mut v: ValueTy) -> ValueTy {
+    // Valuetype definitions are DefIds - they will be folded when their definitions are processed
+    // in the main transform loop. We don't need to fold them here.
     v.parent = v.parent.map(|id| id);
     v.supports = v.supports.map(|id| id);
     v.prototypes = v
@@ -375,7 +381,6 @@ pub fn fold_valuetype<F: Fold + ?Sized>(folder: &mut F, mut v: ValueTy) -> Value
         .into_iter()
         .map(|m| folder.fold_member(m))
         .collect();
-    v.definitions = v.definitions.into_iter().map(|id| id).collect();
     v
 }
 
@@ -388,8 +393,9 @@ pub fn fold_except_ty<F: Fold + ?Sized>(folder: &mut F, mut e: ExceptTy) -> Exce
     e
 }
 
-pub fn fold_module_ty<F: Fold + ?Sized>(_folder: &mut F, mut m: ModuleTy) -> ModuleTy {
-    m.definitions = m.definitions.into_iter().map(|id| id).collect();
+pub fn fold_module_ty<F: Fold + ?Sized>(_folder: &mut F, m: ModuleTy) -> ModuleTy {
+    // Module definitions are DefIds - they will be folded when their definitions are processed
+    // in the main transform loop. We don't need to fold them here.
     m
 }
 

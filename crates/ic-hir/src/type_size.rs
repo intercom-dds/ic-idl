@@ -472,7 +472,7 @@ mod tests {
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Enum(EnumTy {
-                ty: make_primitive_type(PrimitiveTy::Int32),
+                ty: PrimitiveTy::Int32,
                 fields: vec![],
             }),
         });
@@ -501,7 +501,7 @@ mod tests {
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Bitmask(BitmaskTy {
-                ty: make_primitive_type(PrimitiveTy::UInt16),
+                ty: PrimitiveTy::UInt16,
                 flags: vec![],
             }),
         });

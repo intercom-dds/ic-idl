@@ -637,20 +637,6 @@ static void emit_literal(Twine& out, const T& value, int base, std::streamsize p
     out(stream.str());
 }
 
-static std::string member_id(const ptree* mem) {
-    int last_id = -1;
-    for (auto elem : mem->super->members) {
-        last_id = get_member_id(elem, mem->super, last_id);
-        if (elem == mem) {
-            break;
-        }
-    }
-
-    Twine out;
-    emit_literal(out, last_id, 10);
-    return out.str();
-}
-
 static void emit_const_value(Twine& out, const numeric& val, const ptree* node, const ptree* ctx) {
     switch (val.kind()) {
     case UNDEF_KIND: {

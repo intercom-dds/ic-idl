@@ -129,7 +129,7 @@ static void annotate_any(parser_state* state, ptree* node) {
         if (node->kind == N_MEMBER) {
             auto base = base_type_of(node->type);
             if (base == &object_type || base == &any_type) {
-                create_annotation_start(state, "@non_serialized");
+                create_annotation_start(state, "@non_serialized", annotation_type_non_serialized);
                 annotate(state, node, create_annotation_finish(state, nullptr));
             }
         } else {
@@ -250,7 +250,7 @@ static void replace_native(parser_state* state) {
     auto to_bitmask = [&](const char* name, const char* new_name) {
         if (auto node = state->lookup_node(name)) {
             auto handle = create_bitmask(state, new_name, nullptr);
-            create_annotation_start(state, "@ext::suppress");
+            create_annotation_start(state, "@ext::suppress", annotation_type_ext_suppress);
             annotate(state, handle, create_annotation_finish(state, nullptr));
 
             auto next = node->next;

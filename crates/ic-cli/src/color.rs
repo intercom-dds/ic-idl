@@ -353,7 +353,7 @@ pub fn should_colorize<W: std::io::IsTerminal>(mode: ColorMode, stream: W) -> bo
 
 #[cfg(windows)]
 fn virtual_term() -> bool {
-    extern "C" {
+    unsafe extern "C" {
         fn GetStdHandle(handle: u32) -> isize;
         fn GetConsoleMode(handle: isize, lp_mode: *mut u32) -> i32;
         fn SetConsoleMode(handle: isize, dw_mode: u32) -> i32;

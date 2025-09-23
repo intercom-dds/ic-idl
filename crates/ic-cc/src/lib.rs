@@ -66,12 +66,16 @@ where
     // Add system includes
     for sys in SYSTEM_INCLUDES {
         compiler.flag_if_supported(format!("-isystem{sys}"));
-        compiler.flag_if_supported(format!("/external:I{sys}"));
+
+        if compiler.get_compiler().is_like_msvc() {
+            compiler.flag(format!("/external:I{sys}"));
+        }
     }
 
     // Enable exceptions for clang-cl and enable C++17 support
     if compiler.get_compiler().is_like_msvc() {
         compiler.flag("/EHsc");
+        compiler.flag(format!("/external:W0"));
     }
 
     // Upgrade warnings to errors in CI pipelines

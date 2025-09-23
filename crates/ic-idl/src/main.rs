@@ -189,45 +189,117 @@ fn generate_code(
     options: &CompilerOptions,
     ptree: &ic_idl::ptree::ParseResult,
 ) -> Result<Vec<File>, util::Error> {
-    let backends: &[(_, fn(_) -> _)] = &[
-        (&options.codegen.cpp_out, ic_codegen_cxx::codegen_cpp),
-        (&options.codegen.idl_out, ic_codegen_idl::codegen_idl),
-        (&options.codegen.json_out, ic_codegen_json::codegen_json),
-        (&options.codegen.xml_out, ic_codegen_xml::codegen_xml),
-        (&options.codegen.rust_out, ic_codegen_rust::codegen_rust),
-        (
-            &options.codegen.proto_out,
-            ic_codegen_protobuf::codegen_proto,
-        ),
-        (
-            &options.codegen.python_out,
-            ic_codegen_python::codegen_python,
-        ),
-    ];
-
     let mut generated = vec![];
-    for (dir, backend) in backends
-        .iter()
-        .filter_map(|(v, t)| v.as_ref().map(|v| (v, t)))
-    {
-        let dir = std::path::absolute(dir)?;
 
-        if options.purge_dirs {
-            util::safe_purge(&dir)?;
-            std::fs::create_dir_all(&dir)?;
-        }
+    if let Some(output_dir) = &options.codegen.cpp_out {
+        let files = invoke_backend(
+            output_dir,
+            ic_codegen_cxx::codegen_cpp,
+            ptree,
+            options.cpp.clone(),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
 
-        // Invoke the backend and update the file paths
-        let files = backend(ptree).into_iter().map(|v| match v {
+    if let Some(output_dir) = &options.codegen.rust_out {
+        let files = invoke_backend(
+            output_dir,
+            ic_codegen_rust::codegen_rust,
+            ptree,
+            options.rust.clone(),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
+    if let Some(output_dir) = &options.codegen.python_out {
+        let files = invoke_backend(
+            output_dir,
+            ic_codegen_python::codegen_python,
+            ptree,
+            options.python.clone(),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
+    if let Some(output_dir) = &options.codegen.idl_out {
+        let files = invoke_backend(
+            output_dir,
+            ic_codegen_idl::codegen_idl,
+            ptree,
+            options.idl.clone(),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
+    if let Some(output_dir) = &options.codegen.json_out {
+        let files = invoke_backend(
+            output_dir,
+            |ptree, _: ()| ic_codegen_json::codegen_json(ptree),
+            ptree,
+            (),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
+    if let Some(output_dir) = &options.codegen.xml_out {
+        let files = invoke_backend(
+            output_dir,
+            |ptree, _: ()| ic_codegen_xml::codegen_xml(ptree),
+            ptree,
+            (),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
+    if let Some(output_dir) = &options.codegen.proto_out {
+        let files = invoke_backend(
+            output_dir,
+            |ptree, _: ()| ic_codegen_protobuf::codegen_proto(ptree),
+            ptree,
+            (),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
+    Ok(generated)
+}
+
+fn invoke_backend<F, O>(
+    output_dir: &std::path::Path,
+    backend_fn: F,
+    ptree: &ic_idl::ptree::ParseResult,
+    options: O,
+    purge_dirs: bool,
+) -> Result<Vec<File>, util::Error>
+where
+    F: FnOnce(&ic_idl::ptree::ParseResult, O) -> Vec<File>,
+{
+    let dir = std::path::absolute(output_dir)?;
+
+    if purge_dirs {
+        util::safe_purge(&dir)?;
+        std::fs::create_dir_all(&dir)?;
+    }
+
+    let files = backend_fn(ptree, options)
+        .into_iter()
+        .map(move |v| match v {
             File::Generated { path, source } => File::Generated {
-                path: dir.join(path),
+                path: output_dir.join(path),
                 source,
             },
             File::Dep(_) => v,
-        });
-        generated.extend(files);
-    }
-    Ok(generated)
+        })
+        .collect();
+
+    Ok(files)
 }
 
 fn write_files(files: &[File]) -> std::io::Result<()> {

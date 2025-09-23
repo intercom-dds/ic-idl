@@ -51,6 +51,8 @@ struct Config {
     bool use_fmtlib = false;
     bool use_wstring = false;
     bool no_typesupport = false;
+    bool rust_must_use = false;
+    bool python_use_pep8 = false;
 
     std::string cpp_header_postfix = "h";
     std::string dll_exp_sym;

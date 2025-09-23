@@ -157,8 +157,6 @@ static intercom::cidl::PrettyPrinter idl_annotations(
         if (suppress.find(ann->type) != suppress.end() || ann->type == annotation_type_doc) {
             continue;
         }
-        // Annotations are emitted as as Doxygen comments instead since Doxygen
-        // doesn't like IDL annotations.
         if (CommandLineOption::doxy_compatible_output()) {
             continue;
         }
@@ -757,7 +755,6 @@ static void code_gen_idl_rec(const ptree* obj, ModuleMap& out) {
     code_gen_idl_comments_post(obj, out);
     OUT << endl;
 
-    // this code will output the generated idl.
     if (CommandLineOption::expand_idl()) {
         for (auto gen : obj->generated) {
             code_gen_idl_rec(gen, out);
@@ -873,7 +870,15 @@ void intercom::cidl::code_gen_idl(const parse_result* result, ic_list_t* list) {
 }
 
 extern "C" {
-void ic_codegen_idl(const parse_result* result, ic_list_t* list) {
+struct idl_options_t {
+    uint8_t doxygen;
+    uint8_t expand;
+};
+void ic_codegen_idl(const parse_result* result, idl_options_t options, ic_list_t* list) {
+    auto& config = CommandLineOption::get_instance();
+    config.doxy_compatible_output = options.doxygen != 0;
+    config.expand_idl = options.expand != 0;
+
     intercom::cidl::code_gen_idl(result, list);
 }
 }

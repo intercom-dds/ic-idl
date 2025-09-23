@@ -25,35 +25,101 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::ffi::CString;
+
+use ic_cli::Command;
 use ic_emit::File;
 use ic_ptree::ParseResult;
+
+#[derive(Command, Debug, Default, Clone)]
+pub struct CppOptions {
+    /// Generate scoped enums
+    #[option(long)]
+    pub scoped_enums: bool,
+
+    /// Use access functions instead of direct member access
+    #[option(long)]
+    pub access_functions: bool,
+
+    /// Do not generate ostream operators for serialization
+    #[option(long)]
+    pub no_stream_op: bool,
+
+    /// Generate formatting specializations for fmtlib
+    #[option(long)]
+    pub use_fmt: bool,
+
+    /// Use <sym> as dllexport symbol
+    #[option(long, arg = "sym")]
+    pub dll_export: Option<String>,
+
+    /// Use <ext> as file extension for C++ headers
+    #[option(long, arg = "ext")]
+    pub header_ext: Option<String>,
+
+    /// Store header files inside a subfolder
+    #[option(long, arg = "dir")]
+    pub header_subfolder: Option<String>,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+#[allow(non_camel_case_types)]
+struct cpp_options_t {
+    pub header_postfix: *const ::std::os::raw::c_char,
+    pub header_subfolder: *const ::std::os::raw::c_char,
+    pub header_ext: *const ::std::os::raw::c_char,
+    pub dll_export: *const ::std::os::raw::c_char,
+    pub scoped_enums: u8,
+    pub access_functions: u8,
+    pub no_stream_op: u8,
+    pub use_fmt: u8,
+}
 
 unsafe extern "C" {
     fn ic_codegen_cpp(
         result: *const ic_ptree::sys::parse_result,
-        options: ic_ptree::sys::cpp_options_t,
+        options: cpp_options_t,
         list: *mut ic_ptree::sys::ic_list_t,
     );
 }
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_cpp(result: &ParseResult) -> Vec<File> {
-    let options = ic_ptree::sys::cpp_options_t {
+pub fn codegen_cpp(result: &ParseResult, options: CppOptions) -> Vec<File> {
+    let header_subfolder = options
+        .header_subfolder
+        .as_ref()
+        .map(|s| CString::new(s.as_str()).expect("Invalid header_subfolder"));
+
+    let header_ext = options
+        .header_ext
+        .as_ref()
+        .map(|s| CString::new(s.as_str()).expect("Invalid header_ext"));
+
+    let dll_export = options
+        .dll_export
+        .as_ref()
+        .map(|s| CString::new(s.as_str()).expect("Invalid dll_export"));
+
+    let ffi_options = cpp_options_t {
         header_postfix: std::ptr::null(),
-        header_ext: std::ptr::null(),
-        dll_export: std::ptr::null(),
-        scoped_enums: 0,
-        access_functions: 0,
-        no_stream_op: 0,
-        use_fmt: 0,
+        header_subfolder: header_subfolder
+            .as_ref()
+            .map_or(std::ptr::null(), |s| s.as_ptr()),
+        header_ext: header_ext.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        dll_export: dll_export.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        scoped_enums: u8::from(options.scoped_enums),
+        access_functions: u8::from(options.access_functions),
+        no_stream_op: u8::from(options.no_stream_op),
+        use_fmt: u8::from(options.use_fmt),
     };
 
     let mut generated = vec![];
     unsafe {
         ic_codegen_cpp(
             result.as_raw(),
-            options,
+            ffi_options,
             std::ptr::addr_of_mut!(generated).cast::<_>(),
         );
     }

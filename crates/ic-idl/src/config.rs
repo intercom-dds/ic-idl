@@ -189,83 +189,19 @@ pub struct Options {
     pub files: Vec<PathBuf>,
 
     #[option(section = "c++ options")]
-    pub cpp: CppOptions,
+    pub cpp: ic_codegen_cxx::CppOptions,
 
     #[option(section = "rust options")]
-    pub rust: RustOptions,
+    pub rust: ic_codegen_rust::RustOptions,
 
     #[option(section = "python options")]
-    pub python: PythonOptions,
+    pub python: ic_codegen_python::PythonOptions,
 
     #[option(section = "idl options")]
-    pub idl: IdlOptions,
+    pub idl: ic_codegen_idl::IdlOptions,
 
     #[option(section = "backends")]
     pub codegen: CodegenOptions,
-}
-
-#[derive(Command, Debug, Default)]
-pub struct CppOptions {
-    /// Generate scoped enums
-    #[option(long)]
-    pub scoped_enums: bool,
-
-    /// Use access functions instead of direct member access
-    #[option(long)]
-    pub access_functions: bool,
-
-    /// Do not generate ostream operators for serialization
-    #[option(long)]
-    pub no_stream_op: bool,
-
-    /// Generate formatting specializations for fmtlib
-    #[option(long)]
-    pub use_fmt: bool,
-
-    /// Use <sym> as dllexport symbol
-    #[option(long, arg = "sym")]
-    pub dll_export: Option<String>,
-
-    /// Use <ext> as file extension for C++ headers
-    #[option(long, arg = "ext")]
-    pub header_ext: Option<String>,
-
-    /// Store header files inside a subfolder
-    #[option(long, arg = "dir")]
-    pub header_subfolder: Option<String>,
-}
-
-#[derive(Command, Debug, Default)]
-pub struct RustOptions {
-    /// Do not rename generated types
-    #[option(long)]
-    pub no_rename: bool,
-
-    /// Annotate all types with `#[must_use]`
-    #[option(long)]
-    pub must_use: bool,
-}
-
-#[derive(Command, Debug, Default)]
-pub struct PythonOptions {
-    /// Rename all types to conform to PEP-8
-    #[option(long)]
-    pub use_pep8: bool,
-
-    /// Postfix to use for global modules
-    #[option(long)]
-    pub global_postfix: Option<String>,
-}
-
-#[derive(Command, Debug, Default)]
-pub struct IdlOptions {
-    /// Output Doxygen-compatible IDL files
-    #[option(long)]
-    pub idl_doxygen: bool,
-
-    /// Expand @DDSService interfaces
-    #[option(long)]
-    pub idl_expand: bool,
 }
 
 #[derive(Command, Debug, Default)]

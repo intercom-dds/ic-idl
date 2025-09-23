@@ -3207,6 +3207,9 @@ static void cpl_saveit(const ptree* tree, const std::string& module, ic_list_t* 
         );
 
         auto header_path = fmt::format("{}.{}", module, CommandLineOption::cpp_header_postfix());
+        if (CommandLineOption::header_subfolder()) {
+            header_path = fmt::format("{}/{}", CommandLineOption::header_subfolder(), header_path);
+        }
         ic_push_source(list, header_path.c_str(), s_pk_file.memfile);
 
         auto src_path = fmt::format("{}.cpp", module);
@@ -3250,6 +3253,7 @@ extern "C" {
 
 struct cpp_options_t {
     const char* header_postfix;
+    const char* header_subfolder;
     const char* header_ext;
     const char* dll_export;
     uint8_t scoped_enums;
@@ -3269,6 +3273,9 @@ void ic_codegen_cpp(
     }
     if (options.header_postfix) {
         config.cpp_header_postfix = options.header_postfix;
+    }
+    if (options.header_subfolder) {
+        config.header_subfolder = options.header_subfolder;
     }
     if (options.dll_export) {
         config.dll_exp_sym = options.dll_export;

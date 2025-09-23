@@ -910,7 +910,9 @@ static void emit_struct_impl(Twine& out, const ptree* node) {
     out("impl ", node, " {\n");
 
     // constructor
-    out("#[must_use]\n");
+    if (CommandLineOption::get_instance().rust_must_use) {
+        out("#[must_use]\n");
+    }
     out("pub fn new() -> Self {\n");
     out("Self {");
     for (auto mem : struct_members(node)) {
@@ -956,7 +958,9 @@ static void emit_union_def(Twine& out, const ptree* node) {
 
 static void emit_union_impl(Twine& out, const ptree* node) {
     out("impl ", node, " {\n");
-    out("#[must_use]\n");
+    if (CommandLineOption::get_instance().rust_must_use) {
+        out("#[must_use]\n");
+    }
     out("pub fn new() -> Self {\n");
 
     auto def_mem = default_union_member(node);
@@ -970,7 +974,9 @@ static void emit_union_impl(Twine& out, const ptree* node) {
 
     // Function for deducing the discriminant from the populated enum variant
     auto disc = rust_type(node->discriminator->type, node);
-    out("#[must_use]\n");
+    if (CommandLineOption::get_instance().rust_must_use) {
+        out("#[must_use]\n");
+    }
     out("pub const fn disc(&self) -> ", disc, " {\n");
     out("match self {\n");
 
@@ -1034,7 +1040,9 @@ static void emit_enum_def(Twine& out, const ptree* node) {
 
 static void emit_enum_impl(Twine& out, const ptree* node) {
     out("impl ", node, " {\n");
-    out("#[must_use]\n");
+    if (CommandLineOption::get_instance().rust_must_use) {
+        out("#[must_use]\n");
+    }
     out("pub const fn new() -> Self {\n");
     emit_default_value(out, node, node);
     out("\n");
@@ -1082,7 +1090,9 @@ static void emit_bitmask_def(Twine& out, const ptree* node) {
 
 static void emit_bitmask_impl(Twine& out, const ptree* node) {
     out("impl ", node, " {\n");
-    out("#[must_use]\n");
+    if (CommandLineOption::get_instance().rust_must_use) {
+        out("#[must_use]\n");
+    }
     out("pub fn new() -> Self {\n");
     emit_default_value(out, node, node);
     out("\n");
@@ -1801,7 +1811,16 @@ void intercom::cidl::code_gen_rust(const parse_result* result, ic_list_t* list) 
 }
 
 extern "C" {
-void ic_codegen_rust(const parse_result* result, ic_list_t* list) {
+struct rust_options_t {
+    uint8_t no_rename;
+    uint8_t must_use;
+};
+
+void ic_codegen_rust(const parse_result* result, rust_options_t options, ic_list_t* list) {
+    auto& config = CommandLineOption::get_instance();
+    config.no_rename = options.no_rename != 0;
+    config.rust_must_use = options.must_use != 0;
+
     intercom::cidl::code_gen_rust(result, list);
 }
 }

@@ -62,6 +62,7 @@ mod ffi;
 pub mod printer;
 
 /// Represents a file in the code generation output.
+#[derive(Debug)]
 pub enum File {
     /// A dependency file that should be tracked but not generated.
     Dep(String),

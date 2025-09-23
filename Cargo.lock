@@ -108,6 +108,7 @@ name = "ic-codegen-cxx"
 version = "0.1.0"
 dependencies = [
  "ic-cc",
+ "ic-cli",
  "ic-emit",
  "ic-ptree",
 ]
@@ -117,6 +118,7 @@ name = "ic-codegen-idl"
 version = "0.1.0"
 dependencies = [
  "ic-cc",
+ "ic-cli",
  "ic-emit",
  "ic-ptree",
 ]
@@ -145,6 +147,7 @@ name = "ic-codegen-python"
 version = "0.1.0"
 dependencies = [
  "ic-cc",
+ "ic-cli",
  "ic-emit",
  "ic-ptree",
 ]
@@ -154,6 +157,7 @@ name = "ic-codegen-rust"
 version = "0.1.0"
 dependencies = [
  "ic-cc",
+ "ic-cli",
  "ic-emit",
  "ic-ptree",
 ]

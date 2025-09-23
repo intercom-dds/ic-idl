@@ -25,23 +25,59 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::ffi::CString;
+
+use ic_cli::Command;
 use ic_emit::File;
 use ic_ptree::ParseResult;
+
+#[derive(Command, Debug, Default, Clone)]
+pub struct PythonOptions {
+    /// Rename all types to conform to PEP-8
+    #[option(long)]
+    pub use_pep8: bool,
+
+    /// Postfix to use for global modules
+    #[option(long)]
+    pub global_postfix: Option<String>,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+#[allow(non_camel_case_types)]
+struct python_options_t {
+    pub use_pep8: u8,
+    pub global_postfix: *const ::std::os::raw::c_char,
+}
 
 unsafe extern "C" {
     fn ic_codegen_python(
         result: *const ic_ptree::sys::parse_result,
+        options: python_options_t,
         list: *mut ic_ptree::sys::ic_list_t,
     );
 }
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_python(result: &ParseResult) -> Vec<File> {
+pub fn codegen_python(result: &ParseResult, options: PythonOptions) -> Vec<File> {
+    let global_postfix = options
+        .global_postfix
+        .as_ref()
+        .map(|s| CString::new(s.as_str()).expect("Invalid global_postfix"));
+
+    let ffi_options = python_options_t {
+        use_pep8: u8::from(options.use_pep8),
+        global_postfix: global_postfix
+            .as_ref()
+            .map_or(std::ptr::null(), |s| s.as_ptr()),
+    };
+
     let mut generated = vec![];
     unsafe {
         ic_codegen_python(
             result.as_raw(),
+            ffi_options,
             std::ptr::addr_of_mut!(generated).cast::<_>(),
         );
     }

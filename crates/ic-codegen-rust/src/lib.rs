@@ -25,25 +25,50 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-extern crate ic_ptree;
-
+use ic_cli::Command;
 use ic_emit::File;
 use ic_ptree::ParseResult;
+
+#[derive(Command, Debug, Default, Clone)]
+pub struct RustOptions {
+    /// Do not rename generated types
+    #[option(long)]
+    pub no_rename: bool,
+
+    /// Annotate all types with `#[must_use]`
+    #[option(long)]
+    pub must_use: bool,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+#[allow(non_camel_case_types)]
+struct rust_options_t {
+    pub no_rename: u8,
+    pub must_use: u8,
+}
 
 unsafe extern "C" {
     fn ic_codegen_rust(
         result: *const ic_ptree::sys::parse_result,
+        options: rust_options_t,
         list: *mut ic_ptree::sys::ic_list_t,
     );
 }
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_rust(result: &ParseResult) -> Vec<File> {
+pub fn codegen_rust(result: &ParseResult, options: RustOptions) -> Vec<File> {
+    let ffi_options = rust_options_t {
+        no_rename: u8::from(options.no_rename),
+        must_use: u8::from(options.must_use),
+    };
+
     let mut generated = vec![];
     unsafe {
         ic_codegen_rust(
             result.as_raw(),
+            ffi_options,
             std::ptr::addr_of_mut!(generated).cast::<_>(),
         );
     }

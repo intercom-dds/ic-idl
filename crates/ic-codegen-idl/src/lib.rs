@@ -25,23 +25,50 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_cli::Command;
 use ic_emit::File;
 use ic_ptree::ParseResult;
+
+#[derive(Command, Debug, Default, Clone)]
+pub struct IdlOptions {
+    /// Output Doxygen-compatible IDL files
+    #[option(long)]
+    pub idl_doxygen: bool,
+
+    /// Expand @DDSService interfaces
+    #[option(long)]
+    pub idl_expand: bool,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+#[allow(non_camel_case_types)]
+struct idl_options_t {
+    pub doxygen: u8,
+    pub expand: u8,
+}
 
 unsafe extern "C" {
     fn ic_codegen_idl(
         result: *const ic_ptree::sys::parse_result,
+        options: idl_options_t,
         list: *mut ic_ptree::sys::ic_list_t,
     );
 }
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_idl(result: &ParseResult) -> Vec<File> {
+pub fn codegen_idl(result: &ParseResult, options: IdlOptions) -> Vec<File> {
+    let ffi_options = idl_options_t {
+        doxygen: u8::from(options.idl_doxygen),
+        expand: u8::from(options.idl_expand),
+    };
+
     let mut generated = vec![];
     unsafe {
         ic_codegen_idl(
             result.as_raw(),
+            ffi_options,
             std::ptr::addr_of_mut!(generated).cast::<_>(),
         );
     }

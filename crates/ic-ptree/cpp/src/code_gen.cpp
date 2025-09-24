@@ -40,7 +40,7 @@
 #include "cidl/ptree_helpers.h"
 
 static bool is_path_sep(char c) {
-#ifdef INTERCOM_PLATFORM_WINDOWS
+#ifdef _WIN32
     return c == '/' || c == '\\';
 #else
     return c == '/';

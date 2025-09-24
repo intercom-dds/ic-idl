@@ -29,6 +29,7 @@ use ic_diagnostic::{Label, error_span};
 use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
 
 use super::LoweringContext;
+use super::annotation_common::convert_annotations;
 use super::eval::ConstEvaluator;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
@@ -77,7 +78,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         };
 
         // Convert annotations before the closure
-        let annotations = self.convert_annotations(&c.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &c.annotations, self.current_scope);
 
         // Now create the definition fully formed
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -145,7 +146,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         };
 
         // Convert annotations before the closure
-        let annotations = self.convert_annotations(&e.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &e.annotations, self.current_scope);
 
         // Create the enum definition
         let enum_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -256,7 +257,8 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         is_explicit: bool,
     ) -> Option<DefId> {
         // Convert annotations before the closure
-        let annotations = self.convert_annotations(&enumerator.annotations, self.current_scope);
+        let annotations =
+            convert_annotations(self.ctx, &enumerator.annotations, self.current_scope);
 
         // Create enumerator as a constant
         let field_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -345,7 +347,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         };
 
         // Convert annotations
-        let flag_annotations = self.convert_annotations(&flag.annotations, self.current_scope);
+        let flag_annotations = convert_annotations(self.ctx, &flag.annotations, self.current_scope);
 
         let flag_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
@@ -395,7 +397,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: Vec::new(),
         };
 
-        let annotations = self.convert_annotations(&b.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &b.annotations, self.current_scope);
         let bitmask_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: b.ident.clone(),
@@ -522,7 +524,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
             // Convert annotations for the field
             let field_annotations =
-                self.convert_annotations(&field.annotations, self.current_scope);
+                convert_annotations(self.ctx, &field.annotations, self.current_scope);
 
             fields.push(BitsetField {
                 ident: field.ident.clone(),
@@ -536,7 +538,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let bitset_ty = BitsetTy { parent, fields };
 
         // Convert annotations before the closure
-        let annotations = self.convert_annotations(&b.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &b.annotations, self.current_scope);
 
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
@@ -583,7 +585,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         );
 
         // Convert annotations before the closure
-        let annotations = self.convert_annotations(&a.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
 
         // Create a placeholder annotation definition first
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {

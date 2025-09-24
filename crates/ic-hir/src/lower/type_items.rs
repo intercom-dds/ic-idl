@@ -30,6 +30,7 @@
 use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
 
 use super::LoweringContext;
+use super::annotation_common::convert_annotations;
 use super::eval::ConstEvaluator;
 use super::registry::DefKindTag;
 use super::type_resolver::TypeResolver;
@@ -85,7 +86,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process a struct definition.
     pub fn process_struct(&mut self, s: &StructDef) -> DefId {
-        let annotations = self.convert_annotations(&s.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &s.annotations, self.current_scope);
 
         // Create a placeholder definition first
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -141,8 +142,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None
         };
 
-        // Create scope and process members (struct is now in scope)
-        let (_scope, members) = self.process_members(&s.members);
+        // Process members (struct is now in scope)
+        let members = self.process_members(&s.members);
 
         // Update the definition with the actual struct data
         let def = self.ctx.context.definitions.get_mut(def_id);
@@ -158,7 +159,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_interface(&mut self, i: &InterfaceDef) -> DefId {
         let mut parents = Vec::new();
         let mut definitions = Vec::new();
-        let annotations = self.convert_annotations(&i.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &i.annotations, self.current_scope);
 
         for parent_path in &i.inherits {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -274,7 +275,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process a union definition.
     pub fn process_union(&mut self, u: &UnionDef) -> DefId {
-        let annotations = self.convert_annotations(&u.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &u.annotations, self.current_scope);
 
         // Create a placeholder union declaration first
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -314,7 +315,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         });
 
         // Convert discriminator annotations
-        let disc_annotations = self.convert_annotations(&u.disc.annotations, self.current_scope);
+        let disc_annotations =
+            convert_annotations(self.ctx, &u.disc.annotations, self.current_scope);
 
         // Validate that discriminator is an enum, integral type, boolean, or char
         let is_valid_discriminator = match &disc_ty.kind {
@@ -375,7 +377,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         // Resolve parent and supports
         let parent = self.resolve_valuetype_parent(v);
         let supports = self.resolve_valuetype_supports(v);
-        let annotations = self.convert_annotations(&v.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &v.annotations, self.current_scope);
 
         // Create scope for valuetype members
         let scope = self.ctx.context.scopes.create_child_scope(
@@ -575,13 +577,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         def_id
     }
 
-    /// Process members and create a scope for them.
-    fn process_members(&mut self, fields: &[ic_syntax::Field]) -> (ScopeId, Vec<Member>) {
-        let scope = self.ctx.context.scopes.create_child_scope(
-            self.current_scope,
-            "_members_".to_string(),
-            None,
-        );
+    /// Process members.
+    fn process_members(&mut self, fields: &[ic_syntax::Field]) -> Vec<Member> {
         let mut members = Vec::new();
 
         for field in fields {
@@ -592,7 +589,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             };
 
             // Convert field annotations
-            let annotations = self.convert_annotations(&field.annotations, self.current_scope);
+            let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
 
             // Process each declarator in the field
             for decl in &field.names {
@@ -608,7 +605,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             }
         }
 
-        (scope, members)
+        members
     }
 
     /// Process union variants.
@@ -620,7 +617,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut variants = Vec::new();
 
         for field in fields {
-            let annotations = self.convert_annotations(&field.annotations, self.current_scope);
+            let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
             match &field.field {
                 ic_syntax::UnionElement::Member(member) => {
                     // Resolve the type for this variant
@@ -819,7 +816,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     /// Process a type alias definition.
     pub fn process_alias(&mut self, a: &AliasDef) -> Vec<DefId> {
         let mut def_ids = Vec::new();
-        let annotations = self.convert_annotations(&a.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
 
         // Type aliases can have multiple declarators, process each one
         for decl in &a.decl {
@@ -860,10 +857,10 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process an exception definition.
     pub fn process_exception(&mut self, e: &ExceptDef) -> DefId {
-        let annotations = self.convert_annotations(&e.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &e.annotations, self.current_scope);
 
         // Process exception members (similar to struct members)
-        let (_scope, members) = self.process_members(&e.members);
+        let members = self.process_members(&e.members);
 
         // Create the exception definition
         let except_ty = ExceptTy { members };

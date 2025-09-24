@@ -30,7 +30,7 @@ use common::parse_and_resolve;
 
 #[test]
 fn test_duplicate_bitset_detection() {
-    let idl = r#"
+    let idl = r"
         bitset Flags {
             bitfield<1> enable;
             bitfield<1> ready;
@@ -40,7 +40,7 @@ fn test_duplicate_bitset_detection() {
         bitset Flags {
             bitfield<2> status;
         };
-    "#;
+    ";
 
     let (result, _, diagnostics) = parse_and_resolve(idl);
     assert!(
@@ -52,7 +52,7 @@ fn test_duplicate_bitset_detection() {
 
 #[test]
 fn test_case_insensitive_duplicate_bitset() {
-    let idl = r#"
+    let idl = r"
         bitset Config {
             bitfield<8> mode;
         };
@@ -61,7 +61,7 @@ fn test_case_insensitive_duplicate_bitset() {
         bitset CONFIG {
             bitfield<16> value;
         };
-    "#;
+    ";
 
     let (result, _, diagnostics) = parse_and_resolve(idl);
     assert!(
@@ -73,7 +73,7 @@ fn test_case_insensitive_duplicate_bitset() {
 
 #[test]
 fn test_bitset_in_different_scopes() {
-    let idl = r#"
+    let idl = r"
         bitset Status {
             bitfield<4> code;
         };
@@ -84,7 +84,7 @@ fn test_bitset_in_different_scopes() {
                 bitfield<8> value;
             };
         };
-    "#;
+    ";
 
     let (result, _, _) = parse_and_resolve(idl);
     assert!(result.errors.is_empty());
@@ -92,7 +92,7 @@ fn test_bitset_in_different_scopes() {
 
 #[test]
 fn test_multiple_bitsets_unique_names() {
-    let idl = r#"
+    let idl = r"
         bitset Flags1 {
             bitfield<1> enable;
         };
@@ -104,7 +104,7 @@ fn test_multiple_bitsets_unique_names() {
         bitset Flags3 {
             bitfield<1> reset;
         };
-    "#;
+    ";
 
     let (result, _, _) = parse_and_resolve(idl);
     assert!(result.errors.is_empty());

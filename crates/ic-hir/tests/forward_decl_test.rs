@@ -179,3 +179,70 @@ fn test_valuetype_forward_declaration() {
         result.errors
     );
 }
+
+#[test]
+fn test_native_declarations_not_undefined() {
+    let input = r"
+        // Native declarations should remain as declarations
+        native NativeHandle;
+        
+        // Can use native types in other definitions
+        struct Container {
+            NativeHandle handle;
+        };
+    ";
+
+    let (result, _, _) = common::parse_and_resolve(input);
+    assert!(
+        result.errors.is_empty(),
+        "Native declarations should not produce errors: {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn test_undefined_forward_declarations_with_native() {
+    let input = r"
+        // These should error (forward declarations without definitions)
+        struct UndefinedStruct;
+        interface UndefinedInterface;
+        
+        // This should NOT error (native declaration)
+        native NativeType;
+        
+        // Using the types
+        struct Container {
+            NativeType native_field;
+        };
+    ";
+
+    let (result, _, _) = common::parse_and_resolve(input);
+
+    // Should have exactly 2 errors for the undefined struct and interface
+    assert_eq!(
+        result.errors.len(),
+        2,
+        "Expected 2 errors for undefined forward declarations, got: {:?}",
+        result.errors
+    );
+
+    // Verify the errors are about the right types
+    let error_messages: Vec<_> = result.errors.iter().map(|e| format!("{e}")).collect();
+
+    assert!(
+        error_messages
+            .iter()
+            .any(|msg| msg.contains("UndefinedStruct")),
+        "Should have error about UndefinedStruct"
+    );
+    assert!(
+        error_messages
+            .iter()
+            .any(|msg| msg.contains("UndefinedInterface")),
+        "Should have error about UndefinedInterface"
+    );
+    assert!(
+        !error_messages.iter().any(|msg| msg.contains("NativeType")),
+        "Should NOT have error about NativeType"
+    );
+}

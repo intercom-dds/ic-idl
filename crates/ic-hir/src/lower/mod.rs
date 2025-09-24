@@ -37,10 +37,9 @@ use ic_diagnostic::Diag;
 use ic_syntax::Item;
 
 use crate::Context;
-use crate::hir::{DefFlags, DefId, DefKind, Ty, TyKind, TypeId};
+use crate::hir::{Decl, DefFlags, DefId, DefKind, Ty, TyKind, TypeId};
 
 mod annotation_common;
-mod annotations;
 mod builder;
 mod eval;
 mod initializers;
@@ -48,7 +47,6 @@ mod registry;
 mod type_items;
 mod type_resolver;
 mod utils;
-mod validator;
 mod value_items;
 
 pub use registry::DefinitionRegistry;
@@ -134,9 +132,7 @@ where
     // Check for undefined forward declarations
     check_undefined_forward_decls(&mut context);
 
-    // Phase 2: Validation
-    let validator = validator::Validator::new(&context);
-    validator.validate();
+    // Phase 2: Validation is done through lints, not here
 
     // Extract results
     let LoweringContext {
@@ -358,7 +354,12 @@ fn check_undefined_forward_decls(ctx: &mut LoweringContext) {
     // Check ALL forward declarations in the context, not just top-level ones
     // The registry tracks all forward declarations, including nested ones
     for (def_id, def) in &ctx.context.definitions {
-        if let DefKind::Decl(_) = &def.kind {
+        if let DefKind::Decl(decl_kind) = &def.kind {
+            // Native declarations are meant to stay as declarations - skip them
+            if matches!(decl_kind, Decl::Native) {
+                continue;
+            }
+
             // This is a forward declaration - check if it has a matching definition
             if !mapping.contains_key(&def_id) {
                 ctx.diagnostics.errors.push(error_span(

@@ -185,8 +185,11 @@ impl<'ctx> HirBuilder<'ctx> {
 
         // Save current scope and switch to module scope
         let prev_scope = self.current_scope;
-        let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
-        let annotations = processor.convert_annotations(&m.annotations, self.current_scope);
+        let annotations = super::annotation_common::convert_annotations(
+            self.ctx,
+            &m.annotations,
+            self.current_scope,
+        );
 
         // Create a placeholder module definition first
         let def_id = self

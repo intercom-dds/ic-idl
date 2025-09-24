@@ -174,12 +174,26 @@ pub trait Fold {
     }
 }
 
-pub fn fold_def<F: Fold + ?Sized>(folder: &mut F, mut def: Def) -> Def {
-    def.annotations = def
-        .annotations
+/// Helper function to fold a vector of annotations
+fn fold_annotations<F: Fold + ?Sized>(folder: &mut F, annotations: Vec<Ann>) -> Vec<Ann> {
+    annotations
         .into_iter()
         .map(|a| folder.fold_annotation(a))
-        .collect();
+        .collect()
+}
+
+/// Helper macro to fold a vector of items
+macro_rules! fold_vec {
+    ($folder:expr, $items:expr, $method:ident) => {
+        $items
+            .into_iter()
+            .map(|item| $folder.$method(item))
+            .collect()
+    };
+}
+
+pub fn fold_def<F: Fold + ?Sized>(folder: &mut F, mut def: Def) -> Def {
+    def.annotations = fold_annotations(folder, def.annotations);
 
     def.kind = match def.kind {
         DefKind::Annotation(a) => DefKind::Annotation(folder.fold_annotation_ty(a)),
@@ -306,11 +320,7 @@ pub fn fold_numeric<F: Fold + ?Sized>(folder: &mut F, num: Numeric) -> Numeric {
 }
 
 pub fn fold_struct_ty<F: Fold + ?Sized>(folder: &mut F, mut s: StructTy) -> StructTy {
-    s.members = s
-        .members
-        .into_iter()
-        .map(|m| folder.fold_member(m))
-        .collect();
+    s.members = fold_vec!(folder, s.members, fold_member);
     s
 }
 
@@ -320,17 +330,8 @@ pub fn fold_enum_ty<F: Fold + ?Sized>(_folder: &mut F, e: EnumTy) -> EnumTy {
 
 pub fn fold_union_ty<F: Fold + ?Sized>(folder: &mut F, mut u: UnionTy) -> UnionTy {
     u.disc.ty = folder.fold_ty(u.disc.ty);
-    u.disc.annotations = u
-        .disc
-        .annotations
-        .into_iter()
-        .map(|a| folder.fold_annotation(a))
-        .collect();
-    u.variants = u
-        .variants
-        .into_iter()
-        .map(|v| folder.fold_variant(v))
-        .collect();
+    u.disc.annotations = fold_annotations(folder, u.disc.annotations);
+    u.variants = fold_vec!(folder, u.variants, fold_variant);
     u
 }
 
@@ -346,12 +347,7 @@ pub fn fold_bitmask_ty<F: Fold + ?Sized>(_folder: &mut F, b: BitmaskTy) -> Bitma
 pub fn fold_bitset_ty<F: Fold + ?Sized>(folder: &mut F, mut b: BitsetTy) -> BitsetTy {
     for field in &mut b.fields {
         field.ty = folder.fold_ty(field.ty.clone());
-        field.annotations = field
-            .annotations
-            .clone()
-            .into_iter()
-            .map(|a| folder.fold_annotation(a))
-            .collect();
+        field.annotations = fold_annotations(folder, field.annotations.clone());
     }
     b
 }
@@ -363,44 +359,20 @@ pub fn fold_const_ty<F: Fold + ?Sized>(folder: &mut F, mut c: ConstTy) -> ConstT
 }
 
 pub fn fold_interface_ty<F: Fold + ?Sized>(folder: &mut F, mut i: InterfaceTy) -> InterfaceTy {
-    i.prototypes = i
-        .prototypes
-        .into_iter()
-        .map(|p| folder.fold_proto_ty(p))
-        .collect();
-    i.attributes = i
-        .attributes
-        .into_iter()
-        .map(|a| folder.fold_attribute(a))
-        .collect();
+    i.prototypes = fold_vec!(folder, i.prototypes, fold_proto_ty);
+    i.attributes = fold_vec!(folder, i.attributes, fold_attribute);
     i
 }
 
 pub fn fold_valuetype<F: Fold + ?Sized>(folder: &mut F, mut v: ValueTy) -> ValueTy {
-    v.prototypes = v
-        .prototypes
-        .into_iter()
-        .map(|p| folder.fold_proto_ty(p))
-        .collect();
-    v.attributes = v
-        .attributes
-        .into_iter()
-        .map(|a| folder.fold_attribute(a))
-        .collect();
-    v.members = v
-        .members
-        .into_iter()
-        .map(|m| folder.fold_member(m))
-        .collect();
+    v.prototypes = fold_vec!(folder, v.prototypes, fold_proto_ty);
+    v.attributes = fold_vec!(folder, v.attributes, fold_attribute);
+    v.members = fold_vec!(folder, v.members, fold_member);
     v
 }
 
 pub fn fold_except_ty<F: Fold + ?Sized>(folder: &mut F, mut e: ExceptTy) -> ExceptTy {
-    e.members = e
-        .members
-        .into_iter()
-        .map(|m| folder.fold_member(m))
-        .collect();
+    e.members = fold_vec!(folder, e.members, fold_member);
     e
 }
 
@@ -420,11 +392,7 @@ pub fn fold_annotation_ty<F: Fold + ?Sized>(folder: &mut F, mut a: AnnotationTy)
 
 pub fn fold_member<F: Fold + ?Sized>(folder: &mut F, mut m: Member) -> Member {
     m.ty = folder.fold_ty(m.ty);
-    m.annotations = m
-        .annotations
-        .into_iter()
-        .map(|a| folder.fold_annotation(a))
-        .collect();
+    m.annotations = fold_annotations(folder, m.annotations);
     m
 }
 
@@ -433,11 +401,7 @@ pub fn fold_variant<F: Fold + ?Sized>(folder: &mut F, mut v: Variant) -> Variant
     for label in &mut v.labels {
         label.value = folder.fold_numeric(label.value.clone());
     }
-    v.annotations = v
-        .annotations
-        .into_iter()
-        .map(|a| folder.fold_annotation(a))
-        .collect();
+    v.annotations = fold_annotations(folder, v.annotations);
     v
 }
 
@@ -448,11 +412,7 @@ pub fn fold_parameter<F: Fold + ?Sized>(folder: &mut F, mut p: Parameter) -> Par
 
 pub fn fold_proto_ty<F: Fold + ?Sized>(folder: &mut F, mut p: ProtoTy) -> ProtoTy {
     p.ty = folder.fold_ty(p.ty);
-    p.params = p
-        .params
-        .into_iter()
-        .map(|param| folder.fold_parameter(param))
-        .collect();
+    p.params = fold_vec!(folder, p.params, fold_parameter);
     p
 }
 

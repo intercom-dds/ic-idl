@@ -212,16 +212,17 @@ impl CommandLine {
     {
         match self.try_parse_args(iter) {
             Ok(v) => v,
-            Err(e) => {
-                match e {
-                    ParseError::Help(msg) => println!("{msg}"),
-                    ParseError::Status(msg) => {
-                        let error = "error:".red().bold();
-                        eprintln!("{error} {msg}");
-                    }
+            Err(e) => match e {
+                ParseError::Help(msg) => {
+                    println!("{msg}");
+                    std::process::exit(0);
                 }
-                std::process::exit(1);
-            }
+                ParseError::Status(msg) => {
+                    let error = "error:".red().bold();
+                    eprintln!("{error} {msg}");
+                    std::process::exit(1);
+                }
+            },
         }
     }
 

@@ -1,0 +1,25 @@
+---
+source: crates/ic-lint/tests/any_type.rs
+expression: test_lint_hir(source)
+---
+warning[any-type]: the 'any' type is not fully supported
+   ┌ test.idl:3:13
+   │
+ 2 │         interface Service {
+ 3 │             any getData();
+   ·             ^^^ 'any' type used here
+ 4 │             void setData(in any value);
+ 5 │         };
+   └──
+ help: consider using a concrete type
+
+warning[any-type]: the 'any' type is not fully supported
+   ┌ test.idl:4:29
+   │
+ 2 │         interface Service {
+ 3 │             any getData();
+ 4 │             void setData(in any value);
+   ·                             ^^^ 'any' type used here
+ 5 │         };
+   └──
+ help: consider using a concrete type

@@ -100,13 +100,13 @@ fn test_bitset_field_annotations() {
         };
         
         bitset Configuration {
-            @FieldInfo("System mode", 3)
+            @FieldInfo(description="System mode", maxValue=3)
             bitfield<3, unsigned short> mode;
             
-            @FieldInfo("Feature flags", 255)
+            @FieldInfo(description="Feature flags", maxValue=255)
             bitfield<8, unsigned short> features;
             
-            @FieldInfo("Reserved for future use", 31)
+            @FieldInfo(description="Reserved for future use", maxValue=31)
             bitfield<5, unsigned short> reserved;
         };
     "#;

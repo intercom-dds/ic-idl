@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/any_type.rs
+expression: test_lint_hir(source)
+---
+warning[any-type]: the 'any' type is not fully supported
+   ┌ test.idl:2:17
+   │
+ 2 │         typedef any AnyType;
+   ·                 ^^^ 'any' type used here
+ 3 │ 
+ 4 │         struct Container {
+ 5 │             AnyType item;
+   └──
+ help: consider using a concrete type

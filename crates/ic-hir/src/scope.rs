@@ -47,10 +47,12 @@ pub struct Scope {
     pub children: CaseMap<ScopeId>,
 
     /// Local definitions in this scope.
-    pub definitions: CaseMap<DefId>,
+    /// Uses Vec<DefId> to support multiple definitions with the same name (e.g., reopened modules)
+    pub definitions: CaseMap<Vec<DefId>>,
 
     /// Local annotation definitions in this scope (separate namespace).
-    pub annotations: CaseMap<DefId>,
+    /// Uses Vec<DefId> to support multiple definitions with the same name
+    pub annotations: CaseMap<Vec<DefId>>,
 }
 
 /// Unique identifier for a scope.
@@ -70,6 +72,10 @@ pub struct ScopeTree {
     /// Maps from `parent_scope` to a `CaseMap` of module names to (`scope_id`, `original_span`).
     /// This is only used during lowering to track module reopening.
     module_scopes: HashMap<ScopeId, CaseMap<(ScopeId, ic_syntax::Span)>>,
+
+    /// Reverse mapping from `DefId` to the scope that contains it.
+    /// This is maintained for efficient lookup.
+    def_to_scope: HashMap<DefId, ScopeId>,
 }
 
 impl Default for ScopeTree {
@@ -94,6 +100,7 @@ impl ScopeTree {
             scopes: vec![root_scope],
             root: ScopeId(0),
             module_scopes: HashMap::new(),
+            def_to_scope: HashMap::new(),
         }
     }
 
@@ -129,15 +136,25 @@ impl ScopeTree {
     }
 
     /// Adds a definition to a scope.
-    /// Returns the previous definition if one existed with the same name.
-    pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) -> Option<DefId> {
-        self.scopes[scope.0].definitions.insert(name, def_id)
+    /// Multiple definitions with the same name are allowed (e.g., reopened modules).
+    pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) {
+        Self::add_to_definitions(&mut self.scopes[scope.0].definitions, name, def_id);
+        // Update reverse mapping
+        self.def_to_scope.insert(def_id, scope);
     }
 
     /// Adds an annotation definition to a scope.
-    /// Returns the previous annotation definition if one existed with the same name.
-    pub fn add_annotation(&mut self, scope: ScopeId, name: String, def_id: DefId) -> Option<DefId> {
-        self.scopes[scope.0].annotations.insert(name, def_id)
+    /// Multiple definitions with the same name are allowed.
+    pub fn add_annotation(&mut self, scope: ScopeId, name: String, def_id: DefId) {
+        Self::add_to_definitions(&mut self.scopes[scope.0].annotations, name, def_id);
+    }
+
+    /// Helper to add a `DefId` to a `CaseMap<Vec<DefId>>`
+    fn add_to_definitions(definitions: &mut CaseMap<Vec<DefId>>, name: String, def_id: DefId) {
+        definitions
+            .entry(name)
+            .or_insert_with(Vec::new)
+            .push(def_id);
     }
 
     /// Gets a scope by ID.
@@ -160,8 +177,10 @@ impl ScopeTree {
             let scope = &self.scopes[scope_id.0];
 
             // Check local definitions
-            if let Some(&def_id) = scope.definitions.get(name) {
-                return Some(def_id);
+            if let Some(def_ids) = scope.definitions.get(name) {
+                if let Some(&def_id) = def_ids.last() {
+                    return Some(def_id);
+                }
             }
 
             // Check child scopes (for module names)
@@ -187,8 +206,10 @@ impl ScopeTree {
             let scope = &self.scopes[scope_id.0];
 
             // Check local annotation definitions
-            if let Some(&def_id) = scope.annotations.get(name) {
-                return Some(def_id);
+            if let Some(def_ids) = scope.annotations.get(name) {
+                if let Some(&def_id) = def_ids.last() {
+                    return Some(def_id);
+                }
             }
 
             // Move to parent
@@ -214,17 +235,19 @@ impl ScopeTree {
             let scope = &self.scopes[scope_id.0];
 
             // Check local definitions
-            if let Some(&def_id) = scope.definitions.get(name) {
-                // Found the definition - but check if it's accessible
-                // If we found it in an interface scope and we started outside that interface,
-                // it's not accessible
-                if self.is_interface_scope(scope_id, definitions)
-                    && !self.is_inside_scope(starting_scope, scope_id)
-                {
-                    // This type is inside an interface but we're outside - not accessible
-                    return None;
+            if let Some(def_ids) = scope.definitions.get(name) {
+                if let Some(&def_id) = def_ids.last() {
+                    // Found the definition - but check if it's accessible
+                    // If we found it in an interface scope and we started outside that interface,
+                    // it's not accessible
+                    if self.is_interface_scope(scope_id, definitions)
+                        && !self.is_inside_scope(starting_scope, scope_id)
+                    {
+                        // This type is inside an interface but we're outside - not accessible
+                        return None;
+                    }
+                    return Some(def_id);
                 }
-                return Some(def_id);
             }
 
             // Check child scopes (for module names and interfaces)
@@ -355,7 +378,10 @@ impl ScopeTree {
 
         if path.len() == 1 {
             // Single segment - check definitions
-            return scope_data.definitions.get(path[0]).copied();
+            if let Some(def_ids) = scope_data.definitions.get(path[0]) {
+                return def_ids.last().copied();
+            }
+            return None;
         }
 
         // Multi-segment path - first segment might be a definition or a child scope
@@ -368,11 +394,13 @@ impl ScopeTree {
 
         // If not a child scope, check if it's a definition (like an enum)
         // whose own scope we should look into
-        if let Some(&def_id) = scope_data.definitions.get(path[0]) {
-            // Find the scope for this definition
-            if let Some(def_scope) = self.find_scope_for_def(def_id) {
-                // Continue resolution from the definition's scope
-                return self.resolve_path_from_scope(def_scope, &path[1..]);
+        if let Some(def_ids) = scope_data.definitions.get(path[0]) {
+            if let Some(&def_id) = def_ids.last() {
+                // Find the scope for this definition
+                if let Some(def_scope) = self.find_scope_for_def(def_id) {
+                    // Continue resolution from the definition's scope
+                    return self.resolve_path_from_scope(def_scope, &path[1..]);
+                }
             }
         }
 
@@ -389,7 +417,10 @@ impl ScopeTree {
 
         if path.len() == 1 {
             // Single segment - check annotation definitions
-            return scope_data.annotations.get(path[0]).copied();
+            if let Some(def_ids) = scope_data.annotations.get(path[0]) {
+                return def_ids.last().copied();
+            }
+            return None;
         }
 
         // Multi-segment path - first segment might be a child scope
@@ -414,15 +445,17 @@ impl ScopeTree {
         let scope_data = &self.scopes[scope.0];
 
         // Check all definitions in this scope
-        for (_, &def_id) in scope_data.definitions.iter() {
-            let def = definitions.get(def_id);
-            if let crate::hir::DefKind::Enum(enum_ty) = &def.kind {
-                // Check each field constant
-                for &field_id in &enum_ty.fields {
-                    let field_def = definitions.get(field_id);
-                    if field_def.ident.name == enumerator {
-                        results.push(def_id);
-                        break;
+        for (_, def_ids) in scope_data.definitions.iter() {
+            for &def_id in def_ids {
+                let def = definitions.get(def_id);
+                if let crate::hir::DefKind::Enum(enum_ty) = &def.kind {
+                    // Check each field constant
+                    for &field_id in &enum_ty.fields {
+                        let field_def = definitions.get(field_id);
+                        if field_def.ident.name == enumerator {
+                            results.push(def_id);
+                            break;
+                        }
                     }
                 }
             }
@@ -445,12 +478,7 @@ impl ScopeTree {
     /// Finds the scope that contains a definition.
     #[must_use]
     pub fn find_scope_containing_def(&self, def_id: DefId) -> Option<ScopeId> {
-        for (idx, scope) in self.scopes.iter().enumerate() {
-            if scope.definitions.values().any(|&id| id == def_id) {
-                return Some(ScopeId(idx));
-            }
-        }
-        None
+        self.def_to_scope.get(&def_id).copied()
     }
 
     /// Checks if a scope belongs to an interface definition.
@@ -474,10 +502,12 @@ impl ScopeTree {
             let scope_data = &self.scopes[scope_id.0];
 
             // Add all enums from this scope
-            for (_, &def_id) in scope_data.definitions.iter() {
-                let def = definitions.get(def_id);
-                if matches!(def.kind, crate::hir::DefKind::Enum(_)) {
-                    results.push(def_id);
+            for (_, def_ids) in scope_data.definitions.iter() {
+                for &def_id in def_ids {
+                    let def = definitions.get(def_id);
+                    if matches!(def.kind, crate::hir::DefKind::Enum(_)) {
+                        results.push(def_id);
+                    }
                 }
             }
 

@@ -250,7 +250,9 @@ impl<'ctx> TypeResolver<'ctx> {
                 .definitions
                 .iter()
                 .find(|(canonical_name, _)| canonical_name.eq_ignore_ascii_case(name))
-                .map(|(canonical_name, &def_id)| (canonical_name, def_id));
+                .and_then(|(canonical_name, def_ids)| {
+                    def_ids.last().map(|&def_id| (canonical_name, def_id))
+                });
 
             if let Some((canonical_name, def_id)) = found {
                 // Check case consistency

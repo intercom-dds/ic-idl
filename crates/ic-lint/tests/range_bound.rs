@@ -123,11 +123,7 @@ module MyModule {
 };
 ";
 
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no warnings for range with only min, but got: {output}"
-    );
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
@@ -140,11 +136,7 @@ module MyModule {
 };
 ";
 
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no warnings for range with only max, but got: {output}"
-    );
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]

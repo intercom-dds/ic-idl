@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/any_type.rs
+expression: test_lint_hir(source)
+---
+warning[any-type]: the 'any' type is not fully supported
+   ┌ test.idl:2:26
+   │
+ 2 │         typedef sequence<any> AnyList;
+   ·                          ^^^ 'any' type used here
+   └──
+ help: consider using a concrete type

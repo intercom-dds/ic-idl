@@ -642,20 +642,32 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         }
 
         // Register in annotation namespace
-        if let Some(prev_def_id) =
-            self.ctx
-                .context
-                .scopes
-                .add_annotation(self.current_scope, a.ident.name.clone(), def_id)
+        self.ctx
+            .context
+            .scopes
+            .add_annotation(self.current_scope, a.ident.name.clone(), def_id);
+
+        // Check for duplicate annotations by looking at existing definitions
+        if let Some(existing_def_ids) = self
+            .ctx
+            .context
+            .scopes
+            .get_scope(self.current_scope)
+            .annotations
+            .get(&a.ident.name)
         {
-            let existing_def = self.ctx.context.definitions.get(prev_def_id);
-            self.ctx.diagnostics.errors.push(
-                error_span(
-                    format!("duplicate annotation definition `@{}`", a.ident.name),
-                    Label::new(existing_def.ident.span).message("originally defined here"),
-                )
-                .label(Label::new(a.ident.span).message("redefined here")),
-            );
+            if existing_def_ids.len() > 1 {
+                // We just added one, so if there's more than one, it's a duplicate
+                let prev_def_id = existing_def_ids[existing_def_ids.len() - 2];
+                let existing_def = self.ctx.context.definitions.get(prev_def_id);
+                self.ctx.diagnostics.errors.push(
+                    error_span(
+                        format!("duplicate annotation definition `@{}`", a.ident.name),
+                        Label::new(existing_def.ident.span).message("originally defined here"),
+                    )
+                    .label(Label::new(a.ident.span).message("redefined here")),
+                );
+            }
         }
 
         def_id

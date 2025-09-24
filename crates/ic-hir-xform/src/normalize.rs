@@ -191,26 +191,28 @@ impl Normalizer {
                 }
 
                 // Find all definitions in this scope
-                for (name, &child_id) in scope.definitions.iter() {
-                    // Skip if it's the scope's own definition
-                    if child_id == def_id {
-                        continue;
-                    }
+                for (name, child_ids) in scope.definitions.iter() {
+                    for &child_id in child_ids {
+                        // Skip if it's the scope's own definition
+                        if child_id == def_id {
+                            continue;
+                        }
 
-                    // Get names before mutating
-                    let child_name = hir.context.definitions.get(child_id).ident.name.clone();
-                    let parent_name = hir.context.definitions.get(def_id).ident.name.clone();
+                        // Get names before mutating
+                        let child_name = hir.context.definitions.get(child_id).ident.name.clone();
+                        let parent_name = hir.context.definitions.get(def_id).ident.name.clone();
 
-                    let child_def = hir.context.definitions.get_mut(child_id);
-                    // If this definition has no parent set by containment,
-                    // it should have the scope's definition as parent
-                    if child_def.parent.is_none() && !name.starts_with('@') {
-                        self.changes_made = true;
-                        self.changes.push(format!(
-                            "Set parent of '{child_name}' (def_id={child_id:?}) in scope to \
-                             '{parent_name}' (def_id={def_id:?})"
-                        ));
-                        child_def.parent = Some(def_id);
+                        let child_def = hir.context.definitions.get_mut(child_id);
+                        // If this definition has no parent set by containment,
+                        // it should have the scope's definition as parent
+                        if child_def.parent.is_none() && !name.starts_with('@') {
+                            self.changes_made = true;
+                            self.changes.push(format!(
+                                "Set parent of '{child_name}' (def_id={child_id:?}) in scope to \
+                                 '{parent_name}' (def_id={def_id:?})"
+                            ));
+                            child_def.parent = Some(def_id);
+                        }
                     }
                 }
             }

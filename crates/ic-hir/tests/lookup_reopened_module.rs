@@ -32,7 +32,7 @@ use common::parse_and_resolve;
 
 #[test]
 fn test_lookup_in_reopened_module() {
-    let input = r#"
+    let input = r"
         module Foo {
             struct First {
                 long x;
@@ -44,7 +44,7 @@ fn test_lookup_in_reopened_module() {
                 long y;
             };
         };
-    "#;
+    ";
 
     let (hir, _, _) = parse_and_resolve(input);
 
@@ -62,27 +62,18 @@ fn test_lookup_in_reopened_module() {
         "Failed to find Foo::Second"
     );
 
-    // Get the DefIds
-    let foo_id = hir.context.lookup_symbol("Foo").unwrap();
-    let first_id = hir.context.lookup_symbol("Foo::First").unwrap();
-    let second_id = hir.context.lookup_symbol("Foo::Second").unwrap();
-
-    // Debug print to understand the issue
-    println!("Foo DefId from lookup: {:?}", foo_id);
-    println!("First DefId: {:?}", first_id);
-    println!("Second DefId: {:?}", second_id);
-
-    // Check which module DefId First and Second belong to
-    let first_def = hir.context.definitions.get(first_id);
-    let second_def = hir.context.definitions.get(second_id);
-
-    println!("First parent: {:?}", first_def.parent);
-    println!("Second parent: {:?}", second_def.parent);
+    // Test the new lookup_modules method
+    let all_foo_ids = hir.context.lookup_modules("Foo");
+    assert_eq!(
+        all_foo_ids.len(),
+        2,
+        "Should find both Foo module definitions"
+    );
 }
 
 #[test]
 fn test_xtypes_lookup_in_reopened_module() {
-    let input = r#"
+    let input = r"
         module DDS {
             module XTypes {
                 struct TypeIdentifier {
@@ -98,7 +89,7 @@ fn test_xtypes_lookup_in_reopened_module() {
                 };
             };
         };
-    "#;
+    ";
 
     let (hir, _, _) = parse_and_resolve(input);
 

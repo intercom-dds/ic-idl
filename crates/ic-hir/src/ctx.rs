@@ -190,6 +190,7 @@ impl Context {
 
     /// Looks up a symbol by its qualified name (e.g., "`DDS::XTypes`").
     /// Starts from the root scope.
+    /// For reopened modules, returns the last (most recent) definition.
     #[must_use]
     pub fn lookup_symbol(&self, qualified_name: &str) -> Option<DefId> {
         let parts: Vec<&str> = qualified_name.split("::").collect();
@@ -198,6 +199,19 @@ impl Context {
         }
 
         self.lookup_path_from_scope(self.root_scope(), &parts)
+    }
+
+    /// Looks up all definitions for a module by its qualified name.
+    /// This is useful for reopened modules which may have multiple `DefId`s.
+    /// Returns empty vector if not found or if not a module.
+    #[must_use]
+    pub fn lookup_modules(&self, qualified_name: &str) -> Vec<DefId> {
+        let parts: Vec<&str> = qualified_name.split("::").collect();
+        if parts.is_empty() {
+            return Vec::new();
+        }
+
+        self.lookup_all_defs_from_scope(self.root_scope(), &parts)
     }
 
     /// Helper to look up a path from a specific scope
@@ -217,29 +231,15 @@ impl Context {
 
         // For the last part, just resolve the name
         if remaining.is_empty() {
-            return scope.definitions.get(*name).copied();
+            // Get the last DefId for this name (most recent definition)
+            if let Some(def_ids) = scope.definitions.get(*name) {
+                return def_ids.last().copied();
+            }
+            return None;
         }
 
         // For intermediate parts, we need to find the associated scope
-        // First check if it's a definition with a child scope (module, interface, valuetype)
-        if let Some(&def_id) = scope.definitions.get(*name) {
-            let def = self.definitions.get(def_id);
-            match &def.kind {
-                DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_) => {
-                    // These types have child scopes - find it
-                    if let Some((_, child_scope)) = scope
-                        .children
-                        .iter()
-                        .find(|(child_name, _)| child_name.eq_ignore_ascii_case(name))
-                    {
-                        return self.lookup_path_from_scope(*child_scope, remaining);
-                    }
-                }
-                _ => {} // Other types don't have child scopes
-            }
-        }
-
-        // Also check if there's a child scope with this name (for reopened modules)
+        // Check if there's a child scope with this name
         if let Some((_, child_scope)) = scope
             .children
             .iter()
@@ -248,6 +248,82 @@ impl Context {
             return self.lookup_path_from_scope(*child_scope, remaining);
         }
 
+        // If no child scope, check if it's a definition with its own scope
+        if let Some(def_ids) = scope.definitions.get(*name) {
+            // Try all DefIds for this name (in case of reopened modules)
+            for &def_id in def_ids {
+                let def = self.definitions.get(def_id);
+                match &def.kind {
+                    DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_) => {
+                        // These types have child scopes - find it
+                        if let Some(def_scope) = self.scopes.find_scope_for_def(def_id) {
+                            if let Some(result) = self.lookup_path_from_scope(def_scope, remaining)
+                            {
+                                return Some(result);
+                            }
+                        }
+                    }
+                    _ => {} // Other types don't have child scopes
+                }
+            }
+        }
+
         None
+    }
+
+    /// Helper to look up all definitions for a path from a specific scope.
+    /// Returns all `DefId`s for the target (useful for reopened modules).
+    fn lookup_all_defs_from_scope(
+        &self,
+        start_scope: crate::scope::ScopeId,
+        parts: &[&str],
+    ) -> Vec<DefId> {
+        if parts.is_empty() {
+            return Vec::new();
+        }
+
+        let (name, remaining) = parts.split_first().unwrap();
+        let scope = self.scopes.get_scope(start_scope);
+
+        // For the last part, we need to collect all matching DefIds
+        if remaining.is_empty() {
+            let mut result = Vec::new();
+
+            // Check definitions in current scope
+            if let Some(def_ids) = scope.definitions.get(*name) {
+                for &def_id in def_ids {
+                    let def = self.definitions.get(def_id);
+                    if matches!(def.kind, DefKind::Module(_)) {
+                        result.push(def_id);
+                    }
+                }
+            }
+
+            // Also check child scopes with matching names (for modules)
+            for (child_name, &child_scope_id) in scope.children.iter() {
+                if child_name.eq_ignore_ascii_case(name) {
+                    if let Some(def_id) = self.scopes.get_scope(child_scope_id).def_id {
+                        let def = self.definitions.get(def_id);
+                        if matches!(def.kind, DefKind::Module(_)) {
+                            result.push(def_id);
+                        }
+                    }
+                }
+            }
+
+            result
+        } else {
+            // For intermediate parts, we need to find the associated scope
+            // Check if there's a child scope with this name
+            if let Some((_, child_scope)) = scope
+                .children
+                .iter()
+                .find(|(child_name, _)| child_name.eq_ignore_ascii_case(name))
+            {
+                return self.lookup_all_defs_from_scope(*child_scope, remaining);
+            }
+
+            Vec::new()
+        }
     }
 }

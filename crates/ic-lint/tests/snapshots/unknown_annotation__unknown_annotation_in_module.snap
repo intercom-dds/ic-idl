@@ -33,3 +33,14 @@ warning[unknown-annotation]: unknown annotation `UnknownEnum`
  10 │             enum Status {
  11 │                 @UnknownEnumerator
     └──
+
+warning[unknown-annotation]: unknown annotation `UnknownEnumerator`
+    ┌ test.idl:11:18
+    │
+  9 │             @UnknownEnum
+ 10 │             enum Status {
+ 11 │                 @UnknownEnumerator
+    ·                  ^^^^^^^^^^^^^^^^^ annotation not found
+ 12 │                 ACTIVE,
+ 13 │                 INACTIVE
+    └──

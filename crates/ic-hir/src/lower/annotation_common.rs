@@ -56,22 +56,26 @@ fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &AnnotationAppl, scop
     };
 
     // Try to resolve the annotation path
-    let def_id = ctx.context.resolve_syntax_path(start, &ann_appl.ident);
-    let (def_id, name) = if let Some(id) = def_id {
+    let def_id = ctx
+        .context
+        .resolve_annotation_syntax_path(start, &ann_appl.ident);
+    let name = path_name(&ann_appl.ident);
+
+    // If we found something, verify it's an annotation
+    let def_id = if let Some(id) = def_id {
         let def = ctx.context.definitions.get(id);
         if matches!(def.kind, DefKind::Annotation(_)) {
-            (Some(id), path_name(&ann_appl.ident))
+            Some(id)
         } else {
             ctx.diagnostics.error(
                 format!("`{}` is not an annotation", path_name(&ann_appl.ident)),
                 ic_diagnostic::Label::new(ann_appl.span)
                     .message("expected an annotation definition"),
             );
-            // Still include it in HIR but without a valid def_id
-            (None, path_name(&ann_appl.ident))
+            None
         }
     } else {
-        (None, path_name(&ann_appl.ident))
+        None
     };
 
     // Convert annotation arguments
@@ -335,7 +339,10 @@ fn evaluate_argument(
     evaluator
         .eval_for_type(&arg.value, &param.ty)
         .map(|value| AnnArg {
-            ident: param.ident.clone(),
+            ident: Ident {
+                name: String::new(), // Positional arguments have empty names
+                span: arg.span,
+            },
             value,
             ty: Some(param.ty.clone()),
         })

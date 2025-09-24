@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/any_type.rs
+expression: test_lint_hir(source)
+---
+warning[any-type]: the 'any' type is not fully supported
+   ┌ test.idl:3:13
+   │
+ 2 │         struct Message {
+ 3 │             any payload;
+   ·             ^^^ 'any' type used here
+ 4 │             string id;
+ 5 │         };
+   └──
+ help: consider using a concrete type

@@ -2,17 +2,51 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-name]: duplicate flag `FLAG_A` in flag 'FirstFlags'
-   ┌ test.idl:5:5
+error: duplicate definition of `FLAG_A`
+   ┌ test.idl:3:5
    │
  2 │ bitmask FirstFlags {
  3 │     FLAG_A,
-   ·     ^^^^^^ first defined here
+   ·     ^^^^^^ originally defined here
  4 │     FLAG_B,
  5 │     FLAG_A    // Duplicate in first bitmask
-   ·     ^^^^^^ duplicate flag
+   ·     ^^^^^^ redefined here
  6 │ };
  7 │ 
  8 │ bitmask SecondFlags {
    └──
- note: names are case-insensitive
+
+error: duplicate definition of `FLAG_A`
+    ┌ test.idl:3:5
+    │
+  2 │ bitmask FirstFlags {
+  3 │     FLAG_A,
+    ·     ^^^^^^ originally defined here
+  4 │     FLAG_B,
+  5 │     FLAG_A    // Duplicate in first bitmask
+  6 │ };
+  7 │ 
+  8 │ bitmask SecondFlags {
+  9 │     FLAG_A,   // Same name as in FirstFlags, but different bitmask
+    ·     ^^^^^^ redefined here
+ 10 │     FLAG_B,
+ 11 │     FLAG_C
+    └──
+
+error: duplicate definition of `FLAG_B`
+     ┌ test.idl:4:5
+     │
+   2 │ bitmask FirstFlags {
+   3 │     FLAG_A,
+   4 │     FLAG_B,
+     ·     ^^^^^^ originally defined here
+   5 │     FLAG_A    // Duplicate in first bitmask
+   6 │ };
+ ··· │
+   8 │ bitmask SecondFlags {
+   9 │     FLAG_A,   // Same name as in FirstFlags, but different bitmask
+  10 │     FLAG_B,
+     ·     ^^^^^^ redefined here
+  11 │     FLAG_C
+  12 │ };
+     └──

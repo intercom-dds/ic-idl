@@ -2,16 +2,15 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-name]: duplicate flag `ACTIVE` in flag 'Status'
-   ┌ test.idl:5:5
+error: duplicate definition of `ACTIVE`
+   ┌ test.idl:3:5
    │
  2 │ bitmask Status {
  3 │     ACTIVE = 0,
-   ·     ^^^^^^ first defined here
+   ·     ^^^^^^ originally defined here
  4 │     PENDING = 1,
  5 │     ACTIVE = 2,  // Duplicate name, different value
-   ·     ^^^^^^ duplicate flag
+   ·     ^^^^^^ redefined here
  6 │     COMPLETED = 3
  7 │ };
    └──
- note: names are case-insensitive

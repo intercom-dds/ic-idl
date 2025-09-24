@@ -367,8 +367,7 @@ fn test_native_type() {
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
-    // Native types are always undefined, so HIR will have errors
-    assert!(!hir.errors.is_empty());
+    assert!(hir.errors.is_empty());
 }
 
 #[test]

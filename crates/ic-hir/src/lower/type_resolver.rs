@@ -27,6 +27,8 @@
 
 //! Type resolution for converting AST types to HIR types.
 
+#![allow(clippy::uninlined_format_args)]
+
 use ic_diagnostic::{Label, error_span, warn_span};
 use ic_syntax::{Path, Type as AstType};
 
@@ -189,115 +191,72 @@ impl<'ctx> TypeResolver<'ctx> {
 
     /// Check if a path reference has consistent capitalization with the definition.
     fn check_case_consistency(&mut self, path: &Path, _def_id: DefId) {
-        // We need to check each segment of the path for case consistency
-        // This requires resolving the path step by step
-
-        let start_scope = if path.leading_colons.is_some() {
+        // Walk through each segment of the path and check its case
+        let mut current_scope = if path.leading_colons.is_some() {
             self.ctx.context.root_scope()
         } else {
             self.current_scope
         };
 
-        // Call our custom path resolution that checks case consistency
-        self.resolve_path_with_case_check(start_scope, path);
-    }
+        for (i, segment) in path.segments.iter().enumerate() {
+            let is_last = i == path.segments.len() - 1;
+            let name = &segment.name;
+            let span = segment.span;
 
-    /// Resolve a path while checking case consistency for each segment
-    fn resolve_path_with_case_check(&mut self, start_scope: ScopeId, path: &Path) -> Option<DefId> {
-        let segments: Vec<(&str, ic_syntax::Span)> = path
-            .segments
-            .iter()
-            .map(|s| (s.name.as_str(), s.span))
-            .collect();
+            // For the last segment, look for a definition
+            if is_last {
+                // Check all parent scopes for this definition
+                let mut check_scope = Some(current_scope);
+                while let Some(scope_id) = check_scope {
+                    let scope = self.ctx.context.scopes.get_scope(scope_id);
 
-        if segments.is_empty() {
-            return None;
-        }
+                    // Check if it exists as a definition
+                    if let Some(canonical_name) = scope.definitions.get_key(name) {
+                        if canonical_name != name.as_str() {
+                            self.ctx.diagnostics.warnings.push(
+                                warn_span(
+                                    format!(
+                                        "inconsistent capitalization: `{}` should be `{}`",
+                                        name, canonical_name
+                                    ),
+                                    Label::new(span).message("used here"),
+                                )
+                                .note(format!("the canonical name is `{}`", canonical_name)),
+                            );
+                        }
+                        return;
+                    }
 
-        // Try resolving as a relative path first
-        let mut current = Some(start_scope);
-
-        while let Some(scope_id) = current {
-            if let Some(def_id) = self.resolve_path_from_scope_with_case_check(scope_id, &segments)
-            {
-                return Some(def_id);
-            }
-
-            // Move to parent scope
-            current = self.ctx.context.scopes.get_scope(scope_id).parent;
-        }
-
-        None
-    }
-
-    /// Resolve a path starting from a specific scope, checking case consistency
-    fn resolve_path_from_scope_with_case_check(
-        &mut self,
-        scope: ScopeId,
-        segments: &[(&str, ic_syntax::Span)],
-    ) -> Option<DefId> {
-        if segments.is_empty() {
-            return None;
-        }
-
-        let (name, span) = segments[0];
-
-        // First check if it's a single segment definition
-        if segments.len() == 1 {
-            let scope_data = self.ctx.context.scopes.get_scope(scope);
-            // Find the definition (case-insensitive)
-            let found = scope_data
-                .definitions
-                .iter()
-                .find(|(canonical_name, _)| canonical_name.eq_ignore_ascii_case(name))
-                .and_then(|(canonical_name, def_ids)| {
-                    def_ids.last().map(|&def_id| (canonical_name, def_id))
-                });
-
-            if let Some((canonical_name, def_id)) = found {
-                // Check case consistency
-                if canonical_name != name {
-                    self.ctx.diagnostics.warnings.push(
-                        warn_span(
-                            format!(
-                                "inconsistent capitalization: `{name}` should be \
-                                 `{canonical_name}`"
-                            ),
-                            Label::new(span).message("used here"),
-                        )
-                        .note(format!("the canonical name is `{canonical_name}`")),
-                    );
+                    check_scope = scope.parent;
                 }
-                return Some(def_id);
+            } else {
+                // For non-last segments, look for child scopes (modules)
+                let scope = self.ctx.context.scopes.get_scope(current_scope);
+
+                if let Some(canonical_name) = scope.children.get_key(name) {
+                    if canonical_name != name.as_str() {
+                        self.ctx.diagnostics.warnings.push(
+                            warn_span(
+                                format!(
+                                    "inconsistent capitalization: `{}` should be `{}`",
+                                    name, canonical_name
+                                ),
+                                Label::new(span).message("module name used here"),
+                            )
+                            .note(format!("the canonical module name is `{}`", canonical_name)),
+                        );
+                    }
+
+                    // Move into the child scope
+                    if let Some(&child_scope) = scope.children.get(name) {
+                        current_scope = child_scope;
+                    } else {
+                        return; // Path doesn't resolve
+                    }
+                } else {
+                    return; // Module not found
+                }
             }
         }
-
-        // Multi-segment path or not found as definition - check child scopes
-        let scope_data = self.ctx.context.scopes.get_scope(scope);
-        let found_child = scope_data
-            .children
-            .iter()
-            .find(|(canonical_name, _)| canonical_name.eq_ignore_ascii_case(name))
-            .map(|(canonical_name, &child_scope)| (canonical_name, child_scope));
-
-        if let Some((canonical_name, child_scope)) = found_child {
-            // Check case consistency for module name
-            if canonical_name != name {
-                self.ctx.diagnostics.warnings.push(
-                    warn_span(
-                        format!(
-                            "inconsistent capitalization: `{name}` should be `{canonical_name}`"
-                        ),
-                        Label::new(span).message("module name used here"),
-                    )
-                    .note(format!("the canonical module name is `{canonical_name}`")),
-                );
-            }
-
-            // Recurse into child scope
-            return self.resolve_path_from_scope_with_case_check(child_scope, &segments[1..]);
-        }
-
-        None
     }
 }

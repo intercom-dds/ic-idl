@@ -197,34 +197,57 @@ impl Context {
             return None;
         }
 
-        let mut current_scope = self.root_scope();
-        let mut result = None;
+        self.lookup_path_from_scope(self.root_scope(), &parts)
+    }
 
-        for (i, part) in parts.iter().enumerate() {
-            // Resolve the current part in the current scope
-            if let Some(def_id) = self.scopes.resolve_name(current_scope, part) {
-                result = Some(def_id);
+    /// Helper to look up a path from a specific scope
+    fn lookup_path_from_scope(
+        &self,
+        start_scope: crate::scope::ScopeId,
+        parts: &[&str],
+    ) -> Option<DefId> {
+        if parts.is_empty() {
+            return None;
+        }
 
-                // If this isn't the last part, find the scope for this definition
-                if i < parts.len() - 1 {
-                    // Find the scope associated with this definition
-                    if let Some(scope_id) = self
-                        .scopes
-                        .scopes
+        let (name, remaining) = parts.split_first().unwrap();
+
+        // First try to resolve as a definition in current scope
+        let scope = self.scopes.get_scope(start_scope);
+
+        // For the last part, just resolve the name
+        if remaining.is_empty() {
+            return scope.definitions.get(*name).copied();
+        }
+
+        // For intermediate parts, we need to find the associated scope
+        // First check if it's a definition with a child scope (module, interface, valuetype)
+        if let Some(&def_id) = scope.definitions.get(*name) {
+            let def = self.definitions.get(def_id);
+            match &def.kind {
+                DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_) => {
+                    // These types have child scopes - find it
+                    if let Some((_, child_scope)) = scope
+                        .children
                         .iter()
-                        .position(|s| s.def_id == Some(def_id))
-                        .map(crate::scope::ScopeId)
+                        .find(|(child_name, _)| child_name.eq_ignore_ascii_case(name))
                     {
-                        current_scope = scope_id;
-                    } else {
-                        return None;
+                        return self.lookup_path_from_scope(*child_scope, remaining);
                     }
                 }
-            } else {
-                return None;
+                _ => {} // Other types don't have child scopes
             }
         }
 
-        result
+        // Also check if there's a child scope with this name (for reopened modules)
+        if let Some((_, child_scope)) = scope
+            .children
+            .iter()
+            .find(|(child_name, _)| child_name.eq_ignore_ascii_case(name))
+        {
+            return self.lookup_path_from_scope(*child_scope, remaining);
+        }
+
+        None
     }
 }

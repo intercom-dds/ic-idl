@@ -100,9 +100,6 @@ impl Normalizer {
 
         // Fix module/interface/valuetype definition lists
         self.fix_definition_lists(hir);
-
-        // Verify and fix scope relationships
-        Self::fix_scope_relationships(hir);
     }
 
     fn validate_hir(hir: &ResolvedGraph) -> Result<(), Vec<String>> {
@@ -338,17 +335,7 @@ impl Normalizer {
         }
     }
 
-    /// Fix scope relationships to match definition hierarchy.
-    fn fix_scope_relationships(hir: &mut ResolvedGraph) {
-        // This function was incorrectly setting scope def_ids based on what definitions
-        // a scope contains, rather than what definition created the scope.
-        // Disabling for now as it causes incorrect behavior.
-        // TODO: Implement correctly if needed
-    }
-
-    // Validation methods
-
-    #[allow(clippy::ptr_arg)] // We need Vec to push errors
+    #[allow(clippy::ptr_arg)]
     fn validate_parent_relationships(hir: &ResolvedGraph, errors: &mut Vec<String>) {
         for (def_id, def) in &hir.context.definitions {
             // Check parent exists

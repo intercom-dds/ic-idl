@@ -147,12 +147,6 @@ fn move_nested_from_list(
 
                 result.push(def_id);
             }
-            hir::DefKind::Struct(_) | hir::DefKind::Except(_) => {
-                // Structs and exceptions might also have nested types in IDL,
-                // but according to the C++ code, we only handle interfaces and valuetypes
-                // TODO: Check if we need to handle these cases
-                result.push(def_id);
-            }
             _ => {
                 result.push(def_id);
             }

@@ -57,7 +57,7 @@ unsafe extern "C" {
 }
 
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_rust(result: &ParseResult, options: RustOptions) -> Vec<File> {
     let ffi_options = rust_options_t {
         no_rename: u8::from(options.no_rename),

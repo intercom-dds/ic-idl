@@ -58,8 +58,11 @@ unsafe extern "C" {
     );
 }
 
+/// # Panics
+///
+/// May panic if some of the passed string parameters contain a NUL byte.
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_python(result: &ParseResult, options: PythonOptions) -> Vec<File> {
     let global_postfix = options
         .global_postfix

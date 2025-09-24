@@ -35,7 +35,7 @@ pub struct IdlOptions {
     #[option(long)]
     pub idl_doxygen: bool,
 
-    /// Expand @DDSService interfaces
+    /// Expand `@DDSService` interfaces
     #[option(long)]
     pub idl_expand: bool,
 }
@@ -57,7 +57,7 @@ unsafe extern "C" {
 }
 
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_idl(result: &ParseResult, options: IdlOptions) -> Vec<File> {
     let ffi_options = idl_options_t {
         doxygen: u8::from(options.idl_doxygen),

@@ -75,7 +75,7 @@ where
     // Enable exceptions for clang-cl and enable C++17 support
     if compiler.get_compiler().is_like_msvc() {
         compiler.flag("/EHsc");
-        compiler.flag(format!("/external:W0"));
+        compiler.flag("/external:W0");
     }
 
     // Upgrade warnings to errors in CI pipelines

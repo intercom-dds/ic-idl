@@ -548,11 +548,27 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Bitsets are not forward-declarable, just register in the scope
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, b.ident.name.clone(), def_id);
+        // Register with the registry for duplicate detection
+        if self
+            .ctx
+            .registry
+            .register_definition(
+                self.current_scope,
+                &b.ident,
+                DefKindTag::Bitset,
+                def_id,
+                &mut self.ctx.diagnostics,
+                &self.ctx.context,
+            )
+            .is_some()
+        {
+            // Register in scope only if registry registration succeeded
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                b.ident.name.clone(),
+                def_id,
+            );
+        }
 
         def_id
     }

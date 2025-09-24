@@ -55,6 +55,7 @@ pub enum DefKindTag {
     Native,
     Enum,
     Bitmask,
+    Bitset,
     Const,
 }
 
@@ -243,5 +244,6 @@ fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
         DefKindTag::Enum => "enum",
         DefKindTag::Const => "const",
         DefKindTag::Bitmask => "bitmask",
+        DefKindTag::Bitset => "bitset",
     }
 }

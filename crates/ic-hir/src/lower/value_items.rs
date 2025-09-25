@@ -86,7 +86,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ident: ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (ident.span),
+            span: c.span,
             kind: DefKind::Const(const_ty),
             flags: DefFlags::nil(),
         });
@@ -154,7 +154,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ident: e.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (e.ident.span),
+            span: e.span,
             kind: DefKind::Enum(enum_ty),
             flags: DefFlags::nil(),
         });
@@ -354,7 +354,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ident: flag.ident.clone(),
             parent: Some(bitmask_id),
             annotations: flag_annotations,
-            span: (flag.ident.span),
+            span: flag.span,
             kind: DefKind::Const(ConstTy {
                 ty: flag_ty,
                 value: Numeric::UInt64(value),
@@ -403,7 +403,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ident: b.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (b.ident.span),
+            span: b.span,
             kind: DefKind::Bitmask(bitmask_ty),
             flags: DefFlags::nil(),
         });
@@ -545,7 +545,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ident: b.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: b.ident.span,
+            span: b.span,
             kind: DefKind::Bitset(bitset_ty),
             flags: DefFlags::nil(),
         });
@@ -593,7 +593,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ident: a.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: a.ident.span,
+            span: a.span,
             kind: DefKind::Annotation(AnnotationTy {
                 params: Vec::new(),
                 types: Vec::new(),

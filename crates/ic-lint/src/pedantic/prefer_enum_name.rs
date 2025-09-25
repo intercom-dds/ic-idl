@@ -106,7 +106,7 @@ impl PreferEnumName<'_> {
                                 "prefer using enum member name '{}' instead of numeric literal",
                                 field_def.ident.name
                             ),
-                            Label::new(const_def.span).message(format!(
+                            Label::new(const_def.ident.span).message(format!(
                                 "consider using '{}' instead of '{}'",
                                 field_def.ident.name,
                                 format_numeric_value(&const_ty.value)

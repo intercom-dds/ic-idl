@@ -94,7 +94,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ident: s.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (s.ident.span),
+            span: s.span,
             kind: DefKind::Struct(StructTy {
                 parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
                 members: Vec::new(),
@@ -197,7 +197,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ident: i.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (i.ident.span),
+            span: i.span,
             kind: DefKind::Interface(InterfaceTy {
                 parents,
                 prototypes: Vec::new(),
@@ -392,7 +392,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ident: v.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: (v.ident.span),
+            span: v.span,
             kind: DefKind::Valuetype(ValueTy {
                 parent,
                 supports,
@@ -870,7 +870,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ident: e.ident.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: e.ident.span,
+            span: e.span,
             kind: DefKind::Except(except_ty),
             flags: DefFlags::nil(),
         });

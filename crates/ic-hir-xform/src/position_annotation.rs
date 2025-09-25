@@ -53,6 +53,9 @@ fn process_def(def: &mut Def) {
                     match &arg.value {
                         Numeric::Int32(v) => position_found = Some(*v as u32),
                         Numeric::Int64(v) => position_found = Some(*v as u32),
+                        Numeric::UInt16(v) => position_found = Some(*v as u32),
+                        Numeric::UInt32(v) => position_found = Some(*v),
+                        Numeric::UInt64(v) => position_found = Some(*v as u32),
                         _ => {}
                     }
                 }

@@ -126,29 +126,41 @@ impl<'ctx> TypeResolver<'ctx> {
         };
 
         // Resolve the path
-        if let Some(def_id) = self.ctx.context.resolve_syntax_path(start, path) {
-            let def = self.ctx.context.definitions.get(def_id);
-            if Self::is_type_definition(&def.kind) {
-                // Check for case sensitivity issues on the entire path
-                self.check_case_consistency(path, def_id);
+        match self.ctx.context.resolve_syntax_path(start, path) {
+            Ok(def_id) => {
+                let def = self.ctx.context.definitions.get(def_id);
+                if Self::is_type_definition(&def.kind) {
+                    // Check for case sensitivity issues on the entire path
+                    self.check_case_consistency(path, def_id);
 
-                Some(Ty {
-                    span: (path_span(path)),
-                    kind: TyKind::Adt(def_id),
-                })
-            } else {
+                    Some(Ty {
+                        span: (path_span(path)),
+                        kind: TyKind::Adt(def_id),
+                    })
+                } else {
+                    self.ctx.diagnostics.errors.push(error_span(
+                        format!("`{}` is not a type", path_to_string(path)),
+                        Label::new(path_span(path)).message("expected a type"),
+                    ));
+                    None
+                }
+            }
+            Err((failing_segment, container_def_id)) => {
+                // Figure out where we were looking
+                let context = if let Some(def_id) = container_def_id {
+                    // Get the type of the container
+                    let def = self.ctx.context.definitions.get(def_id);
+                    format!("{} '{}'", def.kind.kind_name(), def.ident.name)
+                } else {
+                    "this scope".to_string()
+                };
+
                 self.ctx.diagnostics.errors.push(error_span(
-                    format!("`{}` is not a type", path_to_string(path)),
-                    Label::new(path_span(path)).message("expected a type"),
+                    format!("no type named '{}' in {}", failing_segment.name, context),
+                    Label::new(failing_segment.span).message("unknown type"),
                 ));
                 None
             }
-        } else {
-            self.ctx.diagnostics.errors.push(error_span(
-                format!("unresolved type `{}`", path_to_string(path)),
-                Label::new(path_span(path)).message("unknown type"),
-            ));
-            None
         }
     }
 

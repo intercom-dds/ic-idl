@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_alloc::arena::Arena;
+use ic_syntax::Ident;
 
 use crate::hir::{self, Def, DefId, DefKind, Ty, TyKind};
 use crate::scope::ScopeTree;
@@ -107,14 +108,105 @@ impl Context {
     }
 
     /// Resolves a syntax path starting from the given scope.
-    #[must_use]
-    pub fn resolve_syntax_path(
+    ///
+    /// # Errors
+    ///
+    /// Returns an error containing the failing segment and the container `DefId` where
+    /// resolution failed. The container `DefId` will be None if resolution failed at
+    /// the top-level scope.
+    pub fn resolve_syntax_path<'a>(
         &self,
         scope: crate::scope::ScopeId,
-        path: &ic_syntax::Path,
-    ) -> Option<DefId> {
+        path: &'a ic_syntax::Path,
+    ) -> Result<DefId, (&'a Ident, Option<DefId>)> {
+        if path.segments.is_empty() {
+            return Err((&path.segments[0], None));
+        }
+
+        // Convert to the existing string-based API
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
-        self.scopes.resolve_path(scope, &segments)
+
+        // For absolute paths, start from root. For relative paths, try from current scope and parents
+        let start_scope = if path.leading_colons.is_some() {
+            self.root_scope()
+        } else {
+            scope
+        };
+
+        // Helper to resolve from a specific starting point
+        let resolve_from = |start| {
+            let mut scope_id = start;
+            let mut container_def_id = None;
+
+            for (i, segment_name) in segments.iter().enumerate() {
+                let scope_data = self.scopes.get_scope(scope_id);
+
+                if i == segments.len() - 1 {
+                    // Last segment - check definitions
+                    if let Some(def_ids) = scope_data.definitions.get(*segment_name) {
+                        if let Some(&def_id) = def_ids.last() {
+                            return Ok(def_id);
+                        }
+                    }
+                    return Err((&path.segments[i], container_def_id));
+                }
+
+                // Not last segment - need to traverse
+                if let Some(&child_scope) = scope_data.children.get(*segment_name) {
+                    scope_id = child_scope;
+                    // Store the def_id of the scope we're entering
+                    container_def_id = self.scopes.get_scope(child_scope).def_id;
+                } else if let Some(def_ids) = scope_data.definitions.get(*segment_name) {
+                    if let Some(&def_id) = def_ids.last() {
+                        if let Some(def_scope) = self.scopes.find_scope_for_def(def_id) {
+                            scope_id = def_scope;
+                            // Store the def_id we're entering
+                            container_def_id = Some(def_id);
+                        } else {
+                            return Err((&path.segments[i], container_def_id));
+                        }
+                    } else {
+                        return Err((&path.segments[i], container_def_id));
+                    }
+                } else {
+                    // For relative paths, we'll try parent scopes
+                    return Err((&path.segments[i], container_def_id));
+                }
+            }
+            Err((&path.segments[0], None))
+        };
+
+        // For absolute paths, just try once from root
+        if path.leading_colons.is_some() {
+            return resolve_from(start_scope);
+        }
+
+        // For relative paths, try from current scope and walk up
+        let mut current = Some(start_scope);
+        let mut first_error = None;
+
+        while let Some(scope_to_try) = current {
+            match resolve_from(scope_to_try) {
+                Ok(def_id) => return Ok(def_id),
+                Err(e) => {
+                    if first_error.is_none() {
+                        first_error = Some(e);
+                    }
+                    // Try parent scope
+                    current = self.scopes.get_scope(scope_to_try).parent;
+                }
+            }
+        }
+
+        // Return the first error we encountered
+        if let Some(error) = first_error {
+            Err(error)
+        } else if let Some(first_segment) = path.segments.first() {
+            Err((first_segment, None))
+        } else {
+            // Empty path - shouldn't happen due to check at beginning
+            Err((&path.segments[0], None))
+        }
     }
 
     /// Creates a child scope with the given name.
@@ -220,13 +312,8 @@ impl Context {
         start_scope: crate::scope::ScopeId,
         parts: &[&str],
     ) -> Option<DefId> {
-        if parts.is_empty() {
-            return None;
-        }
-
-        let (name, remaining) = parts.split_first().unwrap();
-
         // First try to resolve as a definition in current scope
+        let (name, remaining) = parts.split_first()?;
         let scope = self.scopes.get_scope(start_scope);
 
         // For the last part, just resolve the name
@@ -278,11 +365,9 @@ impl Context {
         start_scope: crate::scope::ScopeId,
         parts: &[&str],
     ) -> Vec<DefId> {
-        if parts.is_empty() {
-            return Vec::new();
-        }
-
-        let (name, remaining) = parts.split_first().unwrap();
+        let Some((name, remaining)) = parts.split_first() else {
+            return vec![];
+        };
         let scope = self.scopes.get_scope(start_scope);
 
         // For the last part, we need to collect all matching DefIds

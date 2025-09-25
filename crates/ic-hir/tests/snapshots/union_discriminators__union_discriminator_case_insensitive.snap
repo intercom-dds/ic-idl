@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/union_discriminators.rs
 expression: diagnostics
 ---
-error: unresolved type `OCTET`
+error: no type named 'OCTET' in this scope
    ┌ test.idl:2:30
    │
  2 │         union Union1 switch (OCTET) {    // Uppercase
@@ -10,7 +10,7 @@ error: unresolved type `OCTET`
  3 │             case 0: long x;
  4 │         };
    └──
-error: unresolved type `Octet`
+error: no type named 'Octet' in this scope
    ┌ test.idl:6:30
    │
  3 │             case 0: long x;

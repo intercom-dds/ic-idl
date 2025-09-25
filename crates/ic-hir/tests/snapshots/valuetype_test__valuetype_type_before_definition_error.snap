@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/valuetype_test.rs
 expression: rendered
 ---
-error: unresolved type `Status`
+error: no type named 'Status' in this scope
    ┌ test.idl:4:20
    │
  2 │         valuetype BadOrder {
@@ -13,7 +13,7 @@ error: unresolved type `Status`
  6 │             enum Status {
  7 │                 ACTIVE,
    └──
-error: unresolved type `Data`
+error: no type named 'Data' in this scope
     ┌ test.idl:12:13
     │
   9 │             };

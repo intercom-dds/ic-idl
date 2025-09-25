@@ -1093,7 +1093,7 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate a path to a constant value.
     fn eval_path_value(&mut self, path: &ic_syntax::Path) -> Option<Value> {
-        if let Some(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
+        if let Ok(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
             // Constants, enumerators and flags are Const
             let def = self.ctx.context.definitions.get(def_id);
             if let DefKind::Const(c) = &def.kind {
@@ -1320,7 +1320,7 @@ impl<'a> ConstEvaluator<'a> {
 
         // If this is a path to a constant, return a Const reference instead of the evaluated value
         if let ic_syntax::Expr::Path(path) = expr {
-            if let Some(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
+            if let Ok(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
                 let def = self.ctx.context.definitions.get(def_id);
                 if let DefKind::Const(_) = &def.kind {
                     // Note: eval_for_type already returns Numeric::Const for paths,
@@ -1376,7 +1376,7 @@ impl ConstEvaluator<'_> {
         expected_ty: &Ty,
         use_span: ic_syntax::Span,
     ) -> ConstAssignOutcome {
-        let Some(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) else {
+        let Ok(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) else {
             return ConstAssignOutcome::NotApplicable;
         };
 

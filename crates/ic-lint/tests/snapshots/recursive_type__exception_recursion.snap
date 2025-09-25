@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-error: unresolved type `RecursiveError`
+error: no type named 'RecursiveError' in this scope
    ┌ test.idl:4:13
    │
  2 │         exception RecursiveError {

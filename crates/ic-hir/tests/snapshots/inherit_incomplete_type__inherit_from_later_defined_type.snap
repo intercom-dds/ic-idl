@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/inherit_incomplete_type.rs
 expression: diagnostics
 ---
-error: unresolved type `Base`
+error: no type named 'Base' in this scope
    ┌ test.idl:2:26
    │
  2 │         struct Derived : Base {

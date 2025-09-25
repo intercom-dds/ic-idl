@@ -1,0 +1,6 @@
+---
+source: crates/ic-lint/tests/any_type.rs
+assertion_line: 137
+expression: test_lint_hir(source)
+---
+

@@ -108,6 +108,7 @@ fn test_span_into_range() {
 }
 
 #[test]
+#[cfg(debug_assertions)]
 #[should_panic(expected = "start.file_id != end.file_id")]
 fn test_span_range_different_files() {
     let mut map = SourceMap::default();

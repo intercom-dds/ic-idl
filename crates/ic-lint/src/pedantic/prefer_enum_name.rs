@@ -25,9 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{ConstTy, Def, DefKind, Numeric, TyKind};
+use ic_hir::hir::{ConstTy, Def, DefId, DefKind, Numeric, TyKind};
 use ic_hir::visit::{Visitor, walk_const};
 
 use crate::{Category, Lint, LintCtx};
@@ -35,6 +38,8 @@ use crate::{Category, Lint, LintCtx};
 pub struct PreferEnumName<'a> {
     ctx: &'a LintCtx<'a>,
     hir: &'a ic_hir::ResolvedGraph,
+    /// Cache mapping enum ID to a map of value -> field name
+    enum_value_cache: RefCell<HashMap<DefId, HashMap<i64, String>>>,
 }
 
 impl<'a> Lint<'a> for PreferEnumName<'a> {
@@ -51,12 +56,45 @@ impl<'a> Lint<'a> for PreferEnumName<'a> {
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
-        let mut visitor = PreferEnumName { ctx, hir };
+        let mut visitor = PreferEnumName {
+            ctx,
+            hir,
+            enum_value_cache: RefCell::new(HashMap::new()),
+        };
         ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 
 impl PreferEnumName<'_> {
+    /// Build or get cached value map for an enum
+    fn get_enum_value_name(&self, enum_id: DefId, value: i64) -> Option<String> {
+        let mut cache = self.enum_value_cache.borrow_mut();
+
+        // Build cache for this enum if not present
+        if !cache.contains_key(&enum_id) {
+            let mut value_map = HashMap::new();
+
+            let enum_def = self.context().definitions.get(enum_id);
+            if let DefKind::Enum(enum_ty) = &enum_def.kind {
+                for &field_id in &enum_ty.fields {
+                    let field_def = self.context().definitions.get(field_id);
+                    if let DefKind::Const(field_const) = &field_def.kind {
+                        let field_value = match field_const.value {
+                            Numeric::Int32(v) => i64::from(v),
+                            Numeric::Int64(v) => v,
+                            _ => continue,
+                        };
+                        value_map.insert(field_value, field_def.ident.name.clone());
+                    }
+                }
+            }
+
+            cache.insert(enum_id, value_map);
+        }
+
+        cache.get(&enum_id).and_then(|map| map.get(&value).cloned())
+    }
+
     #[allow(clippy::cast_possible_wrap)]
     fn check_const(&mut self, const_def: &Def, const_ty: &ConstTy) {
         // Check if this constant has an enum type
@@ -85,38 +123,23 @@ impl PreferEnumName<'_> {
             _ => return,
         };
 
-        // Find the enum member with this value
-        let enum_def = self.context().definitions.get(enum_id);
-        if let DefKind::Enum(enum_ty) = &enum_def.kind {
-            for &field_id in &enum_ty.fields {
-                let field_def = self.context().definitions.get(field_id);
-                if let DefKind::Const(field_const) = &field_def.kind {
-                    let field_value = match field_const.value {
-                        Numeric::Int32(v) => i64::from(v),
-                        Numeric::Int64(v) => v,
-                        _ => continue,
-                    };
-
-                    if field_value == int_value {
-                        // Found the matching enum member
-                        if let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            format!(
-                                "prefer using enum member name '{}' instead of numeric literal",
-                                field_def.ident.name
-                            ),
-                            Label::new(const_def.ident.span).message(format!(
-                                "consider using '{}' instead of '{}'",
-                                field_def.ident.name,
-                                format_numeric_value(&const_ty.value)
-                            )),
-                        ) {
-                            Self::report(self.ctx, diag);
-                        }
-                        return;
-                    }
-                }
+        // Use cached lookup
+        if let Some(field_name) = self.get_enum_value_name(enum_id, int_value) {
+            // Found the matching enum member
+            if let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                format!(
+                    "prefer using enum member name '{}' instead of numeric literal",
+                    field_name
+                ),
+                Label::new(const_def.ident.span).message(format!(
+                    "consider using '{}' instead of '{}'",
+                    field_name,
+                    format_numeric_value(&const_ty.value)
+                )),
+            ) {
+                Self::report(self.ctx, diag);
             }
         }
     }

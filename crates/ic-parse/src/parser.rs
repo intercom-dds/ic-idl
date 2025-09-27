@@ -45,29 +45,13 @@ pub trait IdlParser<T>: chumsky::Parser<Kind, T, Error = Error> + Sized {
     }
 
     fn annotated(self) -> impl IdlParser<(Vec<AnnotationAppl>, T)> {
-        let ann = annotation_appl();
-        let doxy = doxy_comment();
-        choice((ann, doxy))
-            .repeated()
-            .then(self)
-            .then(trailing_doxy_comment().or_not())
-            .map(|((mut pre, val), post)| {
-                if let Some(post) = post {
-                    pre.push(post);
-                }
-                (pre, val)
-            })
+        annotation_appl().repeated().then(self)
     }
 
     fn braced(self) -> impl IdlParser<T> {
         just(Kind::LBrace)
-            .trailing_comment()
             .ignore_then(self)
             .then_ignore(just(Kind::RBrace))
-    }
-
-    fn trailing_comment(self) -> impl IdlParser<(T, Option<AnnotationAppl>)> {
-        self.then(trailing_doxy_comment().or_not())
     }
 }
 
@@ -158,38 +142,6 @@ fn primitive_type(name: &str, span: Span) -> Type {
 // Handles bounds for collections types
 fn bound() -> impl IdlParser<Option<Expr>> {
     just(Kind::Comma).ignore_then(positive_int_const()).or_not()
-}
-
-fn doxy_comment() -> impl IdlParser<AnnotationAppl> {
-    let comment = select! { Kind::Comment(v, false) => v };
-    comment.map_with_span(|value, span| AnnotationAppl {
-        ident: primitive_path("doc", span),
-        span,
-        args: vec![AnnotationArg {
-            ident: None,
-            span,
-            value: Expr::Literal(Literal {
-                span,
-                value: LiteralValue::String(value),
-            }),
-        }],
-    })
-}
-
-fn trailing_doxy_comment() -> impl IdlParser<AnnotationAppl> {
-    let comment = select! { Kind::Comment(v, true) => v };
-    comment.map_with_span(|value, span| AnnotationAppl {
-        ident: primitive_path("doc", span),
-        span,
-        args: vec![AnnotationArg {
-            ident: None,
-            span,
-            value: Expr::Literal(Literal {
-                span,
-                value: LiteralValue::String(value),
-            }),
-        }],
-    })
 }
 
 // Rule 1
@@ -944,11 +896,10 @@ fn op_dcl() -> impl IdlParser<Prototype> {
         .then(params)
         .then(raises_expr().or_not())
         .annotated()
-        .then_ignore(just(Kind::Semi))
-        .trailing_comment();
+        .then_ignore(just(Kind::Semi));
 
     proto.map(
-        |((_annotations, (((ret, ident), params), raises)), _trailing)| Prototype {
+        |(_annotations, (((ret, ident), params), raises))| Prototype {
             ident,
             params,
             raises: raises.unwrap_or_default(),

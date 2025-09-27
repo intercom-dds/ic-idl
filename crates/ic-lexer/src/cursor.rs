@@ -160,7 +160,8 @@ impl Cursor {
         if leading == '0' {
             match self.chars.peek() {
                 'x' | 'X' => {
-                    _ = self.chars.next(); // consume 'x' or 'X'
+                    // consume 'x' or 'X'
+                    _ = self.chars.next();
                     self.eat_while_ascii_hexdigit();
                     return Kind::Number {
                         base: Base::Hexadecimal,
@@ -178,11 +179,13 @@ impl Cursor {
         // Check for float indicators
         match self.chars.peek() {
             '.' => {
-                _ = self.chars.next(); // consume '.'
+                // consume '.'
+                _ = self.chars.next();
                 self.eat_while_ascii_digit();
                 // Check for exponent
                 if matches!(self.chars.peek(), 'e' | 'E') {
-                    _ = self.chars.next(); // consume 'e' or 'E'
+                    // consume 'e' or 'E'
+                    _ = self.chars.next();
                     // Handle optional sign
                     if matches!(self.chars.peek(), '+' | '-') {
                         _ = self.chars.next();
@@ -237,7 +240,8 @@ impl Cursor {
     fn char_lit(&mut self) -> Kind {
         if let Some(v) = self.chars.next() {
             if v == '\'' {
-                return Kind::Char; // Empty char literal ''
+                // Empty char literal ''
+                return Kind::Char;
             }
 
             // Handle escape sequences
@@ -257,10 +261,12 @@ impl Cursor {
                                 return Kind::Unknown;
                             }
                         }
-                        _ => return Kind::Unknown, // Invalid escape sequence
+                        // Invalid escape sequence
+                        _ => return Kind::Unknown,
                     }
                 } else {
-                    return Kind::Unknown; // Unterminated escape
+                    // Unterminated escape
+                    return Kind::Unknown;
                 }
             }
 
@@ -292,33 +298,42 @@ impl Cursor {
     // Returns (is_doc, is_trailing) tuple
     #[inline]
     fn comment(&mut self) -> (bool, bool) {
-        // Check if this is a trailing comment (on same line as code)
-        let is_trailing = self.has_content_on_line;
-
         // Consume the leading '/'
         _ = self.chars.next();
 
-        let is_doc = matches!(self.chars.peek(), '/' | '!');
+        // Check for documentation comment markers
+        let next_char = self.chars.peek();
+        let is_doc = matches!(next_char, '/' | '!');
+        let is_trailing = if is_doc {
+            // consume the / or !
+            _ = self.chars.next();
+            self.chars.peek() == '<' || self.has_content_on_line
+        } else {
+            false
+        };
+
         _ = self.until_peek(Kind::Newline);
         (is_doc, is_trailing)
     }
 
-    // Returns (is_doc, is_trailing) tuple
     #[inline]
     fn block_comment(&mut self) -> (bool, bool) {
-        // Check if this is a trailing comment (on same line as code)
-        let is_trailing = self.has_content_on_line;
-
         // Consume the leading '/'
         _ = self.chars.next();
 
         // Check if this might be a doc comment
         let first_char = self.chars.peek();
         let mut is_doc = false;
+        let mut is_trailing = false;
 
         if first_char == '!' {
             // /*! style doc comment
             is_doc = true;
+
+            // consume the !
+            _ = self.chars.next();
+            // Check for trailing marker or if there's content on the line
+            is_trailing = self.chars.peek() == '<' || self.has_content_on_line;
         } else if first_char == '*' {
             // Could be /** style doc comment
             // We need to check if there's actual content after /**
@@ -332,9 +347,16 @@ impl Cursor {
 
             // Now check what comes after the stars
             let next_char = chars_clone.peek();
-            // It's a doc comment only if there's something other than / after the stars
-            // This makes /** text */ a doc comment but /**/, /***/, etc. regular comments
-            is_doc = next_char != '/' && next_char != EOF;
+            if next_char == '<' {
+                // /**< style trailing comment
+                is_doc = true;
+                is_trailing = true;
+            } else if next_char != '/' && next_char != EOF {
+                // /** text */ style doc comment
+                is_doc = true;
+                // Check if it's trailing based on content on line
+                is_trailing = self.has_content_on_line;
+            }
         }
 
         let mut prev_was_star = false;
@@ -343,7 +365,9 @@ impl Cursor {
                 Some('/') if prev_was_star => break,
                 Some('*') => prev_was_star = true,
                 Some(_) => prev_was_star = false,
-                None => break, // Unterminated block comment
+
+                // Unterminated block comment
+                None => break,
             }
         }
         (is_doc, is_trailing)
@@ -492,6 +516,7 @@ impl Cursor {
                                     trailing: is_trailing,
                                 }
                             } else {
+                                // Skip regular comments
                                 continue;
                             }
                         }
@@ -502,6 +527,7 @@ impl Cursor {
                                     trailing: is_trailing,
                                 }
                             } else {
+                                // Skip regular comments
                                 continue;
                             }
                         }

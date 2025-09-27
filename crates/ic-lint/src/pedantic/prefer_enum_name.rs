@@ -71,7 +71,7 @@ impl PreferEnumName<'_> {
         let mut cache = self.enum_value_cache.borrow_mut();
 
         // Build cache for this enum if not present
-        if !cache.contains_key(&enum_id) {
+        cache.entry(enum_id).or_insert_with(|| {
             let mut value_map = HashMap::new();
 
             let enum_def = self.context().definitions.get(enum_id);
@@ -89,8 +89,8 @@ impl PreferEnumName<'_> {
                 }
             }
 
-            cache.insert(enum_id, value_map);
-        }
+            value_map
+        });
 
         cache.get(&enum_id).and_then(|map| map.get(&value).cloned())
     }
@@ -129,13 +129,9 @@ impl PreferEnumName<'_> {
             if let Some(diag) = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
-                format!(
-                    "prefer using enum member name '{}' instead of numeric literal",
-                    field_name
-                ),
+                format!("prefer using enum member name '{field_name}' instead of numeric literal"),
                 Label::new(const_def.ident.span).message(format!(
-                    "consider using '{}' instead of '{}'",
-                    field_name,
+                    "consider using '{field_name}' instead of '{}'",
                     format_numeric_value(&const_ty.value)
                 )),
             ) {

@@ -87,6 +87,7 @@ use lexer::{Kind, Token};
 
 pub mod lexer;
 
+mod comment_attacher;
 mod parser;
 
 #[derive(Debug)]
@@ -198,49 +199,33 @@ pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::R
 ///
 /// # Panics
 #[must_use]
-pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
-    let skip = args.get_skip_comments();
-    let mut state = ic_preproc::State::new();
-    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
-    let tokens = lexer::from_cursor(iter, skip);
-    let (tree, errors) = parser::specification().parse_recovery(tokens);
-    let tree = tree.unwrap_or_default();
+fn process_preprocessor_errors(errors: &[ic_preproc::Error], vfs: &SourceMap) -> Vec<Error> {
+    let mut result = Vec::new();
 
-    // Collect parser errors
-    let mut errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
-    let mut warnings = Vec::new();
-
-    // Helper function to build directive errors
-    let build_directive_error =
-        |directive: &str, span: Span, tokens: &[ic_preproc::Token]| -> Error {
-            let message = if tokens.is_empty() {
-                format!("#{directive} directive")
-            } else {
-                let token_text = tokens
-                    .iter()
-                    .map(|t| &vfs.source_str(t.span.start.file_id)[t.span.range()])
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                format!("#{directive} directive: {token_text}")
-            };
-            Error {
-                found: None,
-                expected: None,
-                reason: Reason::Custom(message),
-                label: None,
-                span,
-            }
-        };
-
-    // Process preprocessor errors
-    for preproc_error in state.errors() {
-        match preproc_error {
+    for error in errors {
+        match error {
             ic_preproc::Error::Note { span, tokens } => {
-                errors.push(build_directive_error("error", *span, tokens));
+                let message = if tokens.is_empty() {
+                    "#error directive".to_string()
+                } else {
+                    let token_text = tokens
+                        .iter()
+                        .map(|t| &vfs.source_str(t.span.start.file_id)[t.span.range()])
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    format!("#error directive: {token_text}")
+                };
+                result.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom(message),
+                    label: None,
+                    span: *span,
+                });
             }
             ic_preproc::Error::Syntax { message, span }
             | ic_preproc::Error::Expr { message, span } => {
-                errors.push(Error {
+                result.push(Error {
                     found: None,
                     expected: None,
                     reason: Reason::Custom((*message).to_string()),
@@ -252,18 +237,37 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
         }
     }
 
-    // Process preprocessor warnings
-    for preproc_warning in state.warnings() {
-        match preproc_warning {
+    result
+}
+
+fn process_preprocessor_warnings(warnings: &[ic_preproc::Error], vfs: &SourceMap) -> Vec<Error> {
+    let mut result = Vec::new();
+
+    for warning in warnings {
+        match warning {
             ic_preproc::Error::Note { span, tokens } => {
-                let mut warning = build_directive_error("warning", *span, tokens);
-                warning.label = Some("preprocessor warning");
-                warnings.push(warning);
+                let message = if tokens.is_empty() {
+                    "#warning directive".to_string()
+                } else {
+                    let token_text = tokens
+                        .iter()
+                        .map(|t| &vfs.source_str(t.span.start.file_id)[t.span.range()])
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    format!("#warning directive: {token_text}")
+                };
+                result.push(Error {
+                    found: None,
+                    expected: None,
+                    reason: Reason::Custom(message),
+                    label: Some("preprocessor warning"),
+                    span: *span,
+                });
             }
             ic_preproc::Error::Extraneous {
                 directive, span, ..
             } => {
-                warnings.push(Error {
+                result.push(Error {
                     found: None,
                     expected: None,
                     reason: Reason::Custom(format!("extra tokens after #{directive} directive")),
@@ -273,7 +277,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
             }
             ic_preproc::Error::Syntax { message, span }
             | ic_preproc::Error::Expr { message, span } => {
-                warnings.push(Error {
+                result.push(Error {
                     found: None,
                     expected: None,
                     reason: Reason::Custom((*message).to_string()),
@@ -283,6 +287,48 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
             }
         }
     }
+
+    result
+}
+
+pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
+    let mut state = ic_preproc::State::new();
+    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
+
+    // Create token iterator using the existing function in lexer.rs
+    let token_iter = lexer::create_token_iterator(iter, false);
+
+    // Collect comments while filtering them out of the token stream
+    let mut comments = Vec::new();
+    let filtered_stream = chumsky::Stream::from_iter(
+        Span::default(),
+        token_iter.filter_map(|tok| match &tok.kind {
+            Kind::Comment(text, trailing) => {
+                // Store comment and filter it out
+                comments.push(comment_attacher::Comment {
+                    span: tok.span,
+                    text: text.clone(),
+                    is_trailing: *trailing,
+                });
+                None
+            }
+            _ => Some((tok.kind, tok.span)),
+        }),
+    );
+
+    let (tree, errors) = parser::specification().parse_recovery(filtered_stream);
+    let mut tree = tree.unwrap_or_default();
+
+    // Attach collected comments to the AST
+    let mut attacher = comment_attacher::CommentAttacher::new(comments);
+    tree = attacher.attach(tree);
+
+    // Collect parser errors
+    let mut errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
+
+    // Process preprocessor errors and warnings
+    errors.extend(process_preprocessor_errors(state.errors(), vfs));
+    let warnings = process_preprocessor_warnings(state.warnings(), vfs);
 
     ParseResult {
         tree,

@@ -300,18 +300,15 @@ fn kind_number(base: Base, value: u64) -> Kind {
     }
 }
 
-/// # Panics
-///
-/// Panics if the provided iterator yields invalid tokens.
-#[must_use]
-pub fn from_cursor<'a, S>(
+/// Creates a token iterator from the preprocessor output
+pub fn create_token_iterator<'a, S>(
     mut iter: TokenIter<'a, S>,
     ignore_comments: bool,
-) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + 'a>
+) -> impl Iterator<Item = Token> + 'a
 where
     S: std::borrow::BorrowMut<ic_preproc::State> + 'a,
 {
-    let iter = std::iter::from_fn(move || {
+    std::iter::from_fn(move || {
         loop {
             let next = iter.next()?;
             match next.kind {
@@ -408,8 +405,21 @@ where
                 _ => break Some(Token::from(next)),
             }
         }
-    });
+    })
+}
 
+/// # Panics
+///
+/// Panics if the provided iterator yields invalid tokens.
+#[must_use]
+pub fn from_cursor<'a, S>(
+    iter: TokenIter<'a, S>,
+    ignore_comments: bool,
+) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + 'a>
+where
+    S: std::borrow::BorrowMut<ic_preproc::State> + 'a,
+{
+    let token_iter = create_token_iterator(iter, ignore_comments);
     let end = Span::default();
-    Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
+    Stream::from_iter(end, token_iter.map(move |tok| (tok.kind, tok.span)))
 }

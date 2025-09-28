@@ -42,24 +42,34 @@ pub struct Comment {
 
 /// Attaches comments to AST nodes by converting them to @doc annotations
 pub struct CommentAttacher {
-    /// All comments from the file
-    comments: Vec<Comment>,
+    /// Comments grouped by `FileId`
+    comments_by_file: std::collections::HashMap<ic_vfs::FileId, Vec<Comment>>,
 }
 
 impl CommentAttacher {
     pub fn new(comments: Vec<Comment>) -> Self {
-        Self { comments }
+        let mut comments_by_file = std::collections::HashMap::new();
+        for comment in comments {
+            comments_by_file
+                .entry(comment.span.start.file_id)
+                .or_insert_with(Vec::new)
+                .push(comment);
+        }
+
+        // Sort comments within each file by position
+        for comments in comments_by_file.values_mut() {
+            comments.sort_by_key(|c| c.span.start.offset);
+        }
+
+        Self { comments_by_file }
     }
 
     /// Attach comments to the AST
     pub fn attach(&mut self, mut tree: Vec<Item>) -> Vec<Item> {
-        // Sort comments by position for efficient processing
-        self.comments.sort_by_key(|c| c.span.start.offset);
-
         // Process the tree
         let mut processor = Processor {
-            comments: &self.comments,
-            comment_idx: 0,
+            comments_by_file: &self.comments_by_file,
+            comment_indices: std::collections::HashMap::new(),
         };
 
         let tree_len = tree.len();
@@ -73,8 +83,11 @@ impl CommentAttacher {
                 u32::MAX
             };
 
+            // Get the file_id before the mutable borrow
+            let file_id = item_span(&tree[i]).start.file_id;
+
             if let Some(annotations) = item_annotations_mut(&mut tree[i]) {
-                processor.attach_trailing_comments_until(next_pos, annotations);
+                processor.attach_trailing_comments_until(next_pos, file_id, annotations);
             }
         }
 
@@ -83,11 +96,71 @@ impl CommentAttacher {
 }
 
 struct Processor<'a> {
-    comments: &'a [Comment],
-    comment_idx: usize,
+    comments_by_file: &'a std::collections::HashMap<ic_vfs::FileId, Vec<Comment>>,
+    comment_indices: std::collections::HashMap<ic_vfs::FileId, usize>,
+}
+
+/// Check if we're switching between files at this member
+fn is_file_boundary<T>(
+    members: &[T],
+    current_idx: usize,
+    member_span: impl Fn(&T) -> Span,
+) -> bool {
+    current_idx > 0
+        && member_span(&members[current_idx]).start.file_id
+            != member_span(&members[current_idx - 1]).start.file_id
+}
+
+/// Find the last position we processed in a given file before the current index
+fn find_last_position_in_file<T>(
+    members: &[T],
+    current_idx: usize,
+    target_file: ic_vfs::FileId,
+    member_span: impl Fn(&T) -> Span,
+) -> Option<u32> {
+    for j in (0..current_idx).rev() {
+        if member_span(&members[j]).start.file_id == target_file {
+            return Some(member_span(&members[j]).end.offset);
+        }
+    }
+    None
 }
 
 impl Processor<'_> {
+    /// Skip orphaned comments that appear before a given position
+    fn skip_orphaned_comments_before_position(&mut self, file_id: ic_vfs::FileId, position: u32) {
+        if let Some(idx) = self.comment_indices.get_mut(&file_id) {
+            if let Some(comments) = self.comments_by_file.get(&file_id) {
+                // Skip comments that appear before the given position
+                while *idx < comments.len() && comments[*idx].span.end.offset <= position {
+                    *idx += 1;
+                }
+            }
+        }
+    }
+
+    /// Handle file boundary logic when processing a member
+    fn handle_file_boundary<T>(
+        &mut self,
+        members: &[T],
+        current_idx: usize,
+        member_span: &impl Fn(&T) -> Span,
+    ) {
+        if is_file_boundary(members, current_idx, member_span) {
+            let member_sp = member_span(&members[current_idx]);
+            let last_pos = find_last_position_in_file(
+                members,
+                current_idx,
+                member_sp.start.file_id,
+                member_span,
+            );
+
+            if let Some(last_pos) = last_pos {
+                // Skip comments that appear before the last position we saw in this file
+                self.skip_orphaned_comments_before_position(member_sp.start.file_id, last_pos);
+            }
+        }
+    }
     /// Process container items that have nested items (module, interface, annotation, valuetype)
     fn process_container<T>(
         &mut self,
@@ -97,16 +170,21 @@ impl Processor<'_> {
         first_member_offset: Option<u32>,
         mut process_member: impl FnMut(&mut Self, &mut T),
     ) {
-        self.attach_comments_before(span.start.offset, annotations);
+        self.attach_comments_before(span.start.offset, span.start.file_id, annotations);
 
         let first_offset = first_member_offset.unwrap_or(span.end.offset.saturating_sub(1));
-        self.handle_inline_and_body_comments(first_offset, span.end.offset, annotations);
+        self.handle_inline_and_body_comments(
+            first_offset,
+            span.end.offset,
+            span.start.file_id,
+            annotations,
+        );
 
         for member in members {
             process_member(self, member);
         }
 
-        self.attach_item_trailing_comment(span.end.offset, annotations);
+        self.attach_item_trailing_comment(span.end.offset, span.start.file_id, annotations);
     }
     /// Common pattern for processing items with members
     fn process_item_with_members<T>(
@@ -118,7 +196,7 @@ impl Processor<'_> {
         member_annotations: impl Fn(&mut T) -> &mut Vec<AnnotationAppl>,
         use_bounded_trailing: bool,
     ) {
-        self.attach_comments_before(span.start.offset, annotations);
+        self.attach_comments_before(span.start.offset, span.start.file_id, annotations);
 
         let first_member_offset = members
             .first()
@@ -126,15 +204,33 @@ impl Processor<'_> {
                 member_span(m).start.offset
             });
 
-        self.handle_inline_and_body_comments(first_member_offset, span.end.offset, annotations);
+        self.handle_inline_and_body_comments(
+            first_member_offset,
+            span.end.offset,
+            span.start.file_id,
+            annotations,
+        );
 
         let container_end = span.end.offset;
         if use_bounded_trailing {
             let member_count = members.len();
+            let mut current_file = span.start.file_id;
+
             for i in 0..member_count {
                 let member_sp = member_span(&members[i]);
+
+                // Track current file for debugging/clarity
+                if member_sp.start.file_id != current_file {
+                    current_file = member_sp.start.file_id;
+                }
+
+                // Handle file boundary logic (skip orphaned comments if needed)
+                self.handle_file_boundary(members, i, &member_span);
+
+                // Attach comments to this member
                 self.attach_comments_before(
                     member_sp.start.offset,
+                    member_sp.start.file_id,
                     member_annotations(&mut members[i]),
                 );
 
@@ -144,24 +240,36 @@ impl Processor<'_> {
                 } else {
                     container_end
                 };
-                self.attach_trailing_comments_until(next_pos, member_annotations(&mut members[i]));
+                self.attach_trailing_comments_until(
+                    next_pos,
+                    member_sp.start.file_id,
+                    member_annotations(&mut members[i]),
+                );
             }
         } else {
             let member_count = members.len();
             for i in 0..member_count {
                 let span = member_span(&members[i]);
-                self.attach_comments_before(span.start.offset, member_annotations(&mut members[i]));
+                self.attach_comments_before(
+                    span.start.offset,
+                    span.start.file_id,
+                    member_annotations(&mut members[i]),
+                );
 
                 let next_pos = if i + 1 < member_count {
                     member_span(&members[i + 1]).start.offset
                 } else {
                     span.end.offset
                 };
-                self.attach_trailing_comments_until(next_pos, member_annotations(&mut members[i]));
+                self.attach_trailing_comments_until(
+                    next_pos,
+                    span.start.file_id,
+                    member_annotations(&mut members[i]),
+                );
             }
         }
 
-        self.attach_item_trailing_comment(span.end.offset, annotations);
+        self.attach_item_trailing_comment(span.end.offset, span.start.file_id, annotations);
     }
     fn process_item(&mut self, item: &mut Item) {
         match item {
@@ -202,8 +310,9 @@ impl Processor<'_> {
         if def_count > 1 {
             for i in 0..def_count - 1 {
                 let next_pos = item_span(&module.definitions[i + 1]).start.offset;
+                let file_id = item_span(&module.definitions[i]).start.file_id;
                 if let Some(annotations) = item_annotations_mut(&mut module.definitions[i]) {
-                    self.attach_trailing_comments_until(next_pos, annotations);
+                    self.attach_trailing_comments_until(next_pos, file_id, annotations);
                 }
             }
         }
@@ -291,7 +400,11 @@ impl Processor<'_> {
     }
 
     fn process_annotation(&mut self, a: &mut AnnotationDef) {
-        self.attach_comments_before(a.span.start.offset, &mut a.annotations);
+        self.attach_comments_before(
+            a.span.start.offset,
+            a.span.start.file_id,
+            &mut a.annotations,
+        );
 
         let first_member_offset =
             first_annotation_param_offset(&a.params).unwrap_or(a.span.end.offset.saturating_sub(1));
@@ -299,6 +412,7 @@ impl Processor<'_> {
         self.handle_inline_and_body_comments(
             first_member_offset,
             a.span.end.offset,
+            a.span.start.file_id,
             &mut a.annotations,
         );
 
@@ -317,13 +431,25 @@ impl Processor<'_> {
             match &mut a.params[i] {
                 AnnotationField::Item(item) => self.process_item(item),
                 AnnotationField::Member(member) => {
-                    self.attach_comments_before(member.span.start.offset, &mut member.annotations);
-                    self.attach_trailing_comments_until(next_pos, &mut member.annotations);
+                    self.attach_comments_before(
+                        member.span.start.offset,
+                        member.span.start.file_id,
+                        &mut member.annotations,
+                    );
+                    self.attach_trailing_comments_until(
+                        next_pos,
+                        member.span.start.file_id,
+                        &mut member.annotations,
+                    );
                 }
             }
         }
 
-        self.attach_item_trailing_comment(a.span.end.offset, &mut a.annotations);
+        self.attach_item_trailing_comment(
+            a.span.end.offset,
+            a.span.start.file_id,
+            &mut a.annotations,
+        );
     }
 
     fn process_valuetype(&mut self, v: &mut ValuetypeDef) {
@@ -342,20 +468,27 @@ impl Processor<'_> {
     }
 
     fn process_simple_item(&mut self, span: Span, annotations: &mut Vec<AnnotationAppl>) {
-        self.attach_comments_before(span.start.offset, annotations);
-        self.attach_trailing_comments(annotations);
+        self.attach_comments_before(span.start.offset, span.start.file_id, annotations);
+        self.attach_trailing_comments(span.start.file_id, annotations);
     }
 
     fn handle_inline_and_body_comments(
         &mut self,
         first_member_offset: u32,
         end_offset: u32,
+        file_id: ic_vfs::FileId,
         annotations: &mut Vec<AnnotationAppl>,
     ) {
+        let Some(comments) = self.comments_by_file.get(&file_id) else {
+            return;
+        };
+
+        let comment_idx = self.comment_indices.entry(file_id).or_insert(0);
+
         // Only process trailing comments that are inside the container
         // Leading comments before members should be left for the members to process
-        while self.comment_idx < self.comments.len() {
-            let comment = &self.comments[self.comment_idx];
+        while *comment_idx < comments.len() {
+            let comment = &comments[*comment_idx];
 
             if comment.span.start.offset >= end_offset {
                 break;
@@ -371,7 +504,7 @@ impl Processor<'_> {
             // Leading comments will be handled by the members themselves
             if comment.is_trailing {
                 annotations.push(comment_to_doc_annotation(comment));
-                self.comment_idx += 1;
+                *comment_idx += 1;
             } else {
                 // Don't consume leading comments - they belong to members
                 break;
@@ -382,17 +515,24 @@ impl Processor<'_> {
     fn attach_item_trailing_comment(
         &mut self,
         item_end: u32,
+        file_id: ic_vfs::FileId,
         annotations: &mut Vec<AnnotationAppl>,
     ) {
         // Look for trailing comments after the item (e.g., after semicolon)
-        let mut temp_idx = self.comment_idx;
-        while temp_idx < self.comments.len() {
-            let comment = &self.comments[temp_idx];
+        let Some(comments) = self.comments_by_file.get(&file_id) else {
+            return;
+        };
+
+        let comment_idx = self.comment_indices.entry(file_id).or_insert(0);
+        let mut temp_idx = *comment_idx;
+
+        while temp_idx < comments.len() {
+            let comment = &comments[temp_idx];
 
             if comment.is_trailing && comment.span.start.offset > item_end {
                 annotations.push(comment_to_doc_annotation(comment));
-                self.comment_idx = temp_idx + 1;
-                temp_idx = self.comment_idx;
+                *comment_idx = temp_idx + 1;
+                temp_idx = *comment_idx;
                 continue;
             } else if !comment.is_trailing && comment.span.start.offset > item_end {
                 // Non-trailing comment after item - belongs to next item
@@ -403,9 +543,20 @@ impl Processor<'_> {
         }
     }
 
-    fn attach_comments_before(&mut self, pos: u32, annotations: &mut Vec<AnnotationAppl>) {
-        while self.comment_idx < self.comments.len() {
-            let comment = &self.comments[self.comment_idx];
+    fn attach_comments_before(
+        &mut self,
+        pos: u32,
+        file_id: ic_vfs::FileId,
+        annotations: &mut Vec<AnnotationAppl>,
+    ) {
+        let Some(comments) = self.comments_by_file.get(&file_id) else {
+            return; // No comments for this file
+        };
+
+        let comment_idx = self.comment_indices.entry(file_id).or_insert(0);
+
+        while *comment_idx < comments.len() {
+            let comment = &comments[*comment_idx];
 
             if comment.span.start.offset >= pos {
                 break;
@@ -414,20 +565,26 @@ impl Processor<'_> {
             if comment.is_trailing {
                 break;
             }
+
             annotations.push(comment_to_doc_annotation(comment));
-            self.comment_idx += 1;
+            *comment_idx += 1;
         }
     }
 
     fn attach_trailing_comments_impl(
         &mut self,
+        file_id: ic_vfs::FileId,
         max_offset: Option<u32>,
         annotations: &mut Vec<AnnotationAppl>,
-    ) -> bool {
-        let start_idx = self.comment_idx;
+    ) {
+        let Some(comments) = self.comments_by_file.get(&file_id) else {
+            return;
+        };
 
-        while self.comment_idx < self.comments.len() {
-            let comment = &self.comments[self.comment_idx];
+        let comment_idx = self.comment_indices.entry(file_id).or_insert(0);
+
+        while *comment_idx < comments.len() {
+            let comment = &comments[*comment_idx];
 
             if let Some(max) = max_offset {
                 if comment.span.start.offset >= max {
@@ -437,21 +594,28 @@ impl Processor<'_> {
 
             if comment.is_trailing {
                 annotations.push(comment_to_doc_annotation(comment));
-                self.comment_idx += 1;
+                *comment_idx += 1;
             } else {
                 break;
             }
         }
-
-        self.comment_idx > start_idx
     }
 
-    fn attach_trailing_comments_until(&mut self, pos: u32, annotations: &mut Vec<AnnotationAppl>) {
-        self.attach_trailing_comments_impl(Some(pos), annotations);
+    fn attach_trailing_comments_until(
+        &mut self,
+        pos: u32,
+        file_id: ic_vfs::FileId,
+        annotations: &mut Vec<AnnotationAppl>,
+    ) {
+        self.attach_trailing_comments_impl(file_id, Some(pos), annotations);
     }
 
-    fn attach_trailing_comments(&mut self, annotations: &mut Vec<AnnotationAppl>) {
-        self.attach_trailing_comments_impl(None, annotations);
+    fn attach_trailing_comments(
+        &mut self,
+        file_id: ic_vfs::FileId,
+        annotations: &mut Vec<AnnotationAppl>,
+    ) {
+        self.attach_trailing_comments_impl(file_id, None, annotations);
     }
 }
 

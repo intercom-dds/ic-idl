@@ -610,7 +610,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         });
 
         // Update the scope's def_id BEFORE processing contents
-        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+        self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
         // Process annotation parameters and nested types
         let mut params = Vec::new();

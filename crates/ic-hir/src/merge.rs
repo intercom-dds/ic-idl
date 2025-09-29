@@ -856,10 +856,10 @@ impl HirMerger {
         for (old_scope_id, &new_scope_id) in &self.scope_id_maps[graph_index] {
             // Get the old scope's def_id
             if let Some(old_def_id) = old_context.scopes.scopes[old_scope_id.0].def_id {
-                // Map it to the new def_id
                 if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&old_def_id) {
-                    // Update the new scope's def_id
-                    self.new_context.scopes.scopes[new_scope_id.0].def_id = Some(new_def_id);
+                    self.new_context
+                        .scopes
+                        .set_scope_def_id(new_scope_id, new_def_id);
                 }
             }
         }

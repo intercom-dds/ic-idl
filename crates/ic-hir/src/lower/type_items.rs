@@ -209,7 +209,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         });
 
         // Update the scope's def_id so nested items can find their parent
-        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+        self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
         // Process interface members now that the interface exists
         let mut prototypes = Vec::new();
@@ -405,7 +405,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         });
 
         // Update the scope's def_id so nested items can find their parent
-        self.ctx.context.scopes.get_scope_mut(scope).def_id = Some(def_id);
+        self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
         // Process valuetype elements now that the valuetype exists
         let (members, prototypes, attributes, definitions) =

@@ -71,6 +71,11 @@ pub struct ScopeTree {
     /// Reverse mapping from `DefId` to the scope that contains it.
     /// This is maintained for efficient lookup.
     def_to_scope: HashMap<DefId, ScopeId>,
+
+    /// Reverse mapping from `DefId` to the scope it owns.
+    /// Maps definitions to the scopes where `scope.def_id == def_id`.
+    /// This is maintained for efficient O(1) lookup in `find_scope_for_def`.
+    def_to_owned_scope: HashMap<DefId, ScopeId>,
 }
 
 impl Default for ScopeTree {
@@ -95,6 +100,7 @@ impl ScopeTree {
             scopes: vec![root_scope],
             root: ScopeId(0),
             def_to_scope: HashMap::new(),
+            def_to_owned_scope: HashMap::new(),
         }
     }
 
@@ -160,6 +166,13 @@ impl ScopeTree {
     /// Gets a mutable scope by ID.
     pub fn get_scope_mut(&mut self, scope: ScopeId) -> &mut Scope {
         &mut self.scopes[scope.0]
+    }
+
+    /// Sets the `def_id` for a scope and maintains the reverse mapping.
+    /// This associates a definition (e.g., module, interface) with the scope it owns.
+    pub fn set_scope_def_id(&mut self, scope_id: ScopeId, def_id: DefId) {
+        self.scopes[scope_id.0].def_id = Some(def_id);
+        self.def_to_owned_scope.insert(def_id, scope_id);
     }
 
     /// Resolves a single name segment in a scope (looks in this scope and parents).
@@ -461,12 +474,7 @@ impl ScopeTree {
     /// Finds the scope ID for a given definition.
     #[must_use]
     pub fn find_scope_for_def(&self, def_id: DefId) -> Option<ScopeId> {
-        for (idx, scope) in self.scopes.iter().enumerate() {
-            if scope.def_id == Some(def_id) {
-                return Some(ScopeId(idx));
-            }
-        }
-        None
+        self.def_to_owned_scope.get(&def_id).copied()
     }
 
     /// Finds the scope that contains a definition.

@@ -210,7 +210,10 @@ impl<'ctx> HirBuilder<'ctx> {
             });
 
         // Update the module scope's def_id BEFORE processing contents
-        self.ctx.context.scopes.get_scope_mut(module_scope).def_id = Some(def_id);
+        self.ctx
+            .context
+            .scopes
+            .set_scope_def_id(module_scope, def_id);
 
         // NOW switch to module scope and process contents
         self.current_scope = module_scope;

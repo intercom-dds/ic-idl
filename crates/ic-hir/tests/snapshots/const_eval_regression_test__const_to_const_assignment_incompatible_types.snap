@@ -1,0 +1,13 @@
+---
+source: crates/ic-hir/tests/const_eval_regression_test.rs
+assertion_line: 162
+expression: diagnostics
+---
+error: constant 'A' of type string cannot be assigned to int32
+   ┌ test.idl:3:24
+   │
+ 2 │         const string A = "hello";
+   ·                      ^ 'A' declared as string here
+ 3 │         const long B = A;
+   ·                        ^ incompatible types
+   └──

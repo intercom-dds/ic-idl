@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/const_eval_regression_test.rs
+assertion_line: 94
+expression: diagnostics
+---
+error: cannot convert NaN or infinity to integer type
+   ┌ test.idl:2:24
+   │
+ 2 │         const long x = (0.0 / 0.0);
+   ·                        ^^^^^^^^^^^ invalid floating-point value
+   └──

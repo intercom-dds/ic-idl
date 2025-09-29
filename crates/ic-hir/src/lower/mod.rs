@@ -236,36 +236,30 @@ fn update_def_references(
 
     match &mut def.kind {
         DefKind::Struct(s) => {
-            // Update parent reference if it points to a forward decl
             if let Some(parent) = &mut s.parent {
                 if let Some(new_id) = mapping.get(parent) {
                     *parent = *new_id;
                 }
             }
 
-            // Update member types
             for member in &mut s.members {
                 update_type_references(&mut member.ty, mapping);
             }
         }
         DefKind::Union(u) => {
-            // Update discriminator type
             update_type_references(&mut u.disc.ty, mapping);
 
-            // Update variant types
             for variant in &mut u.variants {
                 update_type_references(&mut variant.ty, mapping);
             }
         }
         DefKind::Interface(i) => {
-            // Update parent interfaces
             for parent in &mut i.parents {
                 if let Some(new_id) = mapping.get(parent) {
                     *parent = *new_id;
                 }
             }
 
-            // Update prototypes
             for proto in &mut i.prototypes {
                 update_type_references(&mut proto.ty, mapping);
                 for param in &mut proto.params {
@@ -273,32 +267,27 @@ fn update_def_references(
                 }
             }
 
-            // Update attributes
             for attr in &mut i.attributes {
                 update_type_references(&mut attr.ty, mapping);
             }
         }
         DefKind::Valuetype(v) => {
-            // Update parent reference
             if let Some(parent) = &mut v.parent {
                 if let Some(new_id) = mapping.get(parent) {
                     *parent = *new_id;
                 }
             }
 
-            // Update supports reference
             if let Some(supports) = &mut v.supports {
                 if let Some(new_id) = mapping.get(supports) {
                     *supports = *new_id;
                 }
             }
 
-            // Update members
             for member in &mut v.members {
                 update_type_references(&mut member.ty, mapping);
             }
 
-            // Update prototypes and attributes
             for proto in &mut v.prototypes {
                 update_type_references(&mut proto.ty, mapping);
                 for param in &mut proto.params {
@@ -315,6 +304,7 @@ fn update_def_references(
         }
         DefKind::Const(c) => {
             update_type_references(&mut c.ty, mapping);
+            update_numeric_references(&mut c.value, mapping);
         }
         DefKind::Except(e) => {
             for member in &mut e.members {
@@ -339,6 +329,61 @@ fn update_type_references(ty: &mut Ty, mapping: &std::collections::HashMap<DefId
         TyKind::Map { key, elem, .. } => {
             update_type_references(key, mapping);
             update_type_references(elem, mapping);
+        }
+        _ => {}
+    }
+}
+
+/// Update numeric references to replace forward decl `DefIds` with definition `DefIds`.
+fn update_numeric_references(
+    numeric: &mut crate::hir::Numeric,
+    mapping: &std::collections::HashMap<DefId, DefId>,
+) {
+    use crate::hir::Numeric;
+
+    match numeric {
+        Numeric::Const(def_id) => {
+            if let Some(new_id) = mapping.get(def_id) {
+                *def_id = *new_id;
+            }
+        }
+        Numeric::Array { ty, values } | Numeric::Sequence { ty, values } => {
+            update_type_references(ty, mapping);
+            for value in values.iter_mut() {
+                update_numeric_references(value, mapping);
+            }
+        }
+        Numeric::Map {
+            key,
+            value,
+            entries,
+        } => {
+            update_type_references(key, mapping);
+            update_type_references(value, mapping);
+            for (k, v) in entries.iter_mut() {
+                update_numeric_references(k, mapping);
+                update_numeric_references(v, mapping);
+            }
+        }
+        Numeric::Struct { ty, fields } => {
+            if let Some(new_id) = mapping.get(ty) {
+                *ty = *new_id;
+            }
+            for (_, field_value) in fields.iter_mut() {
+                update_numeric_references(field_value, mapping);
+            }
+        }
+        Numeric::Union {
+            ty,
+            discriminant,
+            field: _,
+            value,
+        } => {
+            if let Some(new_id) = mapping.get(ty) {
+                *ty = *new_id;
+            }
+            update_numeric_references(discriminant, mapping);
+            update_numeric_references(value, mapping);
         }
         _ => {}
     }

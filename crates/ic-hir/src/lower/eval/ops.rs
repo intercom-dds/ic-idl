@@ -28,9 +28,7 @@
 //! Arithmetic, bitwise, and logical operator implementations.
 
 use super::cast::cast_to;
-use super::rank::{
-    IntRank, TyTag, common_type, int_min_max, rank_bits, rank_mask_signed, rank_mask_unsigned,
-};
+use super::rank::{IntRank, TyTag, common_type, int_min_max, rank_bits, rank_mask_unsigned};
 use super::{EvalError, Op, Value};
 
 // Helper to return a SignedOverflow while carrying a wrapped result
@@ -54,7 +52,7 @@ where
         Some(v) if v >= min && v <= max => Ok(Value::Int(v, r)),
         _ => {
             // Overflow occurred, wrap according to the rank's bit width
-            let mask = rank_mask_signed(r);
+            let mask = rank_mask_unsigned(r) as i128;
             let unsigned_result = wrapping_op(x as u128, y as u128) & (mask as u128);
             let wrapped = if unsigned_result > (max as u128) {
                 // Wrapped to negative

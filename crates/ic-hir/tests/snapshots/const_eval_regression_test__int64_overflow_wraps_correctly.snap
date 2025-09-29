@@ -1,0 +1,13 @@
+---
+source: crates/ic-hir/tests/const_eval_regression_test.rs
+assertion_line: 174
+expression: diagnostics
+---
+warning: integer overflow in constant expression
+   ┌ test.idl:3:32
+   │
+ 2 │         const int64 MAX = 9223372036854775807;
+ 3 │         const int64 OVERFLOW = MAX + 1;
+   ·                                ^^^^^^^ overflow detected
+   └──
+ note: consider using a larger integer type if overflow was not intended

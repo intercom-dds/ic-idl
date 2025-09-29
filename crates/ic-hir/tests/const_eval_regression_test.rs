@@ -161,3 +161,15 @@ fn test_const_to_const_assignment_incompatible_types() {
     let diagnostics = common::parse_and_expect_errors(input);
     insta::assert_snapshot!(diagnostics);
 }
+
+#[test]
+fn test_int64_overflow_wraps_correctly() {
+    let input = r"
+        const int64 MAX = 9223372036854775807;
+        const int64 OVERFLOW = MAX + 1;
+    ";
+
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
+    assert!(result.errors.is_empty(), "Should not error, just warn");
+    insta::assert_snapshot!(diagnostics);
+}

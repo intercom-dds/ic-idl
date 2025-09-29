@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/const_eval_regression_test.rs
+assertion_line: 172
+expression: diagnostics
+---
+error: value out of range for target type
+   ┌ test.idl:2:24
+   │
+ 2 │         const int8 A = 127 << 1;
+   ·                        ^^^^^^^^ out of range
+   └──

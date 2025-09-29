@@ -72,17 +72,8 @@ pub fn rank_bits(r: IntRank) -> u32 {
     }
 }
 
-/// Get a bit mask for the given integer rank (signed representation).
-pub fn rank_mask_signed(r: IntRank) -> i128 {
-    let bits = rank_bits(r);
-    if bits >= 64 {
-        i64::MAX as i128
-    } else {
-        (1i128 << bits) - 1
-    }
-}
-
-/// Get a bit mask for the given integer rank (unsigned representation).
+/// Get a bit mask for the given integer rank.
+/// Returns a full-width mask including the sign bit for two's complement arithmetic.
 pub fn rank_mask_unsigned(r: IntRank) -> u128 {
     let bits = rank_bits(r);
     if bits >= 128 { !0 } else { (1u128 << bits) - 1 }

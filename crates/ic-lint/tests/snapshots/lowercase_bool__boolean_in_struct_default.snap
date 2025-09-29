@@ -3,12 +3,12 @@ source: crates/ic-lint/tests/lowercase_bool.rs
 expression: test_lint(source)
 ---
 warning[complex-lit]: complex literals are non-standard
-   ┌ test.idl:7:40
+   ┌ test.idl:7:39
    │
  5 │             boolean strict;
  6 │         };
  7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
-   ·                      ^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^ complex constants are non-standard
+   ·                      ^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^ complex constants are non-standard
    ·                      └─ const defined here
    └──
  note: only literals of trivial types are allowed in standard IDL

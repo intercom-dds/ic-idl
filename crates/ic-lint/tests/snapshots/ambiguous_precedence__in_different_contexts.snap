@@ -68,13 +68,13 @@ warning[ambiguous-precedence]: operator `^` has lower precedence than `+`
  help: add parentheses to clarify the intended order of operations
 
 warning[complex-lit]: complex literals are non-standard
-    ┌ test.idl:8:33
+    ┌ test.idl:8:31
     │
   5 │ };
   6 │ 
   7 │ // In arrays
   8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
-    ·            ^^^^^                ^ complex constants are non-standard
+    ·            ^^^^^              ^^^^^ complex constants are non-standard
     ·            └─ const defined here
   9 │ 
  10 │ // In enum values (if assignment expressions were supported)

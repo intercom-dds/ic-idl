@@ -3,8 +3,8 @@ source: crates/ic-hir/tests/array_init_test.rs
 expression: output
 ---
 error: array expects 3 elements, but 2 were provided
-   ┌ test.idl:2:35
+   ┌ test.idl:2:33
    │
  2 │         const int32 VALUES[3] = { 1, 2 };
-   ·                                   ^^^^ incorrect number of elements
+   ·                                 ^^^^^^^^ incorrect number of elements
    └──

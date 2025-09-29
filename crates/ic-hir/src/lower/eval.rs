@@ -962,9 +962,25 @@ impl<'a> ConstEvaluator<'a> {
         match &expected_ty.kind {
             TyKind::Adt(def_id) => {
                 let def = self.ctx.context.definitions.get(*def_id);
-                if let DefKind::Struct(_) = &def.kind {
-                    let mut init_eval = InitializerEvaluator::new(self);
-                    return init_eval.eval_struct(init_list, *def_id, expected_ty);
+                match &def.kind {
+                    DefKind::Struct(_) => {
+                        let mut init_eval = InitializerEvaluator::new(self);
+                        return init_eval.eval_struct(init_list, *def_id, expected_ty);
+                    }
+                    DefKind::Decl(_) => {
+                        self.ctx.diagnostics.error(
+                            format!(
+                                "cannot initialize forward-declared type '{}' in constant \
+                                 expression",
+                                def.ident.name
+                            ),
+                            Label::new(span).message("incomplete type"),
+                        );
+                        return None;
+                    }
+                    _ => {
+                        // Other ADT types (union, valuetype, etc.) don't support initialization
+                    }
                 }
             }
             TyKind::Array { ty, len, .. } => {

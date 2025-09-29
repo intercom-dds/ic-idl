@@ -30,11 +30,11 @@ use std::fmt::Display;
 pub trait IterExt: Iterator + Sized {
     /// Joins all elements of an interator into a string with the specified
     /// separator.
-    fn join(self, _sep: &str) -> String
+    fn join(self, sep: &str) -> String
     where
         Self::Item: Display,
     {
-        self.map(|v| v.to_string()).collect::<Vec<_>>().join("::")
+        self.map(|v| v.to_string()).collect::<Vec<_>>().join(sep)
     }
 }
 

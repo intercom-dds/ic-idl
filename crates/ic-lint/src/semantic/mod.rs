@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod bit_bound;
-pub mod circular_inheritance;
 pub mod conflicting_annotations;
 pub mod derived_struct_key;
 pub mod duplicate_annotations_hir;

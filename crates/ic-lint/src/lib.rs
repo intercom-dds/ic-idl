@@ -479,7 +479,6 @@ define_lints! {
         pedantic::large_union_variant::LargeUnionVariant,
         pedantic::prefer_enum_name::PreferEnumName,
         semantic::bit_bound::BitBound,
-        semantic::circular_inheritance::CircularInheritance,
         semantic::conflicting_annotations::ConflictingAnnotations,
         semantic::derived_struct_key::DerivedStructKey,
         semantic::duplicate_annotations_hir::DuplicateAnnotations,

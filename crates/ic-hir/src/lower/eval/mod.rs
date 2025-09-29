@@ -80,6 +80,8 @@ enum EvalError {
     RangeError,
     /// Invalid Unicode scalar value for a character type (e.g., surrogate for wchar).
     InvalidChar,
+    /// Invalid floating-point value (NaN or infinity) in conversion.
+    InvalidFloat,
     DivByZero,
     ModByZero,
     TypeMismatch,
@@ -179,6 +181,13 @@ impl<'a> ConstEvaluator<'a> {
                 self.ctx.diagnostics.errors.push(error_span(
                     "invalid Unicode scalar for character type",
                     Label::new(error.span).message("invalid character value"),
+                ));
+                None
+            }
+            EvalError::InvalidFloat => {
+                self.ctx.diagnostics.errors.push(error_span(
+                    "cannot convert NaN or infinity to integer type",
+                    Label::new(error.span).message("invalid floating-point value"),
                 ));
                 None
             }

@@ -71,8 +71,14 @@ pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
         (UInt(v, _), TyTag::Float(fr)) => Ok(Float(v as f64, fr)),
         (Float(f, _), TyTag::Float(fr)) => Ok(Float(f, fr)),
         (Float(f, _), TyTag::Int(r, sign)) => {
-            // Truncate float to integer
-            let i = f.trunc() as i128;
+            if !f.is_finite() {
+                return Err(EvalError::InvalidFloat);
+            }
+            let truncated = f.trunc();
+            if truncated < (i128::MIN as f64) || truncated > (i128::MAX as f64) {
+                return Err(EvalError::RangeError);
+            }
+            let i = truncated as i128;
             let (min, max) = int_min_max(r);
             if i < min || i > max {
                 return Err(EvalError::RangeError);

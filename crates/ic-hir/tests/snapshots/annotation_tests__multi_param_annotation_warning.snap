@@ -1,0 +1,16 @@
+---
+source: crates/ic-hir/tests/annotation_tests.rs
+assertion_line: 245
+expression: diagnostics
+---
+error: positional arguments not allowed for multi-parameter annotations
+    ┌ test.idl:8:10
+    │
+  5 │         };
+  6 │ 
+  7 │         // This should produce a warning
+  8 │         @my_range(0, 10)
+    ·          ^^^^^^^^ use named arguments instead
+  9 │         struct BadRange {
+ 10 │             long value;
+    └──

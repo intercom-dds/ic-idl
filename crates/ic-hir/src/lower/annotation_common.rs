@@ -104,9 +104,9 @@ fn convert_annotation_args(
     let has_named_args = ast_args.iter().any(|arg| arg.ident.is_some());
 
     if has_named_args {
-        process_named_arguments(ctx, ast_args, ann_params.as_ref(), scope, ann_span)
+        process_named_arguments(ctx, ast_args, ann_params.as_ref(), def_id, scope, ann_span)
     } else {
-        process_positional_arguments(ctx, ast_args, ann_params.as_ref(), scope, ann_span)
+        process_positional_arguments(ctx, ast_args, ann_params.as_ref(), def_id, scope, ann_span)
     }
 }
 
@@ -127,6 +127,7 @@ fn process_named_arguments(
     ctx: &mut LoweringContext,
     ast_args: &[AnnotationArg],
     ann_params: Option<&Vec<AnnParam>>,
+    def_id: Option<DefId>,
     scope: ScopeId,
     ann_span: ic_syntax::Span,
 ) -> Vec<AnnArg> {
@@ -138,7 +139,7 @@ fn process_named_arguments(
 
         // Process each parameter and match with provided arguments
         for param in params {
-            if let Some(arg) = process_named_parameter(ctx, param, &named_args, scope) {
+            if let Some(arg) = process_named_parameter(ctx, param, &named_args, def_id, scope) {
                 args.push(arg);
             } else if let Some(arg) = create_default_argument(param) {
                 args.push(arg);
@@ -151,7 +152,7 @@ fn process_named_arguments(
         validate_unknown_parameters(ctx, &named_args, params);
     } else {
         // No annotation definition available, just process named args as-is
-        args = process_unvalidated_named_arguments(ctx, ast_args, scope);
+        args = process_unvalidated_named_arguments(ctx, ast_args, def_id, scope);
     }
 
     args
@@ -181,10 +182,21 @@ fn process_named_parameter(
     ctx: &mut LoweringContext,
     param: &AnnParam,
     named_args: &std::collections::HashMap<String, &AnnotationArg>,
+    def_id: Option<DefId>,
     scope: ScopeId,
 ) -> Option<AnnArg> {
     if let Some(arg) = named_args.get(&param.ident.name) {
-        let mut evaluator = ConstEvaluator::new(ctx, scope);
+        // Create evaluator with annotation scope if available
+        let mut evaluator = if let Some(ann_def_id) = def_id {
+            if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
+                ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
+            } else {
+                ConstEvaluator::new(ctx, scope)
+            }
+        } else {
+            ConstEvaluator::new(ctx, scope)
+        };
+
         evaluator
             .eval_for_type(&arg.value, &param.ty)
             .map(|value| AnnArg {
@@ -242,11 +254,22 @@ fn validate_unknown_parameters(
 fn process_unvalidated_named_arguments(
     ctx: &mut LoweringContext,
     ast_args: &[AnnotationArg],
+    def_id: Option<DefId>,
     scope: ScopeId,
 ) -> Vec<AnnArg> {
     let mut args = Vec::new();
     for arg in ast_args {
-        let mut evaluator = ConstEvaluator::new(ctx, scope);
+        // Create evaluator with annotation scope if available
+        let mut evaluator = if let Some(ann_def_id) = def_id {
+            if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
+                ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
+            } else {
+                ConstEvaluator::new(ctx, scope)
+            }
+        } else {
+            ConstEvaluator::new(ctx, scope)
+        };
+
         if let Some(value) = evaluator.eval_annotation_arg(&arg.value) {
             let ident = arg.ident.clone().unwrap_or_else(|| Ident {
                 name: String::new(),
@@ -267,6 +290,7 @@ fn process_positional_arguments(
     ctx: &mut LoweringContext,
     ast_args: &[AnnotationArg],
     ann_params: Option<&Vec<AnnParam>>,
+    def_id: Option<DefId>,
     scope: ScopeId,
     ann_span: ic_syntax::Span,
 ) -> Vec<AnnArg> {
@@ -279,7 +303,7 @@ fn process_positional_arguments(
         // Process each positional argument
         for (i, arg) in ast_args.iter().enumerate() {
             if let Some(param) = params.get(i) {
-                if let Some(processed_arg) = evaluate_argument(ctx, arg, param, scope) {
+                if let Some(processed_arg) = evaluate_argument(ctx, arg, param, def_id, scope) {
                     args.push(processed_arg);
                 }
             }
@@ -289,7 +313,7 @@ fn process_positional_arguments(
         add_missing_defaults(ctx, &mut args, params, ast_args.len(), ann_span);
     } else {
         // No annotation definition available, just process as-is
-        args = process_unvalidated_positional_arguments(ctx, ast_args, scope);
+        args = process_unvalidated_positional_arguments(ctx, ast_args, def_id, scope);
     }
 
     args
@@ -331,9 +355,20 @@ fn evaluate_argument(
     ctx: &mut LoweringContext,
     arg: &AnnotationArg,
     param: &AnnParam,
+    def_id: Option<DefId>,
     scope: ScopeId,
 ) -> Option<AnnArg> {
-    let mut evaluator = ConstEvaluator::new(ctx, scope);
+    // Create evaluator with annotation scope if available
+    let mut evaluator = if let Some(ann_def_id) = def_id {
+        if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
+            ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
+        } else {
+            ConstEvaluator::new(ctx, scope)
+        }
+    } else {
+        ConstEvaluator::new(ctx, scope)
+    };
+
     evaluator
         .eval_for_type(&arg.value, &param.ty)
         .map(|value| AnnArg {
@@ -378,11 +413,22 @@ fn add_missing_defaults(
 fn process_unvalidated_positional_arguments(
     ctx: &mut LoweringContext,
     ast_args: &[AnnotationArg],
+    def_id: Option<DefId>,
     scope: ScopeId,
 ) -> Vec<AnnArg> {
     let mut args = Vec::new();
     for arg in ast_args {
-        let mut evaluator = ConstEvaluator::new(ctx, scope);
+        // Create evaluator with annotation scope if available
+        let mut evaluator = if let Some(ann_def_id) = def_id {
+            if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
+                ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
+            } else {
+                ConstEvaluator::new(ctx, scope)
+            }
+        } else {
+            ConstEvaluator::new(ctx, scope)
+        };
+
         if let Some(value) = evaluator.eval_annotation_arg(&arg.value) {
             args.push(AnnArg {
                 ident: Ident {

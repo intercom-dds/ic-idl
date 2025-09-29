@@ -865,11 +865,30 @@ fn get_type_name(ty: &Ty, ctx: &LoweringContext) -> String {
 pub struct ConstEvaluator<'a> {
     ctx: &'a mut LoweringContext,
     scope: ScopeId,
+    /// Optional annotation definition scope to check first for resolution
+    annotation_scope: Option<ScopeId>,
 }
 
 impl<'a> ConstEvaluator<'a> {
     pub fn new(ctx: &'a mut LoweringContext, scope: ScopeId) -> Self {
-        Self { ctx, scope }
+        Self {
+            ctx,
+            scope,
+            annotation_scope: None,
+        }
+    }
+
+    /// Create a new evaluator with an annotation definition scope for resolving values.
+    pub fn with_annotation_scope(
+        ctx: &'a mut LoweringContext,
+        scope: ScopeId,
+        annotation_scope: ScopeId,
+    ) -> Self {
+        Self {
+            ctx,
+            scope,
+            annotation_scope: Some(annotation_scope),
+        }
     }
 
     /// Returns a reference to the context for read-only access.
@@ -1093,7 +1112,17 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate a path to a constant value.
     fn eval_path_value(&mut self, path: &ic_syntax::Path) -> Option<Value> {
-        if let Ok(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
+        // First try annotation scope if we have one
+        let def_id_result = if let Some(ann_scope) = self.annotation_scope {
+            self.ctx
+                .context
+                .resolve_syntax_path(ann_scope, path)
+                .or_else(|_| self.ctx.context.resolve_syntax_path(self.scope, path))
+        } else {
+            self.ctx.context.resolve_syntax_path(self.scope, path)
+        };
+
+        if let Ok(def_id) = def_id_result {
             // Constants, enumerators and flags are Const
             let def = self.ctx.context.definitions.get(def_id);
             if let DefKind::Const(c) = &def.kind {
@@ -1320,7 +1349,17 @@ impl<'a> ConstEvaluator<'a> {
 
         // If this is a path to a constant, return a Const reference instead of the evaluated value
         if let ic_syntax::Expr::Path(path) = expr {
-            if let Ok(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) {
+            // First try annotation scope if we have one
+            let def_id_result = if let Some(ann_scope) = self.annotation_scope {
+                self.ctx
+                    .context
+                    .resolve_syntax_path(ann_scope, path)
+                    .or_else(|_| self.ctx.context.resolve_syntax_path(self.scope, path))
+            } else {
+                self.ctx.context.resolve_syntax_path(self.scope, path)
+            };
+
+            if let Ok(def_id) = def_id_result {
                 let def = self.ctx.context.definitions.get(def_id);
                 if let DefKind::Const(_) = &def.kind {
                     // Note: eval_for_type already returns Numeric::Const for paths,
@@ -1376,7 +1415,17 @@ impl ConstEvaluator<'_> {
         expected_ty: &Ty,
         use_span: ic_syntax::Span,
     ) -> ConstAssignOutcome {
-        let Ok(def_id) = self.ctx.context.resolve_syntax_path(self.scope, path) else {
+        // First try annotation scope if we have one
+        let def_id_result = if let Some(ann_scope) = self.annotation_scope {
+            self.ctx
+                .context
+                .resolve_syntax_path(ann_scope, path)
+                .or_else(|_| self.ctx.context.resolve_syntax_path(self.scope, path))
+        } else {
+            self.ctx.context.resolve_syntax_path(self.scope, path)
+        };
+
+        let Ok(def_id) = def_id_result else {
             return ConstAssignOutcome::NotApplicable;
         };
 

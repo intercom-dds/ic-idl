@@ -180,6 +180,7 @@ impl<'ctx> HirBuilder<'ctx> {
             self.current_scope,
             &m.ident.name,
             m.ident.span,
+            &mut self.ctx.module_scopes,
             &mut self.ctx.diagnostics,
         );
 

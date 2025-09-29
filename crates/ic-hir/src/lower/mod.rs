@@ -33,11 +33,15 @@
 //!
 //! A small intermediate pass updates forward declaration references to point to definitions.
 
+use std::collections::HashMap;
+
+use ic_alloc::insensitive::CaseMap;
 use ic_diagnostic::Diag;
-use ic_syntax::Item;
+use ic_syntax::{Item, Span};
 
 use crate::Context;
 use crate::hir::{Decl, DefFlags, DefId, DefKind, Ty, TyKind};
+use crate::scope::ScopeId;
 
 mod annotation_common;
 mod builder;
@@ -165,6 +169,10 @@ pub(crate) struct LoweringContext {
 
     /// Top-level type IDs in order.
     pub order: Vec<DefId>,
+
+    /// Module reopening tracking during lowering.
+    /// Maps from `parent_scope` to a `CaseMap` of module names to `(scope_id, original_span)`.
+    pub module_scopes: HashMap<ScopeId, CaseMap<(ScopeId, Span)>>,
 }
 
 impl LoweringContext {
@@ -173,6 +181,7 @@ impl LoweringContext {
             context: Context::new(),
             registry: DefinitionRegistry::new(),
             diagnostics: Diagnostics::new(),
+            module_scopes: HashMap::new(),
             order: Vec::new(),
         }
     }

@@ -72,6 +72,22 @@ pub fn rank_bits(r: IntRank) -> u32 {
     }
 }
 
+/// Get a bit mask for the given integer rank (signed representation).
+pub fn rank_mask_signed(r: IntRank) -> i128 {
+    let bits = rank_bits(r);
+    if bits >= 64 {
+        i64::MAX as i128
+    } else {
+        (1i128 << bits) - 1
+    }
+}
+
+/// Get a bit mask for the given integer rank (unsigned representation).
+pub fn rank_mask_unsigned(r: IntRank) -> u128 {
+    let bits = rank_bits(r);
+    if bits >= 128 { !0 } else { (1u128 << bits) - 1 }
+}
+
 pub fn is_signed(r: IntRank) -> bool {
     matches!(r, IntRank::I8 | IntRank::I16 | IntRank::I32 | IntRank::I64)
 }
@@ -159,46 +175,24 @@ pub fn usual_int_conv(lhs: IntRank, rhs: IntRank) -> IntRank {
             }
         }
         // Mixed signedness: follow C rules
-        (true, false) => {
-            match a_rank.cmp(&b_rank) {
+        (signed_is_lhs @ true, false) | (signed_is_lhs @ false, true) => {
+            let (signed_rank, signed_rank_ord, unsigned_rank, unsigned_rank_ord) = if signed_is_lhs
+            {
+                (lhs_prom, a_rank, rhs_prom, b_rank)
+            } else {
+                (rhs_prom, b_rank, lhs_prom, a_rank)
+            };
+
+            match signed_rank_ord.cmp(&unsigned_rank_ord) {
                 std::cmp::Ordering::Greater => {
-                    if can_int_represent_all(rhs_prom, lhs_prom) {
-                        // Signed can represent all unsigned values
-                        lhs_prom
+                    if can_int_represent_all(unsigned_rank, signed_rank) {
+                        signed_rank
                     } else {
-                        // Convert to unsigned of signed's rank
-                        unsigned_of_rank(a_rank)
+                        unsigned_of_rank(signed_rank_ord)
                     }
                 }
-                std::cmp::Ordering::Less => {
-                    // Unsigned has higher rank
-                    rhs_prom
-                }
-                std::cmp::Ordering::Equal => {
-                    // Same rank: use unsigned
-                    unsigned_of_rank(a_rank)
-                }
-            }
-        }
-        (false, true) => {
-            match b_rank.cmp(&a_rank) {
-                std::cmp::Ordering::Greater => {
-                    if can_int_represent_all(lhs_prom, rhs_prom) {
-                        // Signed can represent all unsigned values
-                        rhs_prom
-                    } else {
-                        // Convert to unsigned of signed's rank
-                        unsigned_of_rank(b_rank)
-                    }
-                }
-                std::cmp::Ordering::Less => {
-                    // Unsigned has higher rank
-                    lhs_prom
-                }
-                std::cmp::Ordering::Equal => {
-                    // Same rank: use unsigned
-                    unsigned_of_rank(a_rank)
-                }
+                std::cmp::Ordering::Less => unsigned_rank,
+                std::cmp::Ordering::Equal => unsigned_of_rank(signed_rank_ord),
             }
         }
     }

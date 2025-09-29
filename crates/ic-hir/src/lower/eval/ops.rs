@@ -28,7 +28,9 @@
 //! Arithmetic, bitwise, and logical operator implementations.
 
 use super::cast::cast_to;
-use super::rank::{IntRank, TyTag, common_type, int_min_max, rank_bits};
+use super::rank::{
+    IntRank, TyTag, common_type, int_min_max, rank_bits, rank_mask_signed, rank_mask_unsigned,
+};
 use super::{EvalError, Op, Value};
 
 // Helper to return a SignedOverflow while carrying a wrapped result
@@ -52,16 +54,11 @@ where
         Some(v) if v >= min && v <= max => Ok(Value::Int(v, r)),
         _ => {
             // Overflow occurred, wrap according to the rank's bit width
-            let bits = rank_bits(r);
-            let mask = if bits == 64 {
-                u64::MAX as i128
-            } else {
-                (1i128 << bits) - 1
-            };
+            let mask = rank_mask_signed(r);
             let unsigned_result = wrapping_op(x as u128, y as u128) & (mask as u128);
             let wrapped = if unsigned_result > (max as u128) {
                 // Wrapped to negative
-                (unsigned_result as i128) - ((mask + 1) as i128)
+                (unsigned_result as i128) - (mask + 1)
             } else {
                 unsigned_result as i128
             };
@@ -242,6 +239,7 @@ fn shr(lhs: Value, rhs: Value) -> Result<Value, EvalError> {
 
 fn impl_for(op: Op, tag: TyTag) -> fn(Value, Value) -> Result<Value, EvalError> {
     match (op, tag) {
+        (Op::Add, TyTag::Int(_, _)) => add_int,
         (Op::Add, TyTag::Float(_)) => add_float,
         (Op::Sub, TyTag::Int(_, _)) => sub_int,
         (Op::Sub, TyTag::Float(_)) => sub_float,
@@ -255,7 +253,9 @@ fn impl_for(op: Op, tag: TyTag) -> fn(Value, Value) -> Result<Value, EvalError> 
         (Op::Xor, TyTag::Int(_, _)) => bit_xor,
         (Op::Shl, TyTag::Int(_, _)) => shl,
         (Op::Shr, TyTag::Int(_, _)) => shr,
-        _ => add_int,
+        (Op::Mod | Op::BitAnd | Op::BitOr | Op::Xor | Op::Shl | Op::Shr, TyTag::Float(_)) => {
+            |_, _| Err(EvalError::TypeMismatch)
+        }
     }
 }
 
@@ -298,12 +298,7 @@ pub(super) fn eval_unary(op: ic_syntax::OpKind, val: Value) -> Result<Value, Eva
             let i = u as i128;
             let neg = i.wrapping_neg();
             // Wrap back to unsigned without warnings
-            let bits = rank_bits(r);
-            let mask = if bits == 64 {
-                u64::MAX as u128
-            } else {
-                (1u128 << bits) - 1
-            };
+            let mask = rank_mask_unsigned(r);
             let unsigned_val = (neg as u128) & mask;
             Ok(Value::UInt(unsigned_val, r))
         }

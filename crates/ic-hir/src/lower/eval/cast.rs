@@ -29,7 +29,7 @@
 
 use ic_diagnostic::Label;
 
-use super::rank::{FloatRank, IntRank, TyTag, int_min_max, rank_bits};
+use super::rank::{FloatRank, IntRank, TyTag, int_min_max, rank_mask_unsigned};
 use super::{EvalError, Value};
 use crate::hir::{Numeric, PrimitiveTy, Ty, TyKind};
 
@@ -46,8 +46,7 @@ pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
                 Ok(Int(v, r))
             } else {
                 // For unsigned target, wrap negative values using two's complement
-                let bits = rank_bits(r);
-                let mask: u128 = if bits >= 128 { !0 } else { (1u128 << bits) - 1 };
+                let mask = rank_mask_unsigned(r);
                 let unsigned_val = (v as u128) & mask;
                 Ok(UInt(unsigned_val, r))
             }
@@ -62,8 +61,7 @@ pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
                 Ok(Int(v as i128, r))
             } else {
                 // Converting unsigned to unsigned - apply modular reduction (wrap)
-                let bits = rank_bits(r);
-                let mask: u128 = if bits >= 128 { !0 } else { (1u128 << bits) - 1 };
+                let mask = rank_mask_unsigned(r);
                 Ok(UInt(v & mask, r))
             }
         }

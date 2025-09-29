@@ -83,7 +83,13 @@ pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
                 Ok(UInt(i as u128, r))
             }
         }
-        (Bool(b), TyTag::Int(r, _)) => Ok(Int(i128::from(b), r)),
+        (Bool(b), TyTag::Int(r, sign)) => {
+            if sign {
+                Ok(Int(i128::from(b), r))
+            } else {
+                Ok(UInt(u128::from(b), r))
+            }
+        }
 
         // Const values should be resolved before calling this function
         (Value::Const(_), _) => Err(EvalError::TypeMismatch),

@@ -145,10 +145,8 @@ impl<'ctx> TypeResolver<'ctx> {
                     None
                 }
             }
-            Err((failing_segment, container_def_id)) => {
-                // Figure out where we were looking
-                let context = if let Some(def_id) = container_def_id {
-                    // Get the type of the container
+            Err(err) => {
+                let context = if let Some(def_id) = err.container {
                     let def = self.ctx.context.definitions.get(def_id);
                     format!("{} '{}'", def.kind.kind_name(), def.ident.name)
                 } else {
@@ -156,8 +154,8 @@ impl<'ctx> TypeResolver<'ctx> {
                 };
 
                 self.ctx.diagnostics.errors.push(error_span(
-                    format!("no type named '{}' in {}", failing_segment.name, context),
-                    Label::new(failing_segment.span).message("unknown type"),
+                    format!("no type named '{}' in {}", err.segment.name, context),
+                    Label::new(err.segment.span).message("unknown type"),
                 ));
                 None
             }

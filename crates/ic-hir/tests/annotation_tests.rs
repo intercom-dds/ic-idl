@@ -388,4 +388,3 @@ fn test_annotation_in_module_scope() {
         "Expected no diagnostics but got: {diagnostics}",
     );
 }
-

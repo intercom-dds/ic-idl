@@ -119,10 +119,6 @@ impl Context {
         scope: crate::scope::ScopeId,
         path: &'a ic_syntax::Path,
     ) -> Result<DefId, (&'a Ident, Option<DefId>)> {
-        if path.segments.is_empty() {
-            return Err((&path.segments[0], None));
-        }
-
         // Convert to the existing string-based API
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
 

@@ -34,8 +34,6 @@ pub use ic_syntax::{Ident, ParamKind, Span};
 
 pub type DefId = ic_alloc::arena::Id<Def>;
 
-pub type TypeId = ic_alloc::arena::Id<Def>;
-
 /// Built-in primitive types. These types are effectively stateless and have no
 /// bounds or other attributes attached to them.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter, ToString)]
@@ -314,13 +312,13 @@ pub enum Numeric {
 
     /// Struct initialization with named fields.
     Struct {
-        ty: TypeId,
+        ty: DefId,
         fields: Box<[(Ident, Numeric)]>,
     },
 
     /// Union initialization with discriminant and value.
     Union {
-        ty: TypeId,
+        ty: DefId,
         discriminant: Box<Numeric>,
         field: Ident,
         value: Box<Numeric>,
@@ -445,19 +443,6 @@ pub struct BitmaskTy {
 
     /// Underlying primitive type of the bitmask.
     pub ty: PrimitiveTy,
-}
-
-#[derive(Debug, Clone)]
-pub struct BitFlag {
-    /// Name of the bitmask flag.
-    pub ident: Ident,
-
-    /// Value of the flag.
-    // TODO: numeric instead?
-    // pub value: Numeric,
-    pub value: usize,
-
-    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug, Clone)]

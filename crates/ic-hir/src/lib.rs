@@ -118,11 +118,11 @@ pub struct ResolvedGraph {
     /// Defines the order in which the top-level types appeared in the syntax
     /// tree. This can be used to traverse the graph in the same order in which
     /// the types were defined.
-    pub order: Vec<hir::TypeId>,
+    pub order: Vec<hir::DefId>,
 
     /// Defines the order in which built-in types were defined.
     /// Empty if no built-ins were loaded.
-    pub builtin_order: Vec<hir::TypeId>,
+    pub builtin_order: Vec<hir::DefId>,
 
     /// Errors accumulated during type resolution, type checking, etc.
     pub errors: Vec<ic_diagnostic::Diag>,

@@ -37,7 +37,7 @@ use ic_diagnostic::Diag;
 use ic_syntax::Item;
 
 use crate::Context;
-use crate::hir::{Decl, DefFlags, DefId, DefKind, Ty, TyKind, TypeId};
+use crate::hir::{Decl, DefFlags, DefId, DefKind, Ty, TyKind};
 
 mod annotation_common;
 mod builder;
@@ -57,10 +57,10 @@ pub struct LoweringResult {
     pub context: Context,
 
     /// Top-level type IDs in order of appearance.
-    pub order: Vec<TypeId>,
+    pub order: Vec<DefId>,
 
     /// Built-in type IDs in order of definition.
-    pub builtin_order: Vec<TypeId>,
+    pub builtin_order: Vec<DefId>,
 
     /// Maps definition `DefIds` to their forward declaration `DefIds`.
     pub def_to_forward_decls: std::collections::HashMap<DefId, Vec<DefId>>,
@@ -164,7 +164,7 @@ pub(crate) struct LoweringContext {
     pub diagnostics: Diagnostics,
 
     /// Top-level type IDs in order.
-    pub order: Vec<TypeId>,
+    pub order: Vec<DefId>,
 }
 
 impl LoweringContext {

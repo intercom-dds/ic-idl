@@ -1,0 +1,25 @@
+---
+source: crates/ic-lint/tests/union_case_label_range.rs
+assertion_line: 59
+expression: output
+---
+error[void_ty]: `void` is only allowed as a return type in prototypes
+   ┌ test.idl:3:21
+   │
+ 2 │         union ValidUnion switch(long) {
+ 3 │             case 0: void zero;
+   ·                     ^^^^ invalid use of `void`
+ 4 │             case 2147483647: long maxInt32;     // 2^31 - 1
+ 5 │             case -2147483648: long minInt32;    // -2^31
+   └──
+
+error: integer literal out of range for 'int32'
+   ┌ test.idl:6:18
+   │
+ 4 │             case 2147483647: long maxInt32;     // 2^31 - 1
+ 5 │             case -2147483648: long minInt32;    // -2^31
+ 6 │             case 4294967295: long maxUint32;    // 2^32 - 1
+   ·                  ^^^^^^^^^^ out of range
+ 7 │             default: boolean other;
+ 8 │         };
+   └──

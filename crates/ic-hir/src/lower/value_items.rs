@@ -56,16 +56,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     pub fn process_const(&mut self, c: &ConstDef) -> DefId {
         // Resolve the base type first
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let (base_ty, type_resolved) = match resolver.resolve_type(&c.ty) {
-            Some(ty) => (ty, true),
-            None => {
-                // Use a default type on error
-                let fallback = Ty {
-                    span: ic_syntax::util::ty_span(&c.ty),
-                    kind: TyKind::Primitive(PrimitiveTy::Int32),
-                };
-                (fallback, false)
-            }
+        let (base_ty, type_resolved) = if let Some(ty) = resolver.resolve_type(&c.ty) {
+            (ty, true)
+        } else {
+            // Use a default type on error
+            let fallback = Ty {
+                span: ic_syntax::util::ty_span(&c.ty),
+                kind: TyKind::Primitive(PrimitiveTy::Int32),
+            };
+            (fallback, false)
         };
 
         // Process the declarator to get identifier and full type (including array dimensions)

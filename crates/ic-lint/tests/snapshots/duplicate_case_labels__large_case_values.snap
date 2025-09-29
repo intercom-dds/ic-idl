@@ -12,6 +12,26 @@ error[duplicate-case]: union 'LargeUnion' has duplicate case label '922337203685
  6 │ };
    └──
 
+error[union-label-range]: case label value 9223372036854775807 exceeds 32-bit range in union 'LargeUnion'
+   ┌ test.idl:3:10
+   │
+ 2 │ union LargeUnion switch (long long) {
+ 3 │     case 9223372036854775807: long max_val;
+   ·          ^^^^^^^^^^^^^^^^^^^ value must fit in 32 bits
+ 4 │     case -9223372036854775808: string min_val;
+ 5 │     case 9223372036854775807: boolean dup_max;  // Duplicate
+   └──
+
+error[union-label-range]: case label value 9223372036854775807 exceeds 32-bit range in union 'LargeUnion'
+   ┌ test.idl:5:10
+   │
+ 3 │     case 9223372036854775807: long max_val;
+ 4 │     case -9223372036854775808: string min_val;
+ 5 │     case 9223372036854775807: boolean dup_max;  // Duplicate
+   ·          ^^^^^^^^^^^^^^^^^^^ value must fit in 32 bits
+ 6 │ };
+   └──
+
 error: value out of range for target type
    ┌ test.idl:4:10
    │

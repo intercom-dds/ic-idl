@@ -104,9 +104,9 @@ fn test_const_array_forward_ref_update() {
 
 #[test]
 fn test_const_map_forward_ref() {
-    let input = r#"
+    let input = r"
         const map<string, long> m = {};
-    "#;
+    ";
 
     let (result, _, _) = common::parse_and_resolve(input);
     assert!(result.errors.is_empty());

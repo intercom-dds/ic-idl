@@ -1,0 +1,29 @@
+---
+source: crates/ic-lint/tests/union_case_label_range.rs
+assertion_line: 74
+expression: output
+---
+error: integer literal out of range for 'int32'
+   ┌ test.idl:3:32
+   │
+ 2 │         const long SMALL_VALUE = 100;
+ 3 │         const long BIG_VALUE = 0x100000000;  // 2^32
+   ·                                ^^^^^^^^^^^ out of range
+ 4 │ 
+ 5 │         union UnionWithConstants switch(long) {
+ 6 │             case SMALL_VALUE: long small;
+   └──
+
+error: constant 'BIG_VALUE' of type int32 cannot be assigned to int32
+   ┌ test.idl:7:18
+   │
+ 2 │         const long SMALL_VALUE = 100;
+ 3 │         const long BIG_VALUE = 0x100000000;  // 2^32
+   ·                    ^^^^^^^^^ 'BIG_VALUE' declared as int32 here
+ 4 │ 
+ 5 │         union UnionWithConstants switch(long) {
+ 6 │             case SMALL_VALUE: long small;
+ 7 │             case BIG_VALUE: long big;  // This should error
+   ·                  ^^^^^^^^^ incompatible types
+ 8 │         };
+   └──

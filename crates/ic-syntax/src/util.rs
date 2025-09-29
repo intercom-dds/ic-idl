@@ -100,24 +100,7 @@ pub fn expr_span(expr: &Expr) -> Span {
             let end = expr_span(&v.rhs).end;
             Span { start, end }
         }
-        // TODO: an init list can be empty -- we should track spans of the
-        // curly braces.
-        Expr::InitList(v) => {
-            let start = v
-                .values
-                .first()
-                .map(|e| expr_span(&e.value))
-                .unwrap_or_default()
-                .start;
-
-            let end = v
-                .values
-                .last()
-                .map(|e| expr_span(&e.value))
-                .unwrap_or_default()
-                .end;
-            Span { start, end }
-        }
+        Expr::InitList(v) => v.span,
         Expr::Group(v) => v.span,
     }
 }

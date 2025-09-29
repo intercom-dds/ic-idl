@@ -186,6 +186,7 @@ enum ExprKind {
 @nested
 struct InitList {
     sequence<NamedExpr> values;
+    Span span;
 };
 
 @nested

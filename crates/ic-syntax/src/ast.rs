@@ -27,6 +27,8 @@
 
 #![allow(clippy::match_wildcard_for_single_variants, unused)]
 
+use std::default;
+
 pub use ic_vfs::Span;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -936,6 +938,7 @@ const _: () = {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct InitList {
     pub values: Vec<crate::ast::NamedExpr>,
+    pub span: crate::ast::Span,
 }
 
 impl InitList {
@@ -943,6 +946,7 @@ impl InitList {
     pub fn new() -> Self {
         Self {
             values: <Vec<crate::ast::NamedExpr>>::default(),
+            span: <crate::ast::Span>::default(),
         }
     }
 }
@@ -962,11 +966,18 @@ const _: () = {
         element_kind: ::intercom_cts::TypeKind::None,
     };
 
-    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[::intercom_cts::MemberInfo {
-        name: "values",
-        member_id: 0,
-        flags: ::intercom_cts::MemberFlag::nil(),
-    }];
+    const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
+        ::intercom_cts::MemberInfo {
+            name: "values",
+            member_id: 0,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "span",
+            member_id: 1,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+    ];
 
     impl ::intercom_cts::Marshal for InitList {
         fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
@@ -977,6 +988,7 @@ const _: () = {
 
             let mut state = ar.encode_struct(&TYPE_INFO)?;
             state.encode_field(&MEMBER_INFO[0], &self.values)?;
+            state.encode_field(&MEMBER_INFO[1], &self.span)?;
             state.end()
         }
     }
@@ -990,6 +1002,7 @@ const _: () = {
 
             let mut state = ar.decode_struct(&TYPE_INFO)?;
             state.decode_field(&MEMBER_INFO[0], &mut self.values)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.span)?;
             state.end()?;
             Ok(())
         }

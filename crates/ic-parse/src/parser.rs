@@ -255,12 +255,13 @@ fn complex_const_expr() -> impl IdlParser<Expr> {
         let complex = state
             .separated_by(just(Kind::Comma))
             .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
-            .map(|iter| {
+            .map_with_span(|iter, span| {
                 Expr::InitList(InitList {
                     values: iter
                         .into_iter()
                         .map(|value| NamedExpr { ident: None, value })
                         .collect(),
+                    span,
                 })
             });
 

@@ -28,7 +28,6 @@
 mod common;
 
 #[test]
-#[ignore]
 fn test_builtin_range_positional_warning() {
     let input = r"
         // Built-in @range with positional args - should warn

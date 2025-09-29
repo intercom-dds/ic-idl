@@ -28,16 +28,15 @@
 mod common;
 
 #[test]
-#[ignore]
 fn test_multi_param_annotation_warning() {
     let input = r"
-        @annotation range {
+        @annotation my_range {
             long min;
             long max;
         };
-        
+
         // This should produce a warning
-        @range(0, 10)
+        @my_range(0, 10)
         struct BadRange {
             long value;
         };
@@ -48,47 +47,48 @@ fn test_multi_param_annotation_warning() {
 }
 
 #[test]
-#[ignore]
 fn test_multi_param_annotation_named_ok() {
     let input = r"
-        @annotation range {
+        @annotation my_range {
             long min;
             long max;
         };
-        
+
         // This is correct - named arguments
-        @range(min=0, max=10)
+        @my_range(min=0, max=10)
         struct GoodRange {
             long value;
         };
     ";
 
-    let result = common::parse_and_resolve_successfully(input);
-    assert_eq!(result.order.len(), 2);
+    let diagnostics = common::compile_idl_with_warnings(input);
+    assert!(
+        diagnostics.is_empty(),
+        "Expected no diagnostics but got: {diagnostics}",
+    );
 }
 
 #[test]
-#[ignore]
 fn test_single_param_annotation_positional_ok() {
     let input = r"
-        @annotation optional {
+        @annotation my_optional {
             boolean value;
         };
-        
-        // Single parameter - positional is OK
-        @optional(false)
+
+        @my_optional(false)
         struct OptionalTest {
             long value;
         };
     ";
 
-    let result = common::parse_and_resolve_successfully(input);
-    // Should resolve without warnings
-    assert_eq!(result.order.len(), 2); // annotation def + struct
+    let diagnostics = common::compile_idl_with_warnings(input);
+    assert!(
+        diagnostics.is_empty(),
+        "Expected no diagnostics but got: {diagnostics}",
+    );
 }
 
 #[test]
-#[ignore]
 fn test_mixed_named_positional_warning() {
     let input = r"
         @annotation test {
@@ -96,7 +96,7 @@ fn test_mixed_named_positional_warning() {
             long b;
             long c;
         };
-        
+
         // Mixed named and positional - should warn
         @test(5, b=10, c=15)
         struct Mixed {
@@ -109,19 +109,21 @@ fn test_mixed_named_positional_warning() {
 }
 
 #[test]
-#[ignore]
 fn test_annotation_with_defaults() {
     let input = r"
         @annotation config {
             long timeout;
             boolean retry default true;
         };
-        
-        // Even with defaults, multiple params require named args
+
+        // Single positional arg is OK when there's only one param without default
         @config(30)
-        struct BadConfig {};
+        struct Config {};
     ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
-    insta::assert_snapshot!(diagnostics);
+    assert!(
+        diagnostics.is_empty(),
+        "Expected no diagnostics but got: {diagnostics}",
+    );
 }

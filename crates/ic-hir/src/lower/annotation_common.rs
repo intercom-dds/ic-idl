@@ -79,8 +79,8 @@ fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &AnnotationAppl, scop
     };
 
     // Convert annotation arguments
-    let args = convert_annotation_args(ctx, &ann_appl.args, def_id, scope, ann_appl.span);
     let span = path_span(&ann_appl.ident);
+    let args = convert_annotation_args(ctx, &ann_appl.args, def_id, scope, span);
 
     Ann {
         ident: Ident { name, span },
@@ -308,9 +308,7 @@ fn validate_positional_rules(
 
     if ast_args.len() > 1 && params_without_default.len() > 1 {
         ctx.diagnostics.error(
-            "multiple arguments require names when annotation has more than one parameter without \
-             default"
-                .to_string(),
+            "positional arguments not allowed for multi-parameter annotations".to_string(),
             ic_diagnostic::Label::new(ann_span).message("use named arguments instead"),
         );
     }

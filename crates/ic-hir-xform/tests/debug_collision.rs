@@ -41,7 +41,6 @@ fn test_rust_target() -> Target {
 }
 
 #[test]
-#[ignore = "debug test"]
 fn debug_property_collision() {
     let idl = r"
         module mod_collision {

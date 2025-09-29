@@ -94,7 +94,6 @@ interface Service {
 }
 
 #[test]
-#[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
 fn duplicate_qualified_annotation() {
     let source = r"
 annotation MyAnn {

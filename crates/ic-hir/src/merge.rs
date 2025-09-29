@@ -136,25 +136,26 @@ impl HirMerger {
         }
     }
 
+    /// Maps a single `DefId` from old to new, checking current and previous graphs.
+    /// Returns the original `DefId` if no mapping is found.
+    fn map_single_def_id(&self, graph_index: usize, def_id: DefId) -> DefId {
+        if let Some(&new_id) = self.def_id_maps[graph_index].get(&def_id) {
+            return new_id;
+        }
+
+        for i in 0..graph_index {
+            if let Some(&new_id) = self.def_id_maps[i].get(&def_id) {
+                return new_id;
+            }
+        }
+
+        def_id
+    }
+
     /// Maps an optional `DefId` from old to new using the graph's `DefId` map
     /// Also checks previous graphs' mappings since a `DefId` might come from an earlier file
     fn map_def_id(&self, graph_index: usize, def_id: Option<DefId>) -> Option<DefId> {
-        def_id.and_then(|id| {
-            // First check the current graph's mapping
-            if let Some(&mapped) = self.def_id_maps[graph_index].get(&id) {
-                return Some(mapped);
-            }
-
-            // Then check all previous graphs' mappings
-            // This handles the case where a definition references a type from an earlier file
-            for i in 0..graph_index {
-                if let Some(&mapped) = self.def_id_maps[i].get(&id) {
-                    return Some(mapped);
-                }
-            }
-
-            None
-        })
+        def_id.map(|id| self.map_single_def_id(graph_index, id))
     }
 
     /// Maps a vector of `DefIds` from old to new, filtering out any that don't exist
@@ -310,28 +311,58 @@ impl HirMerger {
 
     /// Adds a graph to the merge, handling deduplication and reference updating.
     ///
-    /// The merge process follows these steps:
-    /// 1. Copy scope hierarchy - preserves the nested scope structure
-    /// 2. Copy all definitions - handles deduplication based on qualified name and span
-    /// 3. Update scope-definition relationships
-    /// 4. Update all internal references (`DefIds`, `TypeIds`) to point to merged definitions
+    /// # Merge Process
+    ///
+    /// The merge follows a multi-phase approach to correctly handle all dependencies:
+    ///
+    /// ## Phase 1: Copy Scope Structure
+    /// Creates the scope hierarchy in the merged context without `def_id` fields.
+    /// These will be populated later once all definitions are copied.
+    ///
+    /// ## Phase 2: Copy Definitions
+    /// Copies all definitions while handling deduplication:
+    /// - **Same name + same span** → Identical definition (from `#include`), deduplicate
+    /// - **Same name + different span**:
+    ///   - For modules: Module reopening, create separate `DefId` but share scope
+    ///   - For compatible types (forward decl + full def): Keep both
+    ///   - For incompatible types: Emit conflict error
+    ///
+    /// Parent relationships are recorded but not set yet, as parent `DefIds` may not
+    /// exist until all definitions are copied.
+    ///
+    /// ## Phase 3: Fix Parent Relationships
+    /// Updates parent-child relationships now that all `DefIds` exist:
+    /// - From explicit `parent` fields in definitions
+    /// - From scope hierarchy for definitions owned by scopes
+    ///
+    /// ## Phase 4: Update Definition Order
+    /// Merges the topological order and builtin order from this graph into the
+    /// combined order, filtering out deduplicated definitions.
+    ///
+    /// ## Phase 5: Process Forward Declarations
+    /// Maps forward declaration tracking from old `DefIds` to new `DefIds`.
+    ///
+    /// ## Phase 6: Update Scope Metadata
+    /// Populates scope name tables and `def_id` fields now that definitions are stable.
+    ///
+    /// ## Phase 7: Update Internal References
+    /// Rewrites all `DefId` references within definitions (types, annotations, etc.)
+    /// to point to the merged `DefIds`. Only updates definitions created in this graph
+    /// to avoid redundant work on deduplicated definitions.
     fn add_graph(&mut self, graph: &ResolvedGraph) {
         let graph_index = self.def_id_maps.len();
         self.def_id_maps.push(HashMap::new());
         self.scope_id_maps.push(HashMap::new());
 
-        // First pass: copy scopes (just the structure, def_ids will be updated later)
+        // Phase 1: Copy scope structure
         self.copy_scopes(graph_index, &graph.context);
 
-        // Second pass: copy all definitions from the arena
+        // Phase 2: Copy all definitions
         let all_def_ids: Vec<DefId> = graph.context.definitions.iter().map(|(id, _)| id).collect();
-
-        // First, copy all definitions without mapping parents yet
         let mut parent_fixups: Vec<(DefId, Option<DefId>)> = Vec::new();
         let mut scope_parent_fixups: Vec<(DefId, ScopeId)> = Vec::new();
 
         for old_def_id in all_def_ids {
-            // Find which scope contains this definition
             let old_scope = graph
                 .context
                 .scopes
@@ -341,46 +372,37 @@ impl HirMerger {
             let new_def_id =
                 self.copy_definition(graph_index, &graph.context, old_def_id, old_scope);
 
-            // Record the original parent for later fixup
             let old_def = graph.context.definitions.get(old_def_id);
             if old_def.parent.is_some() {
                 parent_fixups.push((new_def_id, old_def.parent));
-            } else {
-                // If the definition has no parent field but is in a non-root scope,
-                // we need to find its parent through the scope hierarchy
-                if old_scope != graph.context.scopes.root() {
-                    let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
-                    if let Some(_scope_def_id) = old_scope_data.def_id {
-                        // This scope belongs to a definition, record for fixup
-                        scope_parent_fixups.push((new_def_id, old_scope));
-                    }
+            } else if old_scope != graph.context.scopes.root() {
+                let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
+                if old_scope_data.def_id.is_some() {
+                    scope_parent_fixups.push((new_def_id, old_scope));
                 }
             }
         }
 
-        // Fix up parent relationships from scope hierarchy
+        // Phase 3: Fix parent relationships
         for (new_def_id, old_scope) in scope_parent_fixups {
             self.fix_scope_parent(graph_index, &graph.context, new_def_id, old_scope);
         }
-
-        // Now fix up all parent relationships from parent field
         for (new_def_id, original_parent) in parent_fixups {
             self.fix_parent_relationship(graph_index, new_def_id, original_parent);
         }
 
-        // Add top-level definitions to order
+        // Phase 4: Update definition order
         self.add_to_order(graph_index, &graph.order);
-
-        // Add built-in definitions to builtin_order
         self.add_to_builtin_order(graph_index, &graph.builtin_order);
 
-        // Third pass: update scope def_ids now that definitions are copied
-        self.update_scope_def_ids(graph_index);
+        // Phase 5: Process forward declarations
+        self.process_forward_decl_mappings(graph_index, &graph.def_to_forward_decls);
 
-        // Fourth pass: update scope def_id fields to point to new definitions
+        // Phase 6: Update scope metadata
+        self.update_scope_def_ids(graph_index);
         self.update_scope_def_id_fields(graph_index, &graph.context);
 
-        // Fifth pass: update all references in the copied definitions
+        // Phase 7: Update internal references
         self.update_references(graph_index);
     }
 
@@ -466,10 +488,206 @@ impl HirMerger {
     }
 
     fn is_new_definition(&self, graph_index: usize, new_def_id: DefId) -> bool {
-        // Check if this new_def_id was created in this graph or was mapped to an existing one
         !self.def_id_maps[..graph_index]
             .iter()
             .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id))
+    }
+
+    /// Checks if a module with the same span already exists and handles deduplication.
+    /// Returns `Some(existing_def_id)` if the module should be deduplicated.
+    fn try_deduplicate_module(
+        &mut self,
+        graph_index: usize,
+        _old_context: &Context,
+        old_def_id: DefId,
+        old_def: &Def,
+        qualified_name: &str,
+    ) -> Option<DefId> {
+        let existing_modules = self.module_defs.get(qualified_name)?;
+
+        for &(existing_def_id, existing_span) in existing_modules {
+            if old_def.ident.span == existing_span {
+                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+
+                if let Some(parent_def_id) = old_def.parent {
+                    if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
+                    {
+                        if let DefKind::Module(module) =
+                            &mut self.new_context.definitions.get_mut(mapped_parent).kind
+                        {
+                            if !module.definitions.contains(&existing_def_id) {
+                                module.definitions.push(existing_def_id);
+                            }
+                        }
+                    }
+                }
+
+                return Some(existing_def_id);
+            }
+        }
+
+        None
+    }
+
+    /// Determines if two definition kinds are compatible (e.g., forward decl + full definition).
+    fn are_compatible_defs(old_kind: &DefKind, existing_kind: &DefKind) -> bool {
+        match (old_kind, existing_kind) {
+            (DefKind::Decl(Decl::Struct), DefKind::Struct(_))
+            | (DefKind::Struct(_), DefKind::Decl(Decl::Struct))
+            | (DefKind::Decl(Decl::Union), DefKind::Union(_))
+            | (DefKind::Union(_), DefKind::Decl(Decl::Union))
+            | (DefKind::Decl(Decl::Interface), DefKind::Interface(_))
+            | (DefKind::Interface(_), DefKind::Decl(Decl::Interface))
+            | (DefKind::Decl(Decl::Valuetype), DefKind::Valuetype(_))
+            | (DefKind::Valuetype(_), DefKind::Decl(Decl::Valuetype)) => true,
+            (DefKind::Decl(a), DefKind::Decl(b)) if a == b => true,
+            (DefKind::Annotation(ann1), DefKind::Annotation(ann2)) => {
+                Self::annotations_are_identical(ann1, ann2)
+            }
+            _ => false,
+        }
+    }
+
+    /// Handles the case where a definition with the same qualified name already exists.
+    /// Returns `Some(def_id)` if the definition should be deduplicated or an error was emitted.
+    fn handle_existing_definition(
+        &mut self,
+        graph_index: usize,
+        old_def_id: DefId,
+        old_def: &Def,
+        existing_def_id: DefId,
+    ) -> Option<DefId> {
+        let existing_def = self.new_context.definitions.get(existing_def_id);
+
+        if old_def.ident.span == existing_def.ident.span {
+            self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+
+            if let Some(parent_def_id) = old_def.parent {
+                if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id) {
+                    self.ensure_child_in_parent(existing_def_id, mapped_parent);
+                }
+            }
+
+            return Some(existing_def_id);
+        }
+
+        if matches!(&old_def.kind, DefKind::Module(_)) {
+            return None;
+        }
+
+        let compatible = Self::are_compatible_defs(&old_def.kind, &existing_def.kind);
+
+        if compatible {
+            let is_decl_and_def = matches!(
+                (&old_def.kind, &existing_def.kind),
+                (
+                    DefKind::Decl(_),
+                    DefKind::Struct(_)
+                        | DefKind::Union(_)
+                        | DefKind::Interface(_)
+                        | DefKind::Valuetype(_)
+                ) | (
+                    DefKind::Struct(_)
+                        | DefKind::Union(_)
+                        | DefKind::Interface(_)
+                        | DefKind::Valuetype(_),
+                    DefKind::Decl(_)
+                )
+            );
+
+            if !is_decl_and_def {
+                let both_are_decls = matches!(
+                    (&old_def.kind, &existing_def.kind),
+                    (DefKind::Decl(_), DefKind::Decl(_))
+                );
+
+                if both_are_decls {
+                    if old_def.ident.span == existing_def.ident.span {
+                        self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                        return Some(existing_def_id);
+                    }
+                    return None;
+                }
+                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+                return Some(existing_def_id);
+            }
+            return None;
+        }
+
+        self.errors.push(
+            Diag::error(format!(
+                "conflicting definitions for `{}`",
+                old_def.ident.name
+            ))
+            .label(
+                DiagLabel::new(old_def.ident.span)
+                    .message("redefined here")
+                    .color(Color::Red),
+            )
+            .label(DiagLabel::new(existing_def.ident.span).message("first defined here")),
+        );
+
+        self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
+        Some(existing_def_id)
+    }
+
+    /// Ensures a child definition is registered in its parent's definitions list.
+    fn ensure_child_in_parent(&mut self, child_id: DefId, parent_id: DefId) {
+        match &mut self.new_context.definitions.get_mut(parent_id).kind {
+            DefKind::Module(module) => {
+                if !module.definitions.contains(&child_id) {
+                    module.definitions.push(child_id);
+                }
+            }
+            DefKind::Interface(interface) => {
+                if !interface.definitions.contains(&child_id) {
+                    interface.definitions.push(child_id);
+                }
+            }
+            DefKind::Annotation(annotation) => {
+                if !annotation.types.contains(&child_id) {
+                    annotation.types.push(child_id);
+                }
+            }
+            DefKind::Valuetype(valuetype) => {
+                if !valuetype.definitions.contains(&child_id) {
+                    valuetype.definitions.push(child_id);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Registers a newly created definition in the appropriate tracking map.
+    fn register_new_definition(
+        &mut self,
+        old_def: &Def,
+        new_def_id: DefId,
+        qualified_name: String,
+    ) {
+        if matches!(&old_def.kind, DefKind::Module(_)) {
+            self.module_defs
+                .entry(qualified_name)
+                .or_default()
+                .push((new_def_id, old_def.ident.span));
+        } else if let Some(&existing_id) = self.dedup_map.get(&qualified_name) {
+            let existing_def = self.new_context.definitions.get(existing_id);
+            let should_replace = matches!(
+                (&existing_def.kind, &old_def.kind),
+                (
+                    DefKind::Decl(_),
+                    DefKind::Struct(_)
+                        | DefKind::Union(_)
+                        | DefKind::Interface(_)
+                        | DefKind::Valuetype(_)
+                )
+            );
+            if should_replace {
+                self.dedup_map.insert(qualified_name, new_def_id);
+            }
+        } else {
+            self.dedup_map.insert(qualified_name, new_def_id);
+        }
     }
 
     /// Copies a definition from an old context to the new merged context.
@@ -479,9 +697,9 @@ impl HirMerger {
     /// - Identifier span (to distinguish between identical definitions vs conflicts)
     ///
     /// Special cases:
-    /// - Modules are never deduplicated (each reopening creates a separate module)
-    /// - Conflicting definitions (same name, different spans) generate errors
-    #[allow(clippy::too_many_lines)]
+    /// - Modules with same span are deduplicated; different spans = module reopening
+    /// - Compatible definitions (forward decl + full def) are kept separate
+    /// - Conflicting definitions generate errors
     fn copy_definition(
         &mut self,
         graph_index: usize,
@@ -489,232 +707,46 @@ impl HirMerger {
         old_def_id: DefId,
         old_scope: ScopeId,
     ) -> DefId {
-        // Check if we've already processed this definition in this graph
         if let Some(&existing_def_id) = self.def_id_maps[graph_index].get(&old_def_id) {
             return existing_def_id;
         }
 
         let old_def = old_context.definitions.get(old_def_id);
-
-        // Get the qualified name for deduplication
         let qualified_name = Self::get_qualified_name(old_context, old_def_id);
 
-        // For modules, check module_defs first for same-span deduplication
         if matches!(&old_def.kind, DefKind::Module(_)) {
-            if let Some(existing_modules) = self.module_defs.get(&qualified_name) {
-                // Check if any existing module has the same span
-                for &(existing_def_id, existing_span) in existing_modules {
-                    if old_def.ident.span == existing_span {
-                        // Same span = same module (from include), deduplicate
-                        self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-
-                        // Ensure children are registered in parent if needed
-                        if let Some(parent_def_id) = old_def.parent {
-                            if let Some(&mapped_parent) =
-                                self.def_id_maps[graph_index].get(&parent_def_id)
-                            {
-                                if let DefKind::Module(module) =
-                                    &mut self.new_context.definitions.get_mut(mapped_parent).kind
-                                {
-                                    if !module.definitions.contains(&existing_def_id) {
-                                        module.definitions.push(existing_def_id);
-                                    }
-                                }
-                            }
-                        }
-
-                        return existing_def_id;
-                    }
-                }
-                // Different spans = module reopening, fall through to create new module
+            if let Some(def_id) = self.try_deduplicate_module(
+                graph_index,
+                old_context,
+                old_def_id,
+                old_def,
+                &qualified_name,
+            ) {
+                return def_id;
             }
         }
 
-        // Check for existing definition with same qualified name
         if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
-            let existing_def = self.new_context.definitions.get(existing_def_id);
-
-            // Same span = same definition (from include), deduplicate
-            if old_def.ident.span == existing_def.ident.span {
-                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-
-                // For modules, ensure children are registered
-                if matches!(&old_def.kind, DefKind::Module(_)) {
-                    // If this deduplicated definition has children in the new graph,
-                    // they will be handled by the parent fixup phase
-                }
-
-                // If this deduplicated definition has a parent, ensure it's in the parent's definitions list
-                // This handles the case where a module is deduplicated but its children need to be registered
-                if let Some(parent_def_id) = old_def.parent {
-                    if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
-                    {
-                        match &mut self.new_context.definitions.get_mut(mapped_parent).kind {
-                            DefKind::Module(module) => {
-                                if !module.definitions.contains(&existing_def_id) {
-                                    module.definitions.push(existing_def_id);
-                                }
-                            }
-                            DefKind::Interface(interface) => {
-                                if !interface.definitions.contains(&existing_def_id) {
-                                    interface.definitions.push(existing_def_id);
-                                }
-                            }
-                            DefKind::Annotation(annotation) => {
-                                if !annotation.types.contains(&existing_def_id) {
-                                    annotation.types.push(existing_def_id);
-                                }
-                            }
-                            DefKind::Valuetype(valuetype) => {
-                                if !valuetype.definitions.contains(&existing_def_id) {
-                                    valuetype.definitions.push(existing_def_id);
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-
-                return existing_def_id;
-            }
-
-            // Different spans = different definitions
-            // For modules, each reopening creates a separate DefId
-            if matches!(&old_def.kind, DefKind::Module(_)) {
-                // Module reopening - create a new definition
-                // Fall through to create new definition
-            } else {
-                // For non-modules, check for conflicts
-                // Check if they are compatible (forward declaration + full definition)
-                let compatible = match (&old_def.kind, &existing_def.kind) {
-                    (DefKind::Decl(Decl::Struct), DefKind::Struct(_))
-                    | (DefKind::Struct(_), DefKind::Decl(Decl::Struct))
-                    | (DefKind::Decl(Decl::Union), DefKind::Union(_))
-                    | (DefKind::Union(_), DefKind::Decl(Decl::Union))
-                    | (DefKind::Decl(Decl::Interface), DefKind::Interface(_))
-                    | (DefKind::Interface(_), DefKind::Decl(Decl::Interface))
-                    | (DefKind::Decl(Decl::Valuetype), DefKind::Valuetype(_))
-                    | (DefKind::Valuetype(_), DefKind::Decl(Decl::Valuetype)) => true,
-                    // Multiple forward declarations are allowed
-                    (DefKind::Decl(a), DefKind::Decl(b)) if a == b => true,
-                    // Identical annotation definitions are allowed (per IDL spec)
-                    (DefKind::Annotation(ann1), DefKind::Annotation(ann2)) => {
-                        Self::annotations_are_identical(ann1, ann2)
-                    }
-                    _ => false,
-                };
-
-                if compatible {
-                    // For forward declaration + full definition pairs, we need to keep BOTH
-                    // Don't deduplicate them - create a new definition
-                    let is_decl_and_def = matches!(
-                        (&old_def.kind, &existing_def.kind),
-                        (
-                            DefKind::Decl(_),
-                            DefKind::Struct(_)
-                                | DefKind::Union(_)
-                                | DefKind::Interface(_)
-                                | DefKind::Valuetype(_)
-                        ) | (
-                            DefKind::Struct(_)
-                                | DefKind::Union(_)
-                                | DefKind::Interface(_)
-                                | DefKind::Valuetype(_),
-                            DefKind::Decl(_)
-                        )
-                    );
-
-                    if !is_decl_and_def {
-                        // Check if both are forward declarations
-                        let both_are_decls = matches!(
-                            (&old_def.kind, &existing_def.kind),
-                            (DefKind::Decl(_), DefKind::Decl(_))
-                        );
-
-                        if both_are_decls {
-                            // For forward declarations, only deduplicate if spans are identical
-                            if old_def.ident.span == existing_def.ident.span {
-                                self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-                                return existing_def_id;
-                            }
-                            // Different spans = different forward declarations, keep both
-                            // Fall through to create a new definition
-                        } else {
-                            // For other compatible cases (identical annotations),
-                            // deduplicate as before
-                            self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-                            return existing_def_id;
-                        }
-                    }
-                    // Fall through to create a new definition for forward decl + full def pairs
-                } else {
-                    self.errors.push(
-                        Diag::error(format!(
-                            "conflicting definitions for `{}`",
-                            old_def.ident.name
-                        ))
-                        .label(
-                            DiagLabel::new(old_def.ident.span)
-                                .message("redefined here")
-                                .color(Color::Red),
-                        )
-                        .label(
-                            DiagLabel::new(existing_def.ident.span).message("first defined here"),
-                        ),
-                    );
-                    // Map to existing to avoid cascading errors
-                    self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
-                    return existing_def_id;
-                }
+            if let Some(def_id) =
+                self.handle_existing_definition(graph_index, old_def_id, old_def, existing_def_id)
+            {
+                return def_id;
             }
         }
 
-        // Create a new definition - parent will be set later in the fixup phase
         let new_def_id = self.new_context.definitions.alloc_with_id(|id| Def {
             id,
             ident: old_def.ident.clone(),
-            parent: None,                             // Parent will be fixed up later
-            annotations: old_def.annotations.clone(), // Will need updating
+            parent: None,
+            annotations: old_def.annotations.clone(),
             span: old_def.span,
-            kind: old_def.kind.clone(), // Will need updating
+            kind: old_def.kind.clone(),
             flags: old_def.flags,
         });
 
-        // Record mapping
         self.def_id_maps[graph_index].insert(old_def_id, new_def_id);
+        self.register_new_definition(old_def, new_def_id, qualified_name);
 
-        // For modules, add to module list; for others, add to dedup_map
-        if matches!(&old_def.kind, DefKind::Module(_)) {
-            self.module_defs
-                .entry(qualified_name.clone())
-                .or_default()
-                .push((new_def_id, old_def.ident.span));
-        } else {
-            // Only add to dedup_map if it's not already there or if this is a full definition
-            // replacing a forward declaration
-            if let Some(&existing_id) = self.dedup_map.get(&qualified_name) {
-                let existing_def = self.new_context.definitions.get(existing_id);
-                let should_replace = matches!(
-                    (&existing_def.kind, &old_def.kind),
-                    (
-                        DefKind::Decl(_),
-                        DefKind::Struct(_)
-                            | DefKind::Union(_)
-                            | DefKind::Interface(_)
-                            | DefKind::Valuetype(_)
-                    )
-                );
-                if should_replace {
-                    self.dedup_map.insert(qualified_name, new_def_id);
-                }
-            } else {
-                self.dedup_map.insert(qualified_name, new_def_id);
-            }
-        }
-
-        // Parent relationship will be handled in the fixup phase
-
-        // Map the new definition to its scope
         if let Some(&new_scope) = self.scope_id_maps[graph_index].get(&old_scope) {
             self.def_to_scope_map.insert(new_def_id, new_scope);
         }
@@ -987,26 +1019,7 @@ impl HirMerger {
 
     fn update_type(&self, graph_index: usize, ty: &Ty) -> Ty {
         let kind = match &ty.kind {
-            TyKind::Adt(def_id) => {
-                // Check current graph first
-                if let Some(&new_id) = self.def_id_maps[graph_index].get(def_id) {
-                    TyKind::Adt(new_id)
-                } else {
-                    // Check previous graphs
-                    let mut found = None;
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(def_id) {
-                            found = Some(new_id);
-                            break;
-                        }
-                    }
-                    if let Some(new_id) = found {
-                        TyKind::Adt(new_id)
-                    } else {
-                        TyKind::Adt(*def_id)
-                    }
-                }
-            }
+            TyKind::Adt(def_id) => TyKind::Adt(self.map_single_def_id(graph_index, *def_id)),
             TyKind::Array { ty, len, len_span } => TyKind::Array {
                 ty: Box::new(self.update_type(graph_index, ty)),
                 len: *len,
@@ -1134,20 +1147,7 @@ impl HirMerger {
 
     fn update_numeric(&self, graph_index: usize, num: &Numeric) -> Numeric {
         match num {
-            Numeric::Const(def_id) => {
-                // Check current graph first
-                if let Some(&new_id) = self.def_id_maps[graph_index].get(def_id) {
-                    Numeric::Const(new_id)
-                } else {
-                    // Check previous graphs
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(def_id) {
-                            return Numeric::Const(new_id);
-                        }
-                    }
-                    num.clone()
-                }
-            }
+            Numeric::Const(def_id) => Numeric::Const(self.map_single_def_id(graph_index, *def_id)),
             Numeric::Array { ty, values } => Numeric::Array {
                 ty: ty.clone(),
                 values: values
@@ -1179,47 +1179,24 @@ impl HirMerger {
                     })
                     .collect(),
             },
-            Numeric::Struct { ty, fields } => {
-                // Map the type DefId, checking all graphs
-                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
-                    new_id
-                } else {
-                    // Check previous graphs
-                    let mut found = None;
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(ty) {
-                            found = Some(new_id);
-                            break;
-                        }
-                    }
-                    found.unwrap_or(*ty)
-                };
-                Numeric::Struct {
-                    ty: new_ty,
-                    fields: fields
-                        .iter()
-                        .map(|(ident, v)| (ident.clone(), self.update_numeric(graph_index, v)))
-                        .collect(),
-                }
-            }
+            Numeric::Struct { ty, fields } => Numeric::Struct {
+                ty: self.map_single_def_id(graph_index, *ty),
+                fields: fields
+                    .iter()
+                    .map(|(ident, v)| (ident.clone(), self.update_numeric(graph_index, v)))
+                    .collect(),
+            },
             Numeric::Union {
                 ty,
                 discriminant,
                 field,
                 value,
-            } => {
-                let new_ty = if let Some(&new_id) = self.def_id_maps[graph_index].get(ty) {
-                    new_id
-                } else {
-                    *ty
-                };
-                Numeric::Union {
-                    ty: new_ty,
-                    discriminant: Box::new(self.update_numeric(graph_index, discriminant)),
-                    field: field.clone(),
-                    value: Box::new(self.update_numeric(graph_index, value)),
-                }
-            }
+            } => Numeric::Union {
+                ty: self.map_single_def_id(graph_index, *ty),
+                discriminant: Box::new(self.update_numeric(graph_index, discriminant)),
+                field: field.clone(),
+                value: Box::new(self.update_numeric(graph_index, value)),
+            },
             other => other.clone(),
         }
     }
@@ -1227,25 +1204,9 @@ impl HirMerger {
     fn update_annotation(&self, graph_index: usize, ann: &Ann) -> Ann {
         Ann {
             ident: ann.ident.clone(),
-            def_id: if let Some(def_id) = ann.def_id {
-                // Try to update the def_id if it exists
-                if let Some(&new_id) = self.def_id_maps[graph_index].get(&def_id) {
-                    Some(new_id)
-                } else {
-                    // Check previous graphs
-                    let mut found = None;
-                    for i in 0..graph_index {
-                        if let Some(&new_id) = self.def_id_maps[i].get(&def_id) {
-                            found = Some(new_id);
-                            break;
-                        }
-                    }
-                    found.or(Some(def_id))
-                }
-            } else {
-                // No def_id to update
-                None
-            },
+            def_id: ann
+                .def_id
+                .map(|def_id| self.map_single_def_id(graph_index, def_id)),
             args: ann
                 .args
                 .iter()

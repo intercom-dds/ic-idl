@@ -702,7 +702,8 @@ impl ConstEvaluator<'_> {
         };
 
         if let Some(val) = value_from_numeric(&c.value) {
-            match cast_value_to_type(val, expected_ty) {
+            let resolved_val = self.resolve_const_value(&val).unwrap_or(val);
+            match cast_value_to_type(resolved_val, expected_ty) {
                 Ok(_) => ConstAssignOutcome::Accepted(Box::new(Numeric::Const(def_id))),
                 Err(EvalError::RangeError) => {
                     self.ctx.diagnostics.error(

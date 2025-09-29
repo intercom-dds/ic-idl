@@ -56,20 +56,29 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     pub fn process_const(&mut self, c: &ConstDef) -> DefId {
         // Resolve the base type first
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let base_ty = resolver.resolve_type(&c.ty).unwrap_or_else(|| {
-            // Use a default type on error
-            Ty {
-                span: ic_syntax::util::ty_span(&c.ty),
-                kind: TyKind::Primitive(PrimitiveTy::Int32),
+        let (base_ty, type_resolved) = match resolver.resolve_type(&c.ty) {
+            Some(ty) => (ty, true),
+            None => {
+                // Use a default type on error
+                let fallback = Ty {
+                    span: ic_syntax::util::ty_span(&c.ty),
+                    kind: TyKind::Primitive(PrimitiveTy::Int32),
+                };
+                (fallback, false)
             }
-        });
+        };
 
         // Process the declarator to get identifier and full type (including array dimensions)
         let (ident, ty) = resolve_declarator(&c.decl, base_ty, self.ctx, self.current_scope);
 
         // Evaluate the value using the promotion-aware evaluator
-        let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
-        let value = eval.eval_for_type(&c.value, &ty);
+        // Skip evaluation if type resolution failed to avoid confusing secondary errors
+        let value = if type_resolved {
+            let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
+            eval.eval_for_type(&c.value, &ty)
+        } else {
+            None
+        };
 
         // Create the constant definition
         let const_ty = ConstTy {

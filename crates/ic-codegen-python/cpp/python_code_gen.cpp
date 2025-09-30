@@ -2204,10 +2204,12 @@ void intercom::cidl::code_gen_python(const parse_result* result, ic_list_t* list
 }
 
 extern "C" {
+
 struct python_options_t {
     uint8_t use_pep8;
     const char* global_postfix;
 };
+
 void ic_codegen_python(const parse_result* result, python_options_t options, ic_list_t* list) {
     auto& config = CommandLineOption::get_instance();
     config.python_use_pep8 = options.use_pep8 != 0;

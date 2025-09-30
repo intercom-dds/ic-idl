@@ -25,25 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod codegen;
+
 use ic_emit::File;
 
-unsafe extern "C" {
-    fn ic_codegen_json(
-        result: *const ic_ptree::sys::parse_result,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
-}
-
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks)]
 pub fn codegen_json(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) -> Vec<File> {
-    let result = ic_ptree_lower::from_hir(hir, source_map);
-    let mut generated = vec![];
-    unsafe {
-        ic_codegen_json(
-            result.as_raw(),
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
-        );
-    }
-    generated
+    codegen::JsonGen::new(hir, source_map).generate()
 }

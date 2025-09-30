@@ -131,12 +131,10 @@ dependencies = [
 name = "ic-codegen-json"
 version = "0.1.0"
 dependencies = [
- "ic-cc",
  "ic-emit",
  "ic-hir",
- "ic-ptree",
- "ic-ptree-lower",
  "ic-vfs",
+ "intercom-cts",
 ]
 
 [[package]]

@@ -107,13 +107,6 @@ enum class JsonValueFlags { FLAG_ESCAPED = 1, FLAG_NUMERICAL_VALUE = 2 };
 
 std::string json_value(const numeric& value, const ptree* context = nullptr, int flags = 0);
 
-std::string json_value(const ptree* value);
-
-enum ParserFlagBits : uint32_t {
-    SUPPRESS_CONTENTS_FROM_INCLUDES = 1,
-    PREPROCESS_ONLY = 2,
-};
-
 }  // namespace intercom::cidl
 
 template <>

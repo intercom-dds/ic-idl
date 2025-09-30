@@ -34,10 +34,14 @@
 #include <cstring>
 
 #include "cidl/hdrs.h"
+#include "cidl/idl_parser.h"
 #include "cidl/memf.h"
+#include "cidl/ptree.h"
 #include "cidl/ptree_builder.h"
 #include "cidl/ptree_ffi.h"
 #include "cidl/ptree_helpers.h"
+#include "cidl/symbols.h"
+#include "ic_cts/json_parser.h"
 
 static bool is_path_sep(char c) {
 #ifdef _WIN32
@@ -165,6 +169,98 @@ void emit_post_docs(struct memf* f, const ptree* obj) {
     if (no_comments) {
         mprintf(f, "\n");
     }
+}
+
+static void print_node(
+    ic_cts::JsonWriter& writer,
+    const numeric& value,
+    const ptree* context,
+    bool value_flag
+) {
+    switch (value.kind()) {
+    case UNDEF_KIND:
+        writer.write_null();
+        break;
+    case BOOLEAN_KIND:
+        writer.write(value.val.b() != 0);
+        break;
+    case INT8_KIND:
+        writer.write(value.val.i8());
+        break;
+    case OCTET_KIND:
+        writer.write(value.val.o());
+        break;
+    case SHORT_KIND:
+        writer.write(value.val.s());
+        break;
+    case USHORT_KIND:
+        writer.write(value.val.us());
+        break;
+    case LONG_KIND:
+        writer.write(value.val.l());
+        break;
+    case ULONG_KIND:
+        writer.write(value.val.ul());
+        break;
+    case LONGLONG_KIND:
+        writer.write(value.val.ll());
+        break;
+    case ULONGLONG_KIND:
+        writer.write(value.val.ull());
+        break;
+    case FLOAT_KIND:
+        writer.write(value.val.f());
+        break;
+    case DOUBLE_KIND:
+        writer.write(value.val.d());
+        break;
+    case STRING_KIND:
+        writer.write_string(value.val.str());
+        break;
+    case CHAR_KIND:
+        writer.write(static_cast<char>(value.val.c()));
+        break;
+    case PTREE_KIND: {
+        if (value.val.node()->members) {
+            if (base_type_of(value.val.node())->kind == N_STRUCT) {
+                writer.start_object();
+                for (auto p : value.val.node()->members) {
+                    writer.write_key(p->name);
+                    print_node(writer, p->value, context, value_flag);
+                }
+                writer.end_object();
+            } else {
+                bool was_pretty = writer.is_pretty();
+                writer.set_pretty(false);
+                writer.start_array();
+                for (auto p : value.val.node()->members) {
+                    print_node(writer, p->value, context, value_flag);
+                }
+                writer.end_array();
+                writer.set_pretty(was_pretty);
+            }
+        } else {
+            if (!value.val.node()->name.empty() && !value_flag) {
+                writer.write_string(idl_scoped_name(value.val.node(), context));
+            } else {
+                print_node(writer, value.val.node()->value, context, value_flag);
+            }
+        }
+    } break;
+    }
+}
+
+std::string json_value(const numeric& value, const ptree* context, int flags) {
+    std::stringstream out;
+    ic_cts::JsonWriter writer(out);
+    print_node(writer, value, context, (flags & int(JsonValueFlags::FLAG_NUMERICAL_VALUE)) != 0);
+    if (flags & int(JsonValueFlags::FLAG_ESCAPED)) {
+        std::stringstream escape_out;
+        ic_cts::JsonWriter escape_writer(escape_out);
+        escape_writer.write_string(out.str());
+        return escape_out.str();
+    }
+    return out.str();
 }
 
 }  // namespace intercom::cidl

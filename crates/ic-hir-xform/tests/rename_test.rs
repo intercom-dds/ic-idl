@@ -58,6 +58,7 @@ fn rust_target() -> Target {
         annotation_param: Some(Case::Snake),
         name_preprocessor: Some(strip_common_suffixes),
         moved_defs: std::collections::HashSet::new(),
+        ..Target::default()
     }
 }
 
@@ -87,6 +88,7 @@ fn python_target() -> Target {
         annotation_param: Some(Case::Snake),
         name_preprocessor: Some(strip_common_suffixes),
         moved_defs: std::collections::HashSet::new(),
+        ..Target::default()
     }
 }
 
@@ -209,24 +211,24 @@ fn test_rust_naming_conventions() {
                 long myField;
                 string anotherField;
             };
-            
+
             enum MyEnum {
                 firstValue,
                 secondValue,
                 THIRD_VALUE
             };
-            
+
             union MyUnion switch(long) {
                 case 1: long intValue;
                 case 2: string stringValue;
                 default: boolean defaultValue;
             };
-            
+
             interface MyInterface {
                 void doSomething(in long inputParam, out string outputParam);
                 attribute long myAttribute;
             };
-            
+
             const long MY_CONSTANT = 42;
         };
     ";
@@ -256,12 +258,12 @@ fn test_python_naming_conventions() {
             long MyField;
             string AnotherField;
         };
-        
+
         enum myEnum {
             FirstValue,
             SecondValue
         };
-        
+
         union myUnion switch(long) {
             case 1: long IntValue;
             case 2: string StringValue;
@@ -441,7 +443,7 @@ fn test_enum_constant_vs_regular_constant() {
             COLOR_GREEN,
             COLOR_BLUE
         };
-        
+
         const long MY_CONSTANT = 42;
         const string ANOTHER_CONST = "hello";
     "#;

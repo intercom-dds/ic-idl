@@ -28,7 +28,7 @@
 use std::collections::{HashMap, HashSet};
 
 use ic_emit::case::{self, Case};
-use ic_hir::fold::Fold;
+use ic_hir::hir::DefKind;
 use ic_hir::visit::Visitor;
 use ic_hir::{Context, ResolvedGraph, hir};
 
@@ -55,7 +55,7 @@ pub fn strip_common_suffixes(name: &str) -> String {
 /// If there are specific language items that should not be renamed, setting
 /// the corresponding field to `None` will prevent the transformation from
 /// renaming them.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Target {
     /// Structs
     pub struct_type: Option<Case>,
@@ -124,9 +124,53 @@ pub struct Target {
     /// If None, names are used as-is
     pub name_preprocessor: Option<NamePreprocessor>,
 
+    /// Set of keywords that should be escaped
+    /// If an identifier matches a keyword, the escape function will be applied
+    pub keywords: HashSet<&'static str>,
+
+    /// Function to apply when escaping keywords
+    /// Default: append underscore
+    pub keyword_escape_fn: fn(&str) -> String,
+
     /// Set of `DefIds` that were moved by previous transformations
     /// These will have lower priority in collision resolution
     pub moved_defs: HashSet<hir::DefId>,
+}
+
+fn default_keyword_escape(name: &str) -> String {
+    format!("{name}_")
+}
+
+impl Default for Target {
+    fn default() -> Self {
+        Self {
+            struct_type: None,
+            union_type: None,
+            enum_type: None,
+            interface: None,
+            valuetype: None,
+            alias: None,
+            bitmask: None,
+            bitset: None,
+            exception: None,
+            annotation: None,
+            member: None,
+            variant: None,
+            enumerator: None,
+            bit_flag: None,
+            bitset_field: None,
+            constant: None,
+            module: None,
+            operation: None,
+            attribute: None,
+            parameter: None,
+            annotation_param: None,
+            name_preprocessor: None,
+            keywords: HashSet::new(),
+            keyword_escape_fn: default_keyword_escape,
+            moved_defs: HashSet::new(),
+        }
+    }
 }
 
 /// Represents a node that needs renaming
@@ -166,166 +210,45 @@ impl Renamer {
     }
 
     fn rename_ident(&mut self, ident: &mut hir::Ident, case: Option<Case>) {
+        let old_name = ident.name.clone();
+        let mut new_name = old_name.clone();
+
+        // First, check if it's a keyword and escape it
+        if self.target.keywords.contains(old_name.as_str()) {
+            new_name = (self.target.keyword_escape_fn)(&old_name);
+        }
+
+        // Then apply case conversion if specified
         if let Some(case) = case {
-            let old_name = ident.name.clone();
-            let new_name = case::convert(&old_name, case);
-            if old_name != new_name {
-                self.renamed_idents.insert(old_name, new_name.clone());
-                ident.name = new_name;
-            }
+            new_name = case::convert(&new_name, case);
+        }
+
+        if old_name != new_name {
+            self.renamed_idents.insert(old_name, new_name.clone());
+            ident.name = new_name;
         }
     }
 
     /// Get the desired case for a definition
     fn get_def_case(&self, def: &hir::Def) -> Option<Case> {
         match &def.kind {
-            hir::DefKind::Module(_) => self.target.module,
-            hir::DefKind::Const(_) => {
+            DefKind::Module(_) => self.target.module,
+            DefKind::Const(_) => {
                 // For now, we'll handle enum constants separately
                 // by checking the parent when we have access to the context
                 self.target.constant
             }
-            hir::DefKind::Struct(_) => self.target.struct_type,
-            hir::DefKind::Union(_) => self.target.union_type,
-            hir::DefKind::Enum(_) => self.target.enum_type,
-            hir::DefKind::Interface(_) => self.target.interface,
-            hir::DefKind::Valuetype(_) => self.target.valuetype,
-            hir::DefKind::Alias(_) => self.target.alias,
-            hir::DefKind::Bitmask(_) => self.target.bitmask,
-            hir::DefKind::Bitset(_) => self.target.bitset,
-            hir::DefKind::Except(_) => self.target.exception,
-            hir::DefKind::Annotation(_) => self.target.annotation,
-            hir::DefKind::Decl(_) => None, // Don't rename forward declarations
-        }
-    }
-}
-
-impl Fold for Renamer {
-    fn fold_def(&mut self, def: hir::Def) -> hir::Def {
-        // Don't rename the def itself here - that's handled by the collision-aware rename
-        // Just fold the contents
-        ic_hir::fold::fold_def(self, def)
-    }
-
-    fn fold_struct_ty(&mut self, mut s: hir::StructTy) -> hir::StructTy {
-        s.members = s.members.into_iter().map(|m| self.fold_member(m)).collect();
-        s
-    }
-
-    fn fold_except_ty(&mut self, mut e: hir::ExceptTy) -> hir::ExceptTy {
-        e.members = e.members.into_iter().map(|m| self.fold_member(m)).collect();
-        e
-    }
-
-    fn fold_union_ty(&mut self, mut u: hir::UnionTy) -> hir::UnionTy {
-        u.variants = u
-            .variants
-            .into_iter()
-            .map(|v| self.fold_variant(v))
-            .collect();
-        u
-    }
-
-    fn fold_enum_ty(&mut self, e: hir::EnumTy) -> hir::EnumTy {
-        // Enum constants are separate definitions that will be renamed
-        // when we process all definitions in the transform function
-        ic_hir::fold::fold_enum_ty(self, e)
-    }
-
-    fn fold_bitmask_ty(&mut self, b: hir::BitmaskTy) -> hir::BitmaskTy {
-        // Bitmask flags are now DefIds - they will be renamed
-        // when we process all definitions in the transform function
-        ic_hir::fold::fold_bitmask_ty(self, b)
-    }
-
-    fn fold_bitset_ty(&mut self, mut b: hir::BitsetTy) -> hir::BitsetTy {
-        for field in &mut b.fields {
-            self.rename_ident(&mut field.ident, self.target.bitset_field);
-        }
-        ic_hir::fold::fold_bitset_ty(self, b)
-    }
-
-    fn fold_interface_ty(&mut self, mut i: hir::InterfaceTy) -> hir::InterfaceTy {
-        i.prototypes = i
-            .prototypes
-            .into_iter()
-            .map(|p| self.fold_proto_ty(p))
-            .collect();
-        i.attributes = i
-            .attributes
-            .into_iter()
-            .map(|a| self.fold_attribute(a))
-            .collect();
-        ic_hir::fold::fold_interface_ty(self, i)
-    }
-
-    fn fold_valuetype(&mut self, mut v: hir::ValueTy) -> hir::ValueTy {
-        v.members = v.members.into_iter().map(|m| self.fold_member(m)).collect();
-        v.prototypes = v
-            .prototypes
-            .into_iter()
-            .map(|p| self.fold_proto_ty(p))
-            .collect();
-        v.attributes = v
-            .attributes
-            .into_iter()
-            .map(|a| self.fold_attribute(a))
-            .collect();
-        ic_hir::fold::fold_valuetype(self, v)
-    }
-
-    fn fold_annotation_ty(&mut self, mut a: hir::AnnotationTy) -> hir::AnnotationTy {
-        for param in &mut a.params {
-            self.rename_ident(&mut param.ident, self.target.annotation_param);
-        }
-        ic_hir::fold::fold_annotation_ty(self, a)
-    }
-
-    fn fold_member(&mut self, mut m: hir::Member) -> hir::Member {
-        self.rename_ident(&mut m.ident, self.target.member);
-        ic_hir::fold::fold_member(self, m)
-    }
-
-    fn fold_variant(&mut self, mut v: hir::Variant) -> hir::Variant {
-        self.rename_ident(&mut v.ident, self.target.variant);
-        ic_hir::fold::fold_variant(self, v)
-    }
-
-    fn fold_proto_ty(&mut self, mut p: hir::ProtoTy) -> hir::ProtoTy {
-        self.rename_ident(&mut p.ident, self.target.operation);
-        p.params = p
-            .params
-            .into_iter()
-            .map(|param| self.fold_parameter(param))
-            .collect();
-        ic_hir::fold::fold_proto_ty(self, p)
-    }
-
-    fn fold_parameter(&mut self, mut p: hir::Parameter) -> hir::Parameter {
-        self.rename_ident(&mut p.ident, self.target.parameter);
-        ic_hir::fold::fold_parameter(self, p)
-    }
-
-    fn fold_attribute(&mut self, mut a: hir::Attribute) -> hir::Attribute {
-        self.rename_ident(&mut a.ident, self.target.attribute);
-        ic_hir::fold::fold_attribute(self, a)
-    }
-
-    fn fold_const_ty(&mut self, c: hir::ConstTy) -> hir::ConstTy {
-        // We need to fold the constant type to handle any references
-        // to renamed identifiers in the constant value
-        ic_hir::fold::fold_const_ty(self, c)
-    }
-
-    fn fold_numeric(&mut self, n: hir::Numeric) -> hir::Numeric {
-        // Handle Numeric::Const references that might point to renamed definitions
-        match n {
-            hir::Numeric::Const(def_id) => {
-                // The def_id itself doesn't change, but when the constant is
-                // evaluated, it will use the renamed identifier
-                hir::Numeric::Const(def_id)
-            }
-            _ => ic_hir::fold::fold_numeric(self, n),
+            DefKind::Struct(_) => self.target.struct_type,
+            DefKind::Union(_) => self.target.union_type,
+            DefKind::Enum(_) => self.target.enum_type,
+            DefKind::Interface(_) => self.target.interface,
+            DefKind::Valuetype(_) => self.target.valuetype,
+            DefKind::Alias(_) => self.target.alias,
+            DefKind::Bitmask(_) => self.target.bitmask,
+            DefKind::Bitset(_) => self.target.bitset,
+            DefKind::Except(_) => self.target.exception,
+            DefKind::Annotation(_) => self.target.annotation,
+            DefKind::Decl(_) => None, // Don't rename forward declarations
         }
     }
 }
@@ -349,6 +272,66 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
     // Process enum constants separately
     process_enum_constants(&mut hir, target);
 
+    // Finally, rename members, variants, and other nested identifiers using Fold
+    let mut renamer = Renamer::new(target.clone());
+    let all_def_ids: Vec<_> = hir.context.definitions.iter().map(|(id, _)| id).collect();
+    for def_id in all_def_ids {
+        let def = hir.context.definitions.get_mut(def_id);
+        match &mut def.kind {
+            DefKind::Struct(s) => {
+                for member in &mut s.members {
+                    renamer.rename_ident(&mut member.ident, target.member);
+                }
+            }
+            DefKind::Union(u) => {
+                for variant in &mut u.variants {
+                    renamer.rename_ident(&mut variant.ident, target.variant);
+                }
+            }
+            DefKind::Except(e) => {
+                for member in &mut e.members {
+                    renamer.rename_ident(&mut member.ident, target.member);
+                }
+            }
+            DefKind::Valuetype(v) => {
+                for member in &mut v.members {
+                    renamer.rename_ident(&mut member.ident, target.member);
+                }
+                for proto in &mut v.prototypes {
+                    renamer.rename_ident(&mut proto.ident, target.operation);
+                    for param in &mut proto.params {
+                        renamer.rename_ident(&mut param.ident, target.parameter);
+                    }
+                }
+                for attr in &mut v.attributes {
+                    renamer.rename_ident(&mut attr.ident, target.attribute);
+                }
+            }
+            DefKind::Interface(i) => {
+                for proto in &mut i.prototypes {
+                    renamer.rename_ident(&mut proto.ident, target.operation);
+                    for param in &mut proto.params {
+                        renamer.rename_ident(&mut param.ident, target.parameter);
+                    }
+                }
+                for attr in &mut i.attributes {
+                    renamer.rename_ident(&mut attr.ident, target.attribute);
+                }
+            }
+            DefKind::Bitset(b) => {
+                for field in &mut b.fields {
+                    renamer.rename_ident(&mut field.ident, target.bitset_field);
+                }
+            }
+            DefKind::Annotation(a) => {
+                for param in &mut a.params {
+                    renamer.rename_ident(&mut param.ident, target.annotation_param);
+                }
+            }
+            _ => {}
+        }
+    }
+
     hir
 }
 
@@ -360,7 +343,7 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
         .definitions
         .iter()
         .filter_map(|(id, def)| {
-            if let hir::DefKind::Module(m) = &def.kind {
+            if let DefKind::Module(m) = &def.kind {
                 Some((id, m.definitions.clone()))
             } else {
                 None
@@ -386,7 +369,7 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
             .definitions
             .iter()
             .filter_map(|(id, def)| {
-                if let hir::DefKind::Enum(e) = &def.kind {
+                if let DefKind::Enum(e) = &def.kind {
                     Some((id, e.fields.clone()))
                 } else {
                     None
@@ -407,7 +390,7 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
 /// Check if a constant is an enum constant by checking all enums
 fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
     for (_, def) in &hir.context.definitions {
-        if let hir::DefKind::Enum(enum_ty) = &def.kind {
+        if let DefKind::Enum(enum_ty) = &def.kind {
             if enum_ty.fields.contains(&const_id) {
                 return true;
             }
@@ -441,7 +424,7 @@ fn rename_breadth(
         let def = hir.context.type_of(id);
 
         // Skip non-representative modules
-        if let hir::DefKind::Module(_) = &def.kind {
+        if let DefKind::Module(_) = &def.kind {
             if let Some(group) = module_groups.get(&def.ident.name) {
                 if group[0] != id {
                     continue; // Skip non-representative modules
@@ -459,19 +442,19 @@ fn rename_breadth(
             }
         } else {
             match &def.kind {
-                hir::DefKind::Module(_) => target.module,
-                hir::DefKind::Const(_) => target.constant,
-                hir::DefKind::Struct(_) => target.struct_type,
-                hir::DefKind::Union(_) => target.union_type,
-                hir::DefKind::Enum(_) => target.enum_type,
-                hir::DefKind::Interface(_) => target.interface,
-                hir::DefKind::Valuetype(_) => target.valuetype,
-                hir::DefKind::Alias(_) => target.alias,
-                hir::DefKind::Bitmask(_) => target.bitmask,
-                hir::DefKind::Bitset(_) => target.bitset,
-                hir::DefKind::Except(_) => target.exception,
-                hir::DefKind::Annotation(_) => target.annotation,
-                hir::DefKind::Decl(_) => None,
+                DefKind::Module(_) => target.module,
+                DefKind::Const(_) => target.constant,
+                DefKind::Struct(_) => target.struct_type,
+                DefKind::Union(_) => target.union_type,
+                DefKind::Enum(_) => target.enum_type,
+                DefKind::Interface(_) => target.interface,
+                DefKind::Valuetype(_) => target.valuetype,
+                DefKind::Alias(_) => target.alias,
+                DefKind::Bitmask(_) => target.bitmask,
+                DefKind::Bitset(_) => target.bitset,
+                DefKind::Except(_) => target.exception,
+                DefKind::Annotation(_) => target.annotation,
+                DefKind::Decl(_) => None,
             }
         };
 
@@ -554,16 +537,16 @@ fn rename_items_with_occupied<T, F>(
 /// Rename members, variants, parameters, etc. within a definition
 fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     match &mut def.kind {
-        hir::DefKind::Struct(s) => {
+        DefKind::Struct(s) => {
             rename_items(&mut s.members, target.member, |m| &mut m.ident);
         }
-        hir::DefKind::Except(e) => {
+        DefKind::Except(e) => {
             rename_items(&mut e.members, target.member, |m| &mut m.ident);
         }
-        hir::DefKind::Union(u) => {
+        DefKind::Union(u) => {
             rename_items(&mut u.variants, target.variant, |v| &mut v.ident);
         }
-        hir::DefKind::Interface(i) => {
+        DefKind::Interface(i) => {
             // Operations and attributes share the same namespace
             let mut occupied: HashSet<String> = i
                 .prototypes
@@ -593,7 +576,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
             }
         }
-        hir::DefKind::Valuetype(v) => {
+        DefKind::Valuetype(v) => {
             // Members, operations, and attributes share the same namespace
             let mut occupied: HashSet<String> = v
                 .members
@@ -632,10 +615,10 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
             }
         }
-        hir::DefKind::Bitset(b) => {
+        DefKind::Bitset(b) => {
             rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident);
         }
-        hir::DefKind::Annotation(a) => {
+        DefKind::Annotation(a) => {
             rename_items(&mut a.params, target.annotation_param, |p| &mut p.ident);
         }
         _ => {
@@ -652,7 +635,7 @@ fn categorize_renames(
     renames: &[NodeRename],
 ) -> (Vec<&NodeRename>, Vec<&NodeRename>, Vec<&NodeRename>) {
     let mut priority1 = Vec::new(); // Nodes that want to keep their original name
-    let mut priority2 = Vec::new(); // Nodes that want to change their name  
+    let mut priority2 = Vec::new(); // Nodes that want to change their name
     let mut moved_nodes = Vec::new(); // Moved nodes (lowest priority)
 
     for rename in renames {
@@ -751,7 +734,7 @@ fn apply_final_renames(
 ) {
     for (def_id, new_name) in final_assignments {
         let def = hir.context.type_of(*def_id);
-        if let hir::DefKind::Module(_) = &def.kind {
+        if let DefKind::Module(_) = &def.kind {
             // Find the original name to look up the group
             let original_name = renames
                 .iter()

@@ -803,7 +803,7 @@ fn are_annotations_consistent(existing: &DefKind, new: &DefKind, ctx: &Context) 
 }
 
 fn types_equal(a: &Ty, b: &Ty, ctx: &Context) -> bool {
-    use TyKind::*;
+    use TyKind::{Adt, Any, Array, Fixed, Map, Null, Primitive, Sequence, String};
     match (&a.kind, &b.kind) {
         (Any, Any) | (Fixed, Fixed) | (Null, Null) => true,
         (Primitive(p1), Primitive(p2)) => p1 == p2,
@@ -864,7 +864,10 @@ fn resolve_const(ctx: &Context, id: DefId) -> &Numeric {
 }
 
 fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
-    use Numeric::*;
+    use Numeric::{
+        Array, Bool, Char, Const, Double, Float, Int8, Int16, Int32, Int64, Map, Null, Octet,
+        Sequence, String, Struct, UInt16, UInt32, UInt64, Union,
+    };
     match (a, b) {
         (Null, Null) => true,
         (Bool(v1), Bool(v2)) => v1 == v2,

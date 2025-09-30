@@ -683,16 +683,29 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             .get(&a.ident.name)
         {
             if existing_def_ids.len() > 1 {
-                // We just added one, so if there's more than one, it's a duplicate
+                // We just added one, so if there's more than one, check if they're consistent
                 let prev_def_id = existing_def_ids[existing_def_ids.len() - 2];
                 let existing_def = self.ctx.context.definitions.get(prev_def_id);
-                self.ctx.diagnostics.errors.push(
-                    error_span(
-                        format!("duplicate annotation definition `@{}`", a.ident.name),
-                        Label::new(existing_def.ident.span).message("originally defined here"),
-                    )
-                    .label(Label::new(a.ident.span).message("redefined here")),
-                );
+                let new_def = self.ctx.context.definitions.get(def_id);
+
+                // Check if the annotations are consistent
+                if !are_annotations_consistent(&existing_def.kind, &new_def.kind, &self.ctx.context)
+                {
+                    self.ctx.diagnostics.errors.push(
+                        error_span(
+                            format!(
+                                "inconsistent redefinition of annotation `@{}`",
+                                a.ident.name
+                            ),
+                            Label::new(existing_def.ident.span).message("originally defined here"),
+                        )
+                        .label(Label::new(a.ident.span).message("redefined inconsistently here"))
+                        .note(
+                            "annotation redefinitions must have the same parameters, types, and \
+                             defaults",
+                        ),
+                    );
+                }
             }
         }
 
@@ -732,6 +745,225 @@ pub(super) fn resolve_declarator(
             }
             (arr.ident.clone(), ty)
         }
+    }
+}
+
+fn are_annotations_consistent(existing: &DefKind, new: &DefKind, ctx: &Context) -> bool {
+    let (DefKind::Annotation(existing_ann), DefKind::Annotation(new_ann)) = (existing, new) else {
+        return false;
+    };
+
+    if existing_ann.params.len() != new_ann.params.len() {
+        return false;
+    }
+
+    for (existing_param, new_param) in existing_ann.params.iter().zip(&new_ann.params) {
+        if existing_param.ident.name != new_param.ident.name {
+            return false;
+        }
+
+        if !types_equal(&existing_param.ty, &new_param.ty, ctx) {
+            return false;
+        }
+
+        match (&existing_param.default, &new_param.default) {
+            (None, None) => {}
+            (Some(e), Some(n)) => {
+                if !numerics_equal(e, n, ctx) {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    }
+
+    if existing_ann.types.len() != new_ann.types.len() {
+        return false;
+    }
+
+    true
+}
+
+fn types_equal(a: &Ty, b: &Ty, ctx: &Context) -> bool {
+    use TyKind::*;
+    match (&a.kind, &b.kind) {
+        (Any, Any) | (Fixed, Fixed) | (Null, Null) => true,
+        (Primitive(p1), Primitive(p2)) => p1 == p2,
+        (
+            Array {
+                ty: ty1, len: len1, ..
+            },
+            Array {
+                ty: ty2, len: len2, ..
+            },
+        ) => len1 == len2 && types_equal(ty1, ty2, ctx),
+        (
+            Sequence {
+                ty: ty1, bound: b1, ..
+            },
+            Sequence {
+                ty: ty2, bound: b2, ..
+            },
+        ) => b1 == b2 && types_equal(ty1, ty2, ctx),
+        (
+            String {
+                wide: w1,
+                bound: b1,
+                ..
+            },
+            String {
+                wide: w2,
+                bound: b2,
+                ..
+            },
+        ) => w1 == w2 && b1 == b2,
+        (
+            Map {
+                key: k1,
+                elem: e1,
+                bound: b1,
+                ..
+            },
+            Map {
+                key: k2,
+                elem: e2,
+                bound: b2,
+                ..
+            },
+        ) => b1 == b2 && types_equal(k1, k2, ctx) && types_equal(e1, e2, ctx),
+        (Adt(id1), Adt(id2)) => id1 == id2,
+        _ => false,
+    }
+}
+
+fn resolve_const(ctx: &Context, id: DefId) -> &Numeric {
+    let def = ctx.definitions.get(id);
+    if let DefKind::Const(ref const_ty) = def.kind {
+        &const_ty.value
+    } else {
+        &Numeric::Null
+    }
+}
+
+fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
+    use Numeric::*;
+    match (a, b) {
+        (Null, Null) => true,
+        (Bool(v1), Bool(v2)) => v1 == v2,
+        (Char(v1), Char(v2)) => v1 == v2,
+        (Int8(v1), Int8(v2)) => v1 == v2,
+        (Octet(v1), Octet(v2)) => v1 == v2,
+        (Int16(v1), Int16(v2)) => v1 == v2,
+        (UInt16(v1), UInt16(v2)) => v1 == v2,
+        (Int32(v1), Int32(v2)) => v1 == v2,
+        (UInt32(v1), UInt32(v2)) => v1 == v2,
+        (Int64(v1), Int64(v2)) => v1 == v2,
+        (UInt64(v1), UInt64(v2)) => v1 == v2,
+        (Float(v1), Float(v2)) => v1.to_bits() == v2.to_bits(),
+        (Double(v1), Double(v2)) => v1.to_bits() == v2.to_bits(),
+        (String(v1), String(v2)) => v1 == v2,
+        (Const(id1), Const(id2)) => {
+            if id1 == id2 {
+                return true;
+            }
+            let resolved1 = resolve_const(ctx, *id1);
+            let resolved2 = resolve_const(ctx, *id2);
+            numerics_equal(resolved1, resolved2, ctx)
+        }
+        (Const(id), other) | (other, Const(id)) => {
+            let resolved = resolve_const(ctx, *id);
+            numerics_equal(resolved, other, ctx)
+        }
+        (
+            Array {
+                ty: ty1,
+                values: v1,
+            },
+            Array {
+                ty: ty2,
+                values: v2,
+            },
+        ) => {
+            types_equal(ty1, ty2, ctx)
+                && v1.len() == v2.len()
+                && v1
+                    .iter()
+                    .zip(v2.iter())
+                    .all(|(a, b)| numerics_equal(a, b, ctx))
+        }
+        (
+            Sequence {
+                ty: ty1,
+                values: v1,
+            },
+            Sequence {
+                ty: ty2,
+                values: v2,
+            },
+        ) => {
+            types_equal(ty1, ty2, ctx)
+                && v1.len() == v2.len()
+                && v1
+                    .iter()
+                    .zip(v2.iter())
+                    .all(|(a, b)| numerics_equal(a, b, ctx))
+        }
+        (
+            Map {
+                key: k1,
+                value: v1,
+                entries: e1,
+            },
+            Map {
+                key: k2,
+                value: v2,
+                entries: e2,
+            },
+        ) => {
+            types_equal(k1, k2, ctx)
+                && types_equal(v1, v2, ctx)
+                && e1.len() == e2.len()
+                && e1.iter().zip(e2.iter()).all(|((k1, v1), (k2, v2))| {
+                    numerics_equal(k1, k2, ctx) && numerics_equal(v1, v2, ctx)
+                })
+        }
+        (
+            Struct {
+                ty: ty1,
+                fields: f1,
+            },
+            Struct {
+                ty: ty2,
+                fields: f2,
+            },
+        ) => {
+            ty1 == ty2
+                && f1.len() == f2.len()
+                && f1
+                    .iter()
+                    .zip(f2.iter())
+                    .all(|((i1, v1), (i2, v2))| i1.name == i2.name && numerics_equal(v1, v2, ctx))
+        }
+        (
+            Union {
+                ty: ty1,
+                discriminant: d1,
+                field: f1,
+                value: v1,
+            },
+            Union {
+                ty: ty2,
+                discriminant: d2,
+                field: f2,
+                value: v2,
+            },
+        ) => {
+            ty1 == ty2
+                && f1.name == f2.name
+                && numerics_equal(d1, d2, ctx)
+                && numerics_equal(v1, v2, ctx)
+        }
+        _ => false,
     }
 }
 

@@ -1,0 +1,19 @@
+---
+source: crates/ic-hir/tests/annotation_redefinition.rs
+assertion_line: 302
+expression: diagnostics
+---
+error: inconsistent redefinition of annotation `@seq_doc`
+   ┌ test.idl:2:21
+   │
+ 2 │         @annotation seq_doc {
+   ·                     ^^^^^^^ originally defined here
+ 3 │             sequence<string, 10> values;
+ 4 │         };
+ 5 │ 
+ 6 │         @annotation seq_doc {
+   ·                     ^^^^^^^ redefined inconsistently here
+ 7 │             sequence<string, 20> values;
+ 8 │         };
+   └──
+ note: annotation redefinitions must have the same parameters, types, and defaults

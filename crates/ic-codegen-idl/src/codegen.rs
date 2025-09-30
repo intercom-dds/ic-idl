@@ -340,7 +340,7 @@ impl<'a> IdlGen<'a> {
             let field_def = self.hir.context.definitions.get(field_id);
             let field_name = &field_def.ident.name;
 
-            if def.flags.contains(DefFlags::IS_ENUMERATED) {
+            if field_def.flags.contains(DefFlags::IS_ENUMERATED) {
                 if let DefKind::Const(const_ty) = &field_def.kind {
                     let value_str = self.format_numeric(&const_ty.value, def.id);
                     w!(w, "\n@value(", value_str, ") ", field_name);
@@ -555,7 +555,7 @@ impl<'a> IdlGen<'a> {
             let flag_name = &flag_def.ident.name;
 
             w!(w, "\n");
-            if def.flags.contains(DefFlags::IS_ENUMERATED) {
+            if flag_def.flags.contains(DefFlags::IS_ENUMERATED) {
                 if let DefKind::Const(const_ty) = &flag_def.kind {
                     if let Numeric::UInt64(val) = const_ty.value {
                         let position = val.trailing_zeros();

@@ -180,17 +180,14 @@ fn try_compile(options: CompilerOptions) {
 fn generate_code(
     options: &CompilerOptions,
     hir: &ic_hir::ResolvedGraph,
-    source_map: &ic_vfs::SourceMap,
+    vfs: &ic_vfs::SourceMap,
 ) -> Result<Vec<File>, util::Error> {
     let mut generated = vec![];
 
     if let Some(output_dir) = &options.codegen.cpp_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_cxx::codegen_cpp,
-            hir,
-            source_map,
-            options.cpp.clone(),
+            || ic_codegen_cxx::codegen_cpp(hir, vfs, options.cpp.clone()),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -199,10 +196,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.rust_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_rust::codegen_rust,
-            hir,
-            source_map,
-            options.rust,
+            || ic_codegen_rust::codegen_rust(hir, vfs, options.rust),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -211,10 +205,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.python_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_python::codegen_python,
-            hir,
-            source_map,
-            options.python.clone(),
+            || ic_codegen_python::codegen_python(hir, vfs, options.python.clone()),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -223,10 +214,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.idl_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_idl::codegen_idl,
-            hir,
-            source_map,
-            options.idl.clone(),
+            || ic_codegen_idl::codegen_idl(hir, vfs, options.idl.clone()),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -235,10 +223,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.json_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_json::codegen_json,
-            hir,
-            source_map,
-            (),
+            || ic_codegen_json::codegen_json(hir, vfs),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -247,10 +232,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.xml_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_xml::codegen_xml,
-            hir,
-            source_map,
-            (),
+            || ic_codegen_xml::codegen_xml(hir, vfs),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -259,10 +241,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.proto_out {
         let files = invoke_backend(
             output_dir,
-            ic_codegen_protobuf::codegen_proto,
-            hir,
-            source_map,
-            (),
+            || ic_codegen_protobuf::codegen_proto(hir),
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -271,25 +250,18 @@ fn generate_code(
     Ok(generated)
 }
 
-fn invoke_backend<F, O>(
+fn invoke_backend(
     output_dir: &std::path::Path,
-    backend_fn: F,
-    hir: &ic_hir::ResolvedGraph,
-    source_map: &ic_vfs::SourceMap,
-    options: O,
+    backend_fn: impl FnOnce() -> Vec<File>,
     purge_dirs: bool,
-) -> Result<Vec<File>, util::Error>
-where
-    F: FnOnce(&ic_hir::ResolvedGraph, &ic_vfs::SourceMap, O) -> Vec<File>,
-{
+) -> Result<Vec<File>, util::Error> {
     let dir = std::path::absolute(output_dir)?;
-
     if purge_dirs {
         util::safe_purge(&dir)?;
         std::fs::create_dir_all(&dir)?;
     }
 
-    let files = backend_fn(hir, source_map, options)
+    let files = backend_fn()
         .into_iter()
         .map(move |v| match v {
             File::Generated { path, source } => File::Generated {

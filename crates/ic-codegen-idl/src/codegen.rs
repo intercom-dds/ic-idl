@@ -291,6 +291,34 @@ impl<'a> IdlGen<'a> {
         w!(w, "}; // module ", def.ident.name, "\n");
     }
 
+    fn emit_annotations(
+        &self,
+        w: &mut Twine,
+        annotations: &[ic_hir::hir::Ann],
+        relative_to_def_id: DefId,
+    ) {
+        for ann in annotations {
+            let non_default_args = filter_non_default_args(ann, self.hir);
+
+            w!(w, "@", ann.ident.name);
+            if !non_default_args.is_empty() {
+                w!(w, "(");
+                for (i, arg) in non_default_args.iter().enumerate() {
+                    if i > 0 {
+                        w!(w, ", ");
+                    }
+                    if non_default_args.len() > 1 {
+                        w!(w, arg.ident.name, " = ");
+                    }
+                    let val_str = self.format_numeric(&arg.value, relative_to_def_id);
+                    w!(w, val_str);
+                }
+                w!(w, ")");
+            }
+            w!(w, "\n");
+        }
+    }
+
     fn emit_struct(
         &self,
         w: &mut Twine,
@@ -301,16 +329,21 @@ impl<'a> IdlGen<'a> {
         self.emit_parents(w, &struct_ty.parent, def.id);
         w!(w, " {");
         for member in &struct_ty.members {
+            w!(w, "\n");
+            self.emit_annotations(w, &member.annotations, def.id);
+
             let ty_str = self.idl_type(&member.ty, def.id);
             let array_bounds = format_member_name(&member.ty);
-            w!(w, "\n", ty_str, " ", member.ident.name, array_bounds, ";");
+            w!(w, ty_str, " ", member.ident.name, array_bounds, ";");
         }
         w!(w, "\n};\n");
     }
 
     fn emit_union(&self, w: &mut Twine, def: &ic_hir::hir::Def, union_ty: &ic_hir::hir::UnionTy) {
         let discriminator = self.idl_type(&union_ty.disc.ty, def.id);
-        w!(w, "union ", def.ident.name, " switch (", discriminator, ") {");
+        w!(w, "union ", def.ident.name, " switch (");
+        self.emit_annotations(w, &union_ty.disc.annotations, def.id);
+        w!(w, discriminator, ") {");
 
         for variant in &union_ty.variants {
             let ty_str = self.idl_type(&variant.ty, def.id);
@@ -325,10 +358,13 @@ impl<'a> IdlGen<'a> {
             }
             w.indent();
 
+            w!(w, "\n");
+            self.emit_annotations(w, &variant.annotations, def.id);
+
             if let TyKind::Null = variant.ty.kind {
-                w!(w, "\n", "null;");
+                w!(w, "null;");
             } else {
-                w!(w, "\n", ty_str, " ", variant.ident.name, ";");
+                w!(w, ty_str, " ", variant.ident.name, ";");
             }
         }
         w!(w, "\n};\n");
@@ -448,9 +484,9 @@ impl<'a> IdlGen<'a> {
         self.emit_parents(w, &interface.parents, def.id);
         w!(w, " {");
 
-        for attr in &interface.attributes {
+        for &nested_id in &interface.definitions {
             w!(w, "\n");
-            self.emit_attribute(w, attr, def.id);
+            self.emit_definition(w, nested_id);
         }
 
         for (i, proto) in interface.prototypes.iter().enumerate() {
@@ -461,9 +497,9 @@ impl<'a> IdlGen<'a> {
             }
         }
 
-        for &nested_id in &interface.definitions {
+        for attr in &interface.attributes {
             w!(w, "\n");
-            self.emit_definition(w, nested_id);
+            self.emit_attribute(w, attr, def.id);
         }
 
         w!(w, "\n};\n");
@@ -485,32 +521,25 @@ impl<'a> IdlGen<'a> {
 
         w!(w, " {");
 
-        for member in &valuetype.members {
-            let ty_str = self.idl_type(&member.ty, def.id);
-            let array_bounds = format_member_name(&member.ty);
-            w!(w, "\npublic ", ty_str, " ", member.ident.name, array_bounds, ";");
-        }
-
-        for proto in &valuetype.prototypes {
-            w!(w, "\nfactory ", proto.ident.name, "(");
-            for (i, param) in proto.params.iter().enumerate() {
-                if i > 0 {
-                    w!(w, ", ");
-                }
-                match param.kind {
-                    ParamKind::In => w!(w, "in "),
-                    ParamKind::Out => w!(w, "out "),
-                    ParamKind::Inout => w!(w, "inout "),
-                }
-                let param_ty = self.idl_type(&param.ty, def.id);
-                w!(w, param_ty, " ", param.ident.name);
-            }
-            w!(w, ");");
-        }
-
         for &nested_id in &valuetype.definitions {
             w!(w, "\n");
             self.emit_definition(w, nested_id);
+        }
+
+        for (i, proto) in valuetype.prototypes.iter().enumerate() {
+            w!(w, "\n");
+            self.emit_prototype(w, proto, def.id);
+            if i < valuetype.prototypes.len() - 1 {
+                w!(w, "\n");
+            }
+        }
+
+        for member in &valuetype.members {
+            w!(w, "\n");
+            self.emit_annotations(w, &member.annotations, def.id);
+            let ty_str = self.idl_type(&member.ty, def.id);
+            let array_bounds = format_member_name(&member.ty);
+            w!(w, "public ", ty_str, " ", member.ident.name, array_bounds, ";");
         }
 
         w!(w, "\n};\n");
@@ -524,9 +553,11 @@ impl<'a> IdlGen<'a> {
     ) {
         w!(w, "exception ", def.ident.name, " {");
         for member in &except.members {
+            w!(w, "\n");
+            self.emit_annotations(w, &member.annotations, def.id);
             let ty_str = self.idl_type(&member.ty, def.id);
             let array_bounds = format_member_name(&member.ty);
-            w!(w, "\n", ty_str, " ", member.ident.name, array_bounds, ";");
+            w!(w, ty_str, " ", member.ident.name, array_bounds, ";");
         }
         w!(w, "\n};\n\n");
     }
@@ -577,18 +608,31 @@ impl<'a> IdlGen<'a> {
         self.emit_parents(w, &bitset.parent, def.id);
         w!(w, " {");
         for field in &bitset.fields {
-            w!(w, "\nbitfield<", field.size, "> ", field.ident.name, ";");
+            w!(w, "\n");
+            self.emit_annotations(w, &field.annotations, def.id);
+            let ty = self.idl_type(&field.ty, def.id);
+            w!(w, "bitfield<", field.size, ", ", ty, "> ", field.ident.name, ";");
         }
         w!(w, "\n};\n");
     }
 
     fn emit_annotation(
+        &self,
         w: &mut Twine,
         def: &ic_hir::hir::Def,
-        _annotation: &ic_hir::hir::AnnotationTy,
+        annotation: &ic_hir::hir::AnnotationTy,
     ) {
         w!(w, "@annotation ", def.ident.name, " {");
-        w!(w, "\n};\n");
+        for param in &annotation.params {
+            let ty_str = self.idl_type(&param.ty, def.id);
+            w!(w, "\n", ty_str, " ", param.ident.name);
+            if let Some(default_val) = &param.default {
+                let val_str = self.format_numeric(default_val, def.id);
+                w!(w, " default ", val_str);
+            }
+            w!(w, ";");
+        }
+        w!(w, "\n};\n\n");
     }
 
     fn emit_decl(w: &mut Twine, def: &ic_hir::hir::Def, decl: ic_hir::hir::Decl) {
@@ -603,6 +647,7 @@ impl<'a> IdlGen<'a> {
 
     fn emit_definition(&self, w: &mut Twine, def_id: DefId) {
         let def = self.hir.context.definitions.get(def_id);
+        self.emit_annotations(w, &def.annotations, def.id);
 
         match &def.kind {
             DefKind::Module(module) => self.emit_module(w, def, module),
@@ -616,7 +661,7 @@ impl<'a> IdlGen<'a> {
             DefKind::Const(const_ty) => self.emit_const(w, def, const_ty),
             DefKind::Bitmask(bitmask) => self.emit_bitmask(w, def, bitmask),
             DefKind::Bitset(bitset) => self.emit_bitset(w, def, bitset),
-            DefKind::Annotation(annotation) => Self::emit_annotation(w, def, annotation),
+            DefKind::Annotation(annotation) => self.emit_annotation(w, def, annotation),
             DefKind::Decl(decl) => Self::emit_decl(w, def, *decl),
         }
     }
@@ -687,6 +732,30 @@ impl<'a> IdlGen<'a> {
         }
         result
     }
+}
+
+fn filter_non_default_args<'a>(
+    ann: &'a ic_hir::hir::Ann,
+    hir: &ResolvedGraph,
+) -> Vec<&'a ic_hir::hir::AnnArg> {
+    ann.args
+        .iter()
+        .filter(|arg| {
+            if let Some(def_id) = ann.def_id
+                && let ann_def = hir.context.definitions.get(def_id)
+                && let ic_hir::hir::DefKind::Annotation(ann_ty) = &ann_def.kind
+            {
+                for param in &ann_ty.params {
+                    if param.ident.name == arg.ident.name {
+                        if let Some(default_val) = &param.default {
+                            return &arg.value != default_val;
+                        }
+                    }
+                }
+            }
+            true
+        })
+        .collect()
 }
 
 fn format_member_name(ty: &Ty) -> String {

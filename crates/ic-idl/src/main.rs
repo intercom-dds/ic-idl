@@ -229,6 +229,15 @@ fn generate_code(
         generated.extend(files);
     }
 
+    if let Some(output_dir) = &options.codegen.json_schema_out {
+        let files = invoke_backend(
+            output_dir,
+            || ic_codegen_json_schema::codegen_schema(hir, vfs),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
     if let Some(output_dir) = &options.codegen.xml_out {
         let files = invoke_backend(
             output_dir,

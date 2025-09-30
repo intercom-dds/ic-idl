@@ -231,6 +231,10 @@ pub struct CodegenOptions {
     #[option(long, arg = "dir")]
     pub json_out: Option<PathBuf>,
 
+    /// Generate JSON Schema files in <dir>
+    #[option(long, arg = "dir")]
+    pub json_schema_out: Option<PathBuf>,
+
     /// Generate XML files in <dir>
     #[option(long, arg = "dir")]
     pub xml_out: Option<PathBuf>,

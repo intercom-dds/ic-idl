@@ -241,7 +241,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.proto_out {
         let files = invoke_backend(
             output_dir,
-            || ic_codegen_protobuf::codegen_proto(hir, vfs),
+            || ic_codegen_protobuf::codegen_proto(hir),
             options.purge_dirs,
         )?;
         generated.extend(files);

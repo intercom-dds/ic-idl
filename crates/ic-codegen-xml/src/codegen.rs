@@ -1,0 +1,564 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+use std::collections::BTreeMap;
+
+use ic_emit::File;
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{
+    AliasTy, Ann, Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind,
+    UnionTy, Variant,
+};
+use ic_vfs::{FileId, SourceMap};
+
+use crate::writer::XmlWriter;
+
+pub struct XmlGen<'a> {
+    hir: &'a ResolvedGraph,
+    source_map: &'a SourceMap,
+}
+
+impl<'a> XmlGen<'a> {
+    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap) -> Self {
+        Self { hir, source_map }
+    }
+
+    pub fn generate(&self) -> Vec<File> {
+        let mut files = Vec::new();
+        let mut file_map: BTreeMap<FileId, Vec<DefId>> = BTreeMap::new();
+
+        for &def_id in &self.hir.order {
+            let def = self.hir.context.definitions.get(def_id);
+            if !matches!(
+                def.kind,
+                DefKind::Module(_)
+                    | DefKind::Struct(_)
+                    | DefKind::Union(_)
+                    | DefKind::Enum(_)
+                    | DefKind::Alias(_)
+                    | DefKind::Const(_)
+                    | DefKind::Bitmask(_)
+                    | DefKind::Annotation(_)
+            ) {
+                continue;
+            }
+
+            let file_id = def.span.start.file_id;
+            file_map.entry(file_id).or_default().push(def_id);
+        }
+
+        for (file_id, def_ids) in file_map {
+            if let Some(file) = self.generate_file(file_id, &def_ids) {
+                files.push(file);
+            }
+        }
+
+        files
+    }
+
+    fn generate_file(&self, file_id: FileId, def_ids: &[DefId]) -> Option<File> {
+        let mut writer = XmlWriter::new();
+        writer.declaration("1.0", "UTF-8");
+
+        writer.element(
+            "dds:types",
+            &[("xmlns:dds", "http://www.omg.org/dds")],
+            |w| {
+                for &def_id in def_ids {
+                    self.emit_def(def_id, w);
+                }
+            },
+        );
+
+        let source = writer.finish();
+        let file_path = self.source_map.name(file_id);
+        let file_name = file_path.file_name()?.to_str()?.replace(".idl", ".xml");
+
+        Some(File::Generated {
+            path: file_name.into(),
+            source,
+        })
+    }
+
+    fn emit_def(&self, def_id: DefId, w: &mut XmlWriter) {
+        let def = self.hir.context.definitions.get(def_id);
+
+        match &def.kind {
+            DefKind::Module(m) => self.emit_module(def, m, w),
+            DefKind::Struct(s) => self.emit_struct(def, s, w),
+            DefKind::Union(u) => self.emit_union(def, u, w),
+            DefKind::Enum(e) => self.emit_enum(def, e, w),
+            DefKind::Bitmask(b) => self.emit_bitmask(def, b, w),
+            DefKind::Alias(a) => self.emit_alias(def, a, w),
+            DefKind::Const(c) => {
+                if is_basic_type(&c.ty) {
+                    self.emit_const(def, c, w);
+                }
+            }
+            DefKind::Decl(d) => self.emit_forward_decl(def, *d, w),
+            _ => {}
+        }
+    }
+
+    fn emit_module(&self, def: &Def, module: &ic_hir::hir::ModuleTy, w: &mut XmlWriter) {
+        let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
+        let type_attrs = type_attrs(def);
+        attrs.extend(type_attrs);
+
+        let attrs_ref: Vec<_> = attrs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        w.element("module", &attrs_ref, |w| {
+            self.emit_annotations(&def.annotations, w);
+            for &child_id in &module.definitions {
+                self.emit_def(child_id, w);
+            }
+        });
+    }
+
+    fn emit_forward_decl(&self, def: &Def, decl: ic_hir::hir::Decl, w: &mut XmlWriter) {
+        use ic_hir::hir::Decl;
+
+        let kind = match decl {
+            Decl::Struct => "struct",
+            Decl::Union => "union",
+            Decl::Native | Decl::Interface | Decl::Valuetype => return,
+        };
+
+        let attrs = vec![("kind", kind), ("name", def.ident.name.as_str())];
+        self.emit_element_with_annotations("forward_dcl", &attrs, &def.annotations, w);
+    }
+
+    fn emit_struct(&self, def: &Def, struct_ty: &StructTy, w: &mut XmlWriter) {
+        let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
+        if let Some(parent_id) = struct_ty.parent {
+            let base_type = self.make_scoped_name(parent_id);
+            attrs.push(("baseType".to_string(), base_type));
+        }
+        let type_attrs = type_attrs(def);
+        attrs.extend(type_attrs);
+
+        let attrs_ref: Vec<_> = attrs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        w.element("struct", &attrs_ref, |w| {
+            self.emit_annotations(&def.annotations, w);
+            for member in &struct_ty.members {
+                self.emit_member(member, w);
+            }
+        });
+    }
+
+    fn emit_union(&self, def: &Def, union_ty: &UnionTy, w: &mut XmlWriter) {
+        let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
+        let type_attrs = type_attrs(def);
+        attrs.extend(type_attrs);
+
+        let attrs_ref: Vec<_> = attrs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        w.element("union", &attrs_ref, |w| {
+            self.emit_annotations(&def.annotations, w);
+
+            let mut disc_attrs = Vec::new();
+            self.add_type_attrs(&union_ty.disc.ty, &mut disc_attrs);
+            let disc_attrs_ref: Vec<_> = disc_attrs
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect();
+            w.empty_element("discriminator", &disc_attrs_ref);
+
+            for variant in &union_ty.variants {
+                self.emit_variant(variant, &union_ty.disc.ty, w);
+            }
+        });
+    }
+
+    fn emit_variant(&self, variant: &Variant, _disc_ty: &Ty, w: &mut XmlWriter) {
+        w.element("case", &[], |w| {
+            for label in &variant.labels {
+                let value = self.format_numeric(&label.value);
+                w.empty_element("caseDiscriminator", &[("value", &value)]);
+            }
+
+            if variant.is_default {
+                w.empty_element("caseDiscriminator", &[("value", "default")]);
+            }
+
+            let mut attrs = vec![("name".to_string(), variant.ident.name.clone())];
+            self.add_type_attrs(&variant.ty, &mut attrs);
+            let member_attrs = member_attrs(&variant.annotations);
+            attrs.extend(member_attrs);
+
+            let attrs_ref: Vec<_> = attrs
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect();
+            self.emit_element_with_annotations("member", &attrs_ref, &variant.annotations, w);
+        });
+    }
+
+    fn emit_enum(&self, def: &Def, enum_ty: &EnumTy, w: &mut XmlWriter) {
+        let bit_bound = bit_bound_for_type(enum_ty.ty);
+        let attrs = vec![("name", def.ident.name.as_str()), ("bitBound", bit_bound)];
+
+        w.element("enum", &attrs, |w| {
+            self.emit_annotations(&def.annotations, w);
+            for &field_id in &enum_ty.fields {
+                let field_def = self.hir.context.definitions.get(field_id);
+                self.emit_element_with_annotations(
+                    "enumerator",
+                    &[("name", &field_def.ident.name)],
+                    &field_def.annotations,
+                    w,
+                );
+            }
+        });
+    }
+
+    fn emit_bitmask(&self, def: &Def, bitmask: &ic_hir::hir::BitmaskTy, w: &mut XmlWriter) {
+        let bit_bound = bit_bound_for_type(bitmask.ty);
+        let attrs = vec![("name", def.ident.name.as_str()), ("bitBound", bit_bound)];
+
+        w.element("bitmask", &attrs, |w| {
+            self.emit_annotations(&def.annotations, w);
+            for &flag_id in &bitmask.flags {
+                let flag_def = self.hir.context.definitions.get(flag_id);
+                let position = if let DefKind::Const(const_ty) = &flag_def.kind
+                    && let Some(val) = self.hir.context.unsigned_value(&const_ty.value)
+                {
+                    val.trailing_zeros().to_string()
+                } else {
+                    String::from("0")
+                };
+                self.emit_element_with_annotations(
+                    "flag",
+                    &[("name", &flag_def.ident.name), ("position", &position)],
+                    &flag_def.annotations,
+                    w,
+                );
+            }
+        });
+    }
+
+    fn emit_alias(&self, def: &Def, alias: &AliasTy, w: &mut XmlWriter) {
+        let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
+        self.add_type_attrs(&alias.ty, &mut attrs);
+        let attrs_ref: Vec<_> = attrs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        self.emit_element_with_annotations("typedef", &attrs_ref, &def.annotations, w);
+    }
+
+    fn emit_const(&self, def: &Def, const_ty: &ic_hir::hir::ConstTy, w: &mut XmlWriter) {
+        let value = self.format_numeric(&const_ty.value);
+        let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
+        self.add_type_attrs(&const_ty.ty, &mut attrs);
+        attrs.push(("value".to_string(), value));
+        let attrs_ref: Vec<_> = attrs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        self.emit_element_with_annotations("const", &attrs_ref, &def.annotations, w);
+    }
+
+    fn emit_member(&self, member: &Member, w: &mut XmlWriter) {
+        let mut attrs = vec![("name".to_string(), member.ident.name.clone())];
+        self.add_type_attrs(&member.ty, &mut attrs);
+        let member_attrs = member_attrs(&member.annotations);
+        attrs.extend(member_attrs);
+
+        let attrs_ref: Vec<_> = attrs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        self.emit_element_with_annotations("member", &attrs_ref, &member.annotations, w);
+    }
+
+    fn emit_element_with_annotations(
+        &self,
+        element_name: &str,
+        attrs: &[(&str, &str)],
+        annotations: &[Ann],
+        w: &mut XmlWriter,
+    ) {
+        let has_annotations = annotations
+            .iter()
+            .any(|ann| !should_skip_annotation(&ann.ident.name));
+
+        if has_annotations {
+            w.element(element_name, attrs, |w| {
+                self.emit_annotations(annotations, w);
+            });
+        } else {
+            w.empty_element(element_name, attrs);
+        }
+    }
+
+    fn emit_annotations(&self, annotations: &[Ann], w: &mut XmlWriter) {
+        for ann in annotations {
+            if should_skip_annotation(&ann.ident.name) {
+                continue;
+            }
+
+            w.element("annotate", &[("name", &ann.ident.name)], |w| {
+                for arg in &ann.args {
+                    let value = self.format_numeric(&arg.value);
+                    w.empty_element("member", &[("name", &arg.ident.name), ("value", &value)]);
+                }
+            });
+        }
+    }
+
+    fn add_type_attrs(&self, ty: &Ty, attrs: &mut Vec<(String, String)>) {
+        match &ty.kind {
+            TyKind::Primitive(prim) => {
+                let type_name = xml_type_name(*prim);
+                attrs.push(("type".to_string(), type_name.to_string()));
+            }
+            TyKind::String { bound, .. } => {
+                attrs.push(("type".to_string(), "string".to_string()));
+                if let Some(b) = bound {
+                    attrs.push(("stringMaxLength".to_string(), b.to_string()));
+                }
+            }
+            TyKind::Sequence { ty, bound, .. } => {
+                self.add_type_attrs(ty, attrs);
+                if let Some(b) = bound {
+                    attrs.push(("sequenceMaxLength".to_string(), b.to_string()));
+                } else {
+                    attrs.push(("sequenceMaxLength".to_string(), "-1".to_string()));
+                }
+            }
+            TyKind::Array { ty, len, .. } => {
+                self.add_type_attrs(ty, attrs);
+                attrs.push(("arrayDimensions".to_string(), len.to_string()));
+            }
+            TyKind::Map {
+                key, elem, bound, ..
+            } => {
+                if is_basic_type(key) {
+                    let key_type = self.type_to_string(key);
+                    attrs.push(("mapKeyType".to_string(), key_type));
+                } else {
+                    attrs.push(("mapKeyType".to_string(), "nonBasic".to_string()));
+                    let key_type = self.type_to_string(key);
+                    attrs.push(("mapKeyNonBasicTypeName".to_string(), key_type));
+                }
+
+                self.add_type_attrs(elem, attrs);
+
+                if let Some(b) = bound {
+                    attrs.push(("mapMaxLength".to_string(), b.to_string()));
+                }
+            }
+            TyKind::Adt(def_id) => {
+                let type_name = self.make_scoped_name(*def_id);
+                attrs.push(("type".to_string(), "nonBasic".to_string()));
+                attrs.push(("nonBasicTypeName".to_string(), type_name));
+            }
+            TyKind::Null => {
+                attrs.push(("type".to_string(), "null".to_string()));
+            }
+            _ => {}
+        }
+    }
+
+    fn type_to_string(&self, ty: &Ty) -> String {
+        match &ty.kind {
+            TyKind::Primitive(prim) => xml_type_name(*prim).to_string(),
+            TyKind::String { wide, .. } => {
+                if *wide {
+                    "wstring".to_string()
+                } else {
+                    "string".to_string()
+                }
+            }
+            TyKind::Adt(def_id) => self.make_scoped_name(*def_id),
+            TyKind::Null => "null".to_string(),
+            _ => "unknown".to_string(),
+        }
+    }
+
+    fn make_scoped_name(&self, def_id: DefId) -> String {
+        let mut parts = Vec::new();
+        let mut current = Some(def_id);
+
+        while let Some(id) = current {
+            let def = self.hir.context.definitions.get(id);
+            parts.push(def.ident.name.clone());
+            current = def.parent;
+        }
+
+        parts.reverse();
+        parts.join("::")
+    }
+
+    fn format_numeric(&self, value: &Numeric) -> String {
+        match value {
+            Numeric::Bool(b) => b.to_string(),
+            Numeric::Char(c) => c.to_string(),
+            Numeric::Int8(v) => v.to_string(),
+            Numeric::UInt8(v) => v.to_string(),
+            Numeric::Int16(v) => v.to_string(),
+            Numeric::UInt16(v) => v.to_string(),
+            Numeric::Int32(v) => v.to_string(),
+            Numeric::UInt32(v) => v.to_string(),
+            Numeric::Int64(v) => v.to_string(),
+            Numeric::UInt64(v) => v.to_string(),
+            Numeric::Float(v) => v.to_string(),
+            Numeric::Double(v) => v.to_string(),
+            Numeric::String(s) => s.clone(),
+            Numeric::Const(def_id) => self.make_scoped_name(*def_id),
+            Numeric::Null => "null".to_string(),
+            _ => String::new(),
+        }
+    }
+}
+
+fn type_attrs(def: &Def) -> Vec<(String, String)> {
+    let mut attrs = Vec::new();
+
+    if let Some(ext) = annotation_str(def, "extensibility") {
+        if ext != "appendable" {
+            attrs.push(("extensibility".to_string(), ext));
+        }
+    }
+
+    if has_annotation(def, "nested") {
+        attrs.push(("nested".to_string(), "true".to_string()));
+    }
+
+    if let Some(autoid) = annotation_str(def, "autoid") {
+        if autoid == "hash" {
+            attrs.push(("autoid".to_string(), "hash".to_string()));
+        }
+    }
+
+    if has_annotation(def, "must_understand") {
+        attrs.push(("mustUnderstand".to_string(), "true".to_string()));
+    }
+
+    attrs
+}
+
+fn should_skip_annotation(name: &str) -> bool {
+    matches!(
+        name,
+        "must_understand"
+            | "doc"
+            | "documentation"
+            | "extensibility"
+            | "mutable"
+            | "final"
+            | "appendable"
+            | "key"
+            | "nested"
+            | "bit_bound"
+            | "autoid"
+    )
+}
+
+fn member_attrs(annotations: &[Ann]) -> Vec<(String, String)> {
+    let mut attrs = Vec::new();
+
+    for ann in annotations {
+        match ann.ident.name.as_str() {
+            "key" => attrs.push(("key".to_string(), "true".to_string())),
+            "optional" => attrs.push(("optional".to_string(), "true".to_string())),
+            "external" => attrs.push(("external".to_string(), "true".to_string())),
+            "must_understand" => attrs.push(("mustUnderstand".to_string(), "true".to_string())),
+            "non_serialized" => attrs.push(("nonSerialized".to_string(), "true".to_string())),
+            _ => {}
+        }
+    }
+
+    attrs
+}
+
+fn xml_type_name(prim: PrimitiveTy) -> &'static str {
+    match prim {
+        PrimitiveTy::Bool => "boolean",
+        PrimitiveTy::Char => "char8",
+        PrimitiveTy::WChar => "char16",
+        PrimitiveTy::Int8 => "int8",
+        PrimitiveTy::UInt8 => "uint8",
+        PrimitiveTy::Int16 => "int16",
+        PrimitiveTy::UInt16 => "uint16",
+        PrimitiveTy::Int32 => "int32",
+        PrimitiveTy::UInt32 => "uint32",
+        PrimitiveTy::Int64 => "int64",
+        PrimitiveTy::UInt64 => "uint64",
+        PrimitiveTy::Float32 => "float32",
+        PrimitiveTy::Float64 => "float64",
+        PrimitiveTy::Float128 => "float128",
+        PrimitiveTy::Void => "void",
+    }
+}
+
+fn is_basic_type(ty: &Ty) -> bool {
+    matches!(
+        ty.kind,
+        TyKind::Primitive(_) | TyKind::String { .. } | TyKind::Null
+    )
+}
+
+fn has_annotation(def: &Def, name: &str) -> bool {
+    def.annotations.iter().any(|ann| ann.ident.name == name)
+}
+
+fn annotation_str(def: &Def, name: &str) -> Option<String> {
+    def.annotations.iter().find_map(|ann| {
+        if ann.ident.name == name {
+            ann.args.first().and_then(|arg| {
+                if let Numeric::String(s) = &arg.value {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        }
+    })
+}
+
+fn bit_bound_for_type(prim: PrimitiveTy) -> &'static str {
+    match prim {
+        PrimitiveTy::Int8 | PrimitiveTy::UInt8 => "8",
+        PrimitiveTy::Int16 | PrimitiveTy::UInt16 => "16",
+        PrimitiveTy::Int64 | PrimitiveTy::UInt64 => "64",
+        _ => "32",
+    }
+}

@@ -14,7 +14,7 @@
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,25 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod codegen;
+mod writer;
+
 use ic_emit::File;
 
-unsafe extern "C" {
-    fn ic_codegen_xml(
-        result: *const ic_ptree::sys::parse_result,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
-}
-
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks)]
 pub fn codegen_xml(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) -> Vec<File> {
-    let result = ic_ptree_lower::from_hir(hir, source_map);
-    let mut generated = vec![];
-    unsafe {
-        ic_codegen_xml(
-            result.as_raw(),
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
-        );
-    }
-    generated
+    codegen::XmlGen::new(hir, source_map).generate()
 }

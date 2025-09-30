@@ -25,4 +25,178 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub struct Printer;
+#![allow(clippy::needless_pass_by_value)]
+
+#[derive(Debug, Clone)]
+enum Token {
+    Text(String),
+    BlockStart(String),
+    BlockEnd(String),
+    Newline,
+}
+
+pub struct PrettyPrinter {
+    tokens: Vec<Token>,
+    indent_str: &'static str,
+}
+
+impl Default for PrettyPrinter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PrettyPrinter {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            tokens: Vec::new(),
+            indent_str: "    ",
+        }
+    }
+
+    pub fn text(&mut self, s: impl ToString) -> &mut Self {
+        self.tokens.push(Token::Text(s.to_string()));
+        self
+    }
+
+    pub fn begin(&mut self, brace: impl ToString) -> &mut Self {
+        self.tokens.push(Token::BlockStart(brace.to_string()));
+        self
+    }
+
+    pub fn end(&mut self, brace: impl ToString) -> &mut Self {
+        self.tokens.push(Token::BlockEnd(brace.to_string()));
+        self
+    }
+
+    pub fn endl(&mut self) -> &mut Self {
+        self.tokens.push(Token::Newline);
+        self
+    }
+
+    pub fn blank(&mut self) -> &mut Self {
+        if !self.tokens.is_empty() {
+            if let Some(Token::Newline) = self.tokens.last() {
+                self.tokens.push(Token::Newline);
+            } else {
+                self.tokens.push(Token::Newline);
+                self.tokens.push(Token::Newline);
+            }
+        }
+        self
+    }
+
+    fn render(&self) -> String {
+        let mut output = String::new();
+        let mut indent_level = 0usize;
+        let mut prev_was_newline = false;
+
+        for token in &self.tokens {
+            match token {
+                Token::Text(text) => {
+                    if prev_was_newline {
+                        for _ in 0..indent_level {
+                            output.push_str(self.indent_str);
+                        }
+                        prev_was_newline = false;
+                    }
+                    output.push_str(text);
+                }
+                Token::BlockStart(brace) => {
+                    if prev_was_newline {
+                        for _ in 0..indent_level {
+                            output.push_str(self.indent_str);
+                        }
+                    }
+                    output.push_str(brace);
+                    output.push('\n');
+                    indent_level += 1;
+                    prev_was_newline = true;
+                }
+                Token::BlockEnd(brace) => {
+                    indent_level = indent_level.saturating_sub(1);
+                    if prev_was_newline {
+                        for _ in 0..indent_level {
+                            output.push_str(self.indent_str);
+                        }
+                        prev_was_newline = false;
+                    }
+                    output.push_str(brace);
+                }
+                Token::Newline => {
+                    output.push('\n');
+                    prev_was_newline = true;
+                }
+            }
+        }
+
+        output
+    }
+
+    #[must_use]
+    pub fn finish(self) -> String {
+        self.render()
+    }
+}
+
+pub struct Twine {
+    writer: PrettyPrinter,
+}
+
+impl Default for Twine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Twine {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            writer: PrettyPrinter::new(),
+        }
+    }
+
+    pub fn write(&mut self, args: &[&dyn ToString]) {
+        for arg in args {
+            let s = arg.to_string();
+            for ch in s.chars() {
+                match ch {
+                    '{' => {
+                        self.writer.begin("{");
+                    }
+                    '}' => {
+                        self.writer.end("}");
+                    }
+                    '\n' => {
+                        self.writer.endl();
+                    }
+                    _ => {
+                        self.writer.text(ch);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn blank(&mut self) {
+        self.writer.blank();
+    }
+
+    #[must_use]
+    pub fn finish(self) -> String {
+        self.writer.finish()
+    }
+}
+
+#[macro_export]
+macro_rules! w {
+    ($twine:expr, $($arg:expr),+ $(,)?) => {
+        {
+            let args: &[&dyn std::string::ToString] = &[$(&$arg),+];
+            $twine.write(args);
+        }
+    };
+}
+pub use w;

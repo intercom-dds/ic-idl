@@ -183,6 +183,14 @@ where
         self.0.insert(value, ())
     }
 
+    pub fn remove<Q>(&mut self, value: &Q) -> bool
+    where
+        T: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
+        self.0.keys.remove(value).is_some()
+    }
+
     #[must_use]
     pub fn contains<Q>(&self, key: &Q) -> bool
     where
@@ -200,6 +208,10 @@ where
     #[must_use]
     pub fn len(&self) -> usize {
         self.0.keys.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.0.keys.keys()
     }
 }
 

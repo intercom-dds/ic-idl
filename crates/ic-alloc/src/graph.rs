@@ -76,6 +76,87 @@ where
     pub fn is_empty(&self) -> bool {
         self.vertices.is_empty()
     }
+
+    pub fn vertices(&self) -> impl Iterator<Item = (VertexId, &T)> {
+        self.vertices
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (VertexId(i), v))
+    }
+
+    pub fn neighbors(&self, v: VertexId) -> impl Iterator<Item = VertexId> + '_ {
+        self.edges
+            .get(&v)
+            .map(|set| set.iter().copied())
+            .into_iter()
+            .flatten()
+    }
+
+    #[must_use]
+    pub fn strongly_connected_components(&self) -> Vec<Vec<VertexId>> {
+        let mut state = TarjanState {
+            index: 0,
+            stack: Vec::new(),
+            indices: IndexMap::new(),
+            lowlinks: IndexMap::new(),
+            on_stack: IndexSet::new(),
+            components: Vec::new(),
+        };
+
+        for i in 0..self.vertices.len() {
+            let v = VertexId(i);
+            if !state.indices.contains_key(&v) {
+                self.strong_connect(v, &mut state);
+            }
+        }
+
+        state.components
+    }
+
+    fn strong_connect(&self, v: VertexId, state: &mut TarjanState) {
+        state.indices.insert(v, state.index);
+        state.lowlinks.insert(v, state.index);
+        state.index += 1;
+        state.stack.push(v);
+        state.on_stack.insert(v);
+
+        for w in self.neighbors(v) {
+            if !state.indices.contains_key(&w) {
+                self.strong_connect(w, state);
+                let w_lowlink = *state.lowlinks.get(&w).unwrap();
+                let v_lowlink = *state.lowlinks.get(&v).unwrap();
+                state.lowlinks.insert(v, v_lowlink.min(w_lowlink));
+            } else if state.on_stack.contains(&w) {
+                let w_index = *state.indices.get(&w).unwrap();
+                let v_lowlink = *state.lowlinks.get(&v).unwrap();
+                state.lowlinks.insert(v, v_lowlink.min(w_index));
+            }
+        }
+
+        let v_lowlink = *state.lowlinks.get(&v).unwrap();
+        let v_index = *state.indices.get(&v).unwrap();
+        if v_lowlink == v_index {
+            let mut component = Vec::new();
+            loop {
+                let w = state.stack.pop().expect("stack should not be empty");
+                state.on_stack.remove(&w);
+                component.push(w);
+                if w == v {
+                    break;
+                }
+            }
+            state.components.push(component);
+        }
+    }
+}
+
+struct TarjanState {
+    index: usize,
+    stack: Vec<VertexId>,
+    indices: IndexMap<VertexId, usize>,
+    lowlinks: IndexMap<VertexId, usize>,
+    on_stack: IndexSet<VertexId>,
+    components: Vec<Vec<VertexId>>,
 }
 
 impl<T> Default for DiGraph<T> {
@@ -241,5 +322,109 @@ mod tests {
         // These should not panic
         post_order(&graph);
         topological_sort(&graph);
+    }
+
+    #[test]
+    fn test_scc_no_cycles() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex(1);
+        let v2 = graph.add_vertex(2);
+        let v3 = graph.add_vertex(3);
+        let v4 = graph.add_vertex(4);
+
+        graph.add_edge(v1, v2);
+        graph.add_edge(v2, v3);
+        graph.add_edge(v3, v4);
+
+        let sccs = graph.strongly_connected_components();
+        assert_eq!(sccs.len(), 4);
+        for scc in &sccs {
+            assert_eq!(scc.len(), 1);
+        }
+    }
+
+    #[test]
+    fn test_scc_simple_cycle() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex(1);
+        let v2 = graph.add_vertex(2);
+        let v3 = graph.add_vertex(3);
+
+        graph.add_edge(v1, v2);
+        graph.add_edge(v2, v3);
+        graph.add_edge(v3, v1);
+
+        let sccs = graph.strongly_connected_components();
+        assert_eq!(sccs.len(), 1);
+        assert_eq!(sccs[0].len(), 3);
+    }
+
+    #[test]
+    fn test_scc_multiple_components() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex(1);
+        let v2 = graph.add_vertex(2);
+        let v3 = graph.add_vertex(3);
+        let v4 = graph.add_vertex(4);
+        let v5 = graph.add_vertex(5);
+        let v6 = graph.add_vertex(6);
+
+        graph.add_edge(v1, v2);
+        graph.add_edge(v2, v1);
+        graph.add_edge(v3, v4);
+        graph.add_edge(v4, v3);
+        graph.add_edge(v5, v6);
+        graph.add_edge(v6, v5);
+
+        let sccs = graph.strongly_connected_components();
+        assert_eq!(sccs.len(), 3);
+
+        let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
+        sizes.sort_unstable();
+        assert_eq!(sizes, vec![2, 2, 2]);
+    }
+
+    #[test]
+    fn test_scc_complex_graph() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex(1);
+        let v2 = graph.add_vertex(2);
+        let v3 = graph.add_vertex(3);
+        let v4 = graph.add_vertex(4);
+        let v5 = graph.add_vertex(5);
+        let v6 = graph.add_vertex(6);
+
+        graph.add_edge(v1, v2);
+        graph.add_edge(v2, v3);
+        graph.add_edge(v3, v1);
+        graph.add_edge(v3, v4);
+        graph.add_edge(v4, v5);
+        graph.add_edge(v5, v6);
+        graph.add_edge(v6, v4);
+
+        let sccs = graph.strongly_connected_components();
+        assert_eq!(sccs.len(), 2);
+
+        let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
+        sizes.sort_unstable();
+        assert_eq!(sizes, vec![3, 3]);
+    }
+
+    #[test]
+    fn test_scc_with_isolated_vertex() {
+        let mut graph = DiGraph::new();
+        let v1 = graph.add_vertex(1);
+        let v2 = graph.add_vertex(2);
+        let _v3 = graph.add_vertex(3);
+
+        graph.add_edge(v1, v2);
+        graph.add_edge(v2, v1);
+
+        let sccs = graph.strongly_connected_components();
+        assert_eq!(sccs.len(), 2);
+
+        let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
+        sizes.sort_unstable();
+        assert_eq!(sizes, vec![1, 2]);
     }
 }

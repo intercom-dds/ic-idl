@@ -152,17 +152,8 @@ fn try_compile(options: CompilerOptions) {
         println!("{tree}");
     }
 
-    // For now, skip ptree conversion and code generation
-    // Convert HIR to ptree for code generation
-    let ptree = ic_idl::hir_to_ptree(&hir, compiler.source_map());
-
-    // Dump ptree if requested
-    if compiler.options().unstable.ptree_dump {
-        ic_ptree_dump::ptree_dump(&ptree);
-    }
-
-    // Generate code using backends
-    let generated = match generate_code(compiler.options(), &ptree) {
+    // Generate code using backends (they will convert HIR to ptree as needed)
+    let generated = match generate_code(compiler.options(), &hir, compiler.source_map()) {
         Ok(files) => files,
         Err(e) => {
             error!("code generation error: {e}");
@@ -183,7 +174,8 @@ fn try_compile(options: CompilerOptions) {
 
 fn generate_code(
     options: &CompilerOptions,
-    ptree: &ic_idl::ptree::ParseResult,
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
 ) -> Result<Vec<File>, util::Error> {
     let mut generated = vec![];
 
@@ -191,7 +183,8 @@ fn generate_code(
         let files = invoke_backend(
             output_dir,
             ic_codegen_cxx::codegen_cpp,
-            ptree,
+            hir,
+            source_map,
             options.cpp.clone(),
             options.purge_dirs,
         )?;
@@ -202,8 +195,9 @@ fn generate_code(
         let files = invoke_backend(
             output_dir,
             ic_codegen_rust::codegen_rust,
-            ptree,
-            options.rust.clone(),
+            hir,
+            source_map,
+            options.rust,
             options.purge_dirs,
         )?;
         generated.extend(files);
@@ -213,7 +207,8 @@ fn generate_code(
         let files = invoke_backend(
             output_dir,
             ic_codegen_python::codegen_python,
-            ptree,
+            hir,
+            source_map,
             options.python.clone(),
             options.purge_dirs,
         )?;
@@ -224,7 +219,8 @@ fn generate_code(
         let files = invoke_backend(
             output_dir,
             ic_codegen_idl::codegen_idl,
-            ptree,
+            hir,
+            source_map,
             options.idl.clone(),
             options.purge_dirs,
         )?;
@@ -234,8 +230,9 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.json_out {
         let files = invoke_backend(
             output_dir,
-            |ptree, _: ()| ic_codegen_json::codegen_json(ptree),
-            ptree,
+            ic_codegen_json::codegen_json,
+            hir,
+            source_map,
             (),
             options.purge_dirs,
         )?;
@@ -245,8 +242,9 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.xml_out {
         let files = invoke_backend(
             output_dir,
-            |ptree, _: ()| ic_codegen_xml::codegen_xml(ptree),
-            ptree,
+            ic_codegen_xml::codegen_xml,
+            hir,
+            source_map,
             (),
             options.purge_dirs,
         )?;
@@ -256,8 +254,9 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.proto_out {
         let files = invoke_backend(
             output_dir,
-            |ptree, _: ()| ic_codegen_protobuf::codegen_proto(ptree),
-            ptree,
+            ic_codegen_protobuf::codegen_proto,
+            hir,
+            source_map,
             (),
             options.purge_dirs,
         )?;
@@ -270,12 +269,13 @@ fn generate_code(
 fn invoke_backend<F, O>(
     output_dir: &std::path::Path,
     backend_fn: F,
-    ptree: &ic_idl::ptree::ParseResult,
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
     options: O,
     purge_dirs: bool,
 ) -> Result<Vec<File>, util::Error>
 where
-    F: FnOnce(&ic_idl::ptree::ParseResult, O) -> Vec<File>,
+    F: FnOnce(&ic_hir::ResolvedGraph, &ic_vfs::SourceMap, O) -> Vec<File>,
 {
     let dir = std::path::absolute(output_dir)?;
 
@@ -284,7 +284,7 @@ where
         std::fs::create_dir_all(&dir)?;
     }
 
-    let files = backend_fn(ptree, options)
+    let files = backend_fn(hir, source_map, options)
         .into_iter()
         .map(move |v| match v {
             File::Generated { path, source } => File::Generated {

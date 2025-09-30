@@ -99,7 +99,7 @@ impl Eq for CaseString {}
 
 /// A case-insensitive map that stores keys in their original form but
 /// performs case-insensitive lookups.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct CaseMap<T> {
     inner: HashMap<CaseString, T>,
 }

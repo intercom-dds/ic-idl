@@ -40,7 +40,7 @@ pub struct PathResolutionError<'a> {
     pub container: Option<DefId>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Context {
     pub definitions: Arena<hir::Def>,
 

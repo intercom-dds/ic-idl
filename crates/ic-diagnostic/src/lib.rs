@@ -67,7 +67,7 @@ pub enum Level {
 /// different warnings or errors for a particular item, you should instead
 /// create multiple diagnostics.
 #[must_use]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Diag {
     msg: String,
     title: Line,
@@ -180,7 +180,7 @@ impl Diag {
 /// to the diagnostic. Multiple labels can be attached to a single diagnostic
 /// to show different parts of the code that contribute to the issue.
 #[must_use]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Label {
     span: Span,
     msg: String,

@@ -37,9 +37,11 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-ic-hir = { path = "../ic-hir" }
 ic-emit = { path = "../ic-emit" }
+ic-hir = { path = "../ic-hir" }
 ic-ptree = { path = "../ic-ptree" }
+ic-ptree-lower = { path = "../ic-ptree-lower" }
+ic-vfs = { path = "../ic-vfs" }
 
 [build-dependencies]
 ic-cc = { path = "../ic-cc" }

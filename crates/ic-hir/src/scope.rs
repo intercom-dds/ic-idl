@@ -35,7 +35,7 @@ use ic_alloc::insensitive::CaseMap;
 use crate::hir::{Def, DefId};
 
 /// A scope in the hierarchy.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Scope {
     /// The definition ID of this scope (if it's a module/interface/etc).
     pub def_id: Option<DefId>,
@@ -60,7 +60,7 @@ pub struct Scope {
 pub struct ScopeId(pub usize);
 
 /// Manages the scope hierarchy.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ScopeTree {
     /// All scopes in the tree.
     pub scopes: Vec<Scope>,

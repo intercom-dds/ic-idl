@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::File;
-use ic_ptree::ParseResult;
 
 unsafe extern "C" {
     fn ic_codegen_xml(
@@ -37,7 +36,12 @@ unsafe extern "C" {
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_xml(result: &ParseResult) -> Vec<File> {
+pub fn codegen_xml(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    _options: (),
+) -> Vec<File> {
+    let result = ic_ptree_lower::from_hir(hir, source_map);
     let mut generated = vec![];
     unsafe {
         ic_codegen_xml(

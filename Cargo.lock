@@ -110,7 +110,10 @@ dependencies = [
  "ic-cc",
  "ic-cli",
  "ic-emit",
+ "ic-hir",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -120,7 +123,10 @@ dependencies = [
  "ic-cc",
  "ic-cli",
  "ic-emit",
+ "ic-hir",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -129,7 +135,10 @@ version = "0.1.0"
 dependencies = [
  "ic-cc",
  "ic-emit",
+ "ic-hir",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -140,6 +149,8 @@ dependencies = [
  "ic-emit",
  "ic-hir",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -149,7 +160,10 @@ dependencies = [
  "ic-cc",
  "ic-cli",
  "ic-emit",
+ "ic-hir",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -159,7 +173,11 @@ dependencies = [
  "ic-cc",
  "ic-cli",
  "ic-emit",
+ "ic-hir",
+ "ic-hir-xform",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]
@@ -168,7 +186,10 @@ version = "0.1.0"
 dependencies = [
  "ic-cc",
  "ic-emit",
+ "ic-hir",
  "ic-ptree",
+ "ic-ptree-lower",
+ "ic-vfs",
 ]
 
 [[package]]

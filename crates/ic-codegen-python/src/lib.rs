@@ -29,7 +29,6 @@ use std::ffi::CString;
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_ptree::ParseResult;
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct PythonOptions {
@@ -63,7 +62,12 @@ unsafe extern "C" {
 /// May panic if some of the passed string parameters contain a NUL byte.
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
-pub fn codegen_python(result: &ParseResult, options: PythonOptions) -> Vec<File> {
+pub fn codegen_python(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: PythonOptions,
+) -> Vec<File> {
+    let result = ic_ptree_lower::from_hir(hir, source_map);
     let global_postfix = options
         .global_postfix
         .as_ref()

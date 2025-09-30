@@ -29,7 +29,6 @@ use std::ffi::CString;
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_ptree::ParseResult;
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct CppOptions {
@@ -89,7 +88,12 @@ unsafe extern "C" {
 /// May panic if some of the passed string parameters contain a NUL byte.
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
-pub fn codegen_cpp(result: &ParseResult, options: CppOptions) -> Vec<File> {
+pub fn codegen_cpp(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: CppOptions,
+) -> Vec<File> {
+    let result = ic_ptree_lower::from_hir(hir, source_map);
     let header_subfolder = options
         .header_subfolder
         .as_ref()

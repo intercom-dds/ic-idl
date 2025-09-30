@@ -115,7 +115,7 @@ impl Default for DefFlags {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Def {
     /// The ID of this definition.
     pub id: DefId,

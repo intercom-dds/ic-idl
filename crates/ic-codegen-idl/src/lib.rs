@@ -27,7 +27,6 @@
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_ptree::ParseResult;
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct IdlOptions {
@@ -58,7 +57,12 @@ unsafe extern "C" {
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
-pub fn codegen_idl(result: &ParseResult, options: IdlOptions) -> Vec<File> {
+pub fn codegen_idl(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: IdlOptions,
+) -> Vec<File> {
+    let result = ic_ptree_lower::from_hir(hir, source_map);
     let ffi_options = idl_options_t {
         doxygen: u8::from(options.idl_doxygen),
         expand: u8::from(options.idl_expand),

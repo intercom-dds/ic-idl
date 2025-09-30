@@ -27,9 +27,10 @@
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_ptree::ParseResult;
+use ic_emit::case::Case;
+use ic_hir_xform::rename;
 
-#[derive(Command, Debug, Default, Clone)]
+#[derive(Copy, Clone, Command, Debug, Default)]
 pub struct RustOptions {
     /// Do not rename generated types
     #[option(long)]
@@ -58,7 +59,64 @@ unsafe extern "C" {
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
-pub fn codegen_rust(result: &ParseResult, options: RustOptions) -> Vec<File> {
+pub fn codegen_rust(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: RustOptions,
+) -> Vec<File> {
+    // Clone HIR for Rust-specific transformations
+    let hir = hir.clone();
+
+    // Move nested types into modules. Keep track of the moved nodes to
+    // properly escape their names later on to ensure the correct node gets
+    // precedence.
+    let (hir, moved_defs) = ic_hir_xform::move_nested::transform(hir);
+
+    // Squash reopened modules into single definitions
+    let hir = ic_hir_xform::squash_modules::transform(hir);
+
+    // Strip prefixes from enumerators
+    let hir = ic_hir_xform::enum_prefix::transform(hir);
+
+    // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
+    let hir = ic_hir_xform::type_flags::transform(hir);
+
+    // Rename `DDS::XTypes` to `DDS::xtypes`
+    let hir = ic_hir_xform::rename_xtypes::transform(hir);
+
+    // Rename all nodes to conform to Rust's naming convention
+    let hir = ic_hir_xform::rename::transform(
+        hir,
+        &rename::Target {
+            struct_type: Some(Case::Pascal),
+            union_type: Some(Case::Pascal),
+            enum_type: Some(Case::Pascal),
+            interface: Some(Case::Pascal),
+            valuetype: Some(Case::Pascal),
+            alias: Some(Case::Pascal),
+            bitmask: Some(Case::Pascal),
+            bitset: Some(Case::Pascal),
+            exception: Some(Case::Pascal),
+            annotation: Some(Case::Pascal),
+            member: Some(Case::Snake),
+            variant: Some(Case::Pascal),
+            enumerator: Some(Case::Pascal),
+            bit_flag: Some(Case::Snake),
+            bitset_field: Some(Case::Snake),
+            constant: Some(Case::Snake),
+            module: Some(Case::Snake),
+            operation: Some(Case::Snake),
+            attribute: Some(Case::Snake),
+            parameter: Some(Case::Snake),
+            annotation_param: Some(Case::Snake),
+            name_preprocessor: Some(ic_hir_xform::rename::strip_common_suffixes),
+            moved_defs,
+        },
+    );
+
+    // Convert transformed HIR to ptree for C++ backend
+    let result = ic_ptree_lower::from_hir(&hir, source_map);
+
     let ffi_options = rust_options_t {
         no_rename: u8::from(options.no_rename),
         must_use: u8::from(options.must_use),

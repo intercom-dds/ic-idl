@@ -63,6 +63,7 @@
 //! }
 //! ```
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 pub use crate::ctx::Context;
@@ -72,18 +73,25 @@ mod lower;
 
 /// Annotation processing and validation.
 pub mod annotation;
+
 /// HIR tree folding for transformations.
 pub mod fold;
+
 /// Core HIR type definitions and data structures.
 pub mod hir;
+
 /// IDL keywords and reserved identifiers.
 pub mod keywords;
+
 /// Merging multiple HIR graphs into a single graph.
 pub mod merge;
+
 /// Scope resolution and name lookup utilities.
 pub mod scope;
+
 /// Type size calculations for fixed-size types.
 pub mod type_size;
+
 /// HIR visitor pattern for traversal and analysis.
 pub mod visit;
 
@@ -110,7 +118,7 @@ pub enum AstInput<I> {
 ///
 /// This structure contains the fully resolved and type-checked HIR graph,
 /// along with any diagnostics produced during the lowering process.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ResolvedGraph {
     /// The primary data structure that owns all the types.
     pub context: Context,
@@ -123,6 +131,12 @@ pub struct ResolvedGraph {
     /// Defines the order in which built-in types were defined.
     /// Empty if no built-ins were loaded.
     pub builtin_order: Vec<hir::DefId>,
+
+    /// Maps definition `DefId`s to their forward declaration `DefId`s.
+    /// When lowering to ptree, if we encounter a reference to a definition
+    /// that hasn't been lowered yet, we can use one of its forward
+    /// declarations instead.
+    pub def_to_forward_decls: HashMap<hir::DefId, Vec<hir::DefId>>,
 
     /// Errors accumulated during type resolution, type checking, etc.
     pub errors: Vec<ic_diagnostic::Diag>,

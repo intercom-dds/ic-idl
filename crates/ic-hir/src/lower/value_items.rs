@@ -802,7 +802,8 @@ fn are_annotations_consistent(existing: &DefKind, new: &DefKind, ctx: &Context) 
     true
 }
 
-fn types_equal(a: &Ty, b: &Ty, ctx: &Context) -> bool {
+#[allow(clippy::used_underscore_binding)]
+fn types_equal(a: &Ty, b: &Ty, _ctx: &Context) -> bool {
     use TyKind::{Adt, Any, Array, Fixed, Map, Null, Primitive, Sequence, String};
     match (&a.kind, &b.kind) {
         (Any, Any) | (Fixed, Fixed) | (Null, Null) => true,
@@ -814,7 +815,7 @@ fn types_equal(a: &Ty, b: &Ty, ctx: &Context) -> bool {
             Array {
                 ty: ty2, len: len2, ..
             },
-        ) => len1 == len2 && types_equal(ty1, ty2, ctx),
+        ) => len1 == len2 && types_equal(ty1, ty2, _ctx),
         (
             Sequence {
                 ty: ty1, bound: b1, ..
@@ -822,7 +823,7 @@ fn types_equal(a: &Ty, b: &Ty, ctx: &Context) -> bool {
             Sequence {
                 ty: ty2, bound: b2, ..
             },
-        ) => b1 == b2 && types_equal(ty1, ty2, ctx),
+        ) => b1 == b2 && types_equal(ty1, ty2, _ctx),
         (
             String {
                 wide: w1,
@@ -848,7 +849,7 @@ fn types_equal(a: &Ty, b: &Ty, ctx: &Context) -> bool {
                 bound: b2,
                 ..
             },
-        ) => b1 == b2 && types_equal(k1, k2, ctx) && types_equal(e1, e2, ctx),
+        ) => b1 == b2 && types_equal(k1, k2, _ctx) && types_equal(e1, e2, _ctx),
         (Adt(id1), Adt(id2)) => id1 == id2,
         _ => false,
     }
@@ -863,6 +864,7 @@ fn resolve_const(ctx: &Context, id: DefId) -> &Numeric {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
     use Numeric::{
         Array, Bool, Char, Const, Double, Float, Int8, Int16, Int32, Int64, Map, Null, Octet,

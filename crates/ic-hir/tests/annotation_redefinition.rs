@@ -53,7 +53,7 @@ fn test_consistent_annotation_redefinition() {
 
 #[test]
 fn test_consistent_annotation_redefinition_with_defaults() {
-    let input = r#"
+    let input = r"
         @annotation config {
             long timeout default 30;
             boolean retry default true;
@@ -66,7 +66,7 @@ fn test_consistent_annotation_redefinition_with_defaults() {
 
         @config(60)
         struct TestStruct {};
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     assert!(
@@ -77,7 +77,7 @@ fn test_consistent_annotation_redefinition_with_defaults() {
 
 #[test]
 fn test_inconsistent_annotation_different_param_count() {
-    let input = r#"
+    let input = r"
         @annotation my_doc {
             string value;
         };
@@ -90,7 +90,7 @@ fn test_inconsistent_annotation_different_param_count() {
         struct TestStruct {
             long field;
         };
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);
@@ -98,7 +98,7 @@ fn test_inconsistent_annotation_different_param_count() {
 
 #[test]
 fn test_inconsistent_annotation_different_param_name() {
-    let input = r#"
+    let input = r"
         @annotation my_doc {
             string value;
         };
@@ -110,7 +110,7 @@ fn test_inconsistent_annotation_different_param_name() {
         struct TestStruct {
             long field;
         };
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);
@@ -118,7 +118,7 @@ fn test_inconsistent_annotation_different_param_name() {
 
 #[test]
 fn test_inconsistent_annotation_different_param_type() {
-    let input = r#"
+    let input = r"
         @annotation my_doc {
             string value;
         };
@@ -130,7 +130,7 @@ fn test_inconsistent_annotation_different_param_type() {
         struct TestStruct {
             long field;
         };
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);
@@ -138,7 +138,7 @@ fn test_inconsistent_annotation_different_param_type() {
 
 #[test]
 fn test_inconsistent_annotation_different_default() {
-    let input = r#"
+    let input = r"
         @annotation config {
             long timeout default 30;
         };
@@ -148,7 +148,7 @@ fn test_inconsistent_annotation_different_default() {
         };
 
         struct TestStruct {};
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);
@@ -156,7 +156,7 @@ fn test_inconsistent_annotation_different_default() {
 
 #[test]
 fn test_inconsistent_annotation_added_default() {
-    let input = r#"
+    let input = r"
         @annotation config {
             long timeout;
         };
@@ -166,7 +166,7 @@ fn test_inconsistent_annotation_added_default() {
         };
 
         struct TestStruct {};
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);
@@ -174,7 +174,7 @@ fn test_inconsistent_annotation_added_default() {
 
 #[test]
 fn test_inconsistent_annotation_removed_default() {
-    let input = r#"
+    let input = r"
         @annotation config {
             long timeout default 30;
         };
@@ -184,7 +184,7 @@ fn test_inconsistent_annotation_removed_default() {
         };
 
         struct TestStruct {};
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);
@@ -218,7 +218,7 @@ fn test_consistent_annotation_with_complex_defaults() {
 
 #[test]
 fn test_consistent_annotation_with_multiple_params() {
-    let input = r#"
+    let input = r"
         @annotation options {
             boolean flag;
             long count;
@@ -232,7 +232,7 @@ fn test_consistent_annotation_with_multiple_params() {
         struct TestStruct {
             long field;
         };
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     assert!(
@@ -243,7 +243,7 @@ fn test_consistent_annotation_with_multiple_params() {
 
 #[test]
 fn test_consistent_annotation_with_sequence_type() {
-    let input = r#"
+    let input = r"
         @annotation seq_doc {
             sequence<string, 10> values;
         };
@@ -255,7 +255,7 @@ fn test_consistent_annotation_with_sequence_type() {
         struct TestStruct {
             long field;
         };
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     assert!(
@@ -266,7 +266,7 @@ fn test_consistent_annotation_with_sequence_type() {
 
 #[test]
 fn test_inconsistent_annotation_different_sequence_bound() {
-    let input = r#"
+    let input = r"
         @annotation seq_doc {
             sequence<string, 10> values;
         };
@@ -278,7 +278,7 @@ fn test_inconsistent_annotation_different_sequence_bound() {
         struct TestStruct {
             long field;
         };
-    "#;
+    ";
 
     let diagnostics = common::compile_idl_with_warnings(input);
     insta::assert_snapshot!(diagnostics);

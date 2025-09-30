@@ -235,7 +235,18 @@ impl<'a> ConstEvaluator<'a> {
     /// Evaluate an expression to a HIR Numeric value (best-effort typing).
     pub fn eval_numeric(&mut self, expr: &ic_syntax::Expr) -> Option<Numeric> {
         let v = self.eval_value(expr)?;
-        numeric_from_value(&v)
+        match numeric_from_value(&v) {
+            Ok(n) => Some(n),
+            Err(err) => {
+                let error = ContextualEvalError {
+                    kind: err,
+                    span: expr.span(),
+                    context: None,
+                };
+                self.report_eval_error(error, None)?;
+                None
+            }
+        }
     }
 
     /// Evaluate an expression to a Numeric for use in annotations.
@@ -395,7 +406,7 @@ impl<'a> ConstEvaluator<'a> {
     /// Returns Result for cleaner error handling.
     fn cast_and_convert_internal(v: Value, expected_ty: &Ty) -> Result<Numeric, EvalError> {
         let casted = cast_value_to_type(v, expected_ty)?;
-        numeric_from_value(&casted).ok_or(EvalError::TypeMismatch)
+        numeric_from_value(&casted)
     }
 
     /// Cast a value to the expected type and convert to Numeric.
@@ -428,7 +439,7 @@ impl<'a> ConstEvaluator<'a> {
         };
 
         self.report_eval_error(error, Some(expected_ty))
-            .and_then(|v| numeric_from_value(&v))
+            .and_then(|v| numeric_from_value(&v).ok())
     }
 
     /// Evaluate an expression to a simplified Value.
@@ -650,12 +661,12 @@ impl<'a> ConstEvaluator<'a> {
                 }
                 // Not a const, fall through to normal evaluation
                 let v = self.eval_value(expr)?;
-                numeric_from_value(&v)
+                numeric_from_value(&v).ok()
             }
             // For non-path expressions, just evaluate normally
             _ => {
                 let v = self.eval_value(expr)?;
-                numeric_from_value(&v)
+                numeric_from_value(&v).ok()
             }
         }
     }

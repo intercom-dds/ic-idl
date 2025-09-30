@@ -173,3 +173,47 @@ fn test_int64_overflow_wraps_correctly() {
     assert!(result.errors.is_empty(), "Should not error, just warn");
     insta::assert_snapshot!(diagnostics);
 }
+
+#[test]
+fn test_enum_initializer_overflow_produces_warning() {
+    let input = r"
+        enum MyEnum {
+            A = 2147483647,
+            B = A + 1
+        };
+    ";
+
+    let (result, _, diagnostics) = common::parse_and_resolve(input);
+    assert!(result.errors.is_empty(), "Should warn, not error");
+    assert!(
+        !result.warnings.is_empty(),
+        "Should produce overflow warning"
+    );
+    insta::assert_snapshot!(diagnostics);
+}
+
+#[test]
+fn test_enum_initializer_shift_overflow_rejected() {
+    let input = r"
+        enum MyEnum {
+            A = 1073741824,
+            B = A << 1
+        };
+    ";
+
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
+}
+
+#[test]
+fn test_enum_initializer_valid_arithmetic() {
+    let input = r"
+        enum MyEnum {
+            A = 100,
+            B = A + 27
+        };
+    ";
+
+    let result = common::parse_and_resolve_successfully(input);
+    assert!(result.errors.is_empty());
+}

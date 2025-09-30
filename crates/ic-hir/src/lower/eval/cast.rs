@@ -196,38 +196,50 @@ pub(super) fn value_from_numeric(num: &Numeric) -> Option<Value> {
 }
 
 /// Convert an evaluation Value to a HIR Numeric.
-#[allow(clippy::unnecessary_wraps)]
-pub(super) fn numeric_from_value(v: &Value) -> Option<Numeric> {
+/// Returns `RangeError` if the value is out of range for its stored rank.
+pub(super) fn numeric_from_value(v: &Value) -> Result<Numeric, EvalError> {
     match v {
-        Value::Null => Some(Numeric::Null),
-        Value::Bool(b) => Some(Numeric::Bool(*b)),
-        Value::Char(c) => Some(Numeric::Char(*c)),
-        Value::Int(i, r) => Some(match r {
-            IntRank::I8 => Numeric::Int8(*i as i8),
-            IntRank::I16 => Numeric::Int16(*i as i16),
-            IntRank::I32 => Numeric::Int32(*i as i32),
-            IntRank::I64 => Numeric::Int64(*i as i64),
-            IntRank::U8 => Numeric::Octet(*i as u8),
-            IntRank::U16 => Numeric::UInt16(*i as u16),
-            IntRank::U32 => Numeric::UInt32(*i as u32),
-            IntRank::U64 => Numeric::UInt64(*i as u64),
-        }),
-        Value::UInt(u, r) => Some(match r {
-            IntRank::I8 => Numeric::Int8(*u as i8),
-            IntRank::I16 => Numeric::Int16(*u as i16),
-            IntRank::I32 => Numeric::Int32(*u as i32),
-            IntRank::I64 => Numeric::Int64(*u as i64),
-            IntRank::U8 => Numeric::Octet(*u as u8),
-            IntRank::U16 => Numeric::UInt16(*u as u16),
-            IntRank::U32 => Numeric::UInt32(*u as u32),
-            IntRank::U64 => Numeric::UInt64(*u as u64),
-        }),
-        Value::Float(f, fr) => Some(match fr {
+        Value::Null => Ok(Numeric::Null),
+        Value::Bool(b) => Ok(Numeric::Bool(*b)),
+        Value::Char(c) => Ok(Numeric::Char(*c)),
+        Value::Int(i, r) => {
+            let (min, max) = int_min_max(*r);
+            if *i < min || *i > max {
+                return Err(EvalError::RangeError);
+            }
+            Ok(match r {
+                IntRank::I8 => Numeric::Int8(*i as i8),
+                IntRank::I16 => Numeric::Int16(*i as i16),
+                IntRank::I32 => Numeric::Int32(*i as i32),
+                IntRank::I64 => Numeric::Int64(*i as i64),
+                IntRank::U8 => Numeric::Octet(*i as u8),
+                IntRank::U16 => Numeric::UInt16(*i as u16),
+                IntRank::U32 => Numeric::UInt32(*i as u32),
+                IntRank::U64 => Numeric::UInt64(*i as u64),
+            })
+        }
+        Value::UInt(u, r) => {
+            let (_, max) = int_min_max(*r);
+            if *u > max as u128 {
+                return Err(EvalError::RangeError);
+            }
+            Ok(match r {
+                IntRank::I8 => Numeric::Int8(*u as i8),
+                IntRank::I16 => Numeric::Int16(*u as i16),
+                IntRank::I32 => Numeric::Int32(*u as i32),
+                IntRank::I64 => Numeric::Int64(*u as i64),
+                IntRank::U8 => Numeric::Octet(*u as u8),
+                IntRank::U16 => Numeric::UInt16(*u as u16),
+                IntRank::U32 => Numeric::UInt32(*u as u32),
+                IntRank::U64 => Numeric::UInt64(*u as u64),
+            })
+        }
+        Value::Float(f, fr) => Ok(match fr {
             FloatRank::F32 => Numeric::Float(*f as f32),
             _ => Numeric::Double(*f),
         }),
-        Value::String(s) => Some(Numeric::String(s.clone())),
-        Value::Const(def_id) => Some(Numeric::Const(*def_id)),
+        Value::String(s) => Ok(Numeric::String(s.clone())),
+        Value::Const(def_id) => Ok(Numeric::Const(*def_id)),
     }
 }
 

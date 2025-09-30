@@ -63,11 +63,11 @@ impl ImplicitDefault {
                             if let Some(v) = Self::numeric_to_i64(&const_ty.value) {
                                 values.push((v, const_ty.value.clone()));
                                 const_values.insert(field_id, v);
-                                next_value = v as i32 + 1;
+                                next_value = v.wrapping_add(1) as i32;
                             } else {
                                 values.push((i64::from(next_value), Numeric::Int32(next_value)));
                                 const_values.insert(field_id, i64::from(next_value));
-                                next_value += 1;
+                                next_value = next_value.wrapping_add(1);
                             }
                         }
                     }

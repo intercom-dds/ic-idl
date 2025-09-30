@@ -146,10 +146,15 @@ fn try_compile(options: CompilerOptions) {
         emit_diagnostics(&compiler, &diag);
     }
 
-    // Dump HIR if requested (after transformations)
+    // Dump HIR if requested
     if compiler.options().unstable.hir_dump {
         let tree = ic_hir_tree::emit_tree(&hir, compiler.source_map());
         println!("{tree}");
+    }
+
+    if compiler.options().unstable.ptree_dump {
+        let ptree = ic_ptree_lower::from_hir(&hir, compiler.source_map());
+        ic_ptree_dump::ptree_dump(&ptree);
     }
 
     // Generate code using backends (they will convert HIR to ptree as needed)

@@ -393,7 +393,7 @@ impl Compiler {
             return Err(CompileError::Diagnostics(all_diagnostics));
         }
 
-        let merged_hir = hir::ResolvedGraph {
+        let hir = hir::ResolvedGraph {
             context: merged.context,
             order: merged.order,
             builtin_order: merged.builtin_order,
@@ -401,7 +401,23 @@ impl Compiler {
             warnings: Vec::new(),
         };
 
-        Ok((merged_hir, all_diagnostics))
+        // Apply HIR transformations
+        let hir = ic_hir_xform::value_annotation::transform(hir);
+        let hir = ic_hir_xform::position_annotation::transform(hir);
+
+        // Mark types with IS_TRIVIAL and TOTAL_ORDER flags
+        let hir = ic_hir_xform::type_flags::transform(hir);
+
+        // Add implicit default cases to incomplete unions
+        let hir = ic_hir_xform::implicit_default::transform(hir);
+
+        // Coalesce multiple null variants in unions
+        let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
+
+        // Final normalization after all transformations
+        let hir = ic_hir_xform::normalize::normalize(hir);
+
+        Ok((hir, all_diagnostics))
     }
 
     /// Compile a single file to HIR without built-in annotations.

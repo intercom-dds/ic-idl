@@ -243,7 +243,7 @@ impl Fold for ImplicitDefault {
                 let null_variant = Variant {
                     annotations: Vec::new(),
                     ident: Ident {
-                        name: "ImplicitDefault".into(),
+                        name: "_implicit_default".into(),
                         span: disc_span,
                     },
                     ty: Ty {

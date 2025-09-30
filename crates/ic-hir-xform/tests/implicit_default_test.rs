@@ -74,7 +74,7 @@ fn test_incomplete_boolean_union() {
     let implicit = union_ty
         .variants
         .iter()
-        .find(|v| v.ident.name == "ImplicitDefault")
+        .find(|v| v.ident.name == "_implicit_default")
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
@@ -111,7 +111,7 @@ fn test_incomplete_octet_union() {
     let implicit = union_ty
         .variants
         .iter()
-        .find(|v| v.ident.name == "ImplicitDefault")
+        .find(|v| v.ident.name == "_implicit_default")
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
@@ -145,7 +145,7 @@ fn test_complete_boolean_union() {
         union_ty
             .variants
             .iter()
-            .all(|v| v.ident.name != "ImplicitDefault")
+            .all(|v| v.ident.name != "_implicit_default")
     );
 }
 
@@ -176,7 +176,7 @@ fn test_union_with_default() {
         union_ty
             .variants
             .iter()
-            .all(|v| v.ident.name != "ImplicitDefault")
+            .all(|v| v.ident.name != "_implicit_default")
     );
 }
 
@@ -210,7 +210,7 @@ fn test_enum_discriminator() {
     let implicit = union_ty
         .variants
         .iter()
-        .find(|v| v.ident.name == "ImplicitDefault")
+        .find(|v| v.ident.name == "_implicit_default")
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
@@ -246,7 +246,7 @@ fn test_char_discriminator() {
     let implicit = union_ty
         .variants
         .iter()
-        .find(|v| v.ident.name == "ImplicitDefault")
+        .find(|v| v.ident.name == "_implicit_default")
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
@@ -537,7 +537,7 @@ fn test_complete_octet_union() {
         union_ty
             .variants
             .iter()
-            .all(|v| v.ident.name != "ImplicitDefault")
+            .all(|v| v.ident.name != "_implicit_default")
     );
 }
 
@@ -572,7 +572,7 @@ fn test_multiple_label_variants() {
     let implicit = union_ty
         .variants
         .iter()
-        .find(|v| v.ident.name == "ImplicitDefault")
+        .find(|v| v.ident.name == "_implicit_default")
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
@@ -610,7 +610,7 @@ fn test_int8_discriminator() {
     let implicit = union_ty
         .variants
         .iter()
-        .find(|v| v.ident.name == "ImplicitDefault")
+        .find(|v| v.ident.name == "_implicit_default")
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);

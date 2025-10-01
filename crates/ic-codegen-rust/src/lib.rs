@@ -27,6 +27,7 @@
 
 mod codegen;
 mod helpers;
+mod literals;
 mod marshal;
 
 use ic_cli::Command;

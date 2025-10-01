@@ -330,6 +330,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         i: usize,
         last_bit: &mut u32,
         bitmask_id: DefId,
+        bitmask_scope: ScopeId,
     ) -> Option<DefId> {
         // Check if this flag has an explicit position
         let is_explicit = flag.value.is_some();
@@ -374,7 +375,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             },
         });
 
-        // Register flag in parent scope (not bitmask scope)
+        // Register flag through the registry to check for duplicates
         if self
             .ctx
             .registry
@@ -388,11 +389,19 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
+            // Add to parent scope (for unscoped access like BitmaskBitA)
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 flag.ident.name.clone(),
                 flag_id,
             );
+
+            // Also add to bitmask's own scope (for scoped access like BitmaskTest::BitmaskBitA)
+            self.ctx
+                .context
+                .scopes
+                .add_definition(bitmask_scope, flag.ident.name.clone(), flag_id);
+
             Some(flag_id)
         } else {
             None
@@ -438,11 +447,20 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             );
         }
 
+        // Create a child scope for the bitmask to hold its flags
+        let bitmask_scope = self.ctx.context.scopes.create_child_scope(
+            self.current_scope,
+            b.ident.name.clone(),
+            Some(bitmask_id),
+        );
+
         // Process flags
         let mut flag_ids = Vec::new();
         let mut last_bit = 0u32;
         for (i, flag) in b.bits.iter().enumerate() {
-            if let Some(flag_id) = self.process_bitmask_flag(flag, i, &mut last_bit, bitmask_id) {
+            if let Some(flag_id) =
+                self.process_bitmask_flag(flag, i, &mut last_bit, bitmask_id, bitmask_scope)
+            {
                 flag_ids.push(flag_id);
             }
         }

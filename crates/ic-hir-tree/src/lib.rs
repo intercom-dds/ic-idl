@@ -175,7 +175,7 @@ fn emit_numeric(val: &Numeric) -> String {
         Numeric::Bool(b) => b.to_string().to_uppercase(),
         Numeric::Char(c) => format!("'{c}'"),
         Numeric::Int8(i) => i.to_string(),
-        Numeric::Octet(o) => o.to_string(),
+        Numeric::UInt8(o) => o.to_string(),
         Numeric::Int16(i) => i.to_string(),
         Numeric::UInt16(u) => u.to_string(),
         Numeric::Int32(i) => i.to_string(),

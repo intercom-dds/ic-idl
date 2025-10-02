@@ -124,7 +124,7 @@ impl ImplicitDefault {
             Numeric::Bool(b) => Some(i64::from(*b)),
             Numeric::Char(c) => Some(*c as i64),
             Numeric::Int8(v) => Some(i64::from(*v)),
-            Numeric::Octet(v) => Some(i64::from(*v)),
+            Numeric::UInt8(v) => Some(i64::from(*v)),
             Numeric::Int16(v) => Some(i64::from(*v)),
             Numeric::UInt16(v) => Some(i64::from(*v)),
             Numeric::Int32(v) => Some(i64::from(*v)),
@@ -184,7 +184,7 @@ impl ImplicitDefault {
                 }
                 PrimitiveTy::UInt8 => (0u8..=255)
                     .find(|v| !used_values.contains(&i64::from(*v)))
-                    .map(Numeric::Octet),
+                    .map(Numeric::UInt8),
                 PrimitiveTy::Char => (0u8..=255)
                     .find(|v| !used_values.contains(&i64::from(*v)))
                     .map(|v| Numeric::Char(v as char)),

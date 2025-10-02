@@ -194,7 +194,7 @@ impl<'a> TreeBuilder<'a> {
             Numeric::Bool(v) => sys::create_bool(self.state, ffi::c_int::from(*v)),
             Numeric::Char(v) => sys::create_char(self.state, *v as ffi::c_char),
             Numeric::Int8(v) => sys::create_i64(self.state, i64::from(*v), 10),
-            Numeric::Octet(v) => sys::create_u64(self.state, u64::from(*v), 10),
+            Numeric::UInt8(v) => sys::create_u64(self.state, u64::from(*v), 10),
             Numeric::Int16(v) => sys::create_i64(self.state, i64::from(*v), 10),
             Numeric::UInt16(v) => sys::create_u64(self.state, u64::from(*v), 10),
             Numeric::Int32(v) => sys::create_i64(self.state, i64::from(*v), 10),

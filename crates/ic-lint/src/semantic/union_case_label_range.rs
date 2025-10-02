@@ -115,7 +115,7 @@ impl<'a> Visitor<'a> for UnionCaseLabelRange<'a> {
 fn is_within_32_bits(value: &Numeric) -> bool {
     match value {
         Numeric::Int8(_) | Numeric::Int16(_) | Numeric::Int32(_) => true,
-        Numeric::Octet(_) | Numeric::UInt16(_) | Numeric::UInt32(_) => true,
+        Numeric::UInt8(_) | Numeric::UInt16(_) | Numeric::UInt32(_) => true,
         Numeric::Bool(_) => true,
         Numeric::Char(_) => true,
 
@@ -144,7 +144,7 @@ fn format_numeric(value: &Numeric) -> String {
         Numeric::Int16(v) => v.to_string(),
         Numeric::Int32(v) => v.to_string(),
         Numeric::Int64(v) => v.to_string(),
-        Numeric::Octet(v) => v.to_string(),
+        Numeric::UInt8(v) => v.to_string(),
         Numeric::UInt16(v) => v.to_string(),
         Numeric::UInt32(v) => v.to_string(),
         Numeric::UInt64(v) => v.to_string(),

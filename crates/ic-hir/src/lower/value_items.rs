@@ -867,15 +867,15 @@ fn resolve_const(ctx: &Context, id: DefId) -> &Numeric {
 #[allow(clippy::too_many_lines)]
 fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
     use Numeric::{
-        Array, Bool, Char, Const, Double, Float, Int8, Int16, Int32, Int64, Map, Null, Octet,
-        Sequence, String, Struct, UInt16, UInt32, UInt64, Union,
+        Array, Bool, Char, Const, Double, Float, Int8, Int16, Int32, Int64, Map, Null, Sequence,
+        String, Struct, UInt8, UInt16, UInt32, UInt64, Union,
     };
     match (a, b) {
         (Null, Null) => true,
         (Bool(v1), Bool(v2)) => v1 == v2,
         (Char(v1), Char(v2)) => v1 == v2,
         (Int8(v1), Int8(v2)) => v1 == v2,
-        (Octet(v1), Octet(v2)) => v1 == v2,
+        (UInt8(v1), UInt8(v2)) => v1 == v2,
         (Int16(v1), Int16(v2)) => v1 == v2,
         (UInt16(v1), UInt16(v2)) => v1 == v2,
         (Int32(v1), Int32(v2)) => v1 == v2,
@@ -1006,7 +1006,7 @@ fn resolve_numeric_value(ctx: &Context, value: &Numeric) -> i64 {
         Numeric::Int16(v) => i64::from(*v),
         Numeric::Int32(v) => i64::from(*v),
         Numeric::Int64(v) => *v,
-        Numeric::Octet(v) => i64::from(*v),
+        Numeric::UInt8(v) => i64::from(*v),
         Numeric::UInt16(v) => i64::from(*v),
         Numeric::UInt32(v) => i64::from(*v),
         Numeric::UInt64(v) => *v as i64,

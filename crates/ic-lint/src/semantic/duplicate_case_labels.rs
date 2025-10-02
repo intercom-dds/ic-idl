@@ -86,7 +86,7 @@ impl DuplicateCaseLabels<'_> {
             Numeric::Int16(v) => v.to_string(),
             Numeric::Int32(v) => v.to_string(),
             Numeric::Int64(v) => v.to_string(),
-            Numeric::Octet(v) => v.to_string(),
+            Numeric::UInt8(v) => v.to_string(),
             Numeric::UInt16(v) => v.to_string(),
             Numeric::UInt32(v) => v.to_string(),
             Numeric::UInt64(v) => v.to_string(),

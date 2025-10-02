@@ -217,7 +217,7 @@ impl ExhaustiveUnionDefaultLint<'_> {
                     Numeric::Int8(v) => {
                         covered_values.insert(*v as i64);
                     }
-                    Numeric::Octet(v) => {
+                    Numeric::UInt8(v) => {
                         covered_values.insert(*v as i64);
                     }
                     Numeric::Int16(v) => {

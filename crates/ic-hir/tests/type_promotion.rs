@@ -165,7 +165,7 @@ fn test_float_to_integer_conversion() {
         .expect("LARGE_FLOAT constant not found");
 
     if let DefKind::Const(const_ty) = &large_float.kind {
-        assert_eq!(const_ty.value, Numeric::Octet(255));
+        assert_eq!(const_ty.value, Numeric::UInt8(255));
     } else {
         panic!("LARGE_FLOAT is not a constant");
     }

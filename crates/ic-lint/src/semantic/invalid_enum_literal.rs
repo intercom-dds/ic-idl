@@ -78,7 +78,7 @@ impl InvalidEnumLiteral<'_> {
             Numeric::Int16(v) => i64::from(*v),
             Numeric::Int32(v) => i64::from(*v),
             Numeric::Int64(v) => *v,
-            Numeric::Octet(v) => i64::from(*v),
+            Numeric::UInt8(v) => i64::from(*v),
             Numeric::UInt16(v) => i64::from(*v),
             Numeric::UInt32(v) => i64::from(*v),
             Numeric::UInt64(v) => *v as i64,

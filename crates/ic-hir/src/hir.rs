@@ -285,7 +285,7 @@ pub enum Numeric {
     Int8(i8),
 
     /// A u8 literal.
-    Octet(u8),
+    UInt8(u8),
 
     /// An i16 literal.
     Int16(i16),
@@ -579,7 +579,7 @@ numeric_from! {
     i16 => Int16,
     i32 => Int32,
     i64 => Int64,
-    u8 => Octet,
+    u8 => UInt8,
     u16 => UInt16,
     u32 => UInt32,
     u64 => UInt64,

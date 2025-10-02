@@ -346,7 +346,7 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
                 Numeric::Int16(v) => Ok(i64::from(*v)),
                 Numeric::Int32(v) => Ok(i64::from(*v)),
                 Numeric::Int64(v) => Ok(*v),
-                Numeric::Octet(v) => Ok(i64::from(*v)),
+                Numeric::UInt8(v) => Ok(i64::from(*v)),
                 Numeric::UInt16(v) => Ok(i64::from(*v)),
                 Numeric::UInt32(v) => Ok(i64::from(*v)),
                 Numeric::UInt64(v) => {
@@ -370,7 +370,7 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
                 expected: "u8",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::Octet(v) => Ok(*v),
+                Numeric::UInt8(v) => Ok(*v),
                 _ => Err(CtsAnnotationError::TypeConversionError {
                     field: "value".to_string(),
                     expected: "u8",
@@ -386,7 +386,7 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
                 expected: "u16",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::Octet(v) => Ok(u16::from(*v)),
+                Numeric::UInt8(v) => Ok(u16::from(*v)),
                 Numeric::UInt16(v) => Ok(*v),
                 _ => Err(CtsAnnotationError::TypeConversionError {
                     field: "value".to_string(),
@@ -403,7 +403,7 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
                 expected: "u32",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::Octet(v) => Ok(u32::from(*v)),
+                Numeric::UInt8(v) => Ok(u32::from(*v)),
                 Numeric::UInt16(v) => Ok(u32::from(*v)),
                 Numeric::UInt32(v) => Ok(*v),
                 _ => Err(CtsAnnotationError::TypeConversionError {
@@ -421,7 +421,7 @@ impl<'a> Deserializer for AnnDeserializer<'a> {
                 expected: "u64",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::Octet(v) => Ok(u64::from(*v)),
+                Numeric::UInt8(v) => Ok(u64::from(*v)),
                 Numeric::UInt16(v) => Ok(u64::from(*v)),
                 Numeric::UInt32(v) => Ok(u64::from(*v)),
                 Numeric::UInt64(v) => Ok(*v),

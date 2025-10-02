@@ -115,7 +115,7 @@ fn test_incomplete_octet_union() {
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
-    assert_eq!(implicit.labels[0].value, Numeric::Octet(2));
+    assert_eq!(implicit.labels[0].value, Numeric::UInt8(2));
 }
 
 #[test]

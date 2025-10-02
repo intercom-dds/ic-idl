@@ -170,8 +170,8 @@ fn test_range_with_all_numeric_types() {
     let ann = make_ann(
         "range",
         vec![
-            make_arg(Some("min"), Numeric::Octet(0)),
-            make_arg(Some("max"), Numeric::Octet(255)),
+            make_arg(Some("min"), Numeric::UInt8(0)),
+            make_arg(Some("max"), Numeric::UInt8(255)),
         ],
     );
     let range: Range = ann.unmarshal("range").unwrap();

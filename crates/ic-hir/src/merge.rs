@@ -296,7 +296,7 @@ impl HirMerger {
             (Numeric::Int16(v1), Numeric::Int16(v2)) => v1 == v2,
             (Numeric::Int32(v1), Numeric::Int32(v2)) => v1 == v2,
             (Numeric::Int64(v1), Numeric::Int64(v2)) => v1 == v2,
-            (Numeric::Octet(v1), Numeric::Octet(v2)) => v1 == v2,
+            (Numeric::UInt8(v1), Numeric::UInt8(v2)) => v1 == v2,
             (Numeric::UInt16(v1), Numeric::UInt16(v2)) => v1 == v2,
             (Numeric::UInt32(v1), Numeric::UInt32(v2)) => v1 == v2,
             (Numeric::UInt64(v1), Numeric::UInt64(v2)) => v1 == v2,

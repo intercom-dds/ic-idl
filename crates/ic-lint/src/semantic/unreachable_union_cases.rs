@@ -124,7 +124,7 @@ impl UnreachableUnionCases<'_> {
             Numeric::Int16(v) => Some(i64::from(*v)),
             Numeric::Int32(v) => Some(i64::from(*v)),
             Numeric::Int64(v) => Some(*v),
-            Numeric::Octet(v) => Some(i64::from(*v)),
+            Numeric::UInt8(v) => Some(i64::from(*v)),
             Numeric::UInt16(v) => Some(i64::from(*v)),
             Numeric::UInt32(v) => Some(i64::from(*v)),
             Numeric::UInt64(v) => i64::try_from(*v).ok(),

@@ -87,22 +87,24 @@ impl<'a> RustGen<'a> {
         }
 
         let mut files = Vec::new();
-        self.emit_module(root, &mut files, "");
+        Self::emit_module(root, &mut files, "");
         files
     }
 
-    fn emit_module(&self, module: Module, files: &mut Vec<File>, path: &str) {
+    fn emit_module(module: Module, files: &mut Vec<File>, path: &str) {
         let mut content = String::new();
         content.push_str("// @generated\n\n");
 
         for (name, child) in module.entries {
-            content.push_str(&format!("pub mod {name};\n"));
+            content.push_str("pub mod ");
+            content.push_str(&name);
+            content.push_str(";\n");
             let child_path = if path.is_empty() {
                 name.clone()
             } else {
                 format!("{path}/{name}")
             };
-            self.emit_module(child, files, &child_path);
+            Self::emit_module(child, files, &child_path);
         }
 
         if !content.is_empty() && !content.ends_with("\n\n") {
@@ -123,24 +125,24 @@ impl<'a> RustGen<'a> {
         });
     }
 
-    pub(crate) fn rust_type(&self, ty: &Ty, _ctx: DefId) -> String {
+    pub(crate) fn rust_type(&self, ty: &Ty, ctx: DefId) -> String {
         match &ty.kind {
             TyKind::Primitive(prim) => rust_primitive(*prim).to_string(),
             TyKind::String { .. } => "::std::string::String".to_string(),
             TyKind::Sequence { ty, .. } => {
-                format!("::std::vec::Vec<{}>", self.rust_type(ty, _ctx))
+                format!("::std::vec::Vec<{}>", self.rust_type(ty, ctx))
             }
             TyKind::Array { ty, len, .. } => {
-                format!("[{}; {}]", self.rust_type(ty, _ctx), len)
+                format!("[{}; {}]", self.rust_type(ty, ctx), len)
             }
             TyKind::Map { key, elem, .. } => {
                 format!(
                     "::std::collections::BTreeMap<{}, {}>",
-                    self.rust_type(key, _ctx),
-                    self.rust_type(elem, _ctx)
+                    self.rust_type(key, ctx),
+                    self.rust_type(elem, ctx)
                 )
             }
-            TyKind::Adt(def_id) => self.scoped_name(*def_id, _ctx),
+            TyKind::Adt(def_id) => self.scoped_name(*def_id, ctx),
             TyKind::Any | TyKind::Fixed | TyKind::Null => "()".to_string(),
         }
     }
@@ -251,11 +253,7 @@ impl<'a> RustGen<'a> {
 
     fn emit_param_type(&self, param: &ic_hir::hir::Parameter, ctx: DefId, w: &mut Twine) {
         // TODO: should be is_trivial(def)
-        let is_trivial = if let TyKind::Primitive(_) = param.ty.kind {
-            true
-        } else {
-            false
-        };
+        let is_trivial = matches!(param.ty.kind, TyKind::Primitive(_));
 
         if !is_trivial || matches!(param.kind, ParamKind::Out | ParamKind::Inout) {
             w!(w, "&");
@@ -285,8 +283,8 @@ impl<'a> RustGen<'a> {
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ", ::std::boxed::Box<dyn ::std::error::Error>>");
         } else if !raises.is_empty() {
-            let except_def = self.hir.context.definitions.get(raises[0]);
-            w!(w, except_def, "Result<");
+            let except_name = self.scoped_name(raises[0], ctx);
+            w!(w, except_name, "Result<");
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ">");
         } else if let TyKind::Adt(def_id) = ty.kind {
@@ -370,7 +368,9 @@ impl<'a> RustGen<'a> {
                 if !matches!(variant.ty.kind, TyKind::Null) {
                     w!(w, "(_)");
                 }
-                w!(w, " => <", disc_ty, ">::default(),\n");
+                w!(w, " => ");
+                self.emit_const_default_value(&union_ty.disc.ty, def.id, w);
+                w!(w, ",\n");
             } else {
                 for label in &variant.labels {
                     let variant_name = self.union_variant_name(variant, label, union_ty);
@@ -432,7 +432,7 @@ impl<'a> RustGen<'a> {
                 format!(
                     "{}{}",
                     variant.ident.name,
-                    self.format_numeric(&label.value),
+                    Self::format_numeric(&label.value),
                 )
             }
         }
@@ -450,7 +450,7 @@ impl<'a> RustGen<'a> {
             if let DefKind::Const(const_ty) = &field_def.kind {
                 w!(w, field_def);
                 if field_def.flags.contains(DefFlags::IS_ENUMERATED) {
-                    let value = self.format_numeric(&const_ty.value);
+                    let value = Self::format_numeric(&const_ty.value);
                     w!(w, " = ", value);
                 }
                 w!(w, ",\n");
@@ -523,7 +523,7 @@ impl<'a> RustGen<'a> {
             w!(w, "#[must_use]\n");
         }
         w!(w, "pub const fn new() -> Self {\n");
-        w!(w, "Self::empty()\n");
+        w!(w, "Self::nil()\n");
         w!(w, "}\n");
 
         w!(w, "}\n\n");
@@ -614,7 +614,7 @@ impl<'a> RustGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn emit_default_impl(&self, def: &Def, w: &mut Twine) {
+    fn emit_default_impl(def: &Def, w: &mut Twine) {
         w!(w, "impl ::std::default::Default for ", def, " {\n");
         w!(w, "fn default() -> Self {\n");
         w!(w, "Self::new()\n");
@@ -635,57 +635,57 @@ impl<'a> RustGen<'a> {
                 self.emit_struct(def, struct_ty, w);
                 let members = self.struct_members(struct_ty);
                 self.emit_struct_impl(def, &members, w);
-                self.emit_default_impl(def, w);
+                Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_member_info(&members, w);
-                self.emit_marshal_impl(def, &members, w);
-                self.emit_unmarshal_impl(def, &members, w);
-                self.emit_type_info_close(w);
+                Self::emit_member_info(&members, w);
+                Self::emit_marshal_impl(def, &members, w);
+                Self::emit_unmarshal_impl(def, &members, w);
+                Self::emit_type_info_close(w);
             }
             DefKind::Except(except_ty) => {
                 self.emit_except(def, except_ty, w);
                 self.emit_struct_impl(def, &except_ty.members, w);
-                self.emit_default_impl(def, w);
+                Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_member_info(&except_ty.members, w);
-                self.emit_marshal_impl(def, &except_ty.members, w);
-                self.emit_unmarshal_impl(def, &except_ty.members, w);
-                self.emit_type_info_close(w);
+                Self::emit_member_info(&except_ty.members, w);
+                Self::emit_marshal_impl(def, &except_ty.members, w);
+                Self::emit_unmarshal_impl(def, &except_ty.members, w);
+                Self::emit_type_info_close(w);
             }
             DefKind::Valuetype(value_ty) => {
                 self.emit_valuetype(def, value_ty, w);
                 let members = self.valuetype_members(value_ty);
                 self.emit_struct_impl(def, &members, w);
-                self.emit_default_impl(def, w);
+                Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_member_info(&members, w);
-                self.emit_marshal_impl(def, &members, w);
-                self.emit_unmarshal_impl(def, &members, w);
-                self.emit_type_info_close(w);
+                Self::emit_member_info(&members, w);
+                Self::emit_marshal_impl(def, &members, w);
+                Self::emit_unmarshal_impl(def, &members, w);
+                Self::emit_type_info_close(w);
             }
             DefKind::Union(union_ty) => {
                 self.emit_union(def, union_ty, w);
                 self.emit_union_impl(def, union_ty, w);
-                self.emit_default_impl(def, w);
+                Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_union_member_info(def, union_ty, w);
+                Self::emit_union_member_info(def, union_ty, w);
                 self.emit_union_marshal_impl(def, union_ty, w);
                 self.emit_union_unmarshal_impl(def, union_ty, w);
-                self.emit_type_info_close(w);
+                Self::emit_type_info_close(w);
             }
             DefKind::Enum(enum_ty) => {
                 self.emit_enum(def, enum_ty, w);
                 self.emit_enum_impl(def, enum_ty, w);
-                self.emit_default_impl(def, w);
+                Self::emit_default_impl(def, w);
                 self.emit_enum_type_info(def, enum_ty, w);
                 self.emit_enum_marshal_impl(def, enum_ty, w);
                 self.emit_enum_unmarshal_impl(def, enum_ty, w);
-                self.emit_type_info_close(w);
+                Self::emit_type_info_close(w);
             }
             DefKind::Bitmask(bitmask_ty) => {
                 self.emit_bitmask(def, bitmask_ty, w);
                 self.emit_bitmask_impl(def, w);
-                self.emit_default_impl(def, w);
+                Self::emit_default_impl(def, w);
             }
             DefKind::Alias(alias_ty) => {
                 self.emit_alias(def, alias_ty, w);

@@ -32,27 +32,37 @@ use ic_hir::hir::{Def, DefKind, PrimitiveTy, TyKind};
 use crate::codegen::RustGen;
 use crate::helpers::rust_primitive;
 
+fn primitive_type_kind(prim: PrimitiveTy) -> &'static str {
+    match prim {
+        PrimitiveTy::Int8 => "I8",
+        PrimitiveTy::UInt8 => "U8",
+        PrimitiveTy::Int16 => "I16",
+        PrimitiveTy::UInt16 => "U16",
+        PrimitiveTy::UInt32 | PrimitiveTy::UInt64 => "U32",
+        _ => "I32",
+    }
+}
+
 impl RustGen<'_> {
     pub(crate) fn emit_type_info(&self, def: &Def, w: &mut Twine) {
         let full_name = self.scoped_name(def.id, def.id).replace("crate::", "");
         let (kind, element_kind) = match &def.kind {
-            DefKind::Struct(_) => ("Struct", "None"),
             DefKind::Union(_) => ("Union", "None"),
             DefKind::Enum(enum_ty) => {
-                let elem = match enum_ty.ty {
-                    PrimitiveTy::Int8 => "I8",
-                    PrimitiveTy::UInt8 => "U8",
-                    PrimitiveTy::Int16 => "I16",
-                    PrimitiveTy::UInt16 => "U16",
-                    PrimitiveTy::Int32 => "I32",
-                    PrimitiveTy::UInt32 => "U32",
-                    PrimitiveTy::Int64 => "I64",
-                    PrimitiveTy::UInt64 => "U64",
-                    _ => "I32",
-                };
+                let elem = primitive_type_kind(enum_ty.ty);
                 ("Enum", elem)
             }
-            _ => ("Struct", "None"),
+            DefKind::Struct(_)
+            | DefKind::Valuetype(_)
+            | DefKind::Except(_)
+            | DefKind::Module(_)
+            | DefKind::Const(_)
+            | DefKind::Bitmask(_)
+            | DefKind::Bitset(_)
+            | DefKind::Alias(_)
+            | DefKind::Interface(_)
+            | DefKind::Annotation(_)
+            | DefKind::Decl(_) => ("Struct", "None"),
         };
 
         w!(w, "const _: () = {\n");
@@ -65,11 +75,11 @@ impl RustGen<'_> {
         w!(w, "};\n\n");
     }
 
-    pub(crate) fn emit_type_info_close(&self, w: &mut Twine) {
+    pub(crate) fn emit_type_info_close(w: &mut Twine) {
         w!(w, "};\n\n");
     }
 
-    fn emit_member_info_array(&self, members: &[(&str, usize)], w: &mut Twine) {
+    fn emit_member_info_array(members: &[(&str, usize)], w: &mut Twine) {
         if members.is_empty() {
             return;
         }
@@ -85,7 +95,7 @@ impl RustGen<'_> {
         w!(w, "];\n\n");
     }
 
-    pub(crate) fn emit_member_info<'c, I>(&self, members: I, w: &mut Twine)
+    pub(crate) fn emit_member_info<'c, I>(members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
@@ -94,10 +104,10 @@ impl RustGen<'_> {
             .enumerate()
             .map(|(i, m)| (m.ident.name.as_str(), i))
             .collect();
-        self.emit_member_info_array(&member_info, w);
+        Self::emit_member_info_array(&member_info, w);
     }
 
-    pub(crate) fn emit_marshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_marshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
@@ -128,7 +138,7 @@ impl RustGen<'_> {
         w!(w, "}\n\n");
     }
 
-    pub(crate) fn emit_unmarshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_unmarshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
@@ -167,17 +177,7 @@ impl RustGen<'_> {
         w: &mut Twine,
     ) {
         let full_name = self.scoped_name(def.id, def.id).replace("crate::", "");
-        let element_ty = match enum_ty.ty {
-            PrimitiveTy::Int8 => "I8",
-            PrimitiveTy::UInt8 => "U8",
-            PrimitiveTy::Int16 => "I16",
-            PrimitiveTy::UInt16 => "U16",
-            PrimitiveTy::Int32 => "I32",
-            PrimitiveTy::UInt32 => "U32",
-            PrimitiveTy::Int64 => "I64",
-            PrimitiveTy::UInt64 => "U64",
-            _ => "I32",
-        };
+        let element_ty = primitive_type_kind(enum_ty.ty);
 
         w!(w, "const _: () = {\n");
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
@@ -208,7 +208,7 @@ impl RustGen<'_> {
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
-                let value = self.format_numeric(&const_ty.value);
+                let value = Self::format_numeric(&const_ty.value);
                 w!(w, "Self::", field_def, " => state.encode_variant::<", rust_ty, ">(\"", field_def, "\", ", value, "),\n");
             }
         }
@@ -248,7 +248,7 @@ impl RustGen<'_> {
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
-                let value = self.format_numeric(&const_ty.value);
+                let value = Self::format_numeric(&const_ty.value);
                 w!(w, value, " => Self::", field_def, ",\n");
             }
         }
@@ -276,7 +276,6 @@ impl RustGen<'_> {
     }
 
     pub(crate) fn emit_union_member_info(
-        &self,
         _def: &Def,
         union_ty: &ic_hir::hir::UnionTy,
         w: &mut Twine,
@@ -294,7 +293,7 @@ impl RustGen<'_> {
             })
             .collect();
 
-        self.emit_member_info_array(&member_info, w);
+        Self::emit_member_info_array(&member_info, w);
     }
 
     pub(crate) fn emit_union_marshal_impl(

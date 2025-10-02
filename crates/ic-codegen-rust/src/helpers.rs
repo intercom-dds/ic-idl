@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_sign_loss)]
+
 use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 
 use crate::codegen::RustGen;
@@ -38,9 +40,10 @@ impl RustGen<'_> {
 
         while let Some(id) = current_id {
             let parent_def = self.hir.context.definitions.get(id);
-            if matches!(parent_def.kind, DefKind::Module(_)) {
-                scope.push(parent_def.ident.name.clone());
-            } else if matches!(parent_def.kind, DefKind::Enum(_) | DefKind::Bitmask(_)) {
+            if matches!(
+                parent_def.kind,
+                DefKind::Module(_) | DefKind::Enum(_) | DefKind::Bitmask(_)
+            ) {
                 scope.push(parent_def.ident.name.clone());
             }
             current_id = parent_def.parent;
@@ -91,21 +94,6 @@ impl RustGen<'_> {
         members
     }
 
-    pub(crate) fn format_numeric(&self, num: &Numeric) -> String {
-        match num {
-            Numeric::Int8(v) => format_integer(i128::from(*v)),
-            Numeric::Octet(v) => format_integer(i128::from(*v)),
-            Numeric::Int16(v) => format_integer(i128::from(*v)),
-            Numeric::UInt16(v) => format_integer(i128::from(*v)),
-            Numeric::Int32(v) => format_integer(i128::from(*v)),
-            Numeric::UInt32(v) => format_integer(i128::from(*v)),
-            Numeric::Int64(v) => format_integer(i128::from(*v)),
-            Numeric::UInt64(v) => format_integer(i128::from(*v)),
-            Numeric::String(v) => format!("\"{}\"", v.escape_default()),
-            _ => "0".to_string(),
-        }
-    }
-
     pub fn is_copy_type(&self, ty: &Ty) -> bool {
         match &ty.kind {
             TyKind::Primitive(_) => true,
@@ -149,11 +137,9 @@ pub fn is_hash(def: &Def) -> bool {
 
 pub fn format_integer(val: i128) -> String {
     let s = val.to_string();
-    let (sign, digits) = if s.starts_with('-') {
-        ("-", &s[1..])
-    } else {
-        ("", s.as_str())
-    };
+    let (sign, digits) = s
+        .strip_prefix('-')
+        .map_or(("", s.as_str()), |rest| ("-", rest));
 
     let mut result = String::new();
     for (i, ch) in digits.chars().rev().enumerate() {

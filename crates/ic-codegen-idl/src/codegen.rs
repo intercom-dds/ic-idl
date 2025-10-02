@@ -31,7 +31,11 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Decl, DefFlags, DefId, DefKind, Numeric, ParamKind, Ty, TyKind};
+use ic_hir::hir::{
+    AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitmaskTy, BitsetTy, ConstTy, Decl, Def,
+    DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, ParamKind, ProtoTy,
+    StructTy, Ty, TyKind, UnionTy, ValueTy,
+};
 use ic_vfs::{FileId, SourceMap};
 
 use crate::IdlOptions;
@@ -59,7 +63,6 @@ impl<'a> IdlGen<'a> {
     }
 
     fn format_numeric(&self, value: &Numeric, relative_to_def_id: DefId) -> String {
-        use ic_hir::hir::Numeric;
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "TRUE" } else { "FALSE" }.to_string(),
@@ -77,20 +80,44 @@ impl<'a> IdlGen<'a> {
             Numeric::String(s) => format!("\"{}\"", s.escape_default()),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { values, .. } => {
-                let formatted: Vec<String> = values
+                let formatted: Vec<_> = values
                     .iter()
                     .map(|v| self.format_numeric(v, relative_to_def_id))
                     .collect();
+
                 format!("{{{}}}", formatted.join(", "))
             }
             Numeric::Sequence { values, .. } => {
-                let formatted: Vec<String> = values
+                let formatted: Vec<_> = values
                     .iter()
                     .map(|v| self.format_numeric(v, relative_to_def_id))
                     .collect();
+
                 format!("{{{}}}", formatted.join(", "))
             }
-            _ => "0".to_string(),
+            Numeric::Map { entries, .. } => {
+                let formatted: Vec<_> = entries
+                    .iter()
+                    .map(|(k, v)| {
+                        format!(
+                            "{{{}, {}}}",
+                            self.format_numeric(k, relative_to_def_id),
+                            self.format_numeric(v, relative_to_def_id),
+                        )
+                    })
+                    .collect();
+
+                format!("{{{}}}", formatted.join(", "))
+            }
+            Numeric::Struct { fields, .. } => {
+                let formatted: Vec<_> = fields
+                    .iter()
+                    .map(|(_, v)| self.format_numeric(v, relative_to_def_id))
+                    .collect();
+
+                format!("{{{}}}", formatted.join(", "))
+            }
+            Numeric::Union { .. } => String::new(),
         }
     }
 
@@ -220,7 +247,7 @@ impl<'a> IdlGen<'a> {
         }
     }
 
-    fn idl_type(&self, ty: &Ty, relative_to_def_id: DefId) -> String {
+    fn idl_type(&self, ty: &Ty, relative_def: DefId) -> String {
         match &ty.kind {
             TyKind::Primitive(prim) => {
                 if self.options.idl_legacy {
@@ -237,9 +264,9 @@ impl<'a> IdlGen<'a> {
                     base.to_string()
                 }
             }
-            TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_to_def_id),
+            TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_def),
             TyKind::Sequence { ty, bound, .. } => {
-                let inner = self.idl_type(ty, relative_to_def_id);
+                let inner = self.idl_type(ty, relative_def);
                 if let Some(b) = bound {
                     format!("sequence<{inner}, {b}>")
                 } else {
@@ -249,16 +276,18 @@ impl<'a> IdlGen<'a> {
             TyKind::Map {
                 key, elem, bound, ..
             } => {
-                let key_ty = self.idl_type(key, relative_to_def_id);
-                let elem_ty = self.idl_type(elem, relative_to_def_id);
+                let key_ty = self.idl_type(key, relative_def);
+                let elem_ty = self.idl_type(elem, relative_def);
                 if let Some(b) = bound {
                     format!("map<{key_ty}, {elem_ty}, {b}>")
                 } else {
                     format!("map<{key_ty}, {elem_ty}>")
                 }
             }
-            TyKind::Array { ty, .. } => self.idl_type(ty, relative_to_def_id),
-            _ => "void".to_string(),
+            TyKind::Array { ty, .. } => self.idl_type(ty, relative_def),
+            TyKind::Any => "any".to_string(),
+            TyKind::Fixed => "fixed".to_string(),
+            TyKind::Null => "null".to_string(),
         }
     }
 
@@ -282,7 +311,7 @@ impl<'a> IdlGen<'a> {
         }
     }
 
-    fn emit_module(&self, w: &mut Twine, def: &ic_hir::hir::Def, module: &ic_hir::hir::ModuleTy) {
+    fn emit_module(&self, w: &mut Twine, def: &Def, module: &ModuleTy) {
         w!(w, "module ", def.ident.name, " {");
         for &nested_id in &module.definitions {
             w!(w, "\n");
@@ -291,12 +320,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "}; // module ", def.ident.name, "\n");
     }
 
-    fn emit_annotations(
-        &self,
-        w: &mut Twine,
-        annotations: &[ic_hir::hir::Ann],
-        relative_to_def_id: DefId,
-    ) {
+    fn emit_annotations(&self, w: &mut Twine, annotations: &[Ann], relative_to_def_id: DefId) {
         for ann in annotations {
             let non_default_args = filter_non_default_args(ann, self.hir);
 
@@ -319,12 +343,7 @@ impl<'a> IdlGen<'a> {
         }
     }
 
-    fn emit_struct(
-        &self,
-        w: &mut Twine,
-        def: &ic_hir::hir::Def,
-        struct_ty: &ic_hir::hir::StructTy,
-    ) {
+    fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         w!(w, "struct ", def.ident.name);
         self.emit_parents(w, &struct_ty.parent, def.id);
         w!(w, " {");
@@ -339,7 +358,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_union(&self, w: &mut Twine, def: &ic_hir::hir::Def, union_ty: &ic_hir::hir::UnionTy) {
+    fn emit_union(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let discriminator = self.idl_type(&union_ty.disc.ty, def.id);
         w!(w, "union ", def.ident.name, " switch (");
         self.emit_annotations(w, &union_ty.disc.annotations, def.id);
@@ -370,7 +389,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_enum(&self, w: &mut Twine, def: &ic_hir::hir::Def, enum_ty: &ic_hir::hir::EnumTy) {
+    fn emit_enum(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
         w!(w, "enum ", def.ident.name, " {");
         for (i, &field_id) in enum_ty.fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
@@ -394,12 +413,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_attribute(
-        &self,
-        w: &mut Twine,
-        attr: &ic_hir::hir::Attribute,
-        relative_to_def_id: DefId,
-    ) {
+    fn emit_attribute(&self, w: &mut Twine, attr: &Attribute, relative_to_def_id: DefId) {
         if attr.is_readonly {
             w!(w, "readonly ");
         }
@@ -434,12 +448,7 @@ impl<'a> IdlGen<'a> {
         w!(w, ";");
     }
 
-    fn emit_prototype(
-        &self,
-        w: &mut Twine,
-        proto: &ic_hir::hir::ProtoTy,
-        relative_to_def_id: DefId,
-    ) {
+    fn emit_prototype(&self, w: &mut Twine, proto: &ProtoTy, relative_to_def_id: DefId) {
         let ret_ty = self.idl_type(&proto.ty, relative_to_def_id);
         w!(w, ret_ty, " ", proto.ident.name, "(");
         for (i, param) in proto.params.iter().enumerate() {
@@ -471,12 +480,7 @@ impl<'a> IdlGen<'a> {
         w!(w, ";");
     }
 
-    fn emit_interface(
-        &self,
-        w: &mut Twine,
-        def: &ic_hir::hir::Def,
-        interface: &ic_hir::hir::InterfaceTy,
-    ) {
+    fn emit_interface(&self, w: &mut Twine, def: &Def, interface: &InterfaceTy) {
         if interface.is_local {
             w!(w, "local ");
         }
@@ -505,12 +509,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_valuetype(
-        &self,
-        w: &mut Twine,
-        def: &ic_hir::hir::Def,
-        valuetype: &ic_hir::hir::ValueTy,
-    ) {
+    fn emit_valuetype(&self, w: &mut Twine, def: &Def, valuetype: &ValueTy) {
         w!(w, "valuetype ", def.ident.name);
         self.emit_parents(w, &valuetype.parent, def.id);
 
@@ -545,12 +544,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_exception(
-        &self,
-        w: &mut Twine,
-        def: &ic_hir::hir::Def,
-        except: &ic_hir::hir::ExceptTy,
-    ) {
+    fn emit_exception(&self, w: &mut Twine, def: &Def, except: &ExceptTy) {
         w!(w, "exception ", def.ident.name, " {");
         for member in &except.members {
             w!(w, "\n");
@@ -562,24 +556,19 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n\n");
     }
 
-    fn emit_alias(&self, w: &mut Twine, def: &ic_hir::hir::Def, alias: &ic_hir::hir::AliasTy) {
+    fn emit_alias(&self, w: &mut Twine, def: &Def, alias: &AliasTy) {
         let ty_str = self.idl_type(&alias.ty, def.id);
         let array_bounds = format_member_name(&alias.ty);
         w!(w, "typedef ", ty_str, " ", def.ident.name, array_bounds, ";\n\n");
     }
 
-    fn emit_const(&self, w: &mut Twine, def: &ic_hir::hir::Def, const_ty: &ic_hir::hir::ConstTy) {
+    fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.idl_type(&const_ty.ty, def.id);
         let value_str = self.format_numeric(&const_ty.value, def.id);
         w!(w, "const ", ty_str, " ", def.ident.name, " = ", value_str, ";\n\n");
     }
 
-    fn emit_bitmask(
-        &self,
-        w: &mut Twine,
-        def: &ic_hir::hir::Def,
-        bitmask: &ic_hir::hir::BitmaskTy,
-    ) {
+    fn emit_bitmask(&self, w: &mut Twine, def: &Def, bitmask: &BitmaskTy) {
         w!(w, "bitmask ", def.ident.name, " {");
         for (i, &flag_id) in bitmask.flags.iter().enumerate() {
             let flag_def = self.hir.context.definitions.get(flag_id);
@@ -603,7 +592,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_bitset(&self, w: &mut Twine, def: &ic_hir::hir::Def, bitset: &ic_hir::hir::BitsetTy) {
+    fn emit_bitset(&self, w: &mut Twine, def: &Def, bitset: &BitsetTy) {
         w!(w, "bitset ", def.ident.name);
         self.emit_parents(w, &bitset.parent, def.id);
         w!(w, " {");
@@ -616,12 +605,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n");
     }
 
-    fn emit_annotation(
-        &self,
-        w: &mut Twine,
-        def: &ic_hir::hir::Def,
-        annotation: &ic_hir::hir::AnnotationTy,
-    ) {
+    fn emit_annotation(&self, w: &mut Twine, def: &Def, annotation: &AnnotationTy) {
         w!(w, "@annotation ", def.ident.name, " {");
         for param in &annotation.params {
             let ty_str = self.idl_type(&param.ty, def.id);
@@ -635,7 +619,7 @@ impl<'a> IdlGen<'a> {
         w!(w, "\n};\n\n");
     }
 
-    fn emit_decl(w: &mut Twine, def: &ic_hir::hir::Def, decl: ic_hir::hir::Decl) {
+    fn emit_decl(w: &mut Twine, def: &Def, decl: Decl) {
         match decl {
             Decl::Struct => w!(w, "struct ", def.ident.name, ";\n"),
             Decl::Union => w!(w, "union ", def.ident.name, ";\n"),
@@ -734,16 +718,13 @@ impl<'a> IdlGen<'a> {
     }
 }
 
-fn filter_non_default_args<'a>(
-    ann: &'a ic_hir::hir::Ann,
-    hir: &ResolvedGraph,
-) -> Vec<&'a ic_hir::hir::AnnArg> {
+fn filter_non_default_args<'a>(ann: &'a Ann, hir: &ResolvedGraph) -> Vec<&'a AnnArg> {
     ann.args
         .iter()
         .filter(|arg| {
             if let Some(def_id) = ann.def_id
                 && let ann_def = hir.context.definitions.get(def_id)
-                && let ic_hir::hir::DefKind::Annotation(ann_ty) = &ann_def.kind
+                && let DefKind::Annotation(ann_ty) = &ann_def.kind
             {
                 for param in &ann_ty.params {
                     if param.ident.name == arg.ident.name {

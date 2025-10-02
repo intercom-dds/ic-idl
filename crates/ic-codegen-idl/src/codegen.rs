@@ -74,7 +74,7 @@ impl<'a> IdlGen<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
-            Numeric::String(s) => format!("\"{s}\""),
+            Numeric::String(s) => format!("\"{}\"", s.escape_default()),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { values, .. } => {
                 let formatted: Vec<String> = values

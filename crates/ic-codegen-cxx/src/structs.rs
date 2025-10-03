@@ -64,7 +64,7 @@ impl CppGen<'_> {
         if !all_members.is_empty() {
             self.emit_struct_like_constructor_impl(impl_w, def);
         }
-        self.emit_struct_like_comparison_impl(impl_w, def, &struct_ty.members);
+        self.emit_struct_like_comparison_impl(impl_w, def);
     }
 
     pub fn emit_exception(
@@ -89,7 +89,7 @@ impl CppGen<'_> {
         w!(decl_w, "};\n\n");
 
         self.emit_hash_specialization(impl_w, def);
-        self.emit_struct_like_comparison_impl(impl_w, def, &except_ty.members);
+        self.emit_struct_like_comparison_impl(impl_w, def);
     }
 
     fn emit_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
@@ -141,7 +141,7 @@ impl CppGen<'_> {
         w!(impl_w, "runtime_error(\"", exception_name, "\") {}\n\n");
 
         if !members.is_empty() {
-            let qualified_name = self.qualified_struct_name(def.id);
+            let qualified_name = self.scoped_name(def.id, None);
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
             for (i, member) in members.iter().enumerate() {
                 let ty_str = self.cpp_type(&member.ty, def.id);
@@ -225,7 +225,7 @@ impl CppGen<'_> {
     }
 
     fn emit_struct_like_constructor_impl(&self, w: &mut Twine, def: &Def) {
-        let qualified_name = self.qualified_struct_name(def.id);
+        let qualified_name = self.scoped_name(def.id, None);
         let struct_name = &def.ident.name;
         let all_members = self.collect_all_members(def.id);
 
@@ -244,25 +244,21 @@ impl CppGen<'_> {
         if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind {
             if let Some(parent_id) = struct_ty.parent {
                 has_parent = true;
-                let parent_name = self.qualified_struct_name(parent_id);
-                let parent_def = self.hir.context.definitions.get(parent_id);
+                let parent_name = self.scoped_name(parent_id, None);
+                let parent_all_members = self.collect_all_members(parent_id);
 
-                if let ic_hir::hir::DefKind::Struct(parent_struct_ty) = &parent_def.kind {
-                    let parent_all_members = self.collect_all_members(parent_id);
-
-                    w!(w, parent_name, "(");
-                    for (i, member) in parent_all_members.iter().enumerate() {
-                        if self.should_use_move(&member.ty) {
-                            w!(w, "std::move(a_", member.ident.name, ")");
-                        } else {
-                            w!(w, "a_", member.ident.name);
-                        }
-                        if i < parent_all_members.len() - 1 {
-                            w!(w, ", ");
-                        }
+                w!(w, parent_name, "(");
+                for (i, member) in parent_all_members.iter().enumerate() {
+                    if self.should_use_move(&member.ty) {
+                        w!(w, "std::move(a_", member.ident.name, ")");
+                    } else {
+                        w!(w, "a_", member.ident.name);
                     }
-                    w!(w, ")");
+                    if i < parent_all_members.len() - 1 {
+                        w!(w, ", ");
+                    }
                 }
+                w!(w, ")");
             }
         }
 
@@ -283,13 +279,8 @@ impl CppGen<'_> {
         w!(w, " {}\n\n");
     }
 
-    fn emit_struct_like_comparison_impl(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        members: &[ic_hir::hir::Member],
-    ) {
-        let qualified_name = self.qualified_struct_name(def.id);
+    fn emit_struct_like_comparison_impl(&self, w: &mut Twine, def: &Def) {
+        let qualified_name = self.scoped_name(def.id, None);
         let all_members = self.collect_all_members(def.id);
         let param = if all_members.is_empty() {
             ""

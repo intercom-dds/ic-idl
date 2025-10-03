@@ -31,7 +31,10 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{
+    Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
+    ProtoTy, Ty, TyKind, UnionTy,
+};
 use ic_vfs::{FileId, SourceMap};
 
 use crate::CppOptions;
@@ -59,20 +62,20 @@ pub(crate) fn has_default_value(ty: &Ty) -> bool {
     match &ty.kind {
         TyKind::Primitive(prim) => matches!(
             prim,
-            ic_hir::hir::PrimitiveTy::Int8
-                | ic_hir::hir::PrimitiveTy::Int16
-                | ic_hir::hir::PrimitiveTy::Int32
-                | ic_hir::hir::PrimitiveTy::Int64
-                | ic_hir::hir::PrimitiveTy::UInt8
-                | ic_hir::hir::PrimitiveTy::UInt16
-                | ic_hir::hir::PrimitiveTy::UInt32
-                | ic_hir::hir::PrimitiveTy::UInt64
-                | ic_hir::hir::PrimitiveTy::Bool
-                | ic_hir::hir::PrimitiveTy::Float32
-                | ic_hir::hir::PrimitiveTy::Float64
-                | ic_hir::hir::PrimitiveTy::Float128
-                | ic_hir::hir::PrimitiveTy::Char
-                | ic_hir::hir::PrimitiveTy::WChar
+            PrimitiveTy::Int8
+                | PrimitiveTy::Int16
+                | PrimitiveTy::Int32
+                | PrimitiveTy::Int64
+                | PrimitiveTy::UInt8
+                | PrimitiveTy::UInt16
+                | PrimitiveTy::UInt32
+                | PrimitiveTy::UInt64
+                | PrimitiveTy::Bool
+                | PrimitiveTy::Float32
+                | PrimitiveTy::Float64
+                | PrimitiveTy::Float128
+                | PrimitiveTy::Char
+                | PrimitiveTy::WChar
         ),
         TyKind::Array { .. } => true,
         _ => false,
@@ -94,53 +97,11 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn cpp_name(&self, def_id: DefId) -> &str {
+    fn cpp_name(&self, def_id: DefId) -> &str {
         &self.hir.context.definitions.get(def_id).ident.name
     }
 
-    pub fn get_enclosing_interface(&self, def_id: DefId) -> Option<DefId> {
-        let def = self.hir.context.definitions.get(def_id);
-        let mut current = def.parent?;
-
-        loop {
-            let current_def = self.hir.context.definitions.get(current);
-            if matches!(current_def.kind, DefKind::Interface(_)) {
-                return Some(current);
-            }
-            current = current_def.parent?;
-        }
-    }
-
-    pub fn qualified_struct_name(&self, def_id: DefId) -> String {
-        let struct_name = self.cpp_name(def_id);
-
-        // Build the full scope path
-        let mut scopes = Vec::new();
-        let mut current = self.hir.context.definitions.get(def_id).parent;
-
-        while let Some(parent_id) = current {
-            let parent_def = self.hir.context.definitions.get(parent_id);
-            match &parent_def.kind {
-                DefKind::Module(_) => {
-                    scopes.push(parent_def.ident.name.as_str());
-                }
-                DefKind::Interface(_) => {
-                    scopes.push(parent_def.ident.name.as_str());
-                }
-                _ => {}
-            }
-            current = parent_def.parent;
-        }
-
-        if scopes.is_empty() {
-            struct_name.to_string()
-        } else {
-            scopes.reverse();
-            format!("{}::{}", scopes.join("::"), struct_name)
-        }
-    }
-
-    pub fn get_scope(&self, def_id: DefId) -> Option<DefId> {
+    fn get_scope(&self, def_id: DefId) -> Option<DefId> {
         let def = self.hir.context.definitions.get(def_id);
         let mut current = def.parent?;
 
@@ -226,13 +187,16 @@ impl<'a> CppGen<'a> {
         path
     }
 
-    pub fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
+    pub fn scoped_name(
+        &self,
+        target_def_id: DefId,
+        relative_to_def_id: impl Into<Option<DefId>>,
+    ) -> String {
         let type_name = self.cpp_name(target_def_id);
-
+        let relative_to_def_id = relative_to_def_id.into();
         let target_scope = self.get_scope(target_def_id);
-        let current_scope = self.get_scope(relative_to_def_id);
 
-        match (target_scope, current_scope) {
+        match (target_scope, relative_to_def_id) {
             (None, _) => type_name.to_string(),
             (Some(target_scope), None) => {
                 let full_path = self.build_path_from(target_scope, None);
@@ -243,30 +207,46 @@ impl<'a> CppGen<'a> {
                     format!("{pkg_name}::{type_name}")
                 }
             }
-            (Some(target_scope), Some(current_scope)) => {
-                if target_scope == current_scope {
-                    return type_name.to_string();
-                }
+            (Some(target_scope), Some(relative_to_def_id)) => {
+                let current_scope = self.get_scope(relative_to_def_id);
 
-                let common = self.common_scope(target_def_id, relative_to_def_id);
-                if common == Some(current_scope) {
-                    let relative_path = self.build_path_from(target_scope, common);
-                    let pkg_name = relative_path.join("::");
-                    format!("{pkg_name}::{type_name}")
-                } else {
-                    let full_path = self.build_path_from(target_scope, None);
-                    let pkg_name = full_path.join("::");
-                    if pkg_name.is_empty() {
-                        type_name.to_string()
-                    } else {
-                        format!("{pkg_name}::{type_name}")
+                match current_scope {
+                    None => {
+                        let full_path = self.build_path_from(target_scope, None);
+                        let pkg_name = full_path.join("::");
+                        if pkg_name.is_empty() {
+                            type_name.to_string()
+                        } else {
+                            format!("{pkg_name}::{type_name}")
+                        }
+                    }
+                    Some(current_scope) => {
+                        if target_scope == current_scope {
+                            return type_name.to_string();
+                        }
+
+                        let common = self.common_scope(target_def_id, relative_to_def_id);
+                        if common == Some(current_scope) {
+                            let relative_path = self.build_path_from(target_scope, common);
+                            let pkg_name = relative_path.join("::");
+                            format!("{pkg_name}::{type_name}")
+                        } else {
+                            let full_path = self.build_path_from(target_scope, None);
+                            let pkg_name = full_path.join("::");
+                            if pkg_name.is_empty() {
+                                type_name.to_string()
+                            } else {
+                                format!("{pkg_name}::{type_name}")
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    pub fn cpp_type(&self, ty: &Ty, relative_def: DefId) -> String {
+    pub fn cpp_type(&self, ty: &Ty, relative_def: impl Into<Option<DefId>>) -> String {
+        let relative_def_opt = relative_def.into();
         match &ty.kind {
             TyKind::Primitive(prim) => cpp_primitive(*prim).to_string(),
             TyKind::String { wide, .. } => {
@@ -276,17 +256,17 @@ impl<'a> CppGen<'a> {
                     "::std::string".to_string()
                 }
             }
-            TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_def),
+            TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_def_opt),
             TyKind::Sequence { ty, .. } => {
-                let inner = self.cpp_type(ty, relative_def);
+                let inner = self.cpp_type(ty, relative_def_opt);
                 format!("::std::vector<{inner}>")
             }
             TyKind::Map { key, elem, .. } => {
-                let key_ty = self.cpp_type(key, relative_def);
-                let elem_ty = self.cpp_type(elem, relative_def);
+                let key_ty = self.cpp_type(key, relative_def_opt);
+                let elem_ty = self.cpp_type(elem, relative_def_opt);
                 format!("::std::map<{key_ty}, {elem_ty}>")
             }
-            TyKind::Array { ty, .. } => self.cpp_type(ty, relative_def),
+            TyKind::Array { ty, .. } => self.cpp_type(ty, relative_def_opt),
             TyKind::Any | TyKind::Fixed | TyKind::Null => "void".to_string(),
         }
     }
@@ -296,25 +276,93 @@ impl<'a> CppGen<'a> {
         !matches!(&ty.kind, TyKind::Primitive(_))
     }
 
+    pub fn emit_numeric_value(
+        &self,
+        w: &mut Twine,
+        value: &Numeric,
+        relative_def: impl Into<Option<DefId>>,
+    ) {
+        let relative_def_opt = relative_def.into();
+        match value {
+            Numeric::Null => w!(w, "nullptr"),
+            Numeric::Bool(v) => w!(w, if *v { "true" } else { "false" }),
+            Numeric::Char(v) => w!(w, "'", v.to_string(), "'"),
+            Numeric::Int8(v) => w!(w, v.to_string()),
+            Numeric::UInt8(v) => w!(w, v.to_string(), "U"),
+            Numeric::Int16(v) => w!(w, v.to_string()),
+            Numeric::UInt16(v) => w!(w, v.to_string(), "U"),
+            Numeric::Int32(v) => w!(w, v.to_string()),
+            Numeric::UInt32(v) => w!(w, v.to_string(), "U"),
+            Numeric::Int64(v) => w!(w, v.to_string(), "LL"),
+            Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
+            Numeric::Float(v) => w!(w, format!("{:.7}", v), "f"),
+            Numeric::Double(v) => w!(w, format!("{:.16}", v)),
+            Numeric::String(s) => {
+                w!(w, "\"");
+                emit_escaped_string(w, s);
+                w!(w, "\"");
+            }
+            Numeric::Const(const_def_id) => {
+                let name = self.scoped_name(*const_def_id, relative_def_opt);
+                w!(w, name);
+            }
+            Numeric::Sequence { values, .. } | Numeric::Array { values, .. } => {
+                w!(w, "{");
+                for (i, elem) in values.iter().enumerate() {
+                    self.emit_numeric_value(w, elem, relative_def_opt);
+                    if i < values.len() - 1 {
+                        w!(w, ", ");
+                    }
+                }
+                w!(w, "}");
+            }
+            Numeric::Struct { fields, .. } => {
+                w!(w, "{");
+                for (i, (_ident, value)) in fields.iter().enumerate() {
+                    self.emit_numeric_value(w, value, relative_def_opt);
+                    if i < fields.len() - 1 {
+                        w!(w, ", ");
+                    }
+                }
+                w!(w, " }");
+            }
+            Numeric::Map { entries, .. } => {
+                w!(w, "{");
+                for (i, (key, value)) in entries.iter().enumerate() {
+                    w!(w, "{ ");
+                    self.emit_numeric_value(w, key, relative_def_opt);
+                    w!(w, ", ");
+                    self.emit_numeric_value(w, value, relative_def_opt);
+                    w!(w, " }");
+                    if i < entries.len() - 1 {
+                        w!(w, ", ");
+                    }
+                }
+                w!(w, "}");
+            }
+            Numeric::Union { discriminant, .. } => {
+                w!(w, "{ ");
+                self.emit_numeric_value(w, discriminant, relative_def_opt);
+                w!(w, " }");
+            }
+        }
+    }
+
     #[allow(clippy::only_used_in_recursion)]
     pub fn emit_default_initializer(&self, w: &mut Twine, ty: &Ty) {
         match &ty.kind {
             TyKind::Primitive(prim) => match prim {
-                ic_hir::hir::PrimitiveTy::Bool => w!(w, "false"),
-                ic_hir::hir::PrimitiveTy::Int8
-                | ic_hir::hir::PrimitiveTy::Int16
-                | ic_hir::hir::PrimitiveTy::Int32
-                | ic_hir::hir::PrimitiveTy::Int64 => w!(w, "0"),
-                ic_hir::hir::PrimitiveTy::UInt8
-                | ic_hir::hir::PrimitiveTy::UInt16
-                | ic_hir::hir::PrimitiveTy::UInt32 => w!(w, "0U"),
-                ic_hir::hir::PrimitiveTy::UInt64 => w!(w, "0ULL"),
-                ic_hir::hir::PrimitiveTy::Float32
-                | ic_hir::hir::PrimitiveTy::Float64
-                | ic_hir::hir::PrimitiveTy::Float128 => w!(w, "0.0"),
-                ic_hir::hir::PrimitiveTy::Char => w!(w, "'\\0'"),
-                ic_hir::hir::PrimitiveTy::WChar => w!(w, "L'\\0'"),
-                ic_hir::hir::PrimitiveTy::Void => {}
+                PrimitiveTy::Bool => w!(w, "false"),
+                PrimitiveTy::Int8
+                | PrimitiveTy::Int16
+                | PrimitiveTy::Int32
+                | PrimitiveTy::Int64 => w!(w, "0"),
+                PrimitiveTy::UInt8 | PrimitiveTy::UInt16 | PrimitiveTy::UInt32 => w!(w, "0U"),
+                PrimitiveTy::UInt64 => w!(w, "0ULL"),
+                PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => w!(w, "0.0"),
+                PrimitiveTy::Char => w!(w, "'\\0'"),
+                PrimitiveTy::WChar => w!(w, "L'\\0'"),
+                PrimitiveTy::Void => {}
             },
             TyKind::Array { ty, .. } => self.emit_default_initializer(w, ty),
             _ => {}
@@ -322,10 +370,10 @@ impl<'a> CppGen<'a> {
     }
 
     pub fn emit_hash_specialization(&self, w: &mut Twine, def: &Def) {
-        let qualified_name = self.qualified_struct_name(def.id);
+        let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template<>\n");
-        w!(w, "struct std::hash<", qualified_name, "> {\n");
+        w!(w, "struct ::std::hash<", qualified_name, "> {\n");
         w!(w, "using argument_type = ", qualified_name, ";\n");
         w!(w, "using result_type = std::size_t;\n");
         w!(w, "result_type operator()(const argument_type& s) const noexcept {\n");
@@ -349,25 +397,33 @@ impl<'a> CppGen<'a> {
         w!(w, "};\n\n");
     }
 
-    fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
+    fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[Member]) {
         // Check if this struct has a parent
-        if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind {
+        if let DefKind::Struct(struct_ty) = &def.kind {
             if let Some(parent_id) = struct_ty.parent {
-                let parent_name = self.qualified_struct_name(parent_id);
-                w!(w, "h ^= std::hash<", parent_name, ">()(s);\n");
+                let parent_name = self.scoped_name(parent_id, None);
+                w!(w, "h ^= ::std::hash<", parent_name, ">()(s);\n");
             }
         }
 
         // Hash own members
         for member in members {
             let member_name = format!("s.{}", member.ident.name);
-            self.emit_hash_member(w, &member_name, &member.ty, def.id, 0);
+            self.emit_hash_member(w, &member_name, &member.ty, 0);
         }
     }
 
-    fn emit_hash_union(&self, w: &mut Twine, def: &Def, union_ty: &ic_hir::hir::UnionTy) {
-        w!(w, "h ^= std::hash<");
-        w!(w, self.cpp_type(&union_ty.disc.ty, def.id));
+    fn emit_hash_union(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
+        w!(w, "h ^= ::std::hash<");
+        match &union_ty.disc.ty.kind {
+            TyKind::Adt(disc_def_id) => {
+                let qualified_disc_name = self.scoped_name(*disc_def_id, None);
+                w!(w, qualified_disc_name);
+            }
+            _ => {
+                w!(w, self.cpp_type(&union_ty.disc.ty, def.id));
+            }
+        }
         w!(w, ">()(s._d());\n");
 
         w!(w, "switch (s._d()) {\n");
@@ -379,14 +435,14 @@ impl<'a> CppGen<'a> {
             } else {
                 for label in &variant.labels {
                     w!(w, "case ");
-                    emit_numeric_value(w, &label.value);
+                    self.emit_numeric_value(w, &label.value, None);
                     w!(w, ":\n");
                 }
             }
             w.indent();
 
             let member_name = format!("s.{}()", variant.ident.name);
-            self.emit_hash_member(w, &member_name, &variant.ty, def.id, 0);
+            self.emit_hash_member(w, &member_name, &variant.ty, 0);
             w!(w, "break;\n");
 
             w.dedent();
@@ -396,20 +452,13 @@ impl<'a> CppGen<'a> {
         w!(w, "}\n");
     }
 
-    fn emit_hash_member(
-        &self,
-        w: &mut Twine,
-        name: &str,
-        ty: &Ty,
-        relative_def: DefId,
-        level: usize,
-    ) {
+    fn emit_hash_member(&self, w: &mut Twine, name: &str, ty: &Ty, level: usize) {
         match &ty.kind {
             TyKind::Array { ty: inner_ty, .. } => {
                 let mut current_name = name.to_string();
                 w!(w, "for (auto& value_", level, " : ", current_name, ") {\n");
                 current_name = format!("value_{level}");
-                self.emit_hash_member(w, &current_name, inner_ty, relative_def, level + 1);
+                self.emit_hash_member(w, &current_name, inner_ty, level + 1);
                 w!(w, "}\n");
             }
             TyKind::Sequence { ty: inner_ty, .. } => {
@@ -420,7 +469,7 @@ impl<'a> CppGen<'a> {
                     ""
                 };
                 w!(w, "for (auto", by_ref, " ", new_name, " : ", name, ") {\n");
-                self.emit_hash_member(w, &new_name, inner_ty, relative_def, level + 1);
+                self.emit_hash_member(w, &new_name, inner_ty, level + 1);
                 w!(w, "}\n");
             }
             TyKind::Map { key, elem, .. } => {
@@ -429,15 +478,15 @@ impl<'a> CppGen<'a> {
                 w!(w, "for (auto", by_ref, " ", new_name, " : ", name, ") {\n");
 
                 let key_name = format!("{new_name}.first");
-                self.emit_hash_member(w, &key_name, key, relative_def, level + 1);
+                self.emit_hash_member(w, &key_name, key, level + 1);
 
                 let elem_name = format!("{new_name}.second");
-                self.emit_hash_member(w, &elem_name, elem, relative_def, level + 1);
+                self.emit_hash_member(w, &elem_name, elem, level + 1);
 
                 w!(w, "}\n");
             }
             _ => {
-                let type_str = self.cpp_type(ty, relative_def);
+                let type_str = self.cpp_type(ty, None);
                 w!(w, "h ^= std::hash<", type_str, ">()(", name, ");\n");
             }
         }
@@ -457,29 +506,9 @@ pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
     }
 }
 
-pub(crate) fn emit_numeric_value(w: &mut Twine, value: &ic_hir::hir::Numeric) {
-    match value {
-        ic_hir::hir::Numeric::Int8(v) => w!(w, v.to_string()),
-        ic_hir::hir::Numeric::UInt8(v) => w!(w, v.to_string(), "U"),
-        ic_hir::hir::Numeric::Int16(v) => w!(w, v.to_string()),
-        ic_hir::hir::Numeric::UInt16(v) => w!(w, v.to_string(), "U"),
-        ic_hir::hir::Numeric::Int32(v) => w!(w, v.to_string()),
-        ic_hir::hir::Numeric::UInt32(v) => w!(w, v.to_string(), "U"),
-        ic_hir::hir::Numeric::Int64(v) => w!(w, v.to_string(), "LL"),
-        ic_hir::hir::Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
-        _ => {}
-    }
-}
-
 #[allow(clippy::unused_self)]
 impl CppGen<'_> {
-    fn emit_module(
-        &self,
-        decl_w: &mut Twine,
-        impl_w: &mut Twine,
-        def: &Def,
-        module: &ic_hir::hir::ModuleTy,
-    ) {
+    fn emit_module(&self, decl_w: &mut Twine, impl_w: &mut Twine, def: &Def, module: &ModuleTy) {
         w!(decl_w, "namespace ", def.ident.name, " {\n");
         decl_w.dedent();
         for &nested_id in &module.definitions {
@@ -493,7 +522,7 @@ impl CppGen<'_> {
         decl_w: &mut Twine,
         impl_w: &mut Twine,
         def: &Def,
-        interface_ty: &ic_hir::hir::InterfaceTy,
+        interface_ty: &InterfaceTy,
     ) {
         let interface_name = &def.ident.name;
 
@@ -513,11 +542,11 @@ impl CppGen<'_> {
         w!(decl_w, "};\n\n");
     }
 
-    fn emit_prototype(&self, w: &mut Twine, interface_def: &Def, proto: &ic_hir::hir::ProtoTy) {
+    fn emit_prototype(&self, w: &mut Twine, interface_def: &Def, proto: &ProtoTy) {
         let method_name = &proto.ident.name;
 
         let return_ty_str = match &proto.ty.kind {
-            TyKind::Primitive(ic_hir::hir::PrimitiveTy::Void) => "void".to_string(),
+            TyKind::Primitive(PrimitiveTy::Void) => "void".to_string(),
             _ => self.cpp_type(&proto.ty, interface_def.id),
         };
 
@@ -528,8 +557,8 @@ impl CppGen<'_> {
             let param_name = &param.ident.name;
 
             let param_mode = match param.kind {
-                ic_hir::hir::ParamKind::In => "",
-                ic_hir::hir::ParamKind::Out | ic_hir::hir::ParamKind::Inout => "&",
+                ParamKind::In => "",
+                ParamKind::Out | ParamKind::Inout => "&",
             };
 
             w!(w, ty_str, param_mode, " a_", param_name);
@@ -544,15 +573,15 @@ impl CppGen<'_> {
         w!(w, ") = 0;\n\n");
     }
 
-    fn emit_forward_decl(&self, w: &mut Twine, def: &Def, decl: ic_hir::hir::Decl) {
+    fn emit_forward_decl(&self, w: &mut Twine, def: &Def, decl: Decl) {
         match decl {
-            ic_hir::hir::Decl::Struct | ic_hir::hir::Decl::Union => {
+            Decl::Struct | Decl::Union => {
                 w!(w, "struct ", def.ident.name, ";\n");
             }
-            ic_hir::hir::Decl::Interface | ic_hir::hir::Decl::Valuetype => {
+            Decl::Interface | Decl::Valuetype => {
                 w!(w, "class ", def.ident.name, ";\n");
             }
-            ic_hir::hir::Decl::Native => {}
+            Decl::Native => {}
         }
     }
 

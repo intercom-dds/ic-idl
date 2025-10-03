@@ -28,7 +28,7 @@
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::Def;
 
-use crate::codegen::{CppGen, emit_numeric_value, has_default_value};
+use crate::codegen::{CppGen, has_default_value};
 
 const UNION_DISC_FIELD: &str = "ic_discriminator_value_";
 
@@ -155,7 +155,7 @@ impl CppGen<'_> {
             } else {
                 for label in &variant.labels {
                     w!(w, "case ");
-                    emit_numeric_value(w, &label.value);
+                    self.emit_numeric_value(w, &label.value, None);
                     w!(w, ":\n");
                 }
             }
@@ -191,13 +191,13 @@ impl CppGen<'_> {
                     w!(w, " || ", UNION_DISC_FIELD, " == ");
                 }
                 if let Some(first_label) = v.labels.first() {
-                    emit_numeric_value(w, &first_label.value);
+                    self.emit_numeric_value(w, &first_label.value, None);
                 }
             }
         } else {
             w!(w, UNION_DISC_FIELD, " != ");
             if let Some(first_label) = variant.labels.first() {
-                emit_numeric_value(w, &first_label.value);
+                self.emit_numeric_value(w, &first_label.value, None);
             }
         }
     }
@@ -205,14 +205,14 @@ impl CppGen<'_> {
     fn emit_set_discriminator_to_variant(&self, w: &mut Twine, variant: &ic_hir::hir::Variant) {
         w!(w, UNION_DISC_FIELD, " = ");
         if let Some(first_label) = variant.labels.first() {
-            emit_numeric_value(w, &first_label.value);
+            self.emit_numeric_value(w, &first_label.value, None);
         }
         w!(w, ";\n");
     }
 
     fn emit_variant_init(&self, w: &mut Twine, variant: &ic_hir::hir::Variant, value_expr: &str) {
         if self.should_use_move(&variant.ty) {
-            w!(w, "ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", ", value_expr, ");\n");
+            w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", ", value_expr, ");\n");
         } else {
             w!(w, "ic_union_value_.", variant.ident.name, " = ", value_expr, ";\n");
         }
@@ -236,7 +236,7 @@ impl CppGen<'_> {
             }
             w!(w, discriminator_var, " == ");
             if let Some(first_label) = v.labels.first() {
-                emit_numeric_value(w, &first_label.value);
+                self.emit_numeric_value(w, &first_label.value, None);
             }
         }
         w!(w, ") {\n");
@@ -269,7 +269,8 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         _disc_type: &str,
     ) {
-        w!(w, "inline ", def, "::", def, "() {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline ", qualified_name, "::", def, "() {\n");
 
         if let Some(first_variant) = union_ty.variants.first() {
             self.emit_set_discriminator_to_variant(w, first_variant);
@@ -296,12 +297,13 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         _disc_type: &str,
     ) {
-        w!(w, "inline ", def, "::", def, "(const ", def, "& a_other) {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline ", qualified_name, "::", def, "(const ", qualified_name, "& a_other) {\n");
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if self.should_use_move(&variant.ty) {
-                w!(w, "ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", a_other.ic_union_value_.", variant.ident.name, ");\n");
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", a_other.ic_union_value_.", variant.ident.name, ");\n");
             } else {
                 w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
             }
@@ -318,14 +320,15 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         _disc_type: &str,
     ) {
-        w!(w, "inline ", def, "& ", def, "::operator=(const ", def, "& a_other) {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline ", qualified_name, "& ", qualified_name, "::operator=(const ", qualified_name, "& a_other) {\n");
         w!(w, "if (this != &a_other) {\n");
         w!(w, "free_union_();\n");
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if self.should_use_move(&variant.ty) {
-                w!(w, "ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", a_other.ic_union_value_.", variant.ident.name, ");\n");
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", a_other.ic_union_value_.", variant.ident.name, ");\n");
             } else {
                 w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
             }
@@ -344,12 +347,13 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         _disc_type: &str,
     ) {
-        w!(w, "inline ", def, "::", def, "(", def, "&& a_other) noexcept {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline ", qualified_name, "::", def, "(", qualified_name, "&& a_other) noexcept {\n");
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if self.should_use_move(&variant.ty) {
-                w!(w, "ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
             } else {
                 w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
             }
@@ -366,14 +370,15 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         _disc_type: &str,
     ) {
-        w!(w, "inline ", def, "& ", def, "::operator=(", def, "&& a_other) noexcept {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline ", qualified_name, "& ", qualified_name, "::operator=(", qualified_name, "&& a_other) noexcept {\n");
         w!(w, "if (this != &a_other) {\n");
         w!(w, "free_union_();\n");
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if self.should_use_move(&variant.ty) {
-                w!(w, "ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
             } else {
                 w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
             }
@@ -386,7 +391,8 @@ impl CppGen<'_> {
     }
 
     fn emit_union_destructor(&self, w: &mut Twine, def: &Def) {
-        w!(w, "inline ", def, "::~", def, "() noexcept {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline ", qualified_name, "::~", def, "() noexcept {\n");
         w!(w, "free_union_();\n");
         w!(w, "}\n\n");
     }
@@ -397,8 +403,10 @@ impl CppGen<'_> {
         def: &Def,
         union_ty: &ic_hir::hir::UnionTy,
     ) {
+        let qualified_name = self.scoped_name(def.id, None);
+
         // operator<
-        w!(w, "inline bool ", def, "::operator<(const ", def, "& a_other) const {\n");
+        w!(w, "inline bool ", qualified_name, "::operator<(const ", qualified_name, "& a_other) const {\n");
         w!(w, "if (_d() < a_other._d()) { return true; }\n");
         w!(w, "if (a_other._d() < _d()) { return false; }\n");
 
@@ -410,7 +418,7 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
 
         // operator==
-        w!(w, "inline bool ", def, "::operator==(const ", def, "& a_other) const {\n");
+        w!(w, "inline bool ", qualified_name, "::operator==(const ", qualified_name, "& a_other) const {\n");
         w!(w, "if (!(_d() == a_other._d())) return false;\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
@@ -422,8 +430,9 @@ impl CppGen<'_> {
     }
 
     fn emit_union_swap(&self, w: &mut Twine, def: &Def) {
-        w!(w, "inline void swap(", def, "& a_first, ", def, "& a_second) noexcept {\n");
-        w!(w, def, " a_first_tmp = std::move(a_first);\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline void swap(", qualified_name, "& a_first, ", qualified_name, "& a_second) noexcept {\n");
+        w!(w, qualified_name, " a_first_tmp = std::move(a_first);\n");
         w!(w, "a_first = std::move(a_second);\n");
         w!(w, "a_second = std::move(a_first_tmp);\n");
         w!(w, "}\n\n");
@@ -436,7 +445,8 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         disc_type: &str,
     ) {
-        w!(w, "inline void ", def, "::_d(", disc_type, " discriminator) {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline void ", qualified_name, "::_d(", disc_type, " discriminator) {\n");
 
         self.emit_union_switch(w, union_ty, "discriminator", |w, variant| {
             if variant.is_default {
@@ -450,7 +460,7 @@ impl CppGen<'_> {
                 } else {
                     format!(
                         "static_cast<{}>({:.7})",
-                        self.cpp_type(&variant.ty, def.id),
+                        self.cpp_type(&variant.ty, None),
                         0.0
                     )
                 };
@@ -460,7 +470,7 @@ impl CppGen<'_> {
             } else {
                 w!(w, "if (", UNION_DISC_FIELD, " != ");
                 if let Some(first_label) = variant.labels.first() {
-                    emit_numeric_value(w, &first_label.value);
+                    self.emit_numeric_value(w, &first_label.value, None);
                 }
                 w!(w, ") {\n");
                 w!(w, "free_union_();\n");
@@ -496,11 +506,12 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         variant: &ic_hir::hir::Variant,
     ) {
-        let member_type = self.cpp_type(&variant.ty, def.id);
+        let qualified_name = self.scoped_name(def.id, None);
+        let member_type = self.cpp_type(&variant.ty, None);
         let member_name = &variant.ident.name;
 
         // Reference getter
-        w!(w, "inline ", member_type, "& ", def, "::", member_name, "() {\n");
+        w!(w, "inline ", member_type, "& ", qualified_name, "::", member_name, "() {\n");
         w!(w, "if (");
         self.emit_variant_check_condition(w, union_ty, variant);
         w!(w, ") {\n");
@@ -511,9 +522,9 @@ impl CppGen<'_> {
 
         // Const getter (by reference for complex, by value for primitive)
         if self.should_use_move(&variant.ty) {
-            w!(w, "inline const ", member_type, "& ", def, "::", member_name, "() const {\n");
+            w!(w, "inline const ", member_type, "& ", qualified_name, "::", member_name, "() const {\n");
         } else {
-            w!(w, "inline ", member_type, " ", def, "::", member_name, "() const {\n");
+            w!(w, "inline ", member_type, " ", qualified_name, "::", member_name, "() const {\n");
         }
         w!(w, "if (");
         self.emit_variant_check_condition(w, union_ty, variant);
@@ -532,7 +543,7 @@ impl CppGen<'_> {
         variant: &ic_hir::hir::Variant,
         disc_type: &str,
     ) {
-        let member_type = self.cpp_type(&variant.ty, def.id);
+        let member_type = self.cpp_type(&variant.ty, None);
         let member_name = &variant.ident.name;
 
         self.emit_variant_copy_setter(w, def, union_ty, variant, &member_type, member_name);
@@ -562,10 +573,11 @@ impl CppGen<'_> {
         member_type: &str,
         member_name: &str,
     ) {
+        let qualified_name = self.scoped_name(def.id, None);
         if self.should_use_move(&variant.ty) {
-            w!(w, "inline void ", def, "::", member_name, "(const ", member_type, "& a_value) {\n");
+            w!(w, "inline void ", qualified_name, "::", member_name, "(const ", member_type, "& a_value) {\n");
         } else {
-            w!(w, "inline void ", def, "::", member_name, "(", member_type, " a_value) {\n");
+            w!(w, "inline void ", qualified_name, "::", member_name, "(", member_type, " a_value) {\n");
         }
         w!(w, "if (");
         self.emit_variant_check_condition(w, union_ty, variant);
@@ -576,7 +588,7 @@ impl CppGen<'_> {
         }
 
         if self.should_use_move(&variant.ty) {
-            w!(w, "ic_cts::construct_at(&ic_union_value_.", member_name, ", a_value);\n");
+            w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", a_value);\n");
             w!(w, "} else {\n");
             w!(w, "ic_union_value_.", member_name, " = a_value;\n");
         }
@@ -596,7 +608,8 @@ impl CppGen<'_> {
         member_type: &str,
         member_name: &str,
     ) {
-        w!(w, "inline void ", def, "::", member_name, "(", member_type, "&& a_value) {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline void ", qualified_name, "::", member_name, "(", member_type, "&& a_value) {\n");
         w!(w, "if (");
         self.emit_variant_check_condition(w, union_ty, variant);
         w!(w, ") {\n");
@@ -604,7 +617,7 @@ impl CppGen<'_> {
         if !variant.is_default {
             self.emit_set_discriminator_to_variant(w, variant);
         }
-        w!(w, "ic_cts::construct_at(&ic_union_value_.", member_name, ", std::move(a_value));\n");
+        w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", std::move(a_value));\n");
         w!(w, "} else {\n");
         w!(w, "ic_union_value_.", member_name, " = std::move(a_value);\n");
         w!(w, "}\n");
@@ -620,7 +633,8 @@ impl CppGen<'_> {
         member_type: &str,
         member_name: &str,
     ) {
-        w!(w, "inline void ", def, "::", member_name, "(", member_type, " a_value, ", disc_type, " discriminator) {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline void ", qualified_name, "::", member_name, "(", member_type, " a_value, ", disc_type, " discriminator) {\n");
 
         self.emit_default_discriminator_check(w, union_ty, "discriminator");
         w!(
@@ -640,7 +654,8 @@ impl CppGen<'_> {
     }
 
     fn emit_union_free(&self, w: &mut Twine, def: &Def, union_ty: &ic_hir::hir::UnionTy) {
-        w!(w, "inline void ", def, "::free_union_() {\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(w, "inline void ", qualified_name, "::free_union_() {\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if self.should_use_move(&variant.ty) {

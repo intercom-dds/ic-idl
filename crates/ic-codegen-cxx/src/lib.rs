@@ -30,6 +30,11 @@ use std::ffi::CString;
 use ic_cli::Command;
 use ic_emit::File;
 
+mod codegen;
+mod deps;
+mod helpers;
+mod unions;
+
 #[derive(Command, Debug, Default, Clone)]
 pub struct CppOptions {
     /// Generate scoped enums
@@ -97,6 +102,9 @@ pub fn codegen_cpp(
     source_map: &ic_vfs::SourceMap,
     options: CppOptions,
 ) -> Vec<File> {
+    let generator = codegen::CppGen::new(hir, source_map, options.clone());
+    let rust_generated = generator.generate();
+
     let result = ic_ptree_lower::from_hir(hir, source_map);
     let header_subfolder = options
         .header_subfolder
@@ -126,13 +134,40 @@ pub fn codegen_cpp(
         use_fmt: u8::from(options.use_fmt),
     };
 
-    let mut generated = vec![];
+    let mut cpp_generated = vec![];
     unsafe {
         ic_codegen_cpp(
             result.as_raw(),
             ffi_options,
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
+            std::ptr::addr_of_mut!(cpp_generated).cast::<_>(),
         );
     }
-    generated
+
+    let mut all_files = Vec::new();
+
+    for file in rust_generated {
+        match file {
+            File::Generated { path, source } => {
+                all_files.push(File::Generated {
+                    path: format!("rust/{}", path.display()).into(),
+                    source,
+                });
+            }
+            File::Dep(d) => all_files.push(File::Dep(d)),
+        }
+    }
+
+    for file in cpp_generated {
+        match file {
+            File::Generated { path, source } => {
+                all_files.push(File::Generated {
+                    path: format!("cpp/{}", path.display()).into(),
+                    source,
+                });
+            }
+            File::Dep(d) => all_files.push(File::Dep(d)),
+        }
+    }
+
+    all_files
 }

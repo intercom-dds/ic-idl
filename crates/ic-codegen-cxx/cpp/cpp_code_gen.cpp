@@ -1693,10 +1693,10 @@ static void cpl_comparator_def(const ptree* obj) {
     auto param = cplpl_param_name(obj, "other");
 
     if (member_count(obj) > 0) {
-        mprintf(&g_hd_file, "bool operator<(const {} & {}) const;\n", name(obj), param);
+        mprintf(&g_hd_file, "bool operator<(const {}& {}) const;\n", name(obj), param);
         mprintf(
             &g_hd_impl_file,
-            "inline bool {}::operator<(const {} & {}) const {{\n",
+            "inline bool {}::operator<(const {}& {}) const {{\n",
             body_name,
             body_name,
             param
@@ -1704,10 +1704,10 @@ static void cpl_comparator_def(const ptree* obj) {
         cpl_constr_gen_lessthan(&g_hd_impl_file, obj, 0);
         mprintf(&g_hd_impl_file, "}}\n\n");
 
-        mprintf(&g_hd_file, "bool operator==(const {} & {}) const;\n", name(obj), param);
+        mprintf(&g_hd_file, "bool operator==(const {}& {}) const;\n", name(obj), param);
         mprintf(
             &g_hd_impl_file,
-            "inline bool {}::operator==(const {} & {}) const {{\n",
+            "inline bool {}::operator==(const {}& {}) const {{\n",
             body_name,
             body_name,
             param
@@ -1715,19 +1715,19 @@ static void cpl_comparator_def(const ptree* obj) {
         cpl_constr_gen_equal(&g_hd_impl_file, obj, 0);
         mprintf(&g_hd_impl_file, "}}\n\n");
 
-        mprintf(&g_hd_file, "bool operator!=(const {} & {}) const {{ ", name(obj), param);
+        mprintf(&g_hd_file, "bool operator!=(const {}& {}) const {{ ", name(obj), param);
         mprintf(&g_hd_file, "return !(*this == {});", param);
         mprintf(&g_hd_file, " }}\n");
 
-        mprintf(&g_hd_file, "bool operator>(const {} & {}) const {{ ", name(obj), param);
+        mprintf(&g_hd_file, "bool operator>(const {}& {}) const {{ ", name(obj), param);
         mprintf(&g_hd_file, "return {} < *this;", param);
         mprintf(&g_hd_file, " }}\n");
 
-        mprintf(&g_hd_file, "bool operator<=(const {} & {}) const {{ ", name(obj), param);
+        mprintf(&g_hd_file, "bool operator<=(const {}& {}) const {{ ", name(obj), param);
         mprintf(&g_hd_file, "return !({} < *this);", param);
         mprintf(&g_hd_file, " }}\n");
 
-        mprintf(&g_hd_file, "bool operator>=(const {} & {}) const {{ ", name(obj), param);
+        mprintf(&g_hd_file, "bool operator>=(const {}& {}) const {{ ", name(obj), param);
         mprintf(&g_hd_file, "return !(*this < {});", param);
         mprintf(&g_hd_file, " }}\n\n");
     } else {
@@ -2183,10 +2183,10 @@ static void cpl_union_c_def(const ptree* obj) {
         mprintf(&g_hd_impl_file, "}}\n\n");
 
         // Generate copy constructor
-        mprintf(&g_hd_file, "{}(const {} & {});\n", name(obj), name(obj), param);
+        mprintf(&g_hd_file, "{}(const {}& {});\n", name(obj), name(obj), param);
         mprintf(
             &g_hd_impl_file,
-            "inline {}::{}(const {} & {}) {{\n",
+            "inline {}::{}(const {}& {}) {{\n",
             body_name,
             name(obj),
             body_name,
@@ -2493,9 +2493,9 @@ static void cpl_struct_c_def(const ptree* obj) {
         mprintf(&g_hd_impl_file, "{{}}\n\n");
 
         // Generate copy constructor
-        mprintf(&g_hd_file, "{}(const {} & {});\n", name(obj), name(obj), param);
+        mprintf(&g_hd_file, "{}(const {}& {});\n", name(obj), name(obj), param);
         mprintf(
-            &g_hd_impl_file, "inline {}::{}(const {} & {})", body_name, name(obj), body_name, param
+            &g_hd_impl_file, "inline {}::{}(const {}& {})", body_name, name(obj), body_name, param
         );
         if (!obj->parents.empty()) {
             mprintf(&g_hd_impl_file, ":\n{}({})", scoped_name(obj->parents[0], obj->super), param);
@@ -2997,8 +2997,8 @@ static void cgcpl_recurs(const ptree* obj) {
                 mprintf(&g_hd_file, "struct {};\n", name(obj));
             } else {
                 cpl_struct_c_def(obj);
-                cpl_conv_gen(obj);
-                cpl_iostream_def(obj);
+                // cpl_conv_gen(obj);
+                // cpl_iostream_def(obj);
                 cpl_gen_hash(obj);
             }
             break;
@@ -3008,21 +3008,21 @@ static void cgcpl_recurs(const ptree* obj) {
                 mprintf(&g_hd_file, "struct {};\n", name(obj));
             } else {
                 cpl_union_c_def(obj);
-                cpl_conv_gen(obj);
+                // cpl_conv_gen(obj);
                 cpl_gen_hash(obj);
-                cpl_iostream_def(obj);
+                // cpl_iostream_def(obj);
             }
             break;
         case N_ENUM:
             emit_docs(&g_hd_file, obj);
             cpl_struct_enum_def(obj);
-            cpl_conv_gen(obj);
-            cpl_iostream_def(obj);
+            // cpl_conv_gen(obj);
+            // cpl_iostream_def(obj);
             break;
         case N_BITMASK:
             emit_docs(&g_hd_file, obj);
             cpl_struct_enum_def(obj);
-            cpl_conv_gen(obj);
+            // cpl_conv_gen(obj);
             break;
         case N_INTERFACE:
             emit_docs(&g_hd_file, obj);

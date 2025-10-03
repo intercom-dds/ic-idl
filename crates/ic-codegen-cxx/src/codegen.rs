@@ -110,52 +110,32 @@ impl<'a> CppGen<'a> {
             if matches!(def.kind, DefKind::Module(_)) {
                 return Some(current);
             }
+            if self.options.scoped_enums && matches!(def.kind, DefKind::Enum(_)) {
+                return Some(current);
+            }
             current = def.parent?;
         }
     }
 
     fn common_scope(&self, def_id1: DefId, def_id2: DefId) -> Option<DefId> {
-        let scope1 = self.get_scope(def_id1)?;
-        let scope2 = self.get_scope(def_id2)?;
+        let mut scope1 = self.get_scope(def_id1)?;
+        let mut scope2 = self.get_scope(def_id2)?;
 
         let mut ancestors1 = Vec::new();
-        let mut current = scope1;
         loop {
-            ancestors1.push(current);
-            let def = self.hir.context.definitions.get(current);
-            match def.parent {
-                Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
-                    if matches!(parent_def.kind, DefKind::Module(_)) {
-                        current = parent_id;
-                    } else {
-                        break;
-                    }
-                }
+            ancestors1.push(scope1);
+            scope1 = match self.get_scope(scope1) {
+                Some(s) => s,
                 None => break,
-            }
+            };
         }
 
-        let mut current = scope2;
         loop {
-            if ancestors1.contains(&current) {
-                return Some(current);
+            if ancestors1.contains(&scope2) {
+                return Some(scope2);
             }
-            let def = self.hir.context.definitions.get(current);
-            match def.parent {
-                Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
-                    if matches!(parent_def.kind, DefKind::Module(_)) {
-                        current = parent_id;
-                    } else {
-                        break;
-                    }
-                }
-                None => break,
-            }
+            scope2 = self.get_scope(scope2)?;
         }
-
-        None
     }
 
     fn build_path_from(&self, from_scope: DefId, to_scope: Option<DefId>) -> Path {
@@ -170,17 +150,10 @@ impl<'a> CppGen<'a> {
             let def = self.hir.context.definitions.get(current);
             path.push(def.ident.name.clone());
 
-            match def.parent {
-                Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
-                    if matches!(parent_def.kind, DefKind::Module(_)) {
-                        current = parent_id;
-                    } else {
-                        break;
-                    }
-                }
+            current = match self.get_scope(current) {
+                Some(scope) => scope,
                 None => break,
-            }
+            };
         }
 
         path.reverse();
@@ -192,17 +165,17 @@ impl<'a> CppGen<'a> {
         target_def_id: DefId,
         relative_to_def_id: impl Into<Option<DefId>>,
     ) -> String {
-        let type_name = self.cpp_name(target_def_id);
+        let type_name = self.cpp_name(target_def_id).to_string();
         let relative_to_def_id = relative_to_def_id.into();
         let target_scope = self.get_scope(target_def_id);
 
         match (target_scope, relative_to_def_id) {
-            (None, _) => type_name.to_string(),
+            (None, _) => type_name,
             (Some(target_scope), None) => {
                 let full_path = self.build_path_from(target_scope, None);
                 let pkg_name = full_path.join("::");
                 if pkg_name.is_empty() {
-                    type_name.to_string()
+                    type_name
                 } else {
                     format!("{pkg_name}::{type_name}")
                 }
@@ -215,14 +188,14 @@ impl<'a> CppGen<'a> {
                         let full_path = self.build_path_from(target_scope, None);
                         let pkg_name = full_path.join("::");
                         if pkg_name.is_empty() {
-                            type_name.to_string()
+                            type_name
                         } else {
                             format!("{pkg_name}::{type_name}")
                         }
                     }
                     Some(current_scope) => {
                         if target_scope == current_scope {
-                            return type_name.to_string();
+                            return type_name;
                         }
 
                         let common = self.common_scope(target_def_id, relative_to_def_id);
@@ -234,7 +207,7 @@ impl<'a> CppGen<'a> {
                             let full_path = self.build_path_from(target_scope, None);
                             let pkg_name = full_path.join("::");
                             if pkg_name.is_empty() {
-                                type_name.to_string()
+                                type_name
                             } else {
                                 format!("{pkg_name}::{type_name}")
                             }

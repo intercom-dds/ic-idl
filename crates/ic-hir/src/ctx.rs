@@ -32,6 +32,7 @@ use crate::hir::{self, Def, DefId, DefKind, Numeric, Ty, TyKind};
 use crate::scope::ScopeTree;
 
 /// Error returned when path resolution fails.
+#[must_use]
 #[derive(Debug, Clone)]
 pub struct PathResolutionError<'a> {
     /// The identifier segment that could not be resolved.
@@ -40,6 +41,7 @@ pub struct PathResolutionError<'a> {
     pub container: Option<DefId>,
 }
 
+#[must_use]
 #[derive(Clone, Debug)]
 pub struct Context {
     pub definitions: Arena<hir::Def>,
@@ -56,7 +58,6 @@ impl Default for Context {
 
 impl Context {
     /// Creates a new context.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             definitions: Arena::default(),
@@ -71,7 +72,6 @@ impl Context {
     /// Panics if the given type ID does not exist, or if the ID came from a
     /// different arena. This can only ever happen if there are multiple
     /// `Context`s whose arenas have been mixed up.
-    #[must_use]
     pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
     }
@@ -83,22 +83,29 @@ impl Context {
     /// Panics if the given type ID does not exist, or if the ID came from a
     /// different arena. This can only ever happen if there are multiple
     /// `Context`s whose arenas have been mixed up.
-    #[must_use]
-    pub fn base_type_of(&self, id: DefId) -> Ty {
-        let ty = self.type_of(id);
-        match &ty.kind {
-            DefKind::Alias(v) => match v.ty.kind {
-                TyKind::Adt(id) => self.base_type_of(id),
-                _ => v.ty.clone(),
-            },
-            DefKind::Const(v) => match v.ty.kind {
-                TyKind::Adt(id) => self.base_type_of(id),
-                _ => v.ty.clone(),
-            },
-            _ => Ty {
-                kind: TyKind::Adt(id),
-                span: ty.span,
-            },
+    pub fn base_type_of(&self, mut id: DefId) -> Ty {
+        loop {
+            let ty = self.type_of(id);
+            match &ty.kind {
+                DefKind::Alias(v) => match v.ty.kind {
+                    TyKind::Adt(next_id) => {
+                        id = next_id;
+                    }
+                    _ => return v.ty.clone(),
+                },
+                DefKind::Const(v) => match v.ty.kind {
+                    TyKind::Adt(next_id) => {
+                        id = next_id;
+                    }
+                    _ => return v.ty.clone(),
+                },
+                _ => {
+                    return Ty {
+                        kind: TyKind::Adt(id),
+                        span: ty.span,
+                    };
+                }
+            }
         }
     }
 
@@ -112,7 +119,6 @@ impl Context {
     }
 
     /// Returns the root scope ID.
-    #[must_use]
     pub fn root_scope(&self) -> crate::scope::ScopeId {
         self.scopes.root()
     }

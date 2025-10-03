@@ -56,6 +56,7 @@ pub struct Scope {
 }
 
 /// Unique identifier for a scope.
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ScopeId(pub usize);
 
@@ -105,7 +106,6 @@ impl ScopeTree {
     }
 
     /// Gets the root scope.
-    #[must_use]
     pub fn root(&self) -> ScopeId {
         self.root
     }

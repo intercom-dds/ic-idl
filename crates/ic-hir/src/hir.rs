@@ -36,6 +36,7 @@ pub type DefId = ic_alloc::arena::Id<Def>;
 
 /// Built-in primitive types. These types are effectively stateless and have no
 /// bounds or other attributes attached to them.
+#[must_use]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter, ToString)]
 pub enum PrimitiveTy {
     Void,
@@ -100,6 +101,7 @@ impl PrimitiveTy {
 }
 
 intercom_cts::bitmask! {
+    #[must_use]
     #[derive(Copy, Clone)]
     pub DefFlags: u32 {
         /// Indicates whether the type is recursive.
@@ -136,6 +138,7 @@ impl Default for DefFlags {
     }
 }
 
+#[must_use]
 #[derive(Clone, Debug)]
 pub struct Def {
     /// The ID of this definition.
@@ -160,6 +163,7 @@ pub struct Def {
     pub flags: DefFlags,
 }
 
+#[must_use]
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum DefKind {
@@ -215,12 +219,14 @@ pub enum Decl {
     Valuetype,
 }
 
+#[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ty {
     pub span: Span,
     pub kind: TyKind,
 }
 
+#[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TyKind {
     /// The `any` type.

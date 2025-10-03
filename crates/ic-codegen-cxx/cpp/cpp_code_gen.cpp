@@ -2997,7 +2997,7 @@ static void cgcpl_recurs(const ptree* obj) {
                 mprintf(&g_hd_file, "struct {};\n", name(obj));
             } else {
                 cpl_struct_c_def(obj);
-                // cpl_conv_gen(obj);
+                cpl_conv_gen(obj);
                 // cpl_iostream_def(obj);
                 cpl_gen_hash(obj);
             }
@@ -3008,7 +3008,7 @@ static void cgcpl_recurs(const ptree* obj) {
                 mprintf(&g_hd_file, "struct {};\n", name(obj));
             } else {
                 cpl_union_c_def(obj);
-                // cpl_conv_gen(obj);
+                cpl_conv_gen(obj);
                 cpl_gen_hash(obj);
                 // cpl_iostream_def(obj);
             }
@@ -3016,13 +3016,13 @@ static void cgcpl_recurs(const ptree* obj) {
         case N_ENUM:
             emit_docs(&g_hd_file, obj);
             cpl_struct_enum_def(obj);
-            // cpl_conv_gen(obj);
+            cpl_conv_gen(obj);
             // cpl_iostream_def(obj);
             break;
         case N_BITMASK:
             emit_docs(&g_hd_file, obj);
             cpl_struct_enum_def(obj);
-            // cpl_conv_gen(obj);
+            cpl_conv_gen(obj);
             break;
         case N_INTERFACE:
             emit_docs(&g_hd_file, obj);

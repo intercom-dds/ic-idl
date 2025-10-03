@@ -81,7 +81,10 @@ impl CppGen<'_> {
         w!(decl_w, "void free_union_();\n");
         w!(decl_w, "};\n\n");
 
+        self.emit_typedef_sequence(impl_w, &def.ident.name);
+        self.emit_type_traits(impl_w, def);
         self.emit_hash_specialization(impl_w, def);
+        self.emit_union_serializer(impl_w, def, union_ty);
 
         self.emit_union_impl(impl_w, def, union_ty, &disc_type);
     }
@@ -665,5 +668,30 @@ impl CppGen<'_> {
         });
 
         w!(w, "}\n\n");
+    }
+
+    fn emit_union_serializer(&self, w: &mut Twine, def: &Def, union_ty: &ic_hir::hir::UnionTy) {
+        let qualified_name = self.scoped_name(def.id, None);
+
+        w!(w, "template <class Archive>\n");
+        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo*) {\n");
+        w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
+        w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");
+        w!(w, "auto discr = a_value._d();\n");
+        w!(w, "serializer.io(a_info->members[0], discr);\n");
+
+        self.emit_union_switch(w, union_ty, "discr", |w, variant| {
+            w!(w, "if (Archive::IS_READER) {\n");
+            w!(w, "a_value._d(discr);\n");
+            w!(w, "}\n");
+
+            let member_idx = union_ty.variants.iter().position(|v| v.ident.name == variant.ident.name).unwrap() + 1;
+            w!(w, "serializer.io(a_info->members[", member_idx.to_string(), "], a_value.", variant.ident.name, "());\n");
+            true
+        });
+
+        w!(w, "}\n");
+        w!(w, "};\n\n");
     }
 }

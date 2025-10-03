@@ -369,6 +369,40 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    pub fn emit_type_traits(&self, w: &mut Twine, def: &Def) {
+        let qualified_name = self.scoped_name(def.id, None);
+        let struct_name = &def.ident.name;
+
+        w!(w, "template <>\n");
+        w!(w, "struct ::ic_cts::TypeTraits<", qualified_name, "> {\n");
+        w!(w, "using value_type = ", qualified_name, ";\n");
+        w!(w, "using in_type = const ", qualified_name, "&;\n");
+        w!(w, "using out_type = ", qualified_name, "&;\n");
+        w!(w, "using inout_type = ", qualified_name, "&;\n");
+        w!(w, "using ref_type = std::shared_ptr<", qualified_name, ">;\n");
+        w!(w, "using weak_ref_type = std::weak_ptr<", qualified_name, ">;\n");
+
+        if let DefKind::Struct(_) | DefKind::Union(_) = &def.kind {
+            w!(w, "using sequence_type = ", struct_name, "Seq;\n");
+        }
+
+        w!(w, "static const ::ic_cts::TypeInfo type_info;\n");
+        w!(w, "static const char* default_topic_name;\n");
+
+        match &def.kind {
+            DefKind::Struct(_) => w!(w, "static const bool is_struct = true;\n"),
+            DefKind::Union(_) => w!(w, "static const bool is_union = true;\n"),
+            DefKind::Enum(_) => w!(w, "static const bool is_enum = true;\n"),
+            DefKind::Bitmask(_) => w!(w, "static const bool is_bitmask = true;\n"),
+            _ => {}
+        }
+        w!(w, "};\n\n");
+    }
+
+    pub fn emit_typedef_sequence(&self, w: &mut Twine, type_name: &str) {
+        w!(w, "using ", type_name, "Seq = ::std::vector<", type_name, ">;\n\n");
+    }
+
     pub fn emit_hash_specialization(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
 
@@ -593,8 +627,8 @@ impl CppGen<'_> {
             DefKind::Struct(struct_ty) => self.emit_struct(decl_w, impl_w, def, struct_ty),
             DefKind::Except(except_ty) => self.emit_exception(decl_w, impl_w, def, except_ty),
             DefKind::Union(union_ty) => self.emit_union(decl_w, impl_w, def, union_ty),
-            DefKind::Enum(enum_ty) => self.emit_enum(decl_w, def, enum_ty),
-            DefKind::Bitmask(bitmask_ty) => self.emit_bitmask(decl_w, def, bitmask_ty),
+            DefKind::Enum(enum_ty) => self.emit_enum(decl_w, impl_w, def, enum_ty),
+            DefKind::Bitmask(bitmask_ty) => self.emit_bitmask(decl_w, impl_w, def, bitmask_ty),
             DefKind::Const(const_ty) => self.emit_const(decl_w, def, const_ty),
             DefKind::Alias(alias_ty) => self.emit_typedef(decl_w, def, alias_ty),
             DefKind::Interface(interface_ty) => {

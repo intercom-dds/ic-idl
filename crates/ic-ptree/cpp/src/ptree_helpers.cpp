@@ -269,7 +269,7 @@ bool is_optional(const ptree* node, AnnotationGetter get) {
 
 bool is_must_understand(const ptree* node, AnnotationGetter get) {
     const ptree* ann = get(node, annotation_type_must_understand);
-    return ann ? integer_value(ann->members->value) : false;
+    return (ann && ann->members) ? integer_value(ann->members->value) : false;
 }
 
 bool is_bitmask(const ptree* node) {

@@ -59,7 +59,9 @@ impl CppGen<'_> {
         w!(decl_w, "};\n\n");
 
         self.emit_typedef_sequence(decl_w, struct_name);
+        self.emit_type_traits(impl_w, def);
         self.emit_hash_specialization(impl_w, def);
+        self.emit_serializer_specialization(impl_w, def, &struct_ty.members);
         let all_members = self.collect_all_members(def.id);
         if !all_members.is_empty() {
             self.emit_struct_like_constructor_impl(impl_w, def);
@@ -313,7 +315,26 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn emit_typedef_sequence(&self, w: &mut Twine, struct_name: &str) {
-        w!(w, "using ", struct_name, "Seq = ::std::vector<", struct_name, ">;\n\n");
+    fn emit_serializer_specialization(
+        &self,
+        w: &mut Twine,
+        def: &Def,
+        members: &[ic_hir::hir::Member],
+    ) {
+        let qualified_name = self.scoped_name(def.id, None);
+
+        w!(w, "template <class Archive>\n");
+        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo*) {\n");
+        w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
+        w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");
+
+        for (i, member) in members.iter().enumerate() {
+            let member_name = &member.ident.name;
+            w!(w, "serializer.io(a_info->members[", i.to_string(), "], a_value.", member_name, ");\n");
+        }
+
+        w!(w, "}\n");
+        w!(w, "};\n\n");
     }
 }

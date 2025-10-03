@@ -37,7 +37,13 @@ impl CppGen<'_> {
         w!(decl_w, "using ", alias_name, " = ", ty_str, ";\n");
     }
 
-    pub fn emit_enum(&self, decl_w: &mut Twine, def: &Def, enum_ty: &ic_hir::hir::EnumTy) {
+    pub fn emit_enum(
+        &self,
+        decl_w: &mut Twine,
+        impl_w: &mut Twine,
+        def: &Def,
+        enum_ty: &ic_hir::hir::EnumTy,
+    ) {
         let enum_name = &def.ident.name;
 
         if self.options.scoped_enums {
@@ -70,9 +76,31 @@ impl CppGen<'_> {
         }
 
         w!(decl_w, "};\n\n");
+
+        self.emit_type_traits(impl_w, def);
+        self.emit_enum_serializer(impl_w, def);
     }
 
-    pub fn emit_bitmask(&self, decl_w: &mut Twine, def: &Def, bitmask_ty: &ic_hir::hir::BitmaskTy) {
+    fn emit_enum_serializer(&self, w: &mut Twine, def: &Def) {
+        let qualified_name = self.scoped_name(def.id, None);
+
+        w!(w, "template <class Archive>\n");
+        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
+        w!(w, "auto integer_value = static_cast<int32_t>(a_value);\n");
+        w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, ">::type_info);\n");
+        w!(w, "a_value = static_cast<", qualified_name, ">(integer_value);\n");
+        w!(w, "}\n");
+        w!(w, "};\n\n");
+    }
+
+    pub fn emit_bitmask(
+        &self,
+        decl_w: &mut Twine,
+        impl_w: &mut Twine,
+        def: &Def,
+        bitmask_ty: &ic_hir::hir::BitmaskTy,
+    ) {
         let bitmask_name = &def.ident.name;
         let underlying_type = cpp_primitive(bitmask_ty.ty);
 
@@ -97,6 +125,29 @@ impl CppGen<'_> {
 
         w!(decl_w, "};\n\n");
         w!(decl_w, "using ", bitmask_name, " = ", underlying_type, ";\n\n");
+
+        self.emit_type_traits(impl_w, def);
+        self.emit_bitmask_serializer(impl_w, def, bitmask_ty);
+    }
+
+    fn emit_bitmask_serializer(
+        &self,
+        w: &mut Twine,
+        def: &Def,
+        bitmask_ty: &ic_hir::hir::BitmaskTy,
+    ) {
+        let qualified_name = self.scoped_name(def.id, None);
+        let bitmask_name = &def.ident.name;
+        let underlying_type = cpp_primitive(bitmask_ty.ty);
+
+        w!(w, "template <class Archive>\n");
+        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "void operator()(Archive& a_archive, ", bitmask_name, "& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
+        w!(w, "auto integer_value = static_cast<", underlying_type, ">(a_value);\n");
+        w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, ">::type_info);\n");
+        w!(w, "a_value = static_cast<", bitmask_name, ">(integer_value);\n");
+        w!(w, "}\n");
+        w!(w, "};\n\n");
     }
 
     pub fn emit_const(&self, decl_w: &mut Twine, def: &Def, const_ty: &ic_hir::hir::ConstTy) {

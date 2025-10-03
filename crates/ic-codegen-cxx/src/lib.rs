@@ -66,9 +66,9 @@ pub struct CppOptions {
     #[option(long, arg = "ext")]
     pub header_ext: Option<String>,
 
-    /// Store header files inside a subfolder
+    /// Store header files inside a subdirectory
     #[option(long, arg = "dir")]
-    pub header_subfolder: Option<String>,
+    pub header_subdir: Option<String>,
 }
 
 #[repr(C)]
@@ -108,7 +108,7 @@ pub fn codegen_cpp(
 
     let result = ic_ptree_lower::from_hir(hir, source_map);
     let header_subfolder = options
-        .header_subfolder
+        .header_subdir
         .as_ref()
         .map(|s| CString::new(s.as_str()).expect("Invalid header_subfolder"));
 
@@ -130,7 +130,7 @@ pub fn codegen_cpp(
         header_ext: header_ext.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         dll_export: dll_export.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         scoped_enums: u8::from(options.scoped_enums),
-        access_functions: u8::from(options.access_functions),
+        access_functions: 0,
         no_stream_op: u8::from(options.no_stream_op),
         use_fmt: u8::from(options.use_fmt),
     };

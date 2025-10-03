@@ -612,6 +612,28 @@ impl CppGen<'_> {
         }
     }
 
+    fn output_extension(&self) -> &str {
+        self.options.header_ext.as_deref().unwrap_or("h")
+    }
+
+    fn output_filename(&self, file_id: FileId) -> String {
+        let source_path = self.source_map.name(file_id);
+        let output_file = source_path.with_extension(self.output_extension());
+        output_file
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap()
+            .to_string()
+    }
+
+    fn build_path(&self, file_name: &str) -> String {
+        if let Some(subfolder) = &self.options.header_subdir {
+            format!("{}/{}", subfolder, file_name).replace('\\', "/")
+        } else {
+            file_name.replace('\\', "/")
+        }
+    }
+
     pub fn generate(&self) -> Vec<File> {
         let mut files_map: HashMap<FileId, Vec<DefId>> = HashMap::new();
 
@@ -623,13 +645,6 @@ impl CppGen<'_> {
 
         let mut result = Vec::new();
         for (file_id, def_ids) in files_map {
-            let file_name = self
-                .source_map
-                .name(file_id)
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap();
-
             let mut header = Twine::new();
             let mut decls = Twine::new();
             let mut impls = Twine::new();
@@ -649,14 +664,9 @@ impl CppGen<'_> {
             deps_vec.sort();
 
             for &dep_file_id in &deps_vec {
-                let dep_file_path = self.source_map.name(dep_file_id);
-                let dep_file_with_h = dep_file_path.with_extension("h");
-                let dep_file_h = dep_file_with_h
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap();
-
-                w!(header, "\n#include \"", dep_file_h, "\"");
+                let dep_file_name = self.output_filename(dep_file_id);
+                let include_path = self.build_path(&dep_file_name);
+                w!(header, "\n#include \"", include_path, "\"");
             }
 
             if !deps_vec.is_empty() {
@@ -673,9 +683,11 @@ impl CppGen<'_> {
             content.push_str(&decls.finish());
             content.push_str(&impls.finish());
 
-            let output_file = file_name.replace(".idl", ".h");
+            let output_file_name = self.output_filename(file_id);
+            let output_path = self.build_path(&output_file_name);
+
             result.push(File::Generated {
-                path: PathBuf::from(output_file),
+                path: PathBuf::from(output_path),
                 source: content,
             });
         }

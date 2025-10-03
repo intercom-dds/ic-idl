@@ -301,7 +301,16 @@ impl<'a> ConstEvaluator<'a> {
     ) -> Option<Numeric> {
         use super::initializers::InitializerEvaluator;
 
-        match &expected_ty.kind {
+        let resolved_ty = match &expected_ty.kind {
+            TyKind::Adt(def_id) => self.ctx.context.base_type_of(*def_id),
+            _ => expected_ty.clone(),
+        };
+
+        match &resolved_ty.kind {
+            TyKind::Any => {
+                let mut init_eval = InitializerEvaluator::new(self);
+                return init_eval.eval_sequence(init_list, expected_ty);
+            }
             TyKind::Adt(def_id) => {
                 let def = self.ctx.context.definitions.get(*def_id);
                 match &def.kind {
@@ -755,7 +764,21 @@ impl ConstEvaluator<'_> {
                 }
             }
         } else {
-            // Non-scalar constant — not assignable here.
+            let resolved_const_ty = match &c.ty.kind {
+                TyKind::Adt(def_id) => self.ctx.context.base_type_of(*def_id),
+                _ => c.ty.clone(),
+            };
+            let resolved_expected_ty = match &expected_ty.kind {
+                TyKind::Adt(def_id) => self.ctx.context.base_type_of(*def_id),
+                _ => expected_ty.clone(),
+            };
+
+            if matches!(resolved_expected_ty.kind, TyKind::Any)
+                || types_equal_ignore_spans(&resolved_const_ty.kind, &resolved_expected_ty.kind)
+            {
+                return ConstAssignOutcome::Accepted(Box::new(Numeric::Const(def_id)));
+            }
+
             let to_ty = get_type_name(expected_ty, self.ctx);
             self.ctx.diagnostics.errors.push(
                 error_span(
@@ -769,6 +792,63 @@ impl ConstEvaluator<'_> {
             );
             ConstAssignOutcome::Rejected
         }
+    }
+}
+
+fn types_equal_ignore_spans(a: &TyKind, b: &TyKind) -> bool {
+    match (a, b) {
+        (TyKind::Any, TyKind::Any) => true,
+        (TyKind::Fixed, TyKind::Fixed) => true,
+        (TyKind::Primitive(p1), TyKind::Primitive(p2)) => p1 == p2,
+        (
+            TyKind::Array {
+                ty: ty1, len: len1, ..
+            },
+            TyKind::Array {
+                ty: ty2, len: len2, ..
+            },
+        ) => len1 == len2 && types_equal_ignore_spans(&ty1.kind, &ty2.kind),
+        (
+            TyKind::Sequence {
+                ty: ty1, bound: b1, ..
+            },
+            TyKind::Sequence {
+                ty: ty2, bound: b2, ..
+            },
+        ) => b1 == b2 && types_equal_ignore_spans(&ty1.kind, &ty2.kind),
+        (
+            TyKind::String {
+                wide: w1,
+                bound: b1,
+                ..
+            },
+            TyKind::String {
+                wide: w2,
+                bound: b2,
+                ..
+            },
+        ) => w1 == w2 && b1 == b2,
+        (
+            TyKind::Map {
+                key: k1,
+                elem: e1,
+                bound: b1,
+                ..
+            },
+            TyKind::Map {
+                key: k2,
+                elem: e2,
+                bound: b2,
+                ..
+            },
+        ) => {
+            b1 == b2
+                && types_equal_ignore_spans(&k1.kind, &k2.kind)
+                && types_equal_ignore_spans(&e1.kind, &e2.kind)
+        }
+        (TyKind::Null, TyKind::Null) => true,
+        (TyKind::Adt(id1), TyKind::Adt(id2)) => id1 == id2,
+        _ => false,
     }
 }
 

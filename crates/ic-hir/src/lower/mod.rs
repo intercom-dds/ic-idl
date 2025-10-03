@@ -97,8 +97,6 @@ where
     I: IntoIterator<Item = Item>,
 {
     let user_items: Vec<Item> = user.into_iter().collect();
-
-    // Phase 1: Build & Resolve
     let mut context = LoweringContext::new();
 
     // Process builtins if provided
@@ -135,8 +133,6 @@ where
 
     // Check for undefined forward declarations
     check_undefined_forward_decls(&mut context);
-
-    // Phase 2: Validation is done through lints, not here
 
     // Extract results
     let LoweringContext {

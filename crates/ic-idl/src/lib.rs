@@ -100,6 +100,7 @@ pub mod util;
 
 pub use config::{CodegenOptions, Options as CompilerOptions, Unstable, Warnings};
 use ic_cli::color::Colorize;
+pub use ic_emit::File;
 pub use ic_lint::{Category as LintCategory, Level as LintLevel, LintConfig};
 pub use util::Error as DiagnosticError;
 use util::Error as InternalError;

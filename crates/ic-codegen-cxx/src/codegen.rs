@@ -154,15 +154,31 @@ impl<'a> CppGen<'a> {
                         }
                     }
                     Some(current_scope) => {
-                        if target_scope == current_scope {
+                        let target_scope_id = self
+                            .hir
+                            .context
+                            .scopes
+                            .find_scope_containing_def(target_def_id);
+
+                        let current_scope_id = self
+                            .hir
+                            .context
+                            .scopes
+                            .find_scope_containing_def(relative_to_def_id);
+
+                        if target_scope_id == current_scope_id && target_scope_id.is_some() {
                             return type_name;
                         }
 
                         let common = self.common_scope(target_def_id, relative_to_def_id);
-                        if common == Some(current_scope) {
+                        if common == Some(target_scope) || common == Some(current_scope) {
                             let relative_path = self.build_path_from(target_scope, common);
                             let pkg_name = relative_path.join("::");
-                            format!("{pkg_name}::{type_name}")
+                            if pkg_name.is_empty() {
+                                type_name
+                            } else {
+                                format!("{pkg_name}::{type_name}")
+                            }
                         } else {
                             let full_path = self.build_path_from(target_scope, None);
                             let pkg_name = full_path.join("::");
@@ -334,24 +350,29 @@ impl<'a> CppGen<'a> {
     }
 
     pub fn emit_type_traits(&self, w: &mut Twine, def: &Def) {
+        self.emit_type_traits_with_suffix(w, def, "");
+    }
+
+    pub fn emit_type_traits_with_suffix(&self, w: &mut Twine, def: &Def, suffix: &str) {
         let qualified_name = self.scoped_name(def.id, None);
         let struct_name = &def.ident.name;
+        let full_qualified_name = format!("{}{}", qualified_name, suffix);
+        let full_struct_name = format!("{}{}", struct_name, suffix);
 
         w!(w, "template <>\n");
-        w!(w, "struct ::ic_cts::TypeTraits<", qualified_name, "> {\n");
-        w!(w, "using value_type = ", qualified_name, ";\n");
-        w!(w, "using in_type = const ", qualified_name, "&;\n");
-        w!(w, "using out_type = ", qualified_name, "&;\n");
-        w!(w, "using inout_type = ", qualified_name, "&;\n");
-        w!(w, "using ref_type = std::shared_ptr<", qualified_name, ">;\n");
-        w!(w, "using weak_ref_type = std::weak_ptr<", qualified_name, ">;\n");
+        w!(w, "struct ::ic_cts::TypeTraits<", full_qualified_name, "> {\n");
+        w!(w, "using value_type = ", full_qualified_name, ";\n");
+        w!(w, "using in_type = const ", full_qualified_name, "&;\n");
+        w!(w, "using out_type = ", full_qualified_name, "&;\n");
+        w!(w, "using inout_type = ", full_qualified_name, "&;\n");
+        w!(w, "using ref_type = std::shared_ptr<", full_qualified_name, ">;\n");
+        w!(w, "using weak_ref_type = std::weak_ptr<", full_qualified_name, ">;\n");
 
         if let DefKind::Struct(_) | DefKind::Union(_) = &def.kind {
-            w!(w, "using sequence_type = ", struct_name, "Seq;\n");
+            w!(w, "using sequence_type = ", full_struct_name, "Seq;\n");
         }
 
         w!(w, "static const ::ic_cts::TypeInfo type_info;\n");
-        w!(w, "static const char* default_topic_name;\n");
 
         match &def.kind {
             DefKind::Struct(_) => w!(w, "static const bool is_struct = true;\n"),

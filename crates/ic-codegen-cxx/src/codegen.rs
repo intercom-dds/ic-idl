@@ -42,46 +42,6 @@ use crate::deps::collect_def_dependencies;
 
 type Path = Vec<String>;
 
-pub(crate) fn format_array_bounds(ty: &Ty) -> String {
-    let mut result = String::new();
-    let mut current_ty = ty;
-
-    while let TyKind::Array {
-        ty: inner_ty, len, ..
-    } = &current_ty.kind
-    {
-        result.push('[');
-        result.push_str(&len.to_string());
-        result.push(']');
-        current_ty = inner_ty;
-    }
-    result
-}
-
-pub(crate) fn has_default_value(ty: &Ty) -> bool {
-    match &ty.kind {
-        TyKind::Primitive(prim) => matches!(
-            prim,
-            PrimitiveTy::Int8
-                | PrimitiveTy::Int16
-                | PrimitiveTy::Int32
-                | PrimitiveTy::Int64
-                | PrimitiveTy::UInt8
-                | PrimitiveTy::UInt16
-                | PrimitiveTy::UInt32
-                | PrimitiveTy::UInt64
-                | PrimitiveTy::Bool
-                | PrimitiveTy::Float32
-                | PrimitiveTy::Float64
-                | PrimitiveTy::Float128
-                | PrimitiveTy::Char
-                | PrimitiveTy::WChar
-        ),
-        TyKind::Array { .. } => true,
-        _ => false,
-    }
-}
-
 pub struct CppGen<'a> {
     pub(crate) hir: &'a ResolvedGraph,
     pub(crate) options: CppOptions,
@@ -218,6 +178,35 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    pub fn has_default_value(&self, ty: &Ty) -> bool {
+        let resolved_ty = match &ty.kind {
+            TyKind::Adt(def_id) => self.hir.context.base_type_of(*def_id),
+            _ => ty.clone(),
+        };
+
+        match &resolved_ty.kind {
+            TyKind::Primitive(prim) => matches!(
+                prim,
+                PrimitiveTy::Int8
+                    | PrimitiveTy::Int16
+                    | PrimitiveTy::Int32
+                    | PrimitiveTy::Int64
+                    | PrimitiveTy::UInt8
+                    | PrimitiveTy::UInt16
+                    | PrimitiveTy::UInt32
+                    | PrimitiveTy::UInt64
+                    | PrimitiveTy::Bool
+                    | PrimitiveTy::Float32
+                    | PrimitiveTy::Float64
+                    | PrimitiveTy::Float128
+                    | PrimitiveTy::Char
+                    | PrimitiveTy::WChar
+            ),
+            TyKind::Array { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn cpp_type(&self, ty: &Ty, relative_def: impl Into<Option<DefId>>) -> String {
         let relative_def_opt = relative_def.into();
         match &ty.kind {
@@ -239,7 +228,10 @@ impl<'a> CppGen<'a> {
                 let elem_ty = self.cpp_type(elem, relative_def_opt);
                 format!("::std::map<{key_ty}, {elem_ty}>")
             }
-            TyKind::Array { ty, .. } => self.cpp_type(ty, relative_def_opt),
+            TyKind::Array { ty, len, .. } => {
+                let inner = self.cpp_type(ty, relative_def_opt);
+                format!("::std::array<{inner}, {len}>")
+            }
             TyKind::Any | TyKind::Fixed | TyKind::Null => "void".to_string(),
         }
     }
@@ -297,7 +289,7 @@ impl<'a> CppGen<'a> {
                         w!(w, ", ");
                     }
                 }
-                w!(w, " }");
+                w!(w, "}");
             }
             Numeric::Map { entries, .. } => {
                 w!(w, "{");
@@ -321,7 +313,6 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     pub fn emit_default_initializer(&self, w: &mut Twine, ty: &Ty) {
         match &ty.kind {
             TyKind::Primitive(prim) => match prim {
@@ -337,7 +328,7 @@ impl<'a> CppGen<'a> {
                 PrimitiveTy::WChar => w!(w, "L'\\0'"),
                 PrimitiveTy::Void => {}
             },
-            TyKind::Array { ty, .. } => self.emit_default_initializer(w, ty),
+            TyKind::Array { .. } => w!(w, "{}"),
             _ => {}
         }
     }
@@ -650,6 +641,7 @@ impl CppGen<'_> {
             let mut impls = Twine::new();
 
             w!(header, "#pragma once\n\n");
+            w!(header, "#include <array>\n");
             w!(header, "#include <cstdint>\n");
             w!(header, "#include <string>\n");
             w!(header, "#include <vector>\n");

@@ -28,7 +28,7 @@
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, StructTy};
 
-use crate::codegen::{CppGen, format_array_bounds, has_default_value};
+use crate::codegen::CppGen;
 
 #[allow(clippy::unused_self)]
 impl CppGen<'_> {
@@ -97,13 +97,12 @@ impl CppGen<'_> {
     fn emit_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
         for member in members {
             let ty_str = self.cpp_type(&member.ty, def.id);
-            let array_bounds = format_array_bounds(&member.ty);
-            w!(w, ty_str, " ", member.ident.name, array_bounds);
+            w!(w, ty_str, " ", member.ident.name);
 
-            if has_default_value(&member.ty) {
-                w!(w, " { ");
+            if self.has_default_value(&member.ty) {
+                w!(w, "{");
                 self.emit_default_initializer(w, &member.ty);
-                w!(w, " }");
+                w!(w, "}");
             }
             w!(w, ";\n");
         }
@@ -239,7 +238,7 @@ impl CppGen<'_> {
                 w!(w, ",\n");
             }
         }
-        w!(w, ") :\n");
+        w!(w, "\n) : ");
 
         // Check if there's a parent and emit parent constructor call
         let mut has_parent = false;
@@ -268,7 +267,7 @@ impl CppGen<'_> {
         if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind {
             for (i, member) in struct_ty.members.iter().enumerate() {
                 if has_parent || i > 0 {
-                    w!(w, ",\n");
+                    w!(w, ",\n\t");
                 }
                 if self.should_use_move(&member.ty) {
                     w!(w, member.ident.name, "(std::move(a_", member.ident.name, "))");

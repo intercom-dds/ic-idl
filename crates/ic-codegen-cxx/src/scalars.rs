@@ -34,7 +34,7 @@ impl CppGen<'_> {
     pub fn emit_typedef(&self, decl_w: &mut Twine, def: &Def, alias_ty: &ic_hir::hir::AliasTy) {
         let alias_name = &def.ident.name;
         let ty_str = self.cpp_type(&alias_ty.ty, def.id);
-        w!(decl_w, "using ", alias_name, " = ", ty_str, ";\n");
+        w!(decl_w, "using ", alias_name, " = ", ty_str, ";\n\n");
     }
 
     pub fn emit_enum(

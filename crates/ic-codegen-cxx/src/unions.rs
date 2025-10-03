@@ -28,7 +28,7 @@
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::Def;
 
-use crate::codegen::{CppGen, has_default_value};
+use crate::codegen::CppGen;
 
 const UNION_DISC_FIELD: &str = "ic_discriminator_value_";
 
@@ -456,7 +456,7 @@ impl CppGen<'_> {
                 self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
                 w!(w, "free_union_();\n");
 
-                let default_val = if has_default_value(&variant.ty) {
+                let default_val = if self.has_default_value(&variant.ty) {
                     let mut temp_w = Twine::new();
                     self.emit_default_initializer(&mut temp_w, &variant.ty);
                     temp_w.finish()

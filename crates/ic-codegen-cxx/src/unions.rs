@@ -28,10 +28,11 @@
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::Def;
 
-use crate::codegen::CppGen;
+use crate::codegen::{CppGen, emit_numeric_value, has_default_value};
 
 const UNION_DISC_FIELD: &str = "ic_discriminator_value_";
 
+#[allow(clippy::unused_self)]
 impl CppGen<'_> {
     pub fn emit_union(
         &self,
@@ -78,12 +79,10 @@ impl CppGen<'_> {
         w!(decl_w, "} ic_union_value_;\n");
         w!(decl_w, disc_type, " ", UNION_DISC_FIELD, ";\n");
         w!(decl_w, "void free_union_();\n");
-        w!(decl_w, "};\n");
+        w!(decl_w, "};\n\n");
 
-        // Hash specialization
-        self.emit_hash_specialization(decl_w, def);
+        self.emit_hash_specialization(impl_w, def);
 
-        // Implementations
         self.emit_union_impl(impl_w, def, union_ty, &disc_type);
     }
 
@@ -110,17 +109,22 @@ impl CppGen<'_> {
         if is_complex {
             // Getter (reference)
             w!(w, member_type, "& ", member_name, "();\n");
+
             // Getter (const reference)
             w!(w, "const ", member_type, "& ", member_name, "() const;\n");
+
             // Setter (const reference)
             w!(w, "void ", member_name, "(const ", member_type, "& a_value);\n");
+
             // Move setter
             w!(w, "void ", member_name, "(", member_type, "&& a_value);\n");
         } else {
             // Primitive: getter (reference)
             w!(w, member_type, "& ", member_name, "();\n");
+
             // Primitive: getter (by value)
             w!(w, member_type, " ", member_name, "() const;\n");
+
             // Primitive: setter (by value)
             w!(w, "void ", member_name, "(", member_type, " a_value);\n");
         }
@@ -151,7 +155,7 @@ impl CppGen<'_> {
             } else {
                 for label in &variant.labels {
                     w!(w, "case ");
-                    self.emit_numeric_value(w, &label.value);
+                    emit_numeric_value(w, &label.value);
                     w!(w, ":\n");
                 }
             }
@@ -187,13 +191,13 @@ impl CppGen<'_> {
                     w!(w, " || ", UNION_DISC_FIELD, " == ");
                 }
                 if let Some(first_label) = v.labels.first() {
-                    self.emit_numeric_value(w, &first_label.value);
+                    emit_numeric_value(w, &first_label.value);
                 }
             }
         } else {
             w!(w, UNION_DISC_FIELD, " != ");
             if let Some(first_label) = variant.labels.first() {
-                self.emit_numeric_value(w, &first_label.value);
+                emit_numeric_value(w, &first_label.value);
             }
         }
     }
@@ -201,7 +205,7 @@ impl CppGen<'_> {
     fn emit_set_discriminator_to_variant(&self, w: &mut Twine, variant: &ic_hir::hir::Variant) {
         w!(w, UNION_DISC_FIELD, " = ");
         if let Some(first_label) = variant.labels.first() {
-            self.emit_numeric_value(w, &first_label.value);
+            emit_numeric_value(w, &first_label.value);
         }
         w!(w, ";\n");
     }
@@ -232,7 +236,7 @@ impl CppGen<'_> {
             }
             w!(w, discriminator_var, " == ");
             if let Some(first_label) = v.labels.first() {
-                self.emit_numeric_value(w, &first_label.value);
+                emit_numeric_value(w, &first_label.value);
             }
         }
         w!(w, ") {\n");
@@ -278,8 +282,9 @@ impl CppGen<'_> {
     fn get_default_value_expr(&self, ty: &ic_hir::hir::Ty) -> String {
         match &ty.kind {
             ic_hir::hir::TyKind::String { .. } => "std::string{}".to_string(),
-            ic_hir::hir::TyKind::Array { .. } => "{}".to_string(),
-            ic_hir::hir::TyKind::Sequence { .. } => "{}".to_string(),
+            ic_hir::hir::TyKind::Array { .. } | ic_hir::hir::TyKind::Sequence { .. } => {
+                "{}".to_string()
+            }
             _ => "0".to_string(),
         }
     }
@@ -438,7 +443,7 @@ impl CppGen<'_> {
                 self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
                 w!(w, "free_union_();\n");
 
-                let default_val = if self.has_default_value(&variant.ty) {
+                let default_val = if has_default_value(&variant.ty) {
                     let mut temp_w = Twine::new();
                     self.emit_default_initializer(&mut temp_w, &variant.ty);
                     temp_w.finish()
@@ -455,7 +460,7 @@ impl CppGen<'_> {
             } else {
                 w!(w, "if (", UNION_DISC_FIELD, " != ");
                 if let Some(first_label) = variant.labels.first() {
-                    self.emit_numeric_value(w, &first_label.value);
+                    emit_numeric_value(w, &first_label.value);
                 }
                 w!(w, ") {\n");
                 w!(w, "free_union_();\n");

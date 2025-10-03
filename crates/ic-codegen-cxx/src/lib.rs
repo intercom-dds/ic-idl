@@ -32,7 +32,8 @@ use ic_emit::File;
 
 mod codegen;
 mod deps;
-mod helpers;
+mod scalars;
+mod structs;
 mod unions;
 
 #[derive(Command, Debug, Default, Clone)]

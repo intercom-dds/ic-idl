@@ -31,27 +31,66 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefId, DefKind, StructTy, Ty, TyKind};
+use ic_hir::hir::{Def, DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_vfs::{FileId, SourceMap};
 
 use crate::CppOptions;
 use crate::deps::collect_def_dependencies;
-use crate::helpers::cpp_primitive;
 
 type Path = Vec<String>;
 
+pub(crate) fn format_array_bounds(ty: &Ty) -> String {
+    let mut result = String::new();
+    let mut current_ty = ty;
+
+    while let TyKind::Array {
+        ty: inner_ty, len, ..
+    } = &current_ty.kind
+    {
+        result.push('[');
+        result.push_str(&len.to_string());
+        result.push(']');
+        current_ty = inner_ty;
+    }
+    result
+}
+
+pub(crate) fn has_default_value(ty: &Ty) -> bool {
+    match &ty.kind {
+        TyKind::Primitive(prim) => matches!(
+            prim,
+            ic_hir::hir::PrimitiveTy::Int8
+                | ic_hir::hir::PrimitiveTy::Int16
+                | ic_hir::hir::PrimitiveTy::Int32
+                | ic_hir::hir::PrimitiveTy::Int64
+                | ic_hir::hir::PrimitiveTy::UInt8
+                | ic_hir::hir::PrimitiveTy::UInt16
+                | ic_hir::hir::PrimitiveTy::UInt32
+                | ic_hir::hir::PrimitiveTy::UInt64
+                | ic_hir::hir::PrimitiveTy::Bool
+                | ic_hir::hir::PrimitiveTy::Float32
+                | ic_hir::hir::PrimitiveTy::Float64
+                | ic_hir::hir::PrimitiveTy::Float128
+                | ic_hir::hir::PrimitiveTy::Char
+                | ic_hir::hir::PrimitiveTy::WChar
+        ),
+        TyKind::Array { .. } => true,
+        _ => false,
+    }
+}
+
 pub struct CppGen<'a> {
-    hir: &'a ResolvedGraph,
+    pub(crate) hir: &'a ResolvedGraph,
+    pub(crate) options: CppOptions,
     source_map: &'a SourceMap,
-    options: CppOptions,
 }
 
 impl<'a> CppGen<'a> {
     pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: CppOptions) -> Self {
         Self {
             hir,
-            source_map,
             options,
+            source_map,
         }
     }
 
@@ -74,11 +113,30 @@ impl<'a> CppGen<'a> {
 
     pub fn qualified_struct_name(&self, def_id: DefId) -> String {
         let struct_name = self.cpp_name(def_id);
-        if let Some(interface_id) = self.get_enclosing_interface(def_id) {
-            let interface_name = self.cpp_name(interface_id);
-            format!("{interface_name}::{struct_name}")
-        } else {
+
+        // Build the full scope path
+        let mut scopes = Vec::new();
+        let mut current = self.hir.context.definitions.get(def_id).parent;
+
+        while let Some(parent_id) = current {
+            let parent_def = self.hir.context.definitions.get(parent_id);
+            match &parent_def.kind {
+                DefKind::Module(_) => {
+                    scopes.push(parent_def.ident.name.as_str());
+                }
+                DefKind::Interface(_) => {
+                    scopes.push(parent_def.ident.name.as_str());
+                }
+                _ => {}
+            }
+            current = parent_def.parent;
+        }
+
+        if scopes.is_empty() {
             struct_name.to_string()
+        } else {
+            scopes.reverse();
+            format!("{}::{}", scopes.join("::"), struct_name)
         }
     }
 
@@ -233,227 +291,12 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    fn format_array_bounds(&self, ty: &Ty) -> String {
-        let mut result = String::new();
-        let mut current_ty = ty;
-
-        while let TyKind::Array {
-            ty: inner_ty, len, ..
-        } = &current_ty.kind
-        {
-            result.push('[');
-            result.push_str(&len.to_string());
-            result.push(']');
-            current_ty = inner_ty;
-        }
-        result
-    }
-
-    fn emit_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
-        for member in members {
-            let ty_str = self.cpp_type(&member.ty, def.id);
-            let array_bounds = self.format_array_bounds(&member.ty);
-            w!(w, ty_str, " ", member.ident.name, array_bounds);
-
-            if self.has_default_value(&member.ty) {
-                w!(w, " { ");
-                self.emit_default_initializer(w, &member.ty);
-                w!(w, " }");
-            }
-            w!(w, ";\n");
-        }
-    }
-
-    fn emit_struct(&self, decl_w: &mut Twine, impl_w: &mut Twine, def: &Def, struct_ty: &StructTy) {
-        let struct_name = &def.ident.name;
-
-        w!(decl_w, "struct ", struct_name);
-
-        if let Some(parent) = struct_ty.parent {
-            w!(decl_w, " : public ", self.scoped_name(parent, def.id));
-        }
-
-        w!(decl_w, " {\n");
-
-        self.emit_struct_like_constructors(decl_w, def, &struct_ty.members);
-        self.emit_struct_like_comparison_operators(decl_w, def, &struct_ty.members);
-
-        w!(decl_w, "\n");
-
-        self.emit_members(decl_w, def, &struct_ty.members);
-
-        w!(decl_w, "};\n\n");
-
-        self.emit_typedef_sequence(decl_w, struct_name);
-        self.emit_hash_specialization(impl_w, def);
-        if !struct_ty.members.is_empty() {
-            self.emit_struct_like_constructor_impl(impl_w, def, &struct_ty.members);
-        }
-        self.emit_struct_like_comparison_impl(impl_w, def, &struct_ty.members);
-    }
-
-    fn emit_exception(
-        &self,
-        decl_w: &mut Twine,
-        impl_w: &mut Twine,
-        def: &Def,
-        except_ty: &ic_hir::hir::ExceptTy,
-    ) {
-        let exception_name = &def.ident.name;
-
-        w!(decl_w, "struct ", exception_name, " : std::runtime_error\n");
-        w!(decl_w, " {\n");
-
-        self.emit_exception_constructors(decl_w, impl_w, def, &except_ty.members);
-        self.emit_struct_like_comparison_operators(decl_w, def, &except_ty.members);
-
-        w!(decl_w, "\n");
-
-        self.emit_members(decl_w, def, &except_ty.members);
-
-        w!(decl_w, "};\n\n");
-
-        self.emit_hash_specialization(impl_w, def);
-        self.emit_struct_like_comparison_impl(impl_w, def, &except_ty.members);
-    }
-
-    fn emit_exception_constructors(
-        &self,
-        decl_w: &mut Twine,
-        impl_w: &mut Twine,
-        def: &Def,
-        members: &[ic_hir::hir::Member],
-    ) {
-        let exception_name = &def.ident.name;
-
-        w!(decl_w, exception_name, "();\n");
-        w!(decl_w, exception_name, "(const ", exception_name, "&) = default;\n");
-        w!(decl_w, exception_name, "& operator=(const ", exception_name, "&) = default;\n");
-        w!(decl_w, exception_name, "(", exception_name, "&&) = default;\n");
-        w!(decl_w, exception_name, "& operator=(", exception_name, "&&) = default;\n");
-
-        if !members.is_empty() {
-            if members.len() == 1 {
-                w!(decl_w, "explicit ");
-            }
-            w!(decl_w, exception_name, "(\n");
-            for (i, member) in members.iter().enumerate() {
-                let ty_str = self.cpp_type(&member.ty, def.id);
-                w!(decl_w, ty_str, " a_", member.ident.name);
-                if i < members.len() - 1 {
-                    w!(decl_w, ",\n");
-                }
-            }
-            w!(decl_w, ");\n");
-        }
-
-        w!(impl_w, "inline ", exception_name, "::", exception_name, "()  :\n");
-        w!(impl_w, "runtime_error(\"", exception_name, "\") {}\n\n");
-
-        if !members.is_empty() {
-            let qualified_name = self.qualified_struct_name(def.id);
-            w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
-            for (i, member) in members.iter().enumerate() {
-                let ty_str = self.cpp_type(&member.ty, def.id);
-                w!(impl_w, ty_str, " a_", member.ident.name);
-                if i < members.len() - 1 {
-                    w!(impl_w, ",\n");
-                }
-            }
-            w!(impl_w, ") :\n");
-            w!(impl_w, "runtime_error(\"", exception_name, "\"),\n");
-
-            for (i, member) in members.iter().enumerate() {
-                if self.should_use_move(&member.ty) {
-                    w!(impl_w, member.ident.name, "(std::move(a_", member.ident.name, "))");
-                } else {
-                    w!(impl_w, member.ident.name, "(a_", member.ident.name, ")");
-                }
-                if i < members.len() - 1 {
-                    w!(impl_w, ",\n");
-                }
-            }
-            w!(impl_w, " {}\n\n");
-        }
-    }
-
-    fn emit_struct_like_constructors(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        members: &[ic_hir::hir::Member],
-    ) {
-        let struct_name = &def.ident.name;
-
-        w!(w, struct_name, "() = default;\n");
-        w!(w, struct_name, "(const ", struct_name, "&) = default;\n");
-        w!(w, struct_name, "& operator=(const ", struct_name, "&) = default;\n");
-        w!(w, struct_name, "(", struct_name, "&&) = default;\n");
-        w!(w, struct_name, "& operator=(", struct_name, "&&) = default;\n");
-
-        if !members.is_empty() {
-            if members.len() == 1 {
-                w!(w, "explicit ");
-            }
-            w!(w, struct_name, "(\n");
-            for (i, member) in members.iter().enumerate() {
-                let ty_str = self.cpp_type(&member.ty, def.id);
-                w!(w, ty_str, " a_", member.ident.name);
-                if i < members.len() - 1 {
-                    w!(w, ",\n");
-                }
-            }
-            w!(w, ");\n");
-        }
-    }
-
-    fn emit_struct_like_comparison_operators(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        _members: &[ic_hir::hir::Member],
-    ) {
-        let struct_name = &def.ident.name;
-
-        w!(w, "bool operator<(const ", struct_name, "& a_other) const;\n");
-        w!(w, "bool operator==(const ", struct_name, "& a_other) const;\n");
-        w!(w, "bool operator!=(const ", struct_name, "& a_other) const { return !(*this == a_other); }\n");
-        w!(w, "bool operator>(const ", struct_name, "& a_other) const { return a_other < *this; }\n");
-        w!(w, "bool operator<=(const ", struct_name, "& a_other) const { return !(a_other < *this); }\n");
-        w!(w, "bool operator>=(const ", struct_name, "& a_other) const { return !(*this < a_other); }\n");
-    }
-
-    pub fn has_default_value(&self, ty: &Ty) -> bool {
-        match &ty.kind {
-            TyKind::Primitive(prim) => matches!(
-                prim,
-                ic_hir::hir::PrimitiveTy::Int8
-                    | ic_hir::hir::PrimitiveTy::Int16
-                    | ic_hir::hir::PrimitiveTy::Int32
-                    | ic_hir::hir::PrimitiveTy::Int64
-                    | ic_hir::hir::PrimitiveTy::UInt8
-                    | ic_hir::hir::PrimitiveTy::UInt16
-                    | ic_hir::hir::PrimitiveTy::UInt32
-                    | ic_hir::hir::PrimitiveTy::UInt64
-                    | ic_hir::hir::PrimitiveTy::Bool
-                    | ic_hir::hir::PrimitiveTy::Float32
-                    | ic_hir::hir::PrimitiveTy::Float64
-                    | ic_hir::hir::PrimitiveTy::Float128
-                    | ic_hir::hir::PrimitiveTy::Char
-                    | ic_hir::hir::PrimitiveTy::WChar
-            ),
-            TyKind::Array { .. } => true,
-            _ => false,
-        }
-    }
-
+    #[allow(clippy::unused_self)]
     pub fn should_use_move(&self, ty: &Ty) -> bool {
-        match &ty.kind {
-            TyKind::Primitive(_) => false,
-            _ => true,
-        }
+        !matches!(&ty.kind, TyKind::Primitive(_))
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     pub fn emit_default_initializer(&self, w: &mut Twine, ty: &Ty) {
         match &ty.kind {
             TyKind::Primitive(prim) => match prim {
@@ -478,10 +321,6 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    fn emit_typedef_sequence(&self, w: &mut Twine, struct_name: &str) {
-        w!(w, "using ", struct_name, "Seq = ::std::vector<", struct_name, ">;\n");
-    }
-
     pub fn emit_hash_specialization(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.qualified_struct_name(def.id);
 
@@ -489,200 +328,151 @@ impl<'a> CppGen<'a> {
         w!(w, "struct std::hash<", qualified_name, "> {\n");
         w!(w, "using argument_type = ", qualified_name, ";\n");
         w!(w, "using result_type = std::size_t;\n");
-        w!(w, "result_type operator()(const argument_type&) const noexcept;\n");
-        w!(w, "};\n");
-    }
+        w!(w, "result_type operator()(const argument_type& s) const noexcept {\n");
+        w!(w, "result_type h = 0;\n");
 
-    fn emit_struct_like_constructor_impl(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        members: &[ic_hir::hir::Member],
-    ) {
-        let qualified_name = self.qualified_struct_name(def.id);
-        let struct_name = &def.ident.name;
-
-        w!(w, "inline ", qualified_name, "::", struct_name, "(\n");
-        for (i, member) in members.iter().enumerate() {
-            let ty_str = self.cpp_type(&member.ty, def.id);
-            w!(w, ty_str, " a_", member.ident.name);
-            if i < members.len() - 1 {
-                w!(w, ",\n");
+        match &def.kind {
+            DefKind::Struct(struct_ty) => {
+                self.emit_hash_struct_members(w, def, &struct_ty.members);
             }
-        }
-        w!(w, ") :\n");
-
-        for (i, member) in members.iter().enumerate() {
-            if self.should_use_move(&member.ty) {
-                w!(w, member.ident.name, "(std::move(a_", member.ident.name, "))");
-            } else {
-                w!(w, member.ident.name, "(a_", member.ident.name, ")");
+            DefKind::Union(union_ty) => {
+                self.emit_hash_union(w, def, union_ty);
             }
-            if i < members.len() - 1 {
-                w!(w, ",\n");
+            DefKind::Except(except_ty) => {
+                self.emit_hash_struct_members(w, def, &except_ty.members);
             }
-        }
-        w!(w, " {}\n\n");
-    }
-
-    fn emit_struct_like_comparison_impl(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        members: &[ic_hir::hir::Member],
-    ) {
-        let qualified_name = self.qualified_struct_name(def.id);
-        let param = if members.is_empty() { "" } else { " a_other" };
-
-        w!(w, "inline bool ", qualified_name, "::operator<(const ", qualified_name, "&", param, ") const {\n");
-        if members.is_empty() {
-            w!(w, "return false;\n");
-        } else {
-            for (i, member) in members.iter().enumerate() {
-                let member_name = &member.ident.name;
-                if i < members.len() - 1 {
-                    w!(w, "if (this->", member_name, " < a_other.", member_name, ") { return true; }\n");
-                    w!(w, "if (a_other.", member_name, " < this->", member_name, ") { return false; }\n");
-                } else {
-                    w!(w, "return this->", member_name, " < a_other.", member_name, ";\n");
-                }
-            }
-        }
-        w!(w, "}\n\n");
-
-        w!(w, "inline bool ", qualified_name, "::operator==(const ", qualified_name, "&", param, ") const {\n");
-        for member in members {
-            let member_name = &member.ident.name;
-            w!(w, "if (!(this->", member_name, " == a_other.", member_name, ")) { return false; }\n");
-        }
-        w!(w, "return true;\n");
-        w!(w, "}\n\n");
-    }
-
-    fn emit_enum(&self, decl_w: &mut Twine, def: &Def, enum_ty: &ic_hir::hir::EnumTy) {
-        let enum_name = &def.ident.name;
-
-        if self.options.scoped_enums {
-            w!(decl_w, "enum class ", enum_name, " : int32_t {\n");
-        } else {
-            w!(decl_w, "enum ", enum_name, " : int32_t {\n");
-        }
-
-        for (i, &field_id) in enum_ty.fields.iter().enumerate() {
-            let field_def = self.hir.context.definitions.get(field_id);
-            let field_name = &field_def.ident.name;
-
-            w!(decl_w, field_name);
-
-            if field_def
-                .flags
-                .contains(ic_hir::hir::DefFlags::IS_ENUMERATED)
-            {
-                if let ic_hir::hir::DefKind::Const(const_ty) = &field_def.kind {
-                    w!(decl_w, " = ");
-                    self.emit_numeric_value(decl_w, &const_ty.value);
-                }
-            }
-
-            if i < enum_ty.fields.len() - 1 {
-                w!(decl_w, ",\n");
-            } else {
-                w!(decl_w, "\n");
-            }
-        }
-
-        w!(decl_w, "};\n\n");
-    }
-
-    fn emit_bitmask(&self, decl_w: &mut Twine, def: &Def, bitmask_ty: &ic_hir::hir::BitmaskTy) {
-        let bitmask_name = &def.ident.name;
-        let underlying_type = cpp_primitive(bitmask_ty.ty);
-
-        w!(decl_w, "enum ", bitmask_name, "Bits : ", underlying_type, " {\n");
-
-        for (i, &flag_id) in bitmask_ty.flags.iter().enumerate() {
-            let flag_def = self.hir.context.definitions.get(flag_id);
-            let flag_name = &flag_def.ident.name;
-
-            w!(decl_w, flag_name, " = ");
-
-            if let ic_hir::hir::DefKind::Const(const_ty) = &flag_def.kind {
-                self.emit_numeric_value(decl_w, &const_ty.value);
-            }
-
-            if i < bitmask_ty.flags.len() - 1 {
-                w!(decl_w, ",\n");
-            } else {
-                w!(decl_w, "\n");
-            }
-        }
-
-        w!(decl_w, "};\n\n");
-        w!(decl_w, "using ", bitmask_name, " = ", underlying_type, ";\n\n");
-    }
-
-    fn emit_const(&self, decl_w: &mut Twine, def: &Def, const_ty: &ic_hir::hir::ConstTy) {
-        let const_name = &def.ident.name;
-
-        match &const_ty.value {
-            ic_hir::hir::Numeric::String(s) => {
-                w!(decl_w, "inline constexpr const char* ", const_name, " = \"");
-                self.emit_escaped_string(decl_w, s);
-                w!(decl_w, "\";\n");
-            }
-            ic_hir::hir::Numeric::Const(const_def_id) => {
-                let referenced_const_def = self.hir.context.definitions.get(*const_def_id);
-                let referenced_const_scoped_name = self.scoped_name(*const_def_id, def.id);
-
-                let ty_str =
-                    if let ic_hir::hir::DefKind::Const(ref_const_ty) = &referenced_const_def.kind {
-                        if matches!(ref_const_ty.value, ic_hir::hir::Numeric::String(_)) {
-                            "const char*".to_string()
-                        } else {
-                            self.cpp_type(&const_ty.ty, def.id)
-                        }
-                    } else {
-                        self.cpp_type(&const_ty.ty, def.id)
-                    };
-
-                w!(decl_w, "inline constexpr ", ty_str, " ", const_name, " = ", referenced_const_scoped_name, ";\n");
-            }
-            _ => {
-                let ty_str = self.cpp_type(&const_ty.ty, def.id);
-                w!(decl_w, "inline constexpr ", ty_str, " ", const_name, " = ");
-                self.emit_numeric_value(decl_w, &const_ty.value);
-                w!(decl_w, ";\n");
-            }
-        }
-    }
-
-    fn emit_escaped_string(&self, w: &mut Twine, s: &str) {
-        for ch in s.chars() {
-            match ch {
-                '"' => w!(w, "\\\""),
-                '\\' => w!(w, "\\\\"),
-                '\n' => w!(w, "\\n"),
-                '\r' => w!(w, "\\r"),
-                '\t' => w!(w, "\\t"),
-                _ => w!(w, ch.to_string()),
-            }
-        }
-    }
-
-    pub fn emit_numeric_value(&self, w: &mut Twine, value: &ic_hir::hir::Numeric) {
-        match value {
-            ic_hir::hir::Numeric::Int8(v) => w!(w, v.to_string()),
-            ic_hir::hir::Numeric::UInt8(v) => w!(w, v.to_string(), "U"),
-            ic_hir::hir::Numeric::Int16(v) => w!(w, v.to_string()),
-            ic_hir::hir::Numeric::UInt16(v) => w!(w, v.to_string(), "U"),
-            ic_hir::hir::Numeric::Int32(v) => w!(w, v.to_string()),
-            ic_hir::hir::Numeric::UInt32(v) => w!(w, v.to_string(), "U"),
-            ic_hir::hir::Numeric::Int64(v) => w!(w, v.to_string(), "LL"),
-            ic_hir::hir::Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
             _ => {}
         }
+
+        w!(w, "return h;\n");
+        w!(w, "}\n");
+        w!(w, "};\n\n");
     }
 
+    fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
+        // Check if this struct has a parent
+        if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind {
+            if let Some(parent_id) = struct_ty.parent {
+                let parent_name = self.qualified_struct_name(parent_id);
+                w!(w, "h ^= std::hash<", parent_name, ">()(s);\n");
+            }
+        }
+
+        // Hash own members
+        for member in members {
+            let member_name = format!("s.{}", member.ident.name);
+            self.emit_hash_member(w, &member_name, &member.ty, def.id, 0);
+        }
+    }
+
+    fn emit_hash_union(&self, w: &mut Twine, def: &Def, union_ty: &ic_hir::hir::UnionTy) {
+        w!(w, "h ^= std::hash<");
+        w!(w, self.cpp_type(&union_ty.disc.ty, def.id));
+        w!(w, ">()(s._d());\n");
+
+        w!(w, "switch (s._d()) {\n");
+        w.dedent();
+
+        for variant in &union_ty.variants {
+            if variant.is_default {
+                w!(w, "default:\n");
+            } else {
+                for label in &variant.labels {
+                    w!(w, "case ");
+                    emit_numeric_value(w, &label.value);
+                    w!(w, ":\n");
+                }
+            }
+            w.indent();
+
+            let member_name = format!("s.{}()", variant.ident.name);
+            self.emit_hash_member(w, &member_name, &variant.ty, def.id, 0);
+            w!(w, "break;\n");
+
+            w.dedent();
+        }
+
+        w.indent();
+        w!(w, "}\n");
+    }
+
+    fn emit_hash_member(
+        &self,
+        w: &mut Twine,
+        name: &str,
+        ty: &Ty,
+        relative_def: DefId,
+        level: usize,
+    ) {
+        match &ty.kind {
+            TyKind::Array { ty: inner_ty, .. } => {
+                let mut current_name = name.to_string();
+                w!(w, "for (auto& value_", level, " : ", current_name, ") {\n");
+                current_name = format!("value_{level}");
+                self.emit_hash_member(w, &current_name, inner_ty, relative_def, level + 1);
+                w!(w, "}\n");
+            }
+            TyKind::Sequence { ty: inner_ty, .. } => {
+                let new_name = format!("value_{level}");
+                let by_ref = if self.should_use_move(inner_ty) {
+                    "&"
+                } else {
+                    ""
+                };
+                w!(w, "for (auto", by_ref, " ", new_name, " : ", name, ") {\n");
+                self.emit_hash_member(w, &new_name, inner_ty, relative_def, level + 1);
+                w!(w, "}\n");
+            }
+            TyKind::Map { key, elem, .. } => {
+                let new_name = format!("value_{level}");
+                let by_ref = if self.should_use_move(elem) { "&" } else { "" };
+                w!(w, "for (auto", by_ref, " ", new_name, " : ", name, ") {\n");
+
+                let key_name = format!("{new_name}.first");
+                self.emit_hash_member(w, &key_name, key, relative_def, level + 1);
+
+                let elem_name = format!("{new_name}.second");
+                self.emit_hash_member(w, &elem_name, elem, relative_def, level + 1);
+
+                w!(w, "}\n");
+            }
+            _ => {
+                let type_str = self.cpp_type(ty, relative_def);
+                w!(w, "h ^= std::hash<", type_str, ">()(", name, ");\n");
+            }
+        }
+    }
+}
+
+pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
+    for ch in s.chars() {
+        match ch {
+            '"' => w!(w, "\\\""),
+            '\\' => w!(w, "\\\\"),
+            '\n' => w!(w, "\\n"),
+            '\r' => w!(w, "\\r"),
+            '\t' => w!(w, "\\t"),
+            _ => w!(w, ch.to_string()),
+        }
+    }
+}
+
+pub(crate) fn emit_numeric_value(w: &mut Twine, value: &ic_hir::hir::Numeric) {
+    match value {
+        ic_hir::hir::Numeric::Int8(v) => w!(w, v.to_string()),
+        ic_hir::hir::Numeric::UInt8(v) => w!(w, v.to_string(), "U"),
+        ic_hir::hir::Numeric::Int16(v) => w!(w, v.to_string()),
+        ic_hir::hir::Numeric::UInt16(v) => w!(w, v.to_string(), "U"),
+        ic_hir::hir::Numeric::Int32(v) => w!(w, v.to_string()),
+        ic_hir::hir::Numeric::UInt32(v) => w!(w, v.to_string(), "U"),
+        ic_hir::hir::Numeric::Int64(v) => w!(w, v.to_string(), "LL"),
+        ic_hir::hir::Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
+        _ => {}
+    }
+}
+
+#[allow(clippy::unused_self)]
+impl CppGen<'_> {
     fn emit_module(
         &self,
         decl_w: &mut Twine,
@@ -696,12 +486,6 @@ impl<'a> CppGen<'a> {
             self.emit_definition(decl_w, impl_w, nested_id);
         }
         w!(decl_w, "} // namespace ", def.ident.name, "\n\n");
-    }
-
-    fn emit_typedef(&self, decl_w: &mut Twine, def: &Def, alias_ty: &ic_hir::hir::AliasTy) {
-        let alias_name = &def.ident.name;
-        let ty_str = self.cpp_type(&alias_ty.ty, def.id);
-        w!(decl_w, "using ", alias_name, " = ", ty_str, ";\n");
     }
 
     fn emit_interface(
@@ -760,7 +544,7 @@ impl<'a> CppGen<'a> {
         w!(w, ") = 0;\n\n");
     }
 
-    fn emit_forward_decl(&self, w: &mut Twine, def: &Def, decl: &ic_hir::hir::Decl) {
+    fn emit_forward_decl(&self, w: &mut Twine, def: &Def, decl: ic_hir::hir::Decl) {
         match decl {
             ic_hir::hir::Decl::Struct | ic_hir::hir::Decl::Union => {
                 w!(w, "struct ", def.ident.name, ";\n");
@@ -787,7 +571,7 @@ impl<'a> CppGen<'a> {
             DefKind::Interface(interface_ty) => {
                 self.emit_interface(decl_w, impl_w, def, interface_ty);
             }
-            DefKind::Decl(decl) => self.emit_forward_decl(decl_w, def, decl),
+            DefKind::Decl(decl) => self.emit_forward_decl(decl_w, def, *decl),
             _ => {}
         }
     }
@@ -829,14 +613,13 @@ impl<'a> CppGen<'a> {
             deps_vec.sort();
 
             for &dep_file_id in &deps_vec {
-                let dep_file = self
-                    .source_map
-                    .name(dep_file_id)
+                let dep_file_path = self.source_map.name(dep_file_id);
+                let dep_file_with_h = dep_file_path.with_extension("h");
+                let dep_file_h = dep_file_with_h
                     .file_name()
                     .and_then(|s| s.to_str())
                     .unwrap();
 
-                let dep_file_h = dep_file.replace(".idl", ".h");
                 w!(header, "\n#include \"", dep_file_h, "\"");
             }
 
@@ -861,5 +644,25 @@ impl<'a> CppGen<'a> {
             });
         }
         result
+    }
+}
+
+pub(crate) fn cpp_primitive(prim: PrimitiveTy) -> &'static str {
+    match prim {
+        PrimitiveTy::Void => "void",
+        PrimitiveTy::Bool => "bool",
+        PrimitiveTy::Char => "char",
+        PrimitiveTy::WChar => "char16_t",
+        PrimitiveTy::Int8 => "int8_t",
+        PrimitiveTy::UInt8 => "uint8_t",
+        PrimitiveTy::Int16 => "int16_t",
+        PrimitiveTy::UInt16 => "uint16_t",
+        PrimitiveTy::Int32 => "int32_t",
+        PrimitiveTy::UInt32 => "uint32_t",
+        PrimitiveTy::Int64 => "int64_t",
+        PrimitiveTy::UInt64 => "uint64_t",
+        PrimitiveTy::Float32 => "float",
+        PrimitiveTy::Float64 => "double",
+        PrimitiveTy::Float128 => "long double",
     }
 }

@@ -48,6 +48,7 @@ pub struct CppGen<'a> {
     source_map: &'a SourceMap,
 }
 
+#[allow(clippy::unused_self)]
 impl<'a> CppGen<'a> {
     pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: CppOptions) -> Self {
         Self {
@@ -127,70 +128,54 @@ impl<'a> CppGen<'a> {
     ) -> String {
         let type_name = self.cpp_name(target_def_id).to_string();
         let relative_to_def_id = relative_to_def_id.into();
-        let target_scope = self.get_scope(target_def_id);
+        let target_scope_id = self
+            .hir
+            .context
+            .scopes
+            .find_scope_containing_def(target_def_id);
 
-        match (target_scope, relative_to_def_id) {
-            (None, _) => type_name,
-            (Some(target_scope), None) => {
-                let full_path = self.build_path_from(target_scope, None);
-                let pkg_name = full_path.join("::");
-                if pkg_name.is_empty() {
-                    type_name
-                } else {
-                    format!("{pkg_name}::{type_name}")
+        let Some(target_scope_id) = target_scope_id else {
+            return type_name;
+        };
+
+        if let Some(relative_to_def_id) = relative_to_def_id {
+            let current_scope_id = self
+                .hir
+                .context
+                .scopes
+                .find_scope_containing_def(relative_to_def_id);
+
+            if Some(target_scope_id) == current_scope_id {
+                return type_name;
+            }
+
+            if current_scope_id.is_some() {
+                let Some(target_scope) = self.get_scope(target_def_id) else {
+                    return type_name;
+                };
+                let common = self.common_scope(target_def_id, relative_to_def_id);
+                if common == Some(target_scope) || common == self.get_scope(relative_to_def_id) {
+                    let relative_path = self.build_path_from(target_scope, common);
+                    let pkg_name = relative_path.join("::");
+                    let name = if pkg_name.is_empty() {
+                        type_name
+                    } else {
+                        format!("{pkg_name}::{type_name}")
+                    };
+                    return name;
                 }
             }
-            (Some(target_scope), Some(relative_to_def_id)) => {
-                let current_scope = self.get_scope(relative_to_def_id);
+        }
 
-                match current_scope {
-                    None => {
-                        let full_path = self.build_path_from(target_scope, None);
-                        let pkg_name = full_path.join("::");
-                        if pkg_name.is_empty() {
-                            type_name
-                        } else {
-                            format!("{pkg_name}::{type_name}")
-                        }
-                    }
-                    Some(current_scope) => {
-                        let target_scope_id = self
-                            .hir
-                            .context
-                            .scopes
-                            .find_scope_containing_def(target_def_id);
-
-                        let current_scope_id = self
-                            .hir
-                            .context
-                            .scopes
-                            .find_scope_containing_def(relative_to_def_id);
-
-                        if target_scope_id == current_scope_id && target_scope_id.is_some() {
-                            return type_name;
-                        }
-
-                        let common = self.common_scope(target_def_id, relative_to_def_id);
-                        if common == Some(target_scope) || common == Some(current_scope) {
-                            let relative_path = self.build_path_from(target_scope, common);
-                            let pkg_name = relative_path.join("::");
-                            if pkg_name.is_empty() {
-                                type_name
-                            } else {
-                                format!("{pkg_name}::{type_name}")
-                            }
-                        } else {
-                            let full_path = self.build_path_from(target_scope, None);
-                            let pkg_name = full_path.join("::");
-                            if pkg_name.is_empty() {
-                                type_name
-                            } else {
-                                format!("{pkg_name}::{type_name}")
-                            }
-                        }
-                    }
-                }
-            }
+        let Some(target_scope) = self.get_scope(target_def_id) else {
+            return type_name;
+        };
+        let full_path = self.build_path_from(target_scope, None);
+        let pkg_name = full_path.join("::");
+        if pkg_name.is_empty() {
+            type_name
+        } else {
+            format!("{pkg_name}::{type_name}")
         }
     }
 
@@ -252,7 +237,6 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    #[allow(clippy::unused_self)]
     pub fn should_use_move(&self, ty: &Ty) -> bool {
         !matches!(&ty.kind, TyKind::Primitive(_))
     }
@@ -356,8 +340,8 @@ impl<'a> CppGen<'a> {
     pub fn emit_type_traits_with_suffix(&self, w: &mut Twine, def: &Def, suffix: &str) {
         let qualified_name = self.scoped_name(def.id, None);
         let struct_name = &def.ident.name;
-        let full_qualified_name = format!("{}{}", qualified_name, suffix);
-        let full_struct_name = format!("{}{}", struct_name, suffix);
+        let full_qualified_name = format!("{qualified_name}{suffix}");
+        let full_struct_name = format!("{struct_name}{suffix}");
 
         w!(w, "template <>\n");
         w!(w, "struct ::ic_cts::TypeTraits<", full_qualified_name, "> {\n");
@@ -510,23 +494,7 @@ impl<'a> CppGen<'a> {
             }
         }
     }
-}
 
-pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
-    for ch in s.chars() {
-        match ch {
-            '"' => w!(w, "\\\""),
-            '\\' => w!(w, "\\\\"),
-            '\n' => w!(w, "\\n"),
-            '\r' => w!(w, "\\r"),
-            '\t' => w!(w, "\\t"),
-            _ => w!(w, ch.to_string()),
-        }
-    }
-}
-
-#[allow(clippy::unused_self)]
-impl CppGen<'_> {
     fn emit_module(&self, decl_w: &mut Twine, impl_w: &mut Twine, def: &Def, module: &ModuleTy) {
         w!(decl_w, "namespace ", def.ident.name, " {\n");
         decl_w.dedent();
@@ -640,7 +608,7 @@ impl CppGen<'_> {
 
     fn build_path(&self, file_name: &str) -> String {
         if let Some(subfolder) = &self.options.header_subdir {
-            format!("{}/{}", subfolder, file_name).replace('\\', "/")
+            format!("{subfolder}/{file_name}").replace('\\', "/")
         } else {
             file_name.replace('\\', "/")
         }
@@ -725,5 +693,18 @@ pub(crate) fn cpp_primitive(prim: PrimitiveTy) -> &'static str {
         PrimitiveTy::Float32 => "float",
         PrimitiveTy::Float64 => "double",
         PrimitiveTy::Float128 => "long double",
+    }
+}
+
+pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
+    for ch in s.chars() {
+        match ch {
+            '"' => w!(w, "\\\""),
+            '\\' => w!(w, "\\\\"),
+            '\n' => w!(w, "\\n"),
+            '\r' => w!(w, "\\r"),
+            '\t' => w!(w, "\\t"),
+            _ => w!(w, ch.to_string()),
+        }
     }
 }

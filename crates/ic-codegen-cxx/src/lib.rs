@@ -34,6 +34,7 @@ mod codegen;
 mod deps;
 mod scalars;
 mod structs;
+mod type_info;
 mod unions;
 
 #[derive(Command, Debug, Default, Clone)]

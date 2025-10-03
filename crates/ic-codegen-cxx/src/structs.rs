@@ -168,7 +168,10 @@ impl CppGen<'_> {
         }
     }
 
-    fn collect_all_members(&self, def_id: ic_hir::hir::DefId) -> Vec<ic_hir::hir::Member> {
+    pub(crate) fn collect_all_members(
+        &self,
+        def_id: ic_hir::hir::DefId,
+    ) -> Vec<ic_hir::hir::Member> {
         let def = self.hir.context.definitions.get(def_id);
         let mut all_members = Vec::new();
 

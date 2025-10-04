@@ -149,6 +149,18 @@ impl CppGen<'_> {
         w!(w, "};\n\n");
     }
 
+    fn needs_static_keyword(&self, def: &Def) -> bool {
+        if let Some(parent_id) = def.parent {
+            let parent_def = self.hir.context.definitions.get(parent_id);
+            matches!(
+                parent_def.kind,
+                ic_hir::hir::DefKind::Valuetype(_) | ic_hir::hir::DefKind::Interface(_)
+            )
+        } else {
+            false
+        }
+    }
+
     pub fn emit_const(&self, decl_w: &mut Twine, def: &Def, const_ty: &ic_hir::hir::ConstTy) {
         let const_name = &def.ident.name;
         let constness = if self.is_constexpr_type(&const_ty.ty) {
@@ -157,9 +169,15 @@ impl CppGen<'_> {
             "const"
         };
 
+        let static_keyword = if self.needs_static_keyword(def) {
+            "static "
+        } else {
+            ""
+        };
+
         match &const_ty.value {
             ic_hir::hir::Numeric::String(s) => {
-                w!(decl_w, "inline constexpr const char* ", const_name, " = \"");
+                w!(decl_w, "inline ", static_keyword, "constexpr const char* ", const_name, " = \"");
                 emit_escaped_string(decl_w, s);
                 w!(decl_w, "\";\n\n");
             }
@@ -178,12 +196,12 @@ impl CppGen<'_> {
                         self.cpp_type(&const_ty.ty, def.id)
                     };
 
-                w!(decl_w, "inline ", constness, " ", ty_str, " ", const_name, "{");
+                w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
                 w!(decl_w, scoped_name, "};\n\n");
             }
             _ => {
                 let ty_str = self.cpp_type(&const_ty.ty, def.id);
-                w!(decl_w, "inline ", constness, " ", ty_str, " ", const_name, "{");
+                w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
                 self.emit_numeric_value(decl_w, &const_ty.value, def.id);
                 w!(decl_w, "};\n\n");
             }

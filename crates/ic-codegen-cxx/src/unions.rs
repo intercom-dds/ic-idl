@@ -332,6 +332,10 @@ impl CppGen<'_> {
                         result.push('}');
                         result
                     }
+                    ic_hir::hir::DefKind::Union(_) => {
+                        let type_name = self.cpp_type(ty, relative_def);
+                        format!("{type_name}{{}}")
+                    }
                     ic_hir::hir::DefKind::Alias(_) => {
                         let type_name = self.cpp_type(ty, relative_def);
                         format!("{type_name}{{}}")

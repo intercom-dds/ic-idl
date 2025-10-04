@@ -273,6 +273,27 @@ impl<'a> CppGen<'a> {
         value: &Numeric,
         relative_def: impl Into<Option<DefId>>,
     ) {
+        self.emit_numeric_value_impl(w, value, relative_def, None, false);
+    }
+
+    pub fn emit_numeric_value_with_type(
+        &self,
+        w: &mut Twine,
+        value: &Numeric,
+        relative_def: impl Into<Option<DefId>>,
+        expected_ty: Option<&Ty>,
+    ) {
+        self.emit_numeric_value_impl(w, value, relative_def, expected_ty, false);
+    }
+
+    fn emit_numeric_value_impl(
+        &self,
+        w: &mut Twine,
+        value: &Numeric,
+        relative_def: impl Into<Option<DefId>>,
+        expected_ty: Option<&Ty>,
+        emit_type_for_struct: bool,
+    ) {
         let relative_def_opt = relative_def.into();
         match value {
             Numeric::Null => w!(w, "nullptr"),
@@ -307,15 +328,27 @@ impl<'a> CppGen<'a> {
                 }
                 w!(w, "}");
             }
-            Numeric::Struct { fields, .. } => {
-                w!(w, "{");
+            Numeric::Struct {
+                fields,
+                ty: struct_def_id,
+            } => {
+                if emit_type_for_struct {
+                    let type_name = if let Some(ty) = expected_ty {
+                        self.cpp_type(ty, relative_def_opt)
+                    } else {
+                        self.scoped_name(*struct_def_id, relative_def_opt)
+                    };
+                    w!(w, type_name, "{");
+                }
                 for (i, (_ident, value)) in fields.iter().enumerate() {
-                    self.emit_numeric_value(w, value, relative_def_opt);
+                    self.emit_numeric_value_impl(w, value, relative_def_opt, None, true);
                     if i < fields.len() - 1 {
                         w!(w, ", ");
                     }
                 }
-                w!(w, "}");
+                if emit_type_for_struct {
+                    w!(w, "}");
+                }
             }
             Numeric::Map { entries, .. } => {
                 w!(w, "{");
@@ -496,8 +529,10 @@ impl<'a> CppGen<'a> {
             }
             w.indent();
 
-            let member_name = format!("s.{}()", variant.ident.name);
-            self.emit_hash_member(w, &member_name, &variant.ty, 0);
+            if !matches!(variant.ty.kind, TyKind::Null) {
+                let member_name = format!("s.{}()", variant.ident.name);
+                self.emit_hash_member(w, &member_name, &variant.ty, 0);
+            }
             w!(w, "break;\n");
 
             w.dedent();

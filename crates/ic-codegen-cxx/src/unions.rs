@@ -180,6 +180,14 @@ impl CppGen<'_> {
         w!(w, "}\n");
     }
 
+    fn should_emit_variant_check(
+        &self,
+        union_ty: &ic_hir::hir::UnionTy,
+        variant: &ic_hir::hir::Variant,
+    ) -> bool {
+        !variant.is_default || union_ty.variants.len() > 1
+    }
+
     fn emit_variant_check_condition(
         &self,
         w: &mut Twine,
@@ -187,18 +195,20 @@ impl CppGen<'_> {
         variant: &ic_hir::hir::Variant,
     ) {
         if variant.is_default {
-            w!(w, UNION_DISC_FIELD, " == ");
-            for (i, v) in union_ty
-                .variants
-                .iter()
-                .filter(|v| !v.is_default)
-                .enumerate()
-            {
-                if i > 0 {
-                    w!(w, " || ", UNION_DISC_FIELD, " == ");
-                }
-                if let Some(first_label) = v.labels.first() {
-                    self.emit_numeric_value(w, &first_label.value, None);
+            let non_default_variants: Vec<_> =
+                union_ty.variants.iter().filter(|v| !v.is_default).collect();
+
+            if non_default_variants.is_empty() {
+                w!(w, "false");
+            } else {
+                w!(w, UNION_DISC_FIELD, " == ");
+                for (i, v) in non_default_variants.iter().enumerate() {
+                    if i > 0 {
+                        w!(w, " || ", UNION_DISC_FIELD, " == ");
+                    }
+                    if let Some(first_label) = v.labels.first() {
+                        self.emit_numeric_value(w, &first_label.value, None);
+                    }
                 }
             }
         } else {
@@ -209,10 +219,19 @@ impl CppGen<'_> {
         }
     }
 
-    fn emit_set_discriminator_to_variant(&self, w: &mut Twine, variant: &ic_hir::hir::Variant) {
+    fn emit_set_discriminator_to_variant(
+        &self,
+        w: &mut Twine,
+        variant: &ic_hir::hir::Variant,
+        union_ty: &ic_hir::hir::UnionTy,
+        def_id: ic_hir::hir::DefId,
+    ) {
         w!(w, UNION_DISC_FIELD, " = ");
         if let Some(first_label) = variant.labels.first() {
-            self.emit_numeric_value(w, &first_label.value, None);
+            self.emit_numeric_value(w, &first_label.value, def_id);
+        } else {
+            let default_val = self.get_default_value_expr(&union_ty.disc.ty, def_id);
+            w!(w, default_val);
         }
         w!(w, ";\n");
     }
@@ -231,13 +250,15 @@ impl CppGen<'_> {
         union_ty: &ic_hir::hir::UnionTy,
         discriminator_var: &str,
     ) {
+        let non_default_variants: Vec<_> =
+            union_ty.variants.iter().filter(|v| !v.is_default).collect();
+
+        if non_default_variants.is_empty() {
+            return;
+        }
+
         w!(w, "if (");
-        for (i, v) in union_ty
-            .variants
-            .iter()
-            .filter(|v| !v.is_default)
-            .enumerate()
-        {
+        for (i, v) in non_default_variants.iter().enumerate() {
             if i > 0 {
                 w!(w, " || ");
             }
@@ -280,7 +301,7 @@ impl CppGen<'_> {
         w!(w, "inline ", qualified_name, "::", def, "() {\n");
 
         if let Some(first_variant) = union_ty.variants.first() {
-            self.emit_set_discriminator_to_variant(w, first_variant);
+            self.emit_set_discriminator_to_variant(w, first_variant, union_ty, def.id);
             let default_val = self.get_default_value_expr(&first_variant.ty, def.id);
             self.emit_variant_init(w, first_variant, &default_val);
         }
@@ -331,6 +352,13 @@ impl CppGen<'_> {
                         }
                         result.push('}');
                         result
+                    }
+                    ic_hir::hir::DefKind::Enum(enum_ty) => {
+                        if let Some(&first_field_id) = enum_ty.fields.first() {
+                            self.scoped_name(first_field_id, relative_def)
+                        } else {
+                            "0".to_string()
+                        }
                     }
                     ic_hir::hir::DefKind::Union(_) => {
                         let type_name = self.cpp_type(ty, relative_def);
@@ -523,14 +551,22 @@ impl CppGen<'_> {
 
         self.emit_union_switch(w, union_ty, "discriminator", |w, variant| {
             if variant.is_default {
-                self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
+                let has_non_default = union_ty.variants.iter().any(|v| !v.is_default);
+
+                if has_non_default {
+                    self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
+                }
+
                 w!(w, "free_union_();\n");
 
                 if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
                     let default_val = self.get_default_value_expr(&variant.ty, def.id);
                     self.emit_variant_init(w, variant, &default_val);
                 }
-                w!(w, "}\n");
+
+                if has_non_default {
+                    w!(w, "}\n");
+                }
             } else {
                 if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
                     w!(w, "if (", UNION_DISC_FIELD, " != ");
@@ -580,11 +616,13 @@ impl CppGen<'_> {
 
         // Reference getter
         w!(w, "inline ", member_type, "& ", qualified_name, "::", member_name, "() {\n");
-        w!(w, "if (");
-        self.emit_variant_check_condition(w, union_ty, variant);
-        w!(w, ") {\n");
-        w!(w, "throw std::logic_error(\"Union ", def, " not set to value ", member_name, "\");\n");
-        w!(w, "}\n");
+        if self.should_emit_variant_check(union_ty, variant) {
+            w!(w, "if (");
+            self.emit_variant_check_condition(w, union_ty, variant);
+            w!(w, ") {\n");
+            w!(w, "throw std::logic_error(\"Union ", def, " not set to value ", member_name, "\");\n");
+            w!(w, "}\n");
+        }
         w!(w, "return ic_union_value_.", member_name, ";\n");
         w!(w, "}\n\n");
 
@@ -594,11 +632,13 @@ impl CppGen<'_> {
         } else {
             w!(w, "inline ", member_type, " ", qualified_name, "::", member_name, "() const {\n");
         }
-        w!(w, "if (");
-        self.emit_variant_check_condition(w, union_ty, variant);
-        w!(w, ") {\n");
-        w!(w, "throw std::logic_error(\"Union ", def, " not set to value ", member_name, "\");\n");
-        w!(w, "}\n");
+        if self.should_emit_variant_check(union_ty, variant) {
+            w!(w, "if (");
+            self.emit_variant_check_condition(w, union_ty, variant);
+            w!(w, ") {\n");
+            w!(w, "throw std::logic_error(\"Union ", def, " not set to value ", member_name, "\");\n");
+            w!(w, "}\n");
+        }
         w!(w, "return ic_union_value_.", member_name, ";\n");
         w!(w, "}\n\n");
     }
@@ -652,7 +692,7 @@ impl CppGen<'_> {
         w!(w, ") {\n");
         w!(w, "free_union_();\n");
         if !variant.is_default {
-            self.emit_set_discriminator_to_variant(w, variant);
+            self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
         }
 
         if self.should_use_move(&variant.ty) {
@@ -683,7 +723,7 @@ impl CppGen<'_> {
         w!(w, ") {\n");
         w!(w, "free_union_();\n");
         if !variant.is_default {
-            self.emit_set_discriminator_to_variant(w, variant);
+            self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
         }
         w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", std::move(a_value));\n");
         w!(w, "} else {\n");
@@ -704,17 +744,21 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
         w!(w, "inline void ", qualified_name, "::", member_name, "(", member_type, " a_value, ", disc_type, " discriminator) {\n");
 
-        self.emit_default_discriminator_check(w, union_ty, "discriminator");
-        w!(
-            w,
-            "throw std::logic_error(\"Illegal discriminator for member ",
-            member_name, " of union ", def, "\");\n",
-        );
-        w!(w, "}\n");
+        let has_non_default = union_ty.variants.iter().any(|v| !v.is_default);
 
-        self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
-        w!(w, "free_union_();\n");
-        w!(w, "}\n");
+        if has_non_default {
+            self.emit_default_discriminator_check(w, union_ty, "discriminator");
+            w!(
+                w,
+                "throw std::logic_error(\"Illegal discriminator for member ",
+                member_name, " of union ", def, "\");\n",
+            );
+            w!(w, "}\n");
+
+            self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
+            w!(w, "free_union_();\n");
+            w!(w, "}\n");
+        }
 
         w!(w, "ic_union_value_.", member_name, " = a_value;\n");
         w!(w, UNION_DISC_FIELD, " = discriminator;\n");

@@ -167,7 +167,20 @@ impl<'a> CppGen<'a> {
                     let relative_path = self.build_path_from(target_scope, common);
                     let pkg_name = relative_path.join("::");
                     let name = if pkg_name.is_empty() {
-                        type_name
+                        // Target is in parent scope, need full path with :: prefix
+                        if common == Some(target_scope)
+                            && common != self.get_scope(relative_to_def_id)
+                        {
+                            let full_path = self.build_path_from(target_scope, None);
+                            let full_pkg_name = full_path.join("::");
+                            if full_pkg_name.is_empty() {
+                                format!("::{type_name}")
+                            } else {
+                                format!("::{full_pkg_name}::{type_name}")
+                            }
+                        } else {
+                            type_name
+                        }
                     } else {
                         format!("{pkg_name}::{type_name}")
                     };
@@ -363,7 +376,7 @@ impl<'a> CppGen<'a> {
         w!(w, "using ref_type = std::shared_ptr<", full_qualified_name, ">;\n");
         w!(w, "using weak_ref_type = std::weak_ptr<", full_qualified_name, ">;\n");
 
-        if let DefKind::Struct(_) | DefKind::Union(_) = &def.kind {
+        if let DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) = &def.kind {
             w!(w, "using sequence_type = std::vector<", qualified_name, ">;\n");
         }
 
@@ -374,6 +387,7 @@ impl<'a> CppGen<'a> {
             DefKind::Union(_) => w!(w, "static const bool is_union = true;\n"),
             DefKind::Enum(_) => w!(w, "static const bool is_enum = true;\n"),
             DefKind::Bitmask(_) => w!(w, "static const bool is_bitmask = true;\n"),
+            DefKind::Valuetype(_) => w!(w, "static const bool is_struct = true;\n"),
             _ => {}
         }
         w!(w, "};\n\n");
@@ -398,7 +412,16 @@ impl<'a> CppGen<'a> {
     pub fn emit_hash_implementation(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
 
-        w!(w, "std::size_t std::hash<", qualified_name, ">::operator()(const argument_type& s) const noexcept {\n");
+        let has_members = match &def.kind {
+            DefKind::Struct(_) => !self.collect_all_members(def.id).is_empty(),
+            DefKind::Valuetype(_) => !self.collect_all_valuetype_members(def.id).is_empty(),
+            DefKind::Except(except_ty) => !except_ty.members.is_empty(),
+            DefKind::Union(_) => true,
+            _ => false,
+        };
+
+        let param = if has_members { " s" } else { "" };
+        w!(w, "std::size_t std::hash<", qualified_name, ">::operator()(const argument_type&", param, ") const noexcept {\n");
         w!(w, "result_type h = 0;\n");
 
         match &def.kind {
@@ -411,6 +434,9 @@ impl<'a> CppGen<'a> {
             DefKind::Except(except_ty) => {
                 self.emit_hash_struct_members(w, def, &except_ty.members);
             }
+            DefKind::Valuetype(valuetype_ty) => {
+                self.emit_hash_struct_members(w, def, &valuetype_ty.members);
+            }
             _ => {}
         }
 
@@ -419,12 +445,20 @@ impl<'a> CppGen<'a> {
     }
 
     fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[Member]) {
-        // Check if this struct has a parent
-        if let DefKind::Struct(struct_ty) = &def.kind {
-            if let Some(parent_id) = struct_ty.parent {
-                let parent_name = self.scoped_name(parent_id, None);
-                w!(w, "h ^= ::std::hash<", parent_name, ">()(s);\n");
+        match &def.kind {
+            DefKind::Struct(struct_ty) => {
+                if let Some(parent_id) = struct_ty.parent {
+                    let parent_name = self.scoped_name(parent_id, None);
+                    w!(w, "h ^= ::std::hash<", parent_name, ">()(s);\n");
+                }
             }
+            DefKind::Valuetype(valuetype_ty) => {
+                if let Some(parent_id) = valuetype_ty.parent {
+                    let parent_name = self.scoped_name(parent_id, None);
+                    w!(w, "h ^= ::std::hash<", parent_name, ">()(s);\n");
+                }
+            }
+            _ => {}
         }
 
         // Hash own members
@@ -606,6 +640,9 @@ impl<'a> CppGen<'a> {
             DefKind::Interface(interface_ty) => {
                 self.emit_interface(decl_w, impl_w, def, interface_ty);
             }
+            DefKind::Valuetype(valuetype_ty) => {
+                self.emit_valuetype(decl_w, impl_w, def, valuetype_ty);
+            }
             DefKind::Decl(decl) => self.emit_forward_decl(decl_w, def, *decl),
             _ => {}
         }
@@ -624,6 +661,14 @@ impl<'a> CppGen<'a> {
                 for &nested_id in &interface.definitions {
                     self.emit_cpp_definition(w, nested_id);
                 }
+            }
+            DefKind::Valuetype(valuetype) => {
+                for &nested_id in &valuetype.definitions {
+                    self.emit_cpp_definition(w, nested_id);
+                }
+                self.emit_hash_implementation(w, def);
+                self.emit_member_info(w, def);
+                self.emit_type_info_definition(w, def);
             }
             DefKind::Struct(_) | DefKind::Union(_) => {
                 self.emit_hash_implementation(w, def);

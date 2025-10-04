@@ -36,6 +36,7 @@ mod scalars;
 mod structs;
 mod type_info;
 mod unions;
+mod valuetypes;
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct CppOptions {

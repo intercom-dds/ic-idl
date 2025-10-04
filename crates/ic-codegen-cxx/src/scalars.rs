@@ -85,7 +85,7 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template <class Archive>\n");
-        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
         w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
         w!(w, "auto integer_value = static_cast<int32_t>(a_value);\n");
         w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, ">::type_info);\n");
@@ -140,7 +140,7 @@ impl CppGen<'_> {
         let underlying_type = cpp_primitive(bitmask_ty.ty);
 
         w!(w, "template <class Archive>\n");
-        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "Bits> {\n");
+        w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "Bits> {\n");
         w!(w, "void operator()(Archive& a_archive, ", qualified_name, "Bits& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
         w!(w, "auto integer_value = static_cast<", underlying_type, ">(a_value);\n");
         w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, "Bits>::type_info);\n");

@@ -73,7 +73,10 @@ impl<'a> CppGen<'a> {
 
         loop {
             let def = self.hir.context.definitions.get(current);
-            if matches!(def.kind, DefKind::Module(_)) {
+            if matches!(
+                def.kind,
+                DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_)
+            ) {
                 return Some(current);
             }
             if self.options.scoped_enums && matches!(def.kind, DefKind::Enum(_)) {
@@ -156,7 +159,8 @@ impl<'a> CppGen<'a> {
 
             if current_scope_id.is_some() {
                 let Some(target_scope) = self.get_scope(target_def_id) else {
-                    return type_name;
+                    // Target is at global scope, we're in a nested scope
+                    return format!("::{type_name}");
                 };
                 let common = self.common_scope(target_def_id, relative_to_def_id);
                 if common == Some(target_scope) || common == self.get_scope(relative_to_def_id) {
@@ -173,6 +177,10 @@ impl<'a> CppGen<'a> {
         }
 
         let Some(target_scope) = self.get_scope(target_def_id) else {
+            // Global scope - need :: prefix if we're inside a relative scope
+            if relative_to_def_id.is_some() {
+                return format!("::{type_name}");
+            }
             return type_name;
         };
         let full_path = self.build_path_from(target_scope, None);
@@ -344,12 +352,10 @@ impl<'a> CppGen<'a> {
 
     pub fn emit_type_traits_with_suffix(&self, w: &mut Twine, def: &Def, suffix: &str) {
         let qualified_name = self.scoped_name(def.id, None);
-        let struct_name = &def.ident.name;
         let full_qualified_name = format!("{qualified_name}{suffix}");
-        let full_struct_name = format!("{struct_name}{suffix}");
 
         w!(w, "template <>\n");
-        w!(w, "struct ::ic_cts::TypeTraits<", full_qualified_name, "> {\n");
+        w!(w, "struct ic_cts::TypeTraits<", full_qualified_name, "> {\n");
         w!(w, "using value_type = ", full_qualified_name, ";\n");
         w!(w, "using in_type = const ", full_qualified_name, "&;\n");
         w!(w, "using out_type = ", full_qualified_name, "&;\n");
@@ -358,10 +364,10 @@ impl<'a> CppGen<'a> {
         w!(w, "using weak_ref_type = std::weak_ptr<", full_qualified_name, ">;\n");
 
         if let DefKind::Struct(_) | DefKind::Union(_) = &def.kind {
-            w!(w, "using sequence_type = ", full_struct_name, "Seq;\n");
+            w!(w, "using sequence_type = std::vector<", qualified_name, ">;\n");
         }
 
-        w!(w, "static const ::ic_cts::TypeInfo type_info;\n");
+        w!(w, "static const ic_cts::TypeInfo type_info;\n");
 
         match &def.kind {
             DefKind::Struct(_) => w!(w, "static const bool is_struct = true;\n"),
@@ -373,18 +379,26 @@ impl<'a> CppGen<'a> {
         w!(w, "};\n\n");
     }
 
-    pub fn emit_typedef_sequence(&self, w: &mut Twine, type_name: &str) {
-        w!(w, "using ", type_name, "Seq = ::std::vector<", type_name, ">;\n\n");
+    pub fn emit_typedef_sequence(&self, w: &mut Twine, def: &Def) {
+        let type_name = self.scoped_name(def.id, None);
+        w!(w, "using ", def, "Seq = ::std::vector<", type_name, ">;\n\n");
     }
 
-    pub fn emit_hash_specialization(&self, w: &mut Twine, def: &Def) {
+    pub fn emit_hash_declaration(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template<>\n");
-        w!(w, "struct ::std::hash<", qualified_name, "> {\n");
+        w!(w, "struct std::hash<", qualified_name, "> {\n");
         w!(w, "using argument_type = ", qualified_name, ";\n");
         w!(w, "using result_type = std::size_t;\n");
-        w!(w, "result_type operator()(const argument_type& s) const noexcept {\n");
+        w!(w, "result_type operator()(const argument_type& s) const noexcept;\n");
+        w!(w, "};\n\n");
+    }
+
+    pub fn emit_hash_implementation(&self, w: &mut Twine, def: &Def) {
+        let qualified_name = self.scoped_name(def.id, None);
+
+        w!(w, "std::size_t std::hash<", qualified_name, ">::operator()(const argument_type& s) const noexcept {\n");
         w!(w, "result_type h = 0;\n");
 
         match &def.kind {
@@ -401,8 +415,7 @@ impl<'a> CppGen<'a> {
         }
 
         w!(w, "return h;\n");
-        w!(w, "}\n");
-        w!(w, "};\n\n");
+        w!(w, "}\n\n");
     }
 
     fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[Member]) {
@@ -461,6 +474,7 @@ impl<'a> CppGen<'a> {
     }
 
     fn emit_hash_member(&self, w: &mut Twine, name: &str, ty: &Ty, level: usize) {
+        let ty = self.hir.context.resolve_ty(ty);
         match &ty.kind {
             TyKind::Array { ty: inner_ty, .. } => {
                 let mut current_name = name.to_string();
@@ -494,7 +508,7 @@ impl<'a> CppGen<'a> {
                 w!(w, "}\n");
             }
             _ => {
-                let type_str = self.cpp_type(ty, None);
+                let type_str = self.cpp_type(&ty, None);
                 w!(w, "h ^= std::hash<", type_str, ">()(", name, ");\n");
             }
         }
@@ -606,9 +620,22 @@ impl<'a> CppGen<'a> {
                     self.emit_cpp_definition(w, nested_id);
                 }
             }
-            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Enum(_) | DefKind::Bitmask(_) => {
+            DefKind::Interface(interface) => {
+                for &nested_id in &interface.definitions {
+                    self.emit_cpp_definition(w, nested_id);
+                }
+            }
+            DefKind::Struct(_) | DefKind::Union(_) => {
+                self.emit_hash_implementation(w, def);
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
+            }
+            DefKind::Enum(_) | DefKind::Bitmask(_) => {
+                self.emit_member_info(w, def);
+                self.emit_type_info_definition(w, def);
+            }
+            DefKind::Except(_) => {
+                self.emit_hash_implementation(w, def);
             }
             _ => {}
         }
@@ -656,9 +683,12 @@ impl<'a> CppGen<'a> {
             w!(header, "#pragma once\n\n");
             w!(header, "#include <array>\n");
             w!(header, "#include <cstdint>\n");
-            w!(header, "#include <string>\n");
-            w!(header, "#include <vector>\n");
             w!(header, "#include <map>\n");
+            w!(header, "#include <memory>\n");
+            w!(header, "#include <string>\n");
+            w!(header, "#include <vector>\n\n");
+            w!(header, "#include <ic_cts/member_info.h>\n");
+            w!(header, "#include <ic_cts/memory.h>\n");
 
             let mut dependencies = std::collections::HashSet::new();
             for &def_id in &def_ids {

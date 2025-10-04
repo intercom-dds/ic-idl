@@ -136,14 +136,14 @@ pub fn codegen_cpp(
         use_fmt: u8::from(options.use_fmt),
     };
 
-    let mut cpp_generated = vec![];
-    unsafe {
-        ic_codegen_cpp(
-            result.as_raw(),
-            ffi_options,
-            std::ptr::addr_of_mut!(cpp_generated).cast::<_>(),
-        );
-    }
+    // let mut cpp_generated = vec![];
+    // unsafe {
+    //     ic_codegen_cpp(
+    //         result.as_raw(),
+    //         ffi_options,
+    //         std::ptr::addr_of_mut!(cpp_generated).cast::<_>(),
+    //     );
+    // }
 
     let mut all_files = Vec::new();
 
@@ -159,17 +159,17 @@ pub fn codegen_cpp(
         }
     }
 
-    for file in cpp_generated {
-        match file {
-            File::Generated { path, source } => {
-                all_files.push(File::Generated {
-                    path: format!("cpp/{}", path.display()).into(),
-                    source,
-                });
-            }
-            File::Dep(d) => all_files.push(File::Dep(d)),
-        }
-    }
+    // for file in cpp_generated {
+    //     match file {
+    //         File::Generated { path, source } => {
+    //             all_files.push(File::Generated {
+    //                 path: format!("cpp/{}", path.display()).into(),
+    //                 source,
+    //             });
+    //         }
+    //         File::Dep(d) => all_files.push(File::Dep(d)),
+    //     }
+    // }
 
     all_files
 }

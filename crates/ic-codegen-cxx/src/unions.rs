@@ -81,9 +81,9 @@ impl CppGen<'_> {
         w!(decl_w, "void free_union_();\n");
         w!(decl_w, "};\n\n");
 
-        self.emit_typedef_sequence(impl_w, &def.ident.name);
+        self.emit_typedef_sequence(impl_w, def);
         self.emit_type_traits(impl_w, def);
-        self.emit_hash_specialization(impl_w, def);
+        self.emit_hash_declaration(impl_w, def);
         self.emit_union_serializer(impl_w, def, union_ty);
 
         self.emit_union_impl(impl_w, def, union_ty, &disc_type);
@@ -674,7 +674,7 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template <class Archive>\n");
-        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
         w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo*) {\n");
         w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
         w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");

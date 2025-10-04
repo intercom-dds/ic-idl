@@ -39,10 +39,7 @@ impl CppGen<'_> {
         def: &Def,
         struct_ty: &StructTy,
     ) {
-        let struct_name = &def.ident.name;
-
-        w!(decl_w, "struct ", struct_name);
-
+        w!(decl_w, "struct ", def);
         if let Some(parent) = struct_ty.parent {
             w!(decl_w, " : public ", self.scoped_name(parent, def.id));
         }
@@ -58,9 +55,9 @@ impl CppGen<'_> {
 
         w!(decl_w, "};\n\n");
 
-        self.emit_typedef_sequence(decl_w, struct_name);
+        self.emit_typedef_sequence(decl_w, def);
         self.emit_type_traits(impl_w, def);
-        self.emit_hash_specialization(impl_w, def);
+        self.emit_hash_declaration(impl_w, def);
         self.emit_serializer_specialization(impl_w, def, &struct_ty.members);
         let all_members = self.collect_all_members(def.id);
         if !all_members.is_empty() {
@@ -90,7 +87,7 @@ impl CppGen<'_> {
 
         w!(decl_w, "};\n\n");
 
-        self.emit_hash_specialization(impl_w, def);
+        self.emit_hash_declaration(impl_w, def);
         self.emit_struct_like_comparison_impl(impl_w, def);
     }
 
@@ -138,11 +135,11 @@ impl CppGen<'_> {
             w!(decl_w, ");\n");
         }
 
-        w!(impl_w, "inline ", exception_name, "::", exception_name, "()  :\n");
+        let qualified_name = self.scoped_name(def.id, None);
+        w!(impl_w, "inline ", qualified_name, "::", exception_name, "()  :\n");
         w!(impl_w, "runtime_error(\"", exception_name, "\") {}\n\n");
 
         if !members.is_empty() {
-            let qualified_name = self.scoped_name(def.id, None);
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
             for (i, member) in members.iter().enumerate() {
                 let ty_str = self.cpp_type(&member.ty, def.id);
@@ -326,7 +323,7 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template <class Archive>\n");
-        w!(w, "struct ::ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
         w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo*) {\n");
         w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
         w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");

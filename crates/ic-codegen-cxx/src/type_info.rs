@@ -736,7 +736,7 @@ impl CppGen<'_> {
         };
 
         // Emit the type info
-        w!(w, "const ::ic_cts::TypeInfo ::ic_cts::TypeTraits<", qualified_name, ">::type_info = ");
+        w!(w, "const ::ic_cts::TypeInfo ic_cts::TypeTraits<", qualified_name, ">::type_info = ");
         info.emit(w);
         w!(w, ";\n");
     }

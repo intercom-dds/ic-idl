@@ -28,7 +28,7 @@
 use ic_alloc::arena::Arena;
 use ic_syntax::Ident;
 
-use crate::hir::{self, Def, DefId, DefKind, Ty, TyKind};
+use crate::hir::{self, Def, DefId, DefKind, Numeric, Ty, TyKind};
 use crate::scope::ScopeTree;
 
 /// Error returned when path resolution fails.
@@ -149,21 +149,29 @@ impl Context {
         path_segments: &'a [Ident],
     ) -> Result<DefId, PathResolutionError<'a>> {
         let mut current = Some(start_scope);
-        let mut first_error = None;
+        let mut best_error = None;
+        let mut best_progress = 0;
 
         while let Some(scope_to_try) = current {
             match self.resolve_from_scope(scope_to_try, segments, path_segments) {
                 Ok(def_id) => return Ok(def_id),
                 Err(e) => {
-                    if first_error.is_none() {
-                        first_error = Some(e);
+                    // Track the error that made the most progress through the path
+                    let error_segment_index = path_segments
+                        .iter()
+                        .position(|s| std::ptr::eq(s, e.segment))
+                        .unwrap_or(0);
+
+                    if best_error.is_none() || error_segment_index > best_progress {
+                        best_error = Some(e);
+                        best_progress = error_segment_index;
                     }
                     current = self.scopes.get_scope(scope_to_try).parent;
                 }
             }
         }
 
-        Err(first_error.unwrap_or_else(|| PathResolutionError {
+        Err(best_error.unwrap_or_else(|| PathResolutionError {
             segment: path_segments.first().unwrap_or(&path_segments[0]),
             container: None,
         }))
@@ -429,6 +437,58 @@ impl Context {
             }
 
             Vec::new()
+        }
+    }
+
+    /// Resolves a numeric value to a signed integer, recursively following
+    /// `Const` references. Returns `None` if the value cannot be represented
+    /// as an integer.
+    #[must_use]
+    pub fn integer_value(&self, numeric: &Numeric) -> Option<i64> {
+        match numeric {
+            Numeric::Int8(v) => Some(i64::from(*v)),
+            Numeric::Int16(v) => Some(i64::from(*v)),
+            Numeric::Int32(v) => Some(i64::from(*v)),
+            Numeric::Int64(v) => Some(*v),
+            Numeric::UInt8(v) => Some(i64::from(*v)),
+            Numeric::UInt16(v) => Some(i64::from(*v)),
+            Numeric::UInt32(v) => Some(i64::from(*v)),
+            Numeric::UInt64(v) => i64::try_from(*v).ok(),
+            Numeric::Const(def_id) => {
+                let def = self.type_of(*def_id);
+                if let DefKind::Const(const_def) = &def.kind {
+                    self.integer_value(&const_def.value)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// Resolves a numeric value to an unsigned integer, recursively following
+    /// `Const` references. Returns `None` if the value cannot be represented
+    /// as an unsigned integer.
+    #[must_use]
+    pub fn unsigned_value(&self, numeric: &Numeric) -> Option<u64> {
+        match numeric {
+            Numeric::UInt8(v) => Some(u64::from(*v)),
+            Numeric::UInt16(v) => Some(u64::from(*v)),
+            Numeric::UInt32(v) => Some(u64::from(*v)),
+            Numeric::UInt64(v) => Some(*v),
+            Numeric::Int8(v) => u64::try_from(i64::from(*v)).ok(),
+            Numeric::Int16(v) => u64::try_from(i64::from(*v)).ok(),
+            Numeric::Int32(v) => u64::try_from(i64::from(*v)).ok(),
+            Numeric::Int64(v) => u64::try_from(*v).ok(),
+            Numeric::Const(def_id) => {
+                let def = self.type_of(*def_id);
+                if let DefKind::Const(const_def) = &def.kind {
+                    self.unsigned_value(&const_def.value)
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }

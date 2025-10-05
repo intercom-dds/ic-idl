@@ -102,6 +102,14 @@ impl Context {
         }
     }
 
+    /// Resolves a type through aliases to get the underlying type.
+    pub fn resolve_ty(&self, ty: &Ty) -> Ty {
+        match &ty.kind {
+            TyKind::Adt(id) => self.base_type_of(*id),
+            _ => ty.clone(),
+        }
+    }
+
     /// Returns the root scope ID.
     #[must_use]
     pub fn root_scope(&self) -> crate::scope::ScopeId {

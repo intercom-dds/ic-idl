@@ -36,11 +36,7 @@ unsafe extern "C" {
 
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks)]
-pub fn codegen_proto(
-    hir: &ic_hir::ResolvedGraph,
-    source_map: &ic_vfs::SourceMap,
-    _options: (),
-) -> Vec<File> {
+pub fn codegen_proto(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) -> Vec<File> {
     let result = ic_ptree_lower::from_hir(hir, source_map);
     let mut generated = vec![];
     unsafe {

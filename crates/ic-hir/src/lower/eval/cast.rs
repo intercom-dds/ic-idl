@@ -106,8 +106,13 @@ pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
 }
 
 /// Cast a value to a specific HIR type.
-pub(super) fn cast_value_to_type(v: Value, ty: &Ty) -> Result<Value, EvalError> {
-    match &ty.kind {
+pub fn cast_value_to_type(
+    v: Value,
+    ty: &Ty,
+    ctx: &crate::ctx::Context,
+) -> Result<Value, EvalError> {
+    let resolved_ty = ctx.resolve_ty(ty);
+    match &resolved_ty.kind {
         TyKind::Primitive(p) => {
             match *p {
                 PrimitiveTy::Char => {

@@ -38,10 +38,11 @@ pub use cast::{check_float_to_int_precision_loss, get_type_name};
 use ic_diagnostic::{Label, error_span, warn_span};
 pub use rank::{FloatRank, IntRank, int_min_max};
 
-use self::cast::{cast_value_to_type, numeric_from_value, value_from_numeric};
+use self::cast::{numeric_from_value, value_from_numeric};
 use self::ops::{eval_bin, eval_unary, op_from_ast};
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_span, path_to_string};
+use crate::ctx::Context;
 use crate::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use crate::scope::ScopeId;
 
@@ -413,8 +414,12 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Internal method: cast a value to the expected type and convert to Numeric.
     /// Returns Result for cleaner error handling.
-    fn cast_and_convert_internal(v: Value, expected_ty: &Ty) -> Result<Numeric, EvalError> {
-        let casted = cast_value_to_type(v, expected_ty)?;
+    fn cast_and_convert_internal(
+        v: Value,
+        expected_ty: &Ty,
+        ctx: &Context,
+    ) -> Result<Numeric, EvalError> {
+        let casted = cast::cast_value_to_type(v, expected_ty, ctx)?;
         numeric_from_value(&casted)
     }
 
@@ -439,7 +444,7 @@ impl<'a> ConstEvaluator<'a> {
         };
 
         let error = ContextualEvalError {
-            kind: match Self::cast_and_convert_internal(v, expected_ty) {
+            kind: match Self::cast_and_convert_internal(v, expected_ty, &self.ctx.context) {
                 Ok(numeric) => return Some(numeric),
                 Err(e) => e,
             },
@@ -732,7 +737,7 @@ impl ConstEvaluator<'_> {
 
         if let Some(val) = value_from_numeric(&c.value) {
             let resolved_val = self.resolve_const_value(&val).unwrap_or(val);
-            match cast_value_to_type(resolved_val, expected_ty) {
+            match cast::cast_value_to_type(resolved_val, expected_ty, &self.ctx.context) {
                 Ok(_) => ConstAssignOutcome::Accepted(Box::new(Numeric::Const(def_id))),
                 Err(EvalError::RangeError) => {
                     self.ctx.diagnostics.error(

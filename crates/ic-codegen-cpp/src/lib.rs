@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::CString;
-
 use ic_cli::Command;
 use ic_emit::File;
 use ic_hir_xform::Target;
@@ -91,33 +89,10 @@ pub struct CppOptions {
     pub header_subdir: Option<String>,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-#[allow(non_camel_case_types)]
-struct cpp_options_t {
-    pub header_postfix: *const ::std::os::raw::c_char,
-    pub header_subfolder: *const ::std::os::raw::c_char,
-    pub header_ext: *const ::std::os::raw::c_char,
-    pub dll_export: *const ::std::os::raw::c_char,
-    pub scoped_enums: u8,
-    pub access_functions: u8,
-    pub no_stream_op: u8,
-    pub use_fmt: u8,
-}
-
-unsafe extern "C" {
-    fn ic_codegen_cpp(
-        result: *const ic_ptree::sys::parse_result,
-        options: cpp_options_t,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
-}
-
 /// # Panics
 ///
 /// May panic if some of the passed string parameters contain a NUL byte.
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_cpp(
     hir: &ic_hir::ResolvedGraph,
     source_map: &ic_vfs::SourceMap,

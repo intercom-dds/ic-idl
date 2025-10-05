@@ -48,7 +48,7 @@ impl CppGen<'_> {
         w!(decl_w, " {\n");
 
         self.emit_valuetype_constructors(decl_w, def, valuetype_ty);
-        self.emit_valuetype_comparison_operators(decl_w, valuetype_name);
+        Self::emit_valuetype_comparison_operators(decl_w, valuetype_name);
 
         for proto in &valuetype_ty.prototypes {
             self.emit_prototype_declaration(decl_w, def, proto);
@@ -115,7 +115,7 @@ impl CppGen<'_> {
         }
     }
 
-    fn emit_valuetype_comparison_operators(&self, w: &mut Twine, valuetype_name: &str) {
+    fn emit_valuetype_comparison_operators(w: &mut Twine, valuetype_name: &str) {
         w!(w, "bool operator<(const ", valuetype_name, " & a_other) const;\n");
         w!(w, "bool operator==(const ", valuetype_name, " & a_other) const;\n");
         w!(w, "bool operator!=(const ", valuetype_name, " & a_other) const { return !(*this == a_other); }\n");
@@ -159,6 +159,14 @@ impl CppGen<'_> {
         }
 
         w!(w, "\n) {\n");
+
+        if !matches!(
+            &proto.ty.kind,
+            ic_hir::hir::TyKind::Primitive(ic_hir::hir::PrimitiveTy::Void)
+        ) {
+            w!(w, "\treturn ", return_type, "{};\n");
+        }
+
         w!(w, "}\n\n");
     }
 

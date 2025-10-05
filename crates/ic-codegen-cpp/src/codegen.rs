@@ -276,16 +276,6 @@ impl<'a> CppGen<'a> {
         self.emit_numeric_value_impl(w, value, relative_def, None, false);
     }
 
-    pub fn emit_numeric_value_with_type(
-        &self,
-        w: &mut Twine,
-        value: &Numeric,
-        relative_def: impl Into<Option<DefId>>,
-        expected_ty: Option<&Ty>,
-    ) {
-        self.emit_numeric_value_impl(w, value, relative_def, expected_ty, false);
-    }
-
     fn emit_numeric_value_impl(
         &self,
         w: &mut Twine,
@@ -401,16 +391,36 @@ impl<'a> CppGen<'a> {
         let full_qualified_name = format!("{qualified_name}{suffix}");
 
         w!(w, "template <>\n");
-        w!(w, "struct ic_cts::TypeTraits<", full_qualified_name, "> {\n");
+        w!(
+            w,
+            "struct ic_cts::TypeTraits<",
+            full_qualified_name,
+            "> {\n"
+        );
         w!(w, "using value_type = ", full_qualified_name, ";\n");
         w!(w, "using in_type = const ", full_qualified_name, "&;\n");
         w!(w, "using out_type = ", full_qualified_name, "&;\n");
         w!(w, "using inout_type = ", full_qualified_name, "&;\n");
-        w!(w, "using ref_type = std::shared_ptr<", full_qualified_name, ">;\n");
-        w!(w, "using weak_ref_type = std::weak_ptr<", full_qualified_name, ">;\n");
+        w!(
+            w,
+            "using ref_type = std::shared_ptr<",
+            full_qualified_name,
+            ">;\n"
+        );
+        w!(
+            w,
+            "using weak_ref_type = std::weak_ptr<",
+            full_qualified_name,
+            ">;\n"
+        );
 
         if let DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) = &def.kind {
-            w!(w, "using sequence_type = std::vector<", qualified_name, ">;\n");
+            w!(
+                w,
+                "using sequence_type = std::vector<",
+                qualified_name,
+                ">;\n"
+            );
         }
 
         w!(w, "static const ic_cts::TypeInfo type_info;\n");
@@ -428,7 +438,14 @@ impl<'a> CppGen<'a> {
 
     pub fn emit_typedef_sequence(&self, w: &mut Twine, def: &Def) {
         let type_name = self.scoped_name(def.id, None);
-        w!(w, "using ", def, "Seq = ::std::vector<", type_name, ">;\n\n");
+        w!(
+            w,
+            "using ",
+            def,
+            "Seq = ::std::vector<",
+            type_name,
+            ">;\n\n"
+        );
     }
 
     pub fn emit_hash_declaration(&self, w: &mut Twine, def: &Def) {
@@ -438,7 +455,10 @@ impl<'a> CppGen<'a> {
         w!(w, "struct std::hash<", qualified_name, "> {\n");
         w!(w, "using argument_type = ", qualified_name, ";\n");
         w!(w, "using result_type = std::size_t;\n");
-        w!(w, "result_type operator()(const argument_type& s) const noexcept;\n");
+        w!(
+            w,
+            "result_type operator()(const argument_type& s) const noexcept;\n"
+        );
         w!(w, "};\n\n");
     }
 
@@ -454,7 +474,14 @@ impl<'a> CppGen<'a> {
         };
 
         let param = if has_members { " s" } else { "" };
-        w!(w, "std::size_t std::hash<", qualified_name, ">::operator()(const argument_type&", param, ") const noexcept {\n");
+        w!(
+            w,
+            "std::size_t std::hash<",
+            qualified_name,
+            ">::operator()(const argument_type&",
+            param,
+            ") const noexcept {\n"
+        );
         w!(w, "result_type h = 0;\n");
 
         match &def.kind {

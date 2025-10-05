@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_wrap)]
+
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy};
 
@@ -95,7 +97,7 @@ fn bit_size(_def: &Def) -> usize {
 }
 
 // Helper functions
-fn primitive_bit_size(ty: &PrimitiveTy) -> usize {
+fn primitive_bit_size(ty: PrimitiveTy) -> usize {
     use PrimitiveTy::{
         Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
         UInt64, Void, WChar,
@@ -110,7 +112,7 @@ fn primitive_bit_size(ty: &PrimitiveTy) -> usize {
     }
 }
 
-fn primitive_type_info(ty: &PrimitiveTy) -> &'static str {
+fn primitive_type_info(ty: PrimitiveTy) -> &'static str {
     use PrimitiveTy::{
         Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
         UInt64, Void, WChar,
@@ -239,7 +241,7 @@ fn emit_member_info(
     w: &mut Twine,
     index: usize,
     name: &str,
-    flags: String,
+    flags: &str,
     case_labels: &str,
     type_info: &str,
     default_value: &str,
@@ -249,7 +251,7 @@ fn emit_member_info(
 }
 
 impl CppGen<'_> {
-    /// Get mangled name for static variables (e.g., "Example__Status" for Example::Status)
+    /// Get mangled name for static variables (e.g., "`Example__Status`" for `Example::Status`)
     fn mangled_name(&self, def_id: DefId) -> String {
         self.scoped_name(def_id, None).replace("::", "__")
     }
@@ -292,7 +294,7 @@ impl CppGen<'_> {
                     _ => format!("&::ic_cts::TypeTraits<{type_name}>::type_info"),
                 }
             }
-            TyKind::Primitive(p) => format!("&{}", primitive_type_info(p)),
+            TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             _ => "nullptr".to_string(),
         }
     }
@@ -308,7 +310,7 @@ impl CppGen<'_> {
         let resolved = self.hir.context.resolve_ty(ty);
 
         match &resolved.kind {
-            TyKind::Primitive(p) => format!("&{}", primitive_type_info(p)),
+            TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             TyKind::Adt(_) => self.type_info_ref(ty),
             TyKind::String { .. } | TyKind::Sequence { .. } | TyKind::Array { .. } => {
                 // Need to emit TypeInfo with parent-scoped name
@@ -329,7 +331,7 @@ impl CppGen<'_> {
         let resolved = self.hir.context.resolve_ty(ty);
 
         match &resolved.kind {
-            TyKind::Primitive(p) => format!("&{}", primitive_type_info(p)),
+            TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             TyKind::Adt(_) => self.type_info_ref(ty),
             TyKind::String { wide, bound, .. } => {
                 let base_name = string_type_name(*wide);
@@ -452,7 +454,7 @@ impl CppGen<'_> {
                 w,
                 i,
                 &member.ident.name,
-                flags,
+                &flags,
                 "::ic_cts::MEMBER_INFO_EMPTY_CASE_LABELS",
                 &type_infos[i],
                 "nullptr",
@@ -516,7 +518,7 @@ impl CppGen<'_> {
             w,
             0,
             "_d",
-            disc_flags,
+            &disc_flags,
             "::ic_cts::MEMBER_INFO_EMPTY_CASE_LABELS",
             &disc_type_info,
             "nullptr",
@@ -535,7 +537,7 @@ impl CppGen<'_> {
                 w,
                 i + 1,
                 &variant.ident.name,
-                flag,
+                &flag,
                 &case_label_names[i],
                 &type_infos[i],
                 "nullptr",
@@ -550,7 +552,7 @@ impl CppGen<'_> {
         w: &mut Twine,
         def: &Def,
         fields: &[DefId],
-        element_ty: &PrimitiveTy,
+        element_ty: PrimitiveTy,
     ) {
         let name = self.mangled_name(def.id);
 
@@ -568,7 +570,7 @@ impl CppGen<'_> {
         }
 
         // Emit static values
-        let type_name = crate::codegen::cpp_primitive(*element_ty);
+        let type_name = crate::codegen::cpp_primitive(element_ty);
         w!(w, "static ", type_name, " ", name, "_min = ", min_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def), ";\n\n");
@@ -600,7 +602,7 @@ impl CppGen<'_> {
         w: &mut Twine,
         def: &Def,
         flags: &[DefId],
-        element_ty: &PrimitiveTy,
+        element_ty: PrimitiveTy,
     ) {
         let name = self.mangled_name(def.id);
 
@@ -615,7 +617,7 @@ impl CppGen<'_> {
         }
 
         // Emit static values
-        let type_name = crate::codegen::cpp_primitive(*element_ty);
+        let type_name = crate::codegen::cpp_primitive(element_ty);
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def), ";\n\n");
 
@@ -647,8 +649,8 @@ impl CppGen<'_> {
         match &def.kind {
             DefKind::Struct(s) => self.emit_struct_members(w, def, &s.members),
             DefKind::Union(u) => self.emit_union_members(w, def, u),
-            DefKind::Enum(e) => self.emit_enum_members(w, def, &e.fields, &e.ty),
-            DefKind::Bitmask(b) => self.emit_bitmask_members(w, def, &b.flags, &b.ty),
+            DefKind::Enum(e) => self.emit_enum_members(w, def, &e.fields, e.ty),
+            DefKind::Bitmask(b) => self.emit_bitmask_members(w, def, &b.flags, b.ty),
             _ => {}
         }
     }
@@ -677,8 +679,8 @@ impl CppGen<'_> {
 
         let bit_size = match def_kind {
             DefKind::Struct(_) | DefKind::Union(_) => bit_size(def),
-            DefKind::Enum(e) => primitive_bit_size(&e.ty),
-            DefKind::Bitmask(b) => primitive_bit_size(&b.ty),
+            DefKind::Enum(e) => primitive_bit_size(e.ty),
+            DefKind::Bitmask(b) => primitive_bit_size(b.ty),
             _ => 0,
         };
 
@@ -699,7 +701,7 @@ impl CppGen<'_> {
 
         let (default_value, min_value, max_value, element_type) = match def_kind {
             DefKind::Enum(e) => {
-                let prim_info = primitive_type_info(&e.ty);
+                let prim_info = primitive_type_info(e.ty);
                 (
                     Some(format!("&{mangled_name}_default")),
                     Some(format!("&{mangled_name}_min")),
@@ -708,7 +710,7 @@ impl CppGen<'_> {
                 )
             }
             DefKind::Bitmask(b) => {
-                let prim_info = primitive_type_info(&b.ty);
+                let prim_info = primitive_type_info(b.ty);
                 (
                     Some(format!("&{mangled_name}_default")),
                     None,

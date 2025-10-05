@@ -205,12 +205,17 @@ struct Renamer {
 fn apply_rename(name: &str, case: Option<Case>, target: &Target) -> String {
     let mut new_name = name.to_string();
 
-    // First apply case conversion if specified
+    // First apply preprocessor if specified
+    if let Some(preprocessor) = target.name_preprocessor {
+        new_name = preprocessor(&new_name);
+    }
+
+    // Then apply case conversion if specified
     if let Some(case) = case {
         new_name = case::convert(&new_name, case);
     }
 
-    // Then check if the result is a keyword and escape it
+    // Finally check if the result is a keyword and escape it
     if target.keywords.contains(new_name.as_str()) {
         new_name = (target.keyword_escape_fn)(&new_name);
     }
@@ -445,7 +450,10 @@ fn rename_breadth(
         let original = def.ident.name.clone();
         let desired = apply_rename(&original, case, target);
 
-        if original != desired {
+        // Add to renames if:
+        // 1. The name changed (for any reason: case, preprocessor, or keyword)
+        // 2. We're doing case conversion (even if unchanged, for collision detection)
+        if original != desired || case.is_some() {
             renames.push(NodeRename {
                 def_id: id,
                 original,

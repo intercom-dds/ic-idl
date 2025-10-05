@@ -1,4 +1,4 @@
-# Copyright 2024 KONGSBERG
+# Copyright 2025 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -14,7 +14,7 @@
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 # DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,12 +25,37 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-**/target
-*/**/Cargo.lock
-/cidl
-*.orig
-*.new
-book/book
-tools/fuzz/corpus
-tools/explorer/dist
-.jj
+# Examples Overview
+
+This section provides practical examples demonstrating IC-IDL features.
+
+## Basic Examples
+
+- [Hello World](./hello-world.md) - Minimal example
+- [Basic Types](./basic-types.md) - All primitive and constructed types
+- [User Service](./user-service.md) - Complete CRUD service
+
+## Feature Examples
+
+- [Modules](./modules.md) - Organizing code with namespaces
+- [Annotations](./annotations.md) - Customizing code generation
+
+## Integration Examples
+
+- [Build Integration](./build-integration.md) - Cargo, CMake, setuptools
+- [Multi-Language Project](./multi-language.md) - Using Rust, Python, and C++ together
+
+## Running Examples
+
+Each example includes:
+- IDL schema definition
+- Generated code samples
+- Usage examples
+
+To generate code from any example:
+
+```bash
+ic-idl --rust-out rust/ example.idl
+ic-idl --python-out python/ example.idl
+ic-idl --cpp-out cpp/ example.idl
+```

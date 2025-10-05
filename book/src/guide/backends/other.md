@@ -1,4 +1,4 @@
-# Copyright 2024 KONGSBERG
+# Copyright 2025 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -14,7 +14,7 @@
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 # DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,12 +25,37 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-**/target
-*/**/Cargo.lock
-/cidl
-*.orig
-*.new
-book/book
-tools/fuzz/corpus
-tools/explorer/dist
-.jj
+# Other Backends
+
+IC-IDL supports additional output formats.
+
+## Protocol Buffers
+
+Generate `.proto` files:
+
+```bash
+ic-idl schema.idl --proto-out proto/
+protoc --cpp_out=. proto/schema.proto
+```
+
+## JSON Schema
+
+Generate JSON Schema (draft-07):
+
+```bash
+ic-idl schema.idl --json-schema-out schemas/
+```
+
+## IDL Output
+
+Normalize and reformat IDL:
+
+```bash
+ic-idl schema.idl --idl-out clean/
+```
+
+Options:
+- `--idl-doxygen` - Doxygen-compatible output
+- `--idl-legacy` - Compatible with older parsers
+
+See [Code Generation Guide](../code-generation.md) for more details.

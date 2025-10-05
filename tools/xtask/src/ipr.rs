@@ -129,6 +129,7 @@ fn find_missing() -> (HashSet<PathBuf>, usize) {
 fn comment_str(ext: Option<&OsStr>) -> Option<&str> {
     match ext?.to_str()? {
         "rs" | "cpp" | "h" | "ic" | "c" | "idl" | "toml" => Some("//"),
+        "md" => Some("#"),
         _ => None,
     }
 }

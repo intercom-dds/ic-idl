@@ -201,6 +201,23 @@ struct Renamer {
     renamed_idents: HashMap<String, String>,
 }
 
+/// Apply case conversion and keyword escaping to a name
+fn apply_rename(name: &str, case: Option<Case>, target: &Target) -> String {
+    let mut new_name = name.to_string();
+
+    // First apply case conversion if specified
+    if let Some(case) = case {
+        new_name = case::convert(&new_name, case);
+    }
+
+    // Then check if the result is a keyword and escape it
+    if target.keywords.contains(new_name.as_str()) {
+        new_name = (target.keyword_escape_fn)(&new_name);
+    }
+
+    new_name
+}
+
 impl Renamer {
     fn new(target: Target) -> Self {
         Self {
@@ -211,17 +228,7 @@ impl Renamer {
 
     fn rename_ident(&mut self, ident: &mut hir::Ident, case: Option<Case>) {
         let old_name = ident.name.clone();
-        let mut new_name = old_name.clone();
-
-        // First, check if it's a keyword and escape it
-        if self.target.keywords.contains(old_name.as_str()) {
-            new_name = (self.target.keyword_escape_fn)(&old_name);
-        }
-
-        // Then apply case conversion if specified
-        if let Some(case) = case {
-            new_name = case::convert(&new_name, case);
-        }
+        let new_name = apply_rename(&old_name, case, &self.target);
 
         if old_name != new_name {
             self.renamed_idents.insert(old_name, new_name.clone());
@@ -467,7 +474,7 @@ fn rename_breadth(
 }
 
 /// Helper to rename a list of items with collision detection
-fn rename_items<T, F>(items: &mut [T], case: Option<Case>, mut get_ident: F)
+fn rename_items<T, F>(items: &mut [T], case: Option<Case>, mut get_ident: F, target: &Target)
 where
     F: FnMut(&mut T) -> &mut hir::Ident,
 {
@@ -478,7 +485,7 @@ where
             .map(|item| get_ident(item).name.clone())
             .collect();
 
-        rename_items_with_occupied(items, Some(case), get_ident, &mut occupied);
+        rename_items_with_occupied(items, Some(case), get_ident, &mut occupied, target);
     }
 }
 
@@ -488,6 +495,7 @@ fn rename_items_with_occupied<T, F>(
     case: Option<Case>,
     mut get_ident: F,
     occupied: &mut HashSet<String>,
+    target: &Target,
 ) where
     F: FnMut(&mut T) -> &mut hir::Ident,
 {
@@ -495,7 +503,9 @@ fn rename_items_with_occupied<T, F>(
         for item in items {
             let ident = get_ident(item);
             let original = ident.name.clone();
-            let mut desired = case::convert(&original, case);
+
+            // Apply case conversion and keyword escaping
+            let mut desired = apply_rename(&original, Some(case), target);
 
             // Handle collisions
             while occupied.contains(&desired) && desired != original {
@@ -515,13 +525,13 @@ fn rename_items_with_occupied<T, F>(
 fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     match &mut def.kind {
         DefKind::Struct(s) => {
-            rename_items(&mut s.members, target.member, |m| &mut m.ident);
+            rename_items(&mut s.members, target.member, |m| &mut m.ident, target);
         }
         DefKind::Except(e) => {
-            rename_items(&mut e.members, target.member, |m| &mut m.ident);
+            rename_items(&mut e.members, target.member, |m| &mut m.ident, target);
         }
         DefKind::Union(u) => {
-            rename_items(&mut u.variants, target.variant, |v| &mut v.ident);
+            rename_items(&mut u.variants, target.variant, |v| &mut v.ident, target);
         }
         DefKind::Interface(i) => {
             // Operations and attributes share the same namespace
@@ -538,6 +548,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target.operation,
                 |p| &mut p.ident,
                 &mut occupied,
+                target,
             );
 
             // Rename attributes
@@ -546,11 +557,17 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target.attribute,
                 |a| &mut a.ident,
                 &mut occupied,
+                target,
             );
 
             // Rename parameters (no collision detection needed)
             for proto in &mut i.prototypes {
-                rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
+                rename_items(
+                    &mut proto.params,
+                    target.parameter,
+                    |p| &mut p.ident,
+                    target,
+                );
             }
         }
         DefKind::Valuetype(v) => {
@@ -569,6 +586,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target.member,
                 |m| &mut m.ident,
                 &mut occupied,
+                target,
             );
 
             // Rename operations
@@ -577,6 +595,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target.operation,
                 |p| &mut p.ident,
                 &mut occupied,
+                target,
             );
 
             // Rename attributes
@@ -585,18 +604,29 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target.attribute,
                 |a| &mut a.ident,
                 &mut occupied,
+                target,
             );
 
             // Rename parameters (no collision detection needed)
             for proto in &mut v.prototypes {
-                rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
+                rename_items(
+                    &mut proto.params,
+                    target.parameter,
+                    |p| &mut p.ident,
+                    target,
+                );
             }
         }
         DefKind::Bitset(b) => {
-            rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident);
+            rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident, target);
         }
         DefKind::Annotation(a) => {
-            rename_items(&mut a.params, target.annotation_param, |p| &mut p.ident);
+            rename_items(
+                &mut a.params,
+                target.annotation_param,
+                |p| &mut p.ident,
+                target,
+            );
         }
         _ => {
             // Bitmask flags are DefIds - handled separately

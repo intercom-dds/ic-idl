@@ -111,8 +111,11 @@ impl TypeFlagsAnalyzer {
 
         // Check if we're in a cycle
         if self.analyzing.contains(&def_id) {
-            // For recursive types, we start optimistic and will correct later
-            return TypeFlags::new();
+            // Recursive types are never trivial
+            return TypeFlags {
+                is_trivial: false,
+                total_order: true,
+            };
         }
 
         // Mark as analyzing
@@ -134,7 +137,15 @@ impl TypeFlagsAnalyzer {
             }
 
             DefKind::Struct(s) => {
-                // A struct is trivial if all its members are trivial
+                if let Some(parent_id) = s.parent {
+                    let parent_def = context.definitions.get(parent_id);
+                    if !parent_def.flags.contains(DefFlags::IS_TRIVIAL) {
+                        flags.is_trivial = false;
+                    }
+                    if !parent_def.flags.contains(DefFlags::TOTAL_ORDER) {
+                        flags.total_order = false;
+                    }
+                }
                 for member in &s.members {
                     let member_flags = self.analyze_type(&member.ty, context);
                     flags.combine(member_flags);
@@ -150,14 +161,18 @@ impl TypeFlagsAnalyzer {
             }
 
             DefKind::Valuetype(v) => {
-                // A valuetype is trivial if all its members are trivial
+                if let Some(parent_id) = v.parent {
+                    let parent_def = context.definitions.get(parent_id);
+                    if !parent_def.flags.contains(DefFlags::IS_TRIVIAL) {
+                        flags.is_trivial = false;
+                    }
+                    if !parent_def.flags.contains(DefFlags::TOTAL_ORDER) {
+                        flags.total_order = false;
+                    }
+                }
                 for member in &v.members {
                     let member_flags = self.analyze_type(&member.ty, context);
                     flags.combine(member_flags);
-                }
-                // Valuetypes with operations are not trivial
-                if !v.prototypes.is_empty() {
-                    flags.is_trivial = false;
                 }
             }
 

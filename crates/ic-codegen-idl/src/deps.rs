@@ -65,6 +65,11 @@ pub fn collect_def_dependencies(
     let def = hir.context.definitions.get(def_id);
 
     match &def.kind {
+        DefKind::Module(module_ty) => {
+            for &child_def_id in &module_ty.definitions {
+                collect_def_dependencies(hir, child_def_id, current_file, deps);
+            }
+        }
         DefKind::Struct(struct_ty) => {
             if let Some(parent) = struct_ty.parent {
                 let parent_def = hir.context.definitions.get(parent);
@@ -140,6 +145,6 @@ pub fn collect_def_dependencies(
                 }
             }
         }
-        _ => {}
+        _ => (),
     }
 }

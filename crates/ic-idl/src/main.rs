@@ -262,7 +262,7 @@ fn generate_code(
         let _span = info_span!("cpp", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
-            || ic_codegen_cxx::codegen_cpp(hir, vfs, options.cpp.clone()),
+            || ic_codegen_cpp::codegen_cpp(hir, vfs, options.cpp.clone()),
             options.purge_dirs,
         )?;
         info!(files = files.len(), "generated");

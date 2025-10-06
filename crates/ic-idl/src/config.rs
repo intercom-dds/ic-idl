@@ -206,7 +206,7 @@ pub struct Options {
     pub files: Vec<PathBuf>,
 
     #[option(section = "c++ options")]
-    pub cpp: ic_codegen_cxx::CppOptions,
+    pub cpp: ic_codegen_cpp::CppOptions,
 
     #[option(section = "c# options")]
     pub csharp: ic_codegen_csharp::CSharpOptions,

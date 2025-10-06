@@ -305,7 +305,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-codegen-csharp"
+name = "ic-codegen-cpp"
 version = "0.3.14"
 dependencies = [
  "ic-cli",
@@ -316,15 +316,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-codegen-cxx"
+name = "ic-codegen-csharp"
 version = "0.3.14"
 dependencies = [
- "ic-cc",
  "ic-cli",
  "ic-emit",
  "ic-hir",
- "ic-ptree",
- "ic-ptree-lower",
+ "ic-hir-xform",
  "ic-vfs",
 ]
 
@@ -522,8 +520,8 @@ name = "ic-idl"
 version = "0.3.14"
 dependencies = [
  "ic-cli",
+ "ic-codegen-cpp",
  "ic-codegen-csharp",
- "ic-codegen-cxx",
  "ic-codegen-idl",
  "ic-codegen-java",
  "ic-codegen-json",

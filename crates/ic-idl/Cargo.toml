@@ -62,7 +62,7 @@ ic-ptree-dump = { path = "../ic-ptree-dump" }
 ic-ptree-lower = { path = "../ic-ptree-lower" }
 ic-vfs = { path = "../ic-vfs" }
 
-ic-codegen-cxx = { path = "../ic-codegen-cxx" }
+ic-codegen-cpp = { path = "../ic-codegen-cpp" }
 ic-codegen-csharp = { path = "../ic-codegen-csharp" }
 ic-codegen-idl = { path = "../ic-codegen-idl" }
 ic-codegen-java = { path = "../ic-codegen-java" }

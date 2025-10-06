@@ -57,6 +57,16 @@ unsafe extern "C" {
     );
 }
 
+const RUST_KEYWORDS: &[&str] = &[
+    "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",
+    "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return",
+    "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use", "where",
+    "while", "async", "await", "dyn", "abstract", "become", "box", "do", "final", "macro",
+    "override", "priv", "typeof", "unsized", "virtual", "yield", "try",
+    // not keywords, but types from the prelude we reserve to make things more readable
+    "String", "Option", "Box", "Vec",
+];
+
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_rust(
@@ -102,6 +112,8 @@ pub fn codegen_rust(
             variant: Some(Case::Pascal),
             enumerator: Some(Case::Pascal),
             bit_flag: Some(Case::Snake),
+            keywords: RUST_KEYWORDS.iter().copied().collect(),
+            keyword_escape_fn: |name| format!("{name}_"),
             bitset_field: Some(Case::Snake),
             constant: Some(Case::Snake),
             module: Some(Case::Snake),

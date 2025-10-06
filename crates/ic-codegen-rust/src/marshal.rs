@@ -314,19 +314,42 @@ impl RustGen<'_> {
         w!(w, "match self {\n");
         let mut info_idx = 0;
         for variant in &union_ty.variants {
-            if !matches!(variant.ty.kind, TyKind::Null) {
-                if variant.labels.is_empty() {
-                    w!(w, "Self::", variant.ident.name, "(v) => state.encode_variant(&MEMBER_INFO[", info_idx.to_string(), "], v),\n");
+            if variant.is_default {
+                continue;
+            }
+
+            let is_null = matches!(variant.ty.kind, TyKind::Null);
+            if variant.labels.is_empty() {
+                if is_null {
+                    w!(w, "Self::", variant.ident.name, " => state.encode_null(),\n");
                 } else {
-                    for label in &variant.labels {
-                        let variant_name = self.union_variant_name(variant, label, union_ty);
-                        w!(w, "Self::", variant_name, "(v) => state.encode_variant(&MEMBER_INFO[", info_idx.to_string(), "], v),\n");
+                    w!(w, "Self::", variant.ident.name, "(v) => state.encode_variant(&MEMBER_INFO[", info_idx.to_string(), "], v),\n");
+                    info_idx += 1;
+                }
+            } else {
+                for (i, label) in variant.labels.iter().enumerate() {
+                    if i > 0 {
+                        w!(w, " | ");
+                    }
+                    let variant_name = self.union_variant_name(variant, label, union_ty);
+                    if is_null {
+                        w!(w, "Self::", variant_name);
+                    } else {
+                        w!(w, "Self::", variant_name, "(v)");
                     }
                 }
-                info_idx += 1;
+                if is_null {
+                    w!(w, " => state.encode_null(),\n");
+                } else {
+                    w!(w, " => state.encode_variant(&MEMBER_INFO[", info_idx.to_string(), "], v),\n");
+                    info_idx += 1;
+                }
             }
         }
-        w!(w, "_ => state.encode_null(),\n");
+
+        if union_ty.variants.iter().any(|v| v.is_default) {
+            w!(w, "_ => state.encode_null(),\n");
+        }
         w!(w, "}\n");
         w!(w, "}\n");
 
@@ -354,7 +377,7 @@ impl RustGen<'_> {
         w!(w, "*self = match disc {\n");
         let mut info_idx = 0;
         for variant in &union_ty.variants {
-            if !variant.labels.is_empty() {
+            if !variant.labels.is_empty() && !variant.is_default {
                 if matches!(variant.ty.kind, TyKind::Null) {
                     for label in &variant.labels {
                         let variant_name = self.union_variant_name(variant, label, union_ty);

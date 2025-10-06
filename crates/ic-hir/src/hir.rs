@@ -588,3 +588,9 @@ numeric_from! {
     String => String,
     DefId => Const,
 }
+
+impl std::fmt::Display for Def {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.ident.name)
+    }
+}

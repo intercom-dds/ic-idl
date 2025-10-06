@@ -228,29 +228,6 @@ impl Renamer {
             ident.name = new_name;
         }
     }
-
-    /// Get the desired case for a definition
-    fn get_def_case(&self, def: &hir::Def) -> Option<Case> {
-        match &def.kind {
-            DefKind::Module(_) => self.target.module,
-            DefKind::Const(_) => {
-                // For now, we'll handle enum constants separately
-                // by checking the parent when we have access to the context
-                self.target.constant
-            }
-            DefKind::Struct(_) => self.target.struct_type,
-            DefKind::Union(_) => self.target.union_type,
-            DefKind::Enum(_) => self.target.enum_type,
-            DefKind::Interface(_) => self.target.interface,
-            DefKind::Valuetype(_) => self.target.valuetype,
-            DefKind::Alias(_) => self.target.alias,
-            DefKind::Bitmask(_) => self.target.bitmask,
-            DefKind::Bitset(_) => self.target.bitset,
-            DefKind::Except(_) => self.target.exception,
-            DefKind::Annotation(_) => self.target.annotation,
-            DefKind::Decl(_) => None, // Don't rename forward declarations
-        }
-    }
 }
 
 /// Transform HIR to use the specified naming conventions with collision handling

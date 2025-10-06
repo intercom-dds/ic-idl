@@ -91,6 +91,10 @@ impl Context {
                 TyKind::Adt(id) => self.base_type_of(id),
                 _ => v.ty.clone(),
             },
+            DefKind::Const(v) => match v.ty.kind {
+                TyKind::Adt(id) => self.base_type_of(id),
+                _ => v.ty.clone(),
+            },
             _ => Ty {
                 kind: TyKind::Adt(id),
                 span: ty.span,

@@ -442,17 +442,10 @@ fn rename_breadth(
             }
         };
 
-        if let Some(case) = case {
-            let original = def.ident.name.clone();
+        let original = def.ident.name.clone();
+        let desired = apply_rename(&original, case, target);
 
-            // Apply preprocessor before case conversion if provided
-            let preprocessed = if let Some(preprocessor) = target.name_preprocessor {
-                preprocessor(&original)
-            } else {
-                original.clone()
-            };
-            let desired = case::convert(&preprocessed, case);
-
+        if original != desired {
             renames.push(NodeRename {
                 def_id: id,
                 original,
@@ -478,15 +471,13 @@ fn rename_items<T, F>(items: &mut [T], case: Option<Case>, mut get_ident: F, tar
 where
     F: FnMut(&mut T) -> &mut hir::Ident,
 {
-    if let Some(case) = case {
-        // Collect existing names for collision detection
-        let mut occupied: HashSet<String> = items
-            .iter_mut()
-            .map(|item| get_ident(item).name.clone())
-            .collect();
+    // Collect existing names for collision detection
+    let mut occupied: HashSet<String> = items
+        .iter_mut()
+        .map(|item| get_ident(item).name.clone())
+        .collect();
 
-        rename_items_with_occupied(items, Some(case), get_ident, &mut occupied, target);
-    }
+    rename_items_with_occupied(items, case, get_ident, &mut occupied, target);
 }
 
 /// Helper to rename items using an existing occupied set (for shared namespaces)
@@ -499,24 +490,22 @@ fn rename_items_with_occupied<T, F>(
 ) where
     F: FnMut(&mut T) -> &mut hir::Ident,
 {
-    if let Some(case) = case {
-        for item in items {
-            let ident = get_ident(item);
-            let original = ident.name.clone();
+    for item in items {
+        let ident = get_ident(item);
+        let original = ident.name.clone();
 
-            // Apply case conversion and keyword escaping
-            let mut desired = apply_rename(&original, Some(case), target);
+        // Apply case conversion and keyword escaping
+        let mut desired = apply_rename(&original, case, target);
 
-            // Handle collisions
-            while occupied.contains(&desired) && desired != original {
-                desired.push('_');
-            }
+        // Handle collisions
+        while occupied.contains(&desired) && desired != original {
+            desired.push('_');
+        }
 
-            if desired != original {
-                occupied.remove(&original);
-                occupied.insert(desired.clone());
-                ident.name = desired;
-            }
+        if desired != original {
+            occupied.remove(&original);
+            occupied.insert(desired.clone());
+            ident.name = desired;
         }
     }
 }

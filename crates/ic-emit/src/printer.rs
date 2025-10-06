@@ -27,6 +27,8 @@
 
 #![allow(clippy::needless_pass_by_value)]
 
+const INDENT: &str = "    ";
+
 #[derive(Debug, Clone)]
 enum Token {
     Text(String),
@@ -35,6 +37,7 @@ enum Token {
     Newline,
     Indent,
     Dedent,
+    Tab,
 }
 
 pub struct PrettyPrinter {
@@ -74,6 +77,11 @@ impl PrettyPrinter {
 
     pub fn endl(&mut self) -> &mut Self {
         self.tokens.push(Token::Newline);
+        self
+    }
+
+    pub fn tab(&mut self) -> &mut Self {
+        self.tokens.push(Token::Tab);
         self
     }
 
@@ -120,10 +128,10 @@ impl PrettyPrinter {
                         for _ in 0..indent_level {
                             output.push_str(self.indent_str);
                         }
+                        prev_was_newline = false;
                     }
                     output.push_str(brace);
                     indent_level += 1;
-                    prev_was_newline = true;
                 }
                 Token::BlockEnd(brace) => {
                     indent_level = indent_level.saturating_sub(1);
@@ -144,6 +152,9 @@ impl PrettyPrinter {
                 }
                 Token::Dedent => {
                     indent_level = indent_level.saturating_sub(1);
+                }
+                Token::Tab => {
+                    output.push_str(INDENT);
                 }
             }
         }
@@ -180,14 +191,17 @@ impl Twine {
             let s = arg.to_string();
             for ch in s.chars() {
                 match ch {
-                    '{' => {
-                        self.writer.begin("{");
+                    '{' | '[' | '(' => {
+                        self.writer.begin(ch);
                     }
-                    '}' => {
-                        self.writer.end("}");
+                    '}' | ']' | ')' => {
+                        self.writer.end(ch);
                     }
                     '\n' => {
                         self.writer.endl();
+                    }
+                    '\t' => {
+                        self.writer.text("    ");
                     }
                     _ => {
                         self.writer.text(ch);

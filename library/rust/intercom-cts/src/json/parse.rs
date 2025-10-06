@@ -180,20 +180,85 @@ where
     }
 
     fn string(&mut self) -> Result<String> {
-        let mut str = String::new();
-        while let Some(c) = self.next() {
-            if c == '"' {
-                break;
+        self.expect('"')?;
+        let mut out = String::new();
+        loop {
+            let c = self
+                .get()
+                .ok_or_else(|| error!(self, "unterminated string"))?;
+            match c {
+                '"' => {
+                    self.advance();
+                    break;
+                }
+                '\\' => {
+                    out.push(self.read_escape()?);
+                    self.advance();
+                }
+                c if c < '\u{20}' => return Err(error!(self, "unescaped control character")),
+                _ => {
+                    out.push(c);
+                    self.advance();
+                }
             }
-            str.push(c);
         }
 
-        self.expect('"')
-            .map_err(|_| error!(self, "unterminated string"))?;
-        Ok(str)
+        Ok(out)
     }
 
-    // TODO: leading zeroes are not permitted
+    fn read_escape(&mut self) -> Result<char> {
+        let e = self
+            .next()
+            .ok_or_else(|| error!(self, "incomplete escape"))?;
+        Ok(match e {
+            '"' | '\\' | '/' => e,
+            'b' => '\u{0008}',
+            'f' => '\u{000C}',
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            'u' => return self.read_unicode_escape(),
+            _ => return Err(error!(self, "invalid escape")),
+        })
+    }
+
+    fn read_unicode_escape(&mut self) -> Result<char> {
+        let hi = self.read_hex4()? as u32;
+
+        // High surrogate -> must be followed by \uDC00–\uDFFF
+        if (0xD800..=0xDBFF).contains(&hi) {
+            self.expect('\\')?;
+            self.expect('u')?;
+            let lo = self.read_hex4()? as u32;
+            if !(0xDC00..=0xDFFF).contains(&lo) {
+                return Err(error!(self, "invalid low surrogate"));
+            }
+            let cp = 0x10000 + (((hi - 0xD800) << 10) | (lo - 0xDC00));
+            return char::from_u32(cp).ok_or_else(|| error!(self, "invalid code point"));
+        }
+
+        // Lone low surrogate is invalid
+        if (0xDC00..=0xDFFF).contains(&hi) {
+            return Err(error!(self, "unexpected low surrogate"));
+        }
+
+        char::from_u32(hi).ok_or_else(|| error!(self, "invalid code point"))
+    }
+
+    fn read_hex4(&mut self) -> Result<u16> {
+        let mut v: u16 = 0;
+        for _ in 0..4 {
+            let c = self
+                .next()
+                .ok_or_else(|| error!(self, "incomplete unicode escape"))?;
+            let d = c
+                .to_digit(16)
+                .ok_or_else(|| error!(self, "invalid unicode escape"))?;
+            v = (v << 4) | (d as u16);
+        }
+        Ok(v)
+    }
+
     fn integer(&mut self) -> Option<u64> {
         let mut value: u64 = 0;
         while let Some(c) = self.get() {

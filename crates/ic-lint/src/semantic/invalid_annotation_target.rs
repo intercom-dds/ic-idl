@@ -71,11 +71,11 @@ impl InvalidAnnotationTarget<'_> {
                     }
                 }
                 // @optional is only valid on struct/union fields
-                "optional" => {
-                    if target != "field" {
-                        self.report_invalid_target(ann, "@optional can only be applied to fields");
-                    }
-                }
+                // "optional" => {
+                //     if target != "field" {
+                //         self.report_invalid_target(ann, "@optional can only be applied to fields");
+                //     }
+                // }
                 // @oneway is only valid on interface methods
                 "oneway" => {
                     if target != "method" {

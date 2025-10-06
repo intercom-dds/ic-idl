@@ -61,11 +61,11 @@ impl ImplicitDefault {
                         let const_def = context.type_of(field_id);
                         if let DefKind::Const(const_ty) = &const_def.kind {
                             if let Some(v) = Self::numeric_to_i64(&const_ty.value) {
-                                values.push((v, const_ty.value.clone()));
+                                values.push((v, Numeric::Const(field_id)));
                                 const_values.insert(field_id, v);
                                 next_value = v.wrapping_add(1) as i32;
                             } else {
-                                values.push((i64::from(next_value), Numeric::Int32(next_value)));
+                                values.push((i64::from(next_value), Numeric::Const(field_id)));
                                 const_values.insert(field_id, i64::from(next_value));
                                 next_value = next_value.wrapping_add(1);
                             }

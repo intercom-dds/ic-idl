@@ -25,6 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+)]
+
 use std::cmp::Ordering;
 
 use crate::{Error, EvalConfig, NumericValue, OverflowBehavior, Result};
@@ -68,15 +74,8 @@ impl GenericNumeric {
     }
 
     /// Promotes this value to the specified type.
-    #[allow(
-        clippy::cast_precision_loss,
-        clippy::cast_sign_loss,
-        clippy::cast_possible_truncation
-    )]
-    #[allow(clippy::too_many_lines)]
     fn promote_to(&self, target: &Self) -> Self {
         match (self, target) {
-            // Already the same type
             (Self::Bool(_), Self::Bool(_))
             | (Self::Char(_), Self::Char(_))
             | (Self::Int8(_), Self::Int8(_))
@@ -89,131 +88,160 @@ impl GenericNumeric {
             | (Self::UInt64(_), Self::UInt64(_))
             | (Self::Float(_), Self::Float(_))
             | (Self::Double(_), Self::Double(_)) => *self,
+            (_, Self::Double(_)) => self.to_double(),
+            (_, Self::Float(_)) => self.to_float(),
+            (_, Self::UInt64(_)) => self.to_uint64(),
+            (_, Self::Int64(_)) => self.to_int64(),
+            (_, Self::UInt32(_)) => self.to_uint32(),
+            (_, Self::Int32(_)) => self.to_int32(),
+            (_, Self::UInt16(_)) => self.to_uint16(),
+            (_, Self::Int16(_)) => self.to_int16(),
+            (_, Self::UInt8(_)) => self.to_uint8(),
+            (_, Self::Int8(_)) => self.to_int8(),
+            (_, Self::Char(_)) => self.to_char(),
+            _ => *self,
+        }
+    }
 
-            // Promote to Double
-            (_, Self::Double(_)) => match self {
-                Self::Bool(v) => Self::Double(if *v { 1.0 } else { 0.0 }),
-                Self::Char(v) => Self::Double(f64::from(*v as u8)),
-                Self::Int8(v) => Self::Double(f64::from(*v)),
-                Self::UInt8(v) => Self::Double(f64::from(*v)),
-                Self::Int16(v) => Self::Double(f64::from(*v)),
-                Self::UInt16(v) => Self::Double(f64::from(*v)),
-                Self::Int32(v) => Self::Double(f64::from(*v)),
-                Self::UInt32(v) => Self::Double(f64::from(*v)),
-                Self::Int64(v) => Self::Double(*v as f64),
-                Self::UInt64(v) => Self::Double(*v as f64),
-                Self::Float(v) => Self::Double(f64::from(*v)),
-                Self::Double(v) => Self::Double(*v),
-            },
+    fn to_double(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Double(if v { 1.0 } else { 0.0 }),
+            Self::Char(v) => Self::Double(f64::from(v as u8)),
+            Self::Int8(v) => Self::Double(f64::from(v)),
+            Self::UInt8(v) => Self::Double(f64::from(v)),
+            Self::Int16(v) => Self::Double(f64::from(v)),
+            Self::UInt16(v) => Self::Double(f64::from(v)),
+            Self::Int32(v) => Self::Double(f64::from(v)),
+            Self::UInt32(v) => Self::Double(f64::from(v)),
+            Self::Int64(v) => Self::Double(v as f64),
+            Self::UInt64(v) => Self::Double(v as f64),
+            Self::Float(v) => Self::Double(f64::from(v)),
+            Self::Double(v) => Self::Double(v),
+        }
+    }
 
-            // Promote to Float
-            (_, Self::Float(_)) => match self {
-                Self::Bool(v) => Self::Float(if *v { 1.0 } else { 0.0 }),
-                Self::Char(v) => Self::Float(f32::from(*v as u8)),
-                Self::Int8(v) => Self::Float(f32::from(*v)),
-                Self::UInt8(v) => Self::Float(f32::from(*v)),
-                Self::Int16(v) => Self::Float(f32::from(*v)),
-                Self::UInt16(v) => Self::Float(f32::from(*v)),
-                Self::Int32(v) => Self::Float(*v as f32),
-                Self::UInt32(v) => Self::Float(*v as f32),
-                Self::Int64(v) => Self::Float(*v as f32),
-                Self::UInt64(v) => Self::Float(*v as f32),
-                Self::Float(v) => Self::Float(*v),
-                Self::Double(v) => Self::Float(*v as f32), // This would lose precision
-            },
+    fn to_float(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Float(if v { 1.0 } else { 0.0 }),
+            Self::Char(v) => Self::Float(f32::from(v as u8)),
+            Self::Int8(v) => Self::Float(f32::from(v)),
+            Self::UInt8(v) => Self::Float(f32::from(v)),
+            Self::Int16(v) => Self::Float(f32::from(v)),
+            Self::UInt16(v) => Self::Float(f32::from(v)),
+            Self::Int32(v) => Self::Float(v as f32),
+            Self::UInt32(v) => Self::Float(v as f32),
+            Self::Int64(v) => Self::Float(v as f32),
+            Self::UInt64(v) => Self::Float(v as f32),
+            Self::Float(v) => Self::Float(v),
+            Self::Double(v) => Self::Float(v as f32),
+        }
+    }
 
-            // Integer promotions
-            (_, Self::UInt64(_)) => match self {
-                Self::Bool(v) => Self::UInt64(u64::from(*v)),
-                Self::Char(v) => Self::UInt64(u64::from(*v as u8)),
-                Self::Int8(v) => Self::UInt64(*v as u64),
-                Self::UInt8(v) => Self::UInt64(u64::from(*v)),
-                Self::Int16(v) => Self::UInt64(*v as u64),
-                Self::UInt16(v) => Self::UInt64(u64::from(*v)),
-                Self::Int32(v) => Self::UInt64(*v as u64),
-                Self::UInt32(v) => Self::UInt64(u64::from(*v)),
-                Self::Int64(v) => Self::UInt64(*v as u64),
-                Self::UInt64(v) => Self::UInt64(*v),
-                _ => unreachable!("float to int conversion"),
-            },
+    fn to_uint64(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::UInt64(u64::from(v)),
+            Self::Char(v) => Self::UInt64(u64::from(v as u8)),
+            Self::Int8(v) => Self::UInt64(v as u64),
+            Self::UInt8(v) => Self::UInt64(u64::from(v)),
+            Self::Int16(v) => Self::UInt64(v as u64),
+            Self::UInt16(v) => Self::UInt64(u64::from(v)),
+            Self::Int32(v) => Self::UInt64(v as u64),
+            Self::UInt32(v) => Self::UInt64(u64::from(v)),
+            Self::Int64(v) => Self::UInt64(v as u64),
+            Self::UInt64(v) => Self::UInt64(v),
+            _ => unreachable!("float to int conversion"),
+        }
+    }
 
-            (_, Self::Int64(_)) => match self {
-                Self::Bool(v) => Self::Int64(i64::from(*v)),
-                Self::Char(v) => Self::Int64(i64::from(*v as u8)),
-                Self::Int8(v) => Self::Int64(i64::from(*v)),
-                Self::UInt8(v) => Self::Int64(i64::from(*v)),
-                Self::Int16(v) => Self::Int64(i64::from(*v)),
-                Self::UInt16(v) => Self::Int64(i64::from(*v)),
-                Self::Int32(v) => Self::Int64(i64::from(*v)),
-                Self::UInt32(v) => Self::Int64(i64::from(*v)),
-                Self::Int64(v) => Self::Int64(*v),
-                _ => unreachable!("float/uint64 to int64 conversion"),
-            },
+    fn to_int64(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Int64(i64::from(v)),
+            Self::Char(v) => Self::Int64(i64::from(v as u8)),
+            Self::Int8(v) => Self::Int64(i64::from(v)),
+            Self::UInt8(v) => Self::Int64(i64::from(v)),
+            Self::Int16(v) => Self::Int64(i64::from(v)),
+            Self::UInt16(v) => Self::Int64(i64::from(v)),
+            Self::Int32(v) => Self::Int64(i64::from(v)),
+            Self::UInt32(v) => Self::Int64(i64::from(v)),
+            Self::Int64(v) => Self::Int64(v),
+            _ => unreachable!("float/uint64 to int64 conversion"),
+        }
+    }
 
-            (_, Self::UInt32(_)) => match self {
-                Self::Bool(v) => Self::UInt32(u32::from(*v)),
-                Self::Char(v) => Self::UInt32(u32::from(*v as u8)),
-                Self::Int8(v) => Self::UInt32(*v as u32),
-                Self::UInt8(v) => Self::UInt32(u32::from(*v)),
-                Self::Int16(v) => Self::UInt32(*v as u32),
-                Self::UInt16(v) => Self::UInt32(u32::from(*v)),
-                Self::Int32(v) => Self::UInt32(*v as u32),
-                Self::UInt32(v) => Self::UInt32(*v),
-                _ => unreachable!("larger type to uint32 conversion"),
-            },
+    fn to_uint32(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::UInt32(u32::from(v)),
+            Self::Char(v) => Self::UInt32(u32::from(v as u8)),
+            Self::Int8(v) => Self::UInt32(v as u32),
+            Self::UInt8(v) => Self::UInt32(u32::from(v)),
+            Self::Int16(v) => Self::UInt32(v as u32),
+            Self::UInt16(v) => Self::UInt32(u32::from(v)),
+            Self::Int32(v) => Self::UInt32(v as u32),
+            Self::UInt32(v) => Self::UInt32(v),
+            _ => unreachable!("larger type to uint32 conversion"),
+        }
+    }
 
-            (_, Self::Int32(_)) => match self {
-                Self::Bool(v) => Self::Int32(i32::from(*v)),
-                Self::Char(v) => Self::Int32(i32::from(*v as u8)),
-                Self::Int8(v) => Self::Int32(i32::from(*v)),
-                Self::UInt8(v) => Self::Int32(i32::from(*v)),
-                Self::Int16(v) => Self::Int32(i32::from(*v)),
-                Self::UInt16(v) => Self::Int32(i32::from(*v)),
-                Self::Int32(v) => Self::Int32(*v),
-                _ => unreachable!("larger type to int32 conversion"),
-            },
+    fn to_int32(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Int32(i32::from(v)),
+            Self::Char(v) => Self::Int32(i32::from(v as u8)),
+            Self::Int8(v) => Self::Int32(i32::from(v)),
+            Self::UInt8(v) => Self::Int32(i32::from(v)),
+            Self::Int16(v) => Self::Int32(i32::from(v)),
+            Self::UInt16(v) => Self::Int32(i32::from(v)),
+            Self::Int32(v) => Self::Int32(v),
+            _ => unreachable!("larger type to int32 conversion"),
+        }
+    }
 
-            (_, Self::UInt16(_)) => match self {
-                Self::Bool(v) => Self::UInt16(u16::from(*v)),
-                Self::Char(v) => Self::UInt16(u16::from(*v as u8)),
-                Self::Int8(v) => Self::UInt16(*v as u16),
-                Self::UInt8(v) => Self::UInt16(u16::from(*v)),
-                Self::Int16(v) => Self::UInt16(*v as u16),
-                Self::UInt16(v) => Self::UInt16(*v),
-                _ => unreachable!("larger type to uint16 conversion"),
-            },
+    fn to_uint16(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::UInt16(u16::from(v)),
+            Self::Char(v) => Self::UInt16(u16::from(v as u8)),
+            Self::Int8(v) => Self::UInt16(v as u16),
+            Self::UInt8(v) => Self::UInt16(u16::from(v)),
+            Self::Int16(v) => Self::UInt16(v as u16),
+            Self::UInt16(v) => Self::UInt16(v),
+            _ => unreachable!("larger type to uint16 conversion"),
+        }
+    }
 
-            (_, Self::Int16(_)) => match self {
-                Self::Bool(v) => Self::Int16(i16::from(*v)),
-                Self::Char(v) => Self::Int16(i16::from(*v as u8)),
-                Self::Int8(v) => Self::Int16(i16::from(*v)),
-                Self::UInt8(v) => Self::Int16(i16::from(*v)),
-                Self::Int16(v) => Self::Int16(*v),
-                _ => unreachable!("larger type to int16 conversion"),
-            },
+    fn to_int16(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Int16(i16::from(v)),
+            Self::Char(v) => Self::Int16(i16::from(v as u8)),
+            Self::Int8(v) => Self::Int16(i16::from(v)),
+            Self::UInt8(v) => Self::Int16(i16::from(v)),
+            Self::Int16(v) => Self::Int16(v),
+            _ => unreachable!("larger type to int16 conversion"),
+        }
+    }
 
-            (_, Self::UInt8(_)) => match self {
-                Self::Bool(v) => Self::UInt8(u8::from(*v)),
-                Self::Char(v) => Self::UInt8(*v as u8),
-                Self::Int8(v) => Self::UInt8(*v as u8),
-                Self::UInt8(v) => Self::UInt8(*v),
-                _ => unreachable!("larger type to uint8 conversion"),
-            },
+    fn to_uint8(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::UInt8(u8::from(v)),
+            Self::Char(v) => Self::UInt8(v as u8),
+            Self::Int8(v) => Self::UInt8(v as u8),
+            Self::UInt8(v) => Self::UInt8(v),
+            _ => unreachable!("larger type to uint8 conversion"),
+        }
+    }
 
-            (_, Self::Int8(_)) => match self {
-                Self::Bool(v) => Self::Int8(i8::from(*v)),
-                Self::Char(v) => Self::Int8(*v as i8),
-                Self::Int8(v) => Self::Int8(*v),
-                _ => unreachable!("larger type to int8 conversion"),
-            },
+    fn to_int8(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Int8(i8::from(v)),
+            Self::Char(v) => Self::Int8(v as i8),
+            Self::Int8(v) => Self::Int8(v),
+            _ => unreachable!("larger type to int8 conversion"),
+        }
+    }
 
-            (_, Self::Char(_)) => match self {
-                Self::Bool(v) => Self::Char(if *v { '\u{0001}' } else { '\0' }),
-                Self::Char(v) => Self::Char(*v),
-                _ => unreachable!("non-bool/char to char conversion"),
-            },
-
-            _ => *self, // For other conversions, keep original
+    fn to_char(self) -> Self {
+        match self {
+            Self::Bool(v) => Self::Char(if v { '\u{0001}' } else { '\0' }),
+            Self::Char(v) => Self::Char(v),
+            _ => unreachable!("non-bool/char to char conversion"),
         }
     }
 

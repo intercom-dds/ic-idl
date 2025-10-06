@@ -59,8 +59,19 @@ impl<'ctx> HirBuilder<'ctx> {
         definitions
     }
 
+    fn add_to_order_if_root(&mut self, def_id: DefId) {
+        if self.current_scope == self.ctx.context.root_scope() {
+            self.ctx.order.push(def_id);
+        }
+    }
+
+    fn add_all_to_order_if_root(&mut self, def_ids: &[DefId]) {
+        if self.current_scope == self.ctx.context.root_scope() {
+            self.ctx.order.extend(def_ids);
+        }
+    }
+
     /// Process a single AST item.
-    #[allow(clippy::too_many_lines)]
     pub(super) fn process_item(&mut self, item: &Item) -> Vec<DefId> {
         match item {
             Item::ModuleValue(m) => {
@@ -72,42 +83,31 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::StructValue(s) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_struct(s);
-                // Only add to order if at root scope
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::InterfaceValue(i) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_interface(i);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::UnionValue(u) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_union(u);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::ValuetypeValue(v) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_valuetype(v);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::DeclValue(decl) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_forward_decl(decl);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
 
@@ -115,25 +115,19 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::ConstValue(c) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_const(c);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::EnumValue(e) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_enum(e);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::BitmaskValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_bitmask(b);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
 
@@ -141,33 +135,25 @@ impl<'ctx> HirBuilder<'ctx> {
             Item::AnnotationValue(a) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_annotation(a);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::AliasValue(a) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_ids = processor.process_alias(a);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.extend(&def_ids);
-                }
+                self.add_all_to_order_if_root(&def_ids);
                 def_ids
             }
             Item::ExceptionValue(e) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_exception(e);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
             Item::BitsetValue(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_bitset(b);
-                if self.current_scope == self.ctx.context.root_scope() {
-                    self.ctx.order.push(def_id);
-                }
+                self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
         }

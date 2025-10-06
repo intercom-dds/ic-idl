@@ -49,7 +49,7 @@ fn test_module_reopening() {
     let mut module_count = 0;
     let mut total_structs = 0;
 
-    for def in hir.iter() {
+    for def in &hir {
         if def.ident.name == "Foo" {
             module_count += 1;
             if let ic_hir::hir::DefKind::Module(module) = &def.kind {

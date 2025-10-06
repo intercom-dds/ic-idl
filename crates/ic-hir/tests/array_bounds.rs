@@ -42,7 +42,7 @@ fn test_array_bounds_in_struct() {
     let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the struct and check array bounds
-    for def in hir.iter() {
+    for def in &hir {
         if def.ident.name == "MyStruct" {
             if let DefKind::Struct(s) = &def.kind {
                 // array1[5]
@@ -76,7 +76,7 @@ fn test_array_bounds_in_union() {
     let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the union and check array bounds
-    for def in hir.iter() {
+    for def in &hir {
         if def.ident.name == "MyUnion" {
             if let DefKind::Union(u) = &def.kind {
                 // buffer[256]
@@ -104,7 +104,7 @@ fn test_array_bounds_in_exception() {
     let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the exception and check array bounds
-    for def in hir.iter() {
+    for def in &hir {
         if def.ident.name == "MyException" {
             if let DefKind::Except(e) = &def.kind {
                 // messages[3]
@@ -132,7 +132,7 @@ fn test_multidimensional_arrays() {
     let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the struct and check nested array bounds
-    for def in hir.iter() {
+    for def in &hir {
         if def.ident.name == "Matrix" {
             if let DefKind::Struct(s) = &def.kind {
                 // matrix2d[3][4] - In HIR, arrays are nested with innermost dimension first
@@ -175,7 +175,7 @@ fn test_array_bounds_with_enum_values() {
     let hir = common::parse_and_resolve_successfully(idl);
 
     // Find the struct and check array bounds
-    for def in hir.iter() {
+    for def in &hir {
         if def.ident.name == "Storage" {
             if let DefKind::Struct(s) = &def.kind {
                 // small_buffer[Sizes::SMALL] = 4

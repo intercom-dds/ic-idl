@@ -62,7 +62,7 @@ fn test_namespace_aware_collision_handling() {
     let mut module_name = None;
 
     // Now look in the test module specifically
-    for def in renamed.iter() {
+    for def in &renamed {
         if let DefKind::Module(m) = &def.kind {
             if def.ident.name == "test" {
                 // Look at children of the test module
@@ -112,7 +112,7 @@ fn test_same_namespace_collision() {
     let mut struct_names = Vec::new();
 
     // Look in the test module for structs
-    for def in renamed.iter() {
+    for def in &renamed {
         if let DefKind::Module(m) = &def.kind {
             if def.ident.name == "test" {
                 // Look at children of the test module

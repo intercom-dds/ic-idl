@@ -63,7 +63,7 @@ fn test_enum_prefix_stripping() {
     let hir = common::parse_and_resolve(idl);
     let transformed = enum_prefix::transform(hir);
 
-    for def in transformed.iter() {
+    for def in &transformed {
         match &def.ident.name[..] {
             "Color" => {
                 if let DefKind::Enum(e) = &def.kind {
@@ -137,7 +137,7 @@ fn test_bitmask_prefix_stripping() {
     let hir = common::parse_and_resolve(idl);
     let transformed = enum_prefix::transform(hir);
 
-    for def in transformed.iter() {
+    for def in &transformed {
         match &def.ident.name[..] {
             "Flags" => {
                 if let DefKind::Bitmask(b) = &def.kind {
@@ -185,7 +185,7 @@ fn test_camel_case_prefix_stripping() {
     let hir = common::parse_and_resolve(idl);
     let transformed = enum_prefix::transform(hir);
 
-    for def in transformed.iter() {
+    for def in &transformed {
         match &def.ident.name[..] {
             "ColorType" => {
                 if let DefKind::Enum(e) = &def.kind {

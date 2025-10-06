@@ -240,7 +240,7 @@ fn test_rust_naming_conventions() {
 
     // Verify the renaming
     let mut verifier = RenameVerifier::new();
-    for def in renamed.iter() {
+    for def in &renamed {
         verifier.visit_def(def);
     }
 
@@ -276,7 +276,7 @@ fn test_python_naming_conventions() {
     let renamed = rename::transform(hir, &python_target());
 
     // Verify Python conventions
-    for def in renamed.iter() {
+    for def in &renamed {
         match &def.kind {
             DefKind::Struct(_) | DefKind::Enum(_) | DefKind::Union(_) => {
                 // Classes should be PascalCase
@@ -316,7 +316,7 @@ fn test_custom_naming_target() {
     let renamed = rename::transform(hir, &target);
 
     // Verify kebab-case
-    for def in renamed.iter() {
+    for def in &renamed {
         if let DefKind::Struct(s) = &def.kind {
             assert_eq!(def.ident.name, "test-struct");
             assert_eq!(s.members[0].ident.name, "test-field");
@@ -337,7 +337,7 @@ fn test_preserve_unchanged() {
     let renamed = rename::transform(hir, &rust_target());
 
     // Verify names are preserved when already correct
-    for def in renamed.iter() {
+    for def in &renamed {
         if let DefKind::Struct(s) = &def.kind {
             assert_eq!(def.ident.name, "AlreadyPascal");
             assert_eq!(s.members[0].ident.name, "already_snake");
@@ -358,7 +358,7 @@ fn test_interface_members() {
 
     let renamed = rename::transform(hir, &rust_target());
 
-    for def in renamed.iter() {
+    for def in &renamed {
         if let DefKind::Interface(i) = &def.kind {
             assert_eq!(def.ident.name, "TestInterface");
             assert_eq!(i.prototypes[0].ident.name, "do_operation");
@@ -390,7 +390,7 @@ fn test_no_suffix_stripping() {
 
     let renamed = rename::transform(hir, &target);
 
-    for def in renamed.iter() {
+    for def in &renamed {
         match &def.kind {
             DefKind::Struct(_) => {
                 // Without preprocessing, _t suffix is preserved in PascalCase
@@ -427,7 +427,7 @@ fn test_custom_preprocessor() {
 
     let renamed = rename::transform(hir, &target);
 
-    for def in renamed.iter() {
+    for def in &renamed {
         if let DefKind::Struct(_) = &def.kind {
             // Custom preprocessor removes foo_ prefix, then converts to PascalCase
             assert_eq!(def.ident.name, "BarBaz");
@@ -452,7 +452,7 @@ fn test_enum_constant_vs_regular_constant() {
     let target = rust_target();
     let transformed = rename::transform(hir, &target);
 
-    for def in transformed.iter() {
+    for def in &transformed {
         match &def.ident.name[..] {
             "Color" => {
                 if let DefKind::Enum(e) = &def.kind {

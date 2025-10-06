@@ -45,7 +45,7 @@ fn test_character_literal_propagation() {
     // Check the character constants
     let mut found_chars = std::collections::HashMap::new();
 
-    for def in hir.iter() {
+    for def in &hir {
         if let DefKind::Const(c) = &def.kind {
             if let Numeric::Char(ch) = &c.value {
                 found_chars.insert(def.ident.name.clone(), *ch);

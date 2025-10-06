@@ -35,8 +35,7 @@ fn commit_hash() -> String {
         .output()
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| "00000000".to_string())
+        .map_or_else(|| "00000000".to_string(), |s| s.trim().to_string())
 }
 
 fn commit_date() -> String {
@@ -45,8 +44,7 @@ fn commit_date() -> String {
         .output()
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| "0000-00-00".to_string())
+        .map_or_else(|| "0000-00-00".to_string(), |s| s.trim().to_string())
 }
 
 fn main() {

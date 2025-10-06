@@ -864,6 +864,39 @@ fn resolve_const(ctx: &Context, id: DefId) -> &Numeric {
     }
 }
 
+fn compare_array_or_sequence(
+    ty1: &Ty,
+    ty2: &Ty,
+    v1: &[Numeric],
+    v2: &[Numeric],
+    ctx: &Context,
+) -> bool {
+    types_equal(ty1, ty2, ctx)
+        && v1.len() == v2.len()
+        && v1
+            .iter()
+            .zip(v2.iter())
+            .all(|(a, b)| numerics_equal(a, b, ctx))
+}
+
+fn compare_map(
+    k1: &Ty,
+    k2: &Ty,
+    v1: &Ty,
+    v2: &Ty,
+    e1: &[(Numeric, Numeric)],
+    e2: &[(Numeric, Numeric)],
+    ctx: &Context,
+) -> bool {
+    types_equal(k1, k2, ctx)
+        && types_equal(v1, v2, ctx)
+        && e1.len() == e2.len()
+        && e1
+            .iter()
+            .zip(e2.iter())
+            .all(|((k1, v1), (k2, v2))| numerics_equal(k1, k2, ctx) && numerics_equal(v1, v2, ctx))
+}
+
 #[allow(clippy::too_many_lines)]
 fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
     use Numeric::{
@@ -906,15 +939,8 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
                 ty: ty2,
                 values: v2,
             },
-        ) => {
-            types_equal(ty1, ty2, ctx)
-                && v1.len() == v2.len()
-                && v1
-                    .iter()
-                    .zip(v2.iter())
-                    .all(|(a, b)| numerics_equal(a, b, ctx))
-        }
-        (
+        )
+        | (
             Sequence {
                 ty: ty1,
                 values: v1,
@@ -923,14 +949,7 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
                 ty: ty2,
                 values: v2,
             },
-        ) => {
-            types_equal(ty1, ty2, ctx)
-                && v1.len() == v2.len()
-                && v1
-                    .iter()
-                    .zip(v2.iter())
-                    .all(|(a, b)| numerics_equal(a, b, ctx))
-        }
+        ) => compare_array_or_sequence(ty1, ty2, v1, v2, ctx),
         (
             Map {
                 key: k1,
@@ -942,14 +961,7 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
                 value: v2,
                 entries: e2,
             },
-        ) => {
-            types_equal(k1, k2, ctx)
-                && types_equal(v1, v2, ctx)
-                && e1.len() == e2.len()
-                && e1.iter().zip(e2.iter()).all(|((k1, v1), (k2, v2))| {
-                    numerics_equal(k1, k2, ctx) && numerics_equal(v1, v2, ctx)
-                })
-        }
+        ) => compare_map(k1, k2, v1, v2, e1, e2, ctx),
         (
             Struct {
                 ty: ty1,

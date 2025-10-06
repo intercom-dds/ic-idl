@@ -906,7 +906,47 @@ impl HirMerger {
         def_mut.kind = updated_data.1;
     }
 
-    #[allow(clippy::too_many_lines)]
+    fn update_interface_def(&self, graph_index: usize, i: &InterfaceTy) -> DefKind {
+        DefKind::Interface(InterfaceTy {
+            parents: self.map_def_ids(graph_index, &i.parents),
+            prototypes: i
+                .prototypes
+                .iter()
+                .map(|p| self.update_proto(graph_index, p))
+                .collect(),
+            attributes: i
+                .attributes
+                .iter()
+                .map(|a| self.update_attribute(graph_index, a))
+                .collect(),
+            definitions: self.map_def_ids(graph_index, &i.definitions),
+            is_local: i.is_local,
+        })
+    }
+
+    fn update_valuetype_def(&self, graph_index: usize, v: &ValueTy) -> DefKind {
+        DefKind::Valuetype(ValueTy {
+            parent: self.map_def_id(graph_index, v.parent),
+            supports: self.map_def_id(graph_index, v.supports),
+            prototypes: v
+                .prototypes
+                .iter()
+                .map(|p| self.update_proto(graph_index, p))
+                .collect(),
+            attributes: v
+                .attributes
+                .iter()
+                .map(|a| self.update_attribute(graph_index, a))
+                .collect(),
+            members: v
+                .members
+                .iter()
+                .map(|m| self.update_member(graph_index, m))
+                .collect(),
+            definitions: self.map_def_ids(graph_index, &v.definitions),
+        })
+    }
+
     fn update_def_kind(&self, graph_index: usize, kind: &DefKind) -> DefKind {
         match kind {
             DefKind::Struct(s) => DefKind::Struct(StructTy {
@@ -937,21 +977,7 @@ impl HirMerger {
                 ty: e.ty,
                 fields: self.map_def_ids(graph_index, &e.fields),
             }),
-            DefKind::Interface(i) => DefKind::Interface(InterfaceTy {
-                parents: self.map_def_ids(graph_index, &i.parents),
-                prototypes: i
-                    .prototypes
-                    .iter()
-                    .map(|p| self.update_proto(graph_index, p))
-                    .collect(),
-                attributes: i
-                    .attributes
-                    .iter()
-                    .map(|a| self.update_attribute(graph_index, a))
-                    .collect(),
-                definitions: self.map_def_ids(graph_index, &i.definitions),
-                is_local: i.is_local,
-            }),
+            DefKind::Interface(i) => self.update_interface_def(graph_index, i),
             DefKind::Module(m) => DefKind::Module(ModuleTy {
                 definitions: self.map_def_ids(graph_index, &m.definitions),
             }),
@@ -986,26 +1012,7 @@ impl HirMerger {
                     .map(|f| self.update_bitset_field(graph_index, f))
                     .collect(),
             }),
-            DefKind::Valuetype(v) => DefKind::Valuetype(ValueTy {
-                parent: self.map_def_id(graph_index, v.parent),
-                supports: self.map_def_id(graph_index, v.supports),
-                prototypes: v
-                    .prototypes
-                    .iter()
-                    .map(|p| self.update_proto(graph_index, p))
-                    .collect(),
-                attributes: v
-                    .attributes
-                    .iter()
-                    .map(|a| self.update_attribute(graph_index, a))
-                    .collect(),
-                members: v
-                    .members
-                    .iter()
-                    .map(|m| self.update_member(graph_index, m))
-                    .collect(),
-                definitions: self.map_def_ids(graph_index, &v.definitions),
-            }),
+            DefKind::Valuetype(v) => self.update_valuetype_def(graph_index, v),
             DefKind::Except(e) => DefKind::Except(ExceptTy {
                 members: e
                     .members

@@ -31,8 +31,8 @@ use std::fmt::Write;
 
 use ic_cli::color::Colorize;
 use ic_hir::hir::{
-    Decl, DefFlags, DefId, DefKind, Label, Member, Numeric, ParamKind, PrimitiveTy, Span, Ty,
-    TyKind, Variant,
+    BitsetTy, Decl, DefFlags, DefId, DefKind, InterfaceTy, Label, Member, Numeric, ParamKind,
+    PrimitiveTy, Span, Ty, TyKind, Variant,
 };
 use ic_hir::visit::{self, Visitor};
 use ic_hir::{Context, ResolvedGraph};
@@ -274,10 +274,94 @@ fn emit_variant(context: &Context, var: &Variant) -> Leaf<String> {
     node
 }
 
-#[allow(clippy::too_many_lines)]
-fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
-    let def = context.definitions.get(id);
-    let kind = match def.kind {
+fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceTy) {
+    for def in &v.definitions {
+        node.push(emit_def(context, *def));
+    }
+    for def in &v.prototypes {
+        let span = emit_span(&def.ident.span);
+        let mut proto = leaf!(
+            "{} {span} {}",
+            "prototype".green().bold(),
+            def.ident.name.cyan(),
+        );
+        proto.push(leaf!("{} {}", "return".purple(), emit_ty(context, &def.ty)));
+        for param in &def.params {
+            let mut arg = leaf!(
+                "{} {} {}",
+                "param".green().bold(),
+                param.ident.name.cyan(),
+                emit_param_kind(param.kind),
+            );
+            arg.push(leaf!("{} {}", "type".purple(), emit_ty(context, &param.ty)));
+            proto.push(arg);
+        }
+        node.push(proto);
+    }
+    for attr in &v.attributes {
+        let span = emit_span(&attr.ident.span);
+        let ty = emit_ty(context, &attr.ty);
+        let readonly = if attr.is_readonly { "readonly " } else { "" };
+
+        let mut attr_node = leaf!(
+            "{} {span} {} {readonly}emit",
+            "attribute".green().bold(),
+            attr.ident.name.cyan(),
+        );
+
+        attr_node.push(leaf!("{} {}", "type".purple(), ty));
+
+        if !attr.getraises.is_empty() {
+            let raises = attr
+                .getraises
+                .iter()
+                .map(|&id| context.type_of(id).ident.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            attr_node.push(leaf!("{} {}", "getraises".purple(), raises.cyan()));
+        }
+
+        if !attr.setraises.is_empty() {
+            let raises = attr
+                .setraises
+                .iter()
+                .map(|&id| context.type_of(id).ident.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            attr_node.push(leaf!("{} {}", "setraises".purple(), raises.cyan()));
+        }
+
+        node.push(attr_node);
+    }
+}
+
+fn emit_bitset_def(context: &Context, node: &mut Leaf<String>, v: &BitsetTy) {
+    if let Some(parent) = v.parent {
+        let parent = &context.type_of(parent).ident.name;
+        node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
+    }
+
+    for field in &v.fields {
+        let span = emit_span(&field.ident.span);
+
+        let mut field_node = leaf!(
+            "{} {span} {} size={}",
+            "bitfield".green().bold(),
+            &field.ident.name.cyan(),
+            field.size.to_string().purple(),
+        );
+
+        for ann in &field.annotations {
+            field_node.push(emit_ann_node(ann));
+        }
+
+        field_node.push(leaf!("{} {}", "type".purple(), emit_ty(context, &field.ty)));
+        node.push(field_node);
+    }
+}
+
+fn def_kind_name(kind: &DefKind) -> &'static str {
+    match kind {
         DefKind::Annotation(_) => "annotation",
         DefKind::Module(_) => "module",
         DefKind::Struct(_) => "struct",
@@ -291,7 +375,12 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         DefKind::Interface(_) => "interface",
         DefKind::Valuetype(_) => "valuetype",
         DefKind::Decl { .. } => "decl",
-    };
+    }
+}
+
+fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
+    let def = context.definitions.get(id);
+    let kind = def_kind_name(&def.kind);
 
     let span = emit_span(&def.span);
 
@@ -303,7 +392,6 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         emit_flags(def.flags),
     );
 
-    // Add annotation nodes first
     for ann in &def.annotations {
         node.push(emit_ann_node(ann));
     }
@@ -366,96 +454,13 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
             let ty = emit_ty(context, &v.ty);
             node.push(leaf!("{} {ty}", "type".purple()));
         }
-        DefKind::Interface(v) => {
-            for def in &v.definitions {
-                node.push(emit_def(context, *def));
-            }
-            for def in &v.prototypes {
-                let span = emit_span(&def.ident.span);
-                let mut proto = leaf!(
-                    "{} {span} {}",
-                    "prototype".green().bold(),
-                    def.ident.name.cyan(),
-                );
-                proto.push(leaf!("{} {}", "return".purple(), emit_ty(context, &def.ty)));
-                for param in &def.params {
-                    let mut arg = leaf!(
-                        "{} {} {}",
-                        "param".green().bold(),
-                        param.ident.name.cyan(),
-                        emit_param_kind(param.kind),
-                    );
-                    arg.push(leaf!("{} {}", "type".purple(), emit_ty(context, &param.ty)));
-                    proto.push(arg);
-                }
-                node.push(proto);
-            }
-            for attr in &v.attributes {
-                let span = emit_span(&attr.ident.span);
-                let ty = emit_ty(context, &attr.ty);
-                let readonly = if attr.is_readonly { "readonly " } else { "" };
-
-                let mut attr_node = leaf!(
-                    "{} {span} {} {readonly}emit",
-                    "attribute".green().bold(),
-                    attr.ident.name.cyan(),
-                );
-
-                attr_node.push(leaf!("{} {}", "type".purple(), ty));
-
-                if !attr.getraises.is_empty() {
-                    let raises = attr
-                        .getraises
-                        .iter()
-                        .map(|&id| context.type_of(id).ident.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    attr_node.push(leaf!("{} {}", "getraises".purple(), raises.cyan()));
-                }
-
-                if !attr.setraises.is_empty() {
-                    let raises = attr
-                        .setraises
-                        .iter()
-                        .map(|&id| context.type_of(id).ident.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    attr_node.push(leaf!("{} {}", "setraises".purple(), raises.cyan()));
-                }
-
-                node.push(attr_node);
-            }
-        }
+        DefKind::Interface(v) => emit_interface_def(context, &mut node, v),
         DefKind::Valuetype(v) => {
             for def in &v.definitions {
                 node.push(emit_def(context, *def));
             }
         }
-        DefKind::Bitset(v) => {
-            if let Some(parent) = v.parent {
-                let parent = &context.type_of(parent).ident.name;
-                node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
-            }
-
-            for field in &v.fields {
-                let span = emit_span(&field.ident.span);
-
-                let mut field_node = leaf!(
-                    "{} {span} {} size={}",
-                    "bitfield".green().bold(),
-                    &field.ident.name.cyan(),
-                    field.size.to_string().purple(),
-                );
-
-                // Add annotation nodes
-                for ann in &field.annotations {
-                    field_node.push(emit_ann_node(ann));
-                }
-
-                field_node.push(leaf!("{} {}", "type".purple(), emit_ty(context, &field.ty)));
-                node.push(field_node);
-            }
-        }
+        DefKind::Bitset(v) => emit_bitset_def(context, &mut node, v),
         DefKind::Decl(kind) => {
             let kind = match kind {
                 Decl::Struct => "struct",

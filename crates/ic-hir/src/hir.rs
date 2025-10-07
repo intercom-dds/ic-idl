@@ -102,9 +102,12 @@ intercom_cts::bitmask! {
         /// Marker for non-suppressed types.
         IS_EMIT = 1 << 5,
 
+        /// An enumerator or bitmask position explicitly set.
+        IS_ENUMERATED = 1 << 6,
+
         /// Indicates whether the type consists of members that can form an
         /// ordinal sequence, i.e. a well-ordered set.
-        TOTAL_ORDER = 1 << 6,
+        TOTAL_ORDER = 1 << 7,
     }
 }
 
@@ -439,8 +442,8 @@ pub struct ConstTy {
 
 #[derive(Debug, Clone)]
 pub struct BitmaskTy {
-    /// The bitmask flags.
-    pub flags: Vec<BitFlag>,
+    /// `DefIds` of the bitmask flag constants
+    pub flags: Vec<DefId>,
 
     /// Underlying primitive type of the bitmask.
     // TODO: consider replacing with `PrimitiveTy`

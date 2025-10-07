@@ -240,11 +240,10 @@ where
     V: Visitor<'a> + ?Sized,
 {
     visitor.visit_ty(&data.ty);
-    for flag in &data.flags {
-        // Visit annotations on bit flags
-        for ann in &flag.annotations {
-            visitor.visit_annotation(ann);
-        }
+    // Flags are now DefIds pointing to constants - visit those defs
+    for &flag_id in &data.flags {
+        let flag_def = visitor.context().type_of(flag_id);
+        visitor.visit_def(flag_def);
     }
 }
 

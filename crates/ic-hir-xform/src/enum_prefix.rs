@@ -157,13 +157,27 @@ fn strip_prefix_from_enum(enum_def: &hir::Def, context: &Context) -> Vec<(hir::D
 }
 
 /// Strip common prefix from bitmask flags  
-fn strip_prefix_from_bitmask(bitmask_def: &hir::Def) -> Vec<(usize, String)> {
+fn strip_prefix_from_bitmask(
+    context: &Context,
+    bitmask_def: &hir::Def,
+) -> Vec<(hir::DefId, String)> {
     let bitmask_name = &bitmask_def.ident.name;
     let mut renames = Vec::new();
 
-    // Get all flags
-    let flags: Vec<_> = match &bitmask_def.kind {
-        hir::DefKind::Bitmask(b) => b.flags.iter().map(|f| f.ident.name.clone()).collect(),
+    // Get all flag names and IDs
+    let flags: Vec<(hir::DefId, String)> = match &bitmask_def.kind {
+        hir::DefKind::Bitmask(b) => b
+            .flags
+            .iter()
+            .filter_map(|&flag_id| {
+                let flag_def = context.type_of(flag_id);
+                if matches!(flag_def.kind, hir::DefKind::Const(_)) {
+                    Some((flag_id, flag_def.ident.name.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect(),
         _ => return renames,
     };
 
@@ -172,7 +186,7 @@ fn strip_prefix_from_bitmask(bitmask_def: &hir::Def) -> Vec<(usize, String)> {
     }
 
     // Similar logic as enums
-    let first_name = &flags[0];
+    let first_name = &flags[0].1;
     let mut prefix = if let Some(pos) = rfind_delimiter(&first_name) {
         first_name[..pos].to_string()
     } else {
@@ -180,7 +194,7 @@ fn strip_prefix_from_bitmask(bitmask_def: &hir::Def) -> Vec<(usize, String)> {
     };
 
     loop {
-        let all_have_prefix = flags.iter().all(|name| {
+        let all_have_prefix = flags.iter().all(|(_, name)| {
             if name.len() > prefix.len() {
                 let remainder = &name[prefix.len()..];
                 let view = &name[..prefix.len()];
@@ -195,9 +209,9 @@ fn strip_prefix_from_bitmask(bitmask_def: &hir::Def) -> Vec<(usize, String)> {
             let type_name = case::convert(bitmask_name, case::Case::Snake);
 
             if type_name.len() >= found_prefix.len() && type_name.starts_with(&found_prefix) {
-                for (idx, name) in flags.iter().enumerate() {
+                for (id, name) in &flags {
                     let new_name = name[prefix.len()..].to_string();
-                    renames.push((idx, new_name));
+                    renames.push((*id, new_name));
                 }
                 break;
             }
@@ -231,28 +245,17 @@ pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     }
 
     // Process all bitmasks
-    let bitmask_updates: Vec<_> = hir
+    let bitmask_renames: Vec<_> = hir
         .context
         .definitions
         .iter()
-        .filter_map(|(id, def)| {
-            if matches!(def.kind, hir::DefKind::Bitmask(_)) {
-                Some((id, strip_prefix_from_bitmask(def)))
-            } else {
-                None
-            }
-        })
+        .filter(|(_, def)| matches!(def.kind, hir::DefKind::Bitmask(_)))
+        .flat_map(|(_, def)| strip_prefix_from_bitmask(&hir.context, def))
         .collect();
 
     // Apply bitmask flag renames
-    for (bitmask_id, renames) in bitmask_updates {
-        if let hir::DefKind::Bitmask(b) = &mut hir.context.definitions.get_mut(bitmask_id).kind {
-            for (idx, new_name) in renames {
-                if let Some(flag) = b.flags.get_mut(idx) {
-                    flag.ident.name = new_name;
-                }
-            }
-        }
+    for (flag_id, new_name) in bitmask_renames {
+        hir.context.definitions.get_mut(flag_id).ident.name = new_name;
     }
 
     hir

@@ -125,26 +125,30 @@ impl<'a> Visitor<'a> for BitBound<'a> {
     fn visit_bitmask(&mut self, _def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
         // Check bit positions in bitmask flags
         if let Some(type_bits) = Self::get_type_bits(&data.ty.kind) {
-            for flag in &data.flags {
+            for &flag_id in &data.flags {
+                let flag_def = self.hir.context.definitions.get(flag_id);
                 // Check if the flag has a @bit annotation
-                for ann in &flag.annotations {
+                for ann in &flag_def.annotations {
                     self.check_bit_annotation(ann, type_bits);
                 }
 
                 // Also check if the explicit value exceeds the type bounds
-                #[allow(clippy::cast_possible_truncation)]
-                if flag.value >= (1u64 << type_bits) as usize {
-                    // This would be a different lint, but we can warn here too
-                    if let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        format!(
-                            "bitmask value {value} exceeds type bit width of {type_bits}",
-                            value = flag.value
-                        ),
-                        Label::new(flag.ident.span).message("value out of bounds"),
-                    ) {
-                        Self::report(self.ctx, diag);
+                if let ic_hir::hir::DefKind::Const(const_ty) = &flag_def.kind {
+                    if let ic_hir::hir::Numeric::UInt64(value) = const_ty.value {
+                        #[allow(clippy::cast_possible_truncation)]
+                        if value >= (1u64 << type_bits) {
+                            // This would be a different lint, but we can warn here too
+                            if let Some(diag) = self.ctx.diag_span(
+                                Self::name(),
+                                Self::category(),
+                                format!(
+                                    "bitmask value {value} exceeds type bit width of {type_bits}"
+                                ),
+                                Label::new(flag_def.ident.span).message("value out of bounds"),
+                            ) {
+                                Self::report(self.ctx, diag);
+                            }
+                        }
                     }
                 }
             }

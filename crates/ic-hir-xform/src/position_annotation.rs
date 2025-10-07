@@ -28,109 +28,70 @@
 //! Transforms `@position` annotations on bitmask flags into direct bit position values.
 //!
 //! This transformation:
-//! 1. Finds bitmask flags with `@position` annotations
+//! 1. Finds bitmask flag constants with `@position` annotations
 //! 2. Extracts the numeric position from the annotation
-//! 3. Sets the bitmask flag's value to 1 << position
+//! 3. Sets the flag constant's value to 1 << position
 //! 4. Removes the `@position` annotation
 
-use ic_hir::fold::Fold;
-use ic_hir::hir::{Ann, BitFlag, BitmaskTy, Def, DefId, DefKind, Numeric};
-use ic_hir::{Context, ResolvedGraph};
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{Ann, ConstTy, Def, DefKind, Numeric};
 
-/// Transformer that converts @position annotations to direct bitmask values.
-pub struct PositionAnnotationTransform {
-    /// Name of the @position annotation definition
-    position_ann_name: String,
-}
+/// Process a single definition, looking for bitmask flag constants with @position annotation
+fn process_def(def: &mut Def) {
+    // Check if this is a constant definition
+    if let DefKind::Const(ref mut const_ty) = def.kind {
+        // Look for @position annotation
+        let mut position_found = None;
+        let mut new_annotations = Vec::new();
 
-impl PositionAnnotationTransform {
-    /// Creates a new position annotation transformer.
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            position_ann_name: "position".to_string(),
-        }
-    }
-}
-
-impl Default for PositionAnnotationTransform {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Fold for PositionAnnotationTransform {
-    #[allow(clippy::cast_sign_loss)]
-    fn fold_def(&mut self, mut def: Def) -> Def {
-        // Only process bitmask definitions
-        if let DefKind::Bitmask(ref mut bitmask_ty) = def.kind {
-            // Process each bitmask flag
-            bitmask_ty.flags = bitmask_ty
-                .flags
-                .drain(..)
-                .map(|mut flag| {
-                    // Look for @position annotation
-                    let mut position_found = None;
-                    let mut new_annotations = Vec::new();
-
-                    for ann in flag.annotations {
-                        if ann.ident.name == self.position_ann_name {
-                            // Extract the position from the annotation
-                            if let Some(arg) = ann.args.first() {
-                                if let Numeric::Int32(v) = &arg.value {
-                                    position_found = Some(*v as usize);
-                                } else if let Numeric::Int64(v) = &arg.value {
-                                    // Try to convert to usize
-                                    // Allow truncation - bit positions are typically small
-                                    #[allow(clippy::cast_possible_truncation)]
-                                    let usize_value = *v as usize;
-                                    position_found = Some(usize_value);
-                                }
-                            }
-                            // Don't add @position annotation to the new list
-                        } else {
-                            // Keep other annotations
-                            new_annotations.push(ann);
-                        }
+        for ann in def.annotations.drain(..) {
+            if ann.ident.name == "position" {
+                // Extract the position from the annotation
+                if let Some(arg) = ann.args.first() {
+                    match &arg.value {
+                        Numeric::Int32(v) => position_found = Some(*v as u32),
+                        Numeric::Int64(v) => position_found = Some(*v as u32),
+                        _ => {}
                     }
-
-                    // Update flag value if we found a position
-                    if let Some(position) = position_found {
-                        // Convert position to bit value (1 << position)
-                        flag.value = 1 << position;
-                    }
-                    flag.annotations = new_annotations;
-                    flag
-                })
-                .collect();
+                }
+                // Don't keep the @position annotation
+            } else {
+                // Keep other annotations
+                new_annotations.push(ann);
+            }
         }
-        def
+
+        def.annotations = new_annotations;
+
+        // Update the constant value if we found a position
+        if let Some(position) = position_found {
+            const_ty.value = Numeric::UInt64(1u64 << position);
+        }
     }
 }
 
 /// Transforms all @position annotations in the HIR to direct bitmask values.
 #[must_use]
 pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
-    let mut transformer = PositionAnnotationTransform::new();
+    // Find all bitmasks and their flag constants
+    let bitmask_flags: Vec<_> = graph
+        .context
+        .definitions
+        .iter()
+        .filter_map(|(_, def)| {
+            if let DefKind::Bitmask(bitmask) = &def.kind {
+                Some(bitmask.flags.clone())
+            } else {
+                None
+            }
+        })
+        .flatten()
+        .collect();
 
-    // Transform each definition in place
-    for (id, def) in &mut graph.context.definitions {
-        let original_def = std::mem::replace(
-            def,
-            Def {
-                id,
-                parent: None,
-                ident: ic_hir::hir::Ident {
-                    name: String::new(),
-                    span: ic_hir::hir::Span::default(),
-                },
-                kind: DefKind::Decl(ic_hir::hir::Decl::Struct),
-                flags: ic_hir::hir::DefFlags::nil(),
-                span: ic_hir::hir::Span::default(),
-                annotations: vec![],
-            },
-        );
-        *def = transformer.fold_def(original_def);
+    // Process each bitmask flag constant
+    for flag_id in bitmask_flags {
+        let def = graph.context.definitions.get_mut(flag_id);
+        process_def(def);
     }
 
     graph

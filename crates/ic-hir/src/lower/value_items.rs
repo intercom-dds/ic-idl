@@ -35,8 +35,8 @@ use super::type_resolver::TypeResolver;
 use super::utils::TyExt;
 use crate::Context;
 use crate::hir::{
-    AnnParam, AnnotationTy, BitFlag, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
-    DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
+    AnnParam, AnnotationTy, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags, DefId,
+    DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
 use crate::scope::ScopeId;
 
@@ -205,8 +205,13 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             let value = self.calculate_enumerator_value(enumerator, &mut last_value);
             last_value = value;
 
+            // Check if this enumerator has an explicit value
+            let is_explicit = enumerator.value.is_some();
+
             // Create and register the enumerator
-            if let Some(field_id) = self.create_enumerator(enumerator, enum_id, value, enum_scope) {
+            if let Some(field_id) =
+                self.create_enumerator(enumerator, enum_id, value, enum_scope, is_explicit)
+            {
                 fields.push(field_id);
             }
         }
@@ -255,6 +260,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         enum_id: DefId,
         value: i64,
         enum_scope: ScopeId,
+        is_explicit: bool,
     ) -> Option<DefId> {
         // Convert annotations before the closure
         let annotations = self.convert_annotations(&enumerator.annotations, self.current_scope);
@@ -273,7 +279,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 },
                 value: Numeric::Int32(value as i32),
             }),
-            flags: DefFlags::nil(),
+            flags: if is_explicit {
+                DefFlags::IS_ENUMERATED
+            } else {
+                DefFlags::nil()
+            },
         });
 
         // Register enumerator through the registry to check for duplicates
@@ -360,10 +370,12 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         }
 
         // Process flags
-        let mut flags = Vec::new();
+        let mut flag_ids = Vec::new();
         let mut last_bit = 0u32;
-
         for (i, flag) in b.bits.iter().enumerate() {
+            // Check if this flag has an explicit position
+            let is_explicit = flag.value.is_some();
+
             // Calculate bit position
             let bit_pos = if let Some(ref expr) = flag.value {
                 let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
@@ -397,36 +409,56 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     ty: flag_ty,
                     value: Numeric::UInt64(value),
                 }),
-                flags: DefFlags::nil(),
+                flags: if is_explicit {
+                    DefFlags::IS_ENUMERATED
+                } else {
+                    DefFlags::nil()
+                },
             });
 
             // Register flag in parent scope (not bitmask scope)
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                flag.ident.name.clone(),
-                flag_id,
-            );
+            if self
+                .ctx
+                .registry
+                .register_definition(
+                    self.current_scope,
+                    &flag.ident,
+                    DefKindTag::Const,
+                    flag_id,
+                    &mut self.ctx.diagnostics,
+                    &self.ctx.context,
+                )
+                .is_some()
+            {
+                self.ctx.context.scopes.add_definition(
+                    self.current_scope,
+                    flag.ident.name.clone(),
+                    flag_id,
+                );
 
-            // Convert annotations for the BitFlag
-            let bitflag_annotations =
-                self.convert_annotations(&flag.annotations, self.current_scope);
-
-            // Add to bitmask flags
-            flags.push(BitFlag {
-                ident: flag.ident.clone(),
-                value: value as usize,
-                annotations: bitflag_annotations,
-            });
+                // Add to list of flag IDs
+                flag_ids.push(flag_id);
+            }
         }
 
         // Sort flags by their assigned values
-        flags.sort_by_key(|flag| flag.value);
+        flag_ids.sort_by_key(|&flag_id| {
+            let def = self.ctx.context.definitions.get(flag_id);
+            if let DefKind::Const(const_ty) = &def.kind {
+                match &const_ty.value {
+                    Numeric::UInt64(v) => *v,
+                    _ => 0,
+                }
+            } else {
+                0
+            }
+        });
 
         // Update the bitmask definition with the collected flags
         if let DefKind::Bitmask(ref mut bitmask_ty) =
             self.ctx.context.definitions.get_mut(bitmask_id).kind
         {
-            bitmask_ty.flags = flags;
+            bitmask_ty.flags = flag_ids;
         }
 
         bitmask_id

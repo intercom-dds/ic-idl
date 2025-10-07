@@ -101,6 +101,9 @@ fn emit_flags(flags: DefFlags) -> String {
     if flags.contains(DefFlags::IS_INCOMPLETE) {
         buf.push("incomplete");
     }
+    if flags.contains(DefFlags::IS_ENUMERATED) {
+        buf.push("enumerated");
+    }
     if flags.contains(DefFlags::IS_EMIT) {
         buf.push("emit");
     }
@@ -351,24 +354,8 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         DefKind::Bitmask(v) => {
             let ty = emit_ty(context, &v.ty);
             node.push(leaf!("{} {ty} builtin", "type".purple()));
-
-            for flag in &v.flags {
-                let span = emit_span(&flag.ident.span);
-
-                let mut flag_node = leaf!(
-                    "{} {span} {} {}",
-                    "flag".green().bold(),
-                    &flag.ident.name.cyan(),
-                    format!("'= {}'", flag.value).purple(),
-                );
-
-                // Add annotation nodes
-                for ann in &flag.annotations {
-                    flag_node.push(emit_ann_node(ann));
-                }
-
-                node.push(flag_node);
-            }
+            let flags = v.flags.iter().map(|v| emit_def(context, *v));
+            node.extend(flags);
         }
         DefKind::Alias(v) => {
             let ty = emit_ty(context, &v.ty);

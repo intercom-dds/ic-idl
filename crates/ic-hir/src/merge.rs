@@ -37,9 +37,9 @@ use ic_diagnostic::{Color, Diag, Label as DiagLabel};
 use ic_syntax::Span;
 
 use crate::hir::{
-    AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitFlag, BitmaskTy, BitsetField, BitsetTy,
-    ConstTy, Decl, Def, DefId, DefKind, Disc, EnumTy, ExceptTy, InterfaceTy, Label, Member,
-    ModuleTy, Numeric, Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
+    Def, DefId, DefKind, Disc, EnumTy, ExceptTy, InterfaceTy, Label, Member, ModuleTy, Numeric,
+    Parameter, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};
@@ -939,7 +939,7 @@ impl HirMerger {
                 flags: b
                     .flags
                     .iter()
-                    .map(|f| self.update_bit_flag(graph_index, f))
+                    .filter_map(|&f| self.map_def_id(graph_index, Some(f)))
                     .collect(),
             }),
             DefKind::Bitset(b) => DefKind::Bitset(BitsetTy {
@@ -1112,18 +1112,6 @@ impl HirMerger {
             ident: param.ident.clone(),
             ty: self.update_type(graph_index, &param.ty),
             kind: param.kind,
-        }
-    }
-
-    fn update_bit_flag(&self, graph_index: usize, flag: &BitFlag) -> BitFlag {
-        BitFlag {
-            ident: flag.ident.clone(),
-            value: flag.value,
-            annotations: flag
-                .annotations
-                .iter()
-                .map(|ann| self.update_annotation(graph_index, ann))
-                .collect(),
         }
     }
 

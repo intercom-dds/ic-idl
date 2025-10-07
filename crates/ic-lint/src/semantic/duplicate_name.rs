@@ -238,7 +238,13 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
     }
 
     fn visit_bitmask(&mut self, def: &'a Def, bitmask_ty: &'a BitmaskTy) {
-        self.check_names(&bitmask_ty.flags, |f| &f.ident, "flag", &def.ident.name);
+        // Get flag definitions from DefIds
+        let flag_defs: Vec<&Def> = bitmask_ty
+            .flags
+            .iter()
+            .map(|&id| self.context().definitions.get(id))
+            .collect();
+        self.check_names(&flag_defs, |f| &f.ident, "flag", &def.ident.name);
         ic_hir::visit::walk_bitmask(self, bitmask_ty);
     }
 

@@ -231,10 +231,9 @@ impl Fold for Renamer {
         ic_hir::fold::fold_enum_ty(self, e)
     }
 
-    fn fold_bitmask_ty(&mut self, mut b: hir::BitmaskTy) -> hir::BitmaskTy {
-        for flag in &mut b.flags {
-            self.rename_ident(&mut flag.ident, self.target.bit_flag);
-        }
+    fn fold_bitmask_ty(&mut self, b: hir::BitmaskTy) -> hir::BitmaskTy {
+        // Bitmask flags are now DefIds - they will be renamed
+        // when we process all definitions in the transform function
         ic_hir::fold::fold_bitmask_ty(self, b)
     }
 
@@ -632,8 +631,8 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 rename_items(&mut proto.params, target.parameter, |p| &mut p.ident);
             }
         }
-        hir::DefKind::Bitmask(b) => {
-            rename_items(&mut b.flags, target.bit_flag, |f| &mut f.ident);
+        hir::DefKind::Bitmask(_) => {
+            // Bitmask flags are DefIds - handled separately
         }
         hir::DefKind::Bitset(b) => {
             rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident);

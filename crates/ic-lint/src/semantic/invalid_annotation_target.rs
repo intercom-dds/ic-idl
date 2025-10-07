@@ -202,9 +202,10 @@ impl<'a> Visitor<'a> for InvalidAnnotationTarget<'a> {
 
     fn visit_bitmask(&mut self, _def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
         // Check flag annotations
-        for flag in &data.flags {
+        for &flag_id in &data.flags {
+            let flag_def = self.hir.context.definitions.get(flag_id);
             self.check_annotations(
-                &flag.annotations,
+                &flag_def.annotations,
                 "bitmask_flag",
                 &DefKind::Bitmask(data.clone()),
             );

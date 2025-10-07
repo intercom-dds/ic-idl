@@ -73,22 +73,22 @@ fn test_bitmask_flag_annotations() {
     assert_eq!(bitmask_def.flags.len(), 3);
 
     // Check ACTIVE flag
-    let active_flag = &bitmask_def.flags[0];
-    assert_eq!(active_flag.ident.name, "ACTIVE");
-    assert_eq!(active_flag.annotations.len(), 1);
-    assert_eq!(active_flag.annotations[0].ident.name, "FlagInfo");
+    let active_flag_def = result.context.definitions.get(bitmask_def.flags[0]);
+    assert_eq!(active_flag_def.ident.name, "ACTIVE");
+    assert_eq!(active_flag_def.annotations.len(), 1);
+    assert_eq!(active_flag_def.annotations[0].ident.name, "FlagInfo");
 
     // Check INACTIVE flag
-    let inactive_flag = &bitmask_def.flags[1];
-    assert_eq!(inactive_flag.ident.name, "INACTIVE");
-    assert_eq!(inactive_flag.annotations.len(), 1);
-    assert_eq!(inactive_flag.annotations[0].ident.name, "FlagInfo");
+    let inactive_flag_def = result.context.definitions.get(bitmask_def.flags[1]);
+    assert_eq!(inactive_flag_def.ident.name, "INACTIVE");
+    assert_eq!(inactive_flag_def.annotations.len(), 1);
+    assert_eq!(inactive_flag_def.annotations[0].ident.name, "FlagInfo");
 
     // Check PENDING flag
-    let pending_flag = &bitmask_def.flags[2];
-    assert_eq!(pending_flag.ident.name, "PENDING");
-    assert_eq!(pending_flag.annotations.len(), 1);
-    assert_eq!(pending_flag.annotations[0].ident.name, "FlagInfo");
+    let pending_flag_def = result.context.definitions.get(bitmask_def.flags[2]);
+    assert_eq!(pending_flag_def.ident.name, "PENDING");
+    assert_eq!(pending_flag_def.annotations.len(), 1);
+    assert_eq!(pending_flag_def.annotations[0].ident.name, "FlagInfo");
 }
 
 #[test]
@@ -201,12 +201,12 @@ fn test_bitmask_with_multiple_annotations() {
         .expect("Should find Permissions bitmask");
 
     // Check MODIFY flag has multiple annotations
-    let modify_flag = &bitmask_def.flags[2];
-    assert_eq!(modify_flag.ident.name, "MODIFY");
-    assert_eq!(modify_flag.annotations.len(), 2);
+    let modify_flag_def = result.context.definitions.get(bitmask_def.flags[2]);
+    assert_eq!(modify_flag_def.ident.name, "MODIFY");
+    assert_eq!(modify_flag_def.annotations.len(), 2);
 
     // Check annotation names (order might vary)
-    let ann_names: Vec<&str> = modify_flag
+    let ann_names: Vec<&str> = modify_flag_def
         .annotations
         .iter()
         .map(|a| a.ident.name.as_str())

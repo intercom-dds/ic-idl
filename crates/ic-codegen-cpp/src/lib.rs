@@ -29,6 +29,7 @@ use std::ffi::CString;
 
 use ic_cli::Command;
 use ic_emit::File;
+use ic_hir_xform::Target;
 
 mod codegen;
 mod deps;
@@ -37,6 +38,23 @@ mod structs;
 mod type_info;
 mod unions;
 mod valuetypes;
+
+#[rustfmt::skip]
+const KEYWORDS: &[&str] = &[
+    "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor", "bool", "break",
+    "case", "catch", "char", "char16_t", "char32_t", "char8_t", "class", "co_await", "co_return",
+    "co_yield", "compl", "concept", "const", "const_cast", "consteval", "constexpr", "constinit",
+    "continue", "decltype", "default", "delete", "do", "double", "dynamic_cast", "else", "enum",
+    "explicit", "export", "extern", "false", "float", "for", "friend", "goto", "if", "import",
+    "inline", "inspect", "int", "long", "module", "mutable", "namespace", "new", "noexcept", "not",
+    "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected", "public", "register",
+    "reinterpret_cast", "really", "requires", "return", "short", "signed", "sizeof", "static",
+    "static_assert", "static_cast", "struct", "switch", "template", "this", "thread_local",
+    "throw", "throws", "true", "try", "typedef", "typeid", "typename", "union", "unsigned",
+    "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq",
+    // not keywords(?), operators, "identifiers with meaning", etc
+    "typeof", "assert",
+];
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct CppOptions {
@@ -105,72 +123,12 @@ pub fn codegen_cpp(
     source_map: &ic_vfs::SourceMap,
     options: CppOptions,
 ) -> Vec<File> {
-    let generator = codegen::CppGen::new(hir, source_map, options.clone());
-    let rust_generated = generator.generate();
-
-    let result = ic_ptree_lower::from_hir(hir, source_map);
-    let header_subfolder = options
-        .header_subdir
-        .as_ref()
-        .map(|s| CString::new(s.as_str()).expect("Invalid header_subfolder"));
-
-    let header_ext = options
-        .header_ext
-        .as_ref()
-        .map(|s| CString::new(s.as_str()).expect("Invalid header_ext"));
-
-    let dll_export = options
-        .dll_export
-        .as_ref()
-        .map(|s| CString::new(s.as_str()).expect("Invalid dll_export"));
-
-    let ffi_options = cpp_options_t {
-        header_postfix: std::ptr::null(),
-        header_subfolder: header_subfolder
-            .as_ref()
-            .map_or(std::ptr::null(), |s| s.as_ptr()),
-        header_ext: header_ext.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
-        dll_export: dll_export.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
-        scoped_enums: u8::from(options.scoped_enums),
-        access_functions: 0,
-        no_stream_op: u8::from(options.no_stream_op),
-        use_fmt: u8::from(options.use_fmt),
+    let target = Target {
+        keywords: KEYWORDS.iter().copied().collect(),
+        keyword_escape_fn: |name| format!("{name}_"),
+        ..Target::default()
     };
 
-    // let mut cpp_generated = vec![];
-    // unsafe {
-    //     ic_codegen_cpp(
-    //         result.as_raw(),
-    //         ffi_options,
-    //         std::ptr::addr_of_mut!(cpp_generated).cast::<_>(),
-    //     );
-    // }
-
-    let mut all_files = Vec::new();
-
-    for file in rust_generated {
-        match file {
-            File::Generated { path, source } => {
-                all_files.push(File::Generated {
-                    path: format!("rust/{}", path.display()).into(),
-                    source,
-                });
-            }
-            File::Dep(d) => all_files.push(File::Dep(d)),
-        }
-    }
-
-    // for file in cpp_generated {
-    //     match file {
-    //         File::Generated { path, source } => {
-    //             all_files.push(File::Generated {
-    //                 path: format!("cpp/{}", path.display()).into(),
-    //                 source,
-    //             });
-    //         }
-    //         File::Dep(d) => all_files.push(File::Dep(d)),
-    //     }
-    // }
-
-    all_files
+    let hir = ic_hir_xform::rename::transform(hir.clone(), &target);
+    codegen::CppGen::new(&hir, source_map, options).generate()
 }

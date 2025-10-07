@@ -40,9 +40,5 @@ workspace = true
 ic-cli = { path = "../ic-cli" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
-ic-ptree = { path = "../ic-ptree" }
-ic-ptree-lower = { path = "../ic-ptree-lower" }
+ic-hir-xform = { path = "../ic-hir-xform" }
 ic-vfs = { path = "../ic-vfs" }
-
-[build-dependencies]
-ic-cc = { path = "../ic-cc" }

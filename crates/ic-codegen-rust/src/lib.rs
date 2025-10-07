@@ -115,7 +115,7 @@ pub fn codegen_rust(
             keywords: RUST_KEYWORDS.iter().copied().collect(),
             keyword_escape_fn: |name| format!("{name}_"),
             bitset_field: Some(Case::Snake),
-            constant: Some(Case::Snake),
+            constant: Some(Case::UpperSnake),
             module: Some(Case::Snake),
             operation: Some(Case::Snake),
             attribute: Some(Case::Snake),

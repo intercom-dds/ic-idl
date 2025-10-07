@@ -34,6 +34,9 @@ pub enum Case {
     /// `snake_case`
     Snake,
 
+    /// `UPPER_SNAKE_CASE`
+    UpperSnake,
+
     /// `camelCase`
     Camel,
 
@@ -88,6 +91,21 @@ pub fn convert<A: AsRef<str>>(input: A, case: Case) -> String {
 /// ````
 pub fn snake<A: AsRef<str>>(input: A) -> String {
     convert(input, Case::Snake)
+}
+
+/// Converts the given string to `UPPER_SNAKE_CASE`. See [`convert`] for more
+/// information.
+///
+/// # Example
+///
+/// ```rust
+/// # use ic_emit::case::upper_snake;
+/// #
+/// let converted = upper_snake("FooBarBaz3");
+/// assert_eq!(converted, "FOO_BAR_BAZ3");
+/// ````
+pub fn upper_snake<A: AsRef<str>>(input: A) -> String {
+    convert(input, Case::UpperSnake)
 }
 
 /// Converts the given string to `camelCase`. See [`convert`] for more
@@ -152,6 +170,7 @@ impl Converter {
                 Case::Pascal => Self::to_pascal(word, buffer),
                 Case::Camel => self.to_camel(word, buffer),
                 Case::Snake | Case::Kebab => self.snake_delim(word, buffer),
+                Case::UpperSnake => self.upper_snake_delim(word, buffer),
             }
         }
         self.first = false;
@@ -162,6 +181,13 @@ impl Converter {
             buffer.push(self.delim);
         }
         *buffer += &word.to_lowercase();
+    }
+
+    fn upper_snake_delim(&self, word: &str, buffer: &mut String) {
+        if !self.first {
+            buffer.push(self.delim);
+        }
+        *buffer += &word.to_uppercase();
     }
 
     fn to_pascal(word: &str, buffer: &mut String) {
@@ -268,5 +294,15 @@ mod test {
         assert_eq!(pascal("P_Arbitration_AU_PSM"), "PArbitrationAuPsm");
         assert_eq!(camel("P_Arbitration_AU_PSM"), "pArbitrationAuPsm");
         assert_eq!(kebab("P_Arbitration_AU_PSM"), "p-arbitration-au-psm");
+    }
+
+    #[test]
+    fn upper_snake_case() {
+        assert_eq!(upper_snake("FooBarBaz"), "FOO_BAR_BAZ");
+        assert_eq!(upper_snake("fooBarBaz"), "FOO_BAR_BAZ");
+        assert_eq!(upper_snake("foo_bar_baz"), "FOO_BAR_BAZ");
+        assert_eq!(upper_snake("FOO_BAR_BAZ"), "FOO_BAR_BAZ");
+        assert_eq!(upper_snake("JSONParser"), "JSON_PARSER");
+        assert_eq!(upper_snake("IDLType"), "IDL_TYPE");
     }
 }

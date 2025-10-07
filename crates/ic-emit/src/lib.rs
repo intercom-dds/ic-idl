@@ -25,10 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Code generation framework for the IDL compiler.
+//! Shared helpers for backends that emit source code or serialisation metadata.
 //!
-//! This crate provides common utilities and traits for code generators to
-//! produce output in various target languages. It includes:
+//! This crate provides common utilities and traits for code generators. It
+//! includes:
 //!
 //! - Case conversion utilities for different naming conventions
 //! - Pretty-printing infrastructure for code formatting
@@ -37,35 +37,47 @@
 //! # Example
 //!
 //! ```ignore
-//! use ic_emit::{File, printer::Printer};
+//! use ic_emit::printer::PrettyPrinter;
 //!
-//! let mut printer = Printer::new();
-//! printer.line("// Generated code");
-//! printer.line("struct Example {");
-//! printer.indent();
-//! printer.line("field: i32,");
-//! printer.dedent();
-//! printer.line("}");
+//! let mut pp = PrettyPrinter::new();
+//! pp.text("// Generated").endl();
+//! pp.text("struct Example {").indent().endl();
+//! pp.text("value: i32,").endl();
+//! pp.dedent().text("}").endl();
+//! ```
 //!
-//! let file = File::Generated {
-//!     path: "example.rs".into(),
-//!     source: printer.finish(),
-//! };
+//! When writing backends, the [`Twine`](printer::Twine) helper together with
+//! the [`w!`](crate::w) macro offer a convenient way to stream fragments into
+//! an output buffer. `Twine` mirrors block delimiters and indentation
+//! automatically:
+//!
+//! ```ignore
+//! use ic_emit::{printer::Twine, w};
+//!
+//! let mut out = Twine::new();
+//! w!(out, "pub struct Example {\n");
+//! w!(out, "pub value: i32,\n");
+//! w!(out, "}\n");
+//!
+//! let source = out.finish();
 //! ```
 
 use std::path::PathBuf;
 
 /// Case conversion utilities for different naming conventions.
 pub mod case;
-mod ffi;
+
 /// Pretty-printing utilities for code generation.
 pub mod printer;
+
+mod ffi;
 
 /// Represents a file in the code generation output.
 #[derive(Debug)]
 pub enum File {
     /// A dependency file that should be tracked but not generated.
     Dep(String),
+
     /// A generated source file with its path and contents.
     Generated { path: PathBuf, source: String },
 }

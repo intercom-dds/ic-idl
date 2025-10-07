@@ -493,6 +493,7 @@ pub struct ProtoTy {
     pub ident: Ident,
     pub ty: Ty,
     pub params: Vec<Parameter>,
+    pub raises: Vec<DefId>,
 }
 
 #[derive(Debug, Clone)]

@@ -1111,6 +1111,7 @@ impl HirMerger {
                 .iter()
                 .map(|p| self.update_parameter(graph_index, p))
                 .collect(),
+            raises: self.map_def_ids(graph_index, &proto.raises),
         }
     }
 

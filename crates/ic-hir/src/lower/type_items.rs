@@ -746,10 +746,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             })
             .collect();
 
+        let raises = self.resolve_exception_paths(&proto.raises);
+
         ProtoTy {
             ident: proto.ident.clone(),
             ty,
             params,
+            raises,
         }
     }
 

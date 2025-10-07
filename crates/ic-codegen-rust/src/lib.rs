@@ -25,37 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod codegen;
+mod helpers;
+mod marshal;
+
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
 use ic_hir_xform::rename;
-
-#[derive(Copy, Clone, Command, Debug, Default)]
-pub struct RustOptions {
-    /// Do not rename generated types
-    #[option(long)]
-    pub no_rename: bool,
-
-    /// Annotate all types with `#[must_use]`
-    #[option(long)]
-    pub must_use: bool,
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-#[allow(non_camel_case_types)]
-struct rust_options_t {
-    pub no_rename: u8,
-    pub must_use: u8,
-}
-
-unsafe extern "C" {
-    fn ic_codegen_rust(
-        result: *const ic_ptree::sys::parse_result,
-        options: rust_options_t,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
-}
 
 const RUST_KEYWORDS: &[&str] = &[
     "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",
@@ -63,17 +40,7 @@ const RUST_KEYWORDS: &[&str] = &[
     "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use", "where",
     "while", "async", "await", "dyn", "abstract", "become", "box", "do", "final", "macro",
     "override", "priv", "typeof", "unsized", "virtual", "yield", "try",
-    // not keywords, but types from the prelude we reserve to make things more readable
-    "String", "Option", "Box", "Vec",
 ];
-
-fn escape_rust_keyword(ctx: rename::RenameContext) -> Option<String> {
-    if RUST_KEYWORDS.contains(&ctx.name) {
-        Some(format!("{}_", ctx.name))
-    } else {
-        None
-    }
-}
 
 const RUST_CONVENTION: rename::Convention = rename::Convention {
     struct_type: Some(Case::Pascal),
@@ -100,13 +67,27 @@ const RUST_CONVENTION: rename::Convention = rename::Convention {
     strip_enum_prefix: true,
 };
 
+fn escape_rust_keyword(ctx: rename::RenameContext) -> Option<String> {
+    if RUST_KEYWORDS.contains(&ctx.name) {
+        Some(format!("{}_", ctx.name))
+    } else {
+        None
+    }
+}
+
+#[derive(Copy, Clone, Command, Debug, Default)]
+pub struct RustOptions {
+    /// Do not rename generated types
+    #[option(long)]
+    pub no_rename: bool,
+
+    /// Annotate all types with `#[must_use]`
+    #[option(long)]
+    pub must_use: bool,
+}
+
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
-pub fn codegen_rust(
-    hir: &ic_hir::ResolvedGraph,
-    source_map: &ic_vfs::SourceMap,
-    options: RustOptions,
-) -> Vec<File> {
+pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<File> {
     // Clone HIR for Rust-specific transformations
     let hir = hir.clone();
 
@@ -128,24 +109,10 @@ pub fn codegen_rust(
             convention: RUST_CONVENTION,
             keyword_escape: Some(escape_rust_keyword),
             moved_defs,
-        },
-    );
-
-    // Convert transformed HIR to ptree for C++ backend
-    let result = ic_ptree_lower::from_hir(&hir, source_map);
-
-    let ffi_options = rust_options_t {
-        no_rename: u8::from(options.no_rename),
-        must_use: u8::from(options.must_use),
+        }
     };
+    let hir = ic_hir_xform::rename::transform(hir, &target);
 
-    let mut generated = vec![];
-    unsafe {
-        ic_codegen_rust(
-            result.as_raw(),
-            ffi_options,
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
-        );
-    }
-    generated
+    // Generate using native Rust backend
+    codegen::RustGen::new(&hir, options).generate()
 }

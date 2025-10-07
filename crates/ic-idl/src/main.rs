@@ -284,7 +284,7 @@ fn generate_code(
         let _span = info_span!("rust", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
-            || ic_codegen_rust::codegen_rust(hir, vfs, options.rust),
+            || ic_codegen_rust::codegen_rust(hir, options.rust),
             options.purge_dirs,
         )?;
         info!(files = files.len(), "generated");

@@ -140,6 +140,9 @@ impl RenameVerifier {
             Case::Kebab => name
                 .chars()
                 .all(|c| c.is_lowercase() || c.is_numeric() || c == '-'),
+            Case::UpperSnake => name
+                .chars()
+                .all(|c| c.is_uppercase() || c.is_numeric() || c == '_'),
         }
     }
 

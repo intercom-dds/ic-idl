@@ -199,6 +199,14 @@ fn test_enum_discriminator() {
         .iter()
         .find(|def| def.ident.name == "ColorUnion")
         .unwrap();
+
+    let (blue_id, _) = hir
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "BLUE")
+        .unwrap();
+
     let DefKind::Union(union_ty) = &union_def.kind else {
         panic!("Expected union")
     };
@@ -214,8 +222,7 @@ fn test_enum_discriminator() {
         .unwrap();
     assert!(matches!(implicit.ty.kind, TyKind::Null));
     assert_eq!(implicit.labels.len(), 1);
-    // Should use the value for BLUE (which is 2)
-    assert_eq!(implicit.labels[0].value, Numeric::Int32(2));
+    assert_eq!(implicit.labels[0].value, Numeric::Const(blue_id));
 }
 
 #[test]

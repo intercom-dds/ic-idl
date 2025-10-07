@@ -1,3 +1,0 @@
-enum MyEnum { TWO };
-const int32 A = MyEnum::TWO;
-const int32 B = A;

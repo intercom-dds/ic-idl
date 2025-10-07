@@ -802,8 +802,6 @@ impl ConstEvaluator<'_> {
 
 fn types_equal_ignore_spans(a: &TyKind, b: &TyKind) -> bool {
     match (a, b) {
-        (TyKind::Any, TyKind::Any) => true,
-        (TyKind::Fixed, TyKind::Fixed) => true,
         (TyKind::Primitive(p1), TyKind::Primitive(p2)) => p1 == p2,
         (
             TyKind::Array {
@@ -851,8 +849,10 @@ fn types_equal_ignore_spans(a: &TyKind, b: &TyKind) -> bool {
                 && types_equal_ignore_spans(&k1.kind, &k2.kind)
                 && types_equal_ignore_spans(&e1.kind, &e2.kind)
         }
-        (TyKind::Null, TyKind::Null) => true,
         (TyKind::Adt(id1), TyKind::Adt(id2)) => id1 == id2,
+        (TyKind::Null, TyKind::Null)
+        | (TyKind::Any, TyKind::Any)
+        | (TyKind::Fixed, TyKind::Fixed) => true,
         _ => false,
     }
 }

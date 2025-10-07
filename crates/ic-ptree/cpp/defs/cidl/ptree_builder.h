@@ -39,6 +39,8 @@ struct parser_state;
 
 void set_node_flags(struct ptree* p, enum ptree_opts flags);
 
+void append_node_flags(struct ptree* p, enum ptree_opts flags);
+
 struct ptree* append_node(struct ptree* list, struct ptree* node);
 
 struct declarator* append_decl(struct declarator* list, struct declarator* decl);

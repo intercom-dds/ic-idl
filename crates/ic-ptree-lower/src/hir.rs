@@ -364,10 +364,16 @@ impl<'a> TreeBuilder<'a> {
             DefKind::Bitmask(v) => {
                 let ty = self.lower_ty(&v.ty);
                 let values = collect_with(sys::append_node, &v.flags, |flag| {
-                    let name = create_ident(&flag.ident.name);
-                    let value = sys::create_u64(self.state, flag.value as u64, 10);
-                    let node = sys::create_bitmask_value(self.state, name.as_ptr(), value);
-                    self.annotate(node, &flag.annotations)
+                    let var_def = self.ctx.type_of(*flag);
+                    let name = create_ident(&var_def.ident.name);
+                    if let DefKind::Const(const_ty) = &var_def.kind {
+                        let value = self.lower_numeric(&const_ty.value);
+                        let node = sys::create_bitmask_value(self.state, name.as_ptr(), value);
+                        self.lowered.insert(*flag, node);
+                        self.annotate(node, &var_def.annotations)
+                    } else {
+                        std::ptr::null_mut()
+                    }
                 });
                 sys::create_bitmask(self.state, ident, ty, values)
             }
@@ -458,6 +464,12 @@ fn ptree_flags(def_flags: ic_hir::hir::DefFlags) -> sys::ptree_opts {
     if def_flags.contains(ic_hir::hir::DefFlags::IS_CIRCULAR) {
         flags |= sys::OPT_CIRCULAR;
     }
+    if def_flags.contains(ic_hir::hir::DefFlags::IS_BUILTIN) {
+        flags |= sys::OPT_BUILTIN;
+    }
+    if def_flags.contains(ic_hir::hir::DefFlags::IS_ENUMERATED) {
+        flags |= sys::OPT_ENUMERATED;
+    }
     flags
 }
 
@@ -465,7 +477,7 @@ fn ptree_flags(def_flags: ic_hir::hir::DefFlags) -> sys::ptree_opts {
 unsafe fn lower_flags(node: *mut sys::ptree, def_flags: ic_hir::hir::DefFlags) {
     let ptree_flags = ptree_flags(def_flags);
     unsafe {
-        sys::set_node_flags(node, ptree_flags);
+        sys::append_node_flags(node, ptree_flags);
     }
 }
 

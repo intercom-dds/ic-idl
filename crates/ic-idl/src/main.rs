@@ -31,7 +31,6 @@ use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
-use ic_emit::case::Case;
 use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, util};
 
 mod info;
@@ -146,66 +145,6 @@ fn try_compile(options: CompilerOptions) {
         };
         emit_diagnostics(&compiler, &diag);
     }
-
-    // Apply HIR transformations
-    let hir = ic_hir_xform::value_annotation::transform(hir);
-    let hir = ic_hir_xform::position_annotation::transform(hir);
-
-    // Move nested types into modules. Keep track of the moved nodes to
-    // properly escape their names later on to ensure the correct node gets
-    // precedence.
-    let (hir, moved_defs) = ic_hir_xform::move_nested::transform(hir);
-
-    // Squash reopened modules into single definitions
-    let hir = ic_hir_xform::squash_modules::transform(hir);
-
-    // Strip prefixes from enumerators
-    let hir = ic_hir_xform::enum_prefix::transform(hir);
-
-    // Mark types with IS_TRIVIAL and TOTAL_ORDER flags
-    let hir = ic_hir_xform::type_flags::transform(hir);
-
-    // Rename DDS::XTypes to DDS::xtypes
-    let hir = ic_hir_xform::rename_xtypes::transform(hir);
-
-    // Rename all nodes to conform to Rust's naming convention
-    let hir = ic_hir_xform::rename::transform(
-        hir,
-        ic_hir_xform::rename::Target {
-            struct_type: Some(Case::Pascal),
-            union_type: Some(Case::Pascal),
-            enum_type: Some(Case::Pascal),
-            interface: Some(Case::Pascal),
-            valuetype: Some(Case::Pascal),
-            alias: Some(Case::Pascal),
-            bitmask: Some(Case::Pascal),
-            bitset: Some(Case::Pascal),
-            exception: Some(Case::Pascal),
-            annotation: Some(Case::Pascal),
-            member: Some(Case::Snake),
-            variant: Some(Case::Pascal),
-            enumerator: Some(Case::Pascal),
-            bit_flag: Some(Case::Snake),
-            bitset_field: Some(Case::Snake),
-            constant: Some(Case::Snake),
-            module: Some(Case::Snake),
-            operation: Some(Case::Snake),
-            attribute: Some(Case::Snake),
-            parameter: Some(Case::Snake),
-            annotation_param: Some(Case::Snake),
-            name_preprocessor: Some(ic_hir_xform::rename::strip_common_suffixes),
-            moved_defs,
-        },
-    );
-
-    // Add implicit default cases to incomplete unions
-    let hir = ic_hir_xform::implicit_default::transform(hir);
-
-    // Coalesce multiple null variants in unions
-    let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
-
-    // Final normalization after all transformations
-    let hir = ic_hir_xform::normalize::normalize(hir);
 
     // Dump HIR if requested (after transformations)
     if compiler.options().unstable.hir_dump {

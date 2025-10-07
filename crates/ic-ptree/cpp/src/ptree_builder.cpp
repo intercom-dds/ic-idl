@@ -574,6 +574,10 @@ void set_node_flags(ptree* p, ptree_opts flags) {
     p->flags = flags;
 }
 
+void append_node_flags(ptree* p, ptree_opts flags) {
+    p->flags |= flags;
+}
+
 ptree* append_node(ptree* list, ptree* node) {
     if (list == node) {
         return list;
@@ -895,15 +899,6 @@ ptree* create_wstring(parser_state* state, const numeric* bound) {
         p->element_type = &wchar_type;
         add_bounds(p, bound);
     }
-    return p;
-}
-
-ptree* create_fixed(parser_state* state, const numeric* bound1, const numeric* bound2) {
-    ptree* p = create_or_lookup_type(state, N_FIXED, fixed_name(*bound1, *bound2).c_str());
-    p->element_type = &long_type;
-
-    p->bounds.push_back(*bound1);
-    p->bounds.push_back(*bound2);
     return p;
 }
 
@@ -1489,6 +1484,10 @@ ptree* create_enum(parser_state* state, const char* ident, ptree* type, ptree* v
         register_node(state, val);
     }
     assign_members(state, node, values);
+
+    for (auto m : node->members) {
+        m->type = type;
+    }
     return node;
 }
 

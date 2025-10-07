@@ -412,6 +412,9 @@ unsafe extern "C" {
     pub fn set_node_flags(p: *mut ptree, flags: ptree_opts);
 }
 unsafe extern "C" {
+    pub fn append_node_flags(p: *mut ptree, flags: ptree_opts);
+}
+unsafe extern "C" {
     pub fn append_node(list: *mut ptree, node: *mut ptree) -> *mut ptree;
 }
 #[repr(C)]

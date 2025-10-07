@@ -100,9 +100,11 @@ fn check_file(contents: &str) -> bool {
 
 fn whitelist(name: &str) -> bool {
     let p = &Path::new(name);
-    let extension = p
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("json") || ext.eq_ignore_ascii_case("snap"));
+    let extension = p.extension().is_some_and(|ext| {
+        ext.eq_ignore_ascii_case("json")
+            || ext.eq_ignore_ascii_case("snap")
+            || ext.eq_ignore_ascii_case("md")
+    });
 
     !extension
         && !name.starts_with("external/fmt")
@@ -129,7 +131,6 @@ fn find_missing() -> (HashSet<PathBuf>, usize) {
 fn comment_str(ext: Option<&OsStr>) -> Option<&str> {
     match ext?.to_str()? {
         "rs" | "cpp" | "h" | "ic" | "c" | "idl" | "toml" => Some("//"),
-        "md" => Some("#"),
         _ => None,
     }
 }

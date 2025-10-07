@@ -1510,6 +1510,10 @@ ptree* create_bitmask(parser_state* state, const char* ident, ptree* type, ptree
     assign_members(state, node, values);
     node->element_type = type;
     node->value = ulong_type.value;
+
+    for (auto m : node->members) {
+        m->type = type;
+    }
     return node;
 }
 

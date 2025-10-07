@@ -66,9 +66,6 @@ pub struct LoweringResult {
     /// Built-in type IDs in order of definition.
     pub builtin_order: Vec<DefId>,
 
-    /// Maps definition `DefIds` to their forward declaration `DefIds`.
-    pub def_to_forward_decls: std::collections::HashMap<DefId, Vec<DefId>>,
-
     /// Errors collected during all phases.
     pub errors: Vec<Diag>,
 
@@ -129,8 +126,6 @@ where
     // Intermediate pass: Update forward references
     update_forward_references(&mut context);
 
-    let def_to_forward_decls = update_forward_references(&mut context);
-
     // Check for undefined forward declarations
     check_undefined_forward_decls(&mut context);
 
@@ -146,7 +141,6 @@ where
         context,
         order,
         builtin_order,
-        def_to_forward_decls,
         errors: diagnostics.errors,
         warnings: diagnostics.warnings,
     }

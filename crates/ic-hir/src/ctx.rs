@@ -110,7 +110,6 @@ impl Context {
     }
 
     /// Resolves a type through aliases to get the underlying type.
-    #[must_use]
     pub fn resolve_ty(&self, ty: &Ty) -> Ty {
         match &ty.kind {
             TyKind::Adt(id) => self.base_type_of(*id),

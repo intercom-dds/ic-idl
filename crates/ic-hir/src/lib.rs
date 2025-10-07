@@ -63,7 +63,6 @@
 //! }
 //! ```
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 
 pub use crate::ctx::Context;
@@ -131,12 +130,6 @@ pub struct ResolvedGraph {
     /// Defines the order in which built-in types were defined.
     /// Empty if no built-ins were loaded.
     pub builtin_order: Vec<hir::DefId>,
-
-    /// Maps definition `DefId`s to their forward declaration `DefId`s.
-    /// When lowering to ptree, if we encounter a reference to a definition
-    /// that hasn't been lowered yet, we can use one of its forward
-    /// declarations instead.
-    pub def_to_forward_decls: HashMap<hir::DefId, Vec<hir::DefId>>,
 
     /// Errors accumulated during type resolution, type checking, etc.
     pub errors: Vec<ic_diagnostic::Diag>,

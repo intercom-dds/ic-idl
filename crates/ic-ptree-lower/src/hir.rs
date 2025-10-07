@@ -63,6 +63,7 @@ impl<'a> TreeBuilder<'a> {
             sys::create_u64(self.state, bound as u64, 10)
         })
     }
+
     unsafe fn lower_prim_ty(ty: PrimitiveTy) -> *mut sys::ptree {
         match ty {
             PrimitiveTy::Void => std::ptr::null_mut(),
@@ -343,7 +344,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_union_finish(self.state, disc, variants)
             }
             DefKind::Enum(v) => {
-                let ty = self.lower_ty(&v.ty);
+                let ty = Self::lower_prim_ty(v.ty);
                 let values = collect_with(sys::append_node, &v.fields, |&var| {
                     let var_def = self.ctx.type_of(var);
                     let name = create_ident(&var_def.ident.name);
@@ -365,7 +366,7 @@ impl<'a> TreeBuilder<'a> {
                 sys::create_const_node(self.state, decl, ty, value)
             }
             DefKind::Bitmask(v) => {
-                let ty = self.lower_ty(&v.ty);
+                let ty = Self::lower_prim_ty(v.ty);
                 let values = collect_with(sys::append_node, &v.flags, |flag| {
                     let var_def = self.ctx.type_of(*flag);
                     let name = create_ident(&var_def.ident.name);

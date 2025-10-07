@@ -56,14 +56,9 @@ members = [
     "crates/ic-ptree-lower",
     "crates/ic-syntax",
     "crates/ic-vfs",
-    "tools/xtask",
+    "crates/xtask",
 ]
-exclude = [
-    "crates/ic-bootstrap",
-    "tools/bindgen",
-    "tools/fuzz",
-    "tools/idlpp",
-]
+exclude = ["crates/ic-bootstrap"]
 default-members = ["crates/ic-idl"]
 
 [workspace.package]

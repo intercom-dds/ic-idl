@@ -347,7 +347,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         *last_bit = bit_pos;
 
         // Calculate value (1 << bit_pos)
-        let value = 1u64 << bit_pos;
+        let (value, _) = 1u64.overflowing_shl(bit_pos);
 
         // Create flag as a constant in the parent scope
         let flag_ty = Ty {

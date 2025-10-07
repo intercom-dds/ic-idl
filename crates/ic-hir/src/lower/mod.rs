@@ -197,20 +197,31 @@ impl Diagnostics {
 }
 
 /// Updates forward declaration references to point to definitions.
-fn update_forward_references(ctx: &mut LoweringContext) {
+fn update_forward_references(
+    ctx: &mut LoweringContext,
+) -> std::collections::HashMap<DefId, Vec<DefId>> {
     // Build mapping from forward decl DefIds to definition DefIds
-    let mapping = ctx.registry.get_forward_to_def_mapping();
+    let forward_to_def = ctx.registry.get_forward_to_def_mapping();
 
-    if mapping.is_empty() {
-        return; // No forward references to update
+    if !forward_to_def.is_empty() {
+        // Update all definitions to replace forward references
+        let all_defs: Vec<DefId> = ctx.context.definitions.iter().map(|(id, _)| id).collect();
+
+        for def_id in all_defs {
+            update_def_references(&mut ctx.context, def_id, &forward_to_def);
+        }
     }
 
-    // Update all definitions to replace forward references
-    let all_defs: Vec<DefId> = ctx.context.definitions.iter().map(|(id, _)| id).collect();
-
-    for def_id in all_defs {
-        update_def_references(&mut ctx.context, def_id, &mapping);
+    // Build the inverse mapping: from definition to forward declarations
+    let mut def_to_forwards = std::collections::HashMap::new();
+    for (forward_id, def_id) in forward_to_def {
+        def_to_forwards
+            .entry(def_id)
+            .or_insert_with(Vec::new)
+            .push(forward_id);
     }
+
+    def_to_forwards
 }
 
 /// Update references in a single definition.

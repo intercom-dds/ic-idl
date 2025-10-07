@@ -56,7 +56,6 @@ pub enum DefKindTag {
     Enum,
     Bitmask,
     Const,
-    Annotation,
 }
 
 /// Registry for tracking forward declarations and definitions.
@@ -243,7 +242,6 @@ fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
         DefKindTag::Native => "native",
         DefKindTag::Enum => "enum",
         DefKindTag::Const => "const",
-        DefKindTag::Annotation => "annotation",
         DefKindTag::Bitmask => "bitmask",
     }
 }

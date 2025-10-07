@@ -341,12 +341,13 @@ impl<'a> TreeBuilder<'a> {
             }
             DefKind::Enum(v) => {
                 let values = collect_with(sys::append_node, &v.fields, |&var| {
-                    let var = self.ctx.type_of(var);
-                    let name = create_ident(&var.ident.name);
-                    if let DefKind::Const(const_ty) = &var.kind {
+                    let var_def = self.ctx.type_of(var);
+                    let name = create_ident(&var_def.ident.name);
+                    if let DefKind::Const(const_ty) = &var_def.kind {
                         let value = self.lower_numeric(&const_ty.value);
                         let node = sys::create_enum_value(self.state, name.as_ptr(), value);
-                        self.annotate(node, &var.annotations)
+                        self.lowered.insert(var, node);
+                        self.annotate(node, &var_def.annotations)
                     } else {
                         std::ptr::null_mut()
                     }

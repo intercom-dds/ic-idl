@@ -720,7 +720,13 @@ impl HirMerger {
 
     fn get_qualified_name(context: &Context, def_id: DefId) -> String {
         let def = context.definitions.get(def_id);
-        let mut parts = vec![def.ident.name.clone()];
+        // Prefix annotations with "@" to separate their namespace
+        let name = if matches!(&def.kind, DefKind::Annotation(_)) {
+            format!("@{}", def.ident.name)
+        } else {
+            def.ident.name.clone()
+        };
+        let mut parts = vec![name];
 
         let mut current = def.parent;
         while let Some(parent_id) = current {
@@ -793,17 +799,19 @@ impl HirMerger {
                 .copied()
                 .unwrap_or_else(|| self.new_context.scopes.root());
 
-            let def_name = self
-                .new_context
-                .definitions
-                .get(new_def_id)
-                .ident
-                .name
-                .clone();
+            let def = self.new_context.definitions.get(new_def_id);
+            let def_name = def.ident.name.clone();
 
-            self.new_context
-                .scopes
-                .add_definition(scope_id, def_name, new_def_id);
+            // Add to the appropriate namespace based on definition kind
+            if matches!(&def.kind, DefKind::Annotation(_)) {
+                self.new_context
+                    .scopes
+                    .add_annotation(scope_id, def_name, new_def_id);
+            } else {
+                self.new_context
+                    .scopes
+                    .add_definition(scope_id, def_name, new_def_id);
+            }
         }
     }
 
@@ -1256,6 +1264,7 @@ impl HirMerger {
                 .collect(),
         }
     }
+
     fn finish(self) -> MergedGraph {
         MergedGraph {
             context: self.new_context,

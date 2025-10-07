@@ -148,6 +148,27 @@ impl Context {
         self.scopes.add_definition(scope, name, def_id);
     }
 
+    /// Adds an annotation definition to a scope.
+    pub fn add_annotation_to_scope(
+        &mut self,
+        scope: crate::scope::ScopeId,
+        name: String,
+        def_id: DefId,
+    ) {
+        self.scopes.add_annotation(scope, name, def_id);
+    }
+
+    /// Resolves an annotation syntax path starting from the given scope.
+    #[must_use]
+    pub fn resolve_annotation_syntax_path(
+        &self,
+        scope: crate::scope::ScopeId,
+        path: &ic_syntax::Path,
+    ) -> Option<DefId> {
+        let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
+        self.scopes.resolve_annotation_path(scope, &segments)
+    }
+
     /// Returns the `DefId` of the given type, if one exists. For arrays,
     /// sequences, and maps, this will return the element type if it points to
     /// a definition.

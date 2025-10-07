@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_diagnostic::{Label, error_span};
 use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
 
 use super::LoweringContext;
@@ -229,8 +230,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     _ => {
                         self.ctx.diagnostics.error(
                             "enum value must be an integer".to_string(),
-                            ic_diagnostic::Label::new(expr.span())
-                                .message("expected integer value"),
+                            Label::new(expr.span()).message("expected integer value"),
                         );
                         0
                     }
@@ -437,7 +437,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a bitset type".to_string(),
-                        ic_diagnostic::Label::new(super::utils::path_span(parent_path))
+                        Label::new(super::utils::path_span(parent_path))
                             .message("expected bitset type"),
                     );
                     None
@@ -455,8 +455,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             let Some(size) = evaluator.eval_nonneg_bound(&field.size) else {
                 self.ctx.diagnostics.error(
                     "bitfield size must be a non-negative constant expression".to_string(),
-                    ic_diagnostic::Label::new(field.size.span())
-                        .message("expected constant expression"),
+                    Label::new(field.size.span()).message("expected constant expression"),
                 );
                 continue;
             };
@@ -608,32 +607,25 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             annotation_ty.types = types;
         }
 
-        // Register with the registry
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &a.ident,
-                DefKindTag::Annotation,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
+        // Register in annotation namespace
+        if let Some(prev_def_id) =
+            self.ctx
+                .context
+                .scopes
+                .add_annotation(self.current_scope, a.ident.name.clone(), def_id)
         {
-            // Register in scope only if registry registration succeeded
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                a.ident.name.clone(),
-                def_id,
+            let existing_def = self.ctx.context.definitions.get(prev_def_id);
+            self.ctx.diagnostics.errors.push(
+                error_span(
+                    format!("duplicate annotation definition `@{}`", a.ident.name),
+                    Label::new(existing_def.ident.span).message("originally defined here"),
+                )
+                .label(Label::new(a.ident.span).message("redefined here")),
             );
         }
 
         def_id
     }
-
-    // No local evaluators; constants are evaluated via ConstEvaluator
 }
 
 /// Resolves a declarator to produce an identifier and type.

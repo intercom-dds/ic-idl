@@ -48,6 +48,9 @@ pub struct Scope {
 
     /// Local definitions in this scope.
     pub definitions: CaseMap<DefId>,
+
+    /// Local annotation definitions in this scope (separate namespace).
+    pub annotations: CaseMap<DefId>,
 }
 
 /// Unique identifier for a scope.
@@ -84,6 +87,7 @@ impl ScopeTree {
             parent: None,
             children: CaseMap::new(),
             definitions: CaseMap::new(),
+            annotations: CaseMap::new(),
         };
 
         Self {
@@ -113,6 +117,7 @@ impl ScopeTree {
             parent: Some(parent),
             children: CaseMap::new(),
             definitions: CaseMap::new(),
+            annotations: CaseMap::new(),
         };
 
         self.scopes.push(scope);
@@ -127,6 +132,12 @@ impl ScopeTree {
     /// Returns the previous definition if one existed with the same name.
     pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) -> Option<DefId> {
         self.scopes[scope.0].definitions.insert(name, def_id)
+    }
+
+    /// Adds an annotation definition to a scope.
+    /// Returns the previous annotation definition if one existed with the same name.
+    pub fn add_annotation(&mut self, scope: ScopeId, name: String, def_id: DefId) -> Option<DefId> {
+        self.scopes[scope.0].annotations.insert(name, def_id)
     }
 
     /// Gets a scope by ID.
@@ -158,6 +169,26 @@ impl ScopeTree {
                 if let Some(def_id) = self.scopes[child_scope_id.0].def_id {
                     return Some(def_id);
                 }
+            }
+
+            // Move to parent
+            current = scope.parent;
+        }
+
+        None
+    }
+
+    /// Resolves an annotation name in a scope (looks in this scope and parents).
+    #[must_use]
+    pub fn resolve_annotation(&self, scope: ScopeId, name: &str) -> Option<DefId> {
+        let mut current = Some(scope);
+
+        while let Some(scope_id) = current {
+            let scope = &self.scopes[scope_id.0];
+
+            // Check local annotation definitions
+            if let Some(&def_id) = scope.annotations.get(name) {
+                return Some(def_id);
             }
 
             // Move to parent
@@ -254,6 +285,22 @@ impl ScopeTree {
         self.resolve_absolute_path(path)
     }
 
+    /// Resolves an annotation path starting from a scope.
+    #[must_use]
+    pub fn resolve_annotation_path(&self, scope: ScopeId, path: &[&str]) -> Option<DefId> {
+        if path.is_empty() {
+            return None;
+        }
+
+        // Try resolving as a relative path first
+        if let Some(def_id) = self.resolve_relative_annotation_path(scope, path) {
+            return Some(def_id);
+        }
+
+        // Try resolving as an absolute path from root
+        self.resolve_absolute_annotation_path(path)
+    }
+
     /// Resolves a relative path from a scope.
     fn resolve_relative_path(&self, scope: ScopeId, path: &[&str]) -> Option<DefId> {
         let mut current = Some(scope);
@@ -274,6 +321,28 @@ impl ScopeTree {
     /// Resolves an absolute path from root.
     fn resolve_absolute_path(&self, path: &[&str]) -> Option<DefId> {
         self.resolve_path_from_scope(self.root, path)
+    }
+
+    /// Resolves a relative annotation path from a scope.
+    fn resolve_relative_annotation_path(&self, scope: ScopeId, path: &[&str]) -> Option<DefId> {
+        let mut current = Some(scope);
+
+        // Try starting from current scope and walking up
+        while let Some(scope_id) = current {
+            if let Some(def_id) = self.resolve_annotation_path_from_scope(scope_id, path) {
+                return Some(def_id);
+            }
+
+            // Move to parent
+            current = self.scopes[scope_id.0].parent;
+        }
+
+        None
+    }
+
+    /// Resolves an absolute annotation path from root.
+    fn resolve_absolute_annotation_path(&self, path: &[&str]) -> Option<DefId> {
+        self.resolve_annotation_path_from_scope(self.root, path)
     }
 
     /// Resolves a path starting from a specific scope.
@@ -305,6 +374,29 @@ impl ScopeTree {
                 // Continue resolution from the definition's scope
                 return self.resolve_path_from_scope(def_scope, &path[1..]);
             }
+        }
+
+        None
+    }
+
+    /// Resolves an annotation path starting from a specific scope.
+    fn resolve_annotation_path_from_scope(&self, scope: ScopeId, path: &[&str]) -> Option<DefId> {
+        if path.is_empty() {
+            return None;
+        }
+
+        let scope_data = &self.scopes[scope.0];
+
+        if path.len() == 1 {
+            // Single segment - check annotation definitions
+            return scope_data.annotations.get(path[0]).copied();
+        }
+
+        // Multi-segment path - first segment might be a child scope
+        // (modules can contain annotation definitions)
+        if let Some(&child_scope) = scope_data.children.get(path[0]) {
+            // Recurse into child scope
+            return self.resolve_annotation_path_from_scope(child_scope, &path[1..]);
         }
 
         None

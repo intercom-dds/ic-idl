@@ -33,6 +33,8 @@ enum Token {
     BlockStart(String),
     BlockEnd(String),
     Newline,
+    Indent,
+    Dedent,
 }
 
 pub struct PrettyPrinter {
@@ -87,6 +89,16 @@ impl PrettyPrinter {
         self
     }
 
+    pub fn indent(&mut self) -> &mut Self {
+        self.tokens.push(Token::Indent);
+        self
+    }
+
+    pub fn dedent(&mut self) -> &mut Self {
+        self.tokens.push(Token::Dedent);
+        self
+    }
+
     fn render(&self) -> String {
         let mut output = String::new();
         let mut indent_level = 0usize;
@@ -110,7 +122,6 @@ impl PrettyPrinter {
                         }
                     }
                     output.push_str(brace);
-                    output.push('\n');
                     indent_level += 1;
                     prev_was_newline = true;
                 }
@@ -127,6 +138,12 @@ impl PrettyPrinter {
                 Token::Newline => {
                     output.push('\n');
                     prev_was_newline = true;
+                }
+                Token::Indent => {
+                    indent_level += 1;
+                }
+                Token::Dedent => {
+                    indent_level = indent_level.saturating_sub(1);
                 }
             }
         }
@@ -182,6 +199,14 @@ impl Twine {
 
     pub fn blank(&mut self) {
         self.writer.blank();
+    }
+
+    pub fn indent(&mut self) {
+        self.writer.indent();
+    }
+
+    pub fn dedent(&mut self) {
+        self.writer.dedent();
     }
 
     #[must_use]

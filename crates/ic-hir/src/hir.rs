@@ -76,6 +76,27 @@ impl PrimitiveTy {
             PrimitiveTy::Float128 => "long double",
         }
     }
+
+    #[must_use]
+    pub fn legacy_name(&self) -> &str {
+        match self {
+            PrimitiveTy::Void => "void",
+            PrimitiveTy::Bool => "boolean",
+            PrimitiveTy::Char => "char",
+            PrimitiveTy::WChar => "wchar",
+            PrimitiveTy::Int8 => "int8",
+            PrimitiveTy::UInt8 => "octet",
+            PrimitiveTy::Int16 => "short",
+            PrimitiveTy::UInt16 => "unsigned short",
+            PrimitiveTy::Int32 => "long",
+            PrimitiveTy::UInt32 => "unsigned long",
+            PrimitiveTy::Int64 => "long long",
+            PrimitiveTy::UInt64 => "unsigned long long",
+            PrimitiveTy::Float32 => "float",
+            PrimitiveTy::Float64 => "double",
+            PrimitiveTy::Float128 => "long double",
+        }
+    }
 }
 
 intercom_cts::bitmask! {

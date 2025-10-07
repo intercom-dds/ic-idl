@@ -254,7 +254,7 @@ impl Fold for ImplicitDefault {
                         value,
                         span: disc_span,
                     }],
-                    is_default: false,
+                    is_default: true,
                 };
 
                 u.variants.push(null_variant);

@@ -38,7 +38,8 @@ fn primitive_type_kind(prim: PrimitiveTy) -> &'static str {
         PrimitiveTy::UInt8 => "U8",
         PrimitiveTy::Int16 => "I16",
         PrimitiveTy::UInt16 => "U16",
-        PrimitiveTy::UInt32 | PrimitiveTy::UInt64 => "U32",
+        PrimitiveTy::UInt32 => "U32",
+        PrimitiveTy::UInt64 => "U64",
         _ => "I32",
     }
 }

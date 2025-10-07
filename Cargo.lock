@@ -120,12 +120,10 @@ dependencies = [
 name = "ic-codegen-idl"
 version = "0.1.0"
 dependencies = [
- "ic-cc",
  "ic-cli",
  "ic-emit",
  "ic-hir",
- "ic-ptree",
- "ic-ptree-lower",
+ "ic-hir-xform",
  "ic-vfs",
 ]
 

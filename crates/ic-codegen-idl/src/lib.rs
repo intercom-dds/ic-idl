@@ -25,56 +25,38 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod codegen;
+mod deps;
+
 use ic_cli::Command;
 use ic_emit::File;
+use ic_hir::keywords::IDL_KEYWORDS;
+use ic_hir_xform::Target;
 
-#[derive(Command, Debug, Default, Clone)]
+#[derive(Command, Copy, Clone, Debug, Default)]
 pub struct IdlOptions {
     /// Output Doxygen-compatible IDL files
     #[option(long)]
     pub idl_doxygen: bool,
 
-    /// Expand `@DDSService` interfaces
+    /// Emit IDL compatible with older parsers
     #[option(long)]
-    pub idl_expand: bool,
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-#[allow(non_camel_case_types)]
-struct idl_options_t {
-    pub doxygen: u8,
-    pub expand: u8,
-}
-
-unsafe extern "C" {
-    fn ic_codegen_idl(
-        result: *const ic_ptree::sys::parse_result,
-        options: idl_options_t,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
+    pub idl_legacy: bool,
 }
 
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_idl(
     hir: &ic_hir::ResolvedGraph,
     source_map: &ic_vfs::SourceMap,
     options: IdlOptions,
 ) -> Vec<File> {
-    let result = ic_ptree_lower::from_hir(hir, source_map);
-    let ffi_options = idl_options_t {
-        doxygen: u8::from(options.idl_doxygen),
-        expand: u8::from(options.idl_expand),
+    let target = Target {
+        keywords: IDL_KEYWORDS.iter().copied().collect(),
+        keyword_escape_fn: |name| format!("_{name}"),
+        ..Target::default()
     };
 
-    let mut generated = vec![];
-    unsafe {
-        ic_codegen_idl(
-            result.as_raw(),
-            ffi_options,
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
-        );
-    }
-    generated
+    let hir = ic_hir_xform::rename::transform(hir.clone(), &target);
+    let generator = codegen::IdlGen::new(&hir, source_map, options);
+    generator.generate()
 }

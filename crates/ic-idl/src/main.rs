@@ -214,7 +214,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.idl_out {
         let files = invoke_backend(
             output_dir,
-            || ic_codegen_idl::codegen_idl(hir, vfs, options.idl.clone()),
+            || ic_codegen_idl::codegen_idl(hir, vfs, options.idl),
             options.purge_dirs,
         )?;
         generated.extend(files);

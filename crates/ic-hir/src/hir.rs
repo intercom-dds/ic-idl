@@ -126,9 +126,12 @@ intercom_cts::bitmask! {
         /// An enumerator or bitmask position explicitly set.
         IS_ENUMERATED = 1 << 6,
 
+        /// Indicates that another type inherits from this type.
+        HAS_CHILDREN = 1 << 7,
+
         /// Indicates whether the type consists of members that can form an
         /// ordinal sequence, i.e. a well-ordered set.
-        TOTAL_ORDER = 1 << 7,
+        TOTAL_ORDER = 1 << 8,
     }
 }
 

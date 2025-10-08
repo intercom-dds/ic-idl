@@ -55,6 +55,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Check if a parent type is valid for inheritance (not a forward declaration).
     /// Returns `Some(parent_id)` if valid, None if invalid (error already reported).
+    /// If valid, marks the parent as having children.
     fn validate_parent_inheritance(
         &mut self,
         parent_id: DefId,
@@ -80,6 +81,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             );
             None
         } else {
+            // Mark parent as having children
+            let parent_def = self.ctx.context.definitions.get_mut(parent_id);
+            parent_def.flags |= DefFlags::HAS_CHILDREN;
             Some(parent_id)
         }
     }
@@ -472,6 +476,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 // Verify it's an interface type
                 let def = self.ctx.context.definitions.get(supports_id);
                 if matches!(&def.kind, DefKind::Interface(_)) {
+                    // Mark the supported interface as having children
+                    let def = self.ctx.context.definitions.get_mut(supports_id);
+                    def.flags |= DefFlags::HAS_CHILDREN;
                     Some(supports_id)
                 } else {
                     self.ctx.diagnostics.error(

@@ -108,6 +108,9 @@ fn emit_flags(flags: DefFlags) -> String {
     if flags.contains(DefFlags::IS_EMIT) {
         buf.push("emit");
     }
+    if flags.contains(DefFlags::HAS_CHILDREN) {
+        buf.push("has_child");
+    }
     if flags.contains(DefFlags::TOTAL_ORDER) {
         buf.push("ord");
     }

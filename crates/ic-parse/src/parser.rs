@@ -1171,20 +1171,24 @@ fn op_oneway_dcl() -> impl IdlParser<Prototype> {
 
 // Rule 199
 fn map_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type> + '_ {
-    let key = map_type_spec(state.clone());
-    let value = map_type_spec(state);
+    let key = map_type_spec(state.clone()).annotated();
+    let value = map_type_spec(state).annotated();
     let inner = key.then_ignore(just(Kind::Comma)).then(value).then(bound());
     let def =
         keyword(Kw::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
 
-    def.map_with_span(|((key, value), bound), span| {
-        Type::Map(MapType {
-            key: Box::new(key),
-            value: Box::new(value),
-            bound,
-            span,
-        })
-    })
+    def.map_with_span(
+        |(((key_annotations, key), (value_annotations, value)), bound), span| {
+            Type::Map(MapType {
+                key: Box::new(key),
+                value: Box::new(value),
+                bound,
+                span,
+                key_annotations,
+                value_annotations,
+            })
+        },
+    )
 }
 
 // Types that can appear in maps as either the key or element type.

@@ -53,6 +53,8 @@ struct ConstDef;
 
 struct Field;
 
+struct AnnotationAppl;
+
 @nested
 @ext::suppress(language="rust")
 struct Position {
@@ -253,6 +255,8 @@ struct MapType {
     @external Type value;
     @optional Expr bound;
     Span span;
+    sequence<AnnotationAppl> key_annotations;
+    sequence<AnnotationAppl> value_annotations;
 };
 
 @nested

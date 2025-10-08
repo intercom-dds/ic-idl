@@ -1654,6 +1654,8 @@ pub struct MapType {
     pub value: Box<crate::ast::Type>,
     pub bound: Option<crate::ast::Expr>,
     pub span: crate::ast::Span,
+    pub key_annotations: Vec<crate::ast::AnnotationAppl>,
+    pub value_annotations: Vec<crate::ast::AnnotationAppl>,
 }
 
 impl MapType {
@@ -1664,6 +1666,8 @@ impl MapType {
             value: Box::new(<crate::ast::Type>::default()),
             bound: None,
             span: <crate::ast::Span>::default(),
+            key_annotations: Vec::new(),
+            value_annotations: Vec::new(),
         }
     }
 }
@@ -1704,6 +1708,16 @@ const _: () = {
             member_id: 3,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
+        ::intercom_cts::MemberInfo {
+            name: "key_annotations",
+            member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "value_annotations",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
     ];
 
     impl ::intercom_cts::Marshal for MapType {
@@ -1718,6 +1732,8 @@ const _: () = {
             state.encode_field(&MEMBER_INFO[1], &self.value)?;
             state.encode_optional(&MEMBER_INFO[2], &self.bound)?;
             state.encode_field(&MEMBER_INFO[3], &self.span)?;
+            state.encode_field(&MEMBER_INFO[4], &self.key_annotations)?;
+            state.encode_field(&MEMBER_INFO[5], &self.value_annotations)?;
             state.end()
         }
     }
@@ -1734,6 +1750,8 @@ const _: () = {
             state.decode_field(&MEMBER_INFO[1], &mut self.value)?;
             state.decode_field(&MEMBER_INFO[2], &mut self.bound)?;
             state.decode_field(&MEMBER_INFO[3], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.key_annotations)?;
+            state.decode_field(&MEMBER_INFO[5], &mut self.value_annotations)?;
             state.end()?;
             Ok(())
         }

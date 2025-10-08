@@ -33,7 +33,7 @@ use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
-    ProtoTy, Ty, TyKind, UnionTy,
+    ProtoTy, Ty, TyKind,
 };
 use ic_vfs::{FileId, SourceMap};
 
@@ -391,36 +391,16 @@ impl<'a> CppGen<'a> {
         let full_qualified_name = format!("{qualified_name}{suffix}");
 
         w!(w, "template <>\n");
-        w!(
-            w,
-            "struct ic_cts::TypeTraits<",
-            full_qualified_name,
-            "> {\n"
-        );
+        w!(w, "struct ic_cts::TypeTraits<", full_qualified_name, "> {\n");
         w!(w, "using value_type = ", full_qualified_name, ";\n");
         w!(w, "using in_type = const ", full_qualified_name, "&;\n");
         w!(w, "using out_type = ", full_qualified_name, "&;\n");
         w!(w, "using inout_type = ", full_qualified_name, "&;\n");
-        w!(
-            w,
-            "using ref_type = std::shared_ptr<",
-            full_qualified_name,
-            ">;\n"
-        );
-        w!(
-            w,
-            "using weak_ref_type = std::weak_ptr<",
-            full_qualified_name,
-            ">;\n"
-        );
+        w!(w, "using ref_type = std::shared_ptr<", full_qualified_name, ">;\n");
+        w!(w, "using weak_ref_type = std::weak_ptr<", full_qualified_name, ">;\n");
 
         if let DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) = &def.kind {
-            w!(
-                w,
-                "using sequence_type = std::vector<",
-                qualified_name,
-                ">;\n"
-            );
+            w!(w, "using sequence_type = std::vector<", qualified_name, ">;\n");
         }
 
         w!(w, "static const ic_cts::TypeInfo type_info;\n");
@@ -438,14 +418,7 @@ impl<'a> CppGen<'a> {
 
     pub fn emit_typedef_sequence(&self, w: &mut Twine, def: &Def) {
         let type_name = self.scoped_name(def.id, None);
-        w!(
-            w,
-            "using ",
-            def,
-            "Seq = ::std::vector<",
-            type_name,
-            ">;\n\n"
-        );
+        w!(w, "using ", def, "Seq = ::std::vector<", type_name, ">;\n\n");
     }
 
     pub fn emit_hash_declaration(&self, w: &mut Twine, def: &Def) {
@@ -455,10 +428,7 @@ impl<'a> CppGen<'a> {
         w!(w, "struct std::hash<", qualified_name, "> {\n");
         w!(w, "using argument_type = ", qualified_name, ";\n");
         w!(w, "using result_type = std::size_t;\n");
-        w!(
-            w,
-            "result_type operator()(const argument_type& s) const noexcept;\n"
-        );
+        w!(w, "result_type operator()(const argument_type& s) const noexcept;\n");
         w!(w, "};\n\n");
     }
 
@@ -482,40 +452,47 @@ impl<'a> CppGen<'a> {
             param,
             ") const noexcept {\n"
         );
-        w!(w, "result_type h = 0;\n");
 
-        match &def.kind {
-            DefKind::Struct(struct_ty) => {
-                self.emit_hash_struct_members(w, def, &struct_ty.members);
+        if let DefKind::Union(union_ty) = &def.kind {
+            self.emit_hash_union(w, union_ty);
+        } else if has_members {
+            w!(w, "return ::ic_cts::hash_all(\n");
+            match &def.kind {
+                DefKind::Struct(struct_ty) => {
+                    self.emit_hash_struct_members(w, def, &struct_ty.members);
+                }
+                DefKind::Except(except_ty) => {
+                    self.emit_hash_struct_members(w, def, &except_ty.members);
+                }
+                DefKind::Valuetype(valuetype_ty) => {
+                    self.emit_hash_struct_members(w, def, &valuetype_ty.members);
+                }
+                _ => {}
             }
-            DefKind::Union(union_ty) => {
-                self.emit_hash_union(w, def, union_ty);
-            }
-            DefKind::Except(except_ty) => {
-                self.emit_hash_struct_members(w, def, &except_ty.members);
-            }
-            DefKind::Valuetype(valuetype_ty) => {
-                self.emit_hash_struct_members(w, def, &valuetype_ty.members);
-            }
-            _ => {}
+            w!(w, ");\n");
+        } else {
+            w!(w, "return 0;\n");
         }
 
-        w!(w, "return h;\n");
         w!(w, "}\n\n");
     }
 
     fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[Member]) {
+        let mut first = true;
+
         match &def.kind {
             DefKind::Struct(struct_ty) => {
                 if let Some(parent_id) = struct_ty.parent {
                     let parent_name = self.scoped_name(parent_id, None);
-                    w!(w, "h ^= ::std::hash<", parent_name, ">()(s);\n");
+                    w!(w, "::std::hash<", parent_name, ">()(s)");
+                    first = false;
                 }
             }
             DefKind::Valuetype(valuetype_ty) => {
                 if let Some(parent_id) = valuetype_ty.parent {
                     let parent_name = self.scoped_name(parent_id, None);
-                    w!(w, "h ^= ::std::hash<", parent_name, ">()(s);\n");
+                    w!(w, "::std::hash<", parent_name, ">()(s)");
+                    first = false;
                 }
             }
             _ => {}
@@ -523,91 +500,14 @@ impl<'a> CppGen<'a> {
 
         // Hash own members
         for member in members {
+            if !first {
+                w!(w, ",\n");
+            }
+            first = false;
             let member_name = format!("s.{}", member.ident.name);
-            self.emit_hash_member(w, &member_name, &member.ty, 0);
+            w!(w, member_name);
         }
-    }
-
-    fn emit_hash_union(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
-        w!(w, "h ^= ::std::hash<");
-        match &union_ty.disc.ty.kind {
-            TyKind::Adt(disc_def_id) => {
-                let qualified_disc_name = self.scoped_name(*disc_def_id, None);
-                w!(w, qualified_disc_name);
-            }
-            _ => {
-                w!(w, self.cpp_type(&union_ty.disc.ty, def.id));
-            }
-        }
-        w!(w, ">()(s._d());\n");
-
-        w!(w, "switch (s._d()) {\n");
-        w.dedent();
-
-        for variant in &union_ty.variants {
-            if variant.is_default {
-                w!(w, "default:\n");
-            } else {
-                for label in &variant.labels {
-                    w!(w, "case ");
-                    self.emit_numeric_value(w, &label.value, None);
-                    w!(w, ":\n");
-                }
-            }
-            w.indent();
-
-            if !matches!(variant.ty.kind, TyKind::Null) {
-                let member_name = format!("s.{}()", variant.ident.name);
-                self.emit_hash_member(w, &member_name, &variant.ty, 0);
-            }
-            w!(w, "break;\n");
-
-            w.dedent();
-        }
-
-        w.indent();
-        w!(w, "}\n");
-    }
-
-    fn emit_hash_member(&self, w: &mut Twine, name: &str, ty: &Ty, level: usize) {
-        let ty = self.hir.context.resolve_ty(ty);
-        match &ty.kind {
-            TyKind::Array { ty: inner_ty, .. } => {
-                let mut current_name = name.to_string();
-                w!(w, "for (auto& value_", level, " : ", current_name, ") {\n");
-                current_name = format!("value_{level}");
-                self.emit_hash_member(w, &current_name, inner_ty, level + 1);
-                w!(w, "}\n");
-            }
-            TyKind::Sequence { ty: inner_ty, .. } => {
-                let new_name = format!("value_{level}");
-                let by_ref = if self.should_use_move(inner_ty) {
-                    "&"
-                } else {
-                    ""
-                };
-                w!(w, "for (auto", by_ref, " ", new_name, " : ", name, ") {\n");
-                self.emit_hash_member(w, &new_name, inner_ty, level + 1);
-                w!(w, "}\n");
-            }
-            TyKind::Map { key, elem, .. } => {
-                let new_name = format!("value_{level}");
-                let by_ref = if self.should_use_move(elem) { "&" } else { "" };
-                w!(w, "for (auto", by_ref, " ", new_name, " : ", name, ") {\n");
-
-                let key_name = format!("{new_name}.first");
-                self.emit_hash_member(w, &key_name, key, level + 1);
-
-                let elem_name = format!("{new_name}.second");
-                self.emit_hash_member(w, &elem_name, elem, level + 1);
-
-                w!(w, "}\n");
-            }
-            _ => {
-                let type_str = self.cpp_type(&ty, None);
-                w!(w, "h ^= std::hash<", type_str, ">()(", name, ");\n");
-            }
-        }
+        w!(w, "\n");
     }
 
     fn emit_module(&self, decl_w: &mut Twine, impl_w: &mut Twine, def: &Def, module: &ModuleTy) {
@@ -835,7 +735,8 @@ impl<'a> CppGen<'a> {
 
             self.emit_generated_header(&mut cpp_impls);
             w!(cpp_impls, "#include \"", output_file_name, "\"\n\n");
-            w!(cpp_impls, "#include <ic_cts/dds_xtypes_constants.h>\n\n");
+            w!(cpp_impls, "#include <ic_cts/dds_xtypes_constants.h>\n");
+            w!(cpp_impls, "#include <ic_cts/hash.h>\n\n");
 
             for def_id in &def_ids {
                 self.emit_cpp_definition(&mut cpp_impls, *def_id);

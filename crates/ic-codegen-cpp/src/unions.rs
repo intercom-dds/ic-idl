@@ -93,6 +93,21 @@ impl CppGen<'_> {
         self.emit_union_impl(impl_w, def, union_ty, &disc_type);
     }
 
+    pub fn emit_hash_union(&self, w: &mut Twine, union_ty: &ic_hir::hir::UnionTy) {
+        w!(w, "std::size_t seed = 0;\n");
+        w!(w, "::ic_cts::hash_combine(seed, s._d());\n\n");
+
+        self.emit_union_switch(w, union_ty, "s._d()", |w, variant| {
+            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+                let member_name = format!("s.{}()", variant.ident.name);
+                w!(w, "::ic_cts::hash_combine(seed, ", member_name, ");\n");
+            }
+            true
+        });
+
+        w!(w, "return seed;\n");
+    }
+
     fn emit_union_comparison_operators(&self, w: &mut Twine, def: &Def) {
         w!(w, "bool operator<(const ", def, "& a_other) const;\n");
         w!(w, "bool operator==(const ", def, "& a_other) const;\n");

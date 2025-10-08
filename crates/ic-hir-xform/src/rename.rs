@@ -245,13 +245,8 @@ impl Renamer {
 /// Transform HIR to use the specified naming conventions with collision handling
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
-    // Process top-level definitions first
-    let top_level_ids: Vec<_> = hir
-        .order
-        .iter()
-        .chain(hir.builtin_order.iter())
-        .copied()
-        .collect();
+    // Process top-level definitions first (only user definitions, not builtins)
+    let top_level_ids: Vec<_> = hir.order.clone();
 
     rename_breadth(&mut hir, &top_level_ids, None, target);
 
@@ -261,11 +256,12 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
     // Process enum constants separately
     process_enum_constants(&mut hir, target);
 
-    // Finally, rename members, variants, and other nested identifiers using Fold
+    // Finally, rename members, variants, and other nested identifiers
+    // Only process user definitions (hir.order), not builtins
     let mut renamer = Renamer::new(target.clone());
-    let all_def_ids: Vec<_> = hir.context.definitions.iter().map(|(id, _)| id).collect();
-    for def_id in all_def_ids {
+    for &def_id in &top_level_ids {
         let def = hir.context.definitions.get_mut(def_id);
+
         match &mut def.kind {
             DefKind::Struct(s) => {
                 for member in &mut s.members {

@@ -151,6 +151,62 @@ struct ArrayReplacement {
     encounter_order: usize,
 }
 
+fn insert_top_level_array(hir: &mut ResolvedGraph, array_def_id: DefId, used_by_id: DefId) {
+    if let Some(pos) = hir.order.iter().position(|&id| id == used_by_id) {
+        hir.order.insert(pos, array_def_id);
+    } else {
+        hir.order.insert(0, array_def_id);
+    }
+}
+
+fn insert_nested_array(
+    hir: &mut ResolvedGraph,
+    array_def_id: DefId,
+    parent_id: DefId,
+    used_by_id: DefId,
+) {
+    let parent_def = hir.context.definitions.get(parent_id);
+    if !matches!(
+        parent_def.kind,
+        DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_)
+    ) {
+        return;
+    }
+
+    hir.context.definitions.fold(parent_id, |mut parent_def| {
+        let insert_pos = match &parent_def.kind {
+            DefKind::Module(module_ty) => module_ty
+                .definitions
+                .iter()
+                .position(|&id| id == used_by_id),
+            DefKind::Interface(interface_ty) => interface_ty
+                .definitions
+                .iter()
+                .position(|&id| id == used_by_id),
+            DefKind::Valuetype(value_ty) => {
+                value_ty.definitions.iter().position(|&id| id == used_by_id)
+            }
+            _ => None,
+        };
+
+        if let Some(pos) = insert_pos {
+            match &mut parent_def.kind {
+                DefKind::Module(module_ty) => {
+                    module_ty.definitions.insert(pos, array_def_id);
+                }
+                DefKind::Interface(interface_ty) => {
+                    interface_ty.definitions.insert(pos, array_def_id);
+                }
+                DefKind::Valuetype(value_ty) => {
+                    value_ty.definitions.insert(pos, array_def_id);
+                }
+                _ => {}
+            }
+        }
+        parent_def
+    });
+}
+
 /// Transform array types into explicit type alias definitions.
 ///
 /// This is a three-pass transformation:
@@ -225,55 +281,8 @@ pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     // Insert arrays in encounter order, each right before its used_by definition
     for (array_def_id, parent_id, used_by_id, _) in arrays_to_insert {
         match parent_id {
-            None => {
-                // Top-level: find position of used_by in hir.order and insert before it
-                if let Some(pos) = hir.order.iter().position(|&id| id == used_by_id) {
-                    hir.order.insert(pos, array_def_id);
-                } else {
-                    hir.order.insert(0, array_def_id);
-                }
-            }
-            Some(parent_id) => {
-                // Nested: insert into parent's definitions list
-                let parent_def = hir.context.definitions.get(parent_id);
-                if matches!(
-                    parent_def.kind,
-                    DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_)
-                ) {
-                    hir.context.definitions.fold(parent_id, |mut parent_def| {
-                        let insert_pos = match &parent_def.kind {
-                            DefKind::Module(module_ty) => module_ty
-                                .definitions
-                                .iter()
-                                .position(|&id| id == used_by_id),
-                            DefKind::Interface(interface_ty) => interface_ty
-                                .definitions
-                                .iter()
-                                .position(|&id| id == used_by_id),
-                            DefKind::Valuetype(value_ty) => {
-                                value_ty.definitions.iter().position(|&id| id == used_by_id)
-                            }
-                            _ => None,
-                        };
-
-                        if let Some(pos) = insert_pos {
-                            match &mut parent_def.kind {
-                                DefKind::Module(module_ty) => {
-                                    module_ty.definitions.insert(pos, array_def_id);
-                                }
-                                DefKind::Interface(interface_ty) => {
-                                    interface_ty.definitions.insert(pos, array_def_id);
-                                }
-                                DefKind::Valuetype(value_ty) => {
-                                    value_ty.definitions.insert(pos, array_def_id);
-                                }
-                                _ => {}
-                            }
-                        }
-                        parent_def
-                    });
-                }
-            }
+            None => insert_top_level_array(&mut hir, array_def_id, used_by_id),
+            Some(parent_id) => insert_nested_array(&mut hir, array_def_id, parent_id, used_by_id),
         }
     }
 

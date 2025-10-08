@@ -138,13 +138,8 @@ impl TypeFlagsAnalyzer {
 
             DefKind::Struct(s) => {
                 if let Some(parent_id) = s.parent {
-                    let parent_def = context.definitions.get(parent_id);
-                    if !parent_def.flags.contains(DefFlags::IS_TRIVIAL) {
-                        flags.is_trivial = false;
-                    }
-                    if !parent_def.flags.contains(DefFlags::TOTAL_ORDER) {
-                        flags.total_order = false;
-                    }
+                    let parent_flags = self.analyze_def(parent_id, context);
+                    flags.combine(parent_flags);
                 }
                 for member in &s.members {
                     let member_flags = self.analyze_type(&member.ty, context);
@@ -162,13 +157,8 @@ impl TypeFlagsAnalyzer {
 
             DefKind::Valuetype(v) => {
                 if let Some(parent_id) = v.parent {
-                    let parent_def = context.definitions.get(parent_id);
-                    if !parent_def.flags.contains(DefFlags::IS_TRIVIAL) {
-                        flags.is_trivial = false;
-                    }
-                    if !parent_def.flags.contains(DefFlags::TOTAL_ORDER) {
-                        flags.total_order = false;
-                    }
+                    let parent_flags = self.analyze_def(parent_id, context);
+                    flags.combine(parent_flags);
                 }
                 for member in &v.members {
                     let member_flags = self.analyze_type(&member.ty, context);

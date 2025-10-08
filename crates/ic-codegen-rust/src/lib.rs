@@ -88,9 +88,6 @@ pub fn codegen_rust(
     // Strip prefixes from enumerators
     let hir = ic_hir_xform::enum_prefix::transform(hir);
 
-    // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
-    let hir = ic_hir_xform::type_flags::transform(hir);
-
     // Rename `DDS::XTypes` to `DDS::xtypes`
     let hir = ic_hir_xform::rename_xtypes::transform(hir);
 

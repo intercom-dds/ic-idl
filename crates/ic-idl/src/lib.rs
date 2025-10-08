@@ -406,7 +406,7 @@ impl Compiler {
         let hir = ic_hir_xform::value_annotation::transform(hir);
         let hir = ic_hir_xform::position_annotation::transform(hir);
 
-        // Mark types with IS_TRIVIAL and TOTAL_ORDER flags
+        // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
         let hir = ic_hir_xform::type_flags::transform(hir);
 
         // Add implicit default cases to incomplete unions
